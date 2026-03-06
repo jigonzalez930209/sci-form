@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::time::Instant;
+use nalgebra::DMatrix;
 
 #[derive(Deserialize, Debug)]
 struct OracleAtom {
@@ -16,6 +17,34 @@ struct OracleAtom {
 struct OracleMolecule {
     smiles: String,
     atoms: Vec<OracleAtom>,
+}
+
+fn calculate_rmsd(coords: &DMatrix<f32>, reference: &DMatrix<f32>) -> f32 {
+    let n = coords.nrows();
+    if n == 0 { return 0.0; }
+    
+    // Centroid alignment
+    let mut c1 = [0.0; 3];
+    let mut c2 = [0.0; 3];
+    for i in 0..n {
+        for d in 0..3 {
+            c1[d] += coords[(i, d)];
+            c2[d] += reference[(i, d)];
+        }
+    }
+    for d in 0..3 {
+        c1[d] /= n as f32;
+        c2[d] /= n as f32;
+    }
+
+    let mut sum_sq = 0.0;
+    for i in 0..n {
+        let dx = (coords[(i, 0)] - c1[0]) - (reference[(i, 0)] - c2[0]);
+        let dy = (coords[(i, 1)] - c1[1]) - (reference[(i, 1)] - c2[1]);
+        let dz = (coords[(i, 2)] - c1[2]) - (reference[(i, 2)] - c2[2]);
+        sum_sq += dx * dx + dy * dy + dz * dz;
+    }
+    (sum_sq / n as f32).sqrt()
 }
 
 fn main() {
@@ -34,7 +63,7 @@ fn main() {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok());
 
-    println!("Starting Sci-Form fast benchmark (single conformer, bounds FF)...");
+    println!("Starting Sci-Form fast benchmark (single conformer, 4D->3D ETKDG)...");
     let start_total = Instant::now();
 
     let mut count = 0;
@@ -49,89 +78,71 @@ fn main() {
             let n = mol.graph.node_count();
             let mut bounds = sci_form::distgeom::calculate_bounds_matrix(&mol);
             if !sci_form::distgeom::triangle_smooth(&mut bounds) {
-                // println!("WARNING: triangle_smooth failed for {}", smi);
+                println!("WARNING: triangle_smooth failed for {}", smi);
             }
             let smoothed = bounds;
 
             let mut rng = rand::rngs::StdRng::seed_from_u64(42);
             use rand::SeedableRng;
 
-            let mut best_rmsd = f32::MAX;
-            let mut found_match = false;
-
             let chiral_sets = sci_form::distgeom::identify_chiral_sets(&mol);
-            let num_confs = 1;
-            for _c in 0..num_confs {
-                let dists = sci_form::distgeom::pick_random_distances(&mut rng, &smoothed);
-                let metric = sci_form::distgeom::compute_metric_matrix(&dists);
-                
-                // Phase 1: 4D Bounds FF Minimization
-                let mut coords = sci_form::distgeom::generate_nd_coordinates(&mut rng, &metric, 4);
-                sci_form::forcefield::bounds_ff::minimize_bounds_lbfgs(
-                    &mut coords, &smoothed, &chiral_sets, 500, 1e-4,
-                );
+            
+            let dists = sci_form::distgeom::pick_random_distances(&mut rng, &smoothed);
+            let metric = sci_form::distgeom::compute_metric_matrix(&dists);
+            
+            // Phase 1: 4D Bounds FF Minimization
+            let mut coords4d = sci_form::distgeom::generate_nd_coordinates(&mut rng, &metric, 4);
+            sci_form::forcefield::bounds_ff::minimize_bounds_lbfgs(
+                &mut coords4d, &smoothed, &chiral_sets, 500, 1e-4,
+            );
 
-                // Project to 3D for Phase 2
-                let mut coords3d = nalgebra::DMatrix::from_element(n, 3, 0.0);
-                for i in 0..n {
-                    for d in 0..3 {
-                        coords3d[(i, d)] = coords[(i, d)];
-                    }
-                }
-
-                // Phase 2: ETKDG-Lite MMFF Minimization (M6 torsions included)
-                let params = sci_form::forcefield::FFParams {
-                    kb: 400.0,
-                    k_theta: 300.0,
-                    k_omega: 20.0, // This is now used alongside M6
-                    k_oop: 40.0,
-                    k_bounds: 10000.0,
-                };
-                sci_form::forcefield::minimizer::minimize_energy_lbfgs(
-                    &mut coords3d, &mol, &params, &smoothed, 100,
-                );
-
-                if let Some(ref ref_list) = reference_mols {
-                    if let Some(oracle) = ref_list.iter().find(|m| m.smiles == *smi) {
-                        if oracle.atoms.len() == n {
-                            let mut diff_sq_sum = 0.0;
-                            let mut pairs = 0;
-                            for i in 0..n {
-                                for j in (i + 1)..n {
-                                    let dx_r = oracle.atoms[i].x - oracle.atoms[j].x;
-                                    let dy_r = oracle.atoms[i].y - oracle.atoms[j].y;
-                                    let dz_r = oracle.atoms[i].z - oracle.atoms[j].z;
-                                    let rdkit_dist = (dx_r * dx_r + dy_r * dy_r + dz_r * dz_r).sqrt();
-                                    let dx = coords3d[(i, 0)] - coords3d[(j, 0)];
-                                    let dy = coords3d[(i, 1)] - coords3d[(j, 1)];
-                                    let dz = coords3d[(i, 2)] - coords3d[(j, 2)];
-                                    let our_dist = (dx * dx + dy * dy + dz * dz).sqrt();
-                                    
-                                    let diff = (our_dist - rdkit_dist).abs();
-                                    diff_sq_sum += diff * diff;
-                                    pairs += 1;
-                                }
-                            }
-                            if pairs > 0 {
-                                let rmsd = (diff_sq_sum / pairs as f32).sqrt();
-                                if rmsd < best_rmsd {
-                                    best_rmsd = rmsd;
-                                    found_match = true;
-                                }
-                            }
-                        }
-                    }
+            // Project to 3D for Phase 2
+            let mut coords3d = DMatrix::from_element(n, 3, 0.0);
+            for i in 0..n {
+                for d in 0..3 {
+                    coords3d[(i, d)] = coords4d[(i, d)];
                 }
             }
 
-            if found_match {
-                total_rmsd += best_rmsd;
-                if best_rmsd > max_rmsd {
-                    max_rmsd = best_rmsd;
-                    max_rmsd_smi = smi.clone();
-                    println!("New MAX RMSD {:.3} Å for {}", max_rmsd, smi);
+            // Phase 2: ETKDG-Lite MMFF Minimization
+            let params = sci_form::forcefield::FFParams {
+                kb: 400.0,
+                k_theta: 300.0,
+                k_omega: 20.0,
+                k_oop: 40.0,
+                k_bounds: 10000.0,
+            };
+            sci_form::forcefield::minimizer::minimize_energy_lbfgs(
+                &mut coords3d, &mol, &params, &smoothed, 500,
+            );
+
+            if smi == "C" {
+                println!("DEBUG: C | RMSD: {:.3} Å", rmsd);
+                println!("Coords:\n{:?}", coords3d);
+                println!("Ref:\n{:?}", ref_coords);
+            }
+
+            if let Some(ref ref_list) = reference_mols {
+                if let Some(oracle) = ref_list.iter().find(|m| m.smiles == *smi) {
+                    if oracle.atoms.len() == n {
+                        let mut ref_coords = DMatrix::from_element(n, 3, 0.0);
+                        for i in 0..n {
+                            ref_coords[(i, 0)] = oracle.atoms[i].x;
+                            ref_coords[(i, 1)] = oracle.atoms[i].y;
+                            ref_coords[(i, 2)] = oracle.atoms[i].z;
+                        }
+
+                        let rmsd = calculate_rmsd(&coords3d, &ref_coords);
+                        
+                        total_rmsd += rmsd;
+                        if rmsd > max_rmsd {
+                            max_rmsd = rmsd;
+                            max_rmsd_smi = smi.clone();
+                            println!("New MAX RMSD {:.3} Å for {}", max_rmsd, smi);
+                        }
+                        rmsd_count += 1;
+                    }
                 }
-                rmsd_count += 1;
             }
             count += 1;
         }
