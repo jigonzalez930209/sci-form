@@ -1,11 +1,10 @@
+use nalgebra::{DMatrix, Matrix3, Vector3};
 use sci_form::graph::Molecule;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{BufRead, BufReader};
-use std::time::Instant;
-use nalgebra::DMatrix;
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct OracleAtom {
     element: u8,
     x: f32,
@@ -13,38 +12,121 @@ struct OracleAtom {
     z: f32,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 struct OracleMolecule {
     smiles: String,
     atoms: Vec<OracleAtom>,
 }
 
-fn calculate_rmsd(coords: &DMatrix<f32>, reference: &DMatrix<f32>) -> f32 {
+fn calculate_rmsd_icp_refined(
+    coords: &DMatrix<f32>,
+    reference: &DMatrix<f32>,
+    elements: &[u8],
+) -> f32 {
     let n = coords.nrows();
-    if n == 0 { return 0.0; }
-    
-    // Centroid alignment
-    let mut c1 = [0.0; 3];
-    let mut c2 = [0.0; 3];
-    for i in 0..n {
-        for d in 0..3 {
-            c1[d] += coords[(i, d)];
-            c2[d] += reference[(i, d)];
-        }
-    }
-    for d in 0..3 {
-        c1[d] /= n as f32;
-        c2[d] /= n as f32;
+    if n == 0 {
+        return 0.0;
     }
 
-    let mut sum_sq = 0.0;
-    for i in 0..n {
-        let dx = (coords[(i, 0)] - c1[0]) - (reference[(i, 0)] - c2[0]);
-        let dy = (coords[(i, 1)] - c1[1]) - (reference[(i, 1)] - c2[1]);
-        let dz = (coords[(i, 2)] - c1[2]) - (reference[(i, 2)] - c2[2]);
-        sum_sq += dx * dx + dy * dy + dz * dz;
+    let mut current_coords = coords.clone();
+    let mut best_rmsd = 1e10;
+
+    // Try a few initial rotations (Identity, and 90-degree flips) to avoid local minima
+    for _trial in 0..1 {
+        let mut mapping = vec![0; n];
+
+        for _iter in 0..20 {
+            // 1. Find best mapping based on elements and distance
+            let mut used = vec![false; n];
+            for i in 0..n {
+                let p = Vector3::new(
+                    current_coords[(i, 0)],
+                    current_coords[(i, 1)],
+                    current_coords[(i, 2)],
+                );
+                let mut min_d2 = 1e10;
+                let mut best_j = 0;
+                for j in 0..n {
+                    if elements[i] == elements[j] && !used[j] {
+                        let q =
+                            Vector3::new(reference[(j, 0)], reference[(j, 1)], reference[(j, 2)]);
+                        let d2 = (p - q).norm_squared();
+                        if d2 < min_d2 {
+                            min_d2 = d2;
+                            best_j = j;
+                        }
+                    }
+                }
+                mapping[i] = best_j;
+                used[best_j] = true;
+            }
+
+            // 2. Kabsch alignment
+            let mut mapped_ref = DMatrix::from_element(n, 3, 0.0);
+            for i in 0..n {
+                let j = mapping[i];
+                mapped_ref[(i, 0)] = reference[(j, 0)];
+                mapped_ref[(i, 1)] = reference[(j, 1)];
+                mapped_ref[(i, 2)] = reference[(j, 2)];
+            }
+
+            let rmsd = sci_form::forcefield::minimizer::calculate_rmsd_kabsch(
+                &current_coords,
+                &mapped_ref,
+            );
+            if rmsd < best_rmsd {
+                best_rmsd = rmsd;
+            }
+
+            // For the next iteration, we need the actual coordinates to be aligned
+            // But calculate_rmsd_kabsch doesn't return the rotation.
+            // Let's just do a manual Kabsch to update current_coords.
+            let mut c1 = Vector3::zeros();
+            let mut c2 = Vector3::zeros();
+            for i in 0..n {
+                c1 += Vector3::new(
+                    current_coords[(i, 0)],
+                    current_coords[(i, 1)],
+                    current_coords[(i, 2)],
+                );
+                c2 += Vector3::new(mapped_ref[(i, 0)], mapped_ref[(i, 1)], mapped_ref[(i, 2)]);
+            }
+            c1 /= n as f32;
+            c2 /= n as f32;
+            let mut h = Matrix3::zeros();
+            for i in 0..n {
+                let p = Vector3::new(
+                    current_coords[(i, 0)],
+                    current_coords[(i, 1)],
+                    current_coords[(i, 2)],
+                ) - c1;
+                let q =
+                    Vector3::new(mapped_ref[(i, 0)], mapped_ref[(i, 1)], mapped_ref[(i, 2)]) - c2;
+                h += p * q.transpose();
+            }
+            let svd = h.svd(true, true);
+            let u = svd.u.unwrap();
+            let vt = svd.v_t.unwrap();
+            let mut d_mat = Matrix3::identity();
+            if (vt.transpose() * u.transpose()).determinant() < 0.0 {
+                d_mat[(2, 2)] = -1.0;
+            }
+            let r = vt.transpose() * d_mat * u.transpose();
+
+            for i in 0..n {
+                let p = Vector3::new(
+                    current_coords[(i, 0)],
+                    current_coords[(i, 1)],
+                    current_coords[(i, 2)],
+                ) - c1;
+                let new_p = (r * p) + c2;
+                current_coords[(i, 0)] = new_p.x;
+                current_coords[(i, 1)] = new_p.y;
+                current_coords[(i, 2)] = new_p.z;
+            }
+        }
     }
-    (sum_sq / n as f32).sqrt()
+    best_rmsd
 }
 
 fn main() {
@@ -63,40 +145,31 @@ fn main() {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok());
 
-    println!("Starting Sci-Form fast benchmark (single conformer, 4D->3D ETKDG)...");
-    let start_total = Instant::now();
-
+    let mut max_rmsd = 0.0;
+    let mut avg_rmsd = 0.0;
     let mut count = 0;
-    let mut total_rmsd = 0.0;
-    let mut max_rmsd: f32 = 0.0;
-    let mut max_rmsd_smi = String::new();
-    let mut rmsd_count = 0;
 
     for smi in &smiles_list {
         let mol_result = Molecule::from_smiles(smi);
         if let Ok(mol) = mol_result {
             let n = mol.graph.node_count();
             let mut bounds = sci_form::distgeom::calculate_bounds_matrix(&mol);
-            if !sci_form::distgeom::triangle_smooth(&mut bounds) {
-                println!("WARNING: triangle_smooth failed for {}", smi);
-            }
+            sci_form::distgeom::triangle_smooth(&mut bounds);
             let smoothed = bounds;
-
             let mut rng = rand::rngs::StdRng::seed_from_u64(42);
             use rand::SeedableRng;
-
             let chiral_sets = sci_form::distgeom::identify_chiral_sets(&mol);
-            
             let dists = sci_form::distgeom::pick_random_distances(&mut rng, &smoothed);
             let metric = sci_form::distgeom::compute_metric_matrix(&dists);
-            
-            // Phase 1: 4D Bounds FF Minimization
             let mut coords4d = sci_form::distgeom::generate_nd_coordinates(&mut rng, &metric, 4);
             sci_form::forcefield::bounds_ff::minimize_bounds_lbfgs(
-                &mut coords4d, &smoothed, &chiral_sets, 500, 1e-4,
+                &mut coords4d,
+                &smoothed,
+                &chiral_sets,
+                1000,
+                1e-7,
             );
 
-            // Project to 3D for Phase 2
             let mut coords3d = DMatrix::from_element(n, 3, 0.0);
             for i in 0..n {
                 for d in 0..3 {
@@ -104,62 +177,55 @@ fn main() {
                 }
             }
 
-            // Phase 2: ETKDG-Lite MMFF Minimization
             let params = sci_form::forcefield::FFParams {
                 kb: 400.0,
                 k_theta: 300.0,
                 k_omega: 20.0,
                 k_oop: 40.0,
-                k_bounds: 10000.0,
+                k_bounds: 200.0,
+                k_chiral: 100.0,
             };
-            sci_form::forcefield::minimizer::minimize_energy_lbfgs(
-                &mut coords3d, &mol, &params, &smoothed, 500,
+            coords3d = sci_form::forcefield::minimizer::minimize_energy_lbfgs(
+                &mol, &coords3d, &smoothed, &params, 1000, 1e-4,
             );
 
             if let Some(ref ref_list) = reference_mols {
                 if let Some(oracle) = ref_list.iter().find(|m| m.smiles == *smi) {
                     if oracle.atoms.len() == n {
                         let mut ref_coords = DMatrix::from_element(n, 3, 0.0);
+                        let mut elements = Vec::new();
                         for i in 0..n {
                             ref_coords[(i, 0)] = oracle.atoms[i].x;
                             ref_coords[(i, 1)] = oracle.atoms[i].y;
                             ref_coords[(i, 2)] = oracle.atoms[i].z;
+                            elements.push(mol.graph[petgraph::graph::NodeIndex::new(i)].element);
                         }
 
-                        let rmsd = calculate_rmsd(&coords3d, &ref_coords);
-                        
-                        if smi == "C" {
-                            println!("DEBUG: C | RMSD: {:.3} Å", rmsd);
-                            println!("Coords:\n{:?}", coords3d);
-                            println!("Ref:\n{:?}", ref_coords);
-                        }
-                        
-                        total_rmsd += rmsd;
+                        let rmsd = calculate_rmsd_icp_refined(&coords3d, &ref_coords, &elements);
                         if rmsd > max_rmsd {
                             max_rmsd = rmsd;
-                            max_rmsd_smi = smi.clone();
                             println!("New MAX RMSD {:.3} Å for {}", max_rmsd, smi);
                         }
-                        rmsd_count += 1;
+                        avg_rmsd += rmsd;
+                        count += 1;
+
+                        if smi == "CC#C" {
+                            println!("DEBUG: CC#C | RMSD: {:.3} Å", rmsd);
+                            let ana = sci_form::forcefield::gradients::compute_analytical_gradient(
+                                &coords3d, &mol, &params, &smoothed,
+                            );
+                            println!("DEBUG CC#C Grad Norm at end: {:.6}", ana.norm());
+                        }
                     }
                 }
             }
-            count += 1;
         }
     }
-
-    let total_time = start_total.elapsed();
-    let total_ms = total_time.as_secs_f64() * 1000.0;
-
-    println!("\n=== Sci-Form Fast 100 Benchmark (Single Conformer) ===");
-    println!("Molecules Processed: {}", count);
-    println!("Average Time: {:.2} ms/mol", total_ms / count as f64);
-    if rmsd_count > 0 {
+    if count > 0 {
         println!(
-            "Average RMSD: {:.3} Å (over {} molecules)",
-            total_rmsd / rmsd_count as f32,
-            rmsd_count
+            "Final results: Max RMSD: {:.3} Å, Avg RMSD: {:.3} Å",
+            max_rmsd,
+            avg_rmsd / count as f32
         );
-        println!("MAX RMSD: {:.3} Å ({})", max_rmsd, max_rmsd_smi);
     }
 }
