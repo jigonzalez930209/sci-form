@@ -116,12 +116,6 @@ fn main() {
                 &mut coords3d, &mol, &params, &smoothed, 500,
             );
 
-            if smi == "C" {
-                println!("DEBUG: C | RMSD: {:.3} Å", rmsd);
-                println!("Coords:\n{:?}", coords3d);
-                println!("Ref:\n{:?}", ref_coords);
-            }
-
             if let Some(ref ref_list) = reference_mols {
                 if let Some(oracle) = ref_list.iter().find(|m| m.smiles == *smi) {
                     if oracle.atoms.len() == n {
@@ -133,6 +127,12 @@ fn main() {
                         }
 
                         let rmsd = calculate_rmsd(&coords3d, &ref_coords);
+                        
+                        if smi == "C" {
+                            println!("DEBUG: C | RMSD: {:.3} Å", rmsd);
+                            println!("Coords:\n{:?}", coords3d);
+                            println!("Ref:\n{:?}", ref_coords);
+                        }
                         
                         total_rmsd += rmsd;
                         if rmsd > max_rmsd {
