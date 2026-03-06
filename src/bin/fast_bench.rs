@@ -178,15 +178,15 @@ fn main() {
             }
 
             let params = sci_form::forcefield::FFParams {
-                kb: 400.0,
-                k_theta: 300.0,
-                k_omega: 20.0,
-                k_oop: 40.0,
-                k_bounds: 200.0,
-                k_chiral: 100.0,
+                kb: 800.0,
+                k_theta: 500.0,
+                k_omega: 50.0,
+                k_oop: 80.0,
+                k_bounds: 400.0,
+                k_chiral: 200.0,
             };
             coords3d = sci_form::forcefield::minimizer::minimize_energy_lbfgs(
-                &mol, &coords3d, &smoothed, &params, 1000, 1e-4,
+                &mol, &coords3d, &smoothed, &params, 2000, 1e-5,
             );
 
             if let Some(ref ref_list) = reference_mols {
@@ -211,6 +211,16 @@ fn main() {
 
                         if smi == "CC#C" {
                             println!("DEBUG: CC#C | RMSD: {:.3} Å", rmsd);
+                            println!("DEBUG CC#C Coords generated:");
+                            for i in 0..n {
+                                println!("  Atom {}: ({:.3}, {:.3}, {:.3})", 
+                                    i, coords3d[(i, 0)], coords3d[(i, 1)], coords3d[(i, 2)]);
+                            }
+                            println!("DEBUG CC#C Reference coords:");
+                            for i in 0..n {
+                                println!("  Atom {}: ({:.3}, {:.3}, {:.3})", 
+                                    i, ref_coords[(i, 0)], ref_coords[(i, 1)], ref_coords[(i, 2)]);
+                            }
                             let ana = sci_form::forcefield::gradients::compute_analytical_gradient(
                                 &coords3d, &mol, &params, &smoothed,
                             );
