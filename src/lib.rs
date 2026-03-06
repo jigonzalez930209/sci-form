@@ -1,7 +1,8 @@
-pub mod graph;
 pub mod distgeom;
 pub mod etkdg;
 pub mod forcefield;
+pub mod graph;
+pub mod optimization;
 pub mod smiles;
 
 use wasm_bindgen::prelude::*;
