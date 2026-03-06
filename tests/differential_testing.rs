@@ -117,13 +117,15 @@ fn test_parse_reference_data() {
             k_omega: 0.0,
             k_oop: 0.0,
             k_bounds: 500.0, // Force L-BFGS to rigidly enforce ONLY the distgeom bounds
+            k_chiral: 0.0,
         };
-        sci_form::forcefield::minimize_energy_lbfgs(
-            &mut minimized_coords,
+        minimized_coords = sci_form::forcefield::minimize_energy_lbfgs(
             &our_mol,
-            &params,
+            &minimized_coords,
             &smoothed,
+            &params,
             300,
+            1e-4,
         );
 
         // Ensure successful generation
