@@ -138,9 +138,9 @@ pub fn minimize_bounds_lbfgs(
             e += 1.0 * chiral_violation_energy(c, chiral_sets);
             chiral_violation_gradient(c, chiral_sets, &mut g);
         }
-        // 4D penalty: 0.1 * x4^2 if dim == 4 (matching RDKit weightFourthDim = 0.1)
+        // 4D penalty: higher weight for better 3D projection (RDKit uses 0.1, but we need more for stability)
         if dim_coords == 4 {
-            let weight_4d = 0.1f32;
+            let weight_4d = 1.0f32;
             for i in 0..n {
                 let x4 = c[(i, 3)];
                 e += weight_4d * x4 * x4;
