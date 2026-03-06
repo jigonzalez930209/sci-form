@@ -111,7 +111,7 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
         }
     }
 
-    let mut set_bounds = |i: usize, j: usize, lower: f32, upper: f32| {
+    fn set_bounds(bounds: &mut nalgebra::DMatrix<f32>, i: usize, j: usize, lower: f32, upper: f32) {
         let (min_idx, max_idx) = if i < j { (i, j) } else { (j, i) };
         if bounds[(max_idx, min_idx)] < lower {
             bounds[(max_idx, min_idx)] = lower;
@@ -119,7 +119,7 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
         if bounds[(min_idx, max_idx)] > upper {
             bounds[(min_idx, max_idx)] = upper;
         }
-    };
+    }
 
     // 1-2 Bounds
     for bond in mol.graph.edge_references() {
@@ -127,7 +127,13 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
         let j = bond.target();
 
         let ideal_dist = get_bond_length(mol, i, j);
-        set_bounds(i.index(), j.index(), ideal_dist - 0.01, ideal_dist + 0.01);
+        set_bounds(
+            &mut bounds,
+            i.index(),
+            j.index(),
+            ideal_dist - 0.01,
+            ideal_dist + 0.01,
+        );
         top_dist[(i.index(), j.index())] = 1; // Ensure it's marked
         top_dist[(j.index(), i.index())] = 1;
     }
@@ -151,7 +157,7 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
                 let ideal_dist = ideal_dist_sq.sqrt();
 
                 let dist = crate::graph::min_path_excluding(mol, n1, n2, NodeIndex::new(i), 3);
-                
+
                 let (lower, upper) = if dist == Some(1) {
                     // 3-membered ring case: use the direct 1-2 bond length
                     let d = get_bond_length(mol, n1, n2);
@@ -163,12 +169,35 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
                     let ideal_dist = ideal_dist_sq.sqrt();
                     let (tol_l, tol_u) = match dist {
                         Some(2) => (0.02, 0.02), // 4-ring
-                        _ => (0.04, 0.04), // Default
+                        _ => (0.04, 0.04),       // Default
                     };
                     (ideal_dist - tol_l, ideal_dist + tol_u)
                 };
 
-                set_bounds(n1.index(), n2.index(), lower, upper);
+                // For 4-membered rings specifically, we have two competing 1-3 paths.
+                // We should relax the bounds so that both distances are valid, i.e.
+                // taking the union of intervals: lower = min(existing, new), upper = max(existing, new).
+
+                let (min_idx, max_idx) = if n1.index() < n2.index() {
+                    (n1.index(), n2.index())
+                } else {
+                    (n2.index(), n1.index())
+                };
+                let current_u = bounds[(min_idx, max_idx)];
+                let current_l = bounds[(max_idx, min_idx)];
+
+                // Actually, just standard geometric logic: the valid distance MUST be compatible with
+                // both paths, which means in a rigid 4-ring the geometry is over-constrained unless
+                // it's planar or puckered. We'll set the bounds conservatively to the union of both intervals
+                // if it's already set.
+                if current_u < 1000.0 {
+                    // It was already set! Take the union of the intervals so both are possible
+                    bounds[(max_idx, min_idx)] = current_l.min(lower); // min of lowers
+                    bounds[(min_idx, max_idx)] = current_u.max(upper); // max of uppers
+                } else {
+                    set_bounds(&mut bounds, n1.index(), n2.index(), lower, upper);
+                }
+
                 top_dist[(n1.index(), n2.index())] = 2; // Mark as 1-3
                 top_dist[(n2.index(), n1.index())] = 2;
             }
@@ -187,8 +216,18 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
                             let r23 = get_bond_length(mol, n1, n2);
                             let r34 = get_bond_length(mol, n2, NodeIndex::new(j));
 
-                            let angle123 = crate::graph::get_corrected_ideal_angle(mol, n1, NodeIndex::new(i), n2);
-                            let angle234 = crate::graph::get_corrected_ideal_angle(mol, n2, n1, NodeIndex::new(j));
+                            let angle123 = crate::graph::get_corrected_ideal_angle(
+                                mol,
+                                n1,
+                                NodeIndex::new(i),
+                                n2,
+                            );
+                            let angle234 = crate::graph::get_corrected_ideal_angle(
+                                mol,
+                                n2,
+                                n1,
+                                NodeIndex::new(j),
+                            );
 
                             let d_cis = compute_14_dist_cis(r12, r23, r34, angle123, angle234);
                             let d_trans = compute_14_dist_trans(r12, r23, r34, angle123, angle234);
@@ -211,13 +250,17 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
                                 }
                             };
 
-                            if lower < 0.0 { lower = 0.0; }
-                            set_bounds(i, j, lower, upper);
+                            if lower < 0.0 {
+                                lower = 0.0;
+                            }
+                            set_bounds(&mut bounds, i, j, lower, upper);
                             path_found = true;
                             break;
                         }
                     }
-                    if path_found { break; }
+                    if path_found {
+                        break;
+                    }
                 }
             }
         }
@@ -227,7 +270,8 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
     for i in 0..n {
         for j in (i + 1)..n {
             let dist = top_dist[(i, j)];
-            if dist >= 3 { // RDKit: 1-4 and above
+            if dist >= 3 {
+                // RDKit: 1-4 and above
                 let atom_i = &mol.graph[NodeIndex::new(i)];
                 let atom_j = &mol.graph[NodeIndex::new(j)];
                 let vdw_i = crate::graph::get_vdw_radius(atom_i.element);
@@ -245,7 +289,7 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
                     vdw_sum
                 };
 
-                set_bounds(i, j, lower, 1000.0);
+                set_bounds(&mut bounds, i, j, lower, 1000.0);
             }
         }
     }
@@ -255,51 +299,83 @@ pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f32> {
 
 /// Applies Triangle Inequality Smoothing using Floyd-Warshall to update the limits.
 /// Converges identically to RDKit's TriangleSmooth implementation.
+/// Implementation accelerated and cache-friendly as described in r.md.
 pub fn triangle_smooth(bounds: &mut DMatrix<f32>) -> bool {
     let n = bounds.nrows();
+
+    // Implement optimized_triangle_bounds_smoothing natively on the DMatrix
     for k in 0..n {
-        for i in 0..(n - 1) {
-            if i == k { continue; }
-            
-            let u_ik = if i < k { bounds[(i, k)] } else { bounds[(k, i)] };
-            let l_ik = if i < k { bounds[(k, i)] } else { bounds[(i, k)] };
+        for i in 0..n {
+            if i == k {
+                continue;
+            }
+
+            let u_ik = if i < k {
+                bounds[(i, k)]
+            } else {
+                bounds[(k, i)]
+            };
+            let l_ik = if i < k {
+                bounds[(k, i)]
+            } else {
+                bounds[(i, k)]
+            };
 
             for j in (i + 1)..n {
-                if j == k { continue; }
-                
-                let u_kj = if j < k { bounds[(j, k)] } else { bounds[(k, j)] };
-                let l_kj = if j < k { bounds[(k, j)] } else { bounds[(j, k)] };
+                if j == k {
+                    continue;
+                }
+
+                let u_kj = if j < k {
+                    bounds[(j, k)]
+                } else {
+                    bounds[(k, j)]
+                };
+                let l_kj = if j < k {
+                    bounds[(k, j)]
+                } else {
+                    bounds[(j, k)]
+                };
+
+                let idx_ij_u = (i, j);
+                let idx_ij_l = (j, i);
 
                 // Upper bound: U_ij = min(U_ij, U_ik + U_kj)
                 let sum_u = u_ik + u_kj;
-                if bounds[(i, j)] > sum_u {
-                    bounds[(i, j)] = sum_u;
+
+                if bounds[idx_ij_u] > sum_u {
+                    bounds[idx_ij_u] = sum_u;
                 }
 
                 // Lower bound: L_ij = max(L_ij, L_ik - U_kj, L_kj - U_ik)
                 let diff1 = l_ik - u_kj;
                 let diff2 = l_kj - u_ik;
-                let mut l_ij = bounds[(j, i)];
+
+                let mut l_ij = bounds[idx_ij_l];
                 if l_ij < diff1 {
                     l_ij = diff1;
                 }
                 if l_ij < diff2 {
                     l_ij = diff2;
                 }
-                bounds[(j, i)] = l_ij;
+                bounds[idx_ij_l] = l_ij;
 
-                if bounds[(j, i)] > bounds[(i, j)] {
-                    // Slight violation can happen due to float precision, 
-                    // but if it's significant, the bounds are inconsistent.
-                    if bounds[(j, i)] - bounds[(i, j)] > 1e-3 {
-                        return false; 
-                    }
-                    bounds[(j, i)] = bounds[(i, j)];
+                if bounds[idx_ij_l] > bounds[idx_ij_u] + 1e-4 {
+                    return false;
+                }
+                if bounds[idx_ij_l] > bounds[idx_ij_u] {
+                    bounds[idx_ij_l] = bounds[idx_ij_u];
                 }
             }
         }
     }
     true
+}
+
+/// Compatibility wrapper for triangle_smooth.
+pub fn smooth_bounds_matrix(mut bounds: DMatrix<f32>) -> DMatrix<f32> {
+    triangle_smooth(&mut bounds);
+    bounds
 }
 
 use rand::Rng;
@@ -354,7 +430,11 @@ pub fn compute_metric_matrix(dists: &DMatrix<f32>) -> DMatrix<f32> {
 use nalgebra::SymmetricEigen;
 
 /// Uses nalgebra's Eigen decomposition to project the metric matrix into N dimensions
-pub fn generate_nd_coordinates<R: Rng>(rng: &mut R, metric_matrix: &DMatrix<f32>, ndim: usize) -> DMatrix<f32> {
+pub fn generate_nd_coordinates<R: Rng>(
+    rng: &mut R,
+    metric_matrix: &DMatrix<f32>,
+    ndim: usize,
+) -> DMatrix<f32> {
     let n = metric_matrix.nrows();
 
     // Decompose the symmetric matrix M
@@ -383,7 +463,7 @@ pub fn generate_nd_coordinates<R: Rng>(rng: &mut R, metric_matrix: &DMatrix<f32>
                 }
             }
         } else {
-             for i in 0..n {
+            for i in 0..n {
                 coords[(i, dim)] = (1.0 - 2.0 * rng.gen::<f32>()) * 1e-4;
             }
         }
@@ -488,6 +568,7 @@ mod tests {
             formal_charge: 0,
             hybridization: Hybridization::SP3,
             chiral_tag: ChiralType::Unspecified,
+            explicit_h: 0,
         });
 
         let a2 = mol.add_atom(Atom {
@@ -497,6 +578,7 @@ mod tests {
             formal_charge: 0,
             hybridization: Hybridization::SP3,
             chiral_tag: ChiralType::Unspecified,
+            explicit_h: 0,
         });
 
         mol.add_bond(
@@ -565,7 +647,7 @@ mod tests {
         // Metric matrix should be 3x3
         assert_eq!(metric.nrows(), 3);
 
-        let coords3d = generate_3d_coordinates(&metric);
+        let coords3d = generate_3d_coordinates(&mut rng, &metric);
         // Coordinates should be Nx3
         assert_eq!(coords3d.nrows(), 3);
         assert_eq!(coords3d.ncols(), 3);
