@@ -39,7 +39,11 @@ fn compute_rmsd(coords: &nalgebra::DMatrix<f32>, oracle: &[OracleAtom], n: usize
             pairs += 1;
         }
     }
-    if pairs > 0 { (diff_sq_sum / pairs as f32).sqrt() } else { f32::MAX }
+    if pairs > 0 {
+        (diff_sq_sum / pairs as f32).sqrt()
+    } else {
+        f32::MAX
+    }
 }
 
 fn main() {
@@ -92,10 +96,14 @@ fn main() {
             for _ in 0..num_confs {
                 let dists = sci_form::distgeom::pick_random_distances(&mut rng, &smoothed);
                 let metric = sci_form::distgeom::compute_metric_matrix(&dists);
-                let mut coords3d = sci_form::distgeom::generate_3d_coordinates(&metric);
+                let mut coords3d = sci_form::distgeom::generate_3d_coordinates(&mut rng, &metric);
 
                 sci_form::forcefield::minimizer::minimize_energy_lbfgs(
-                    &mut coords3d, &mol, &params, &smoothed, lbfgs_iters,
+                    &mut coords3d,
+                    &mol,
+                    &params,
+                    &smoothed,
+                    lbfgs_iters,
                 );
 
                 if let Some(ref ref_list) = reference_mols {
@@ -122,7 +130,11 @@ fn main() {
             count += 1;
             if count % 500 == 0 {
                 let elapsed = start_total.elapsed().as_secs_f64();
-                let avg = if rmsd_count > 0 { total_rmsd / rmsd_count as f32 } else { 0.0 };
+                let avg = if rmsd_count > 0 {
+                    total_rmsd / rmsd_count as f32
+                } else {
+                    0.0
+                };
                 println!(
                     "[{:>5}] Avg RMSD: {:.3} Å | Max: {:.3} Å ({}) | {:.1}s",
                     count, avg, max_rmsd, max_rmsd_smi, elapsed
@@ -144,6 +156,9 @@ fn main() {
             total_rmsd / rmsd_count as f32,
             rmsd_count
         );
-        println!("MAX RMSD (vs RDKit reference): {:.3} Å ({})", max_rmsd, max_rmsd_smi);
+        println!(
+            "MAX RMSD (vs RDKit reference): {:.3} Å ({})",
+            max_rmsd, max_rmsd_smi
+        );
     }
 }
