@@ -68,7 +68,9 @@ pub fn bounds_violation_gradient(coords: &DMatrix<f32>, bounds: &DMatrix<f32>) -
 
             if d2 > ub2 {
                 let d = d2.sqrt();
-                if d < 1e-8 { continue; }
+                if d < 1e-8 {
+                    continue;
+                }
                 // RDKit: 2 * (d^2/ub^2 - 1) * (2d/ub^2) = 4d * (d^2/ub^2 - 1) / ub^2
                 // dE/dd = 2 * ((d^2/ub^2) - 1) * (2d/ub^2)
                 // dE/dx = dE/dd * dd/dx = dE/dd * (x_i - x_j)/d
@@ -81,7 +83,9 @@ pub fn bounds_violation_gradient(coords: &DMatrix<f32>, bounds: &DMatrix<f32>) -
                 }
             } else if d2 < lb2 {
                 let d = d2.sqrt();
-                if d < 1e-8 { continue; }
+                if d < 1e-8 {
+                    continue;
+                }
                 // RDKit: 2 * (2*lb^2/(lb^2+d^2) - 1) * (2*lb^2 * (-2d) / (lb^2+d^2)^2)
                 // dE/dd = 2 * (2*lb^2/(lb^2+d^2) - 1) * (-4*lb^2*d / (lb^2+d^2)^2)
                 // pre_factor = dE/dd / d = 2 * (2*lb^2/(lb^2+d^2) - 1) * (-4*lb^2 / (lb^2+d^2)^2)
@@ -113,7 +117,9 @@ pub fn minimize_bounds_lbfgs(
     let m = 7;
 
     let flatten = |c: &DMatrix<f32>| -> Vec<f32> {
-        (0..n).flat_map(|i| (0..dim_coords).map(move |d| c[(i, d)])).collect()
+        (0..n)
+            .flat_map(|i| (0..dim_coords).map(move |d| c[(i, d)]))
+            .collect()
     };
     let unflatten = |v: &[f32], c: &mut DMatrix<f32>| {
         for i in 0..n {
@@ -145,10 +151,10 @@ pub fn minimize_bounds_lbfgs(
     };
 
     let (mut f, g_mat) = calc_total(coords);
-    let mut g = Vec::with_capacity(dim_tot);
+    let mut g = vec![0.0; dim_tot];
     for i in 0..n {
         for d in 0..dim_coords {
-            g.push(g_mat[(i, d)]);
+            g[i * dim_coords + d] = g_mat[(i, d)];
         }
     }
 
@@ -156,69 +162,110 @@ pub fn minimize_bounds_lbfgs(
     let mut y_hist: Vec<Vec<f32>> = Vec::with_capacity(m);
     let mut rho_hist: Vec<f32> = Vec::with_capacity(m);
 
+    let mut q = vec![0.0; dim_tot];
+    let mut dir = vec![0.0; dim_tot];
+    let mut x_new = vec![0.0; dim_tot];
+    let mut g_new = vec![0.0; dim_tot];
+    let mut s_k = vec![0.0; dim_tot];
+    let mut y_k = vec![0.0; dim_tot];
+    let mut alpha = vec![0.0f32; m];
+
     for _iter in 0..max_iters {
         let k = s_hist.len();
-        let mut q = g.clone();
-        let mut alpha = vec![0.0f32; k];
+        q.copy_from_slice(&g);
 
         for i in (0..k).rev() {
             alpha[i] = rho_hist[i] * dot(&s_hist[i], &q);
-            for j in 0..dim_tot { q[j] -= alpha[i] * y_hist[i][j]; }
-        }
-
-        let gamma = if k > 0 {
-            dot(&s_hist[k-1], &y_hist[k-1]) / dot(&y_hist[k-1], &y_hist[k-1]).max(1e-10)
-        } else { 1.0 };
-
-        let mut r: Vec<f32> = q.iter().map(|&v| gamma * v).collect();
-        for i in 0..k {
-            let beta = rho_hist[i] * dot(&y_hist[i], &r);
-            for j in 0..dim_tot { r[j] += (alpha[i] - beta) * s_hist[i][j]; }
-        }
-
-        let dir: Vec<f32> = r.iter().map(|v| -v).collect();
-        let mut step = 1.0f32;
-        let c1 = 1e-4;
-        let dg = dot(&g, &dir);
-        let dir_norm: f32 = dir.iter().map(|&v| v * v).sum::<f32>().sqrt();
-        if step * dir_norm > 0.5 { step = 0.5 / dir_norm; }
-
-        let f0 = f;
-        for _ in 0..20 {
-            let x_new: Vec<f32> = x.iter().zip(&dir).map(|(xi, di)| xi + step * di).collect();
-            unflatten(&x_new, coords);
-            let (f_new, _) = calc_total(coords);
-            if f_new <= f0 + c1 * step * dg { break; }
-            step *= 0.5;
-        }
-
-        let x_new: Vec<f32> = x.iter().zip(&dir).map(|(xi, di)| xi + step * di).collect();
-        unflatten(&x_new, coords);
-        let (f_new, g_new_mat) = calc_total(coords);
-        let mut g_new = Vec::with_capacity(dim_tot);
-        for i in 0..n {
-            for d in 0..dim_coords {
-                g_new.push(g_new_mat[(i, d)]);
+            for j in 0..dim_tot {
+                q[j] -= alpha[i] * y_hist[i][j];
             }
         }
 
-        let s_k: Vec<f32> = x_new.iter().zip(&x).map(|(a, b)| a - b).collect();
-        let y_k: Vec<f32> = g_new.iter().zip(&g).map(|(a, b)| a - b).collect();
+        let gamma = if k > 0 {
+            dot(&s_hist[k - 1], &y_hist[k - 1]) / dot(&y_hist[k - 1], &y_hist[k - 1]).max(1e-10)
+        } else {
+            1.0
+        };
+
+        for j in 0..dim_tot {
+            dir[j] = q[j] * gamma;
+        }
+        for i in 0..k {
+            let beta = rho_hist[i] * dot(&y_hist[i], &dir);
+            for j in 0..dim_tot {
+                dir[j] += (alpha[i] - beta) * s_hist[i][j];
+            }
+        }
+
+        for j in 0..dim_tot {
+            dir[j] = -dir[j];
+        }
+        let mut step = 1.0f32;
+        let c1 = 1e-4;
+        let dg = dot(&g, &dir);
+        let mut dir_norm_sq = 0.0;
+        for j in 0..dim_tot {
+            dir_norm_sq += dir[j] * dir[j];
+        }
+        let dir_norm = dir_norm_sq.sqrt();
+        if step * dir_norm > 0.5 {
+            step = 0.5 / dir_norm;
+        }
+
+        let f0 = f;
+        for _ in 0..20 {
+            for j in 0..dim_tot {
+                x_new[j] = x[j] + step * dir[j];
+            }
+            unflatten(&x_new, coords);
+            let (f_new, _) = calc_total(coords);
+            if f_new <= f0 + c1 * step * dg {
+                break;
+            }
+            step *= 0.5;
+        }
+
+        for j in 0..dim_tot {
+            x_new[j] = x[j] + step * dir[j];
+        }
+        unflatten(&x_new, coords);
+        let (f_new, g_new_mat) = calc_total(coords);
+        for i in 0..n {
+            for d in 0..dim_coords {
+                g_new[i * dim_coords + d] = g_new_mat[(i, d)];
+            }
+        }
+
+        for j in 0..dim_tot {
+            s_k[j] = x_new[j] - x[j];
+            y_k[j] = g_new[j] - g[j];
+        }
         let ys = dot(&y_k, &s_k);
 
         if ys > 1e-10 {
             if s_hist.len() == m {
-                s_hist.remove(0); y_hist.remove(0); rho_hist.remove(0);
+                s_hist.remove(0);
+                y_hist.remove(0);
+                rho_hist.remove(0);
             }
-            s_hist.push(s_k); y_hist.push(y_k); rho_hist.push(1.0 / ys);
+            s_hist.push(s_k.clone());
+            y_hist.push(y_k.clone());
+            rho_hist.push(1.0 / ys);
         }
 
-        let g_norm: f32 = g_new.iter().map(|v| v * v).sum::<f32>().sqrt();
-        f = f_new;
-        x = x_new;
-        g = g_new;
+        let mut g_norm_sq = 0.0;
+        for j in 0..dim_tot {
+            g_norm_sq += g_new[j] * g_new[j];
+        }
+        let g_norm = g_norm_sq.sqrt();
 
-        if g_norm < force_tol { break; }
+        f = f_new;
+        x.copy_from_slice(&x_new);
+        g.copy_from_slice(&g_new);
+
+        if g_norm < force_tol {
+            break;
+        }
     }
     unflatten(&x, coords);
 }
@@ -259,12 +306,29 @@ pub fn chiral_violation_gradient(
 ) {
     let dim = coords.ncols();
     for c in chiral_sets {
-        let (idx1, idx2, idx3, idx4) = (c.neighbors[0], c.neighbors[1], c.neighbors[2], c.neighbors[3]);
-        
+        let (idx1, idx2, idx3, idx4) = (
+            c.neighbors[0],
+            c.neighbors[1],
+            c.neighbors[2],
+            c.neighbors[3],
+        );
+
         // v1 = pos1 - pos4, v2 = pos2 - pos4, v3 = pos3 - pos4
-        let v1 = Vector3::new(coords[(idx1, 0)] - coords[(idx4, 0)], coords[(idx1, 1)] - coords[(idx4, 1)], coords[(idx1, 2)] - coords[(idx4, 2)]);
-        let v2 = Vector3::new(coords[(idx2, 0)] - coords[(idx4, 0)], coords[(idx2, 1)] - coords[(idx4, 1)], coords[(idx2, 2)] - coords[(idx4, 2)]);
-        let v3 = Vector3::new(coords[(idx3, 0)] - coords[(idx4, 0)], coords[(idx3, 1)] - coords[(idx4, 1)], coords[(idx3, 2)] - coords[(idx4, 2)]);
+        let v1 = Vector3::new(
+            coords[(idx1, 0)] - coords[(idx4, 0)],
+            coords[(idx1, 1)] - coords[(idx4, 1)],
+            coords[(idx1, 2)] - coords[(idx4, 2)],
+        );
+        let v2 = Vector3::new(
+            coords[(idx2, 0)] - coords[(idx4, 0)],
+            coords[(idx2, 1)] - coords[(idx4, 1)],
+            coords[(idx2, 2)] - coords[(idx4, 2)],
+        );
+        let v3 = Vector3::new(
+            coords[(idx3, 0)] - coords[(idx4, 0)],
+            coords[(idx3, 1)] - coords[(idx4, 1)],
+            coords[(idx3, 2)] - coords[(idx4, 2)],
+        );
 
         let v2xv3 = v2.cross(&v3);
         let vol = v1.dot(&v2xv3);
