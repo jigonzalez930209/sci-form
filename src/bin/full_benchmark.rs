@@ -93,8 +93,10 @@ fn main() {
             k_omega: 10.0,
             k_oop: 20.0,
             k_bounds: 200.0,
+            k_chiral: 50.0,
         };
-        minimize_energy_lbfgs(&mut coords3d_min, &our_mol, &params, &smoothed, 100);
+        coords3d_min =
+            minimize_energy_lbfgs(&our_mol, &coords3d_min, &smoothed, &params, 100, 1e-4);
 
         // 3. Calculate Minimized RMSD
         let mut min_diff_sq_sum = 0.0;
