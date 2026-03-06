@@ -70,6 +70,11 @@ fn test_parse_reference_data() {
                 formal_charge: atom.formal_charge,
                 hybridization: hybridization,
                 chiral_tag: sci_form::graph::ChiralType::Unspecified,
+                explicit_h: if atom.element == 1 || atom.element == 0 {
+                    1
+                } else {
+                    0
+                },
             };
             let n_idx = our_mol.add_atom(new_atom);
             node_indices.push(n_idx);
@@ -103,7 +108,7 @@ fn test_parse_reference_data() {
         let metric = sci_form::distgeom::compute_metric_matrix(&dists);
 
         // Project 3D
-        let mut coords3d = sci_form::distgeom::generate_3d_coordinates(&metric);
+        let coords3d = sci_form::distgeom::generate_3d_coordinates(&mut rng, &metric);
 
         let mut minimized_coords = coords3d.clone();
         let params = sci_form::forcefield::FFParams {
@@ -113,7 +118,13 @@ fn test_parse_reference_data() {
             k_oop: 0.0,
             k_bounds: 500.0, // Force L-BFGS to rigidly enforce ONLY the distgeom bounds
         };
-        sci_form::forcefield::minimize_energy_lbfgs(&mut minimized_coords, &our_mol, &params, &smoothed, 300);
+        sci_form::forcefield::minimize_energy_lbfgs(
+            &mut minimized_coords,
+            &our_mol,
+            &params,
+            &smoothed,
+            300,
+        );
 
         // Ensure successful generation
         assert_eq!(coords3d.nrows(), n);
