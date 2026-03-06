@@ -29,9 +29,21 @@ impl RustBfgsEngine {
         let mut local_gradient = vec![0.0; dims];
         let mut current_energy = eval_lambda(global_coords, &mut local_gradient);
 
-        if calculate_l2_norm(&local_gradient) < self.strict_grad_tolerance {
+        let mut g_norm = calculate_l2_norm(&local_gradient);
+        if g_norm < self.strict_grad_tolerance {
             return (current_energy, true);
         }
+
+        // RDKit Gradient Scaling Hack: 1.0 / sqrt(gradNorm) if gradNorm > 1.0
+        let g_scale = if g_norm > 1.0 {
+            1.0 / g_norm.sqrt()
+        } else {
+            1.0
+        };
+        for val in local_gradient.iter_mut() {
+            *val *= g_scale;
+        }
+        g_norm = calculate_l2_norm(&local_gradient);
 
         let mut hessian_inv_approx = DMatrix::<f64>::identity(dims, dims);
 
