@@ -74,10 +74,10 @@ fn main() {
         kb: 300.0,
         k_theta: 200.0,
         k_omega: 15.0,
-        k_oop: 30.0,
+        k_oop: 50.0,
         k_bounds: 100.0,
+        k_chiral: 50.0,
     };
-
     let num_confs = 50;
     let lbfgs_iters = 50;
 
@@ -98,12 +98,13 @@ fn main() {
                 let metric = sci_form::distgeom::compute_metric_matrix(&dists);
                 let mut coords3d = sci_form::distgeom::generate_3d_coordinates(&mut rng, &metric);
 
-                sci_form::forcefield::minimizer::minimize_energy_lbfgs(
-                    &mut coords3d,
+                coords3d = sci_form::forcefield::minimizer::minimize_energy_lbfgs(
                     &mol,
-                    &params,
+                    &coords3d,
                     &smoothed,
+                    &params,
                     lbfgs_iters,
+                    1e-4,
                 );
 
                 if let Some(ref ref_list) = reference_mols {
