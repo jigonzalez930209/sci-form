@@ -1,14 +1,13 @@
 use nalgebra::Vector3;
+use petgraph::visit::EdgeRef;
 
 /// Harmonic bond stretching penalty (Hooke's Law)
-/// E = 0.5 * k_b * (r - r_eq)^2
 pub fn bond_stretch_energy(p1: &Vector3<f32>, p2: &Vector3<f32>, k_b: f32, r_eq: f32) -> f32 {
     let r = (p1 - p2).norm();
     0.5 * k_b * (r - r_eq).powi(2)
 }
 
 /// Harmonic angle bending penalty
-/// E = 0.5 * k_theta * (theta - theta_eq)^2
 pub fn angle_bend_energy(
     p1: &Vector3<f32>,
     p2: &Vector3<f32>, // central atom
@@ -16,10 +15,22 @@ pub fn angle_bend_energy(
     k_theta: f32,
     theta_eq: f32,
 ) -> f32 {
-    let v1 = (p1 - p2).normalize();
-    let v2 = (p3 - p2).normalize();
-    let dot = v1.dot(&v2).clamp(-1.0, 1.0);
-    let theta = dot.acos();
+    let v1 = p1 - p2;
+    let v2 = p3 - p2;
+    let r1 = v1.norm();
+    let r2 = v2.norm();
+    if r1 < 1e-4 || r2 < 1e-4 {
+        return 0.0;
+    }
+    let cos_th = (v1.dot(&v2) / (r1 * r2)).clamp(-0.999999, 0.999999);
+
+    // Linear angle special case: use cosine potential for stability
+    if (theta_eq - std::f32::consts::PI).abs() < 1e-4 {
+        // Special linear potential: E = k * (1 + cos(theta))
+        return k_theta * (1.0 + cos_th);
+    }
+
+    let theta = cos_th.acos();
     0.5 * k_theta * (theta - theta_eq).powi(2)
 }
 
@@ -29,34 +40,26 @@ pub fn torsional_energy(
     p2: &Vector3<f32>,
     p3: &Vector3<f32>,
     p4: &Vector3<f32>,
-    k_omega: f32,
-    order: &crate::graph::BondOrder,
+    v: f32,
+    n: f32,
+    gamma: f32,
 ) -> f32 {
     let b1 = p2 - p1;
     let b2 = p3 - p2;
     let b3 = p4 - p3;
-    if b2.norm() < 1e-4 {
-        return 0.0;
-    }
+
     let n1 = b1.cross(&b2).normalize();
     let n2 = b2.cross(&b3).normalize();
-    let m = n1.cross(&b2.normalize());
+    let m1 = n1.cross(&b2.normalize());
+
     let x = n1.dot(&n2);
-    let y = m.dot(&n2);
-    let omega = y.atan2(x);
-    match order {
-        crate::graph::BondOrder::Double | crate::graph::BondOrder::Aromatic => {
-            0.5 * k_omega * 5.0 * (1.0 - (2.0 * omega).cos())
-        }
-        _ => {
-            0.5 * k_omega * (1.0 - (3.0 * omega).cos())
-        }
-    }
+    let y = m1.dot(&n2);
+    let phi = y.atan2(x);
+
+    v * (1.0 + (n * phi - gamma).cos())
 }
 
-/// Harmonic distance bounds penalty (matches RDKit ETKDG Gram rules)
-/// If r < lower: E = 0.5 * k_bounds * (lower - r)^2
-/// If r > upper: E = 0.5 * k_bounds * (r - upper)^2
+/// Distance-based penalty (used in embedding refinement)
 pub fn bounds_energy(
     p1: &Vector3<f32>,
     p2: &Vector3<f32>,
@@ -64,189 +67,187 @@ pub fn bounds_energy(
     upper: f32,
     k_bounds: f32,
 ) -> f32 {
-    let r = (p1 - p2).norm();
-    if r < lower {
-        0.5 * k_bounds * (lower - r).powi(2)
-    } else if r > upper {
-        0.5 * k_bounds * (r - upper).powi(2)
+    let r2 = (p1 - p2).norm_squared();
+    let u2 = upper * upper;
+    let l2 = lower * lower;
+    if r2 > u2 && u2 > 1e-6 {
+        let val = r2 / u2 - 1.0;
+        k_bounds * val * val
+    } else if r2 < l2 && l2 > 1e-6 {
+        // Use a much stronger 1/r^2 based penalty to prevent collapse
+        let r2_eff = r2.max(1e-4);
+        let val = l2 / r2_eff - 1.0;
+        k_bounds * val * val
     } else {
         0.0
     }
 }
 
-/// Out-of-Plane bending energy for sp2 atoms (planarity enforcement)
-/// For a central sp2 atom C with 3 neighbors A, B, D:
-/// E = k_oop * h^2, where h = distance from D to the plane(A, C, B)
+/// Harmonic Out-of-Plane bending penalty
 pub fn oop_energy(
-    center: &Vector3<f32>,
-    n1: &Vector3<f32>,
-    n2: &Vector3<f32>,
-    n3: &Vector3<f32>,
+    p_center: &Vector3<f32>,
+    p1: &Vector3<f32>,
+    p2: &Vector3<f32>,
+    p3: &Vector3<f32>,
     k_oop: f32,
+    phi_eq: f32,
 ) -> f32 {
-    let v1 = n1 - center;
-    let v2 = n2 - center;
-    let normal = v1.cross(&v2);
-    let norm_len = normal.norm();
-    if norm_len < 1e-6 {
-        return 0.0;
-    }
-    let n_hat = normal / norm_len;
-    let v3 = n3 - center;
-    let h = v3.dot(&n_hat); // signed distance from n3 to the plane
-    0.5 * k_oop * h * h
+    let v1 = p1 - p_center;
+    let v2 = p2 - p_center;
+    let v3 = p3 - p_center;
+
+    let normal = v2.cross(&v3).normalize();
+    let dist = v1.dot(&normal);
+    let sin_phi = dist / v1.norm().max(1e-4);
+    let phi = sin_phi.asin();
+
+    0.5 * k_oop * (phi - phi_eq).powi(2)
 }
 
-/// Generic container for force field parameters
+/// Chiral volume penalty
+pub fn chirality_energy(
+    p_center: &Vector3<f32>,
+    p1: &Vector3<f32>,
+    p2: &Vector3<f32>,
+    p3: &Vector3<f32>,
+    target_vol: f32,
+    k_chiral: f32,
+) -> f32 {
+    let v1 = p1 - p_center;
+    let v2 = p2 - p_center;
+    let v3 = p3 - p_center;
+    let vol = v1.dot(&v2.cross(&v3));
+    0.5 * k_chiral * (vol - target_vol).powi(2)
+}
+
+#[derive(Clone, Debug)]
 pub struct FFParams {
     pub kb: f32,
     pub k_theta: f32,
     pub k_omega: f32,
     pub k_oop: f32,
     pub k_bounds: f32,
+    pub k_chiral: f32,
 }
 
-/// Calculates the total potential energy for a molecular system
+impl Default for FFParams {
+    fn default() -> Self {
+        Self {
+            kb: 500.0,
+            k_theta: 300.0,
+            k_omega: 20.0,
+            k_oop: 40.0,
+            k_bounds: 200.0,
+            k_chiral: 100.0,
+        }
+    }
+}
+
 pub fn calculate_total_energy(
     coords: &nalgebra::DMatrix<f32>,
     mol: &crate::graph::Molecule,
     params: &FFParams,
     bounds_matrix: &nalgebra::DMatrix<f32>,
 ) -> f32 {
+    let n = mol.graph.node_count();
     let mut energy = 0.0;
-    use petgraph::visit::EdgeRef;
 
-    // 1. Bond Stretching
+    // 1. Bond Stretch
     for edge in mol.graph.edge_references() {
-        let i = edge.source().index();
-        let j = edge.target().index();
-        let p1 = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
-        let p2 = Vector3::new(coords[(j, 0)], coords[(j, 1)], coords[(j, 2)]);
-        let atom_i = &mol.graph[petgraph::graph::NodeIndex::new(i)];
-        let atom_j = &mol.graph[petgraph::graph::NodeIndex::new(j)];
-        let mut r_eq = crate::graph::get_covalent_radius(atom_i.element)
-            + crate::graph::get_covalent_radius(atom_j.element);
-        match edge.weight().order {
-            crate::graph::BondOrder::Double => r_eq -= 0.20,
-            crate::graph::BondOrder::Triple => r_eq -= 0.34,
-            crate::graph::BondOrder::Aromatic => r_eq -= 0.15,
-            _ => {}
-        }
+        let idx1 = edge.source().index();
+        let idx2 = edge.target().index();
+        let p1 = Vector3::new(coords[(idx1, 0)], coords[(idx1, 1)], coords[(idx1, 2)]);
+        let p2 = Vector3::new(coords[(idx2, 0)], coords[(idx2, 1)], coords[(idx2, 2)]);
+        let r_eq = crate::distgeom::get_bond_length(mol, edge.source(), edge.target());
         energy += bond_stretch_energy(&p1, &p2, params.kb, r_eq);
     }
 
-    // 2. Angle Bending
-    let n = mol.graph.node_count();
+    // 2. Angles
     for i in 0..n {
-        let n_idx = petgraph::graph::NodeIndex::new(i);
-        let neighbors: Vec<_> = mol.graph.neighbors(n_idx).collect();
-        for j in 0..neighbors.len() {
-            for k in (j + 1)..neighbors.len() {
-                let n1 = neighbors[j];
-                let n2 = neighbors[k];
-                let ideal_angle = crate::graph::get_corrected_ideal_angle(mol, n_idx, n1, n2);
-                let pc = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
+        let ni = petgraph::graph::NodeIndex::new(i);
+        let nbs: Vec<_> = mol.graph.neighbors(ni).collect();
+        for j in 0..nbs.len() {
+            for k in (j + 1)..nbs.len() {
+                let n1 = nbs[j];
+                let n2 = nbs[k];
                 let p1 = Vector3::new(
                     coords[(n1.index(), 0)],
                     coords[(n1.index(), 1)],
                     coords[(n1.index(), 2)],
                 );
+                let pc = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
                 let p2 = Vector3::new(
                     coords[(n2.index(), 0)],
                     coords[(n2.index(), 1)],
                     coords[(n2.index(), 2)],
                 );
-                energy += angle_bend_energy(&p1, &pc, &p2, params.k_theta, ideal_angle);
+                let ideal = crate::graph::get_corrected_ideal_angle(mol, ni, n1, n2);
+                energy += angle_bend_energy(&p1, &pc, &p2, params.k_theta, ideal);
             }
         }
     }
 
-    // 3. Distance Bounds Enforcement (The "100% Correct Gram Distance" logic)
+    // 3. Distance Bounds
     for i in 0..n {
         for j in (i + 1)..n {
-            // Distance bounds use upper triangle for upper bounds, lower triangle for lower bounds.
             let upper = bounds_matrix[(i, j)];
             let lower = bounds_matrix[(j, i)];
-            
-            // Only strictly enforce bounds for generic non-bonded pairs (to avoid competing with bond/angle terms directly)
-            // But actually RDKit bounds everything. Let's do everything.
             let p1 = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
             let p2 = Vector3::new(coords[(j, 0)], coords[(j, 1)], coords[(j, 2)]);
             energy += bounds_energy(&p1, &p2, lower, upper, params.k_bounds);
         }
     }
 
-    // 4. Torsional energy (1-4)
-    for i in 0..n {
-        let n1_idx = petgraph::graph::NodeIndex::new(i);
-        let n1_neighbors: Vec<_> = mol.graph.neighbors(n1_idx).collect();
-        for &n2_idx in &n1_neighbors {
-            let n2_neighbors: Vec<_> = mol.graph.neighbors(n2_idx).collect();
-            for &n3_idx in &n2_neighbors {
-                if n3_idx == n1_idx {
-                    continue;
-                }
-                let n3_neighbors: Vec<_> = mol.graph.neighbors(n3_idx).collect();
-                for &n4_idx in &n3_neighbors {
-                    if n4_idx == n1_idx || n4_idx == n2_idx {
-                        continue;
-                    }
-                    if n1_idx.index() < n4_idx.index() {
-                        let p1 = Vector3::new(
-                            coords[(n1_idx.index(), 0)],
-                            coords[(n1_idx.index(), 1)],
-                            coords[(n1_idx.index(), 2)],
-                        );
-                        let p2 = Vector3::new(
-                            coords[(n2_idx.index(), 0)],
-                            coords[(n2_idx.index(), 1)],
-                            coords[(n2_idx.index(), 2)],
-                        );
-                        let p3 = Vector3::new(
-                            coords[(n3_idx.index(), 0)],
-                            coords[(n3_idx.index(), 1)],
-                            coords[(n3_idx.index(), 2)],
-                        );
-                        let p4 = Vector3::new(
-                            coords[(n4_idx.index(), 0)],
-                            coords[(n4_idx.index(), 1)],
-                            coords[(n4_idx.index(), 2)],
-                        );
-                        
-                        // ETKDG-lite: Infer parameters from hybridization
-                        let etkdg_params = super::etkdg_lite::infer_etkdg_parameters(mol, n2_idx.index(), n3_idx.index());
-                        energy += super::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &etkdg_params);
-
-                        // Also include standard MMFF torsional energy for bond orders
-                        let edge_23 = mol.graph.find_edge(n2_idx, n3_idx).unwrap();
-                        let order = &mol.graph[edge_23].order;
-                        energy += torsional_energy(&p1, &p2, &p3, &p4, params.k_omega, order);
-                    }
+    // 4. Torsional energy
+    if n >= 4 {
+        for edge in mol.graph.edge_references() {
+            let u = edge.source();
+            let v = edge.target();
+            if mol.graph[u].hybridization == crate::graph::Hybridization::SP
+                || mol.graph[v].hybridization == crate::graph::Hybridization::SP
+            {
+                continue;
+            }
+            let mut neighbors_u = Vec::new();
+            for n in mol.graph.neighbors(u) {
+                if n != v {
+                    neighbors_u.push(n);
                 }
             }
-        }
-    }
+            let mut neighbors_v = Vec::new();
+            for n in mol.graph.neighbors(v) {
+                if n != u {
+                    neighbors_v.push(n);
+                }
+            }
 
-    // 5. Out-of-Plane bending (sp2 atoms with exactly 3 neighbors)
-    for i in 0..n {
-        let ni = petgraph::graph::NodeIndex::new(i);
-        let atom = &mol.graph[ni];
-        if atom.hybridization != crate::graph::Hybridization::SP2 {
-            continue;
-        }
-        let neighbors: Vec<_> = mol.graph.neighbors(ni).collect();
-        if neighbors.len() != 3 {
-            continue;
-        }
-        let pc = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
-        for k in 0..3 {
-            let a = neighbors[k].index();
-            let b = neighbors[(k + 1) % 3].index();
-            let c = neighbors[(k + 2) % 3].index();
-            let pa = Vector3::new(coords[(a, 0)], coords[(a, 1)], coords[(a, 2)]);
-            let pb = Vector3::new(coords[(b, 0)], coords[(b, 1)], coords[(b, 2)]);
-            let pn3 = Vector3::new(coords[(c, 0)], coords[(c, 1)], coords[(c, 2)]);
-            energy += oop_energy(&pc, &pa, &pb, &pn3, params.k_oop);
+            for &nu in &neighbors_u {
+                for &nv in &neighbors_v {
+                    let (p1, p2, p3, p4) = (
+                        Vector3::new(
+                            coords[(nu.index(), 0)],
+                            coords[(nu.index(), 1)],
+                            coords[(nu.index(), 2)],
+                        ),
+                        Vector3::new(
+                            coords[(u.index(), 0)],
+                            coords[(u.index(), 1)],
+                            coords[(u.index(), 2)],
+                        ),
+                        Vector3::new(
+                            coords[(v.index(), 0)],
+                            coords[(v.index(), 1)],
+                            coords[(v.index(), 2)],
+                        ),
+                        Vector3::new(
+                            coords[(nv.index(), 0)],
+                            coords[(nv.index(), 1)],
+                            coords[(nv.index(), 2)],
+                        ),
+                    );
+                    energy += torsional_energy(&p1, &p2, &p3, &p4, params.k_omega, 3.0, 0.0);
+                }
+            }
         }
     }
 
