@@ -28,6 +28,33 @@ pub fn calc_chiral_volume(
     v1.dot(&v2.cross(&v3))
 }
 
+pub fn calc_chiral_volume_f64(
+    idx1: usize,
+    idx2: usize,
+    idx3: usize,
+    idx4: usize,
+    coords: &DMatrix<f64>,
+) -> f64 {
+    let dim = coords.ncols();
+    assert!(dim >= 3);
+    let v1 = nalgebra::Vector3::new(
+        coords[(idx1, 0)] - coords[(idx4, 0)],
+        coords[(idx1, 1)] - coords[(idx4, 1)],
+        coords[(idx1, 2)] - coords[(idx4, 2)],
+    );
+    let v2 = nalgebra::Vector3::new(
+        coords[(idx2, 0)] - coords[(idx4, 0)],
+        coords[(idx2, 1)] - coords[(idx4, 1)],
+        coords[(idx2, 2)] - coords[(idx4, 2)],
+    );
+    let v3 = nalgebra::Vector3::new(
+        coords[(idx3, 0)] - coords[(idx4, 0)],
+        coords[(idx3, 1)] - coords[(idx4, 1)],
+        coords[(idx3, 2)] - coords[(idx4, 2)],
+    );
+    v1.dot(&v2.cross(&v3))
+}
+
 pub fn identify_chiral_sets(mol: &Molecule) -> Vec<crate::forcefield::bounds_ff::ChiralSet> {
     let mut sets = Vec::new();
     for i in 0..mol.graph.node_count() {
