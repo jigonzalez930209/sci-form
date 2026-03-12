@@ -1,16 +1,23 @@
+pub mod atom_typer;
 pub mod bounds_ff;
+pub mod builder;
 pub mod dg_terms;
 pub mod energy;
+pub mod etkdg_3d;
 pub mod etkdg_lite;
 pub mod gradients;
 pub mod minimizer;
 pub mod mmff94;
 pub mod params;
+pub mod torsion_scan;
 pub mod traits;
 pub mod uff;
 
+pub use bounds_ff::*;
 pub use dg_terms::*;
 pub use energy::*;
+pub use etkdg_3d::*;
 pub use gradients::*;
 pub use minimizer::*;
+pub use torsion_scan::*;
 pub use traits::*;
