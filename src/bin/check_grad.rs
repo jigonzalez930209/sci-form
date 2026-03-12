@@ -60,6 +60,7 @@ fn main() {
         k_oop: 0.0,
         k_bounds: 0.0,
         k_chiral: 100.0,
+        k_vdw: 0.0,
     };
 
     let n = 4;
