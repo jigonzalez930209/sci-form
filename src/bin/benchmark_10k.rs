@@ -7,6 +7,7 @@ use std::time::Instant;
 
 #[derive(Deserialize, Debug)]
 struct OracleAtom {
+    #[allow(dead_code)]
     element: u8,
     x: f32,
     y: f32,
@@ -77,6 +78,7 @@ fn main() {
         k_oop: 50.0,
         k_bounds: 100.0,
         k_chiral: 50.0,
+        k_vdw: 0.0,
     };
     let num_confs = 50;
     let lbfgs_iters = 50;
