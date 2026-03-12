@@ -167,8 +167,7 @@ impl<'a> SmilesParser<'a> {
     }
 
     fn parse_bracket_atom(&mut self) -> Result<NodeIndex, String> {
-        let mut isotope = 0;
-        let mut element = 0;
+        let mut isotope = 0u32;
         let mut aromatic = false;
         let mut chiral = ChiralType::Unspecified;
         let mut h_count = 0;
@@ -207,7 +206,7 @@ impl<'a> SmilesParser<'a> {
             elem_str = elem_str.to_uppercase();
         }
 
-        element = match elem_str.as_str() {
+        let element: u8 = match elem_str.as_str() {
             "H" => 1, "C" => 6, "N" => 7, "O" => 8, "P" => 15, "S" => 16, "F" => 9, "CL" | "Cl" => 17, "BR" | "Br" => 35, "I" => 53,
             "FE" | "Fe" => 26, "ZN" | "Zn" => 30, "CO" | "Co" => 27, "CU" | "Cu" => 29, "B" => 5,
             "AG" | "Ag" => 47, "AU" | "Au" => 79, "PT" | "Pt" => 78, "PD" | "Pd" => 46,
@@ -295,7 +294,6 @@ impl<'a> SmilesParser<'a> {
     }
 
     fn add_implicit_hydrogens(&mut self) {
-        use petgraph::visit::EdgeRef;
         let n = self.mol.graph.node_count();
         let mut to_add = Vec::new();
 
@@ -326,7 +324,20 @@ impl<'a> SmilesParser<'a> {
                 } else if double_bonds == 1 {
                     Hybridization::SP2
                 } else {
-                    Hybridization::SP3
+                    // Check for conjugation: N or O adjacent to double/aromatic bond → SP2
+                    // Matches RDKit: norbs==4, degree<=3, atomHasConjugatedBond → SP2
+                    let elem = atom.element;
+                    let is_conjugated = if (elem == 7 || elem == 8) && double_bonds == 0 {
+                        // Check if any neighbor has a double or aromatic bond (conjugation)
+                        self.mol.graph.neighbors(ni).any(|nb| {
+                            self.mol.graph.edges(nb).any(|e| {
+                                matches!(e.weight().order, BondOrder::Double | BondOrder::Aromatic)
+                            })
+                        })
+                    } else {
+                        false
+                    };
+                    if is_conjugated { Hybridization::SP2 } else { Hybridization::SP3 }
                 };
                 
                 if let Some(atom_mut) = self.mol.graph.node_weight_mut(ni) {
@@ -362,6 +373,13 @@ impl<'a> SmilesParser<'a> {
                 }
             }
 
+            // Bare aromatic nitrogen (lowercase 'n', no bracket/explicit H) is pyridine-type:
+            // lone pair NOT in pi system, only 2 bonds needed → 0 implicit H.
+            // [nH] form has explicit_h > 0 and keeps its H (pyrrole-type).
+            if aromatic_bonds > 0 && atom.element == 7 && atom.explicit_h == 0 {
+                h_needed = 0;
+            }
+
             // Calculate total hydrogens to add for this atom in THIS iteration
             // to maintain exact topological index order!
             let total_h_for_this_atom = atom.explicit_h as i32 + if h_needed - (atom.explicit_h as i32) > 0 { h_needed - (atom.explicit_h as i32) } else { 0 };
@@ -395,21 +413,21 @@ mod tests {
 
     #[test]
     fn test_parse_benzene_aliphatic() {
-        let mut mol = Molecule::from_smiles("C1=CC=CC=C1").unwrap();
+        let mol = Molecule::from_smiles("C1=CC=CC=C1").unwrap();
         assert_eq!(mol.graph.node_count(), 12); // 6 C, 6 implicit H
         assert_eq!(mol.graph.edge_count(), 12); // 6 ring bonds, 6 C-H bonds
     }
 
     #[test]
     fn test_parse_benzene_aromatic() {
-        let mut mol = Molecule::from_smiles("c1ccccc1").unwrap();
+        let mol = Molecule::from_smiles("c1ccccc1").unwrap();
         assert_eq!(mol.graph.node_count(), 12); // 6 C, 6 implicit H
         assert_eq!(mol.graph.edge_count(), 12); // 6 ring bonds, 6 C-H bonds
     }
 
     #[test]
     fn test_parse_brackets_and_branches() {
-        let mut mol = Molecule::from_smiles("C(C)(C)C").unwrap(); // Isobutane
+        let mol = Molecule::from_smiles("C(C)(C)C").unwrap(); // Isobutane
         assert_eq!(mol.graph.node_count(), 14); // 4 C, 10 H
     }
 }
