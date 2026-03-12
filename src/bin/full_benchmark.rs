@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::fs;
 use std::time::Instant;
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct OracleAtom {
     element: u8,
@@ -14,6 +15,7 @@ struct OracleAtom {
     hybridization: String,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct OracleBond {
     start: usize,
@@ -21,6 +23,7 @@ struct OracleBond {
     order: String,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct OracleMolecule {
     smiles: String,
@@ -28,6 +31,7 @@ struct OracleMolecule {
     bonds: Vec<OracleBond>,
 }
 
+#[allow(dead_code)]
 #[derive(Deserialize, Debug)]
 struct BenchmarkData {
     rdkit_time_ms: f64,
@@ -48,7 +52,7 @@ fn main() {
         let n = mol.atoms.len();
 
         // NATIVE PARSING FROM RAW SMILES
-        let mut our_mol =
+        let our_mol =
             sci_form::graph::Molecule::from_smiles(&mol.smiles).expect("SMILES parsing failed");
 
         let bounds = sci_form::distgeom::calculate_bounds_matrix(&our_mol);
@@ -59,7 +63,7 @@ fn main() {
 
         let dists = sci_form::distgeom::pick_random_distances(&mut rng, &smoothed);
         let metric = sci_form::distgeom::compute_metric_matrix(&dists);
-        let mut coords3d_raw = sci_form::distgeom::generate_3d_coordinates(&mut rng, &metric);
+        let coords3d_raw = sci_form::distgeom::generate_3d_coordinates(&mut rng, &metric);
         let mut coords3d_min = coords3d_raw.clone();
 
         // 1. Calculate Raw RMSD
@@ -94,6 +98,7 @@ fn main() {
             k_oop: 20.0,
             k_bounds: 200.0,
             k_chiral: 50.0,
+            k_vdw: 0.0,
         };
         coords3d_min =
             minimize_energy_lbfgs(&our_mol, &coords3d_min, &smoothed, &params, 100, 1e-4);
