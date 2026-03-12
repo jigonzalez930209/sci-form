@@ -1,9 +1,9 @@
 use nalgebra::Vector3;
-use petgraph::graph::NodeIndex;
+pub use petgraph::graph::NodeIndex;
 use petgraph::graph::UnGraph;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum Hybridization {
     SP,
     SP2,
@@ -21,7 +21,7 @@ pub enum ChiralType {
     Other,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum BondStereo {
     None,
     E,
@@ -29,7 +29,7 @@ pub enum BondStereo {
     Any,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum BondOrder {
     Single,
     Double,
@@ -103,7 +103,7 @@ impl Molecule {
 
 /// Returns the covalent radius (in Å) for a given atomic number
 /// Data derived from RDKit's atomic_data.cpp
-pub fn get_covalent_radius(atomic_number: u8) -> f32 {
+pub fn get_covalent_radius(atomic_number: u8) -> f64 {
     match atomic_number {
         1 => 0.31,  // H
         2 => 0.28,  // He
@@ -181,7 +181,8 @@ pub fn get_covalent_radius(atomic_number: u8) -> f32 {
 }
 
 /// Returns the Van der Waals radius (in Å)
-pub fn get_vdw_radius(atomic_number: u8) -> f32 {
+pub fn get_vdw_radius(atomic_number: u8) -> f64 {
+    // RDKit's PeriodicTable::getRvdw values
     match atomic_number {
         1 => 1.20,  // H
         2 => 1.40,  // He
@@ -189,32 +190,32 @@ pub fn get_vdw_radius(atomic_number: u8) -> f32 {
         4 => 1.53,  // Be
         5 => 1.92,  // B
         6 => 1.70,  // C
-        7 => 1.55,  // N
-        8 => 1.52,  // O
-        9 => 1.47,  // F
+        7 => 1.60,  // N (was 1.55)
+        8 => 1.55,  // O (was 1.52)
+        9 => 1.50,  // F (was 1.47)
         10 => 1.54, // Ne
         11 => 2.27, // Na
         12 => 1.73, // Mg
         14 => 2.10, // Si
         15 => 1.80, // P
         16 => 1.80, // S
-        17 => 1.75, // Cl
+        17 => 1.80, // Cl (was 1.75)
         18 => 1.88, // Ar
-        35 => 1.85, // Br
-        53 => 1.98, // I
+        35 => 1.90, // Br (was 1.85)
+        53 => 2.10, // I (was 1.98)
         _ => 2.0,
     }
 }
 
 /// Returns the ideal bond angle (in radians) for a given hybridization
-pub fn get_ideal_angle(hybridization: &Hybridization) -> f32 {
+pub fn get_ideal_angle(hybridization: &Hybridization) -> f64 {
     match hybridization {
-        Hybridization::SP => std::f32::consts::PI, // 180 degrees
-        Hybridization::SP2 => 2.0 * std::f32::consts::PI / 3.0, // 120 degrees
-        Hybridization::SP3 => 109.5 * std::f32::consts::PI / 180.0, // 109.5 degrees
-        Hybridization::SP3D => 105.0 * std::f32::consts::PI / 180.0, // 105 degrees (approx)
-        Hybridization::SP3D2 => 90.0 * std::f32::consts::PI / 180.0, // 90 degrees
-        Hybridization::Unknown => 109.5 * std::f32::consts::PI / 180.0, // Fallback to tetrahedral
+        Hybridization::SP => std::f64::consts::PI, // 180 degrees
+        Hybridization::SP2 => 2.0 * std::f64::consts::PI / 3.0, // 120 degrees
+        Hybridization::SP3 => 109.5 * std::f64::consts::PI / 180.0, // 109.5 degrees
+        Hybridization::SP3D => 105.0 * std::f64::consts::PI / 180.0, // 105 degrees (approx)
+        Hybridization::SP3D2 => 90.0 * std::f64::consts::PI / 180.0, // 90 degrees
+        Hybridization::Unknown => 109.5 * std::f64::consts::PI / 180.0, // Fallback to tetrahedral
     }
 }
 
@@ -251,63 +252,184 @@ pub fn min_path_excluding(
     None
 }
 
+/// BFS shortest path from start to target, excluding two intermediate nodes.
+pub fn min_path_excluding2(
+    mol: &Molecule,
+    start: petgraph::graph::NodeIndex,
+    target: petgraph::graph::NodeIndex,
+    excl1: petgraph::graph::NodeIndex,
+    excl2: petgraph::graph::NodeIndex,
+    limit: usize,
+) -> Option<usize> {
+    let mut queue = std::collections::VecDeque::new();
+    let mut visited = std::collections::HashSet::new();
+    visited.insert(excl1);
+    visited.insert(excl2);
+    visited.insert(start);
+
+    // Always start from neighbors, skipping target to avoid counting the direct bond
+    for n in mol.graph.neighbors(start) {
+        if n == target {
+            continue; // Skip direct bond — we want an alternative path
+        }
+        if !visited.contains(&n) {
+            visited.insert(n);
+            queue.push_back((n, 1usize));
+        }
+    }
+
+    while let Some((curr, dist)) = queue.pop_front() {
+        if dist >= limit {
+            continue;
+        }
+        for n in mol.graph.neighbors(curr) {
+            if n == target {
+                return Some(dist + 1);
+            }
+            if !visited.contains(&n) {
+                visited.insert(n);
+                queue.push_back((n, dist + 1));
+            }
+        }
+    }
+    None
+}
+
 /// Returns the ideal bond angle accounting for rings topological constraints
+/// Helper: compute the ring interior angle for a given hybridization and ring size.
+/// Matches RDKit's _setRingAngle logic.
+fn ring_angle_for(ahyb: &Hybridization, ring_size: usize) -> f64 {
+    use std::f64::consts::PI;
+    if ring_size == 3 || ring_size == 4 || (*ahyb == Hybridization::SP2 && ring_size <= 8) {
+        PI * (1.0 - 2.0 / ring_size as f64)
+    } else if *ahyb == Hybridization::SP3 {
+        if ring_size == 5 {
+            104.0 * PI / 180.0
+        } else {
+            109.5 * PI / 180.0
+        }
+    } else {
+        get_ideal_angle(ahyb)
+    }
+}
+
 pub fn get_corrected_ideal_angle(
     mol: &Molecule,
     center: petgraph::graph::NodeIndex,
     n1: petgraph::graph::NodeIndex,
     n2: petgraph::graph::NodeIndex,
-) -> f32 {
-    use std::f32::consts::PI;
+) -> f64 {
+    use std::f64::consts::PI;
     let ahyb = &mol.graph[center].hybridization;
 
-    let dist = min_path_excluding(mol, n1, n2, center, 6);
+    // Check if n1 and n2 are in a ring through center
+    let dist = min_path_excluding(mol, n1, n2, center, 8);
 
     match dist {
-        Some(1) => {
-            return 60.0 * PI / 180.0; // 3-ring
-        }
-        Some(2) => {
-            return 90.0 * PI / 180.0; // 4-ring
-        }
-        Some(3) => {
-            return 108.0 * PI / 180.0; // 5-ring
-        }
-        Some(4) => {
-            return 120.0 * PI / 180.0; // 6-ring
-        }
+        Some(1) => return 60.0 * PI / 180.0, // 3-ring
+        Some(2) => return 90.0 * PI / 180.0, // 4-ring
         _ => {}
     }
 
-    let mut in_ring_3 = false;
-    let mut in_ring_4 = false;
-    let mut in_ring_5 = false;
+    // RDKit special case: exocyclic angles at SP3 atoms in small rings.
+    // When n1-n2 are NOT in a 3- or 4-ring through center, but center IS in a 3- or 4-ring,
+    // the exocyclic angle is widened: 116° for 3-ring, 112° for 4-ring.
+    // dist > 2 means the pair is not directly in any 3-ring (dist=1) or 4-ring (dist=2),
+    // so it's either in a larger ring envelope (fused system) or truly exocyclic.
+    if *ahyb == Hybridization::SP3 && dist.map_or(true, |d| d > 2) {
+        let nbs: Vec<_> = mol.graph.neighbors(center).collect();
+        let mut smallest_ring = 0usize;
+        for i in 0..nbs.len() {
+            for j in (i + 1)..nbs.len() {
+                if let Some(p) = min_path_excluding(mol, nbs[i], nbs[j], center, 8) {
+                    let rs = p + 2;
+                    if rs == 3 {
+                        smallest_ring = if smallest_ring == 0 { 3 } else { smallest_ring.min(3) };
+                    } else if rs == 4 && smallest_ring != 3 {
+                        smallest_ring = if smallest_ring == 0 { 4 } else { smallest_ring.min(4) };
+                    }
+                }
+            }
+        }
+        if smallest_ring == 3 {
+            return 116.0 * PI / 180.0;
+        } else if smallest_ring == 4 {
+            return 112.0 * PI / 180.0;
+        }
+    }
 
-    let neighbors_of_center: Vec<_> = mol.graph.neighbors(center).collect();
-    for i in 0..neighbors_of_center.len() {
-        for j in (i + 1)..neighbors_of_center.len() {
-            let ni = neighbors_of_center[i];
-            let nj = neighbors_of_center[j];
-            let d = min_path_excluding(mol, ni, nj, center, 3);
-            if d == Some(1) {
-                in_ring_3 = true;
-            } else if d == Some(2) {
-                in_ring_4 = true;
-            } else if d == Some(3) {
-                in_ring_5 = true;
+    // For SP2 atoms with exactly 3 neighbors: use RDKit's approach of
+    // distributing 360° among all neighbor pairs based on ring membership.
+    // angleTaken = sum of ring angles, exo = (2π - angleTaken) / remaining_pairs
+    if *ahyb == Hybridization::SP2 {
+        let nbs: Vec<_> = mol.graph.neighbors(center).collect();
+        if nbs.len() == 3 {
+            // Find ring size for each pair
+            let pairs = [(0, 1, 2), (0, 2, 1), (1, 2, 0)];
+            let mut ring_angles = [0.0f64; 3]; // angles for pairs (0,1), (0,2), (1,2)
+            let mut in_ring = [false; 3];
+
+            for (idx, &(a, b, _)) in pairs.iter().enumerate() {
+                let d = min_path_excluding(mol, nbs[a], nbs[b], center, 8);
+                if let Some(p) = d {
+                    let rs = p + 2;
+                    if rs <= 8 {
+                        ring_angles[idx] = ring_angle_for(ahyb, rs);
+                        in_ring[idx] = true;
+                    }
+                }
+            }
+
+            let ring_count = in_ring.iter().filter(|&&x| x).count();
+            // Identify which pair index corresponds to (n1, n2)
+            let target_idx = if (nbs[0] == n1 && nbs[1] == n2) || (nbs[1] == n1 && nbs[0] == n2)
+            {
+                0
+            } else if (nbs[0] == n1 && nbs[2] == n2) || (nbs[2] == n1 && nbs[0] == n2) {
+                1
+            } else {
+                2
+            };
+
+            if in_ring[target_idx] && ring_count <= 1 {
+                // Only this pair in a ring — return ring angle directly
+                return ring_angles[target_idx];
+            } else if !in_ring[target_idx] && ring_count > 0 {
+                // This pair is NOT in a ring, but other pairs are:
+                // exo angle = (2π - sum_of_ring_angles) / non_ring_pairs
+                let angle_taken: f64 = ring_angles.iter().sum();
+                let non_ring = 3 - ring_count;
+                if non_ring > 0 {
+                    let exo = (2.0 * PI - angle_taken) / non_ring as f64;
+                    if exo > 0.0 {
+                        return exo;
+                    }
+                }
+            } else if ring_count >= 2 && in_ring[target_idx] {
+                // This pair AND other pairs are in rings.
+                // For fused junctions: check if this pair's "ring" is
+                // actually the fused envelope. If the other two pairs
+                // account for the full angle, use ring angles directly.
+                let other_angle: f64 = (0..3)
+                    .filter(|&i| i != target_idx && in_ring[i])
+                    .map(|i| ring_angles[i])
+                    .sum();
+                let this_ring_expected = 2.0 * PI - other_angle;
+                // If this pair's ring angle differs significantly from expected exo,
+                // it's a fused envelope — use exo angle
+                if (ring_angles[target_idx] - this_ring_expected).abs() > 0.05 {
+                    return this_ring_expected;
+                }
+                return ring_angles[target_idx];
             }
         }
     }
 
-    if ahyb == &Hybridization::SP3 {
-        if in_ring_3 {
-            return 116.0 * PI / 180.0;
-        } else if in_ring_4 {
-            return 112.0 * PI / 180.0;
-        }
-    } else if ahyb == &Hybridization::SP2 {
-        if in_ring_5 {
-            return 126.0 * PI / 180.0;
+    // Non-SP2 or fallback: use ring angle if in a ring
+    if let Some(ring_path) = dist {
+        let ring_size = ring_path + 2;
+        if ring_size <= 8 {
+            return ring_angle_for(ahyb, ring_size);
         }
     }
 
