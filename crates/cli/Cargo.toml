@@ -1,0 +1,15 @@
+[package]
+name = "sci-form-cli"
+version = "0.1.0"
+edition = "2021"
+description = "CLI tool for sci-form 3D conformer generation"
+
+[[bin]]
+name = "sci-form"
+path = "src/main.rs"
+
+[dependencies]
+sci-form = { path = "../.." }
+clap = { version = "4", features = ["derive"] }
+rayon = "1.10"
+serde_json = "1.0"
