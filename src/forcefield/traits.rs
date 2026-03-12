@@ -1,5 +1,3 @@
-use rayon::prelude::*;
-
 /// Interfaz conductiva fundamental para cualquier operador matemático empírico molecular
 pub trait ForceFieldContribution: Send + Sync {
     /// Computa algebraicamente el escalar de energía asumiendo posición local
