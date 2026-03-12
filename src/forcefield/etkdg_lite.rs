@@ -71,6 +71,10 @@ pub fn calc_torsion_energy_m6(
 }
 
 /// Computes the analytical gradient for the M6 torsion potential.
+/// Matches RDKit's TorsionAngleM6::getGrad dE/dPhi computation exactly, including:
+/// - Chebyshev polynomial derivatives for dE/dPhi
+/// - RDKit's copy-paste bug: 6th harmonic uses V[4]/s[4] instead of V[5]/s[5]
+/// Uses Blondel & Karplus for gradient distribution (mathematically equivalent to RDKit's Wilson B-matrix).
 pub fn calc_torsion_grad_m6(
     p1: &Vector3<f32>,
     p2: &Vector3<f32>,
@@ -80,51 +84,80 @@ pub fn calc_torsion_grad_m6(
     grad: &mut nalgebra::DMatrix<f32>,
     idx1: usize, idx2: usize, idx3: usize, idx4: usize,
 ) {
-    let r12 = p1 - p2;
-    let r23 = p3 - p2;
-    let r34 = p4 - p3;
+    // RDKit-style dihedral computation: r[0]=p1-p2, r[1]=p3-p2, r[2]=-r[1], r[3]=p4-p3
+    let r0 = p1 - p2;
+    let r1 = p3 - p2;
+    let r2 = -&r1;
+    let r3 = p4 - p3;
 
-    let t1 = r12.cross(&r23);
-    let t2 = r23.cross(&r34);
+    let mut t0 = r0.cross(&r1);
+    let d0 = t0.norm().max(1e-5);
+    t0 /= d0;
+    let mut t1 = r2.cross(&r3);
+    let d1 = t1.norm().max(1e-5);
+    t1 /= d1;
 
-    let d1 = t1.norm();
-    let d2 = t2.norm();
-    let r23m = r23.norm();
+    let cos_phi = t0.dot(&t1).clamp(-1.0, 1.0);
+    let sin_phi_sq = 1.0 - cos_phi * cos_phi;
+    let sin_phi = if sin_phi_sq > 0.0 { sin_phi_sq.sqrt() } else { 0.0 };
 
-    if d1 < 1e-4 || d2 < 1e-4 || r23m < 1e-4 {
-        return;
-    }
+    let cos_phi2 = cos_phi * cos_phi;
+    let cos_phi3 = cos_phi * cos_phi2;
+    let cos_phi4 = cos_phi * cos_phi3;
+    let cos_phi5 = cos_phi * cos_phi4;
 
-    let n1 = t1 / (d1 * d1);
-    let n2 = t2 / (d2 * d2);
+    // dE/dPhi using Chebyshev derivatives, matching RDKit exactly.
+    // NOTE: 6th term intentionally uses V[4]/s[4] to match RDKit's copy-paste bug
+    let de_dphi =
+        -params.v[0] * params.s[0] * sin_phi
+        - 2.0 * params.v[1] * params.s[1] * (2.0 * cos_phi * sin_phi)
+        - 3.0 * params.v[2] * params.s[2] * (4.0 * cos_phi2 * sin_phi - sin_phi)
+        - 4.0 * params.v[3] * params.s[3]
+            * (8.0 * cos_phi3 * sin_phi - 4.0 * cos_phi * sin_phi)
+        - 5.0 * params.v[4] * params.s[4]
+            * (16.0 * cos_phi4 * sin_phi - 12.0 * cos_phi2 * sin_phi + sin_phi)
+        - 6.0 * params.v[4] * params.s[4]
+            * (32.0 * cos_phi5 * sin_phi - 32.0 * cos_phi3 * sin_phi + 6.0 * cos_phi * sin_phi);
 
-    let cos_phi = (t1.dot(&t2) / (d1 * d2)).clamp(-1.0, 1.0);
-    let phi = cos_phi.acos();
-    
-    // dE/dphi
-    let _sin_phi = (1.0 - cos_phi * cos_phi).sqrt().max(1e-4);
-    let mut de_dphi = 0.0;
-    
-    // V = Vn * (1 + sn * cos(n * phi))
-    // dV/dphi = -Vn * sn * n * sin(n * phi)
-    for n in 1..=6 {
-        let nf = n as f32;
-        de_dphi -= params.v[n-1] * params.s[n-1] * nf * (nf * phi).sin();
-    }
+    // sinTerm = -dE_dPhi / sinPhi (or 1/cosPhi when sinPhi≈0), matching RDKit
+    let is_zero_sin = sin_phi < 1e-5;
+    let sin_term = -de_dphi * if is_zero_sin { 1.0 / cos_phi } else { 1.0 / sin_phi };
 
-    // Standard torsion gradient vectors (from Case et al. or RDKit)
-    let g1 = de_dphi * r23m * n1;
-    let g4 = -de_dphi * r23m * n2;
-    
-    let g2 = ((r12.dot(&r23) / (r23m * r23m)) - 1.0) * g1 - (r34.dot(&r23) / (r23m * r23m)) * g4;
-    let g3 = -(g1 + g2 + g4);
+    // RDKit calcTorsionGrad: dCosPhi/dT vectors
+    let d_cos_dt = [
+        (t1.x - cos_phi * t0.x) / d0,
+        (t1.y - cos_phi * t0.y) / d0,
+        (t1.z - cos_phi * t0.z) / d0,
+        (t0.x - cos_phi * t1.x) / d1,
+        (t0.y - cos_phi * t1.y) / d1,
+        (t0.z - cos_phi * t1.z) / d1,
+    ];
 
-    for d in 0..3 {
-        grad[(idx1, d)] += g1[d];
-        grad[(idx2, d)] += g2[d];
-        grad[(idx3, d)] += g3[d];
-        grad[(idx4, d)] += g4[d];
-    }
+    // Atom 1 (idx1) gradient
+    grad[(idx1, 0)] += sin_term * (d_cos_dt[2] * r1.y - d_cos_dt[1] * r1.z);
+    grad[(idx1, 1)] += sin_term * (d_cos_dt[0] * r1.z - d_cos_dt[2] * r1.x);
+    grad[(idx1, 2)] += sin_term * (d_cos_dt[1] * r1.x - d_cos_dt[0] * r1.y);
+
+    // Atom 2 (idx2) gradient
+    grad[(idx2, 0)] += sin_term * (d_cos_dt[1] * (r1.z - r0.z) + d_cos_dt[2] * (r0.y - r1.y)
+        + d_cos_dt[4] * (-r3.z) + d_cos_dt[5] * r3.y);
+    grad[(idx2, 1)] += sin_term * (d_cos_dt[0] * (r0.z - r1.z) + d_cos_dt[2] * (r1.x - r0.x)
+        + d_cos_dt[3] * r3.z + d_cos_dt[5] * (-r3.x));
+    grad[(idx2, 2)] += sin_term * (d_cos_dt[0] * (r1.y - r0.y) + d_cos_dt[1] * (r0.x - r1.x)
+        + d_cos_dt[3] * (-r3.y) + d_cos_dt[4] * r3.x);
+
+    // Atom 3 (idx3) gradient
+    grad[(idx3, 0)] += sin_term * (d_cos_dt[1] * r0.z + d_cos_dt[2] * (-r0.y)
+        + d_cos_dt[4] * (r3.z - r2.z) + d_cos_dt[5] * (r2.y - r3.y));
+    grad[(idx3, 1)] += sin_term * (d_cos_dt[0] * (-r0.z) + d_cos_dt[2] * r0.x
+        + d_cos_dt[3] * (r2.z - r3.z) + d_cos_dt[5] * (r3.x - r2.x));
+    grad[(idx3, 2)] += sin_term * (d_cos_dt[0] * r0.y + d_cos_dt[1] * (-r0.x)
+        + d_cos_dt[3] * (r3.y - r2.y) + d_cos_dt[4] * (r2.x - r3.x));
+
+    // Atom 4 (idx4) gradient
+    grad[(idx4, 0)] += sin_term * (d_cos_dt[4] * r2.z - d_cos_dt[5] * r2.y);
+    grad[(idx4, 1)] += sin_term * (d_cos_dt[5] * r2.x - d_cos_dt[3] * r2.z);
+    grad[(idx4, 2)] += sin_term * (d_cos_dt[3] * r2.y - d_cos_dt[4] * r2.x);
 }
 
 fn is_partial_double_bond(mol: &Molecule, n2_idx: usize, n3_idx: usize) -> bool {
@@ -170,35 +203,43 @@ pub fn infer_etkdg_parameters(mol: &Molecule, n2_idx: usize, n3_idx: usize) -> M
     let mut params = M6Params::default();
 
     if is_partial_double_bond(mol, n2_idx, n3_idx) {
-        // High magnitude V1/V2 to enforce planarity in amides/esters
-        // Matching RDKit v2 patterns like [O:1]=[C:2]!@;-[O:3]~[C:4] -> V1=100.0
-        params.v[0] = 100.0; 
-        params.s[0] = -1.0; // Minima at 180 (Trans)
+        // V2 enforces planarity: minima at both 0° and 180° (cis and trans)
+        // This allows the geometry to settle into whichever orientation is
+        // energetically favorable, while preventing non-planar conformations.
+        params.v[1] = 100.0;
+        params.s[1] = -1.0; // Minima at 0° (cis) and 180° (trans)
         return params;
     }
 
     let a2 = &mol.graph[petgraph::graph::NodeIndex::new(n2_idx)];
     let a3 = &mol.graph[petgraph::graph::NodeIndex::new(n3_idx)];
 
+    let e2 = a2.element;
+    let e3 = a3.element;
+    let h2 = a2.hybridization;
+    let h3 = a3.hybridization;
+
     // SP2 - SP2 (e.g., conjugated single bonds)
-    if a2.hybridization == Hybridization::SP2 && a3.hybridization == Hybridization::SP2 {
-        // Matching RDKit v2 patterns like [cH1,n:1][c:2]!@;-[O:3][CH1:4] -> V1=7.2
+    if h2 == Hybridization::SP2 && h3 == Hybridization::SP2 {
         params.v[1] = 10.0; // V2
         params.s[1] = -1.0; // Minima at 0, 180
     }
-    // SP3 - SP3 (e.g., butane chain)
-    else if a2.hybridization == Hybridization::SP3 && a3.hybridization == Hybridization::SP3 {
-        // V3 term (Staggered) - RDKit default is ~2.5 but pooled.
-        // For single-shot, we use slightly stronger staggered guidance.
-        params.v[2] = 5.0; 
+    // C(sp3) - O - C bonds (ether): V3 staggered, matching RDKit's [*:1][CX4:2]-[O:3][CX4:4] -> V3=2.5-4.0
+    else if (e2 == 6 && e3 == 8 && h2 == Hybridization::SP3)
+         || (e2 == 8 && e3 == 6 && h3 == Hybridization::SP3)
+    {
+        params.v[2] = 4.0;
         params.s[2] = 1.0;
-        // V1 term (Anti preference)
-        params.v[0] = 2.0; 
+    }
+    // SP3 - SP3 (e.g., butane chain)
+    else if h2 == Hybridization::SP3 && h3 == Hybridization::SP3 {
+        params.v[2] = 5.0; // Staggered
+        params.s[2] = 1.0;
+        params.v[0] = 2.0; // Anti preference
         params.s[0] = 1.0;
     }
     // Default fallback
     else {
-        // Generic 3-fold potential
         params.v[2] = 3.0; 
         params.s[2] = 1.0;
     }
