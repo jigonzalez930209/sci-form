@@ -29,7 +29,7 @@ impl RustBfgsEngine {
         let mut local_gradient = vec![0.0; dims];
         let mut current_energy = eval_lambda(global_coords, &mut local_gradient);
 
-        let mut g_norm = calculate_l2_norm(&local_gradient);
+        let g_norm = calculate_l2_norm(&local_gradient);
         if g_norm < self.strict_grad_tolerance {
             return (current_energy, true);
         }
@@ -43,7 +43,6 @@ impl RustBfgsEngine {
         for val in local_gradient.iter_mut() {
             *val *= g_scale;
         }
-        g_norm = calculate_l2_norm(&local_gradient);
 
         let mut hessian_inv_approx = DMatrix::<f64>::identity(dims, dims);
 
