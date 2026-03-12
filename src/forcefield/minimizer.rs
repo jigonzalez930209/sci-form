@@ -5,7 +5,7 @@ use nalgebra::DMatrix;
 pub fn minimize_energy_lbfgs(
     mol: &crate::graph::Molecule,
     initial_coords: &DMatrix<f32>,
-    bounds_matrix: &DMatrix<f32>,
+    bounds_matrix: &DMatrix<f64>,
     params: &FFParams,
     max_iter: usize,
     tol: f32,
@@ -25,10 +25,12 @@ pub fn minimize_energy_lbfgs(
         bounds_matrix,
     );
 
+    let debug = std::env::var("DEBUG_LBFGS").is_ok();
+
     for iter in 0..max_iter {
         let g_norm = g.norm();
         if g_norm < tol {
-            println!("L-BFGS converged in {} iterations", iter);
+            if debug { println!("L-BFGS converged in {} iterations", iter); }
             break;
         }
 
@@ -70,8 +72,13 @@ pub fn minimize_energy_lbfgs(
             crate::forcefield::energy::calculate_total_energy(&coords, mol, params, bounds_matrix);
         let g_dot_p = g.dot(&p);
 
+        if debug && iter < 3 {
+            println!("  iter={} g_norm={:.4} max_g={:.4} e_old={:.4} g_dot_p={:.4} p_norm={:.4}",
+                iter, g_norm, g.abs().max(), e_old, g_dot_p, p.norm());
+        }
+
         let mut found_step = false;
-        for _ in 0..15 {
+        for ls in 0..15 {
             let next_coords = &coords + step * &p;
             let e_new = crate::forcefield::energy::calculate_total_energy(
                 &next_coords,
@@ -79,6 +86,11 @@ pub fn minimize_energy_lbfgs(
                 params,
                 bounds_matrix,
             );
+
+            if debug && iter < 3 && ls < 5 {
+                println!("    ls={} step={:.6} e_new={:.4} armijo_rhs={:.4} pass={}",
+                    ls, step, e_new, e_old + c1 * step * g_dot_p, e_new < e_old + c1 * step * g_dot_p);
+            }
 
             if e_new < e_old + c1 * step * g_dot_p {
                 let next_g = crate::forcefield::gradients::compute_analytical_gradient(
@@ -114,10 +126,14 @@ pub fn minimize_energy_lbfgs(
 
         if !found_step {
             // Restart if line search fails
+            if debug && iter < 3 {
+                println!("  iter={} LINE SEARCH FAILED, step={:.10}", iter, step);
+            }
             s_hist.clear();
             y_hist.clear();
             rho_hist.clear();
             if step < 1e-7 {
+                if debug { println!("  STOPPING: step too small after {} iters", iter); }
                 break;
             }
         }
