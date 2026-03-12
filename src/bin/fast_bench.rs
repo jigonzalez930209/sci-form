@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, Matrix3, Vector3};
+use nalgebra::{DMatrix, Matrix3};
 use sci_form::graph::Molecule;
 use std::fs;
 use std::io::{BufReader, BufRead};
@@ -9,6 +9,7 @@ mod oracle {
     use serde::Deserialize;
     #[derive(Deserialize)]
     pub struct OracleAtom {
+        #[allow(dead_code)]
         pub element: u8,
         pub x: f32,
         pub y: f32,
@@ -21,7 +22,7 @@ mod oracle {
     }
 }
 
-fn calculate_rmsd_icp_refined(coords: &DMatrix<f32>, reference: &DMatrix<f32>, elements: &[u8]) -> f32 {
+fn calculate_rmsd_icp_refined(coords: &DMatrix<f32>, reference: &DMatrix<f32>, _elements: &[u8]) -> f32 {
     let n = coords.nrows();
     if n == 0 { return 0.0; }
     
@@ -129,6 +130,7 @@ fn main() {
                 k_oop: 200.0,
                 k_bounds: 1000.0,
                 k_chiral: 500.0,
+                k_vdw: 0.0,
             };
             
             // Fast mode: 1 solo intento
