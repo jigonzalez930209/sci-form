@@ -529,8 +529,8 @@ impl<'a> SmilesParser<'a> {
             let atom = &self.mol.graph[ni];
             // If it's aromatic, an uncharged Carbon expects 3 bonds normally (2 from ring, 1 external or 1 H).
             let target_val = match atom.element {
-                5 => 3,  // B
-                6 => 4,  // C
+                5 => 3, // B
+                6 => 4, // C
                 7 => {
                     if atom.formal_charge == 1 {
                         4
