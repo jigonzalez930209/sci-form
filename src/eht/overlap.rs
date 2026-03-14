@@ -154,32 +154,30 @@ fn overlap_integral(a: &AtomicOrbital, b: &AtomicOrbital) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::basis::build_basis;
+    use super::*;
 
     #[test]
     fn test_overlap_diagonal_is_one() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let basis = build_basis(&elements, &positions);
         let s = build_overlap_matrix(&basis);
         for i in 0..s.nrows() {
-            assert!((s[(i, i)] - 1.0).abs() < 1e-10, "S[{},{}] = {}", i, i, s[(i, i)]);
+            assert!(
+                (s[(i, i)] - 1.0).abs() < 1e-10,
+                "S[{},{}] = {}",
+                i,
+                i,
+                s[(i, i)]
+            );
         }
     }
 
     #[test]
     fn test_overlap_symmetry() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let basis = build_basis(&elements, &positions);
         let s = build_overlap_matrix(&basis);
         for i in 0..s.nrows() {
@@ -197,11 +195,7 @@ mod tests {
     #[test]
     fn test_overlap_off_diagonal_range() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let basis = build_basis(&elements, &positions);
         let s = build_overlap_matrix(&basis);
         // All off-diagonal elements should have |S_ij| < 1
@@ -210,7 +204,10 @@ mod tests {
                 if i != j {
                     assert!(
                         s[(i, j)].abs() <= 1.0 + 1e-10,
-                        "S[{},{}] = {} exceeds 1.0", i, j, s[(i, j)]
+                        "S[{},{}] = {} exceeds 1.0",
+                        i,
+                        j,
+                        s[(i, j)]
                     );
                 }
             }
