@@ -44,74 +44,254 @@ static H_ORBITALS: [OrbitalDef; 1] = [OrbitalDef {
 }];
 
 static C_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 2, l: 0, label: "2s", vsip: -21.4, zeta: 1.625 },
-    OrbitalDef { n: 2, l: 1, label: "2p", vsip: -11.4, zeta: 1.625 },
+    OrbitalDef {
+        n: 2,
+        l: 0,
+        label: "2s",
+        vsip: -21.4,
+        zeta: 1.625,
+    },
+    OrbitalDef {
+        n: 2,
+        l: 1,
+        label: "2p",
+        vsip: -11.4,
+        zeta: 1.625,
+    },
 ];
 
 static N_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 2, l: 0, label: "2s", vsip: -26.0, zeta: 1.950 },
-    OrbitalDef { n: 2, l: 1, label: "2p", vsip: -13.4, zeta: 1.950 },
+    OrbitalDef {
+        n: 2,
+        l: 0,
+        label: "2s",
+        vsip: -26.0,
+        zeta: 1.950,
+    },
+    OrbitalDef {
+        n: 2,
+        l: 1,
+        label: "2p",
+        vsip: -13.4,
+        zeta: 1.950,
+    },
 ];
 
 static O_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 2, l: 0, label: "2s", vsip: -32.3, zeta: 2.275 },
-    OrbitalDef { n: 2, l: 1, label: "2p", vsip: -14.8, zeta: 2.275 },
+    OrbitalDef {
+        n: 2,
+        l: 0,
+        label: "2s",
+        vsip: -32.3,
+        zeta: 2.275,
+    },
+    OrbitalDef {
+        n: 2,
+        l: 1,
+        label: "2p",
+        vsip: -14.8,
+        zeta: 2.275,
+    },
 ];
 
 static F_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 2, l: 0, label: "2s", vsip: -40.0, zeta: 2.425 },
-    OrbitalDef { n: 2, l: 1, label: "2p", vsip: -18.1, zeta: 2.425 },
+    OrbitalDef {
+        n: 2,
+        l: 0,
+        label: "2s",
+        vsip: -40.0,
+        zeta: 2.425,
+    },
+    OrbitalDef {
+        n: 2,
+        l: 1,
+        label: "2p",
+        vsip: -18.1,
+        zeta: 2.425,
+    },
 ];
 
 static CL_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 3, l: 0, label: "3s", vsip: -26.3, zeta: 2.183 },
-    OrbitalDef { n: 3, l: 1, label: "3p", vsip: -14.2, zeta: 1.733 },
+    OrbitalDef {
+        n: 3,
+        l: 0,
+        label: "3s",
+        vsip: -26.3,
+        zeta: 2.183,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 1,
+        label: "3p",
+        vsip: -14.2,
+        zeta: 1.733,
+    },
 ];
 
 static BR_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -22.07, zeta: 2.588 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -13.1, zeta: 2.131 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -22.07,
+        zeta: 2.588,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -13.1,
+        zeta: 2.131,
+    },
 ];
 
 static I_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -18.0, zeta: 2.679 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -12.7, zeta: 2.322 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -18.0,
+        zeta: 2.679,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -12.7,
+        zeta: 2.322,
+    },
 ];
 
 static S_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 3, l: 0, label: "3s", vsip: -20.0, zeta: 1.817 },
-    OrbitalDef { n: 3, l: 1, label: "3p", vsip: -11.0, zeta: 1.817 },
+    OrbitalDef {
+        n: 3,
+        l: 0,
+        label: "3s",
+        vsip: -20.0,
+        zeta: 1.817,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 1,
+        label: "3p",
+        vsip: -11.0,
+        zeta: 1.817,
+    },
 ];
 
 static P_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 3, l: 0, label: "3s", vsip: -18.6, zeta: 1.600 },
-    OrbitalDef { n: 3, l: 1, label: "3p", vsip: -14.0, zeta: 1.600 },
+    OrbitalDef {
+        n: 3,
+        l: 0,
+        label: "3s",
+        vsip: -18.6,
+        zeta: 1.600,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 1,
+        label: "3p",
+        vsip: -14.0,
+        zeta: 1.600,
+    },
 ];
 
 static SI_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 3, l: 0, label: "3s", vsip: -17.3, zeta: 1.383 },
-    OrbitalDef { n: 3, l: 1, label: "3p", vsip: -9.2, zeta: 1.383 },
+    OrbitalDef {
+        n: 3,
+        l: 0,
+        label: "3s",
+        vsip: -17.3,
+        zeta: 1.383,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 1,
+        label: "3p",
+        vsip: -9.2,
+        zeta: 1.383,
+    },
 ];
 
 static B_ORBITALS: [OrbitalDef; 2] = [
-    OrbitalDef { n: 2, l: 0, label: "2s", vsip: -15.2, zeta: 1.300 },
-    OrbitalDef { n: 2, l: 1, label: "2p", vsip: -8.5, zeta: 1.300 },
+    OrbitalDef {
+        n: 2,
+        l: 0,
+        label: "2s",
+        vsip: -15.2,
+        zeta: 1.300,
+    },
+    OrbitalDef {
+        n: 2,
+        l: 1,
+        label: "2p",
+        vsip: -8.5,
+        zeta: 1.300,
+    },
 ];
 
 /// All supported element parameter sets.
 static ALL_PARAMS: &[EhtParams] = &[
-    EhtParams { z: 1,  symbol: "H",  orbitals: &H_ORBITALS },
-    EhtParams { z: 5,  symbol: "B",  orbitals: &B_ORBITALS },
-    EhtParams { z: 6,  symbol: "C",  orbitals: &C_ORBITALS },
-    EhtParams { z: 7,  symbol: "N",  orbitals: &N_ORBITALS },
-    EhtParams { z: 8,  symbol: "O",  orbitals: &O_ORBITALS },
-    EhtParams { z: 9,  symbol: "F",  orbitals: &F_ORBITALS },
-    EhtParams { z: 14, symbol: "Si", orbitals: &SI_ORBITALS },
-    EhtParams { z: 15, symbol: "P",  orbitals: &P_ORBITALS },
-    EhtParams { z: 16, symbol: "S",  orbitals: &S_ORBITALS },
-    EhtParams { z: 17, symbol: "Cl", orbitals: &CL_ORBITALS },
-    EhtParams { z: 35, symbol: "Br", orbitals: &BR_ORBITALS },
-    EhtParams { z: 53, symbol: "I",  orbitals: &I_ORBITALS },
+    EhtParams {
+        z: 1,
+        symbol: "H",
+        orbitals: &H_ORBITALS,
+    },
+    EhtParams {
+        z: 5,
+        symbol: "B",
+        orbitals: &B_ORBITALS,
+    },
+    EhtParams {
+        z: 6,
+        symbol: "C",
+        orbitals: &C_ORBITALS,
+    },
+    EhtParams {
+        z: 7,
+        symbol: "N",
+        orbitals: &N_ORBITALS,
+    },
+    EhtParams {
+        z: 8,
+        symbol: "O",
+        orbitals: &O_ORBITALS,
+    },
+    EhtParams {
+        z: 9,
+        symbol: "F",
+        orbitals: &F_ORBITALS,
+    },
+    EhtParams {
+        z: 14,
+        symbol: "Si",
+        orbitals: &SI_ORBITALS,
+    },
+    EhtParams {
+        z: 15,
+        symbol: "P",
+        orbitals: &P_ORBITALS,
+    },
+    EhtParams {
+        z: 16,
+        symbol: "S",
+        orbitals: &S_ORBITALS,
+    },
+    EhtParams {
+        z: 17,
+        symbol: "Cl",
+        orbitals: &CL_ORBITALS,
+    },
+    EhtParams {
+        z: 35,
+        symbol: "Br",
+        orbitals: &BR_ORBITALS,
+    },
+    EhtParams {
+        z: 53,
+        symbol: "I",
+        orbitals: &I_ORBITALS,
+    },
 ];
 
 /// Look up EHT parameters by atomic number.
@@ -181,8 +361,8 @@ mod tests {
 
     #[test]
     fn test_basis_function_count() {
-        assert_eq!(num_basis_functions(1), 1);  // H: 1s
-        assert_eq!(num_basis_functions(6), 4);  // C: 2s + 2p(3)
-        assert_eq!(num_basis_functions(8), 4);  // O: 2s + 2p(3)
+        assert_eq!(num_basis_functions(1), 1); // H: 1s
+        assert_eq!(num_basis_functions(6), 4); // C: 2s + 2p(3)
+        assert_eq!(num_basis_functions(8), 4); // O: 2s + 2p(3)
     }
 }
