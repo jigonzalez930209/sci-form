@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: sci-form
-  text: 3D Molecular Conformer Generation
-  tagline: High-performance ETKDG distance geometry from SMILES — Rust, Python, TypeScript, CLI
+  text: Computational Chemistry in Rust
+  tagline: 3D conformer generation, EHT, ESP, DOS, MMFF94, alignment, materials — Rust, Python, TypeScript, CLI
   image:
     src: /logo.svg
     alt: sci-form
@@ -22,20 +22,32 @@ hero:
 features:
   - icon: ⚡
     title: High Performance
-    details: 60+ molecules/second in native Rust. Parallel batch processing via rayon. Zero runtime dependencies.
+    details: 60+ conformers/second in native Rust. Parallel batch processing via rayon. Zero runtime dependencies.
   - icon: 🎯
     title: RDKit-Quality Accuracy
-    details: 0.00% heavy-atom RMSD above 0.5 Å vs RDKit on GDB-20. 837 CSD torsion patterns for realistic geometry.
+    details: 0.00% heavy-atom RMSD above 0.5 Å vs RDKit on GDB-20. 846 CSD torsion patterns for realistic geometry.
+  - icon: 🔬
+    title: Extended Hückel Theory
+    details: EHT Hamiltonian (Wolfsberg-Helmholtz), Löwdin orthogonalization, HOMO/LUMO gaps, Mulliken & Löwdin population analysis, dipole moments.
+  - icon: 🌊
+    title: Electrostatic Potential
+    details: Coulomb ESP grid from Mulliken charges, red/white/blue color mapping, parallel rayon evaluation, Gaussian Cube file export.
+  - icon: 📊
+    title: Density of States
+    details: Total DOS and per-atom PDOS with Gaussian smearing from EHT orbital energies. MSE metric, JSON export.
+  - icon: 🧲
+    title: Force Fields
+    details: UFF (50+ element types including transition metals) and MMFF94 (Halgren 14-7 vdW, quartic stretch, cubic bend, 3-term torsion).
+  - icon: 📐
+    title: Molecular Alignment
+    details: Kabsch SVD alignment and quaternion-based Coutsias 2004 method. Optimal rotation, RMSD computation after superposition.
+  - icon: 🏗️
+    title: Materials Assembly
+    details: Periodic unit cells from lattice parameters, secondary building unit (SBU) topology, MOF-type framework crystal structure generation.
   - icon: 🌐
     title: Multi-Platform
-    details: Native Rust library, Python (PyO3), TypeScript/JS (WASM), and cross-platform CLI for Linux, macOS, and Windows.
-  - icon: 🧬
-    title: Full Chemical Coverage
-    details: Handles all functional groups, stereo centers, macrocycles, fused rings, metals, halogens, and heavy atoms.
-  - icon: 📐
-    title: Rigorous Validation
-    details: Tetrahedral center checks, planarity enforcement, double-bond geometry verification, and chiral volume constraints.
+    details: Native Rust library, Python (PyO3), TypeScript/JS (WASM) with typed-array APIs, and cross-platform CLI for Linux, macOS, Windows.
   - icon: 📖
     title: Documented Algorithms
-    details: Complete theoretical foundation with mathematical derivations, SVG diagrams, and step-by-step pipeline explanations.
+    details: Complete theoretical foundations with mathematical derivations, SVG diagrams, and step-by-step pipeline explanations for every module.
 ---
