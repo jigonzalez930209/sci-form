@@ -257,11 +257,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Publish sci-form (lib)
-        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - name: Wait for crates.io propagation
         run: sleep 30
       - name: Publish sci-form-cli
-        run: cd crates/cli && cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cd crates/cli && cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   # ─── Publish: PyPI ─────────────────────────────────────────────────────────
   publish-python:
@@ -336,7 +336,7 @@ jobs:
 
             ### Python
             ```bash
-            pip install sci-form
+            pip install sciforma
             ```
 
             ### Node.js / TypeScript
