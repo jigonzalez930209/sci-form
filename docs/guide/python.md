@@ -2,8 +2,10 @@
 
 ## Installation
 
+The package is published as **`sciforma`** on PyPI. The import name inside Python is `sci_form`.
+
 ```bash
-pip install sci-form
+pip install sciforma
 ```
 
 Or build from source:
