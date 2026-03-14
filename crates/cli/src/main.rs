@@ -51,6 +51,130 @@ enum Commands {
     },
     /// Show version info
     Info,
+    /// Run Extended Hückel Theory calculation
+    Eht {
+        /// JSON array of atomic numbers, e.g. "[8,1,1]"
+        elements: String,
+        /// JSON array of flat xyz coords, e.g. "[0,0,0, 0.96,0,0, -0.24,0.93,0]"
+        coords: String,
+        /// Wolfsberg-Helmholtz constant (0 = default 1.75)
+        #[arg(short, long, default_value_t = 0.0)]
+        k: f64,
+    },
+    /// Compute Gasteiger-Marsili partial charges from SMILES
+    Charges {
+        /// SMILES string
+        smiles: String,
+    },
+    /// Compute solvent-accessible surface area
+    Sasa {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Probe radius in Å (default 1.4)
+        #[arg(short, long, default_value_t = 1.4)]
+        probe_radius: f64,
+    },
+    /// Mulliken & Löwdin population analysis (requires EHT)
+    Population {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// Compute molecular dipole moment (Debye)
+    Dipole {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// Compute electrostatic potential on a 3D grid
+    Esp {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Grid spacing in Å
+        #[arg(short, long, default_value_t = 0.5)]
+        spacing: f64,
+        /// Padding around molecule in Å
+        #[arg(short, long, default_value_t = 3.0)]
+        padding: f64,
+    },
+    /// Compute density of states (DOS/PDOS)
+    Dos {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Gaussian smearing width (eV)
+        #[arg(short, long, default_value_t = 0.3)]
+        sigma: f64,
+        /// Energy window minimum (eV)
+        #[arg(long, default_value_t = -30.0)]
+        e_min: f64,
+        /// Energy window maximum (eV)
+        #[arg(long, default_value_t = 5.0)]
+        e_max: f64,
+        /// Number of grid points
+        #[arg(short, long, default_value_t = 500)]
+        n_points: usize,
+    },
+    /// Compute RMSD between two coordinate sets (Kabsch alignment)
+    Rmsd {
+        /// JSON array of flat xyz coords (mobile)
+        coords: String,
+        /// JSON array of flat xyz coords (reference)
+        reference: String,
+    },
+    /// Compute UFF force field energy
+    Uff {
+        /// SMILES string
+        smiles: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// Create a unit cell and show parameters
+    Cell {
+        /// Lattice parameter a (Å)
+        #[arg(long)]
+        a: f64,
+        /// Lattice parameter b (Å)
+        #[arg(long)]
+        b: f64,
+        /// Lattice parameter c (Å)
+        #[arg(long)]
+        c: f64,
+        /// Angle α (degrees)
+        #[arg(long, default_value_t = 90.0)]
+        alpha: f64,
+        /// Angle β (degrees)
+        #[arg(long, default_value_t = 90.0)]
+        beta: f64,
+        /// Angle γ (degrees)
+        #[arg(long, default_value_t = 90.0)]
+        gamma: f64,
+    },
+    /// Assemble a framework from a topology
+    Assemble {
+        /// Topology name: pcu, dia, sql
+        #[arg(short, long, default_value = "pcu")]
+        topology: String,
+        /// Lattice parameter a (Å)
+        #[arg(long, default_value_t = 10.0)]
+        a: f64,
+        /// Metal center atomic number
+        #[arg(long, default_value_t = 30)]
+        metal: u8,
+        /// Coordination geometry: linear, tetrahedral, octahedral, square_planar
+        #[arg(long, default_value = "octahedral")]
+        geometry: String,
+        /// Supercell replication (e.g., 2 for 2x2x2)
+        #[arg(long, default_value_t = 1)]
+        supercell: usize,
+    },
 }
 
 fn format_xyz(result: &sci_form::ConformerResult) -> String {
@@ -270,8 +394,261 @@ fn main() {
         Commands::Info => {
             println!("{}", sci_form::version());
             println!("Features: ETKDG distance geometry, CSD torsion patterns, SMARTS matching");
+            println!("  EHT, Gasteiger charges, SASA");
             println!("Formats: JSON, XYZ, SDF");
             println!("Bindings: CLI, Python (PyO3), TypeScript (WASM)");
+        }
+
+        Commands::Eht {
+            elements,
+            coords,
+            k,
+        } => {
+            let elems: Vec<u8> = serde_json::from_str(&elements).unwrap_or_else(|e| {
+                eprintln!("Bad elements JSON: {}", e);
+                std::process::exit(1);
+            });
+            let flat: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            if flat.len() != elems.len() * 3 {
+                eprintln!(
+                    "coords length {} != 3 * elements {}",
+                    flat.len(),
+                    elems.len()
+                );
+                std::process::exit(1);
+            }
+            let positions: Vec<[f64; 3]> =
+                flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+            let k_opt = if k <= 0.0 { None } else { Some(k) };
+            match sci_form::eht::solve_eht(&elems, &positions, k_opt) {
+                Ok(result) => {
+                    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+                }
+                Err(e) => {
+                    eprintln!("EHT error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Charges { smiles } => {
+            match sci_form::compute_charges(&smiles) {
+                Ok(result) => {
+                    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+                }
+                Err(e) => {
+                    eprintln!("Charges error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Sasa {
+            elements,
+            coords,
+            probe_radius,
+        } => {
+            let elems: Vec<u8> = serde_json::from_str(&elements).unwrap_or_else(|e| {
+                eprintln!("Bad elements JSON: {}", e);
+                std::process::exit(1);
+            });
+            let flat: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            match sci_form::compute_sasa(&elems, &flat, Some(probe_radius)) {
+                Ok(result) => {
+                    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+                }
+                Err(e) => {
+                    eprintln!("SASA error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Population { elements, coords } => {
+            let elems: Vec<u8> = serde_json::from_str(&elements).unwrap_or_else(|e| {
+                eprintln!("Bad elements JSON: {}", e);
+                std::process::exit(1);
+            });
+            let flat: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            let positions: Vec<[f64; 3]> =
+                flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+            match sci_form::compute_population(&elems, &positions) {
+                Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+                Err(e) => {
+                    eprintln!("Population error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Dipole { elements, coords } => {
+            let elems: Vec<u8> = serde_json::from_str(&elements).unwrap_or_else(|e| {
+                eprintln!("Bad elements JSON: {}", e);
+                std::process::exit(1);
+            });
+            let flat: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            let positions: Vec<[f64; 3]> =
+                flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+            match sci_form::compute_dipole(&elems, &positions) {
+                Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+                Err(e) => {
+                    eprintln!("Dipole error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Esp {
+            elements,
+            coords,
+            spacing,
+            padding,
+        } => {
+            let elems: Vec<u8> = serde_json::from_str(&elements).unwrap_or_else(|e| {
+                eprintln!("Bad elements JSON: {}", e);
+                std::process::exit(1);
+            });
+            let flat: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            let positions: Vec<[f64; 3]> =
+                flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+            match sci_form::compute_esp(&elems, &positions, spacing, padding) {
+                Ok(grid) => {
+                    // Print dimensions + origin only (values too large for stdout)
+                    println!(
+                        "{{\"origin\":{:?},\"spacing\":{},\"dims\":{:?},\"n_values\":{}}}",
+                        grid.origin,
+                        grid.spacing,
+                        grid.dims,
+                        grid.values.len()
+                    );
+                }
+                Err(e) => {
+                    eprintln!("ESP error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Dos {
+            elements,
+            coords,
+            sigma,
+            e_min,
+            e_max,
+            n_points,
+        } => {
+            let elems: Vec<u8> = serde_json::from_str(&elements).unwrap_or_else(|e| {
+                eprintln!("Bad elements JSON: {}", e);
+                std::process::exit(1);
+            });
+            let flat: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            let positions: Vec<[f64; 3]> =
+                flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+            match sci_form::compute_dos(&elems, &positions, sigma, e_min, e_max, n_points) {
+                Ok(result) => {
+                    // Print energy-DOS pairs as JSON array
+                    let pairs: Vec<_> = result
+                        .energies
+                        .iter()
+                        .zip(result.total_dos.iter())
+                        .map(|(e, d)| format!("[{:.4},{:.6}]", e, d))
+                        .collect();
+                    println!("{{\"sigma\":{},\"data\":[{}]}}", result.sigma, pairs.join(","));
+                }
+                Err(e) => {
+                    eprintln!("DOS error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Rmsd { coords, reference } => {
+            let c: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            let r: Vec<f64> = serde_json::from_str(&reference).unwrap_or_else(|e| {
+                eprintln!("Bad reference JSON: {}", e);
+                std::process::exit(1);
+            });
+            let result = sci_form::alignment::align_coordinates(&c, &r);
+            println!(
+                "{{\"rmsd\":{:.6},\"rotation\":{:?}}}",
+                result.rmsd, result.rotation
+            );
+        }
+
+        Commands::Uff { smiles, coords } => {
+            let flat: Vec<f64> = serde_json::from_str(&coords).unwrap_or_else(|e| {
+                eprintln!("Bad coords JSON: {}", e);
+                std::process::exit(1);
+            });
+            match sci_form::compute_uff_energy(&smiles, &flat) {
+                Ok(energy) => println!("{{\"energy\":{:.6},\"unit\":\"kcal/mol\"}}", energy),
+                Err(e) => {
+                    eprintln!("UFF error: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+
+        Commands::Cell { a, b, c, alpha, beta, gamma } => {
+            let cell = sci_form::create_unit_cell(a, b, c, alpha, beta, gamma);
+            let vol = cell.volume();
+            let p = cell.parameters();
+            println!(
+                "{{\"a\":{:.4},\"b\":{:.4},\"c\":{:.4},\"alpha\":{:.2},\"beta\":{:.2},\"gamma\":{:.2},\"volume\":{:.4},\"lattice\":{:?}}}",
+                p.a, p.b, p.c, p.alpha, p.beta, p.gamma, vol, cell.lattice
+            );
+        }
+
+        Commands::Assemble { topology, a, metal, geometry, supercell } => {
+            let geom = match geometry.as_str() {
+                "linear" => sci_form::materials::CoordinationGeometry::Linear,
+                "trigonal" => sci_form::materials::CoordinationGeometry::Trigonal,
+                "tetrahedral" => sci_form::materials::CoordinationGeometry::Tetrahedral,
+                "square_planar" => sci_form::materials::CoordinationGeometry::SquarePlanar,
+                "octahedral" => sci_form::materials::CoordinationGeometry::Octahedral,
+                _ => {
+                    eprintln!("Unknown geometry: {}", geometry);
+                    std::process::exit(1);
+                }
+            };
+            let topo = match topology.as_str() {
+                "pcu" => sci_form::materials::Topology::pcu(),
+                "dia" => sci_form::materials::Topology::dia(),
+                "sql" => sci_form::materials::Topology::sql(),
+                _ => {
+                    eprintln!("Unknown topology: {}", topology);
+                    std::process::exit(1);
+                }
+            };
+            let node = sci_form::materials::Sbu::metal_node(metal, 0.0, geom);
+            let linker = sci_form::materials::Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
+            let cell = sci_form::materials::UnitCell::cubic(a);
+            let mut structure = sci_form::assemble_framework(&node, &linker, &topo, &cell);
+            if supercell > 1 {
+                structure = structure.make_supercell(supercell, supercell, supercell);
+            }
+            println!("{}", serde_json::to_string_pretty(&structure).unwrap());
         }
     }
 }
