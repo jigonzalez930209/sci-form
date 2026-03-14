@@ -204,7 +204,876 @@ echo "All checks passed — ready to tag."
 
 ---
 
-## 8. CI / Release Workflow
+## 8. Computational Chemistry Validation and Ground Truth Testing (EHT Pipeline)
+
+Validating a computational chemistry engine is the most critical development step. To ensure sci-form calculates quantum-mechanical tensors correctly, you must establish a "ground truth" using established reference tools and compare mathematical matrices step-by-step, not just visual output.
+
+### Validation Methodology
+
+#### 8.1 Select Reference Software
+
+Generate exact reference data using tools that allow automated Python extraction:
+
+| Tool | Purpose | Installation |
+|------|---------|---------------|
+| **PySCF** | Compute overlap matrix $S$ with minimal basis (STO-3G). Verify Slater integral and basis-set correctness. | `pip install pyscf` |
+| **xtb** | Optimize molecular geometry with GFN-xTB or use as secondary 3D reference. | `pip install xtb` |
+| **RDKit** | Generate and standardize 3D geometries. Ensures both systems start from identical coordinates. | `pip install rdkit` |
+| **NumPy/SciPy** | Implement clean reference EHT logic for direct matrix comparison. | `pip install numpy scipy` |
+| **Rust: `approx`** | Compare floating-point results with configurable tolerances. | Add to `Cargo.toml`: `approx = "0.5"` |
+
+#### 8.2 What Variables to Compare (Strict Assertion Order)
+
+If the final calculation fails, it is difficult to pinpoint the error. You must make assertions in this strict execution order:
+
+1. **Input Geometry (XYZ Coordinates)**
+   - Assert that atomic coordinates and internuclear distances match exactly.
+   - Tolerance: ≤ 0.001 Ångström (difference will drastically change integrals).
+   - Use `assert_relative_eq!` with `epsilon = 1e-6` in Rust tests.
+
+2. **Overlap Matrix ($S$)**
+   - Compare term-by-term: $S_{ij}$ from sci-form vs. reference (PySCF).
+   - If divergence here → problem in distance calculations or basis-function integral evaluation.
+   - Tolerance: ≤ 1 × 10⁻⁵ (relative error).
+
+3. **Hamiltonian Matrix ($H$)**
+   - Verify diagonal elements match exactly your VSIP (Valence State Ionization Potential) table values.
+   - Verify off-diagonal elements use the correct Wolfsberg-Helmholtz formula:
+
+   $$H_{ij} = \frac{1}{2} K S_{ij} \left(H_{ii} + H_{jj}\right)$$
+
+   - Tolerance: ≤ 1 × 10⁻⁵.
+
+4. **Eigenvalues ($E$, Orbital Energies)**
+   - Compare HOMO (Highest Occupied Molecular Orbital) and LUMO (Lowest Unoccupied) values.
+   - These are the most chemically critical values.
+   - Tolerance: ≤ 1 × 10⁻⁴ (often tighter than matrix elements due to conditioning).
+
+5. **Eigenvectors ($C$, Molecular Orbital Coefficients)**
+   - **Algorithmic warning:** Eigensolvers (both Rust nalgebra and Python SciPy) can return eigenvectors with opposite sign (phase flip). Both are mathematically correct because orbital probability density $|\Psi|^2$ is identical.
+   - **Solution:** Compare absolute values: $|C_{\text{Rust}}| \approx |C_{\text{Ref}}|$.
+   - Tolerance: ≤ 1 × 10⁻⁴.
+
+#### 8.3 Testing Pipeline Structure: Rust + JSON Ground Truth
+
+The most robust and professional approach is to create a static data bridge using unit tests.
+
+**Step A (Reference Generation):**
+```bash
+# Generate reference matrices for H₂O with STO-3G basis
+python scripts/generate_eht_reference.py --molecule h2o --basis sto-3g --output tests/data/h2o_ref.json
+python scripts/generate_eht_reference.py --molecule ethane --basis sto-3g --output tests/data/ethane_ref.json
+```
+
+The Python script exports: XYZ coordinates, $S$, $H$, $E$, and $C$ matrices in a single JSON file.
+
+**Step B (Rust Unit Test Example):**
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+    use serde_json::json;
+    use std::fs;
+
+    #[derive(serde::Deserialize)]
+    struct EHTReference {
+        #[serde(rename = "xyz_coords")]
+        xyz: Vec<Vec<f64>>,
+        #[serde(rename = "overlap_matrix")]
+        s_ref: Vec<Vec<f64>>,
+        #[serde(rename = "hamiltonian_matrix")]
+        h_ref: Vec<Vec<f64>>,
+        #[serde(rename = "eigenvalues")]
+        e_ref: Vec<f64>,
+        #[serde(rename = "eigenvectors")]
+        c_ref: Vec<Vec<f64>>,
+    }
+
+    fn load_reference(filename: &str) -> EHTReference {
+        let data = fs::read_to_string(filename)
+            .expect("Could not read reference file");
+        serde_json::from_str(&data)
+            .expect("Invalid JSON in reference file")
+    }
+
+    #[test]
+    fn test_overlap_matrix_h2o() {
+        let refdata = load_reference("tests/data/h2o_ref.json");
+        
+        // Create molecule from reference coordinates
+        let molecule = Molecule::from_xyz(&refdata.xyz);
+        
+        // Compute sci-form overlap matrix
+        let s_rust = compute_overlap_matrix(&molecule);
+        
+        // Element-by-element comparison
+        for i in 0..s_rust.nrows() {
+            for j in 0..s_rust.ncols() {
+                assert_relative_eq!(
+                    s_rust[(i, j)],
+                    refdata.s_ref[i][j],
+                    epsilon = 1e-5,
+                    max_relative = 1e-5
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_hamiltonian_matrix_ethane() {
+        let refdata = load_reference("tests/data/ethane_ref.json");
+        let molecule = Molecule::from_xyz(&refdata.xyz);
+        let s_matrix = compute_overlap_matrix(&molecule);
+        
+        // Compute Hamiltonian
+        let h_rust = compute_hamiltonian_matrix(&molecule, &s_matrix, 1.75);  // K=1.75
+        
+        // Compare
+        for i in 0..h_rust.nrows() {
+            for j in 0..h_rust.ncols() {
+                assert_relative_eq!(
+                    h_rust[(i, j)],
+                    refdata.h_ref[i][j],
+                    epsilon = 1e-5,
+                    max_relative = 1e-5
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_eigenvalues_homo_lumo() {
+        let refdata = load_reference("tests/data/h2o_ref.json");
+        let molecule = Molecule::from_xyz(&refdata.xyz);
+        let s_matrix = compute_overlap_matrix(&molecule);
+        let h_matrix = compute_hamiltonian_matrix(&molecule, &s_matrix, 1.75);
+        
+        // Solve generalized eigenproblem: HC = SCE
+        let (e_rust, _c_rust) = solve_generalized_eigenproblem(&h_matrix, &s_matrix);
+        
+        // Sort both vectors (eigensolvers may return in different order)
+        let mut e_sorted = e_rust.clone();
+        e_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut e_ref_sorted = refdata.e_ref.clone();
+        e_ref_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        
+        // Check HOMO and LUMO specifically (highest occupied and lowest unoccupied)
+        // For H₂O with STO-3G (10 basis functions, 5 occupied orbitals)
+        let homo_idx = 4;  // 5th eigenvalue (0-indexed)
+        let lumo_idx = 5;  // 6th eigenvalue
+        
+        assert_relative_eq!(
+            e_sorted[homo_idx],
+            e_ref_sorted[homo_idx],
+            epsilon = 1e-4,
+            max_relative = 1e-4
+        );
+        assert_relative_eq!(
+            e_sorted[lumo_idx],
+            e_ref_sorted[lumo_idx],
+            epsilon = 1e-4,
+            max_relative = 1e-4
+        );
+    }
+
+    #[test]
+    fn test_eigenvectors_absolute_value() {
+        let refdata = load_reference("tests/data/h2o_ref.json");
+        let molecule = Molecule::from_xyz(&refdata.xyz);
+        let s_matrix = compute_overlap_matrix(&molecule);
+        let h_matrix = compute_hamiltonian_matrix(&molecule, &s_matrix, 1.75);
+        
+        let (_e_rust, c_rust) = solve_generalized_eigenproblem(&h_matrix, &s_matrix);
+        
+        // Compare absolute values (handles sign flip)
+        for i in 0..c_rust.nrows() {
+            for j in 0..c_rust.ncols() {
+                assert_relative_eq!(
+                    c_rust[(i, j)].abs(),
+                    refdata.c_ref[i][j].abs(),
+                    epsilon = 1e-4,
+                    max_relative = 1e-4
+                );
+            }
+        }
+    }
+}
+```
+
+**Step C (Run the validation suite):**
+```bash
+# All EHT ground-truth tests
+cargo test --test test_eht_validation --release -- --nocapture
+
+# Individual tests
+cargo test --release test_overlap_matrix_h2o -- --nocapture
+cargo test --release test_hamiltonian_matrix_ethane -- --nocapture
+cargo test --release test_eigenvalues_homo_lumo -- --nocapture
+cargo test --release test_eigenvectors_absolute_value -- --nocapture
+```
+
+#### 8.4 Integrating with CI
+
+Add to `.github/workflows/ci.yml`:
+```yaml
+- name: Generate EHT reference data
+  run: python scripts/generate_eht_reference.py --all
+
+- name: Validate EHT pipeline against ground truth
+  run: cargo test --release test_eht_validation -- --nocapture
+```
+
+This ensures that any regression in the EHT tensor pipeline is caught before merge.
+
+---
+
+## 10. Validation Protocol: Population Analysis (Mulliken & Löwdin Charges)
+
+Once EHT orbitals are computed, population analysis extracts per-atom partial charges. This is critical for understanding molecular electrostatics, reactivity sites, and chemical hardness.
+
+### Ground-Truth Generation
+
+```bash
+# Generate reference Mulliken and Löwdin charges using PySCF
+python scripts/generate_population_reference.py \
+  --molecules h2o ethane benzene \
+  --basis sto-3g \
+  --output tests/data/population_ref.json
+```
+
+The reference JSON should contain:
+```json
+{
+  "h2o": {
+    "xyz_coords": [[0,0,0], [0.757,0.586,0], [-0.757,0.586,0]],
+    "mulliken_charges": [-0.34, 0.17, 0.17],
+    "lowdin_charges": [-0.22, 0.11, 0.11],
+    "sum_mulliken": 0.0,
+    "sum_lowdin": 0.0
+  }
+}
+```
+
+### Rust Test Structure
+
+```rust
+#[cfg(test)]
+mod population_tests {
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_mulliken_charges_h2o() {
+        let refdata = load_reference("tests/data/population_ref.json");
+        let (elems, pos) = h2o_molecule();
+        
+        // Compute orbitals → density matrix → Mulliken charges
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        let charges_mulliken = compute_mulliken_charges(&result, &elems);
+        
+        for i in 0..charges_mulliken.len() {
+            assert_relative_eq!(
+                charges_mulliken[i],
+                refdata["h2o"]["mulliken_charges"][i],
+                epsilon = 1e-4,
+                max_relative = 1e-4
+            );
+        }
+        
+        // Charge sum must equal molecular total charge (0 for neutral)
+        let sum: f64 = charges_mulliken.iter().sum();
+        assert!(sum.abs() < 1e-6, "Mulliken charges must sum to 0");
+    }
+
+    #[test]
+    fn test_lowdin_charges_h2o() {
+        let refdata = load_reference("tests/data/population_ref.json");
+        let (elems, pos) = h2o_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        let charges_lowdin = compute_lowdin_charges(&result, &elems);
+        
+        for i in 0..charges_lowdin.len() {
+            assert_relative_eq!(
+                charges_lowdin[i],
+                refdata["h2o"]["lowdin_charges"][i],
+                epsilon = 1e-4,
+                max_relative = 1e-4
+            );
+        }
+        
+        let sum: f64 = charges_lowdin.iter().sum();
+        assert!(sum.abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_charge_invariants_benzene() {
+        let (elems, pos) = benzene_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        // For C₆H₆, all carbons should have identical Mulliken charges (symmetry)
+        let charges = compute_mulliken_charges(&result, &elems);
+        let carbon_charges: Vec<f64> = charges[..6].to_vec();
+        let mean = carbon_charges.iter().sum::<f64>() / 6.0;
+        
+        for &q in &carbon_charges {
+            assert!(
+                (q - mean).abs() < 0.001,
+                "Benzene carbons should be symmetric"
+            );
+        }
+    }
+}
+```
+
+---
+
+## 11. Validation Protocol: Dipole Moments
+
+A molecular dipole $\vec{\mu} = (\mu_x, \mu_y, \mu_z)$ is fundamental for understanding polarity and reactivity.
+
+### Ground-Truth Generation
+
+```bash
+python scripts/generate_dipole_reference.py \
+  --molecules h2o methane benzene formaldehyde \
+  --basis sto-3g \
+  --output tests/data/dipole_ref.json
+```
+
+Reference format:
+```json
+{
+  "h2o": {
+    "dipole_vector": [0.0, 0.0, 1.85],
+    "dipole_magnitude": 1.85,
+    "unit": "Debye"
+  }
+}
+```
+
+### Rust Test Structure
+
+```rust
+#[cfg(test)]
+mod dipole_tests {
+    use approx::assert_relative_eq;
+    use nalgebra::Vector3;
+
+    #[test]
+    fn test_dipole_magnitude_h2o() {
+        let refdata = load_reference("tests/data/dipole_ref.json");
+        let (elems, pos) = h2o_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        let dipole_vec = compute_dipole_moment(&result, &elems, &pos);
+        let magnitude = dipole_vec.norm();
+        
+        // Water dipole should be ~1.85 D
+        assert_relative_eq!(
+            magnitude,
+            refdata["h2o"]["dipole_magnitude"],
+            epsilon = 0.05,
+            max_relative = 0.05
+        );
+    }
+
+    #[test]
+    fn test_dipole_zero_for_symmetric_molecules() {
+        let (elems, pos) = methane_molecule(); // CH₄ is nonpolar
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        let dipole_vec = compute_dipole_moment(&result, &elems, &pos);
+        
+        assert!(
+            dipole_vec.norm() < 0.1,
+            "Methane should be nonpolar"
+        );
+    }
+
+    #[test]
+    fn test_dipole_direction_h2o() {
+        let refdata = load_reference("tests/data/dipole_ref.json");
+        let (elems, pos) = h2o_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        let dipole_vec = compute_dipole_moment(&result, &elems, &pos);
+        
+        let ref_vec = Vector3::new(
+            refdata["h2o"]["dipole_vector"][0],
+            refdata["h2o"]["dipole_vector"][1],
+            refdata["h2o"]["dipole_vector"][2],
+        );
+        
+        // Angle between vectors should be < 5°
+        let cos_angle = (dipole_vec.normalize().dot(&ref_vec.normalize())).min(1.0);
+        let angle_rad = cos_angle.acos();
+        assert!(angle_rad < 0.087, "Dipole direction wrong by {:.1}°", angle_rad.to_degrees());
+    }
+}
+```
+
+---
+
+## 12. Validation Protocol: Electrostatic Potential Maps (ESP)
+
+ESP is a 3D volumetric property showing the electrostatic potential at every point, essential for visualization.
+
+### Ground-Truth Generation
+
+```bash
+# PySCF cubegen or Gaussian cube export
+python scripts/generate_esp_cube.py \
+  --molecule h2o \
+  --basis sto-3g \
+  --grid-spacing 0.2 \
+  --output tests/data/h2o_esp.cube
+```
+
+Cube file format (standard):
+```
+ Cube file header
+   Generated by PySCF
+    3    0.0    0.0    0.0
+   20    0.2    0.0    0.0
+   30    0.0    0.2    0.0
+   25    0.0    0.0    0.2
+ 8    0    0.0    0.0    0.0
+ 1    0    0.96   0.0    0.0
+...
+```
+
+### Rust Test Structure
+
+```rust
+#[cfg(test)]
+mod esp_tests {
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_esp_grid_generation_h2o() {
+        let (elems, pos) = h2o_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        // Generate ESP on a 20×20×20 grid, 0.2 Å spacing
+        let esp_grid = compute_esp_grid(
+            &elems,
+            &pos,
+            &result,
+            0.2,  // spacing
+            (20, 20, 20),  // grid dimensions
+        );
+        
+        assert_eq!(esp_grid.len(), 20 * 20 * 20);
+        assert!(esp_grid.iter().all(|&v| !v.is_nan()), "No NaN values allowed");
+    }
+
+    #[test]
+    fn test_esp_vs_reference_cube() {
+        let reference_cube = read_cube_file("tests/data/h2o_esp.cube");
+        let (elems, pos) = h2o_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        let esp_rust = compute_esp_grid(&elems, &pos, &result, 0.2, (20, 20, 20));
+        
+        // Compute element-wise error
+        let mut max_error = 0.0;
+        let mut sum_sqerror = 0.0;
+        for i in 0..esp_rust.len() {
+            let err = (esp_rust[i] - reference_cube.values[i]).abs();
+            max_error = max_error.max(err);
+            sum_sqerror += err * err;
+        }
+        let rmse = (sum_sqerror / esp_rust.len() as f64).sqrt();
+        
+        assert!(rmse < 1e-4, "ESP RMSE too high: {}", rmse);
+        assert!(max_error < 0.01, "Max ESP error: {}", max_error);
+    }
+
+    #[test]
+    fn test_esp_export_cube_format() {
+        let (elems, pos) = h2o_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        // Export to .cube file
+        let esp_grid = compute_esp_grid(&elems, &pos, &result, 0.2, (20, 20, 20));
+        export_esp_cube(
+            "target/test_esp_export.cube",
+            &elems,
+            &pos,
+            &esp_grid,
+            0.2,
+            (20, 20, 20),
+        ).unwrap();
+        
+        // Re-read and verify format
+        let reread = read_cube_file("target/test_esp_export.cube");
+        assert_eq!(reread.values.len(), 20 * 20 * 20);
+    }
+}
+```
+
+---
+
+## 13. Validation Protocol: Density of States (DOS) and PDOS
+
+DOS shows the number of states at each energy level; PDOS breaks this down by atom.
+
+### Ground-Truth Generation
+
+```bash
+# Multiwfn or custom Python script
+python scripts/generate_dos_reference.py \
+  --molecule benzene \
+  --basis sto-3g \
+  --smearing 0.2 \
+  --energies '-20,-15,-10,-5,0,5,10,15,20' \
+  --output tests/data/dos_ref.json
+```
+
+Reference format:
+```json
+{
+  "benzene": {
+    "energies": [-20, -15, -10, ...],
+    "dos_total": [0.001, 0.002, 0.05, ...],
+    "pdos_carbon": [0.0001, 0.0002, 0.025, ...],
+    "pdos_hydrogen": [0.00001, 0.00002, 0.025, ...]
+  }
+}
+```
+
+### Rust Test Structure
+
+```rust
+#[cfg(test)]
+mod dos_tests {
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_dos_curve_generation() {
+        let (elems, pos) = benzene_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        // Generate DOS with Gaussian smearing σ=0.2 eV
+        let energies = linspace(-20.0, 20.0, 100);
+        let dos_total = compute_dos(&result, &energies, 0.2);
+        
+        // DOS must be non-negative
+        assert!(dos_total.iter().all(|&v| v >= 0.0));
+        
+        // DOS should integrate roughly to number of orbitals
+        let integral: f64 = dos_total.iter().sum::<f64>() * (40.0 / 100.0);  // dE = 0.4
+        assert!(
+            (integral - (result.energies.len() as f64)).abs() < 1.0,
+            "DOS integral should ≈ num_orbitals"
+        );
+    }
+
+    #[test]
+    fn test_pdos_vs_reference() {
+        let refdata = load_reference("tests/data/dos_ref.json");
+        let (elems, pos) = benzene_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        let energies = linspace(-20.0, 20.0, 100);
+        let pdos_carbon = compute_pdos(&result, &elems, 6, &energies, 0.2);  // element 6 = C
+        
+        let ref_pdos = &refdata["benzene"]["pdos_carbon"];
+        for i in 0..pdos_carbon.len() {
+            assert_relative_eq!(
+                pdos_carbon[i],
+                ref_pdos[i],
+                epsilon = 0.01,
+                max_relative = 0.1
+            );
+        }
+    }
+
+    #[test]
+    fn test_dos_peak_positions_match_eigenvalues() {
+        let (elems, pos) = h2o_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        
+        // With very small smearing, DOS peaks should align with eigenvalues
+        let energies = linspace(-30.0, 10.0, 1000);
+        let dos = compute_dos(&result, &energies, 0.01);  // σ=0.01 eV
+        
+        // For each eigenvalue, find nearest maximum in DOS
+        for &eig in &result.energies {
+            let idx = ((eig + 30.0) / 40.0 * 1000.0) as usize;
+            assert!(
+                idx > 0 && idx < dos.len(),
+                "Eigenvalue {} out of energy range",
+                eig
+            );
+            // DOS should have a local maximum near this energy
+            assert!(
+                dos[idx] > 0.1 * dos.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+                "DOS peak too low at eigenvalue"
+            );
+        }
+    }
+}
+```
+
+---
+
+## 14. Validation Protocol: Molecular Alignment and RMSD (Kabsch)
+
+RMSD is the industry standard for comparing 3D structures. Kabsch algorithm finds optimal superposition.
+
+### Ground-Truth Generation
+
+```bash
+# Use RDKit as reference for RMSD computation
+python scripts/generate_rmsd_reference.py \
+  --molecules "CC(C)C,CC(CC)C,CCCC" \
+  --output tests/data/rmsd_ref.json
+```
+
+Reference format:
+```json
+{
+  "CC(C)C_vs_CC(CC)C": {
+    "rmsd_heavy_atom": 0.892,
+    "rmsd_all_atoms": 1.234,
+    "rmsd_hydrogens_only": 1.876
+  }
+}
+```
+
+### Rust Test Structure
+
+```rust
+#[cfg(test)]
+mod rmsd_tests {
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_kabsch_alignment_identity() {
+        // Aligning a molecule to itself should give RMSD = 0
+        let (elems, pos) = ethane_molecule();
+        let rmsd = compute_rmsd_kabsch(&pos, &pos, &elems);
+        
+        assert!(rmsd < 1e-10, "Self-alignment RMSD should be ~0");
+    }
+
+    #[test]
+    fn test_rmsd_vs_rdkit_reference() {
+        let refdata = load_reference("tests/data/rmsd_ref.json");
+        let mol1 = embed_molecule("CC(C)C", 42);
+        let mol2 = embed_molecule("CC(CC)C", 42);
+        
+        let rmsd_heavy = compute_rmsd_kabsch(
+            &mol1.coords,
+            &mol2.coords,
+            &mol1.elements,
+            Some(true),  // heavy atoms only
+        );
+        
+        assert_relative_eq!(
+            rmsd_heavy,
+            refdata["CC(C)C_vs_CC(CC)C"]["rmsd_heavy_atom"],
+            epsilon = 0.01,
+            max_relative = 0.05
+        );
+    }
+
+    #[test]
+    fn test_rmsd_invariant_under_rotation() {
+        let (elems, pos) = water_molecule();
+        
+        // Rotate molecule by 45° around Z axis
+        let rotation_matrix = rotation_z_45deg();
+        let rotated = apply_rotation(&pos, &rotation_matrix);
+        
+        // RMSD after alignment should still be 0
+        let rmsd = compute_rmsd_kabsch(&pos, &rotated, &elems);
+        assert!(rmsd < 1e-10, "Rotation should not affect aligned RMSD");
+    }
+
+    #[test]
+    fn test_rmsd_hydrogen_vs_heavy_atom() {
+        let (elems, pos) = ethanol_molecule();
+        let (elems_rot, pos_rot) = rotate_molecule(&(elems.clone(), pos.clone()), 10.0);
+        
+        let rmsd_all = compute_rmsd_kabsch(&pos, &pos_rot, &elems, None);15        let rmsd_heavy = compute_rmsd_kabsch(&pos, &pos_rot, &elems, Some(true));
+        
+        // Heavy-atom RMSD should typically be smaller (hydrogens more flexible)
+        assert!(rmsd_heavy <= rmsd_all);
+    }
+
+    #[test]
+    fn test_quaternion_vs_matrix_alignment_equivalence() {
+        let (elems, pos) = benzene_molecule();
+        let (_, pos_rot) = rotate_molecule(&(elems.clone(), pos.clone()), 5.0);
+        
+        // Compute RMSD using two different alignment methods
+        let rmsd_kabsch = compute_rmsd_kabsch(&pos, &pos_rot, &elems);
+        let rmsd_quat = compute_rmsd_quaternion(&pos, &pos_rot, &elems);
+        
+        // Both should agree within numerical tolerance
+        assert_relative_eq!(
+            rmsd_kabsch,
+            rmsd_quat,
+            epsilon = 1e-8,
+            max_relative = 1e-8
+        );
+    }
+}
+```
+
+---
+
+## 15. Validation Protocol: Force Fields (UFF / MMFF94)
+
+Force fields are parameterized to match experimental and ab initio data. Gradients must match numerical finite differences.
+
+### Ground-Truth Generation
+
+```bash
+# Export UFF/MMFF gradients from OpenBabel or RDKit
+python scripts/generate_ff_reference.py \
+  --molecules "C,CCO,c1ccccc1" \
+  --force-field uff \
+  --output tests/data/ff_uff_ref.json
+```
+
+Reference format:
+```json
+{
+  "C": {
+    "energy": 0.0,
+    "gradients": [[0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0]],
+    "bonds": [{"a": 0, "b": 1, "order": "single", "length": 1.09}],
+    "angles": [{"a": 1, "b": 0, "c": 2, "angle": 109.47}],
+    "torsions": [{"a": 0, "b": 1, "c": 2, "d": 3, "phi": 180.0}]
+  }
+}
+```
+
+### Rust Test Structure
+
+```rust
+#[cfg(test)]
+mod force_field_tests {
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_uff_energy_methane() {
+        let (elems, pos) = methane_molecule();
+        let energy = compute_uff_energy(&elems, &pos);
+        
+        // Optimized methane should have very low strain energy
+        assert!(energy < 0.1, "Methane strain energy too high: {}", energy);
+    }
+
+    #[test]
+    fn test_uff_gradients_vs_numerical() {
+        let (elems, pos) = water_molecule();
+        let gradients_analytical = compute_uff_gradients(&elems, &pos);
+        
+        let delta = 1e-6;
+        let gradients_numerical = compute_numerical_gradients(
+            &elems,
+            &pos,
+            delta,
+            |e, p| compute_uff_energy(e, p),
+        );
+        
+        for i in 0..gradients_analytical.len() {
+            assert_relative_eq!(
+                gradients_analytical[i],
+                gradients_numerical[i],
+                epsilon = 1e-4,
+                max_relative = 1e-4
+            );
+        }
+    }
+
+    #[test]
+    fn test_uff_vs_reference_gradients() {
+        let refdata = load_reference("tests/data/ff_uff_ref.json");
+        let (elems, pos) = embed_molecule("CCO", 42);
+        
+        let grads = compute_uff_gradients(&elems, &pos);
+        let ref_grads = &refdata["CCO"]["gradients"];
+        
+        for i in 0..grads.len() {
+            assert_relative_eq!(
+                grads[i],
+                ref_grads[i],
+                epsilon = 0.001,
+                max_relative = 0.01
+            );
+        }
+    }
+
+    #[test]
+    fn test_mmff94_bond_parameters() {
+        let refdata = load_reference("tests/data/ff_uff_ref.json");
+        let (elems, pos) = ethane_molecule();
+        
+        // MMFF94 should have bond parameters: length and strength
+        let bond_terms = compute_mmff94_bond_terms(&elems, &pos);
+        
+        // For C-H bond in ethane: ~1.09 Å
+        let ch_bond = bond_terms.iter().find(|b| is_ch_bond(b)).unwrap();
+        assert!((ch_bond.length - 1.09).abs() < 0.01, "C-H bond length off");
+    }
+
+    #[test]
+    fn test_torsion_terms_benzene() {
+        let (elems, pos) = benzene_molecule();
+        
+        let torsion_terms = compute_uff_torsion_terms(&elems, &pos);
+        
+        // Benzene should have planar torsions (0° or 180°)
+        for torsion in torsion_terms {
+            let angle_mod = torsion.phi % 180.0;
+            assert!(
+                angle_mod.abs() < 5.0 || (angle_mod - 180.0).abs() < 5.0,
+                "Benzene should be planar"
+            );
+        }
+    }
+
+    #[test]
+    fn test_nonbonded_vdw_repulsion() {
+        let mut pos = vec![[0.0, 0.0, 0.0], [0.1, 0.0, 0.0]];  // Very close
+        let elems = vec![6, 6];  // Two carbons
+        
+        let energy_close = compute_uff_energy(&elems, &pos);
+        
+        // Move atoms farther apart
+        pos[1] = [3.5, 0.0, 0.0];  // vdW distance ~3.4 Å
+        let energy_far = compute_uff_energy(&elems, &pos);
+        
+        // Close configuration should have much higher energy (vdW repulsion)
+        assert!(
+            energy_close > energy_far * 10.0,
+            "vdW repulsion not working: {} vs {}",
+            energy_close,
+            energy_far
+        );
+    }
+}
+```
+
+---
+
+## Summary: All-Phase Validation Matrix
+
+| Phase | Reference Tool | What to Compare | Tolerance | Test Location |
+|-------|-----------------|-----------------|-----------|---|
+| A (Conformer) | RDKit ETKDG | Heavy-atom RMSD | 0.5 Å | `test_geometry_quality.rs` |
+| B (EHT) | PySCF/Multiwfn | S, H, E, \|C\| | 1e-4 | `test_eht.rs` |
+| C1 (Charges) | PySCF Gasteiger | Partial charges | 1e-4 | `tests/test_charges.rs` |
+| C1 (SASA) | Shrake-Rupley ref | SASA area | ±1 Ų | `tests/test_sasa.rs` |
+| C2 (Mulliken) | PySCF Mulliken | Pop. charges | 1e-4 | (Phase C2 candidate) |
+| C3 (Dipole) | ORCA/Gaussian | μ magnitude + direction | 0.05 D / 5° | (Phase C3 candidate) |
+| C4 (ESP) | Gaussian cubegen | .cube grid RMSE | <1e-4 | (Phase C4 candidate) |
+| C5 (DOS) | Multiwfn | DOS curve MSE | <0.01 | (Phase C5 candidate) |
+| C6 (RMSD) | RDKit AlignMol | Pairwise RMSD | <0.01 Å | (Phase C6 candidate) |
+| C7 (UFF) | OpenBabel/RDKit | Gradients | 1e-4 | (Phase C7 candidate) |
 
 The GitHub Actions release pipeline (`.github/workflows/release.yml`) runs the same gates
 automatically when a version tag (`v*`) is pushed:
