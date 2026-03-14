@@ -1,0 +1,81 @@
+<svg viewBox="0 0 720 440" xmlns="http://www.w3.org/2000/svg" style="max-width:680px;margin:2em auto;display:block;">
+  <defs>
+    <marker id="cellArrowX" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+    </marker>
+    <marker id="cellArrowY" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="cellArrowZ" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <g font-family="system-ui,sans-serif">
+    <!-- Title -->
+    <text x="360" y="30" text-anchor="middle" fill="#1e293b" font-size="16" font-weight="700">Crystallographic Unit Cell</text>
+
+    <!-- Unit cell 3D illustration -->
+    <g transform="translate(160, 200)">
+      <!-- Back face -->
+      <line x1="0" y1="0" x2="120" y2="-30" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="0" y1="0" x2="40" y2="-60" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="120" y1="-30" x2="160" y2="-90" stroke="#d1d5db" stroke-width="1"/>
+      <line x1="40" y1="-60" x2="160" y2="-90" stroke="#d1d5db" stroke-width="1"/>
+
+      <!-- Bottom face -->
+      <line x1="0" y1="0" x2="120" y2="-30" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="120" y1="-30" x2="120" y2="90" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="0" y1="0" x2="0" y2="120" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="0" y1="120" x2="120" y2="90" stroke="#94a3b8" stroke-width="1.5"/>
+
+      <!-- Top face -->
+      <line x1="40" y1="-60" x2="160" y2="-90" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="160" y1="-90" x2="160" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="40" y1="-60" x2="40" y2="60" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="40" y1="60" x2="160" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
+
+      <!-- Right face -->
+      <line x1="120" y1="90" x2="160" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
+      <line x1="0" y1="120" x2="40" y2="60" stroke="#94a3b8" stroke-width="1.5"/>
+
+      <!-- Lattice vectors from origin -->
+      <circle cx="0" cy="120" r="4" fill="#1e293b"/>
+      <line x1="0" y1="120" x2="115" y2="92" stroke="#dc2626" stroke-width="2.5" marker-end="url(#cellArrowX)"/>
+      <text x="65" y="118" fill="#dc2626" font-weight="700" font-size="13">a⃗</text>
+
+      <line x1="0" y1="120" x2="36" y2="64" stroke="#16a34a" stroke-width="2.5" marker-end="url(#cellArrowY)"/>
+      <text x="8" y="82" fill="#16a34a" font-weight="700" font-size="13">b⃗</text>
+
+      <line x1="0" y1="120" x2="0" y2="5" stroke="#2563eb" stroke-width="2.5" marker-end="url(#cellArrowZ)"/>
+      <text x="-18" y="60" fill="#2563eb" font-weight="700" font-size="13">c⃗</text>
+
+      <!-- Angle labels -->
+      <text x="55" y="138" fill="#d97706" font-size="10" font-weight="600">γ</text>
+      <text x="-12" y="105" fill="#d97706" font-size="10" font-weight="600">β</text>
+      <text x="72" y="80" fill="#d97706" font-size="10" font-weight="600">α</text>
+    </g>
+
+    <!-- Formulas -->
+    <rect x="370" y="55" width="330" height="200" rx="10" fill="#fef3c7" stroke="#fde68a" stroke-width="1"/>
+
+    <text x="390" y="82" fill="#92400e" font-weight="700" font-size="14">Cell Parameters</text>
+
+    <text x="390" y="108" fill="#1e293b" font-size="12" font-weight="600">Lattice parameters:</text>
+    <text x="390" y="128" fill="#64748b" font-size="12">a, b, c (lengths in Å)</text>
+    <text x="390" y="145" fill="#64748b" font-size="12">α, β, γ (angles in degrees)</text>
+
+    <text x="390" y="172" fill="#1e293b" font-size="12" font-weight="600">Volume:</text>
+    <text x="390" y="192" fill="#78350f" font-size="12" font-weight="600">V = a⃗ · (b⃗ × c⃗)</text>
+
+    <text x="390" y="218" fill="#1e293b" font-size="12" font-weight="600">Coordinate transform:</text>
+    <text x="390" y="238" fill="#78350f" font-size="12" font-weight="600">r⃗_cart = Mᵀ · f⃗_frac</text>
+    <text x="390" y="255" fill="#64748b" font-size="11">M rows = lattice vectors a⃗, b⃗, c⃗</text>
+
+    <!-- PBC section -->
+    <rect x="20" y="345" width="680" height="75" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1"/>
+    <text x="40" y="372" fill="#92400e" font-weight="700" font-size="13">Periodic Boundary Conditions (PBC)</text>
+    <text x="40" y="394" fill="#64748b" font-size="12">Wrap: f⃗_wrapped = f⃗ − floor(f⃗)  →  all fractional coords in [0, 1)</text>
+    <text x="40" y="412" fill="#64748b" font-size="12">Minimum image: Δf = Δf − round(Δf)  →  shortest distance under periodicity</text>
+  </g>
+</svg>
