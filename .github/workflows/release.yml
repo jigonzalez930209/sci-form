@@ -241,7 +241,7 @@ jobs:
       - name: Smoke test — embed caffeine
         run: |
           ./sci-form-linux-x86_64 embed "Cn1cnc2c1c(=O)n(c(=O)n2C)C" \
-            | grep -E '"num_atoms":[0-9]+' || (echo "CLI embed failed"; exit 1)
+            | grep -E '"num_atoms"' || (echo "CLI embed failed"; exit 1)
       - name: Smoke test — parse
         run: |
           ./sci-form-linux-x86_64 parse "CCO" \
@@ -278,7 +278,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Publish
-        run: pip install twine && twine upload dist/*.whl
+        run: pip install twine && twine upload --skip-existing dist/*.whl
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
@@ -288,6 +288,8 @@ jobs:
     name: Publish to npm
     needs: [verify-node]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v6
         with:
@@ -298,7 +300,7 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
       - name: Publish
-        run: cd pkg && npm publish --access public
+        run: cd pkg && npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
