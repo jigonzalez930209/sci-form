@@ -6,8 +6,10 @@ use std::collections::HashMap;
 use std::fs;
 
 fn calc_dihedral_f32(
-    p1: &nalgebra::Vector3<f32>, p2: &nalgebra::Vector3<f32>,
-    p3: &nalgebra::Vector3<f32>, p4: &nalgebra::Vector3<f32>,
+    p1: &nalgebra::Vector3<f32>,
+    p2: &nalgebra::Vector3<f32>,
+    p3: &nalgebra::Vector3<f32>,
+    p4: &nalgebra::Vector3<f32>,
 ) -> f32 {
     let b1 = p2 - p1;
     let b2 = p3 - p2;
@@ -16,13 +18,19 @@ fn calc_dihedral_f32(
     let n2 = b2.cross(&b3);
     let n1l = n1.norm();
     let n2l = n2.norm();
-    if n1l < 1e-6 || n2l < 1e-6 { return 0.0; }
+    if n1l < 1e-6 || n2l < 1e-6 {
+        return 0.0;
+    }
     let n1u = n1 / n1l;
     let n2u = n2 / n2l;
     let cos_d = n1u.dot(&n2u).clamp(-1.0, 1.0);
     let sign = n1u.dot(&b3);
     let angle = cos_d.acos();
-    if sign < 0.0 { -angle } else { angle }
+    if sign < 0.0 {
+        -angle
+    } else {
+        angle
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -71,7 +79,10 @@ fn test_new_pipeline() {
             Err(_) => HashMap::new(),
         }
     };
-    println!("Loaded CSD torsion params for {} molecules", csd_torsions.len());
+    println!(
+        "Loaded CSD torsion params for {} molecules",
+        csd_torsions.len()
+    );
 
     // Shuffle and pick 100 random molecules
     use rand::seq::SliceRandom;
@@ -110,7 +121,11 @@ fn test_new_pipeline() {
                 formal_charge: atom.formal_charge,
                 hybridization,
                 chiral_tag: sci_form::graph::ChiralType::Unspecified,
-                explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+                explicit_h: if atom.element == 1 || atom.element == 0 {
+                    1
+                } else {
+                    0
+                },
             };
             node_indices.push(our_mol.add_atom(new_atom));
         }
@@ -125,31 +140,42 @@ fn test_new_pipeline() {
             our_mol.add_bond(
                 node_indices[bond.start],
                 node_indices[bond.end],
-                sci_form::graph::Bond { order, stereo: sci_form::graph::BondStereo::None },
+                sci_form::graph::Bond {
+                    order,
+                    stereo: sci_form::graph::BondStereo::None,
+                },
             );
         }
 
         // Build CSD torsion contribs for this molecule (if available)
         let csd_contribs: Vec<sci_form::forcefield::etkdg_3d::M6TorsionContrib> =
             if let Some(torsions) = csd_torsions.get(&mol.smiles) {
-                torsions.iter().map(|t| {
-                    let mut signs = [0.0f64; 6];
-                    let mut v = [0.0f64; 6];
-                    for k in 0..6 {
-                        signs[k] = t.signs[k] as f64;
-                        v[k] = t.v[k] as f64;
-                    }
-                    sci_form::forcefield::etkdg_3d::M6TorsionContrib {
-                        i: t.atoms[0], j: t.atoms[1], k: t.atoms[2], l: t.atoms[3],
-                        signs, v,
-                    }
-                }).collect()
+                torsions
+                    .iter()
+                    .map(|t| {
+                        let mut signs = [0.0f64; 6];
+                        let mut v = [0.0f64; 6];
+                        for k in 0..6 {
+                            signs[k] = t.signs[k] as f64;
+                            v[k] = t.v[k] as f64;
+                        }
+                        sci_form::forcefield::etkdg_3d::M6TorsionContrib {
+                            i: t.atoms[0],
+                            j: t.atoms[1],
+                            k: t.atoms[2],
+                            l: t.atoms[3],
+                            signs,
+                            v,
+                        }
+                    })
+                    .collect()
             } else {
                 Vec::new()
             };
 
         // Call the new pipeline (single call — internally retries on failure)
-        match sci_form::conformer::generate_3d_conformer_with_torsions(&our_mol, 42, &csd_contribs) {
+        match sci_form::conformer::generate_3d_conformer_with_torsions(&our_mol, 42, &csd_contribs)
+        {
             Ok(coords) => {
                 // Compute pairwise distance RMSD vs reference
                 let mut sq_sum = 0.0f32;
@@ -168,17 +194,28 @@ fn test_new_pipeline() {
                         npairs += 1;
                     }
                 }
-                let rmsd = if npairs > 0 { (sq_sum / npairs as f32).sqrt() } else { 0.0 };
+                let rmsd = if npairs > 0 {
+                    (sq_sum / npairs as f32).sqrt()
+                } else {
+                    0.0
+                };
                 total_rmsd += rmsd;
-                if rmsd > max_rmsd { max_rmsd = rmsd; }
-                if rmsd > 0.5 { above_05 += 1; }
+                if rmsd > max_rmsd {
+                    max_rmsd = rmsd;
+                }
+                if rmsd > 0.5 {
+                    above_05 += 1;
+                }
                 let has_csd = csd_torsions.contains_key(&mol.smiles);
                 let tag = if rmsd > 0.5 { "***" } else { "   " };
                 println!(
                     "{} Mol {:3} ({:40}) RMSD: {:.3} Å  n={:2} csd={}",
-                    tag, count,
+                    tag,
+                    count,
                     &mol.smiles[..mol.smiles.len().min(40)],
-                    rmsd, n, has_csd,
+                    rmsd,
+                    n,
+                    has_csd,
                 );
                 // For worst molecules, show detailed diagnostics
                 if rmsd > 0.5 {
@@ -195,18 +232,53 @@ fn test_new_pipeline() {
                         for tc in &csd_contribs {
                             let (i, j, k, l) = (tc.i, tc.j, tc.k, tc.l);
                             // our dihedral
-                            let op1 = nalgebra::Vector3::new(coords[(i,0)], coords[(i,1)], coords[(i,2)]);
-                            let op2 = nalgebra::Vector3::new(coords[(j,0)], coords[(j,1)], coords[(j,2)]);
-                            let op3 = nalgebra::Vector3::new(coords[(k,0)], coords[(k,1)], coords[(k,2)]);
-                            let op4 = nalgebra::Vector3::new(coords[(l,0)], coords[(l,1)], coords[(l,2)]);
+                            let op1 = nalgebra::Vector3::new(
+                                coords[(i, 0)],
+                                coords[(i, 1)],
+                                coords[(i, 2)],
+                            );
+                            let op2 = nalgebra::Vector3::new(
+                                coords[(j, 0)],
+                                coords[(j, 1)],
+                                coords[(j, 2)],
+                            );
+                            let op3 = nalgebra::Vector3::new(
+                                coords[(k, 0)],
+                                coords[(k, 1)],
+                                coords[(k, 2)],
+                            );
+                            let op4 = nalgebra::Vector3::new(
+                                coords[(l, 0)],
+                                coords[(l, 1)],
+                                coords[(l, 2)],
+                            );
                             let our_a = calc_dihedral_f32(&op1, &op2, &op3, &op4);
                             // ref dihedral
-                            let rp1 = nalgebra::Vector3::new(ref_coords[(i,0)], ref_coords[(i,1)], ref_coords[(i,2)]);
-                            let rp2 = nalgebra::Vector3::new(ref_coords[(j,0)], ref_coords[(j,1)], ref_coords[(j,2)]);
-                            let rp3 = nalgebra::Vector3::new(ref_coords[(k,0)], ref_coords[(k,1)], ref_coords[(k,2)]);
-                            let rp4 = nalgebra::Vector3::new(ref_coords[(l,0)], ref_coords[(l,1)], ref_coords[(l,2)]);
+                            let rp1 = nalgebra::Vector3::new(
+                                ref_coords[(i, 0)],
+                                ref_coords[(i, 1)],
+                                ref_coords[(i, 2)],
+                            );
+                            let rp2 = nalgebra::Vector3::new(
+                                ref_coords[(j, 0)],
+                                ref_coords[(j, 1)],
+                                ref_coords[(j, 2)],
+                            );
+                            let rp3 = nalgebra::Vector3::new(
+                                ref_coords[(k, 0)],
+                                ref_coords[(k, 1)],
+                                ref_coords[(k, 2)],
+                            );
+                            let rp4 = nalgebra::Vector3::new(
+                                ref_coords[(l, 0)],
+                                ref_coords[(l, 1)],
+                                ref_coords[(l, 2)],
+                            );
                             let ref_a = calc_dihedral_f32(&rp1, &rp2, &rp3, &rp4);
-                            let diff = (our_a - ref_a).abs().min((our_a - ref_a + 2.0*std::f32::consts::PI).abs()).min((our_a - ref_a - 2.0*std::f32::consts::PI).abs());
+                            let diff = (our_a - ref_a)
+                                .abs()
+                                .min((our_a - ref_a + 2.0 * std::f32::consts::PI).abs())
+                                .min((our_a - ref_a - 2.0 * std::f32::consts::PI).abs());
                             if diff > 0.3 {
                                 println!("      TORSION ({},{},{},{}) ours={:.1}° ref={:.1}° diff={:.1}° v={:?} signs={:?}",
                                     i, j, k, l,
@@ -233,10 +305,24 @@ fn test_new_pipeline() {
 
     let elapsed = start_time.elapsed();
     let success_count = count - failures;
-    let avg_rmsd = if success_count > 0 { total_rmsd / success_count as f32 } else { 0.0 };
+    let avg_rmsd = if success_count > 0 {
+        total_rmsd / success_count as f32
+    } else {
+        0.0
+    };
 
     println!("\n=== NEW PIPELINE TEST RESULTS ===");
-    println!("Molecules: {}, Successes: {}, Failures: {}", count, success_count, failures);
-    println!("Avg RMSD: {:.3} Å, Max RMSD: {:.3} Å, Above 0.5: {}", avg_rmsd, max_rmsd, above_05);
-    println!("Time: {:.2}s ({:.1} ms/mol)", elapsed.as_secs_f64(), elapsed.as_secs_f64() * 1000.0 / count as f64);
+    println!(
+        "Molecules: {}, Successes: {}, Failures: {}",
+        count, success_count, failures
+    );
+    println!(
+        "Avg RMSD: {:.3} Å, Max RMSD: {:.3} Å, Above 0.5: {}",
+        avg_rmsd, max_rmsd, above_05
+    );
+    println!(
+        "Time: {:.2}s ({:.1} ms/mol)",
+        elapsed.as_secs_f64(),
+        elapsed.as_secs_f64() * 1000.0 / count as f64
+    );
 }

@@ -113,13 +113,50 @@ fn build_csd_torsions(
 #[test]
 fn test_gradient_finite_diff() {
     let fixture = "tests/fixtures/gdb20_reference.json";
-    if !std::path::Path::new(fixture).exists() {
-        eprintln!("SKIP {fixture}: run scripts/generate_gdb20_reference.py to generate it");
+    let path = std::path::Path::new(fixture);
+    if !path.exists() {
+        eprintln!(
+            "SKIP {fixture}: file not found (generate with scripts/generate_gdb20_reference.py)"
+        );
         return;
     }
-    let ref_data = fs::read_to_string(fixture).expect("Failed to read gdb20_reference.json");
-    let mut ref_mols: Vec<RefMolecule> =
-        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference.json");
+
+    // Check if file is too small (likely a Git LFS pointer, not actual data)
+    let metadata = match fs::metadata(fixture) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("SKIP {fixture}: cannot read metadata: {e}");
+            return;
+        }
+    };
+    if metadata.len() < 1000 {
+        eprintln!(
+            "SKIP {fixture}: file too small ({} bytes), likely Git LFS pointer. \
+             Ensure Git LFS is installed and run 'git lfs pull'",
+            metadata.len()
+        );
+        return;
+    }
+
+    let ref_data = match fs::read_to_string(fixture) {
+        Ok(data) => data,
+        Err(e) => {
+            eprintln!("SKIP {fixture}: cannot read file: {e}");
+            return;
+        }
+    };
+
+    let mut ref_mols: Vec<RefMolecule> = match serde_json::from_str(&ref_data) {
+        Ok(mols) => mols,
+        Err(e) => {
+            eprintln!("SKIP {fixture}: JSON parsing failed: {e}");
+            eprintln!(
+                "  First 200 chars: {}",
+                &ref_data[..ref_data.len().min(200)]
+            );
+            return;
+        }
+    };
 
     // Sort by heaviest molecules first (most atoms) for a representative sample
     ref_mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));

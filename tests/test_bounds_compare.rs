@@ -1,6 +1,6 @@
+use serde::Deserialize;
 /// Diagnostic test: dump bounds matrix and compare with RDKit
 use std::fs;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct RefAtom {
@@ -55,7 +55,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -106,12 +110,15 @@ fn compare_bounds(ref_mol: &RefMolecule, rdkit_file: &str) {
     let mut max_upper_pair = (0, 0);
     let mut max_lower_pair = (0, 0);
 
-    eprintln!("\n=== BOUNDS MATRIX COMPARISON (mol 0: {}) ===", ref_mol.smiles);
+    eprintln!(
+        "\n=== BOUNDS MATRIX COMPARISON (mol 0: {}) ===",
+        ref_mol.smiles
+    );
     eprintln!("n_atoms = {}", n);
     eprintln!();
 
     for i in 0..n {
-        for j in (i+1)..n {
+        for j in (i + 1)..n {
             let our_upper = bounds[(i, j)];
             let our_lower = bounds[(j, i)];
             let rdk_upper = rdkit_upper[i][j];
@@ -145,14 +152,24 @@ fn compare_bounds(ref_mol: &RefMolecule, rdkit_file: &str) {
 
     eprintln!();
     eprintln!("Total pairs with diff > 0.001: {}", total_diffs);
-    eprintln!("Max upper diff: {:.6} at [{},{}]", max_upper_diff, max_upper_pair.0, max_upper_pair.1);
-    eprintln!("Max lower diff: {:.6} at [{},{}]", max_lower_diff, max_lower_pair.0, max_lower_pair.1);
+    eprintln!(
+        "Max upper diff: {:.6} at [{},{}]",
+        max_upper_diff, max_upper_pair.0, max_upper_pair.1
+    );
+    eprintln!(
+        "Max lower diff: {:.6} at [{},{}]",
+        max_lower_diff, max_lower_pair.0, max_lower_pair.1
+    );
 
     // Also dump specific 1-2 bounds for comparison
     eprintln!();
     eprintln!("=== 1-2 bonds (ours vs RDKit) ===");
     for bond in &ref_mol.bonds {
-        let (i, j) = if bond.start < bond.end { (bond.start, bond.end) } else { (bond.end, bond.start) };
+        let (i, j) = if bond.start < bond.end {
+            (bond.start, bond.end)
+        } else {
+            (bond.end, bond.start)
+        };
         let our_upper = bounds[(i, j)];
         let our_lower = bounds[(j, i)];
         let rdk_upper = rdkit_upper[i][j];
@@ -185,7 +202,9 @@ fn test_compare_bounds_fail1() {
     let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
     let target = "C#CC1C(C(O)(CC)CN)CCCC(O)C12CCCO2";
-    let ref_mol = ref_mols.iter().find(|m| m.smiles == target)
+    let ref_mol = ref_mols
+        .iter()
+        .find(|m| m.smiles == target)
         .unwrap_or_else(|| panic!("SMILES '{}' not found in gdb20_reference.json", target));
     compare_bounds(ref_mol, "/tmp/rdkit_bounds_fail1.json");
 }

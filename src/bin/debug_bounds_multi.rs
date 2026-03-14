@@ -1,6 +1,6 @@
-use sci_form::smiles::SmilesParser;
-use sci_form::graph::Molecule;
 use sci_form::distgeom::bounds::calculate_bounds_matrix;
+use sci_form::graph::Molecule;
+use sci_form::smiles::SmilesParser;
 
 fn main() {
     let smiles_list = vec![

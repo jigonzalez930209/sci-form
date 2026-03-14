@@ -54,7 +54,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -68,7 +72,10 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
         mol.add_bond(
             node_indices[bond.start],
             node_indices[bond.end],
-            sci_form::graph::Bond { order, stereo: sci_form::graph::BondStereo::None },
+            sci_form::graph::Bond {
+                order,
+                stereo: sci_form::graph::BondStereo::None,
+            },
         );
     }
     mol
@@ -80,7 +87,9 @@ fn build_csd_torsions(
     ref_torsions
         .iter()
         .filter_map(|t| {
-            if t.atoms.len() < 4 || t.v.len() < 6 || t.signs.len() < 6 { return None; }
+            if t.atoms.len() < 4 || t.v.len() < 6 || t.signs.len() < 6 {
+                return None;
+            }
             let mut signs = [0.0f64; 6];
             let mut v = [0.0f64; 6];
             for k in 0..6 {
@@ -88,7 +97,12 @@ fn build_csd_torsions(
                 v[k] = t.v[k] as f64;
             }
             Some(sci_form::forcefield::etkdg_3d::M6TorsionContrib {
-                i: t.atoms[0], j: t.atoms[1], k: t.atoms[2], l: t.atoms[3], signs, v,
+                i: t.atoms[0],
+                j: t.atoms[1],
+                k: t.atoms[2],
+                l: t.atoms[3],
+                signs,
+                v,
             })
         })
         .collect()
@@ -112,7 +126,8 @@ fn test_diagnose_failures() {
     for ref_mol in ref_mols {
         let mol = build_mol_from_ref(ref_mol);
         let csd_torsions = build_csd_torsions(&ref_mol.torsions);
-        let result = sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
+        let result =
+            sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
 
         let coords = match result {
             Ok(c) => c,
@@ -142,14 +157,21 @@ fn test_diagnose_failures() {
             0.0
         };
 
-        if rmsd < 0.5 { continue; }
-        if cases_analyzed >= 5 { break; }
+        if rmsd < 0.5 {
+            continue;
+        }
+        if cases_analyzed >= 5 {
+            break;
+        }
         cases_analyzed += 1;
 
         println!("\n--- {} (RMSD={:.3}) ---", ref_mol.smiles, rmsd);
-        println!("  Heavy atoms: {}", ref_mol.atoms.iter().filter(|a| a.element != 1).count());
+        println!(
+            "  Heavy atoms: {}",
+            ref_mol.atoms.iter().filter(|a| a.element != 1).count()
+        );
         println!("  CSD torsions: {}", ref_mol.torsions.len());
-        
+
         // Find top 10 atom pairs with largest distance differences
         let mut pair_diffs: Vec<(usize, usize, f64, f64, f64)> = Vec::new();
         for a in 0..n {
@@ -180,10 +202,16 @@ fn test_diagnose_failures() {
         }
 
         // Count how many pairs involve heavy atoms only
-        let heavy_only: Vec<_> = pair_diffs.iter()
-            .filter(|&&(a, b, _, _, _)| ref_mol.atoms[a].element != 1 && ref_mol.atoms[b].element != 1)
+        let heavy_only: Vec<_> = pair_diffs
+            .iter()
+            .filter(|&&(a, b, _, _, _)| {
+                ref_mol.atoms[a].element != 1 && ref_mol.atoms[b].element != 1
+            })
             .collect();
-        let heavy_sq_sum: f64 = heavy_only.iter().map(|&&(_, _, dr, du, _)| (dr - du).powi(2)).sum();
+        let heavy_sq_sum: f64 = heavy_only
+            .iter()
+            .map(|&&(_, _, dr, du, _)| (dr - du).powi(2))
+            .sum();
         let heavy_rmsd = (heavy_sq_sum / heavy_only.len() as f64).sqrt();
         println!("  Heavy-only RMSD: {:.3}", heavy_rmsd);
 
@@ -198,7 +226,16 @@ fn test_diagnose_failures() {
             atom_count[b] += 1;
         }
         let mut avg_err: Vec<(usize, f64)> = (0..n)
-            .map(|i| (i, if atom_count[i] > 0 { atom_error[i] / atom_count[i] as f64 } else { 0.0 }))
+            .map(|i| {
+                (
+                    i,
+                    if atom_count[i] > 0 {
+                        atom_error[i] / atom_count[i] as f64
+                    } else {
+                        0.0
+                    },
+                )
+            })
             .collect();
         avg_err.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 

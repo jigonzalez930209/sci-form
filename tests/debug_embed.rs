@@ -1,7 +1,7 @@
+use petgraph::visit::EdgeRef;
 use rand::SeedableRng;
 use serde::Deserialize;
 use std::fs;
-use petgraph::visit::EdgeRef;
 
 #[derive(Deserialize, Debug)]
 struct OracleAtom {
@@ -46,7 +46,11 @@ fn build_mol(mol: &OracleMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(our_mol.add_atom(new_atom));
     }
@@ -57,8 +61,14 @@ fn build_mol(mol: &OracleMolecule) -> sci_form::graph::Molecule {
             "AROMATIC" => sci_form::graph::BondOrder::Aromatic,
             _ => sci_form::graph::BondOrder::Single,
         };
-        our_mol.add_bond(node_indices[bond.start], node_indices[bond.end],
-            sci_form::graph::Bond { order, stereo: sci_form::graph::BondStereo::None });
+        our_mol.add_bond(
+            node_indices[bond.start],
+            node_indices[bond.end],
+            sci_form::graph::Bond {
+                order,
+                stereo: sci_form::graph::BondStereo::None,
+            },
+        );
     }
     our_mol
 }
@@ -85,7 +95,8 @@ fn debug_embedding_failures() {
         for edge in our_mol.graph.edge_references() {
             let i = edge.source().index();
             let j = edge.target().index();
-            let our_bl = sci_form::distgeom::get_bond_length(&our_mol, edge.source(), edge.target()) as f32;
+            let our_bl =
+                sci_form::distgeom::get_bond_length(&our_mol, edge.source(), edge.target()) as f32;
             let dx = mol.atoms[i].x - mol.atoms[j].x;
             let dy = mol.atoms[i].y - mol.atoms[j].y;
             let dz = mol.atoms[i].z - mol.atoms[j].z;
@@ -103,7 +114,10 @@ fn debug_embedding_failures() {
 
     println!("=== TOP 20 BOND LENGTH ERRORS ===");
     for (our, rdkit, diff, e1, e2, order) in bond_errors.iter().take(20) {
-        println!("  ({:2},{:2}) {} : ours={:.3} rdkit={:.3} diff={:.3}", e1, e2, order, our, rdkit, diff);
+        println!(
+            "  ({:2},{:2}) {} : ours={:.3} rdkit={:.3} diff={:.3}",
+            e1, e2, order, our, rdkit, diff
+        );
     }
 
     // Group by element pair and bond order, compute average error
@@ -123,6 +137,12 @@ fn debug_embedding_failures() {
     for (key, errs) in &groups {
         let avg = errs.iter().sum::<f32>() / errs.len() as f32;
         let max = errs.iter().cloned().fold(0.0f32, f32::max);
-        println!("  {:25} count={:3} avg_err={:.4} max_err={:.4}", key, errs.len(), avg, max);
+        println!(
+            "  {:25} count={:3} avg_err={:.4} max_err={:.4}",
+            key,
+            errs.len(),
+            avg,
+            max
+        );
     }
 }
