@@ -6,7 +6,7 @@
 fn test_methane_charges_neutral() {
     let result = sci_form::compute_charges("C").expect("methane should succeed");
     // CH4: 5 atoms (C + 4 implicit H → explicit after parsing)
-    assert!(result.charges.len() >= 1, "should have at least 1 atom");
+    assert!(!result.charges.is_empty(), "should have at least 1 atom");
     // Total charge should be near zero
     assert!(
         result.total_charge.abs() < 1e-6,
