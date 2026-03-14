@@ -88,18 +88,18 @@ fn count_valence_electrons(elements: &[u8]) -> usize {
     elements
         .iter()
         .map(|&z| match z {
-            1 => 1,      // H
-            5 => 3,      // B
-            6 => 4,      // C
-            7 => 5,      // N
-            8 => 6,      // O
-            9 => 7,      // F
-            14 => 4,     // Si
-            15 => 5,     // P
-            16 => 6,     // S
-            17 => 7,     // Cl
-            35 => 7,     // Br
-            53 => 7,     // I
+            1 => 1,  // H
+            5 => 3,  // B
+            6 => 4,  // C
+            7 => 5,  // N
+            8 => 6,  // O
+            9 => 7,  // F
+            14 => 4, // Si
+            15 => 5, // P
+            16 => 6, // S
+            17 => 7, // Cl
+            35 => 7, // Br
+            53 => 7, // I
             _ => 0,
         })
         .sum()
@@ -191,7 +191,10 @@ mod tests {
             assert!(
                 result.energies[i] >= result.energies[i - 1],
                 "Energies not sorted: E[{}]={} < E[{}]={}",
-                i, result.energies[i], i - 1, result.energies[i - 1]
+                i,
+                result.energies[i],
+                i - 1,
+                result.energies[i - 1]
             );
         }
     }
@@ -208,11 +211,7 @@ mod tests {
     #[test]
     fn test_h2o_six_orbitals() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let result = solve_eht(&elements, &positions, None).unwrap();
         // O(2s,2px,2py,2pz) + 2×H(1s) = 6 basis functions
         assert_eq!(result.energies.len(), 6);
@@ -225,28 +224,24 @@ mod tests {
     #[test]
     fn test_h2o_gap_positive() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let result = solve_eht(&elements, &positions, None).unwrap();
-        assert!(result.gap > 0.0, "H2O HOMO-LUMO gap = {} should be > 0", result.gap);
+        assert!(
+            result.gap > 0.0,
+            "H2O HOMO-LUMO gap = {} should be > 0",
+            result.gap
+        );
     }
 
     #[test]
     fn test_lowdin_preserves_orthogonality() {
         // After Löwdin: C^T S C should be identity
         use super::super::basis::build_basis;
-        use super::super::overlap::build_overlap_matrix;
         use super::super::hamiltonian::build_hamiltonian;
+        use super::super::overlap::build_overlap_matrix;
 
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let basis = build_basis(&elements, &positions);
         let s = build_overlap_matrix(&basis);
         let h = build_hamiltonian(&basis, &s, None);
@@ -261,7 +256,10 @@ mod tests {
                 assert!(
                     (ct_s_c[(i, j)] - expected).abs() < 1e-8,
                     "C^T S C[{},{}] = {}, expected {}",
-                    i, j, ct_s_c[(i, j)], expected,
+                    i,
+                    j,
+                    ct_s_c[(i, j)],
+                    expected,
                 );
             }
         }
@@ -276,9 +274,9 @@ mod tests {
 
     #[test]
     fn test_valence_electron_count() {
-        assert_eq!(count_valence_electrons(&[1, 1]), 2);        // H2
-        assert_eq!(count_valence_electrons(&[8, 1, 1]), 8);     // H2O
+        assert_eq!(count_valence_electrons(&[1, 1]), 2); // H2
+        assert_eq!(count_valence_electrons(&[8, 1, 1]), 8); // H2O
         assert_eq!(count_valence_electrons(&[6, 1, 1, 1, 1]), 8); // CH4
-        assert_eq!(count_valence_electrons(&[7, 1, 1, 1]), 8);  // NH3
+        assert_eq!(count_valence_electrons(&[7, 1, 1, 1]), 8); // NH3
     }
 }
