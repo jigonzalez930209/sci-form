@@ -49,12 +49,7 @@ impl CoordinationGeometry {
             }
             CoordinationGeometry::Tetrahedral => {
                 let c = 1.0 / (3.0f64).sqrt();
-                vec![
-                    [c, c, c],
-                    [c, -c, -c],
-                    [-c, c, -c],
-                    [-c, -c, c],
-                ]
+                vec![[c, c, c], [c, -c, -c], [-c, c, -c], [-c, -c, c]]
             }
             CoordinationGeometry::SquarePlanar => {
                 vec![
@@ -156,11 +151,7 @@ impl Sbu {
     /// `element`: atomic number of the metal center
     /// `bond_length`: metal–connection distance (Å)
     /// `geometry`: desired coordination geometry
-    pub fn metal_node(
-        element: u8,
-        bond_length: f64,
-        geometry: CoordinationGeometry,
-    ) -> Self {
+    pub fn metal_node(element: u8, bond_length: f64, geometry: CoordinationGeometry) -> Self {
         let mut sbu = Self::new("metal_node");
         sbu.add_atom(element, [0.0, 0.0, 0.0]);
         sbu.geometry = Some(geometry);
@@ -180,11 +171,7 @@ impl Sbu {
     /// Create a linear linker SBU between two connection points.
     ///
     /// Places atoms along the x-axis with connection points at each end.
-    pub fn linear_linker(
-        elements: &[u8],
-        spacing: f64,
-        kind: &str,
-    ) -> Self {
+    pub fn linear_linker(elements: &[u8], spacing: f64, kind: &str) -> Self {
         let mut sbu = Self::new("linear_linker");
         let n = elements.len();
         let total_len = (n - 1) as f64 * spacing;
@@ -234,7 +221,10 @@ mod tests {
         sbu.add_connection([0.0, 0.0, 0.0], [3.0, 4.0, 0.0], "test");
         let dir = sbu.connections[0].direction;
         let mag = (dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]).sqrt();
-        assert!((mag - 1.0).abs() < 1e-10, "Direction should be unit vector, got mag={mag:.6}");
+        assert!(
+            (mag - 1.0).abs() < 1e-10,
+            "Direction should be unit vector, got mag={mag:.6}"
+        );
     }
 
     #[test]
