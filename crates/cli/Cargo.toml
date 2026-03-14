@@ -2,7 +2,12 @@
 name = "sci-form-cli"
 version = "0.1.0"
 edition = "2021"
-description = "CLI tool for sci-form 3D conformer generation"
+description = "CLI tool for high-performance 3D molecular conformer generation"
+license = "MIT"
+repository = "https://github.com/sci-form/sci-form"
+readme = "../../README.md"
+keywords = ["chemistry", "conformer", "cli"]
+categories = ["command-line-utilities", "science"]
 
 [[bin]]
 name = "sci-form"

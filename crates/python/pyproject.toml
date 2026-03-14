@@ -5,9 +5,24 @@ build-backend = "maturin"
 [project]
 name = "sci-form"
 version = "0.1.0"
-description = "High-performance 3D molecular conformer generation"
+description = "High-performance 3D molecular conformer generation — Python bindings"
 requires-python = ">=3.8"
 license = {text = "MIT"}
+readme = "../../README.md"
+keywords = ["chemistry", "conformer", "3d", "molecule", "rdkit", "etkdg"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+
+[project.urls]
+Homepage = "https://sci-form.dev"
+Repository = "https://github.com/sci-form/sci-form"
+Documentation = "https://sci-form.dev/python"
 
 [tool.maturin]
 manifest-path = "Cargo.toml"
