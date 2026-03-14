@@ -1,0 +1,52 @@
+<svg viewBox="0 0 620 320" xmlns="http://www.w3.org/2000/svg" style="max-width:600px;margin:2em auto;display:block;">
+  <g font-family="system-ui,sans-serif">
+    <!-- Matrix grid -->
+    <rect x="100" y="40" width="250" height="250" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+
+    <!-- Upper triangle fill -->
+    <path d="M 100 40 L 350 40 L 350 290 Z" fill="#dbeafe" opacity="0.4"/>
+
+    <!-- Lower triangle fill -->
+    <path d="M 100 40 L 100 290 L 350 290 Z" fill="#d1fae5" opacity="0.4"/>
+
+    <!-- Grid lines -->
+    <line x1="150" y1="40" x2="150" y2="290" stroke="#e2e8f0" stroke-width="0.5"/>
+    <line x1="200" y1="40" x2="200" y2="290" stroke="#e2e8f0" stroke-width="0.5"/>
+    <line x1="250" y1="40" x2="250" y2="290" stroke="#e2e8f0" stroke-width="0.5"/>
+    <line x1="300" y1="40" x2="300" y2="290" stroke="#e2e8f0" stroke-width="0.5"/>
+    <line x1="100" y1="90" x2="350" y2="90" stroke="#e2e8f0" stroke-width="0.5"/>
+    <line x1="100" y1="140" x2="350" y2="140" stroke="#e2e8f0" stroke-width="0.5"/>
+    <line x1="100" y1="190" x2="350" y2="190" stroke="#e2e8f0" stroke-width="0.5"/>
+    <line x1="100" y1="240" x2="350" y2="240" stroke="#e2e8f0" stroke-width="0.5"/>
+
+    <!-- Diagonal -->
+    <line x1="100" y1="40" x2="350" y2="290" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+    <!-- Upper label -->
+    <text x="270" y="120" text-anchor="middle" fill="#2563eb" font-weight="700" font-size="16">u_ij</text>
+    <text x="270" y="140" text-anchor="middle" fill="#2563eb" font-size="11">upper bounds</text>
+
+    <!-- Lower label -->
+    <text x="170" y="220" text-anchor="middle" fill="#10b981" font-weight="700" font-size="16">l_ij</text>
+    <text x="170" y="240" text-anchor="middle" fill="#10b981" font-size="11">lower bounds</text>
+
+    <!-- Row/col headers -->
+    <text x="125" y="33" text-anchor="middle" fill="#64748b" font-size="11">0</text>
+    <text x="175" y="33" text-anchor="middle" fill="#64748b" font-size="11">1</text>
+    <text x="225" y="33" text-anchor="middle" fill="#64748b" font-size="11">2</text>
+    <text x="275" y="33" text-anchor="middle" fill="#64748b" font-size="11">3</text>
+    <text x="325" y="33" text-anchor="middle" fill="#64748b" font-size="11">4</text>
+
+    <text x="93" y="70" text-anchor="end" fill="#64748b" font-size="11">0</text>
+    <text x="93" y="120" text-anchor="end" fill="#64748b" font-size="11">1</text>
+    <text x="93" y="170" text-anchor="end" fill="#64748b" font-size="11">2</text>
+    <text x="93" y="220" text-anchor="end" fill="#64748b" font-size="11">3</text>
+    <text x="93" y="270" text-anchor="end" fill="#64748b" font-size="11">4</text>
+
+    <!-- Legend -->
+    <rect x="380" y="80" width="12" height="12" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+    <text x="398" y="91" fill="#334155" font-size="11">Upper bound (max distance)</text>
+    <rect x="380" y="105" width="12" height="12" fill="#d1fae5" stroke="#10b981" stroke-width="1"/>
+    <text x="398" y="116" fill="#334155" font-size="11">Lower bound (min distance)</text>
+  </g>
+</svg>

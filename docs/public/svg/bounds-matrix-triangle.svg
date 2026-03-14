@@ -1,0 +1,27 @@
+<svg viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg" style="max-width:460px;margin:2em auto;display:block;">
+  <g font-family="system-ui,sans-serif">
+    <!-- Triangle -->
+    <line x1="80" y1="150" x2="250" y2="50" stroke="#2563eb" stroke-width="2"/>
+    <line x1="250" y1="50" x2="420" y2="150" stroke="#2563eb" stroke-width="2"/>
+    <line x1="80" y1="150" x2="420" y2="150" stroke="#10b981" stroke-width="2" stroke-dasharray="6 3"/>
+
+    <!-- Atoms -->
+    <circle cx="80" cy="150" r="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="80" y="155" text-anchor="middle" fill="#2563eb" font-weight="bold" font-size="14">A</text>
+
+    <circle cx="250" cy="50" r="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="250" y="55" text-anchor="middle" fill="#2563eb" font-weight="bold" font-size="14">B</text>
+
+    <circle cx="420" cy="150" r="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="420" y="155" text-anchor="middle" fill="#2563eb" font-weight="bold" font-size="14">C</text>
+
+    <!-- Labels -->
+    <text x="150" y="85" text-anchor="middle" fill="#2563eb" font-size="13" font-weight="600">d₁</text>
+    <text x="350" y="85" text-anchor="middle" fill="#2563eb" font-size="13" font-weight="600">d₂</text>
+    <text x="250" y="175" text-anchor="middle" fill="#10b981" font-size="13" font-weight="600">d₁₃ = ?</text>
+
+    <!-- Angle arc -->
+    <path d="M 220 70 A 30 30 0 0 1 280 70" fill="none" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="250" y="95" text-anchor="middle" fill="#ca8a04" font-weight="600" font-size="12">θ</text>
+  </g>
+</svg>

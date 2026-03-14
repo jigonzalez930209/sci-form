@@ -1,0 +1,49 @@
+<svg viewBox="0 0 650 200" xmlns="http://www.w3.org/2000/svg" style="max-width:620px;margin:2em auto;display:block;">
+  <defs>
+    <marker id="earr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <g font-family="system-ui,sans-serif" font-size="12">
+    <!-- Metric Matrix T -->
+    <rect x="10" y="30" width="100" height="100" rx="4" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="60" y="23" text-anchor="middle" fill="#1e3a5f" font-weight="700">T (N×N)</text>
+    <text x="60" y="80" text-anchor="middle" fill="#2563eb" font-size="20">T</text>
+    <text x="60" y="148" text-anchor="middle" fill="#64748b" font-size="10">Gram matrix</text>
+
+    <!-- = -->
+    <text x="130" y="85" text-anchor="middle" fill="#64748b" font-size="20">=</text>
+
+    <!-- V -->
+    <rect x="150" y="30" width="60" height="100" rx="4" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
+    <text x="180" y="23" text-anchor="middle" fill="#14532d" font-weight="700">V</text>
+    <text x="180" y="85" text-anchor="middle" fill="#10b981" font-size="16">V</text>
+
+    <!-- Lambda -->
+    <rect x="220" y="30" width="100" height="100" rx="4" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="270" y="23" text-anchor="middle" fill="#713f12" font-weight="700">Λ</text>
+    <text x="245" y="58" fill="#ca8a04" font-size="11" font-weight="bold">λ₁</text>
+    <text x="262" y="76" fill="#ca8a04" font-size="11" font-weight="bold">λ₂</text>
+    <text x="280" y="94" fill="#ca8a04" font-size="11" font-weight="bold">λ₃</text>
+    <text x="298" y="112" fill="#94a3b8" font-size="11">0</text>
+    <text x="270" y="148" text-anchor="middle" fill="#64748b" font-size="10">Top 3 (or 4) eigenvalues</text>
+
+    <!-- V^T -->
+    <rect x="330" y="30" width="60" height="100" rx="4" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
+    <text x="360" y="23" text-anchor="middle" fill="#14532d" font-weight="700">Vᵀ</text>
+    <text x="360" y="85" text-anchor="middle" fill="#10b981" font-size="16">Vᵀ</text>
+
+    <!-- Arrow -->
+    <line x1="405" y1="80" x2="440" y2="80" stroke="#2563eb" stroke-width="1.5" marker-end="url(#earr)"/>
+
+    <!-- Result coords -->
+    <rect x="450" y="30" width="80" height="100" rx="4" fill="#f0fdf4" stroke="#10b981" stroke-width="2"/>
+    <text x="490" y="23" text-anchor="middle" fill="#14532d" font-weight="700">X (N×d)</text>
+    <text x="490" y="75" text-anchor="middle" fill="#10b981" font-size="11">xᵢₖ = √λₖ · vᵢₖ</text>
+    <text x="490" y="95" text-anchor="middle" fill="#64748b" font-size="10">d = 3 or 4</text>
+    <text x="490" y="148" text-anchor="middle" fill="#64748b" font-size="10">Atom coordinates</text>
+
+    <!-- Formula below -->
+    <text x="550" y="180" text-anchor="end" fill="#64748b" font-size="10" font-style="italic">Power iteration extracts top d eigenpairs</text>
+  </g>
+</svg>

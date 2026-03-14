@@ -1,0 +1,49 @@
+<svg viewBox="0 0 450 280" xmlns="http://www.w3.org/2000/svg" style="max-width:420px;margin:2em auto;display:block;">
+  <g font-family="system-ui,sans-serif">
+    <!-- Good tetrahedron (left) -->
+    <text x="115" y="20" text-anchor="middle" fill="#14532d" font-weight="700" font-size="13">✓ Valid</text>
+
+    <!-- Center -->
+    <circle cx="115" cy="130" r="8" fill="#10b981"/>
+    <text x="115" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="bold">C</text>
+
+    <!-- Four neighbors forming tetrahedron -->
+    <circle cx="60" cy="70" r="6" fill="#2563eb"/>
+    <circle cx="170" cy="70" r="6" fill="#2563eb"/>
+    <circle cx="70" cy="200" r="6" fill="#2563eb"/>
+    <circle cx="160" cy="190" r="6" fill="#2563eb"/>
+
+    <line x1="115" y1="122" x2="60" y2="76" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="115" y1="122" x2="170" y2="76" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="115" y1="138" x2="70" y2="194" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="115" y1="138" x2="160" y2="184" stroke="#2563eb" stroke-width="1.5"/>
+
+    <!-- Tetrahedron edges -->
+    <line x1="60" y1="70" x2="170" y2="70" stroke="#94a3b8" stroke-width="0.5" stroke-dasharray="3 2"/>
+    <line x1="60" y1="70" x2="70" y2="200" stroke="#94a3b8" stroke-width="0.5" stroke-dasharray="3 2"/>
+    <line x1="170" y1="70" x2="160" y2="190" stroke="#94a3b8" stroke-width="0.5" stroke-dasharray="3 2"/>
+    <line x1="70" y1="200" x2="160" y2="190" stroke="#94a3b8" stroke-width="0.5" stroke-dasharray="3 2"/>
+
+    <text x="115" y="240" text-anchor="middle" fill="#10b981" font-size="11">Volume ≫ 0.50</text>
+    <text x="115" y="255" text-anchor="middle" fill="#64748b" font-size="10">Center inside tetrahedron</text>
+
+    <!-- Bad (flat) arrangement (right) -->
+    <text x="340" y="20" text-anchor="middle" fill="#991b1b" font-weight="700" font-size="13">✗ Invalid</text>
+
+    <circle cx="340" cy="130" r="8" fill="#ef4444"/>
+    <text x="340" y="134" text-anchor="middle" fill="white" font-size="9" font-weight="bold">C</text>
+
+    <circle cx="270" cy="120" r="6" fill="#94a3b8"/>
+    <circle cx="410" cy="120" r="6" fill="#94a3b8"/>
+    <circle cx="310" cy="145" r="6" fill="#94a3b8"/>
+    <circle cx="370" cy="140" r="6" fill="#94a3b8"/>
+
+    <line x1="340" y1="130" x2="276" y2="120" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="340" y1="130" x2="404" y2="120" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="340" y1="130" x2="316" y2="145" stroke="#94a3b8" stroke-width="1.5"/>
+    <line x1="340" y1="130" x2="364" y2="140" stroke="#94a3b8" stroke-width="1.5"/>
+
+    <text x="340" y="240" text-anchor="middle" fill="#ef4444" font-size="11">Volume ≈ 0</text>
+    <text x="340" y="255" text-anchor="middle" fill="#64748b" font-size="10">Nearly coplanar → reject</text>
+  </g>
+</svg>

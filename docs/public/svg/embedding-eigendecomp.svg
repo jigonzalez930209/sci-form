@@ -1,0 +1,59 @@
+<svg viewBox="0 0 600 340" xmlns="http://www.w3.org/2000/svg" style="max-width:570px;margin:2em auto;display:block;">
+  <defs>
+    <marker id="farr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <g font-family="system-ui,sans-serif" font-size="12">
+    <!-- Step 1: Bounds -->
+    <rect x="10" y="10" width="170" height="120" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="95" y="30" text-anchor="middle" fill="#1e3a5f" font-weight="700" font-size="11">1. Bounds [l, u]</text>
+    <text x="20" y="50" fill="#334155" font-size="10" font-family="monospace">d₀₁ ∈ [1.50, 1.52]</text>
+    <text x="20" y="65" fill="#334155" font-size="10" font-family="monospace">d₀₂ ∈ [2.41, 2.49]</text>
+    <text x="20" y="80" fill="#334155" font-size="10" font-family="monospace">d₀₃ ∈ [2.90, 3.82]</text>
+    <text x="20" y="95" fill="#334155" font-size="10" font-family="monospace">d₁₂ ∈ [1.50, 1.52]</text>
+    <text x="20" y="110" fill="#334155" font-size="10" font-family="monospace">d₁₃ ∈ [2.41, 2.49]</text>
+    <text x="20" y="125" fill="#334155" font-size="10" font-family="monospace">d₂₃ ∈ [1.50, 1.52]</text>
+
+    <!-- Arrow -->
+    <line x1="185" y1="70" x2="215" y2="70" stroke="#2563eb" stroke-width="1.5" marker-end="url(#farr)"/>
+
+    <!-- Step 2: Sampled distances -->
+    <rect x="220" y="10" width="160" height="120" rx="6" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
+    <text x="300" y="30" text-anchor="middle" fill="#14532d" font-weight="700" font-size="11">2. Sampled d</text>
+    <text x="230" y="50" fill="#334155" font-size="10" font-family="monospace">d₀₁ = 1.51</text>
+    <text x="230" y="65" fill="#334155" font-size="10" font-family="monospace">d₀₂ = 2.44</text>
+    <text x="230" y="80" fill="#334155" font-size="10" font-family="monospace">d₀₃ = 3.25</text>
+    <text x="230" y="95" fill="#334155" font-size="10" font-family="monospace">d₁₂ = 1.51</text>
+    <text x="230" y="110" fill="#334155" font-size="10" font-family="monospace">d₁₃ = 2.46</text>
+    <text x="230" y="125" fill="#334155" font-size="10" font-family="monospace">d₂₃ = 1.51</text>
+
+    <!-- Arrow -->
+    <line x1="385" y1="70" x2="415" y2="70" stroke="#2563eb" stroke-width="1.5" marker-end="url(#farr)"/>
+
+    <!-- Step 3: Metric matrix -->
+    <rect x="420" y="10" width="170" height="120" rx="6" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="505" y="30" text-anchor="middle" fill="#713f12" font-weight="700" font-size="11">3. Metric matrix T</text>
+    <text x="430" y="55" fill="#334155" font-size="10" font-family="monospace">[ 2.1  1.0 -0.2 -1.8]</text>
+    <text x="430" y="72" fill="#334155" font-size="10" font-family="monospace">[ 1.0  1.5  0.8 -0.5]</text>
+    <text x="430" y="89" fill="#334155" font-size="10" font-family="monospace">[-0.2  0.8  1.6  0.9]</text>
+    <text x="430" y="106" fill="#334155" font-size="10" font-family="monospace">[-1.8 -0.5  0.9  2.3]</text>
+
+    <!-- Arrow down -->
+    <line x1="505" y1="135" x2="505" y2="165" stroke="#ca8a04" stroke-width="1.5" marker-end="url(#farr)"/>
+
+    <!-- Step 4: Eigendecomposition -->
+    <rect x="380" y="170" width="210" height="75" rx="6" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="485" y="190" text-anchor="middle" fill="#713f12" font-weight="700" font-size="11">4. Eigenvalues</text>
+    <text x="390" y="210" fill="#334155" font-size="10" font-family="monospace">λ₁ = 4.82, λ₂ = 1.93, λ₃ = 0.75</text>
+    <text x="390" y="230" fill="#64748b" font-size="10">→ keep top 3 for 3D embedding</text>
+
+    <!-- Arrow down -->
+    <line x1="485" y1="250" x2="485" y2="275" stroke="#ca8a04" stroke-width="1.5" marker-end="url(#farr)"/>
+
+    <!-- Step 5: Coordinates -->
+    <rect x="350" y="280" width="240" height="55" rx="6" fill="#f0fdf4" stroke="#10b981" stroke-width="2"/>
+    <text x="470" y="298" text-anchor="middle" fill="#14532d" font-weight="700" font-size="11">5. Coordinates x = √λ · v</text>
+    <text x="360" y="318" fill="#334155" font-size="10" font-family="monospace">A:(1.2, 0.3, -0.1) B:(0.4, -0.8, 0.5) ...</text>
+  </g>
+</svg>
