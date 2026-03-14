@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 180" width="760" height="180" font-family="system-ui, sans-serif">
+  <!-- Background -->
+  <rect width="760" height="180" fill="#f8fafc" rx="8"/>
+
+  <!-- Title -->
+  <text x="380" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">MMFF94 Energy Terms</text>
+
+  <!-- Bond Stretch -->
+  <rect x="15"  y="50" width="165" height="90" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="97"  y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Bond Stretch</text>
+  <text x="97"  y="88"  text-anchor="middle" font-size="9.5" fill="#1d4ed8">Quartic form</text>
+  <text x="97"  y="103" text-anchor="middle" font-size="9"   fill="#1d4ed8">E = ½ kᵦ Δr² (1 + csΔr + …)</text>
+  <text x="97"  y="119" text-anchor="middle" font-size="9"   fill="#1d4ed8">cs = −2.0 Å⁻¹</text>
+  <text x="97"  y="133" text-anchor="middle" font-size="9"   fill="#1d4ed8">× 143.9325</text>
+
+  <!-- Angle Bend -->
+  <rect x="200" y="50" width="165" height="90" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="282" y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">Angle Bend</text>
+  <text x="282" y="88"  text-anchor="middle" font-size="9.5" fill="#15803d">Cubic form</text>
+  <text x="282" y="103" text-anchor="middle" font-size="9"   fill="#15803d">E = ½ kₐ Δθ² (1 + cbΔθ)</text>
+  <text x="282" y="119" text-anchor="middle" font-size="9"   fill="#15803d">cb = −0.014 deg⁻¹</text>
+  <text x="282" y="133" text-anchor="middle" font-size="9"   fill="#15803d">× 0.043844</text>
+
+  <!-- Torsion -->
+  <rect x="385" y="50" width="165" height="90" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
+  <text x="467" y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Torsion</text>
+  <text x="467" y="88"  text-anchor="middle" font-size="9.5" fill="#92400e">3-Term Fourier</text>
+  <text x="467" y="103" text-anchor="middle" font-size="9"   fill="#92400e">E = ½(V₁(1+cosφ)</text>
+  <text x="467" y="116" text-anchor="middle" font-size="9"   fill="#92400e">    + V₂(1−cos2φ)</text>
+  <text x="467" y="129" text-anchor="middle" font-size="9"   fill="#92400e">    + V₃(1+cos3φ))</text>
+
+  <!-- vdW -->
+  <rect x="570" y="50" width="170" height="90" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="655" y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">van der Waals</text>
+  <text x="655" y="88"  text-anchor="middle" font-size="9.5" fill="#be185d">Halgren Buffered 14-7</text>
+  <text x="655" y="103" text-anchor="middle" font-size="9"   fill="#be185d">E = ε (1.07R*/R+0.07R*)⁷</text>
+  <text x="655" y="116" text-anchor="middle" font-size="9"   fill="#be185d">  × (1.12R*⁷/R⁷+0.12R*⁷ − 2)</text>
+  <text x="655" y="130" text-anchor="middle" font-size="9"   fill="#be185d">Softer repulsion vs. 12-6</text>
+
+  <!-- Plus signs between boxes -->
+  <text x="192" y="99" text-anchor="middle" font-size="18" fill="#64748b" font-weight="bold">+</text>
+  <text x="377" y="99" text-anchor="middle" font-size="18" fill="#64748b" font-weight="bold">+</text>
+  <text x="562" y="99" text-anchor="middle" font-size="18" fill="#64748b" font-weight="bold">+</text>
+
+  <!-- Total label -->
+  <text x="380" y="165" text-anchor="middle" font-size="10" fill="#64748b">E_MMFF94 = E_stretch + E_bend + E_torsion + E_vdW</text>
+</svg>
