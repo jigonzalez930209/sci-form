@@ -18,11 +18,7 @@ fn h2_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
 fn water_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
     // H₂O with O at origin, H-O-H angle ~104.5°
     let elements = vec![8, 1, 1];
-    let positions = vec![
-        [0.0, 0.0, 0.0],
-        [0.757, 0.586, 0.0],
-        [-0.757, 0.586, 0.0],
-    ];
+    let positions = vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
     (elements, positions)
 }
 
@@ -58,7 +54,11 @@ fn test_h2_full_pipeline() {
     );
 
     // Gap should be positive
-    assert!(result.gap > 0.0, "H₂ gap should be positive: {}", result.gap);
+    assert!(
+        result.gap > 0.0,
+        "H₂ gap should be positive: {}",
+        result.gap
+    );
 
     // 2 electrons → HOMO index = 0
     assert_eq!(result.homo_index, 0);
@@ -131,10 +131,18 @@ fn test_h2_orbital_to_mesh() {
     );
 
     // Bonding orbital should have nonzero values between the atoms
-    let max_val = grid.values.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+    let max_val = grid
+        .values
+        .iter()
+        .cloned()
+        .fold(f32::NEG_INFINITY, f32::max);
     let min_val = grid.values.iter().cloned().fold(f32::INFINITY, f32::min);
     let max_abs = max_val.abs().max(min_val.abs());
-    assert!(max_abs > 1e-6, "Bonding orbital should have nonzero density, max_abs={}", max_abs);
+    assert!(
+        max_abs > 1e-6,
+        "Bonding orbital should have nonzero density, max_abs={}",
+        max_abs
+    );
 
     // Extract isosurface at a fraction of the peak value (accounting for sign)
     let iso = if max_val.abs() > min_val.abs() {
