@@ -263,15 +263,23 @@ mod tests {
     #[test]
     fn test_frac_cart_roundtrip() {
         let cell = UnitCell::from_parameters(&CellParameters {
-            a: 10.0, b: 12.0, c: 8.0,
-            alpha: 90.0, beta: 90.0, gamma: 120.0,
+            a: 10.0,
+            b: 12.0,
+            c: 8.0,
+            alpha: 90.0,
+            beta: 90.0,
+            gamma: 120.0,
         });
         let frac = [0.3, 0.4, 0.7];
         let cart = cell.frac_to_cart(frac);
         let back = cell.cart_to_frac(cart);
         for i in 0..3 {
-            assert!((frac[i] - back[i]).abs() < 1e-10,
-                "Roundtrip failed at {i}: {:.6} vs {:.6}", frac[i], back[i]);
+            assert!(
+                (frac[i] - back[i]).abs() < 1e-10,
+                "Roundtrip failed at {i}: {:.6} vs {:.6}",
+                frac[i],
+                back[i]
+            );
         }
     }
 
@@ -289,8 +297,10 @@ mod tests {
         // Two points: one at (1,0,0) and one at (9,0,0)
         // Under PBC, minimum distance should be 2.0 Å (not 8.0)
         let dist = cell.minimum_image_distance([1.0, 0.0, 0.0], [9.0, 0.0, 0.0]);
-        assert!((dist - 2.0).abs() < 1e-10,
-            "Minimum image distance should be 2.0, got {dist:.6}");
+        assert!(
+            (dist - 2.0).abs() < 1e-10,
+            "Minimum image distance should be 2.0, got {dist:.6}"
+        );
     }
 
     #[test]
@@ -304,7 +314,14 @@ mod tests {
 
     #[test]
     fn test_from_parameters_orthorhombic() {
-        let p = CellParameters { a: 5.0, b: 7.0, c: 9.0, alpha: 90.0, beta: 90.0, gamma: 90.0 };
+        let p = CellParameters {
+            a: 5.0,
+            b: 7.0,
+            c: 9.0,
+            alpha: 90.0,
+            beta: 90.0,
+            gamma: 90.0,
+        };
         let cell = UnitCell::from_parameters(&p);
         assert!((cell.volume() - 315.0).abs() < 1e-6);
         let back = cell.parameters();
