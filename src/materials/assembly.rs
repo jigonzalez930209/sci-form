@@ -51,9 +51,9 @@ impl Topology {
             name: "pcu".to_string(),
             nodes: vec![[0.0, 0.0, 0.0]],
             edges: vec![
-                (0, 0, [1, 0, 0]),  // +a
-                (0, 0, [0, 1, 0]),  // +b
-                (0, 0, [0, 0, 1]),  // +c
+                (0, 0, [1, 0, 0]), // +a
+                (0, 0, [0, 1, 0]), // +b
+                (0, 0, [0, 0, 1]), // +c
             ],
         }
     }
@@ -62,10 +62,7 @@ impl Topology {
     pub fn dia() -> Self {
         Self {
             name: "dia".to_string(),
-            nodes: vec![
-                [0.0, 0.0, 0.0],
-                [0.25, 0.25, 0.25],
-            ],
+            nodes: vec![[0.0, 0.0, 0.0], [0.25, 0.25, 0.25]],
             edges: vec![
                 (0, 1, [0, 0, 0]),
                 (0, 1, [-1, 0, 0]),
@@ -80,10 +77,7 @@ impl Topology {
         Self {
             name: "sql".to_string(),
             nodes: vec![[0.0, 0.0, 0.0]],
-            edges: vec![
-                (0, 0, [1, 0, 0]),
-                (0, 0, [0, 1, 0]),
-            ],
+            edges: vec![(0, 0, [1, 0, 0]), (0, 0, [0, 1, 0])],
         }
     }
 }
@@ -263,11 +257,7 @@ fn rotation_from_x_to(target: [f64; 3]) -> [[f64; 3]; 3] {
     //     [  v3   0   -v1 ]
     //     [ -v2   v1   0  ]
     let v = cross;
-    let k = [
-        [0.0, -v[2], v[1]],
-        [v[2], 0.0, -v[0]],
-        [-v[1], v[0], 0.0],
-    ];
+    let k = [[0.0, -v[2], v[1]], [v[2], 0.0, -v[0]], [-v[1], v[0], 0.0]];
 
     // K²
     let k2 = mat_mul_3x3(k, k);
@@ -313,8 +303,8 @@ fn apply_rotation(rot: &[[f64; 3]; 3], p: [f64; 3]) -> [f64; 3] {
 
 #[cfg(test)]
 mod tests {
+    use super::super::sbu::{CoordinationGeometry, Sbu};
     use super::*;
-    use super::super::sbu::{Sbu, CoordinationGeometry};
 
     #[test]
     fn test_assemble_simple_cubic_framework() {
@@ -327,7 +317,10 @@ mod tests {
 
         // 1 node with 1 atom + 3 edges with 2 atoms each = 7
         assert_eq!(structure.num_atoms(), 7);
-        assert!(structure.atoms.iter().all(|a| a.element == 30 || a.element == 6));
+        assert!(structure
+            .atoms
+            .iter()
+            .all(|a| a.element == 30 || a.element == 6));
     }
 
     #[test]
@@ -388,7 +381,11 @@ mod tests {
         let p = [1.0, 0.0, 0.0];
         let rp = apply_rotation(&rot, p);
         assert!((rp[0]).abs() < 1e-10, "x should be ~0, got {:.6}", rp[0]);
-        assert!((rp[1] - 1.0).abs() < 1e-10, "y should be ~1, got {:.6}", rp[1]);
+        assert!(
+            (rp[1] - 1.0).abs() < 1e-10,
+            "y should be ~1, got {:.6}",
+            rp[1]
+        );
         assert!((rp[2]).abs() < 1e-10, "z should be ~0, got {:.6}", rp[2]);
     }
 
@@ -398,8 +395,14 @@ mod tests {
         let structure = CrystalStructure {
             cell,
             atoms: vec![
-                CrystalAtom { element: 6, frac_coords: [0.5, 0.0, 0.0] },
-                CrystalAtom { element: 8, frac_coords: [0.0, 0.5, 0.0] },
+                CrystalAtom {
+                    element: 6,
+                    frac_coords: [0.5, 0.0, 0.0],
+                },
+                CrystalAtom {
+                    element: 8,
+                    frac_coords: [0.0, 0.5, 0.0],
+                },
             ],
             labels: vec!["a".into(), "b".into()],
         };
