@@ -21,7 +21,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://sci-form.dev"
-Repository = "https://github.com/sci-form/sci-form"
+Repository = "https://github.com/jigonzalez930209/sci-form"
 Documentation = "https://sci-form.dev/python"
 
 [tool.maturin]
