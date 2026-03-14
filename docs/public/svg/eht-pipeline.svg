@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 200" width="780" height="200" font-family="system-ui, sans-serif">
+  <!-- Background -->
+  <rect width="780" height="200" fill="#f8fafc" rx="8"/>
+
+  <!-- Phase boxes -->
+  <!-- B1 -->
+  <rect x="10"  y="60" width="130" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="75"  y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Phase B1</text>
+  <text x="75"  y="108" text-anchor="middle" font-size="10" fill="#1d4ed8">Atomic basis</text>
+  <text x="75"  y="122" text-anchor="middle" font-size="10" fill="#1d4ed8">STO-3G / VSIP</text>
+
+  <!-- B2 -->
+  <rect x="160" y="60" width="130" height="80" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="225" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">Phase B2</text>
+  <text x="225" y="108" text-anchor="middle" font-size="10" fill="#15803d">Overlap S</text>
+  <text x="225" y="122" text-anchor="middle" font-size="10" fill="#15803d">Hamiltonian H</text>
+
+  <!-- B3 -->
+  <rect x="310" y="60" width="130" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
+  <text x="375" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Phase B3</text>
+  <text x="375" y="108" text-anchor="middle" font-size="10" fill="#92400e">Löwdin ortho.</text>
+  <text x="375" y="122" text-anchor="middle" font-size="10" fill="#92400e">HC = SCE</text>
+
+  <!-- B4 -->
+  <rect x="460" y="60" width="130" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="525" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">Phase B4</text>
+  <text x="525" y="108" text-anchor="middle" font-size="10" fill="#be185d">MO grid</text>
+  <text x="525" y="122" text-anchor="middle" font-size="10" fill="#be185d">|ψ(r)|²</text>
+
+  <!-- B5 -->
+  <rect x="610" y="60" width="130" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="675" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">Phase B5</text>
+  <text x="675" y="108" text-anchor="middle" font-size="10" fill="#6d28d9">Marching Cubes</text>
+  <text x="675" y="122" text-anchor="middle" font-size="10" fill="#6d28d9">Isosurface mesh</text>
+
+  <!-- Arrows between boxes -->
+  <line x1="140" y1="100" x2="158" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="290" y1="100" x2="308" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="440" y1="100" x2="458" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="590" y1="100" x2="608" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Labels below boxes -->
+  <text x="75"  y="160" text-anchor="middle" font-size="9" fill="#64748b">elements + coords</text>
+  <text x="225" y="160" text-anchor="middle" font-size="9" fill="#64748b">Gaussian product theorem</text>
+  <text x="375" y="160" text-anchor="middle" font-size="9" fill="#64748b">S⁻¹/² H S⁻¹/² eigenproblem</text>
+  <text x="525" y="160" text-anchor="middle" font-size="9" fill="#64748b">parallel Rayon evaluation</text>
+  <text x="675" y="160" text-anchor="middle" font-size="9" fill="#64748b">256-case lookup table</text>
+
+  <!-- Title -->
+  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">Extended Hückel Theory Pipeline</text>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+    </marker>
+  </defs>
+</svg>
