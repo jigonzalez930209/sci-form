@@ -169,32 +169,38 @@ pub fn minimize_bfgs_rdkit(
     let weight_4d_f64 = weight_4d as f64;
     let weight_chiral_f64 = weight_chiral as f64;
 
+    // Pre-compute active pair list once — avoids repeated basin_thresh checks
+    let mut active_pairs: Vec<(usize, usize, f64, f64)> = Vec::new();
+    for i in 1..n {
+        for j in 0..i {
+            let ub = bounds[(j, i)];
+            let lb = bounds[(i, j)];
+            if ub - lb > basin_thresh_f64 {
+                continue;
+            }
+            active_pairs.push((i, j, lb, ub));
+        }
+    }
+
     let calc_energy = |pos: &[f64]| -> f64 {
         let mut energy = 0.0f64;
-        for i in 1..n {
-            for j in 0..i {
-                let ub = bounds[(j, i)];
-                let lb = bounds[(i, j)];
-                if ub - lb > basin_thresh_f64 {
-                    continue;
-                }
-                let mut d2 = 0.0f64;
-                for d in 0..dim_coords {
-                    let diff = pos[i * dim_coords + d] - pos[j * dim_coords + d];
-                    d2 += diff * diff;
-                }
-                let ub2 = ub * ub;
-                let lb2 = lb * lb;
-                let val = if d2 > ub2 {
-                    d2 / ub2 - 1.0
-                } else if d2 < lb2 {
-                    2.0 * lb2 / (lb2 + d2) - 1.0
-                } else {
-                    0.0
-                };
-                if val > 0.0 {
-                    energy += val * val;
-                }
+        for &(i, j, lb, ub) in &active_pairs {
+            let mut d2 = 0.0f64;
+            for d in 0..dim_coords {
+                let diff = pos[i * dim_coords + d] - pos[j * dim_coords + d];
+                d2 += diff * diff;
+            }
+            let ub2 = ub * ub;
+            let lb2 = lb * lb;
+            let val = if d2 > ub2 {
+                d2 / ub2 - 1.0
+            } else if d2 < lb2 {
+                2.0 * lb2 / (lb2 + d2) - 1.0
+            } else {
+                0.0
+            };
+            if val > 0.0 {
+                energy += val * val;
             }
         }
         if !chiral_sets.is_empty() {
@@ -213,37 +219,30 @@ pub fn minimize_bfgs_rdkit(
     // Gradient function computed fully in f64
     let calc_gradient_raw = |pos: &[f64]| -> Vec<f64> {
         let mut grad = vec![0.0f64; dim];
-        for i in 1..n {
-            for j in 0..i {
-                let ub = bounds[(j, i)];
-                let lb = bounds[(i, j)];
-                if ub - lb > basin_thresh_f64 {
-                    continue;
-                }
-                let mut d2 = 0.0f64;
-                let mut diffs = vec![0.0f64; dim_coords];
+        let mut diffs = [0.0f64; 4]; // Stack-allocated: max dim_coords is 4
+        for &(i, j, lb, ub) in &active_pairs {
+            let mut d2 = 0.0f64;
+            for d in 0..dim_coords {
+                let diff = pos[i * dim_coords + d] - pos[j * dim_coords + d];
+                diffs[d] = diff;
+                d2 += diff * diff;
+            }
+            let ub2 = ub * ub;
+            let lb2 = lb * lb;
+            if d2 > ub2 {
+                let pre_factor = 4.0 * (d2 / ub2 - 1.0) / ub2;
                 for d in 0..dim_coords {
-                    let diff = pos[i * dim_coords + d] - pos[j * dim_coords + d];
-                    diffs[d] = diff;
-                    d2 += diff * diff;
+                    let g = pre_factor * diffs[d];
+                    grad[i * dim_coords + d] += g;
+                    grad[j * dim_coords + d] -= g;
                 }
-                let ub2 = ub * ub;
-                let lb2 = lb * lb;
-                if d2 > ub2 {
-                    let pre_factor = 4.0 * (d2 / ub2 - 1.0) / ub2;
-                    for d in 0..dim_coords {
-                        let g = pre_factor * diffs[d];
-                        grad[i * dim_coords + d] += g;
-                        grad[j * dim_coords + d] -= g;
-                    }
-                } else if d2 < lb2 {
-                    let l2d2 = lb2 + d2;
-                    let pre_factor = 8.0 * lb2 * (1.0 - 2.0 * lb2 / l2d2) / (l2d2 * l2d2);
-                    for d in 0..dim_coords {
-                        let g = pre_factor * diffs[d];
-                        grad[i * dim_coords + d] += g;
-                        grad[j * dim_coords + d] -= g;
-                    }
+            } else if d2 < lb2 {
+                let l2d2 = lb2 + d2;
+                let pre_factor = 8.0 * lb2 * (1.0 - 2.0 * lb2 / l2d2) / (l2d2 * l2d2);
+                for d in 0..dim_coords {
+                    let g = pre_factor * diffs[d];
+                    grad[i * dim_coords + d] += g;
+                    grad[j * dim_coords + d] -= g;
                 }
             }
         }
