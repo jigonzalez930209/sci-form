@@ -551,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "approx",
  "nalgebra",
@@ -564,7 +564,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-cli"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clap",
  "rayon",
@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-python"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "pyo3",
  "rayon",
@@ -583,7 +583,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-wasm"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "getrandom",
  "js-sys",
