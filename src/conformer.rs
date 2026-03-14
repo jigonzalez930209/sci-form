@@ -161,10 +161,18 @@ pub fn generate_3d_conformer_with_torsions(
     let embed_dim = if use_4d { 4 } else { 3 };
 
     // Track consecutive embedding failures for random coord fallback
+    // For large molecules (100+ atoms), eigendecomposition is O(N³) and fails more often,
+    // so we switch to random coords sooner. For small molecules, we allow more eigen attempts.
     let mut consecutive_embed_fails = 0u32;
-    let embed_fail_threshold = (n as u32 / 4).max(20); // Switch to random coords after N/4 consecutive fails
+    let embed_fail_threshold = if n > 100 {
+        (n as u32 / 8).max(10)
+    } else {
+        (n as u32 / 4).max(20)
+    };
     let mut random_coord_attempts = 0u32;
-    let max_random_coord_attempts = 100u32; // Cap random coord attempts to avoid infinite loops
+    let max_random_coord_attempts = if n > 100 { 50u32 } else { 100u32 };
+    // Scale BFGS restart limit: large molecules converge with fewer restarts
+    let bfgs_restart_limit = if n > 100 { 20 } else { 50 };
 
     for _iter in 0..max_iterations {
         // Log attempt number if requested (works in both lib and integration tests)
@@ -175,9 +183,8 @@ pub fn generate_3d_conformer_with_torsions(
             && random_coord_attempts < max_random_coord_attempts;
         let (mut coords, basin_thresh) = if use_random_coords {
             random_coord_attempts += 1;
-            // Random coordinate fallback: place atoms in [-5, 5] box
-            // Matching RDKit's useRandomCoords mode with boxSizeMult=2.0
-            let box_size = 10.0f64; // 5.0 * 2.0
+            // Random coordinate fallback: RDKit uses boxSizeMult * cube_root(N)
+            let box_size = 2.0 * (n as f64).cbrt().max(2.5);
             let mut c = DMatrix::from_element(n, embed_dim, 0.0f64);
             for i in 0..n {
                 for d in 0..embed_dim {
@@ -223,7 +230,7 @@ pub fn generate_3d_conformer_with_torsions(
             if initial_energy > ERROR_TOL {
                 let mut need_more = 1;
                 let mut restarts = 0;
-                while need_more != 0 && restarts < 50 {
+                while need_more != 0 && restarts < bfgs_restart_limit {
                     need_more = minimize_bfgs_rdkit(
                         &mut coords,
                         &bounds,
@@ -277,7 +284,7 @@ pub fn generate_3d_conformer_with_torsions(
             if energy2 > ERROR_TOL {
                 let mut need_more = 1;
                 let mut restarts = 0;
-                while need_more != 0 && restarts < 50 {
+                while need_more != 0 && restarts < bfgs_restart_limit {
                     need_more = minimize_bfgs_rdkit(
                         &mut coords,
                         &bounds,
