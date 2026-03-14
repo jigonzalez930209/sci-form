@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-wasm"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 description = "WASM/TypeScript bindings for high-performance 3D molecular conformer generation"
 license = "MIT"

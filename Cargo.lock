@@ -551,7 +551,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "nalgebra",
  "petgraph",
@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-cli"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clap",
  "rayon",
@@ -573,7 +573,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-python"
-version = "0.1.0"
+version = "0.1.5"
 dependencies = [
  "pyo3",
  "rayon",
@@ -582,7 +582,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-wasm"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "getrandom",
  "sci-form",
