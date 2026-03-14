@@ -320,11 +320,7 @@ pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     if coords.len() != n * 3 {
-        return Err(format!(
-            "coords length {} != 3 * atoms {}",
-            coords.len(),
-            n
-        ));
+        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
     }
     let ff = forcefield::builder::build_uff_force_field(&mol);
     let mut gradient = vec![0.0f64; n * 3];
@@ -333,9 +329,21 @@ pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
 }
 
 /// Create a periodic unit cell from lattice parameters (a, b, c in Å; α, β, γ in degrees).
-pub fn create_unit_cell(a: f64, b: f64, c: f64, alpha: f64, beta: f64, gamma: f64) -> materials::UnitCell {
+pub fn create_unit_cell(
+    a: f64,
+    b: f64,
+    c: f64,
+    alpha: f64,
+    beta: f64,
+    gamma: f64,
+) -> materials::UnitCell {
     materials::UnitCell::from_parameters(&materials::CellParameters {
-        a, b, c, alpha, beta, gamma,
+        a,
+        b,
+        c,
+        alpha,
+        beta,
+        gamma,
     })
 }
 
