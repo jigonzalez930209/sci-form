@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "sci-form"
+name = "sciforma"
 version = "0.1.6"
 description = "High-performance 3D molecular conformer generation — Python bindings"
 requires-python = ">=3.8"
