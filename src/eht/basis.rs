@@ -158,10 +158,7 @@ pub fn gaussian_p_value(alpha: f64, r2: f64, component: f64) -> f64 {
 
 /// Build the full molecular basis set from atom positions (in Angstrom) and elements.
 /// Positions are converted internally to bohr for consistency.
-pub fn build_basis(
-    elements: &[u8],
-    positions: &[[f64; 3]],
-) -> Vec<AtomicOrbital> {
+pub fn build_basis(elements: &[u8], positions: &[[f64; 3]]) -> Vec<AtomicOrbital> {
     use super::params::get_params;
 
     let ang_to_bohr = 1.0 / 0.529177249;
@@ -208,10 +205,7 @@ pub fn build_basis(
                         m,
                         vsip: orb_def.vsip,
                         zeta: orb_def.zeta,
-                        label: format!(
-                            "{}_{}{}",
-                            symbol, orb_def.label, p_labels[idx]
-                        ),
+                        label: format!("{}_{}{}", symbol, orb_def.label, p_labels[idx]),
                         gaussians: sto3g_expansion(orb_def.n, 1, orb_def.zeta),
                     });
                 }
@@ -264,11 +258,7 @@ mod tests {
     fn test_build_basis_h2o() {
         // H₂O: O at origin, two H's
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let basis = build_basis(&elements, &positions);
         // O: 2s + 2px + 2py + 2pz = 4, H: 1s each = 2.  Total = 6
         assert_eq!(basis.len(), 6);
