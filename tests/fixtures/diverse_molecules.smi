@@ -1,0 +1,180 @@
+# Diverse molecule benchmark set for sci-form
+# Covers: simple organics, all functional groups, halogens, heteroatoms,
+# aromatic systems, rings, stereo, metals, and complex drug-like molecules
+#
+# Format: SMILES\tName\tCategory
+#
+# === SIMPLE MOLECULES ===
+C	methane	simple
+CC	ethane	simple
+C=C	ethylene	simple
+C#C	acetylene	simple
+CCC	propane	simple
+CCCC	butane	simple
+CCCCC	pentane	simple
+CCCCCC	hexane	simple
+CC(C)C	isobutane	simple
+CC(C)(C)C	neopentane	simple
+C1CCCCC1	cyclohexane	simple
+C1CCC1	cyclobutane	simple
+C1CC1	cyclopropane	simple
+C1CCCCCCC1	cyclooctane	simple
+#
+# === ALCOHOLS & ETHERS ===
+CO	methanol	alcohol
+CCO	ethanol	alcohol
+CC(C)O	isopropanol	alcohol
+OCC(O)CO	glycerol	alcohol
+COC	dimethylether	ether
+CCOCC	diethylether	ether
+C1CCOC1	tetrahydrofuran	ether
+C1CCOCC1	tetrahydropyran	ether
+#
+# === AMINES ===
+CN	methylamine	amine
+CCN	ethylamine	amine
+CN(C)C	trimethylamine	amine
+C1CCNCC1	piperidine	amine
+C1CNCCN1	piperazine	amine
+C1CCNC1	pyrrolidine	amine
+NCC(N)C(=O)O	alanine	aminoacid
+#
+# === CARBONYLS ===
+CC=O	acetaldehyde	carbonyl
+CCC=O	propanal	carbonyl
+CC(C)=O	acetone	carbonyl
+CCCC(=O)CC	3-hexanone	carbonyl
+O=CC=O	glyoxal	carbonyl
+#
+# === CARBOXYLIC ACIDS & ESTERS ===
+CC(=O)O	acetic_acid	acid
+CCC(=O)O	propionic_acid	acid
+OC(=O)CC(=O)O	malonic_acid	acid
+CC(=O)OC	methyl_acetate	ester
+CC(=O)OCC	ethyl_acetate	ester
+CCOC(=O)C(CC)CC	ethyl_2ethylbutyrate	ester
+#
+# === AMIDES & UREAS ===
+CC(=O)N	acetamide	amide
+CC(=O)NC	n-methylacetamide	amide
+NC(=O)NC	urea_dimethyl	urea
+O=C1CCCN1	2-pyrrolidinone	amide
+#
+# === AROMATICS ===
+c1ccccc1	benzene	aromatic
+Cc1ccccc1	toluene	aromatic
+c1ccc(O)cc1	phenol	aromatic
+c1ccc(N)cc1	aniline	aromatic
+c1ccncc1	pyridine	aromatic
+c1ccoc1	furan	aromatic
+c1cc[nH]c1	pyrrole	aromatic
+c1ccsc1	thiophene	aromatic
+c1cnc2ccccc2n1	quinazoline	aromatic
+c1ccc2[nH]ccc2c1	indole	aromatic
+c1ccc2ccccc2c1	naphthalene	aromatic
+c1cccc2ccccc12	azulene_like	aromatic
+c1ccc2c(c1)ccc1ccccc12	phenanthrene	aromatic
+c1ccc(-c2ccccc2)cc1	biphenyl	aromatic
+c1ccc2c(c1)c1ccccc1c1ccccc21	triphenylene	aromatic
+#
+# === HALOGENS ===
+CCl	chloromethane	halogen
+CBr	bromomethane	halogen
+CI	iodomethane	halogen
+CF	fluoromethane	halogen
+FC(F)(F)C	1_1_1-trifluoroethane	halogen
+ClC(Cl)Cl	chloroform	halogen
+FC(F)(F)c1ccccc1	trifluoromethylbenzene	halogen
+Clc1ccc(Cl)cc1	1_4-dichlorobenzene	halogen
+Brc1ccccc1	bromobenzene	halogen
+Ic1ccccc1	iodobenzene	halogen
+FC(F)(F)C(F)(F)F	hexafluoroethane	halogen
+#
+# === SULFUR COMPOUNDS ===
+CS	methanethiol	sulfur
+CSSC	dimethyldisulfide	sulfur
+CS(=O)C	dimethylsulfoxide	sulfur
+CS(=O)(=O)C	dimethylsulfone	sulfur
+c1ccsc1	thiophene	sulfur
+CC(=O)SCC	s-ethyl_thioacetate	sulfur
+OS(=O)(=O)O	sulfuric_acid	sulfur
+#
+# === PHOSPHORUS COMPOUNDS ===
+CP(C)C	trimethylphosphine	phosphorus
+COP(=O)(OC)OC	trimethylphosphate	phosphorus
+NP(=O)(N)N	phosphoramide	phosphorus
+#
+# === NITROGEN HETEROCYCLES ===
+c1cnc[nH]1	imidazole	n-heterocycle
+c1ccn[nH]1	pyrazole	n-heterocycle
+c1nn[nH]n1	tetrazole	n-heterocycle
+c1ncc2nc[nH]c2n1	purine	n-heterocycle
+C1=CC=CN1	1H-pyrroline	n-heterocycle
+c1cnc2[nH]ccc2c1	7-azaindole	n-heterocycle
+c1ncc(-c2ccncc2)o1	4-(furan-2-yl)pyridine	n-heterocycle
+#
+# === OXYGEN HETEROCYCLES ===
+C1=COC=C1	furan_2h	o-heterocycle
+C1CCOC(=O)C1	delta-valerolactone	o-heterocycle
+O=c1[nH]c(=O)c(=O)[nH]c1=O	barbituric_acid	o-heterocycle
+C1OC1	oxirane	o-heterocycle
+c1cc2ccoc2cc1	benzofuran	o-heterocycle
+#
+# === STEREO / CHIRALITY ===
+C[C@@H](O)CC	r-2-butanol	stereo
+C/C=C/C	trans-2-butene	stereo
+C/C=C\C	cis-2-butene	stereo
+O[C@@H]1CCCC[C@H]1O	trans-1_2-cyclohexanediol	stereo
+#
+# === BRIDGED & FUSED RINGS ===
+C1CC2CCC1CC2	norbornane	bridged
+C12CC3CC(CC(C3)C1)C2	adamantane	bridged
+C1CCC2(CC1)CCCCC2	spiro[4.5]decane	bridged
+C1CCC2CCCCC2C1	decalin	fused
+C1CC2CCCC(C1)C2	bicyclo[3.3.0]octane	fused
+#
+# === COMPLEX DRUG-LIKE ===
+CC(=O)Oc1ccccc1C(=O)O	aspirin	drug
+CC12CCC3c4ccc(O)cc4CCC3C1CCC2O	estradiol	drug
+CC(C)Cc1ccc(CC(C)C(=O)O)cc1	ibuprofen	drug
+Cn1c(=O)c2c(ncn2C)n(C)c1=O	caffeine	drug
+CC(=O)Nc1ccc(O)cc1	acetaminophen	drug
+c1ccc2c(c1)cc1ccc3cccc4ccc2c1c34	pyrene	drug
+OC(=O)c1ccccc1O	salicylic_acid	drug
+OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O	glucose	drug
+CC(C)NCC(O)c1ccc(O)c(O)c1	isoproterenol	drug
+c1ccc(-c2cc(-c3ccccc3)cc(-c3ccccc3)c2)cc1	1_3_5-triphenylbenzene	drug
+#
+# === MACROCYCLES ===
+C1CCCCCCCCCCCC1	cyclotridecane	macrocycle
+C1CCCCCCCCCC1	cycloundecane	macrocycle
+#
+# === STRAINED SYSTEMS ===
+C12C3C4C1C5C3C2C45	cubane	strained
+C1=CC=CC1	cyclopentadiene	strained
+#
+# === SILICON ===
+[Si](C)(C)C	trimethylsilane	silicon
+C[Si](C)(C)O[Si](C)(C)C	hexamethyldisiloxane	silicon
+#
+# === BORON ===
+OB(O)c1ccccc1	phenylboronic_acid	boron
+B1OC(C)(C)C(C)(C)O1	pinacolborane_scaffold	boron
+#
+# === SELENIUM ===
+C[Se]C	dimethylselenide	selenium
+#
+# === COMPLEX POLYCYCLICS ===
+C1CCC2C(C1)CCC1CCCCC12	trans-decalin_sub	polycyclic
+c1cc2ccc3cccc4ccc(c1)c2c34	fluoranthene	polycyclic
+C1CC2(CCCC3(CCCCC3)C2)CC1	spiro_bicyclic	polycyclic
+#
+# === MULTI-FUNCTIONAL ===
+OC(=O)c1cc(O)c(O)c(O)c1	gallic_acid	multifunc
+Nc1ccc(S(=O)(=O)Nc2ccccn2)cc1	sulfapyridine	multifunc
+OC(=O)CCC(=O)C(=O)O	alpha-ketoglutaric_acid	multifunc
+NC(=O)c1cnccn1	pyrazinecarboxamide	multifunc
+CC(=O)N(c1ccccc1)c1ccc(O)cc1	4-acetamidophenol_N-phenyl	multifunc
+O=C1C=CC(=O)C=C1	benzoquinone	multifunc
+NC(CS)C(=O)O	cysteine	multifunc
+CC(N)Cc1ccc(O)c(O)c1	norepinephrine_analog	multifunc

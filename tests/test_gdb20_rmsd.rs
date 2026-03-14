@@ -38,6 +38,7 @@ struct RefTorsion {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct RefMolecule {
     smiles: String,
     atoms: Vec<RefAtom>,
@@ -46,10 +47,11 @@ struct RefMolecule {
 }
 
 /// Per-molecule result from parallel processing
+#[allow(dead_code)]
 struct MolResult {
     smiles: String,
     n_atoms: usize,
-    rmsd: Option<f32>,      // None = embed failure
+    rmsd: Option<f32>, // None = embed failure
     time_ms: f64,
     error: Option<String>,
 }
@@ -101,7 +103,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -160,7 +166,16 @@ fn process_molecule(ref_mol: &RefMolecule) -> MolResult {
     let mol = build_mol_from_ref(ref_mol);
     let csd_torsions = build_csd_torsions(&ref_mol.torsions);
 
-    let result = sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
+    let num_seeds: usize = std::env::var("BEST_OF_K")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1);
+
+    let result = if num_seeds > 1 {
+        sci_form::conformer::generate_3d_conformer_best_of_k(&mol, 42, &csd_torsions, num_seeds)
+    } else {
+        sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions)
+    };
 
     let time_ms = start.elapsed().as_secs_f64() * 1000.0;
 
@@ -187,17 +202,25 @@ fn process_molecule(ref_mol: &RefMolecule) -> MolResult {
 
 #[test]
 fn test_gdb20_parallel() {
-    // Load reference data
-    let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json")
-        .expect("Run scripts/generate_gdb20_reference.py first");
-    let ref_mols: Vec<RefMolecule> =
+    // Load reference data (skip gracefully when the large fixture is absent)
+    let fixture = "tests/fixtures/gdb20_reference.json";
+    if !std::path::Path::new(fixture).exists() {
+        eprintln!("SKIP {fixture}: run scripts/generate_gdb20_reference.py to generate it");
+        return;
+    }
+    let ref_data = fs::read_to_string(fixture).expect("Failed to read gdb20_reference.json");
+    let mut ref_mols: Vec<RefMolecule> =
         serde_json::from_str(&ref_data).expect("Invalid gdb20_reference.json");
 
-    // Optional limit
+    // Sort by heaviest molecules first (most atoms) for a representative sample
+    ref_mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));
+
+    // Optional limit — default 300 heaviest; use GDB20_LIMIT=0 for full run
     let limit: usize = std::env::var("GDB20_LIMIT")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(ref_mols.len());
+        .unwrap_or(300);
+    let limit = if limit == 0 { ref_mols.len() } else { limit };
     let ref_mols = &ref_mols[..limit.min(ref_mols.len())];
 
     let total = ref_mols.len();
@@ -215,7 +238,7 @@ fn test_gdb20_parallel() {
         .map(|ref_mol| {
             let result = process_molecule(ref_mol);
             let d = done.fetch_add(1, Ordering::Relaxed) + 1;
-            if d % 2000 == 0 {
+            if d.is_multiple_of(2000) {
                 let elapsed = start.elapsed().as_secs_f64();
                 let rate = d as f64 / elapsed;
                 let eta = (total as f64 - d as f64) / rate;
@@ -306,12 +329,12 @@ fn test_gdb20_parallel() {
 
     println!("\nRMSD Distribution:");
     let labels = [
-        "0.0-0.1", "0.1-0.2", "0.2-0.3", "0.3-0.4", "0.4-0.5", "0.5-0.6", "0.6-0.7",
-        "0.7-0.8", "0.8-0.9", "0.9+",
+        "0.0-0.1", "0.1-0.2", "0.2-0.3", "0.3-0.4", "0.4-0.5", "0.5-0.6", "0.6-0.7", "0.7-0.8",
+        "0.8-0.9", "0.9+",
     ];
     for (bucket, label) in rmsd_buckets.iter().zip(labels.iter()) {
         let pct = *bucket as f64 / embed_ok.max(1) as f64 * 100.0;
-        let bar: String = std::iter::repeat('#').take((pct * 0.5) as usize).collect();
+        let bar: String = std::iter::repeat_n('#', (pct * 0.5) as usize).collect();
         println!("  {:8}: {:6} ({:5.2}%) {}", label, bucket, pct, bar);
     }
 
@@ -325,7 +348,12 @@ fn test_gdb20_parallel() {
     if !failures.is_empty() {
         println!("\n--- Embed Failures (first 30) ---");
         for r in failures.iter().take(30) {
-            println!("  {} (n={}) → {}", r.smiles, r.n_atoms, r.error.as_deref().unwrap_or("?"));
+            println!(
+                "  {} (n={}) → {}",
+                r.smiles,
+                r.n_atoms,
+                r.error.as_deref().unwrap_or("?")
+            );
         }
     }
 
@@ -346,17 +374,33 @@ fn test_gdb20_parallel() {
         sum_rmsd: f64,
     }
     impl FeatureStats {
-        fn new() -> Self { Self { total: 0, above_05: 0, sum_rmsd: 0.0 } }
+        fn new() -> Self {
+            Self {
+                total: 0,
+                above_05: 0,
+                sum_rmsd: 0.0,
+            }
+        }
         fn add(&mut self, rmsd: f32) {
             self.total += 1;
             self.sum_rmsd += rmsd as f64;
-            if rmsd > 0.5 { self.above_05 += 1; }
+            if rmsd > 0.5 {
+                self.above_05 += 1;
+            }
         }
         fn fail_pct(&self) -> f64 {
-            if self.total == 0 { 0.0 } else { self.above_05 as f64 / self.total as f64 * 100.0 }
+            if self.total == 0 {
+                0.0
+            } else {
+                self.above_05 as f64 / self.total as f64 * 100.0
+            }
         }
         fn avg_rmsd(&self) -> f64 {
-            if self.total == 0 { 0.0 } else { self.sum_rmsd / self.total as f64 }
+            if self.total == 0 {
+                0.0
+            } else {
+                self.sum_rmsd / self.total as f64
+            }
         }
     }
 
@@ -367,10 +411,10 @@ fn test_gdb20_parallel() {
     let mut has_aromatic = FeatureStats::new();
     let mut no_aromatic = FeatureStats::new();
     // By heavy atom count ranges
-    let mut heavy_small = FeatureStats::new();   // <=10
-    let mut heavy_medium = FeatureStats::new();  // 11-15
-    let mut heavy_large = FeatureStats::new();   // 16-20
-    // By CSD torsion count
+    let mut heavy_small = FeatureStats::new(); // <=10
+    let mut heavy_medium = FeatureStats::new(); // 11-15
+    let mut heavy_large = FeatureStats::new(); // 16-20
+                                               // By CSD torsion count
     let mut csd_0 = FeatureStats::new();
     let mut csd_1_3 = FeatureStats::new();
     let mut csd_4plus = FeatureStats::new();
@@ -379,7 +423,7 @@ fn test_gdb20_parallel() {
     let mut atoms_20_35 = FeatureStats::new();
     let mut atoms_36plus = FeatureStats::new();
     // SMILES patterns
-    let mut has_ring_smi = FeatureStats::new();   // contains digits (ring closure)
+    let mut has_ring_smi = FeatureStats::new(); // contains digits (ring closure)
     let mut no_ring_smi = FeatureStats::new();
     // Combined: triple + ring
     let mut triple_with_ring = FeatureStats::new();
@@ -400,10 +444,26 @@ fn test_gdb20_parallel() {
         let has_aromatic_bond = ref_mol.bonds.iter().any(|b| b.order == "AROMATIC");
         let has_ring_closure = ref_mol.smiles.chars().any(|c| c.is_ascii_digit());
 
-        if has_triple_bond { has_triple.add(rmsd); } else { no_triple.add(rmsd); }
-        if has_double_bond { has_double.add(rmsd); } else { no_double.add(rmsd); }
-        if has_aromatic_bond { has_aromatic.add(rmsd); } else { no_aromatic.add(rmsd); }
-        if has_ring_closure { has_ring_smi.add(rmsd); } else { no_ring_smi.add(rmsd); }
+        if has_triple_bond {
+            has_triple.add(rmsd);
+        } else {
+            no_triple.add(rmsd);
+        }
+        if has_double_bond {
+            has_double.add(rmsd);
+        } else {
+            no_double.add(rmsd);
+        }
+        if has_aromatic_bond {
+            has_aromatic.add(rmsd);
+        } else {
+            no_aromatic.add(rmsd);
+        }
+        if has_ring_closure {
+            has_ring_smi.add(rmsd);
+        } else {
+            no_ring_smi.add(rmsd);
+        }
 
         // Combined
         match (has_triple_bond, has_ring_closure) {
@@ -415,81 +475,174 @@ fn test_gdb20_parallel() {
 
         // Heavy atom count
         let n_heavy = ref_mol.atoms.iter().filter(|a| a.element != 1).count();
-        if n_heavy <= 10 { heavy_small.add(rmsd); }
-        else if n_heavy <= 15 { heavy_medium.add(rmsd); }
-        else { heavy_large.add(rmsd); }
+        if n_heavy <= 10 {
+            heavy_small.add(rmsd);
+        } else if n_heavy <= 15 {
+            heavy_medium.add(rmsd);
+        } else {
+            heavy_large.add(rmsd);
+        }
 
         // Total atom count
         let n_total = ref_mol.atoms.len();
-        if n_total < 20 { atoms_lt20.add(rmsd); }
-        else if n_total <= 35 { atoms_20_35.add(rmsd); }
-        else { atoms_36plus.add(rmsd); }
+        if n_total < 20 {
+            atoms_lt20.add(rmsd);
+        } else if n_total <= 35 {
+            atoms_20_35.add(rmsd);
+        } else {
+            atoms_36plus.add(rmsd);
+        }
 
         // CSD torsion count
         let n_csd = ref_mol.torsions.len();
-        if n_csd == 0 { csd_0.add(rmsd); }
-        else if n_csd <= 3 { csd_1_3.add(rmsd); }
-        else { csd_4plus.add(rmsd); }
+        if n_csd == 0 {
+            csd_0.add(rmsd);
+        } else if n_csd <= 3 {
+            csd_1_3.add(rmsd);
+        } else {
+            csd_4plus.add(rmsd);
+        }
     }
 
     println!("\nBond type correlation:");
-    println!("  Has triple bond:  n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        has_triple.total, has_triple.fail_pct(), has_triple.avg_rmsd());
-    println!("  No triple bond:   n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        no_triple.total, no_triple.fail_pct(), no_triple.avg_rmsd());
-    println!("  Has double bond:  n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        has_double.total, has_double.fail_pct(), has_double.avg_rmsd());
-    println!("  No double bond:   n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        no_double.total, no_double.fail_pct(), no_double.avg_rmsd());
-    println!("  Has aromatic:     n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        has_aromatic.total, has_aromatic.fail_pct(), has_aromatic.avg_rmsd());
-    println!("  No aromatic:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        no_aromatic.total, no_aromatic.fail_pct(), no_aromatic.avg_rmsd());
+    println!(
+        "  Has triple bond:  n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        has_triple.total,
+        has_triple.fail_pct(),
+        has_triple.avg_rmsd()
+    );
+    println!(
+        "  No triple bond:   n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        no_triple.total,
+        no_triple.fail_pct(),
+        no_triple.avg_rmsd()
+    );
+    println!(
+        "  Has double bond:  n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        has_double.total,
+        has_double.fail_pct(),
+        has_double.avg_rmsd()
+    );
+    println!(
+        "  No double bond:   n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        no_double.total,
+        no_double.fail_pct(),
+        no_double.avg_rmsd()
+    );
+    println!(
+        "  Has aromatic:     n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        has_aromatic.total,
+        has_aromatic.fail_pct(),
+        has_aromatic.avg_rmsd()
+    );
+    println!(
+        "  No aromatic:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        no_aromatic.total,
+        no_aromatic.fail_pct(),
+        no_aromatic.avg_rmsd()
+    );
 
     println!("\nRing presence (SMILES digits):");
-    println!("  Has rings:        n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        has_ring_smi.total, has_ring_smi.fail_pct(), has_ring_smi.avg_rmsd());
-    println!("  No rings:         n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        no_ring_smi.total, no_ring_smi.fail_pct(), no_ring_smi.avg_rmsd());
+    println!(
+        "  Has rings:        n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        has_ring_smi.total,
+        has_ring_smi.fail_pct(),
+        has_ring_smi.avg_rmsd()
+    );
+    println!(
+        "  No rings:         n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        no_ring_smi.total,
+        no_ring_smi.fail_pct(),
+        no_ring_smi.avg_rmsd()
+    );
 
     println!("\nTriple × Ring cross-tab:");
-    println!("  Triple + Ring:    n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        triple_with_ring.total, triple_with_ring.fail_pct(), triple_with_ring.avg_rmsd());
-    println!("  Triple, no Ring:  n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        triple_no_ring.total, triple_no_ring.fail_pct(), triple_no_ring.avg_rmsd());
-    println!("  No Triple + Ring: n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        no_triple_with_ring.total, no_triple_with_ring.fail_pct(), no_triple_with_ring.avg_rmsd());
-    println!("  No Triple, no Ring: n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        no_triple_no_ring.total, no_triple_no_ring.fail_pct(), no_triple_no_ring.avg_rmsd());
+    println!(
+        "  Triple + Ring:    n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        triple_with_ring.total,
+        triple_with_ring.fail_pct(),
+        triple_with_ring.avg_rmsd()
+    );
+    println!(
+        "  Triple, no Ring:  n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        triple_no_ring.total,
+        triple_no_ring.fail_pct(),
+        triple_no_ring.avg_rmsd()
+    );
+    println!(
+        "  No Triple + Ring: n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        no_triple_with_ring.total,
+        no_triple_with_ring.fail_pct(),
+        no_triple_with_ring.avg_rmsd()
+    );
+    println!(
+        "  No Triple, no Ring: n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        no_triple_no_ring.total,
+        no_triple_no_ring.fail_pct(),
+        no_triple_no_ring.avg_rmsd()
+    );
 
     println!("\nHeavy atom count:");
-    println!("  <=10 atoms:       n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        heavy_small.total, heavy_small.fail_pct(), heavy_small.avg_rmsd());
-    println!("  11-15 atoms:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        heavy_medium.total, heavy_medium.fail_pct(), heavy_medium.avg_rmsd());
-    println!("  16-20 atoms:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        heavy_large.total, heavy_large.fail_pct(), heavy_large.avg_rmsd());
+    println!(
+        "  <=10 atoms:       n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        heavy_small.total,
+        heavy_small.fail_pct(),
+        heavy_small.avg_rmsd()
+    );
+    println!(
+        "  11-15 atoms:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        heavy_medium.total,
+        heavy_medium.fail_pct(),
+        heavy_medium.avg_rmsd()
+    );
+    println!(
+        "  16-20 atoms:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        heavy_large.total,
+        heavy_large.fail_pct(),
+        heavy_large.avg_rmsd()
+    );
 
     println!("\nTotal atom count:");
-    println!("  <20 atoms:        n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        atoms_lt20.total, atoms_lt20.fail_pct(), atoms_lt20.avg_rmsd());
-    println!("  20-35 atoms:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        atoms_20_35.total, atoms_20_35.fail_pct(), atoms_20_35.avg_rmsd());
-    println!("  36+ atoms:        n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        atoms_36plus.total, atoms_36plus.fail_pct(), atoms_36plus.avg_rmsd());
+    println!(
+        "  <20 atoms:        n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        atoms_lt20.total,
+        atoms_lt20.fail_pct(),
+        atoms_lt20.avg_rmsd()
+    );
+    println!(
+        "  20-35 atoms:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        atoms_20_35.total,
+        atoms_20_35.fail_pct(),
+        atoms_20_35.avg_rmsd()
+    );
+    println!(
+        "  36+ atoms:        n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        atoms_36plus.total,
+        atoms_36plus.fail_pct(),
+        atoms_36plus.avg_rmsd()
+    );
 
     println!("\nCSD torsion count:");
-    println!("  0 torsions:       n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        csd_0.total, csd_0.fail_pct(), csd_0.avg_rmsd());
-    println!("  1-3 torsions:     n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        csd_1_3.total, csd_1_3.fail_pct(), csd_1_3.avg_rmsd());
-    println!("  4+ torsions:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
-        csd_4plus.total, csd_4plus.fail_pct(), csd_4plus.avg_rmsd());
+    println!(
+        "  0 torsions:       n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        csd_0.total,
+        csd_0.fail_pct(),
+        csd_0.avg_rmsd()
+    );
+    println!(
+        "  1-3 torsions:     n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        csd_1_3.total,
+        csd_1_3.fail_pct(),
+        csd_1_3.avg_rmsd()
+    );
+    println!(
+        "  4+ torsions:      n={:5}, fail={:5.2}%, avg_rmsd={:.4}",
+        csd_4plus.total,
+        csd_4plus.fail_pct(),
+        csd_4plus.avg_rmsd()
+    );
 
     // Quality gate
     let fail_pct = above_05 as f64 / embed_ok.max(1) as f64 * 100.0;
-    println!(
-        "\nQuality gate: {:.2}% above 0.5 Å (target: 0%)",
-        fail_pct
-    );
+    println!("\nQuality gate: {:.2}% above 0.5 Å (target: 0%)", fail_pct);
 }
