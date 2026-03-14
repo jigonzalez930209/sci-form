@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-cli"
-version = "0.1.0"
+version = "0.1.4"
 edition = "2021"
 description = "CLI tool for high-performance 3D molecular conformer generation"
 license = "MIT"
