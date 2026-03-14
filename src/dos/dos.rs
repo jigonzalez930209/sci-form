@@ -163,7 +163,11 @@ pub fn compute_pdos(
 pub fn dos_mse(a: &[f64], b: &[f64]) -> f64 {
     assert_eq!(a.len(), b.len(), "DOS curves must have same length");
     let n = a.len() as f64;
-    a.iter().zip(b.iter()).map(|(x, y)| (x - y).powi(2)).sum::<f64>() / n
+    a.iter()
+        .zip(b.iter())
+        .map(|(x, y)| (x - y).powi(2))
+        .sum::<f64>()
+        / n
 }
 
 /// Serialize DOS/PDOS result to JSON for web visualization.
@@ -181,22 +185,30 @@ pub fn export_dos_json(result: &DosResult) -> String {
     let mut json = String::from("{");
     json.push_str("\"energies\":[");
     for (i, e) in result.energies.iter().enumerate() {
-        if i > 0 { json.push(','); }
+        if i > 0 {
+            json.push(',');
+        }
         json.push_str(&format!("{:.6}", e));
     }
     json.push_str("],\"total_dos\":[");
     for (i, d) in result.total_dos.iter().enumerate() {
-        if i > 0 { json.push(','); }
+        if i > 0 {
+            json.push(',');
+        }
         json.push_str(&format!("{:.6}", d));
     }
     json.push_str(&format!("],\"sigma\":{:.6}", result.sigma));
     if !result.pdos.is_empty() {
         json.push_str(",\"pdos\":{");
         for (a, pdos_a) in result.pdos.iter().enumerate() {
-            if a > 0 { json.push(','); }
+            if a > 0 {
+                json.push(',');
+            }
             json.push_str(&format!("\"{}\":[", a));
             for (i, v) in pdos_a.iter().enumerate() {
-                if i > 0 { json.push(','); }
+                if i > 0 {
+                    json.push(',');
+                }
                 json.push_str(&format!("{:.6}", v));
             }
             json.push(']');
@@ -349,8 +361,15 @@ mod tests {
         let positions: Vec<f64> = pos_arr.iter().flat_map(|p| p.iter().copied()).collect();
         let eht = crate::eht::solve_eht(&elements, &pos_arr, None).unwrap();
         let res = compute_pdos(
-            &elements, &positions, &eht.energies, &eht.coefficients,
-            eht.n_electrons, 0.2, -20.0, 5.0, 51,
+            &elements,
+            &positions,
+            &eht.energies,
+            &eht.coefficients,
+            eht.n_electrons,
+            0.2,
+            -20.0,
+            5.0,
+            51,
         );
         let json = export_dos_json(&res);
         let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
