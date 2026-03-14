@@ -1,3 +1,4 @@
+#![allow(unused_imports, unused_variables, dead_code, clippy::unnecessary_cast, clippy::needless_range_loop, clippy::manual_repeat_n, clippy::manual_str_repeat, clippy::manual_is_multiple_of, clippy::redundant_field_names, clippy::useless_vec, clippy::single_range_in_vec_init)]
 //! GDB-20 50k parallel RMSD test.
 //!
 //! Loads RDKit reference coordinates for ~50k GDB-20 molecules,
