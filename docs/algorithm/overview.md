@@ -1,18 +1,20 @@
-# Pipeline Overview
+# Algorithm Overview
 
-sci-form implements the **ETKDGv2** (Experimental Torsion Knowledge Distance Geometry version 2) algorithm to generate 3D molecular conformers from SMILES strings. This page describes the complete pipeline at a high level. Each stage is covered in detail in its own section.
+sci-form is a computational chemistry library with two main areas: **3D conformer generation** and **quantum-chemistry-inspired property computation**. This page describes both pipelines at a high level.
 
-## The 9-Step Pipeline
+---
+
+## Part 1: ETKDGv2 Conformer Pipeline
+
+sci-form implements **ETKDGv2** (Experimental Torsion Knowledge Distance Geometry v2) to generate 3D molecular conformers from SMILES strings.
+
+### The 9-Step Pipeline
 
 <img src="/svg/pipeline-overview.svg" alt="pipeline-overview" class="svg-diagram" />
 
-## Phase Breakdown
-
-The pipeline can be understood in three conceptual phases:
-
 ### Phase 1: Topology → Bounds (Steps 1–3)
 
-Starting from a SMILES string, we build a **molecular graph** and derive **distance constraints** between all atom pairs. These constraints form a bounds matrix $B$ where $l_{ij} \leq d_{ij} \leq u_{ij}$.
+Build a **molecular graph** and derive **distance constraints** between all atom pairs. Constraints form a bounds matrix $B$ where $l_{ij} \leq d_{ij} \leq u_{ij}$.
 
 - **1-2 bounds**: Bond lengths from UFF parameters
 - **1-3 bounds**: From bond lengths + equilibrium angles (law of cosines)
@@ -20,16 +22,16 @@ Starting from a SMILES string, we build a **molecular graph** and derive **dista
 - **VDW bounds**: Lower bounds from van der Waals radii
 - **Smoothing**: Floyd-Warshall to enforce the triangle inequality
 
-→ Details: [Bounds Matrix](/algorithm/bounds-matrix)
+→ Details: [Bounds Matrix](/algorithm/bounds-matrix), [SMILES Parsing](/algorithm/smiles-parsing)
 
 ### Phase 2: Embedding → Optimization (Steps 4–6)
 
-We generate 3D (or 4D) coordinates from the distance constraints using **distance geometry**:
+Generate 3D (or 4D) coordinates from the distance constraints using **distance geometry**:
 
-1. Pick random distances from the smoothed bounds
+1. Pick random distances from the smoothed bounds (MinstdRand RNG)
 2. Convert distances to a **metric matrix** via the Cayley-Menger transform
-3. Extract coordinates via **eigendecomposition**
-4. Minimize distance violations using a **BFGS optimizer** with a bounds violation force field
+3. Extract coordinates via **eigendecomposition** (power iteration solver)
+4. Minimize distance violations using **BFGS** with a bounds violation force field
 
 $$T_{ij} = \frac{1}{2}\left(D_{0i} + D_{0j} - d_{ij}^2\right)$$
 
@@ -39,33 +41,102 @@ where $D_{0i} = \frac{1}{N}\sum_{k} d_{ik}^2 - \frac{1}{N^2}\sum_{k<l} d_{kl}^2$
 
 ### Phase 3: Refinement → Output (Steps 7–9)
 
-After obtaining valid 3D coordinates, we refine them using the **ETKDG force field** that incorporates:
+After obtaining valid 3D coordinates, refine using the **ETKDG force field**:
 
-- **CSD torsion preferences**: 837 SMARTS patterns with Fourier coefficients derived from the Cambridge Structural Database
+- **CSD torsion preferences**: 846 SMARTS patterns with Fourier coefficients
 - **UFF inversions**: Out-of-plane energy for SP2 centers
 - **Distance constraints**: Maintain bond lengths and angles
-- **Validation**: Reject conformers with bad tetrahedral geometry, non-planar SP2 centers, or wrong double-bond configuration
+- **Validation**: Reject conformers failing tetrahedral/planarity/stereo checks
 
-→ Details: [ETKDG Refinement](/algorithm/etkdg-refinement), [Force Fields](/algorithm/force-fields)
+→ Details: [ETKDG Refinement](/algorithm/etkdg-refinement), [Force Fields](/algorithm/force-fields), [Validation](/algorithm/validation)
 
-## The Retry Loop
+### The Retry Loop
 
-The embedding process is stochastic — not every random distance sample produces a valid conformer. The pipeline uses a **retry loop** with up to $10N$ iterations (where $N$ is the number of atoms):
+The pipeline uses a **retry loop** with up to $10N$ iterations:
 
-1. If the metric matrix has zero or negative eigenvalues → **retry** with next RNG state
-2. If energy per atom after bounds minimization exceeds 0.05 → **retry**
-3. If tetrahedral centers fail the volume test → **retry**
-4. If chiral volume signs don't match → **retry**
-5. If planarity check fails → **retry**
-6. If double-bond geometry is wrong → **retry**
+1. Metric matrix has zero or negative eigenvalues → **retry**
+2. Energy/atom after bounds minimization exceeds 0.05 → **retry**
+3. Tetrahedral centers fail volume test → **retry**
+4. Chiral volume signs don't match → **retry**
+5. Planarity check fails → **retry**
+6. Double-bond geometry is wrong → **retry**
 
-Each retry advances the RNG state, producing different random distances. After $N/4$ consecutive failures, the algorithm falls back to **random box placement** (coordinates drawn uniformly from $[-5, 5]^3$).
+After $N/4$ consecutive failures, fall back to **random box placement** (uniform from $[-5, 5]^3$).
 
-## Algorithm Origin
+---
 
-The ETKDG algorithm was developed by Riniker and Landrum (2015) as an improvement to the DG (Distance Geometry) approach of Blaney and Dixon (1994). The key innovation is the use of **experimental torsion angle preferences** from the Cambridge Structural Database to guide conformer generation toward chemically realistic geometries.
+## Part 2: Property Computation Pipeline
 
-**References:**
-- Riniker, S.; Landrum, G. A. *J. Chem. Inf. Model.* **2015**, *55*, 2562–2574
-- Blaney, J. M.; Dixon, J. S. *Rev. Comput. Chem.* **1994**, *5*, 299–335
-- Wang, S.; Witek, J.; Landrum, G. A.; Riniker, S. *J. Chem. Inf. Model.* **2020**, *60*, 2044–2058
+Once a conformer is generated, sci-form can compute a range of molecular properties.
+
+### Gasteiger Charges (no QM)
+
+Fast empirical electronegativity equalization — requires only topology + atomic numbers, runs in microseconds.
+
+→ Details: [Population Analysis](/algorithm/population-analysis)
+
+### Extended Hückel Theory (EHT)
+
+EHT is the gateway to most quantum properties:
+
+1. **Build STO-3G basis** — contracted Gaussian orbitals for each atom
+2. **Overlap matrix S** — $S_{\mu\nu} = \langle \phi_\mu | \phi_\nu \rangle$
+3. **Wolfsberg-Helmholtz H** — $H_{\mu\nu} = \frac{K}{2} S_{\mu\nu}(H_{\mu\mu} + H_{\nu\nu})$
+4. **Löwdin ortho** — $\tilde{H} = S^{-1/2} H S^{-1/2}$, diagonalize → orbital energies $\varepsilon_i$ and MO coefficients
+5. Fill $N_e$ electrons from lowest orbital up → HOMO/LUMO
+
+From EHT:
+
+| Property | Method | Key Output |
+|----------|--------|------------|
+| Population analysis | Mulliken/Löwdin | Per-atom charges |
+| Dipole moment | Bond + lone-pair | Vector + Debye magnitude |
+| Orbital grids | STO-3G on 3D grid | Float32 volumetric array |
+| Isosurface mesh | Marching cubes | Vertices, normals, triangles |
+| DOS/PDOS | Gaussian smearing | Total DOS, per-atom DOS |
+
+→ Details: [Density of States](/algorithm/density-of-states), [Population Analysis](/algorithm/population-analysis), [Dipole Moments](/algorithm/dipole-moments)
+
+### Electrostatic Potential
+
+Coulomb ESP on a 3D grid from Mulliken charges:
+
+$$V(\mathbf{r}) = \sum_i \frac{q_i^{\text{Mulliken}}}{|\mathbf{r} - \mathbf{r}_i|}$$
+
+Color-mapped (red = negative, white = zero, blue = positive). Gaussian Cube export.
+
+→ Details: [Electrostatic Potential](/algorithm/electrostatic-potential)
+
+### Force Fields
+
+- **UFF** — Universal Force Field, 50+ element types (including transition metals)
+- **MMFF94** — Merck Molecular Force Field: quartic stretch, cubic bend, 3-term Fourier torsion, Halgren 14-7 vdW
+
+→ Details: [Force Fields](/algorithm/force-fields), [Strain Energy](/algorithm/strain-energy)
+
+### Molecular Alignment
+
+Two algorithms:
+- **Kabsch SVD** — optimal rotation, $O(N \cdot \min(N,3)^2)$
+- **Quaternion alignment** — Coutsias 2004 4×4 eigenproblem, faster for large $N$
+
+→ Details: [Molecular Alignment](/algorithm/molecular-alignment)
+
+### Materials Assembly
+
+Node/linker SBUs + topology → periodic crystal structure (MOF-type).
+
+→ Details: [Materials Assembly](/algorithm/materials-assembly)
+
+---
+
+## References
+
+- Riniker & Landrum, *J. Chem. Inf. Model.* **2015**, 55, 2562 (ETKDGv2)
+- Wang et al., *J. Chem. Inf. Model.* **2020**, 60, 2044 (ETKDGv3)
+- Blaney & Dixon, *Rev. Comput. Chem.* **1994**, 5, 299 (Distance geometry)
+- Wolfsberg & Helmholtz, *J. Chem. Phys.* **1952**, 20, 837 (EHT)
+- Mulliken, *J. Chem. Phys.* **1955**, 23, 1833 (Population analysis)
+- Gasteiger & Marsili, *Tetrahedron* **1980**, 36, 3219 (Charge equalization)
+- Coutsias et al., *J. Comput. Chem.* **2004**, 25, 1849 (Quaternion alignment)
+- Halgren, *J. Comput. Chem.* **1996**, 17, 490 (MMFF94)
