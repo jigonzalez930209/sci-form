@@ -40,6 +40,7 @@ rayon = { version = "1.10", optional = true }
 
 [dev-dependencies]
 rayon = "1.10"
+approx = "0.5"
 
 [profile.release]
 opt-level = 3
