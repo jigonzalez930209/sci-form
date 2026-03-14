@@ -1,8 +1,6 @@
 use crate::graph::Molecule;
-use nalgebra::DMatrix;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
-use std::collections::HashSet;
 
 #[derive(PartialEq)]
 pub(super) enum AmidePref {
@@ -38,10 +36,10 @@ pub(super) fn detect_amide_ester14(
 
 pub(super) fn check_amide14_dir(
     mol: &Molecule,
-    outer_atom: NodeIndex,    // atom 1 (substituent on amide N)
-    amide_n: NodeIndex,       // atom 2 (N or O)
-    carbonyl_c: NodeIndex,    // atom 3 (C)
-    double_o: NodeIndex,      // atom 4 (O/N bonded by double bond to C)
+    outer_atom: NodeIndex, // atom 1 (substituent on amide N)
+    amide_n: NodeIndex,    // atom 2 (N or O)
+    carbonyl_c: NodeIndex, // atom 3 (C)
+    double_o: NodeIndex,   // atom 4 (O/N bonded by double bond to C)
 ) -> Option<AmidePref> {
     let e_outer = mol.graph[outer_atom].element;
     let e_c = mol.graph[carbonyl_c].element;
@@ -49,16 +47,24 @@ pub(super) fn check_amide14_dir(
     let e_o = mol.graph[double_o].element;
 
     // carbonyl_c must be C(6)
-    if e_c != 6 { return Option::None; }
+    if e_c != 6 {
+        return Option::None;
+    }
     // double_o must be O(8) or N(7)
-    if e_o != 8 && e_o != 7 { return Option::None; }
+    if e_o != 8 && e_o != 7 {
+        return Option::None;
+    }
     // amide_n must be N(7) with secondary amide (exactly 1 H neighbor) or O(8)
     if e_n == 7 {
         // Count H neighbors on N
-        let h_count = mol.graph.neighbors(amide_n)
+        let h_count = mol
+            .graph
+            .neighbors(amide_n)
             .filter(|&nb| mol.graph[nb].element == 1)
             .count();
-        if h_count != 1 { return Option::None; }
+        if h_count != 1 {
+            return Option::None;
+        }
     } else if e_n != 8 {
         return Option::None;
     }
@@ -134,7 +140,9 @@ pub(super) fn check_amide_dir(
         // OK — ester oxygen
     } else if e_n == 7 {
         // Secondary amide: N must have exactly 1 H neighbor
-        let h_count = mol.graph.neighbors(amide_n)
+        let h_count = mol
+            .graph
+            .neighbors(amide_n)
             .filter(|&nb| mol.graph[nb].element == 1)
             .count();
         if h_count != 1 {
@@ -184,16 +192,41 @@ fn uff_radius(element: u8, hyb: &crate::graph::Hybridization, conjugated: bool) 
     match (element, hyb) {
         (1, _) => 0.354,
         (6, SP) => 0.706,
-        (6, SP2) => if conjugated { 0.729 } else { 0.732 }, // C_R vs C_2
+        (6, SP2) => {
+            if conjugated {
+                0.729
+            } else {
+                0.732
+            }
+        } // C_R vs C_2
         (6, SP3) | (6, _) => 0.757,
         (7, SP) => 0.656,
-        (7, SP2) => if conjugated { 0.699 } else { 0.685 }, // N_R vs N_2
+        (7, SP2) => {
+            if conjugated {
+                0.699
+            } else {
+                0.685
+            }
+        } // N_R vs N_2
         (7, SP3) | (7, _) => 0.700,
-        (8, SP2) => if conjugated { 0.680 } else { 0.634 }, // O_R vs O_2
+        (8, SP) => 0.639, // O_1
+        (8, SP2) => {
+            if conjugated {
+                0.680
+            } else {
+                0.634
+            }
+        } // O_R vs O_2
         (8, SP3) | (8, _) => 0.658,
         (9, _) => 0.668,
         (15, _) => 1.075,
-        (16, SP2) => if conjugated { 1.077 } else { 0.854 }, // S_R vs S_2
+        (16, SP2) => {
+            if conjugated {
+                1.077
+            } else {
+                0.854
+            }
+        } // S_R vs S_2
         (16, _) => 1.047,
         (17, _) => 1.044,
         (35, _) => 1.218,
@@ -222,12 +255,10 @@ fn atom_is_conjugated(mol: &Molecule, node: NodeIndex) -> bool {
         }
         // Check if either atom has another SP2/SP non-H neighbor (besides each other)
         let self_has_sp2_nb = mol.graph.neighbors(node).any(|n| {
-            n != nb && mol.graph[n].element != 1
-                && matches!(mol.graph[n].hybridization, SP2 | SP)
+            n != nb && mol.graph[n].element != 1 && matches!(mol.graph[n].hybridization, SP2 | SP)
         });
         let nb_has_sp2_nb = mol.graph.neighbors(nb).any(|n| {
-            n != node && mol.graph[n].element != 1
-                && matches!(mol.graph[n].hybridization, SP2 | SP)
+            n != node && mol.graph[n].element != 1 && matches!(mol.graph[n].hybridization, SP2 | SP)
         });
         if self_has_sp2_nb || nb_has_sp2_nb {
             return true;
@@ -272,7 +303,7 @@ pub fn get_bond_length(mol: &Molecule, n1: NodeIndex, n2: NodeIndex) -> f64 {
 
     let mut order = crate::graph::BondOrder::Single;
     if let Some(edge_idx) = mol.graph.find_edge(n1, n2) {
-        order = mol.graph[edge_idx].order.clone();
+        order = mol.graph[edge_idx].order;
     }
 
     // Pure UFF formula matching RDKit's set12Bounds:
@@ -329,7 +360,15 @@ pub(super) fn compute13_dist(d1: f64, d2: f64, angle: f64) -> f64 {
     (d1 * d1 + d2 * d2 - 2.0 * d1 * d2 * angle.cos()).sqrt()
 }
 
-pub(super) fn compute15_cis_cis(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f64, ang23: f64, ang34: f64) -> f64 {
+pub(super) fn compute15_cis_cis(
+    d1: f64,
+    d2: f64,
+    d3: f64,
+    d4: f64,
+    ang12: f64,
+    ang23: f64,
+    ang34: f64,
+) -> f64 {
     let dx14 = d2 - d3 * ang23.cos() - d1 * ang12.cos();
     let dy14 = d3 * ang23.sin() - d1 * ang12.sin();
     let d14 = (dx14 * dx14 + dy14 * dy14).sqrt();
@@ -339,7 +378,15 @@ pub(super) fn compute15_cis_cis(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f64, 
     compute13_dist(d14, d4, ang145)
 }
 
-pub(super) fn compute15_cis_trans(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f64, ang23: f64, ang34: f64) -> f64 {
+pub(super) fn compute15_cis_trans(
+    d1: f64,
+    d2: f64,
+    d3: f64,
+    d4: f64,
+    ang12: f64,
+    ang23: f64,
+    ang34: f64,
+) -> f64 {
     let dx14 = d2 - d3 * ang23.cos() - d1 * ang12.cos();
     let dy14 = d3 * ang23.sin() - d1 * ang12.sin();
     let d14 = (dx14 * dx14 + dy14 * dy14).sqrt();
@@ -349,7 +396,15 @@ pub(super) fn compute15_cis_trans(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f64
     compute13_dist(d14, d4, ang145)
 }
 
-pub(super) fn compute15_trans_trans(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f64, ang23: f64, ang34: f64) -> f64 {
+pub(super) fn compute15_trans_trans(
+    d1: f64,
+    d2: f64,
+    d3: f64,
+    d4: f64,
+    ang12: f64,
+    ang23: f64,
+    ang34: f64,
+) -> f64 {
     let dx14 = d2 - d3 * ang23.cos() - d1 * ang12.cos();
     let dy14 = d3 * ang23.sin() + d1 * ang12.sin();
     let d14 = (dx14 * dx14 + dy14 * dy14).sqrt();
@@ -359,7 +414,15 @@ pub(super) fn compute15_trans_trans(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f
     compute13_dist(d14, d4, ang145)
 }
 
-pub(super) fn compute15_trans_cis(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f64, ang23: f64, ang34: f64) -> f64 {
+pub(super) fn compute15_trans_cis(
+    d1: f64,
+    d2: f64,
+    d3: f64,
+    d4: f64,
+    ang12: f64,
+    ang23: f64,
+    ang34: f64,
+) -> f64 {
     let dx14 = d2 - d3 * ang23.cos() - d1 * ang12.cos();
     let dy14 = d3 * ang23.sin() + d1 * ang12.sin();
     let d14 = (dx14 * dx14 + dy14 * dy14).sqrt();
@@ -368,4 +431,3 @@ pub(super) fn compute15_trans_cis(d1: f64, d2: f64, d3: f64, d4: f64, ang12: f64
     let ang145 = ang34 - ang143;
     compute13_dist(d14, d4, ang145)
 }
-

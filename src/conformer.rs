@@ -1,3 +1,12 @@
+use crate::distgeom::{
+    calculate_bounds_matrix_opts, check_chiral_centers, check_double_bond_geometry,
+    check_tetrahedral_centers, compute_initial_coords_rdkit, identify_chiral_sets,
+    identify_tetrahedral_centers, pick_rdkit_distances, triangle_smooth_tol, MinstdRand,
+    MAX_MINIMIZED_E_PER_ATOM,
+};
+use crate::forcefield::bounds_ff::minimize_bfgs_rdkit;
+use crate::forcefield::etkdg_3d::{build_etkdg_3d_ff_with_torsions, minimize_etkdg_3d_bfgs};
+use crate::graph::Molecule;
 /// End-to-end 3D conformer generation pipeline.
 ///
 /// Algorithm matching RDKit's ETKDG embedPoints() with retry-on-failure:
@@ -14,22 +23,6 @@
 ///      h. Planarity check (OOP energy)
 ///      i. Double bond geometry check
 use nalgebra::DMatrix;
-use crate::distgeom::{
-    calculate_bounds_matrix_opts, triangle_smooth_tol,
-    identify_chiral_sets, identify_tetrahedral_centers,
-    check_tetrahedral_centers, check_chiral_centers,
-    check_double_bond_geometry,
-    pick_rdkit_distances, compute_initial_coords_rdkit,
-    MinstdRand, MAX_MINIMIZED_E_PER_ATOM,
-};
-use crate::forcefield::bounds_ff::{
-    minimize_bfgs_rdkit,
-    bounds_violation_energy_basin, chiral_violation_energy,
-};
-use crate::forcefield::etkdg_3d::{
-    build_etkdg_3d_ff_with_torsions, minimize_etkdg_3d_bfgs,
-};
-use crate::graph::Molecule;
 
 const BASIN_THRESH: f32 = 5.0;
 const FORCE_TOL: f32 = 1e-3;
@@ -51,12 +44,81 @@ pub fn generate_3d_conformer(mol: &Molecule, seed: u64) -> Result<DMatrix<f32>, 
     generate_3d_conformer_with_torsions(mol, seed, &csd_torsions)
 }
 
+/// Generate multiple conformers with different seeds and return the one
+/// with the lowest ETKDG 3D force field energy (best geometry).
+pub fn generate_3d_conformer_best_of_k(
+    mol: &Molecule,
+    seed: u64,
+    csd_torsions: &[crate::forcefield::etkdg_3d::M6TorsionContrib],
+    num_seeds: usize,
+) -> Result<DMatrix<f32>, String> {
+    if num_seeds <= 1 {
+        return generate_3d_conformer_with_torsions(mol, seed, csd_torsions);
+    }
+
+    let mut best: Option<(DMatrix<f32>, f64)> = None;
+    let mut last_err = String::new();
+
+    // Pre-compute bounds + FF scaffold once (topology-dependent, not seed-dependent)
+    let bounds = {
+        let raw = calculate_bounds_matrix_opts(mol, true);
+        let mut b = raw;
+        if triangle_smooth_tol(&mut b, 0.0) {
+            b
+        } else {
+            let raw2 = calculate_bounds_matrix_opts(mol, false);
+            let mut b2 = raw2.clone();
+            if triangle_smooth_tol(&mut b2, 0.0) {
+                b2
+            } else {
+                let mut b3 = raw2;
+                triangle_smooth_tol(&mut b3, 0.05);
+                b3
+            }
+        }
+    };
+
+    for k in 0..num_seeds {
+        let s = seed.wrapping_add(k as u64 * 1000);
+        match generate_3d_conformer_with_torsions(mol, s, csd_torsions) {
+            Ok(coords) => {
+                // Score using ETKDG 3D energy (topology-dependent, comparable across seeds)
+                let n = mol.graph.node_count();
+                let coords_f64 = coords.map(|v| v as f64);
+                let ff = build_etkdg_3d_ff_with_torsions(mol, &coords_f64, &bounds, csd_torsions);
+                let mut flat = vec![0.0f64; n * 3];
+                for a in 0..n {
+                    flat[a * 3] = coords[(a, 0)] as f64;
+                    flat[a * 3 + 1] = coords[(a, 1)] as f64;
+                    flat[a * 3 + 2] = coords[(a, 2)] as f64;
+                }
+                let energy = crate::forcefield::etkdg_3d::etkdg_3d_energy_f64(&flat, n, mol, &ff);
+                match &best {
+                    Some((_, best_e)) if energy >= *best_e => {}
+                    _ => {
+                        best = Some((coords, energy));
+                    }
+                }
+            }
+            Err(e) => {
+                last_err = e;
+            }
+        }
+    }
+
+    match best {
+        Some((coords, _)) => Ok(coords),
+        None => Err(last_err),
+    }
+}
+
 /// Generate a 3D conformer with optional CSD torsion overrides.
 ///
 /// If `csd_torsions` is non-empty, they replace the default torsion terms
 /// in the 3D force field, providing much better torsion angle quality.
 pub fn generate_3d_conformer_with_torsions(
-    mol: &Molecule, seed: u64,
+    mol: &Molecule,
+    seed: u64,
     csd_torsions: &[crate::forcefield::etkdg_3d::M6TorsionContrib],
 ) -> Result<DMatrix<f32>, String> {
     let n = mol.graph.node_count();
@@ -98,48 +160,95 @@ pub fn generate_3d_conformer_with_torsions(
     let use_4d = !chiral_sets.is_empty();
     let embed_dim = if use_4d { 4 } else { 3 };
 
+    // Track consecutive embedding failures for random coord fallback
+    let mut consecutive_embed_fails = 0u32;
+    let embed_fail_threshold = (n as u32 / 4).max(20); // Switch to random coords after N/4 consecutive fails
+    let mut random_coord_attempts = 0u32;
+    let max_random_coord_attempts = 100u32; // Cap random coord attempts to avoid infinite loops
+
     for _iter in 0..max_iterations {
         // Log attempt number if requested (works in both lib and integration tests)
         let _log_attempts = std::env::var("LOG_ATTEMPTS").is_ok();
 
-        // Step 1: Generate initial coords (random distances → metric matrix → 3D/4D embedding)
-        let dists = pick_rdkit_distances(&mut rng, &bounds);
-        let coords_opt = compute_initial_coords_rdkit(&mut rng, &dists, embed_dim);
-        let mut coords = match coords_opt {
-            Some(c) => c,
-            None => {
-                if _log_attempts {
-                    eprintln!("  attempt {} → embedding failed", _iter);
+        // Step 1: Generate initial coords
+        let use_random_coords = consecutive_embed_fails >= embed_fail_threshold
+            && random_coord_attempts < max_random_coord_attempts;
+        let (mut coords, basin_thresh) = if use_random_coords {
+            random_coord_attempts += 1;
+            // Random coordinate fallback: place atoms in [-5, 5] box
+            // Matching RDKit's useRandomCoords mode with boxSizeMult=2.0
+            let box_size = 10.0f64; // 5.0 * 2.0
+            let mut c = DMatrix::from_element(n, embed_dim, 0.0f64);
+            for i in 0..n {
+                for d in 0..embed_dim {
+                    c[(i, d)] = box_size * (rng.next_double() - 0.5);
                 }
-                continue;
-            },
+            }
+            // RDKit disables basin threshold for random coords
+            (c, 1e8f64)
+        } else {
+            let dists = pick_rdkit_distances(&mut rng, &bounds);
+            let coords_opt = compute_initial_coords_rdkit(&mut rng, &dists, embed_dim);
+            match coords_opt {
+                Some(c) => {
+                    consecutive_embed_fails = 0;
+                    (c, BASIN_THRESH as f64)
+                }
+                None => {
+                    consecutive_embed_fails += 1;
+                    // If we've exhausted random coord attempts and still failing, give up
+                    if random_coord_attempts >= max_random_coord_attempts {
+                        break;
+                    }
+                    if _log_attempts && consecutive_embed_fails == embed_fail_threshold {
+                        eprintln!(
+                            "  attempt {} → switching to random coords after {} failures",
+                            _iter, embed_fail_threshold
+                        );
+                    } else if _log_attempts {
+                        eprintln!("  attempt {} → embedding failed", _iter);
+                    }
+                    continue;
+                }
+            }
         };
 
         // Step 2: First minimization (bounds FF with chiral_w=1.0, 4d_w=0.1)
         // RDKit: while(needMore) { needMore = field->minimize(400, forceTol); }
-        // No restart limit — loop until BFGS converges (returns 0).
+        // Safety limit: max 50 restarts to prevent infinite loops (RDKit typically needs < 10)
         {
-            let initial_energy = compute_total_bounds_energy_f64(
-                &coords, &bounds, &chiral_sets, BASIN_THRESH, 0.1, 1.0,
-            );
+            let bt = basin_thresh as f32;
+            let initial_energy =
+                compute_total_bounds_energy_f64(&coords, &bounds, &chiral_sets, bt, 0.1, 1.0);
             if initial_energy > ERROR_TOL {
                 let mut need_more = 1;
-                while need_more != 0 {
+                let mut restarts = 0;
+                while need_more != 0 && restarts < 50 {
                     need_more = minimize_bfgs_rdkit(
-                        &mut coords, &bounds, &chiral_sets,
-                        400, FORCE_TOL as f64, BASIN_THRESH, 0.1, 1.0,
+                        &mut coords,
+                        &bounds,
+                        &chiral_sets,
+                        400,
+                        FORCE_TOL as f64,
+                        bt,
+                        0.1,
+                        1.0,
                     );
+                    restarts += 1;
                 }
             }
         }
 
         // Step 3: Energy per atom check
-        let energy = compute_total_bounds_energy_f64(
-            &coords, &bounds, &chiral_sets, BASIN_THRESH, 0.1, 1.0,
-        );
+        let bt = basin_thresh as f32;
+        let energy = compute_total_bounds_energy_f64(&coords, &bounds, &chiral_sets, bt, 0.1, 1.0);
         if energy / n as f64 >= MAX_MINIMIZED_E_PER_ATOM as f64 {
             if _log_attempts {
-                eprintln!("  attempt {} → energy check failed: {:.6}/atom", _iter, energy / n as f64);
+                eprintln!(
+                    "  attempt {} → energy check failed: {:.6}/atom",
+                    _iter,
+                    energy / n as f64
+                );
             }
             continue;
         }
@@ -163,16 +272,23 @@ pub fn generate_3d_conformer_with_torsions(
         // Step 6: Second minimization (chiral_w=0.2, 4d_w=1.0) — only if 4D embedding
         // RDKit: while(needMore) { needMore = field2->minimize(200, forceTol); }
         if use_4d {
-            let energy2 = compute_total_bounds_energy_f64(
-                &coords, &bounds, &chiral_sets, BASIN_THRESH, 1.0, 0.2,
-            );
+            let energy2 =
+                compute_total_bounds_energy_f64(&coords, &bounds, &chiral_sets, bt, 1.0, 0.2);
             if energy2 > ERROR_TOL {
                 let mut need_more = 1;
-                while need_more != 0 {
+                let mut restarts = 0;
+                while need_more != 0 && restarts < 50 {
                     need_more = minimize_bfgs_rdkit(
-                        &mut coords, &bounds, &chiral_sets,
-                        200, FORCE_TOL as f64, BASIN_THRESH, 1.0, 0.2,
+                        &mut coords,
+                        &bounds,
+                        &chiral_sets,
+                        200,
+                        FORCE_TOL as f64,
+                        bt,
+                        1.0,
+                        0.2,
                     );
+                    restarts += 1;
                 }
             }
         }
@@ -219,10 +335,16 @@ pub fn generate_3d_conformer_with_torsions(
                 }
                 flat
             };
-            let planarity_energy = crate::forcefield::etkdg_3d::planarity_check_energy_f64(&flat_f64, n, &ff);
+            let planarity_energy =
+                crate::forcefield::etkdg_3d::planarity_check_energy_f64(&flat_f64, n, &ff);
             if planarity_energy > n_improper_atoms as f64 * PLANARITY_TOLERANCE as f64 {
                 if _log_attempts {
-                    eprintln!("  attempt {} → planarity check failed (energy={:.4} > threshold={:.4})", _iter, planarity_energy, n_improper_atoms as f64 * PLANARITY_TOLERANCE as f64);
+                    eprintln!(
+                        "  attempt {} → planarity check failed (energy={:.4} > threshold={:.4})",
+                        _iter,
+                        planarity_energy,
+                        n_improper_atoms as f64 * PLANARITY_TOLERANCE as f64
+                    );
                 }
                 continue;
             }
@@ -244,33 +366,21 @@ pub fn generate_3d_conformer_with_torsions(
         return Ok(refined_f32);
     }
 
-    Err(format!("Failed to generate valid conformer after {} iterations", max_iterations))
-}
-
-/// Compute total bounds FF energy (bounds violations + chiral + 4D penalty)
-fn compute_total_bounds_energy(
-    coords: &DMatrix<f32>, bounds: &DMatrix<f64>,
-    chiral_sets: &[crate::forcefield::bounds_ff::ChiralSet], n: usize,
-) -> f32 {
-    let mut e = bounds_violation_energy_basin(coords, bounds, BASIN_THRESH);
-    if !chiral_sets.is_empty() {
-        e += chiral_violation_energy(coords, chiral_sets);
-    }
-    if coords.ncols() == 4 {
-        for i in 0..n {
-            let x4 = coords[(i, 3)];
-            e += 0.1 * x4 * x4;
-        }
-    }
-    e
+    Err(format!(
+        "Failed to generate valid conformer after {} iterations",
+        max_iterations
+    ))
 }
 
 /// Compute bounds FF energy in f64, matching RDKit's field->calcEnergy() exactly.
 /// Used for the energy pre-check before minimization.
 pub fn compute_total_bounds_energy_f64(
-    coords: &DMatrix<f64>, bounds: &DMatrix<f64>,
+    coords: &DMatrix<f64>,
+    bounds: &DMatrix<f64>,
     chiral_sets: &[crate::forcefield::bounds_ff::ChiralSet],
-    basin_thresh: f32, weight_4d: f32, weight_chiral: f32,
+    basin_thresh: f32,
+    weight_4d: f32,
+    weight_chiral: f32,
 ) -> f64 {
     let n = coords.nrows();
     let dim_coords = coords.ncols();
@@ -283,7 +393,9 @@ pub fn compute_total_bounds_energy_f64(
         for j in 0..i {
             let ub = bounds[(j, i)];
             let lb = bounds[(i, j)];
-            if ub - lb > basin_thresh_f64 { continue; }
+            if ub - lb > basin_thresh_f64 {
+                continue;
+            }
             let mut d2 = 0.0f64;
             for d in 0..dim_coords {
                 let diff = coords[(i, d)] - coords[(j, d)];
@@ -298,16 +410,25 @@ pub fn compute_total_bounds_energy_f64(
             } else {
                 0.0
             };
-            if val > 0.0 { energy += val * val; }
+            if val > 0.0 {
+                energy += val * val;
+            }
         }
     }
     if !chiral_sets.is_empty() {
         // Flatten coords to flat array for f64 chiral energy
         let mut flat = vec![0.0f64; n * dim_coords];
-        for i in 0..n { for d in 0..dim_coords { flat[i * dim_coords + d] = coords[(i, d)]; } }
-        energy += weight_chiral_f64 * crate::forcefield::bounds_ff::chiral_violation_energy_f64(
-            &flat, dim_coords, chiral_sets,
-        );
+        for i in 0..n {
+            for d in 0..dim_coords {
+                flat[i * dim_coords + d] = coords[(i, d)];
+            }
+        }
+        energy += weight_chiral_f64
+            * crate::forcefield::bounds_ff::chiral_violation_energy_f64(
+                &flat,
+                dim_coords,
+                chiral_sets,
+            );
     }
     if dim_coords == 4 {
         for i in 0..n {

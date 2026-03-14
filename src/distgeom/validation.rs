@@ -1,9 +1,9 @@
 //! Validation checks matching RDKit's embedding validation pipeline.
 //! Part of the retry-on-failure loop in embedPoints().
 
-use nalgebra::{DMatrix, Vector3};
-use crate::graph::Molecule;
 use crate::forcefield::bounds_ff::ChiralSet;
+use crate::graph::Molecule;
+use nalgebra::{DMatrix, Vector3};
 
 const MIN_TETRAHEDRAL_CHIRAL_VOL: f64 = 0.50;
 const TETRAHEDRAL_CENTERINVOLUME_TOL: f64 = 0.30;
@@ -46,16 +46,27 @@ pub fn identify_tetrahedral_centers(mol: &Molecule) -> Vec<TetrahedralCenter> {
         let atom = &mol.graph[ni];
         // RDKit: only C (6) or N (7) with degree == 4
         let elem = atom.element;
-        if elem != 6 && elem != 7 { continue; }
+        if elem != 6 && elem != 7 {
+            continue;
+        }
         let nbs: Vec<_> = mol.graph.neighbors(ni).collect();
-        if nbs.len() != 4 { continue; }
+        if nbs.len() != 4 {
+            continue;
+        }
 
         // RDKit: only add if in 2+ rings AND not in any 3-ring
-        if ring_count[i] < 2 || in_3_ring[i] { continue; }
+        if ring_count[i] < 2 || in_3_ring[i] {
+            continue;
+        }
 
         centers.push(TetrahedralCenter {
             center: i,
-            neighbors: [nbs[0].index(), nbs[1].index(), nbs[2].index(), nbs[3].index()],
+            neighbors: [
+                nbs[0].index(),
+                nbs[1].index(),
+                nbs[2].index(),
+                nbs[3].index(),
+            ],
             in_small_ring: small_ring_count[i] > 1,
         });
     }
@@ -64,11 +75,15 @@ pub fn identify_tetrahedral_centers(mol: &Molecule) -> Vec<TetrahedralCenter> {
 
 /// Find the Smallest Set of Smallest Rings (SSSR) using Horton's algorithm.
 /// Returns a list of rings, each ring being a vector of atom indices.
-pub fn find_sssr_pub(mol: &Molecule) -> Vec<Vec<usize>> { find_sssr(mol) }
+pub fn find_sssr_pub(mol: &Molecule) -> Vec<Vec<usize>> {
+    find_sssr(mol)
+}
 fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
     use std::collections::VecDeque;
     let n = mol.graph.node_count();
-    if n == 0 { return vec![]; }
+    if n == 0 {
+        return vec![];
+    }
 
     // Number of independent cycles = edges - vertices + connected_components
     let num_edges = mol.graph.edge_count();
@@ -76,7 +91,9 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
     let mut visited = vec![false; n];
     let mut num_components = 0;
     for start in 0..n {
-        if visited[start] { continue; }
+        if visited[start] {
+            continue;
+        }
         num_components += 1;
         let mut queue = VecDeque::new();
         queue.push_back(start);
@@ -91,7 +108,9 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
         }
     }
     let cycle_rank = num_edges - n + num_components;
-    if cycle_rank == 0 { return vec![]; }
+    if cycle_rank == 0 {
+        return vec![];
+    }
 
     // For each vertex, BFS to compute shortest path tree
     // Then for each non-tree edge found at vertex v, form the candidate ring
@@ -121,10 +140,16 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
         for u in 0..n {
             for nb in mol.graph.neighbors(petgraph::graph::NodeIndex::new(u)) {
                 let v = nb.index();
-                if u >= v { continue; } // avoid duplicates
+                if u >= v {
+                    continue;
+                } // avoid duplicates
                 let ring_len = dist[u] + dist[v] + 1;
-                if ring_len > 8 { continue; } // skip very large rings
-                if dist[u] == usize::MAX || dist[v] == usize::MAX { continue; }
+                if ring_len > 8 {
+                    continue;
+                } // skip very large rings
+                if dist[u] == usize::MAX || dist[v] == usize::MAX {
+                    continue;
+                }
 
                 // Build the ring: path from root to u + edge (u,v) + path from v to root
                 let path_u = trace_path(&parent, root, u);
@@ -162,19 +187,21 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
 
     // A ring is "relevant" if it cannot be expressed as the symmetric difference of
     // two strictly smaller rings. This matches RDKit's ring perception behavior.
-    let edge_sets: Vec<std::collections::HashSet<(usize, usize)>> = candidates
-        .iter()
-        .map(|r| ring_edges(r).collect())
-        .collect();
+    let edge_sets: Vec<std::collections::HashSet<(usize, usize)>> =
+        candidates.iter().map(|r| ring_edges(r).collect()).collect();
 
     let mut relevant = Vec::new();
     for (i, ring) in candidates.iter().enumerate() {
         let mut is_xor_of_smaller = false;
         // Check all pairs of strictly smaller rings
         for j in 0..i {
-            if candidates[j].len() >= ring.len() { continue; }
+            if candidates[j].len() >= ring.len() {
+                continue;
+            }
             for k in (j + 1)..i {
-                if candidates[k].len() >= ring.len() { continue; }
+                if candidates[k].len() >= ring.len() {
+                    continue;
+                }
                 // Symmetric difference of edge sets j and k
                 let sym_diff: std::collections::HashSet<(usize, usize)> = edge_sets[j]
                     .symmetric_difference(&edge_sets[k])
@@ -185,7 +212,9 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
                     break;
                 }
             }
-            if is_xor_of_smaller { break; }
+            if is_xor_of_smaller {
+                break;
+            }
         }
         if !is_xor_of_smaller {
             relevant.push(ring.clone());
@@ -210,7 +239,9 @@ fn trace_path(parent: &[usize], root: usize, target: usize) -> Vec<usize> {
 }
 
 fn normalize_ring(ring: &[usize]) -> Vec<usize> {
-    if ring.is_empty() { return vec![]; }
+    if ring.is_empty() {
+        return vec![];
+    }
     // Find minimum element position
     let min_pos = ring.iter().enumerate().min_by_key(|&(_, &v)| v).unwrap().0;
     let n = ring.len();
@@ -233,7 +264,12 @@ fn ring_edges(ring: &[usize]) -> impl Iterator<Item = (usize, usize)> + '_ {
 /// Uses NORMALIZED direction vectors from center to each neighbor.
 /// Checks all C(4,3)=4 combinations of 3 vectors.
 /// Uses f64 to match RDKit's Point3D (double) precision.
-fn volume_test(center: usize, neighbors: &[usize; 4], coords: &DMatrix<f64>, relaxed: bool) -> bool {
+fn volume_test(
+    center: usize,
+    neighbors: &[usize; 4],
+    coords: &DMatrix<f64>,
+    relaxed: bool,
+) -> bool {
     let dim = coords.ncols().min(3);
     let p0 = Vector3::new(
         coords[(center, 0)],
@@ -269,8 +305,12 @@ fn volume_test(center: usize, neighbors: &[usize; 4], coords: &DMatrix<f64>, rel
 
 /// Center-in-volume test: center atom must be inside the tetrahedron formed by its 4 neighbors.
 fn same_side(
-    v1: &Vector3<f64>, v2: &Vector3<f64>, v3: &Vector3<f64>,
-    v4: &Vector3<f64>, p0: &Vector3<f64>, tol: f64,
+    v1: &Vector3<f64>,
+    v2: &Vector3<f64>,
+    v3: &Vector3<f64>,
+    v4: &Vector3<f64>,
+    p0: &Vector3<f64>,
+    tol: f64,
 ) -> bool {
     let normal = (v2 - v1).cross(&(v3 - v1));
     let d1 = normal.dot(&(v4 - v1));
@@ -281,7 +321,12 @@ fn same_side(
     (d1 < 0.0) == (d2 < 0.0)
 }
 
-fn center_in_volume(center: usize, neighbors: &[usize; 4], coords: &DMatrix<f64>, tol: f64) -> bool {
+fn center_in_volume(
+    center: usize,
+    neighbors: &[usize; 4],
+    coords: &DMatrix<f64>,
+    tol: f64,
+) -> bool {
     let dim = coords.ncols().min(3);
     let get_p3d = |idx: usize| -> Vector3<f64> {
         Vector3::new(
@@ -311,7 +356,12 @@ pub fn check_tetrahedral_centers(coords: &DMatrix<f64>, centers: &[TetrahedralCe
         if !volume_test(tc.center, &tc.neighbors, coords, tc.in_small_ring) {
             return false;
         }
-        if !center_in_volume(tc.center, &tc.neighbors, coords, TETRAHEDRAL_CENTERINVOLUME_TOL) {
+        if !center_in_volume(
+            tc.center,
+            &tc.neighbors,
+            coords,
+            TETRAHEDRAL_CENTERINVOLUME_TOL,
+        ) {
             return false;
         }
     }
@@ -324,7 +374,11 @@ pub fn check_tetrahedral_centers(coords: &DMatrix<f64>, centers: &[TetrahedralCe
 pub fn check_chiral_centers(coords: &DMatrix<f64>, chiral_sets: &[ChiralSet]) -> bool {
     for cs in chiral_sets {
         let vol = crate::distgeom::calc_chiral_volume_f64(
-            cs.neighbors[0], cs.neighbors[1], cs.neighbors[2], cs.neighbors[3], coords,
+            cs.neighbors[0],
+            cs.neighbors[1],
+            cs.neighbors[2],
+            cs.neighbors[3],
+            coords,
         );
         let lb = cs.lower_vol as f64;
         let ub = cs.upper_vol as f64;
@@ -353,15 +407,31 @@ pub fn check_planarity(mol: &Molecule, coords: &DMatrix<f32>, oop_k: f32, tolera
     // SP2 improper (out-of-plane) terms only
     for i in 0..n {
         let ni = petgraph::graph::NodeIndex::new(i);
-        if mol.graph[ni].hybridization != crate::graph::Hybridization::SP2 { continue; }
+        if mol.graph[ni].hybridization != crate::graph::Hybridization::SP2 {
+            continue;
+        }
         let nbs: Vec<_> = mol.graph.neighbors(ni).collect();
-        if nbs.len() != 3 { continue; }
+        if nbs.len() != 3 {
+            continue;
+        }
         n_impropers += 1;
 
         let pc = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
-        let p1 = Vector3::new(coords[(nbs[0].index(), 0)], coords[(nbs[0].index(), 1)], coords[(nbs[0].index(), 2)]);
-        let p2 = Vector3::new(coords[(nbs[1].index(), 0)], coords[(nbs[1].index(), 1)], coords[(nbs[1].index(), 2)]);
-        let p3 = Vector3::new(coords[(nbs[2].index(), 0)], coords[(nbs[2].index(), 1)], coords[(nbs[2].index(), 2)]);
+        let p1 = Vector3::new(
+            coords[(nbs[0].index(), 0)],
+            coords[(nbs[0].index(), 1)],
+            coords[(nbs[0].index(), 2)],
+        );
+        let p2 = Vector3::new(
+            coords[(nbs[1].index(), 0)],
+            coords[(nbs[1].index(), 1)],
+            coords[(nbs[1].index(), 2)],
+        );
+        let p3 = Vector3::new(
+            coords[(nbs[2].index(), 0)],
+            coords[(nbs[2].index(), 1)],
+            coords[(nbs[2].index(), 2)],
+        );
         let v1 = p1 - pc;
         let v2 = p2 - pc;
         let v3 = p3 - pc;
@@ -373,7 +443,9 @@ pub fn check_planarity(mol: &Molecule, coords: &DMatrix<f32>, oop_k: f32, tolera
     // not by the validation check. Including SP angle penalties here caused
     // false rejections for molecules with both SP and SP2 atoms.
 
-    if n_impropers == 0 { return true; }
+    if n_impropers == 0 {
+        return true;
+    }
     improper_energy <= n_impropers as f32 * tolerance
 }
 
@@ -383,7 +455,9 @@ pub fn check_planarity(mol: &Molecule, coords: &DMatrix<f32>, oop_k: f32, tolera
 pub fn check_double_bond_geometry(mol: &Molecule, coords: &DMatrix<f64>) -> bool {
     use petgraph::visit::EdgeRef;
     for edge in mol.graph.edge_references() {
-        if mol.graph[edge.id()].order != crate::graph::BondOrder::Double { continue; }
+        if mol.graph[edge.id()].order != crate::graph::BondOrder::Double {
+            continue;
+        }
         let u = edge.source();
         let v = edge.target();
 
@@ -391,11 +465,15 @@ pub fn check_double_bond_geometry(mol: &Molecule, coords: &DMatrix<f64>) -> bool
         let u_deg = mol.graph.neighbors(u).count();
         if u_deg >= 2 {
             for nb in mol.graph.neighbors(u) {
-                if nb == v { continue; }
+                if nb == v {
+                    continue;
+                }
                 // RDKit filter: skip if bond to neighbor is NOT single and atom has degree 2
                 if u_deg == 2 {
                     if let Some(eid) = mol.graph.find_edge(u, nb) {
-                        if mol.graph[eid].order != crate::graph::BondOrder::Single { continue; }
+                        if mol.graph[eid].order != crate::graph::BondOrder::Single {
+                            continue;
+                        }
                     }
                 }
                 if !check_linearity(nb.index(), u.index(), v.index(), coords) {
@@ -407,11 +485,15 @@ pub fn check_double_bond_geometry(mol: &Molecule, coords: &DMatrix<f64>) -> bool
         let v_deg = mol.graph.neighbors(v).count();
         if v_deg >= 2 {
             for nb in mol.graph.neighbors(v) {
-                if nb == u { continue; }
+                if nb == u {
+                    continue;
+                }
                 // RDKit filter: skip if bond to neighbor is NOT single and atom has degree 2
                 if v_deg == 2 {
                     if let Some(eid) = mol.graph.find_edge(v, nb) {
-                        if mol.graph[eid].order != crate::graph::BondOrder::Single { continue; }
+                        if mol.graph[eid].order != crate::graph::BondOrder::Single {
+                            continue;
+                        }
                     }
                 }
                 if !check_linearity(nb.index(), v.index(), u.index(), coords) {
@@ -430,11 +512,15 @@ fn check_linearity(a0: usize, a1: usize, a2: usize, coords: &DMatrix<f64>) -> bo
     let p2 = Vector3::new(coords[(a2, 0)], coords[(a2, 1)], coords[(a2, 2)]);
     let mut v1 = p1 - p0;
     let n1 = v1.norm();
-    if n1 < 1e-8 { return true; }
+    if n1 < 1e-8 {
+        return true;
+    }
     v1 /= n1;
     let mut v2 = p1 - p2;
     let n2 = v2.norm();
-    if n2 < 1e-8 { return true; }
+    if n2 < 1e-8 {
+        return true;
+    }
     v2 /= n2;
     // dot ≈ -1 means linear; reject if dot + 1 < 1e-3
     v1.dot(&v2) + 1.0 >= 1e-3

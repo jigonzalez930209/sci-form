@@ -1,4 +1,4 @@
-use nalgebra::{Vector3, DMatrix};
+use nalgebra::{DMatrix, Vector3};
 
 /// Calculate the dihedral (torsion) angle for 4 ordered points: A-B-C-D.
 /// The output is in radians, in the range [-pi, pi].
@@ -30,12 +30,12 @@ pub fn calculate_dihedral_angle(
     // Frame vectors
     let n1_unit = n1.normalize();
     let n2_unit = n2.normalize();
-    
+
     // Check for degenerate cases (collinear atoms) where normalization fails
     if n1.norm() < 1e-6 || n2.norm() < 1e-6 {
         return 0.0;
     }
-    
+
     // Vector orthogonal to n1 and b2
     let m = n1_unit.cross(&b2.normalize());
 
@@ -50,7 +50,7 @@ pub fn calculate_dihedral_angle(
 /// Calculate the ETKDG torsion energy penalty.
 /// This is a simplified mathematical mock representing the preference of a dihedral
 /// to be close to an experimental preferred angle `preferred_angle_rad`.
-/// 
+///
 /// The function assumes a harmonic well around the generic preference.
 /// Real ETKDG in RDKit builds heavily on empirical datasets over hybridization types.
 pub fn calculate_torsion_penalty(
@@ -95,13 +95,13 @@ mod tests {
         let angle_deg = angle.to_degrees();
         assert!((angle_deg - -90.0).abs() < 1e-4); // Actually Orthogonal (90 degrees) for this manual structure
     }
-    
+
     #[test]
     fn test_torsion_penalty() {
         // Perfect angle = 0 penalty
         let penalty = calculate_torsion_penalty(PI, PI, 10.0);
         assert!((penalty - 0.0).abs() < 1e-5);
-        
+
         // Max penalty at 180 deviation: 1 - cos(180) = 1 - (-1) = 2
         // Penalty = 10 * 2 = 20
         let penalty2 = calculate_torsion_penalty(PI, 0.0, 10.0);

@@ -1,7 +1,7 @@
 //! Embedding: RNG, distance picking, metric matrix, and coordinate generation.
 
-mod rng;
 mod coordinates;
+mod rng;
 
-pub use rng::*;
 pub use coordinates::*;
+pub use rng::*;

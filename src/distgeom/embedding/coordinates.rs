@@ -1,8 +1,12 @@
+use super::rng::{DistGeomRng, MinstdRand};
 use nalgebra::{DMatrix, SymmetricEigen};
 use rand::Rng;
-use super::rng::MinstdRand;
 
-pub fn pick_rdkit_distances(rng: &mut MinstdRand, bounds: &DMatrix<f64>) -> DMatrix<f64> {
+/// Sample inter-atomic distances from the smoothed bounds matrix using RDKit's RNG sequence.
+///
+/// For each pair (i, j) draws `d = lb + U[0,1) × (ub - lb)` in the same
+/// triangular-loop order as `EmbedMolecule`. Returns a symmetric `N×N` distance matrix.
+pub fn pick_rdkit_distances<R: DistGeomRng>(rng: &mut R, bounds: &DMatrix<f64>) -> DMatrix<f64> {
     let n = bounds.nrows();
     let mut dists = DMatrix::from_element(n, n, 0.0f64);
 
@@ -22,6 +26,9 @@ pub fn pick_rdkit_distances(rng: &mut MinstdRand, bounds: &DMatrix<f64>) -> DMat
     dists
 }
 
+/// Sample inter-atomic distances from the bounds matrix using a generic random source.
+///
+/// Produces a symmetric `N×N` matrix with `d ∈ [lb, ub]` for each pair.
 pub fn pick_random_distances<R: Rng>(rng: &mut R, bounds: &DMatrix<f64>) -> DMatrix<f32> {
     let n = bounds.nrows();
     let mut dists = DMatrix::from_element(n, n, 0.0f32);
@@ -36,8 +43,8 @@ pub fn pick_random_distances<R: Rng>(rng: &mut R, bounds: &DMatrix<f64>) -> DMat
                 let half_width = (u - l) / 2.0;
                 let r: f32 = rng.gen();
                 mid + half_width * (r - 0.5) * 2.0
-            } else { 
-                l 
+            } else {
+                l
             };
             dists[(i, j)] = d;
             dists[(j, i)] = d;
@@ -51,12 +58,12 @@ pub fn pick_random_distances<R: Rng>(rng: &mut R, bounds: &DMatrix<f64>) -> DMat
 pub fn pick_etkdg_distances<R: Rng>(rng: &mut R, bounds: &DMatrix<f64>) -> DMatrix<f32> {
     let n = bounds.nrows();
     let mut dists = DMatrix::from_element(n, n, 0.0f32);
-    
+
     for i in 0..n {
         for j in (i + 1)..n {
             let u = bounds[(i, j)] as f32;
             let l = bounds[(j, i)] as f32;
-            
+
             if u > l {
                 let range = u - l;
                 let r: f32 = rng.gen();
@@ -111,6 +118,10 @@ pub fn compute_metric_matrix(dists: &DMatrix<f32>) -> DMatrix<f32> {
     metric
 }
 
+/// Embed a molecule into `ndim`-dimensional Euclidean space from a metric matrix.
+///
+/// Computes the eigendecomposition of `mm` and uses the top `ndim` positive
+/// eigenvectors (scaled by √λ) as coordinates. Matches RDKit's `DistGeomHelpers::embedPoints`.
 pub fn generate_nd_coordinates<R: Rng>(
     rng: &mut R,
     mm: &DMatrix<f32>,
@@ -122,7 +133,7 @@ pub fn generate_nd_coordinates<R: Rng>(
     evals.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut coords = DMatrix::from_element(n, ndim, 0.0);
-    
+
     for d in 0..ndim {
         if d < evals.len() {
             let (idx, val) = evals[d];
@@ -299,7 +310,7 @@ pub fn compute_initial_coords_nalgebra_f64(
 /// Returns (eigenvalues, eigenvectors) for the top `num_eig` eigenvalues.
 pub fn power_eigen_solver(
     num_eig: usize,
-    mat: &mut Vec<f64>, // packed symmetric: mat[i*(i+1)/2 + j] for j <= i
+    mat: &mut [f64], // packed symmetric: mat[i*(i+1)/2 + j] for j <= i
     n: usize,
     mut seed: i32,
 ) -> Option<(Vec<f64>, Vec<Vec<f64>>)> {
@@ -418,8 +429,8 @@ const EIGVAL_TOL: f64 = 1.0e-3;
 /// Compute initial coordinates matching RDKit's computeInitialCoords exactly.
 /// Uses f64 throughout for metric matrix, eigendecomposition, and output coordinates.
 /// Returns None if embedding fails (bad D0 values, too many zero eigenvalues, etc.)
-pub fn compute_initial_coords_rdkit(
-    rng: &mut MinstdRand,
+pub fn compute_initial_coords_rdkit<R: DistGeomRng>(
+    rng: &mut R,
     dists: &DMatrix<f64>,
     ndim: usize,
 ) -> Option<DMatrix<f64>> {
@@ -458,6 +469,9 @@ pub fn compute_initial_coords_rdkit(
 
         // RDKit check: if D0 value is negative and N > 3, fail
         if d0[i] < EIGVAL_TOL && n > 3 {
+            if std::env::var("DEBUG_EMBED").is_ok() {
+                eprintln!("    D0[{}] = {:.6} < EIGVAL_TOL, n={}", i, d0[i], n);
+            }
             return None;
         }
     }
@@ -479,8 +493,19 @@ pub fn compute_initial_coords_rdkit(
     // Step 3: Power eigendecomposition (matching RDKit exactly)
     let n_eigs = ndim.min(n);
     let eigen_seed = (sum_sq_all * n as f64) as i32;
-    let (eigenvalues, eigenvectors) =
-        power_eigen_solver(n_eigs, &mut t_packed, n, eigen_seed)?;
+    let (eigenvalues, eigenvectors) = match power_eigen_solver(n_eigs, &mut t_packed, n, eigen_seed)
+    {
+        Some(result) => result,
+        None => {
+            if std::env::var("DEBUG_EMBED").is_ok() {
+                eprintln!(
+                    "    power_eigen_solver failed, n={}, ndim={}, seed={}",
+                    n, ndim, eigen_seed
+                );
+            }
+            return None;
+        }
+    };
 
     // Step 4: Process eigenvalues
     let mut eig_sqrt = vec![0.0f64; n_eigs];
@@ -500,6 +525,12 @@ pub fn compute_initial_coords_rdkit(
 
     // RDKit default: numZeroFail=1, fail if >= 1 zero eigenvalue and N > 3
     if zero_eigs >= 1 && n > 3 {
+        if std::env::var("DEBUG_EMBED").is_ok() {
+            eprintln!(
+                "    zero_eigs={}, eigenvalues: {:?}",
+                zero_eigs, &eigenvalues
+            );
+        }
         return None;
     }
 
@@ -519,6 +550,7 @@ pub fn compute_initial_coords_rdkit(
     Some(coords)
 }
 
+/// Convenience wrapper around [`generate_nd_coordinates`] for 3D embedding.
 pub fn generate_3d_coordinates<R: Rng>(rng: &mut R, mm: &DMatrix<f32>) -> DMatrix<f32> {
     generate_nd_coordinates(rng, mm, 3)
 }
@@ -531,12 +563,12 @@ pub fn generate_smart_coordinates<R: Rng>(
     mol: &crate::graph::Molecule,
 ) -> DMatrix<f32> {
     let n = mol.graph.node_count();
-    
+
     // First pass: generate initial coordinates using standard distance geometry
     let dists = pick_random_distances(rng, bounds);
     let metric = compute_metric_matrix(&dists);
     let mut coords = generate_nd_coordinates(rng, &metric, 3);
-    
+
     // Second pass: refine using triangle smoothing on coordinates
     // This helps enforce the triangle inequality better
     for _iter in 0..5 {
@@ -544,11 +576,12 @@ pub fn generate_smart_coordinates<R: Rng>(
             for j in (i + 1)..n {
                 let dij = ((coords[(i, 0)] - coords[(j, 0)]).powi(2)
                     + (coords[(i, 1)] - coords[(j, 1)]).powi(2)
-                    + (coords[(i, 2)] - coords[(j, 2)]).powi(2)).sqrt();
-                
+                    + (coords[(i, 2)] - coords[(j, 2)]).powi(2))
+                .sqrt();
+
                 let l = bounds[(j, i)] as f32;
                 let u = bounds[(i, j)] as f32;
-                
+
                 if dij < l {
                     // Pull atoms apart
                     let diff = (l - dij) / (dij + 1e-6);
@@ -565,6 +598,6 @@ pub fn generate_smart_coordinates<R: Rng>(
             }
         }
     }
-    
+
     coords
 }
