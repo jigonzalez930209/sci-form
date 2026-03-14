@@ -27,15 +27,17 @@ echo "Bumping: $CURRENT → $NEW_VERSION"
 
 # ── Update files ──────────────────────────────────────────────────────────────
 
-# Cargo.toml files — replace exactly the `version = "X.Y.Z"` line in [package]
+# Cargo.toml files — update [package] version (first occurrence) + inline dep versions
 for toml in \
     Cargo.toml \
     crates/cli/Cargo.toml \
     crates/wasm/Cargo.toml \
     crates/python/Cargo.toml; do
   if [[ -f "$toml" ]]; then
-    # Only update the first occurrence (the [package] version, not dependency versions)
+    # Update [package] version (first standalone `version = "X.Y.Z"` line)
     sed -i "0,/^version = \"[0-9]*\.[0-9]*\.[0-9]*\"/s//version = \"$NEW_VERSION\"/" "$toml"
+    # Update inline dep version references: version = "X.Y.Z" inside { } blocks
+    sed -i "s/version = \"$CURRENT\"/version = \"$NEW_VERSION\"/g" "$toml"
     echo "  updated $toml"
   fi
 done
