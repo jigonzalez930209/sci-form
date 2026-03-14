@@ -67,9 +67,13 @@ pub fn compute_esp_grid_info(
     match sci_form::compute_esp(&elems, &positions, spacing, padding) {
         Ok(grid) => format!(
             "{{\"origin\":[{:.4},{:.4},{:.4}],\"spacing\":{:.4},\"dims\":[{},{},{}]}}",
-            grid.origin[0], grid.origin[1], grid.origin[2],
+            grid.origin[0],
+            grid.origin[1],
+            grid.origin[2],
             grid.spacing,
-            grid.dims[0], grid.dims[1], grid.dims[2]
+            grid.dims[0],
+            grid.dims[1],
+            grid.dims[2]
         ),
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     }
@@ -200,13 +204,19 @@ pub fn eht_calculate(elements: &str, coords_flat: &str, k: f64) -> String {
         Err(e) => return format!("{{\"error\":\"bad coords: {}\"}}", e),
     };
     if flat.len() != elems.len() * 3 {
-        return format!("{{\"error\":\"coords length {} != 3 * elements {}\"}}", flat.len(), elems.len());
+        return format!(
+            "{{\"error\":\"coords length {} != 3 * elements {}\"}}",
+            flat.len(),
+            elems.len()
+        );
     }
     let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     let k_opt = if k <= 0.0 { None } else { Some(k) };
 
     match sci_form::eht::solve_eht(&elems, &positions, k_opt) {
-        Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e)),
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     }
 }
@@ -266,8 +276,9 @@ pub fn eht_orbital_mesh(
 #[wasm_bindgen]
 pub fn compute_charges(smiles: &str) -> String {
     match sci_form::compute_charges(smiles) {
-        Ok(result) => serde_json::to_string(&result)
-            .unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e)),
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     }
 }
@@ -297,8 +308,9 @@ pub fn compute_sasa(elements: &str, coords_flat: &str, probe_radius: f64) -> Str
         Some(probe_radius)
     };
     match sci_form::compute_sasa(&elems, &flat, pr) {
-        Ok(result) => serde_json::to_string(&result)
-            .unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e)),
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     }
 }
@@ -317,8 +329,9 @@ pub fn compute_population(elements: &str, coords_flat: &str) -> String {
     };
     let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::compute_population(&elems, &positions) {
-        Ok(result) => serde_json::to_string(&result)
-            .unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e)),
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     }
 }
@@ -336,8 +349,9 @@ pub fn compute_dipole(elements: &str, coords_flat: &str) -> String {
     };
     let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::compute_dipole(&elems, &positions) {
-        Ok(result) => serde_json::to_string(&result)
-            .unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e)),
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
         Err(e) => format!("{{\"error\":\"{}\"}}", e),
     }
 }
@@ -363,10 +377,16 @@ pub fn compute_dos(
     let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::compute_dos(&elems, &positions, sigma, e_min, e_max, n_points) {
         Ok(result) => {
-            let energies_json: Vec<String> =
-                result.energies.iter().map(|v| format!("{:.4}", v)).collect();
-            let dos_json: Vec<String> =
-                result.total_dos.iter().map(|v| format!("{:.6}", v)).collect();
+            let energies_json: Vec<String> = result
+                .energies
+                .iter()
+                .map(|v| format!("{:.4}", v))
+                .collect();
+            let dos_json: Vec<String> = result
+                .total_dos
+                .iter()
+                .map(|v| format!("{:.6}", v))
+                .collect();
             format!(
                 "{{\"sigma\":{},\"energies\":[{}],\"total_dos\":[{}],\"n_atoms_pdos\":{}}}",
                 result.sigma,
