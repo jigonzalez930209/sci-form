@@ -3,4 +3,17 @@
 venv
 rdkit-master
 openbabel-master
+node_modules
+docs/.vitepress/dist
+docs/.vitepress/cache
+
+# Locally-generated large data files (not committed — generate with scripts/)
 chembl_36_chemreps.txt
+GDB20.50000.smi
+
+# Large fixture/data files are tracked via Git LFS (.gitattributes)
+# tests/fixtures/gdb20_reference.json  → LFS
+# tests/fixtures/gdb20_ensemble.json   → LFS
+# data/chembl_36_chemreps.txt.gz       → LFS
+*.log
+nohup.out
