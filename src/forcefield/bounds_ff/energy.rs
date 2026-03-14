@@ -1,8 +1,7 @@
 //! Energy and gradient functions for bounds violation, chiral violation, and embed torsions.
 
-use nalgebra::{DMatrix, Vector3};
 use super::*;
-
+use nalgebra::{DMatrix, Vector3};
 
 /// Computes the bounds-violation energy (RDKit's DistViolationContribs).
 ///
@@ -10,6 +9,7 @@ use super::*;
 /// - If d² > ub²: val = (d²/ub²) - 1.0; energy += weight * val²
 /// - If d² < lb²: val = (2*lb²/(lb²+d²)) - 1.0; energy += weight * val²
 /// - Otherwise: no penalty
+///
 /// Computes the bounds-violation energy (RDKit's DistViolationContribs).
 pub fn bounds_violation_energy(coords: &DMatrix<f32>, bounds: &DMatrix<f64>) -> f32 {
     bounds_violation_energy_basin(coords, bounds, 1000.0)
@@ -18,7 +18,11 @@ pub fn bounds_violation_energy(coords: &DMatrix<f32>, bounds: &DMatrix<f64>) -> 
 /// Bounds violation energy with basin threshold filtering.
 /// Only pairs with (ub - lb) <= basin_thresh are included.
 /// RDKit uses basin_thresh=5.0 during embedding minimization.
-pub fn bounds_violation_energy_basin(coords: &DMatrix<f32>, bounds: &DMatrix<f64>, basin_thresh: f32) -> f32 {
+pub fn bounds_violation_energy_basin(
+    coords: &DMatrix<f32>,
+    bounds: &DMatrix<f64>,
+    basin_thresh: f32,
+) -> f32 {
     let n = coords.nrows();
     let dim = coords.ncols();
     let mut energy = 0.0f32;
@@ -66,7 +70,11 @@ pub fn bounds_violation_gradient(coords: &DMatrix<f32>, bounds: &DMatrix<f64>) -
 }
 
 /// Gradient with basin threshold filtering.
-pub fn bounds_violation_gradient_basin(coords: &DMatrix<f32>, bounds: &DMatrix<f64>, basin_thresh: f32) -> DMatrix<f32> {
+pub fn bounds_violation_gradient_basin(
+    coords: &DMatrix<f32>,
+    bounds: &DMatrix<f64>,
+    basin_thresh: f32,
+) -> DMatrix<f32> {
     let n = coords.nrows();
     let dim = coords.ncols();
     let mut grad = DMatrix::from_element(n, dim, 0.0f32);
@@ -154,24 +162,39 @@ pub fn chiral_violation_energy(coords: &DMatrix<f32>, chiral_sets: &[ChiralSet])
 }
 
 /// Chiral violation energy in f64, matching RDKit's f64 (Point3D) precision.
-pub fn chiral_violation_energy_f64(coords_flat: &[f64], dim: usize, chiral_sets: &[ChiralSet]) -> f64 {
+pub fn chiral_violation_energy_f64(
+    coords_flat: &[f64],
+    dim: usize,
+    chiral_sets: &[ChiralSet],
+) -> f64 {
     let mut energy = 0.0f64;
     for c in chiral_sets {
-        let (i1, i2, i3, i4) = (c.neighbors[0], c.neighbors[1], c.neighbors[2], c.neighbors[3]);
-        let v1 = [coords_flat[i1*dim] - coords_flat[i4*dim],
-                   coords_flat[i1*dim+1] - coords_flat[i4*dim+1],
-                   coords_flat[i1*dim+2] - coords_flat[i4*dim+2]];
-        let v2 = [coords_flat[i2*dim] - coords_flat[i4*dim],
-                   coords_flat[i2*dim+1] - coords_flat[i4*dim+1],
-                   coords_flat[i2*dim+2] - coords_flat[i4*dim+2]];
-        let v3 = [coords_flat[i3*dim] - coords_flat[i4*dim],
-                   coords_flat[i3*dim+1] - coords_flat[i4*dim+1],
-                   coords_flat[i3*dim+2] - coords_flat[i4*dim+2]];
+        let (i1, i2, i3, i4) = (
+            c.neighbors[0],
+            c.neighbors[1],
+            c.neighbors[2],
+            c.neighbors[3],
+        );
+        let v1 = [
+            coords_flat[i1 * dim] - coords_flat[i4 * dim],
+            coords_flat[i1 * dim + 1] - coords_flat[i4 * dim + 1],
+            coords_flat[i1 * dim + 2] - coords_flat[i4 * dim + 2],
+        ];
+        let v2 = [
+            coords_flat[i2 * dim] - coords_flat[i4 * dim],
+            coords_flat[i2 * dim + 1] - coords_flat[i4 * dim + 1],
+            coords_flat[i2 * dim + 2] - coords_flat[i4 * dim + 2],
+        ];
+        let v3 = [
+            coords_flat[i3 * dim] - coords_flat[i4 * dim],
+            coords_flat[i3 * dim + 1] - coords_flat[i4 * dim + 1],
+            coords_flat[i3 * dim + 2] - coords_flat[i4 * dim + 2],
+        ];
         // v2 x v3
-        let cx = v2[1]*v3[2] - v2[2]*v3[1];
-        let cy = v2[2]*v3[0] - v2[0]*v3[2];
-        let cz = v2[0]*v3[1] - v2[1]*v3[0];
-        let vol = v1[0]*cx + v1[1]*cy + v1[2]*cz;
+        let cx = v2[1] * v3[2] - v2[2] * v3[1];
+        let cy = v2[2] * v3[0] - v2[0] * v3[2];
+        let cz = v2[0] * v3[1] - v2[1] * v3[0];
+        let vol = v1[0] * cx + v1[1] * cy + v1[2] * cz;
         let lb = c.lower_vol as f64;
         let ub = c.upper_vol as f64;
         if vol < lb {
@@ -187,23 +210,42 @@ pub fn chiral_violation_energy_f64(coords_flat: &[f64], dim: usize, chiral_sets:
 
 /// Chiral violation gradient in f64, matching RDKit's f64 precision.
 /// Adds weight * gradient to the output array.
-pub fn chiral_violation_gradient_f64(coords_flat: &[f64], dim: usize, chiral_sets: &[ChiralSet], weight: f64, grad: &mut [f64]) {
+pub fn chiral_violation_gradient_f64(
+    coords_flat: &[f64],
+    dim: usize,
+    chiral_sets: &[ChiralSet],
+    weight: f64,
+    grad: &mut [f64],
+) {
     for c in chiral_sets {
-        let (i1, i2, i3, i4) = (c.neighbors[0], c.neighbors[1], c.neighbors[2], c.neighbors[3]);
-        let v1 = [coords_flat[i1*dim] - coords_flat[i4*dim],
-                   coords_flat[i1*dim+1] - coords_flat[i4*dim+1],
-                   coords_flat[i1*dim+2] - coords_flat[i4*dim+2]];
-        let v2 = [coords_flat[i2*dim] - coords_flat[i4*dim],
-                   coords_flat[i2*dim+1] - coords_flat[i4*dim+1],
-                   coords_flat[i2*dim+2] - coords_flat[i4*dim+2]];
-        let v3 = [coords_flat[i3*dim] - coords_flat[i4*dim],
-                   coords_flat[i3*dim+1] - coords_flat[i4*dim+1],
-                   coords_flat[i3*dim+2] - coords_flat[i4*dim+2]];
+        let (i1, i2, i3, i4) = (
+            c.neighbors[0],
+            c.neighbors[1],
+            c.neighbors[2],
+            c.neighbors[3],
+        );
+        let v1 = [
+            coords_flat[i1 * dim] - coords_flat[i4 * dim],
+            coords_flat[i1 * dim + 1] - coords_flat[i4 * dim + 1],
+            coords_flat[i1 * dim + 2] - coords_flat[i4 * dim + 2],
+        ];
+        let v2 = [
+            coords_flat[i2 * dim] - coords_flat[i4 * dim],
+            coords_flat[i2 * dim + 1] - coords_flat[i4 * dim + 1],
+            coords_flat[i2 * dim + 2] - coords_flat[i4 * dim + 2],
+        ];
+        let v3 = [
+            coords_flat[i3 * dim] - coords_flat[i4 * dim],
+            coords_flat[i3 * dim + 1] - coords_flat[i4 * dim + 1],
+            coords_flat[i3 * dim + 2] - coords_flat[i4 * dim + 2],
+        ];
         // v2 x v3
-        let v2xv3 = [v2[1]*v3[2] - v2[2]*v3[1],
-                      v2[2]*v3[0] - v2[0]*v3[2],
-                      v2[0]*v3[1] - v2[1]*v3[0]];
-        let vol = v1[0]*v2xv3[0] + v1[1]*v2xv3[1] + v1[2]*v2xv3[2];
+        let v2xv3 = [
+            v2[1] * v3[2] - v2[2] * v3[1],
+            v2[2] * v3[0] - v2[0] * v3[2],
+            v2[0] * v3[1] - v2[1] * v3[0],
+        ];
+        let vol = v1[0] * v2xv3[0] + v1[1] * v2xv3[1] + v1[2] * v2xv3[2];
         let lb = c.lower_vol as f64;
         let ub = c.upper_vol as f64;
         let pre_factor = if vol < lb {
@@ -214,27 +256,31 @@ pub fn chiral_violation_gradient_f64(coords_flat: &[f64], dim: usize, chiral_set
             continue;
         };
         // dV/dpos1 = v2 x v3
-        grad[i1*dim]   += pre_factor * v2xv3[0];
-        grad[i1*dim+1] += pre_factor * v2xv3[1];
-        grad[i1*dim+2] += pre_factor * v2xv3[2];
+        grad[i1 * dim] += pre_factor * v2xv3[0];
+        grad[i1 * dim + 1] += pre_factor * v2xv3[1];
+        grad[i1 * dim + 2] += pre_factor * v2xv3[2];
         // dV/dpos2 = v3 x v1
-        let v3xv1 = [v3[1]*v1[2] - v3[2]*v1[1],
-                      v3[2]*v1[0] - v3[0]*v1[2],
-                      v3[0]*v1[1] - v3[1]*v1[0]];
-        grad[i2*dim]   += pre_factor * v3xv1[0];
-        grad[i2*dim+1] += pre_factor * v3xv1[1];
-        grad[i2*dim+2] += pre_factor * v3xv1[2];
+        let v3xv1 = [
+            v3[1] * v1[2] - v3[2] * v1[1],
+            v3[2] * v1[0] - v3[0] * v1[2],
+            v3[0] * v1[1] - v3[1] * v1[0],
+        ];
+        grad[i2 * dim] += pre_factor * v3xv1[0];
+        grad[i2 * dim + 1] += pre_factor * v3xv1[1];
+        grad[i2 * dim + 2] += pre_factor * v3xv1[2];
         // dV/dpos3 = v1 x v2
-        let v1xv2 = [v1[1]*v2[2] - v1[2]*v2[1],
-                      v1[2]*v2[0] - v1[0]*v2[2],
-                      v1[0]*v2[1] - v1[1]*v2[0]];
-        grad[i3*dim]   += pre_factor * v1xv2[0];
-        grad[i3*dim+1] += pre_factor * v1xv2[1];
-        grad[i3*dim+2] += pre_factor * v1xv2[2];
+        let v1xv2 = [
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0],
+        ];
+        grad[i3 * dim] += pre_factor * v1xv2[0];
+        grad[i3 * dim + 1] += pre_factor * v1xv2[1];
+        grad[i3 * dim + 2] += pre_factor * v1xv2[2];
         // dV/dpos4 = -(sum)
-        grad[i4*dim]   -= pre_factor * (v2xv3[0] + v3xv1[0] + v1xv2[0]);
-        grad[i4*dim+1] -= pre_factor * (v2xv3[1] + v3xv1[1] + v1xv2[1]);
-        grad[i4*dim+2] -= pre_factor * (v2xv3[2] + v3xv1[2] + v1xv2[2]);
+        grad[i4 * dim] -= pre_factor * (v2xv3[0] + v3xv1[0] + v1xv2[0]);
+        grad[i4 * dim + 1] -= pre_factor * (v2xv3[1] + v3xv1[1] + v1xv2[1]);
+        grad[i4 * dim + 2] -= pre_factor * (v2xv3[2] + v3xv1[2] + v1xv2[2]);
     }
 }
 
@@ -315,9 +361,7 @@ pub fn collect_embed_torsions(mol: &crate::graph::Molecule) -> Vec<EmbedTorsion>
         let hyb_u = mol.graph[u].hybridization;
         let hyb_v = mol.graph[v].hybridization;
 
-        if hyb_u == crate::graph::Hybridization::SP
-            || hyb_v == crate::graph::Hybridization::SP
-        {
+        if hyb_u == crate::graph::Hybridization::SP || hyb_v == crate::graph::Hybridization::SP {
             continue;
         }
 
@@ -344,13 +388,18 @@ pub fn collect_embed_torsions(mol: &crate::graph::Molecule) -> Vec<EmbedTorsion>
 
         // ETKDG-lite M6 for non-ring rotatable bonds
         if !is_ring {
-            let m6 = crate::forcefield::etkdg_lite::infer_etkdg_parameters(mol, u.index(), v.index());
+            let m6 =
+                crate::forcefield::etkdg_lite::infer_etkdg_parameters(mol, u.index(), v.index());
             let nu = neighbors_u[0];
             let nv = neighbors_v[0];
             for k in 0..6 {
                 if m6.v[k].abs() > 1e-6 {
                     let nf = (k + 1) as f32;
-                    let gam = if m6.s[k] > 0.0 { 0.0 } else { std::f32::consts::PI / nf };
+                    let gam = if m6.s[k] > 0.0 {
+                        0.0
+                    } else {
+                        std::f32::consts::PI / nf
+                    };
                     terms.push(EmbedTorsion {
                         idx: [nu.index(), u.index(), v.index(), nv.index()],
                         n_fold: nf,
@@ -372,12 +421,18 @@ pub(crate) fn torsion_energy_4d(coords: &DMatrix<f32>, terms: &[EmbedTorsion]) -
         let p2 = Vector3::new(coords[(i2, 0)], coords[(i2, 1)], coords[(i2, 2)]);
         let p3 = Vector3::new(coords[(i3, 0)], coords[(i3, 1)], coords[(i3, 2)]);
         let p4 = Vector3::new(coords[(i4, 0)], coords[(i4, 1)], coords[(i4, 2)]);
-        energy += crate::forcefield::energy::torsional_energy(&p1, &p2, &p3, &p4, t.weight, t.n_fold, t.gamma);
+        energy += crate::forcefield::energy::torsional_energy(
+            &p1, &p2, &p3, &p4, t.weight, t.n_fold, t.gamma,
+        );
     }
     energy
 }
 
-pub(crate) fn torsion_gradient_4d(coords: &DMatrix<f32>, terms: &[EmbedTorsion], grad: &mut DMatrix<f32>) {
+pub(crate) fn torsion_gradient_4d(
+    coords: &DMatrix<f32>,
+    terms: &[EmbedTorsion],
+    grad: &mut DMatrix<f32>,
+) {
     let n = coords.nrows();
     let mut grad3 = DMatrix::zeros(n, 3);
     for t in terms {
@@ -387,8 +442,7 @@ pub(crate) fn torsion_gradient_4d(coords: &DMatrix<f32>, terms: &[EmbedTorsion],
         let p3 = Vector3::new(coords[(i3, 0)], coords[(i3, 1)], coords[(i3, 2)]);
         let p4 = Vector3::new(coords[(i4, 0)], coords[(i4, 1)], coords[(i4, 2)]);
         crate::forcefield::gradients::analytical_grad_torsion(
-            &p1, &p2, &p3, &p4, t.weight, t.n_fold, t.gamma,
-            &mut grad3, i1, i2, i3, i4,
+            &p1, &p2, &p3, &p4, t.weight, t.n_fold, t.gamma, &mut grad3, i1, i2, i3, i4,
         );
     }
     for i in 0..n {

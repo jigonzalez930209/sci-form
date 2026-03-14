@@ -5,12 +5,12 @@
 /// [`MolecularForceField`].
 use crate::forcefield::atom_typer::{assign_uff_type, is_atom_aromatic};
 use crate::forcefield::params::{
-    get_uff_params, get_uff_bond_force_constant, get_uff_bond_length,
-    get_uff_angle_force_constant, get_uff_torsion_params,
+    get_uff_angle_force_constant, get_uff_bond_force_constant, get_uff_bond_length, get_uff_params,
+    get_uff_torsion_params,
 };
 use crate::forcefield::traits::MolecularForceField;
 use crate::forcefield::uff::{
-    UffHarmonicBondStretch, UffAngleBend, UffTorsion, UffInversion, UffLennardJones,
+    UffAngleBend, UffHarmonicBondStretch, UffInversion, UffLennardJones, UffTorsion,
 };
 use crate::graph::{BondOrder, Hybridization, Molecule};
 use petgraph::graph::NodeIndex;
@@ -76,7 +76,7 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
             _ => continue,
         };
 
-        let r0  = get_uff_bond_length(&pi, &pj, bo);
+        let r0 = get_uff_bond_length(&pi, &pj, bo);
         let k_b = get_uff_bond_force_constant(&pi, &pj, r0);
 
         ff.insert_dynamic_term(Box::new(UffHarmonicBondStretch {
@@ -99,17 +99,22 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
     // ---- Angle bending (i–j–k, j = centre) ----
     for j in 0..n {
         let nb_j = &neighbors[j];
-        if nb_j.len() < 2 { continue; }
-        let pj = match get_uff_params(types[j]) { Some(p) => p, None => continue };
+        if nb_j.len() < 2 {
+            continue;
+        }
+        let pj = match get_uff_params(types[j]) {
+            Some(p) => p,
+            None => continue,
+        };
 
         let theta0_deg = pj.theta0;
         let theta0_rad = theta0_deg.to_radians();
 
         // coordination_n: 0 = linear (sp), 3 = sp2, 4 = sp3
         let coord_n = match mol.graph[NodeIndex::new(j)].hybridization {
-            Hybridization::SP  => 0,
+            Hybridization::SP => 0,
             Hybridization::SP2 => 3,
-            _                  => 4,
+            _ => 4,
         };
 
         for ii in 0..nb_j.len() {
@@ -117,19 +122,29 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
                 let i = nb_j[ii];
                 let k = nb_j[kk];
 
-                let pi = match get_uff_params(types[i]) { Some(p) => p, None => continue };
-                let pk = match get_uff_params(types[k]) { Some(p) => p, None => continue };
+                let pi = match get_uff_params(types[i]) {
+                    Some(p) => p,
+                    None => continue,
+                };
+                let pk = match get_uff_params(types[k]) {
+                    Some(p) => p,
+                    None => continue,
+                };
 
-                let bo_ij = mol.graph.find_edge(NodeIndex::new(i), NodeIndex::new(j))
-                    .map(|e| mol.graph[e].order.clone())
+                let bo_ij = mol
+                    .graph
+                    .find_edge(NodeIndex::new(i), NodeIndex::new(j))
+                    .map(|e| mol.graph[e].order)
                     .unwrap_or(BondOrder::Single);
-                let bo_jk = mol.graph.find_edge(NodeIndex::new(j), NodeIndex::new(k))
-                    .map(|e| mol.graph[e].order.clone())
+                let bo_jk = mol
+                    .graph
+                    .find_edge(NodeIndex::new(j), NodeIndex::new(k))
+                    .map(|e| mol.graph[e].order)
                     .unwrap_or(BondOrder::Single);
 
                 let r_ij = get_uff_bond_length(&pi, &pj, &bo_ij);
                 let r_jk = get_uff_bond_length(&pj, &pk, &bo_jk);
-                let k_a  = get_uff_angle_force_constant(&pi, &pk, r_ij, r_jk, theta0_rad);
+                let k_a = get_uff_angle_force_constant(&pi, &pk, r_ij, r_jk, theta0_rad);
 
                 ff.insert_dynamic_term(Box::new(UffAngleBend {
                     atom_i_idx: i,
@@ -149,8 +164,14 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
         let k = edge_jk.target().index();
         let bo_jk = &mol.graph[edge_jk.id()].order;
 
-        let pj = match get_uff_params(types[j]) { Some(p) => p, None => continue };
-        let pk = match get_uff_params(types[k]) { Some(p) => p, None => continue };
+        let pj = match get_uff_params(types[j]) {
+            Some(p) => p,
+            None => continue,
+        };
+        let pk = match get_uff_params(types[k]) {
+            Some(p) => p,
+            None => continue,
+        };
 
         let hyb_j = &mol.graph[NodeIndex::new(j)].hybridization;
         let hyb_k = &mol.graph[NodeIndex::new(k)].hybridization;
@@ -163,9 +184,13 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
         }
 
         for &i in &neighbors[j] {
-            if i == k { continue; }
+            if i == k {
+                continue;
+            }
             for &l in &neighbors[k] {
-                if l == j || l == i { continue; }
+                if l == j || l == i {
+                    continue;
+                }
                 ff.insert_dynamic_term(Box::new(UffTorsion {
                     atom_i_idx: i,
                     atom_j_idx: j,
@@ -181,9 +206,13 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
 
     // ---- Out-of-plane inversions (sp2 centre, 3 substituents) ----
     for j in 0..n {
-        if mol.graph[NodeIndex::new(j)].hybridization != Hybridization::SP2 { continue; }
+        if mol.graph[NodeIndex::new(j)].hybridization != Hybridization::SP2 {
+            continue;
+        }
         let nb_j = &neighbors[j];
-        if nb_j.len() != 3 { continue; }
+        if nb_j.len() != 3 {
+            continue;
+        }
 
         // UFF inversion parameters for sp2: K = 6.0 kcal/mol for C_R/N_R, else 6.0 flat
         let k_inv = 6.0_f64;
@@ -207,12 +236,20 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
     // ---- Non-bonded Lennard-Jones ----
     // Skip 1-2, 1-3 pairs; scale 1-4 by 0.5; full weight for 1-5+
     for i in 0..n {
-        let pi = match get_uff_params(types[i]) { Some(p) => p, None => continue };
+        let pi = match get_uff_params(types[i]) {
+            Some(p) => p,
+            None => continue,
+        };
         for j in (i + 1)..n {
             let d = topo[i][j];
-            if d <= 2 { continue; } // 1-2 and 1-3 excluded
+            if d <= 2 {
+                continue;
+            } // 1-2 and 1-3 excluded
 
-            let pj = match get_uff_params(types[j]) { Some(p) => p, None => continue };
+            let pj = match get_uff_params(types[j]) {
+                Some(p) => p,
+                None => continue,
+            };
 
             let r_star = (pi.x1 + pj.x1) * 0.5;
             let eps_full = (pi.d1 * pj.d1).sqrt();

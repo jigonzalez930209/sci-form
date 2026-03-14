@@ -13,9 +13,9 @@ pub fn assign_uff_type(element: u8, hyb: &Hybridization, is_aromatic: bool) -> &
                 "C_R"
             } else {
                 match hyb {
-                    Hybridization::SP  => "C_1",
+                    Hybridization::SP => "C_1",
                     Hybridization::SP2 => "C_2",
-                    _                  => "C_3",  // SP3 and Unknown
+                    _ => "C_3", // SP3 and Unknown
                 }
             }
         }
@@ -24,9 +24,9 @@ pub fn assign_uff_type(element: u8, hyb: &Hybridization, is_aromatic: bool) -> &
                 "N_R"
             } else {
                 match hyb {
-                    Hybridization::SP  => "N_1",
+                    Hybridization::SP => "N_1",
                     Hybridization::SP2 => "N_2",
-                    _                  => "N_3",
+                    _ => "N_3",
                 }
             }
         }
@@ -35,13 +35,13 @@ pub fn assign_uff_type(element: u8, hyb: &Hybridization, is_aromatic: bool) -> &
                 "O_R"
             } else {
                 match hyb {
-                    Hybridization::SP  => "O_1",
+                    Hybridization::SP => "O_1",
                     Hybridization::SP2 => "O_2",
-                    _                  => "O_3",
+                    _ => "O_3",
                 }
             }
         }
-        9  => "F_",
+        9 => "F_",
         14 => "Si3",
         15 => "P_3",
         16 => {
@@ -50,7 +50,7 @@ pub fn assign_uff_type(element: u8, hyb: &Hybridization, is_aromatic: bool) -> &
             } else {
                 match hyb {
                     Hybridization::SP2 => "S_2",
-                    _                  => "S_3",
+                    _ => "S_3",
                 }
             }
         }

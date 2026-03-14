@@ -337,8 +337,18 @@ pub fn compute_analytical_gradient(
                 coords[(nbs[2].index(), 1)],
                 coords[(nbs[2].index(), 2)],
             );
-            analytical_grad_oop(&pc, &p1, &p2, &p3, params.k_oop,
-                &mut grad, i, nbs[0].index(), nbs[1].index(), nbs[2].index());
+            analytical_grad_oop(
+                &pc,
+                &p1,
+                &p2,
+                &p3,
+                params.k_oop,
+                &mut grad,
+                i,
+                nbs[0].index(),
+                nbs[1].index(),
+                nbs[2].index(),
+            );
         }
     }
 
@@ -349,8 +359,7 @@ pub fn compute_analytical_gradient(
             let v = edge.target();
             let hyb_u = mol.graph[u].hybridization;
             let hyb_v = mol.graph[v].hybridization;
-            if hyb_u == crate::graph::Hybridization::SP
-                || hyb_v == crate::graph::Hybridization::SP
+            if hyb_u == crate::graph::Hybridization::SP || hyb_v == crate::graph::Hybridization::SP
             {
                 continue;
             }
@@ -383,9 +392,18 @@ pub fn compute_analytical_gradient(
                         coords[(nv.index(), 2)],
                     );
                     analytical_grad_torsion(
-                        &p1, &p2, &p3, &p4,
-                        params.k_omega * weight, n_fold, gamma,
-                        &mut grad, nu.index(), u.index(), v.index(), nv.index(),
+                        &p1,
+                        &p2,
+                        &p3,
+                        &p4,
+                        params.k_omega * weight,
+                        n_fold,
+                        gamma,
+                        &mut grad,
+                        nu.index(),
+                        u.index(),
+                        v.index(),
+                        nv.index(),
                     );
                 }
             }
@@ -400,21 +418,50 @@ pub fn compute_analytical_gradient(
             if crate::graph::min_path_excluding2(mol, u, v, u, v, 7).is_some() {
                 continue;
             }
-            let m6 = crate::forcefield::etkdg_lite::infer_etkdg_parameters(mol, u.index(), v.index());
-            if m6.v.iter().all(|&x| x.abs() < 1e-6) { continue; }
+            let m6 =
+                crate::forcefield::etkdg_lite::infer_etkdg_parameters(mol, u.index(), v.index());
+            if m6.v.iter().all(|&x| x.abs() < 1e-6) {
+                continue;
+            }
 
             let neighbors_u: Vec<_> = mol.graph.neighbors(u).filter(|&x| x != v).collect();
             let neighbors_v: Vec<_> = mol.graph.neighbors(v).filter(|&x| x != u).collect();
-            if neighbors_u.is_empty() || neighbors_v.is_empty() { continue; }
+            if neighbors_u.is_empty() || neighbors_v.is_empty() {
+                continue;
+            }
             let nu = neighbors_u[0];
             let nv = neighbors_v[0];
-            let p1 = Vector3::new(coords[(nu.index(), 0)], coords[(nu.index(), 1)], coords[(nu.index(), 2)]);
-            let p2 = Vector3::new(coords[(u.index(), 0)], coords[(u.index(), 1)], coords[(u.index(), 2)]);
-            let p3 = Vector3::new(coords[(v.index(), 0)], coords[(v.index(), 1)], coords[(v.index(), 2)]);
-            let p4 = Vector3::new(coords[(nv.index(), 0)], coords[(nv.index(), 1)], coords[(nv.index(), 2)]);
+            let p1 = Vector3::new(
+                coords[(nu.index(), 0)],
+                coords[(nu.index(), 1)],
+                coords[(nu.index(), 2)],
+            );
+            let p2 = Vector3::new(
+                coords[(u.index(), 0)],
+                coords[(u.index(), 1)],
+                coords[(u.index(), 2)],
+            );
+            let p3 = Vector3::new(
+                coords[(v.index(), 0)],
+                coords[(v.index(), 1)],
+                coords[(v.index(), 2)],
+            );
+            let p4 = Vector3::new(
+                coords[(nv.index(), 0)],
+                coords[(nv.index(), 1)],
+                coords[(nv.index(), 2)],
+            );
             crate::forcefield::etkdg_lite::calc_torsion_grad_m6(
-                &p1, &p2, &p3, &p4, &m6,
-                &mut grad, nu.index(), u.index(), v.index(), nv.index(),
+                &p1,
+                &p2,
+                &p3,
+                &p4,
+                &m6,
+                &mut grad,
+                nu.index(),
+                u.index(),
+                v.index(),
+                nv.index(),
             );
         }
     }
@@ -450,7 +497,9 @@ pub fn compute_analytical_gradient(
                 for &nv in &neighbors_v {
                     let a = nu.index();
                     let b = nv.index();
-                    if a == b { continue; }
+                    if a == b {
+                        continue;
+                    }
                     let (lo, hi) = if a < b { (a, b) } else { (b, a) };
                     if !excluded.contains(&(lo, hi)) {
                         is_14.insert((lo, hi));
@@ -464,7 +513,9 @@ pub fn compute_analytical_gradient(
             let (xi, di) = crate::forcefield::energy::uff_vdw_params(ei);
             let pi = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
             for j in (i + 1)..n {
-                if excluded.contains(&(i, j)) { continue; }
+                if excluded.contains(&(i, j)) {
+                    continue;
+                }
                 let ej = mol.graph[petgraph::graph::NodeIndex::new(j)].element;
                 let (xj, dj) = crate::forcefield::energy::uff_vdw_params(ej);
                 let r_star = (xi + xj) * 0.5;
@@ -475,7 +526,9 @@ pub fn compute_analytical_gradient(
                 let diff = pi - pj;
                 let r2 = diff.norm_squared().max(1e-6);
                 let r = r2.sqrt();
-                if r < 0.5 || r > 8.0 { continue; }
+                if !(0.5..=8.0).contains(&r) {
+                    continue;
+                }
 
                 let u = r_star / r;
                 let u6 = u * u * u * u * u * u;

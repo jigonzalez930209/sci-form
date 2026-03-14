@@ -61,9 +61,9 @@ pub struct UFFInversionContrib {
 /// E = k * angleTerm^2, where angleTerm = clamp(angle - [min,max], 0)
 #[derive(Clone)]
 pub struct AngleConstraint {
-    pub i: usize,   // outer atom 1
-    pub j: usize,   // central atom
-    pub k: usize,   // outer atom 2
+    pub i: usize, // outer atom 1
+    pub j: usize, // central atom
+    pub k: usize, // outer atom 2
     pub min_deg: f64,
     pub max_deg: f64,
     pub force_k: f64,

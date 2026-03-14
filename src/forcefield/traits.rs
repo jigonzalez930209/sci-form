@@ -9,6 +9,12 @@ pub struct MolecularForceField {
     pub iter_terms: Vec<Box<dyn ForceFieldContribution>>,
 }
 
+impl Default for MolecularForceField {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MolecularForceField {
     pub fn new() -> Self {
         MolecularForceField {

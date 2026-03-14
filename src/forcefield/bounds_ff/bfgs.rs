@@ -1,5 +1,5 @@
-use nalgebra::DMatrix;
 use super::*;
+use nalgebra::DMatrix;
 
 const BFGS_FUNCTOL: f64 = 1e-4;
 const BFGS_MOVETOL: f64 = 1e-7;
@@ -9,7 +9,9 @@ const BFGS_MAXSTEP: f64 = 100.0;
 const BFGS_MAX_ITER_LINEAR_SEARCH: usize = 1000;
 
 pub(crate) fn rdkit_linear_search(
-    pos: &[f64], val: f64, grad: &[f64],
+    pos: &[f64],
+    val: f64,
+    grad: &[f64],
     dir: &mut [f64], // may be rescaled in place
     func: &dyn Fn(&[f64]) -> f64,
     max_step: f64,
@@ -75,10 +77,8 @@ pub(crate) fn rdkit_linear_search(
         } else {
             let rhs1 = new_val - val - lambda * slope;
             let rhs2 = val2 - val - lambda2 * slope;
-            let a = (rhs1 / (lambda * lambda) - rhs2 / (lambda2 * lambda2))
-                / (lambda - lambda2);
-            let b = (-lambda2 * rhs1 / (lambda * lambda)
-                + lambda * rhs2 / (lambda2 * lambda2))
+            let a = (rhs1 / (lambda * lambda) - rhs2 / (lambda2 * lambda2)) / (lambda - lambda2);
+            let b = (-lambda2 * rhs1 / (lambda * lambda) + lambda * rhs2 / (lambda2 * lambda2))
                 / (lambda - lambda2);
             if a == 0.0 {
                 -slope / (2.0 * b)
@@ -93,7 +93,11 @@ pub(crate) fn rdkit_linear_search(
                 }
             }
         };
-        let tmp_lambda = if tmp_lambda > 0.5 * lambda { 0.5 * lambda } else { tmp_lambda };
+        let tmp_lambda = if tmp_lambda > 0.5 * lambda {
+            0.5 * lambda
+        } else {
+            tmp_lambda
+        };
         lambda2 = lambda;
         val2 = new_val;
         lambda = tmp_lambda.max(0.1 * lambda);
@@ -171,7 +175,9 @@ pub fn minimize_bfgs_rdkit(
             for j in 0..i {
                 let ub = bounds[(j, i)];
                 let lb = bounds[(i, j)];
-                if ub - lb > basin_thresh_f64 { continue; }
+                if ub - lb > basin_thresh_f64 {
+                    continue;
+                }
                 let mut d2 = 0.0f64;
                 for d in 0..dim_coords {
                     let diff = pos[i * dim_coords + d] - pos[j * dim_coords + d];
@@ -186,11 +192,14 @@ pub fn minimize_bfgs_rdkit(
                 } else {
                     0.0
                 };
-                if val > 0.0 { energy += val * val; }
+                if val > 0.0 {
+                    energy += val * val;
+                }
             }
         }
         if !chiral_sets.is_empty() {
-            energy += weight_chiral_f64 * super::chiral_violation_energy_f64(pos, dim_coords, chiral_sets);
+            energy += weight_chiral_f64
+                * super::chiral_violation_energy_f64(pos, dim_coords, chiral_sets);
         }
         if dim_coords == 4 {
             for i in 0..n {
@@ -208,7 +217,9 @@ pub fn minimize_bfgs_rdkit(
             for j in 0..i {
                 let ub = bounds[(j, i)];
                 let lb = bounds[(i, j)];
-                if ub - lb > basin_thresh_f64 { continue; }
+                if ub - lb > basin_thresh_f64 {
+                    continue;
+                }
                 let mut d2 = 0.0f64;
                 let mut diffs = vec![0.0f64; dim_coords];
                 for d in 0..dim_coords {
@@ -237,7 +248,13 @@ pub fn minimize_bfgs_rdkit(
             }
         }
         if !chiral_sets.is_empty() {
-            super::chiral_violation_gradient_f64(pos, dim_coords, chiral_sets, weight_chiral_f64, &mut grad);
+            super::chiral_violation_gradient_f64(
+                pos,
+                dim_coords,
+                chiral_sets,
+                weight_chiral_f64,
+                &mut grad,
+            );
         }
         if dim_coords == 4 {
             for i in 0..n {
@@ -346,10 +363,7 @@ pub fn minimize_bfgs_rdkit(
                 let hdgi = fad * hess_d_grad[i];
                 let dgi = fae * d_grad[i];
                 for j in i..dim {
-                    inv_hess[i * dim + j] +=
-                        pxi * xi[j]
-                        - hdgi * hess_d_grad[j]
-                        + dgi * d_grad[j];
+                    inv_hess[i * dim + j] += pxi * xi[j] - hdgi * hess_d_grad[j] + dgi * d_grad[j];
                     inv_hess[j * dim + i] = inv_hess[i * dim + j];
                 }
             }

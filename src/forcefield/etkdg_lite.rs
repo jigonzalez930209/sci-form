@@ -1,4 +1,4 @@
-use crate::graph::{Molecule, Hybridization};
+use crate::graph::{Hybridization, Molecule};
 use nalgebra::Vector3;
 
 #[derive(Debug, Clone)]
@@ -74,6 +74,7 @@ pub fn calc_torsion_energy_m6(
 /// Matches RDKit's TorsionAngleM6::getGrad dE/dPhi computation exactly, including:
 /// - Chebyshev polynomial derivatives for dE/dPhi
 /// - RDKit's copy-paste bug: 6th harmonic uses V[4]/s[4] instead of V[5]/s[5]
+///
 /// Uses Blondel & Karplus for gradient distribution (mathematically equivalent to RDKit's Wilson B-matrix).
 pub fn calc_torsion_grad_m6(
     p1: &Vector3<f32>,
@@ -82,7 +83,10 @@ pub fn calc_torsion_grad_m6(
     p4: &Vector3<f32>,
     params: &M6Params,
     grad: &mut nalgebra::DMatrix<f32>,
-    idx1: usize, idx2: usize, idx3: usize, idx4: usize,
+    idx1: usize,
+    idx2: usize,
+    idx3: usize,
+    idx4: usize,
 ) {
     // RDKit-style dihedral computation: r[0]=p1-p2, r[1]=p3-p2, r[2]=-r[1], r[3]=p4-p3
     let r0 = p1 - p2;
@@ -99,7 +103,11 @@ pub fn calc_torsion_grad_m6(
 
     let cos_phi = t0.dot(&t1).clamp(-1.0, 1.0);
     let sin_phi_sq = 1.0 - cos_phi * cos_phi;
-    let sin_phi = if sin_phi_sq > 0.0 { sin_phi_sq.sqrt() } else { 0.0 };
+    let sin_phi = if sin_phi_sq > 0.0 {
+        sin_phi_sq.sqrt()
+    } else {
+        0.0
+    };
 
     let cos_phi2 = cos_phi * cos_phi;
     let cos_phi3 = cos_phi * cos_phi2;
@@ -108,20 +116,27 @@ pub fn calc_torsion_grad_m6(
 
     // dE/dPhi using Chebyshev derivatives, matching RDKit exactly.
     // NOTE: 6th term intentionally uses V[4]/s[4] to match RDKit's copy-paste bug
-    let de_dphi =
-        -params.v[0] * params.s[0] * sin_phi
+    let de_dphi = -params.v[0] * params.s[0] * sin_phi
         - 2.0 * params.v[1] * params.s[1] * (2.0 * cos_phi * sin_phi)
         - 3.0 * params.v[2] * params.s[2] * (4.0 * cos_phi2 * sin_phi - sin_phi)
-        - 4.0 * params.v[3] * params.s[3]
-            * (8.0 * cos_phi3 * sin_phi - 4.0 * cos_phi * sin_phi)
-        - 5.0 * params.v[4] * params.s[4]
+        - 4.0 * params.v[3] * params.s[3] * (8.0 * cos_phi3 * sin_phi - 4.0 * cos_phi * sin_phi)
+        - 5.0
+            * params.v[4]
+            * params.s[4]
             * (16.0 * cos_phi4 * sin_phi - 12.0 * cos_phi2 * sin_phi + sin_phi)
-        - 6.0 * params.v[4] * params.s[4]
+        - 6.0
+            * params.v[4]
+            * params.s[4]
             * (32.0 * cos_phi5 * sin_phi - 32.0 * cos_phi3 * sin_phi + 6.0 * cos_phi * sin_phi);
 
     // sinTerm = -dE_dPhi / sinPhi (or 1/cosPhi when sinPhi≈0), matching RDKit
     let is_zero_sin = sin_phi < 1e-5;
-    let sin_term = -de_dphi * if is_zero_sin { 1.0 / cos_phi } else { 1.0 / sin_phi };
+    let sin_term = -de_dphi
+        * if is_zero_sin {
+            1.0 / cos_phi
+        } else {
+            1.0 / sin_phi
+        };
 
     // RDKit calcTorsionGrad: dCosPhi/dT vectors
     let d_cos_dt = [
@@ -139,20 +154,38 @@ pub fn calc_torsion_grad_m6(
     grad[(idx1, 2)] += sin_term * (d_cos_dt[1] * r1.x - d_cos_dt[0] * r1.y);
 
     // Atom 2 (idx2) gradient
-    grad[(idx2, 0)] += sin_term * (d_cos_dt[1] * (r1.z - r0.z) + d_cos_dt[2] * (r0.y - r1.y)
-        + d_cos_dt[4] * (-r3.z) + d_cos_dt[5] * r3.y);
-    grad[(idx2, 1)] += sin_term * (d_cos_dt[0] * (r0.z - r1.z) + d_cos_dt[2] * (r1.x - r0.x)
-        + d_cos_dt[3] * r3.z + d_cos_dt[5] * (-r3.x));
-    grad[(idx2, 2)] += sin_term * (d_cos_dt[0] * (r1.y - r0.y) + d_cos_dt[1] * (r0.x - r1.x)
-        + d_cos_dt[3] * (-r3.y) + d_cos_dt[4] * r3.x);
+    grad[(idx2, 0)] += sin_term
+        * (d_cos_dt[1] * (r1.z - r0.z)
+            + d_cos_dt[2] * (r0.y - r1.y)
+            + d_cos_dt[4] * (-r3.z)
+            + d_cos_dt[5] * r3.y);
+    grad[(idx2, 1)] += sin_term
+        * (d_cos_dt[0] * (r0.z - r1.z)
+            + d_cos_dt[2] * (r1.x - r0.x)
+            + d_cos_dt[3] * r3.z
+            + d_cos_dt[5] * (-r3.x));
+    grad[(idx2, 2)] += sin_term
+        * (d_cos_dt[0] * (r1.y - r0.y)
+            + d_cos_dt[1] * (r0.x - r1.x)
+            + d_cos_dt[3] * (-r3.y)
+            + d_cos_dt[4] * r3.x);
 
     // Atom 3 (idx3) gradient
-    grad[(idx3, 0)] += sin_term * (d_cos_dt[1] * r0.z + d_cos_dt[2] * (-r0.y)
-        + d_cos_dt[4] * (r3.z - r2.z) + d_cos_dt[5] * (r2.y - r3.y));
-    grad[(idx3, 1)] += sin_term * (d_cos_dt[0] * (-r0.z) + d_cos_dt[2] * r0.x
-        + d_cos_dt[3] * (r2.z - r3.z) + d_cos_dt[5] * (r3.x - r2.x));
-    grad[(idx3, 2)] += sin_term * (d_cos_dt[0] * r0.y + d_cos_dt[1] * (-r0.x)
-        + d_cos_dt[3] * (r3.y - r2.y) + d_cos_dt[4] * (r2.x - r3.x));
+    grad[(idx3, 0)] += sin_term
+        * (d_cos_dt[1] * r0.z
+            + d_cos_dt[2] * (-r0.y)
+            + d_cos_dt[4] * (r3.z - r2.z)
+            + d_cos_dt[5] * (r2.y - r3.y));
+    grad[(idx3, 1)] += sin_term
+        * (d_cos_dt[0] * (-r0.z)
+            + d_cos_dt[2] * r0.x
+            + d_cos_dt[3] * (r2.z - r3.z)
+            + d_cos_dt[5] * (r3.x - r2.x));
+    grad[(idx3, 2)] += sin_term
+        * (d_cos_dt[0] * r0.y
+            + d_cos_dt[1] * (-r0.x)
+            + d_cos_dt[3] * (r3.y - r2.y)
+            + d_cos_dt[4] * (r2.x - r3.x));
 
     // Atom 4 (idx4) gradient
     grad[(idx4, 0)] += sin_term * (d_cos_dt[4] * r2.z - d_cos_dt[5] * r2.y);
@@ -166,8 +199,12 @@ fn is_partial_double_bond(mol: &Molecule, n2_idx: usize, n3_idx: usize) -> bool 
 
     // If it's already a double bond, it's planar
     if let Some(edge) = mol.graph.find_edge(ni2, ni3) {
-        if mol.graph[edge].order == crate::graph::BondOrder::Double { return true; }
-        if mol.graph[edge].order == crate::graph::BondOrder::Aromatic { return true; }
+        if mol.graph[edge].order == crate::graph::BondOrder::Double {
+            return true;
+        }
+        if mol.graph[edge].order == crate::graph::BondOrder::Aromatic {
+            return true;
+        }
     }
 
     // Check for Amides (N-C=O)
@@ -177,10 +214,14 @@ fn is_partial_double_bond(mol: &Molecule, n2_idx: usize, n3_idx: usize) -> bool 
         let atom = &mol.graph[*ni];
         let other_atom = &mol.graph[other];
 
-        if (atom.element == 7 || atom.element == 8) && other_atom.hybridization == Hybridization::SP2 {
+        if (atom.element == 7 || atom.element == 8)
+            && other_atom.hybridization == Hybridization::SP2
+        {
             // Check if 'other' has a double bond to O or N
             for neighbor in mol.graph.neighbors(other) {
-                if neighbor == *ni { continue; }
+                if neighbor == *ni {
+                    continue;
+                }
                 if let Some(edge) = mol.graph.find_edge(other, neighbor) {
                     if mol.graph[edge].order == crate::graph::BondOrder::Double {
                         let neigh_atom = &mol.graph[neighbor];
@@ -226,7 +267,7 @@ pub fn infer_etkdg_parameters(mol: &Molecule, n2_idx: usize, n3_idx: usize) -> M
     }
     // C(sp3) - O - C bonds (ether): V3 staggered, matching RDKit's [*:1][CX4:2]-[O:3][CX4:4] -> V3=2.5-4.0
     else if (e2 == 6 && e3 == 8 && h2 == Hybridization::SP3)
-         || (e2 == 8 && e3 == 6 && h3 == Hybridization::SP3)
+        || (e2 == 8 && e3 == 6 && h3 == Hybridization::SP3)
     {
         params.v[2] = 4.0;
         params.s[2] = 1.0;
@@ -240,7 +281,7 @@ pub fn infer_etkdg_parameters(mol: &Molecule, n2_idx: usize, n3_idx: usize) -> M
     }
     // Default fallback
     else {
-        params.v[2] = 3.0; 
+        params.v[2] = 3.0;
         params.s[2] = 1.0;
     }
 
