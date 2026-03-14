@@ -55,8 +55,30 @@ pub fn assign_uff_type(element: u8, hyb: &Hybridization, is_aromatic: bool) -> &
             }
         }
         17 => "Cl",
+        // Transition metals
+        22 => "Ti3+4",
+        23 => "V_3+5",
+        24 => "Cr6+3",
+        25 => "Mn6+2",
+        26 => "Fe3+2",
+        27 => "Co6+3",
+        28 => "Ni4+2",
+        29 => "Cu3+1",
+        30 => "Zn3+2",
+        // Additional main-group
+        32 => "Ge3",
+        33 => "As3",
+        34 => "Se3",
         35 => "Br",
+        42 => "Mo3+6",
+        46 => "Pd4+2",
+        47 => "Ag1+1",
+        50 => "Sn3",
+        51 => "Sb3",
+        52 => "Te3",
         53 => "I_",
+        78 => "Pt4+2",
+        79 => "Au4+3",
         _ => "C_3",
     }
 }
