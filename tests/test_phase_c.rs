@@ -69,7 +69,7 @@ fn test_dos_water() {
     assert_eq!(result.energies.len(), 200);
     assert_eq!(result.total_dos.len(), 200);
     assert_eq!(result.pdos.len(), 3); // 3 atoms
-    // Total DOS should have some nonzero values
+                                      // Total DOS should have some nonzero values
     let max_dos = result.total_dos.iter().cloned().fold(0.0f64, f64::max);
     assert!(max_dos > 0.1, "DOS should have peaks");
 }
@@ -94,11 +94,11 @@ fn test_uff_energy_methane() {
     // Methane with known tetrahedral geometry
     let smiles = "C";
     let coords = vec![
-        0.0, 0.0, 0.0,         // C
-        0.63, 0.63, 0.63,      // H
-        -0.63, -0.63, 0.63,    // H
-        -0.63, 0.63, -0.63,    // H
-        0.63, -0.63, -0.63,    // H
+        0.0, 0.0, 0.0, // C
+        0.63, 0.63, 0.63, // H
+        -0.63, -0.63, 0.63, // H
+        -0.63, 0.63, -0.63, // H
+        0.63, -0.63, -0.63, // H
     ];
     let energy = sci_form::compute_uff_energy(smiles, &coords).unwrap();
     assert!(energy.is_finite(), "UFF energy should be finite");
@@ -110,7 +110,10 @@ fn test_esp_water() {
     let positions = vec![[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
     let grid = sci_form::compute_esp(&elements, &positions, 0.5, 2.0).unwrap();
     assert!(!grid.values.is_empty());
-    assert_eq!(grid.values.len(), grid.dims[0] * grid.dims[1] * grid.dims[2]);
+    assert_eq!(
+        grid.values.len(),
+        grid.dims[0] * grid.dims[1] * grid.dims[2]
+    );
     // No NaN values
     assert!(grid.values.iter().all(|v| v.is_finite()));
 }
