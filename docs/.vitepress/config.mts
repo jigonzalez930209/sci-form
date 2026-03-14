@@ -12,6 +12,7 @@ const customElements = [
 ]
 
 export default defineConfig({
+  base: '/sci-form/',
   title: 'sci-form',
   description: 'High-performance 3D molecular conformer generation from SMILES',
   
