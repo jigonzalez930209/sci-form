@@ -17,7 +17,7 @@ export default defineConfig({
   description: 'High-performance 3D molecular conformer generation from SMILES',
   
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/sci-form/logo.svg' }],
   ],
 
   markdown: {
@@ -35,7 +35,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: '/logo.svg',
+    logo: '/sci-form/logo.svg',
     
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
