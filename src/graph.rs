@@ -4,6 +4,7 @@ use petgraph::graph::UnGraph;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+/// Hybridization state of an atom, used to compute bond angles and geometry.
 pub enum Hybridization {
     SP,
     SP2,
@@ -14,6 +15,7 @@ pub enum Hybridization {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+/// Tetrahedral chirality type derived from the SMILES `@`/`@@` specification.
 pub enum ChiralType {
     Unspecified,
     TetrahedralCW,  // R usually
@@ -22,6 +24,7 @@ pub enum ChiralType {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+/// E/Z (cis/trans) stereochemistry of a double bond.
 pub enum BondStereo {
     None,
     E,
@@ -30,6 +33,7 @@ pub enum BondStereo {
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+/// Bond order: single, double, triple, aromatic, or unknown.
 pub enum BondOrder {
     Single,
     Double,
@@ -39,6 +43,7 @@ pub enum BondOrder {
 }
 
 #[derive(Clone, Debug)]
+/// A single atom node in the molecular graph.
 pub struct Atom {
     pub element: u8,
     pub position: Vector3<f32>,
@@ -50,12 +55,15 @@ pub struct Atom {
 }
 
 #[derive(Clone, Debug)]
+/// A bond edge in the molecular graph.
 pub struct Bond {
     pub order: BondOrder,
     pub stereo: BondStereo,
 }
 
 impl Atom {
+    /// Construct a new atom with the given atomic number at the given 3D position.
+    /// Hybridization defaults to `Unknown` and is assigned during SMILES parsing.
     pub fn new(atomic_number: u8, x: f32, y: f32, z: f32) -> Self {
         Atom {
             element: atomic_number,
@@ -70,12 +78,15 @@ impl Atom {
 }
 
 // Representing Molecule utilizing petgraph
+/// Molecular graph: atoms as nodes, bonds as edges.
+/// Constructed from a SMILES string via [`Molecule::from_smiles`].
 pub struct Molecule {
     pub graph: UnGraph<Atom, Bond>,
     pub name: String,
 }
 
 impl Molecule {
+    /// Create an empty molecule with the given name.
     pub fn new(name: &str) -> Self {
         Self {
             graph: UnGraph::new_undirected(),
@@ -83,17 +94,84 @@ impl Molecule {
         }
     }
 
+    /// Parse a SMILES string into a molecule.
+    ///
+    /// Automatically adds implicit hydrogens, assigns hybridization, detects
+    /// ring membership (SSSR), and retains only the largest fragment if the
+    /// SMILES contains multiple disconnected components (e.g. salts).
     pub fn from_smiles(smiles: &str) -> Result<Self, String> {
         let mut mol = Self::new(smiles);
         let mut parser = crate::smiles::SmilesParser::new(smiles, &mut mol);
         parser.parse()?;
+        // If molecule has disconnected fragments (salts etc.), keep only the largest
+        let components = petgraph::algo::connected_components(&mol.graph);
+        if components > 1 {
+            mol = mol.largest_fragment();
+        }
         Ok(mol)
     }
 
+    /// Returns a new Molecule containing only the largest connected component.
+    fn largest_fragment(self) -> Molecule {
+        use petgraph::visit::EdgeRef;
+        let n = self.graph.node_count();
+        // BFS to find connected components
+        let mut component = vec![usize::MAX; n];
+        let mut comp_sizes = Vec::new();
+        let mut comp_id = 0;
+        for start in 0..n {
+            if component[start] != usize::MAX {
+                continue;
+            }
+            let mut size = 0;
+            let mut queue = std::collections::VecDeque::new();
+            queue.push_back(start);
+            component[start] = comp_id;
+            while let Some(cur) = queue.pop_front() {
+                size += 1;
+                for nb in self.graph.neighbors(NodeIndex::new(cur)) {
+                    if component[nb.index()] == usize::MAX {
+                        component[nb.index()] = comp_id;
+                        queue.push_back(nb.index());
+                    }
+                }
+            }
+            comp_sizes.push(size);
+            comp_id += 1;
+        }
+        let best_comp = comp_sizes
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, &s)| s)
+            .map(|(i, _)| i)
+            .unwrap_or(0);
+
+        // Build new molecule with only atoms from the largest component
+        let mut new_mol = Molecule::new(&self.name);
+        let mut old_to_new = vec![None; n];
+        for old_idx in 0..n {
+            if component[old_idx] == best_comp {
+                let atom = self.graph[NodeIndex::new(old_idx)].clone();
+                let new_idx = new_mol.graph.add_node(atom);
+                old_to_new[old_idx] = Some(new_idx);
+            }
+        }
+        for edge in self.graph.edge_references() {
+            let a = edge.source().index();
+            let b = edge.target().index();
+            if let (Some(na), Some(nb)) = (old_to_new[a], old_to_new[b]) {
+                new_mol.graph.add_edge(na, nb, edge.weight().clone());
+            }
+        }
+        new_mol
+    }
+
+    /// Add an atom node to the graph, returning its index.
     pub fn add_atom(&mut self, atom: Atom) -> NodeIndex {
         self.graph.add_node(atom)
     }
 
+    /// Add a bond edge between two atom indices.
     pub fn add_bond(&mut self, a: NodeIndex, b: NodeIndex, bond: Bond) {
         self.graph.add_edge(a, b, bond);
     }
@@ -219,7 +297,9 @@ pub fn get_ideal_angle(hybridization: &Hybridization) -> f64 {
     }
 }
 
-/// Returns the ideal bond angle accounting for 3-, 4-, and 5-membered rings topological constraints
+/// BFS shortest path (in bonds) from `start` to `target` in the molecular graph,
+/// excluding the node `exclude`. Used to detect ring membership and ring sizes.
+/// Returns `None` if no path exists within `limit` bonds.
 pub fn min_path_excluding(
     mol: &Molecule,
     start: petgraph::graph::NodeIndex,
@@ -295,6 +375,28 @@ pub fn min_path_excluding2(
     None
 }
 
+/// Check if an atom is in any ring (has an alternative path of length ≤ 8 through any neighbor).
+pub fn atom_in_ring(mol: &Molecule, atom: petgraph::graph::NodeIndex) -> bool {
+    for nb in mol.graph.neighbors(atom) {
+        if min_path_excluding(mol, nb, atom, atom, 8).is_some() {
+            return true;
+        }
+    }
+    false
+}
+
+/// Check if a bond (edge between a and b) is in a ring of exactly the given size.
+pub fn bond_in_ring_of_size(
+    mol: &Molecule,
+    a: petgraph::graph::NodeIndex,
+    b: petgraph::graph::NodeIndex,
+    ring_size: usize,
+) -> bool {
+    // min_path_excluding2 skips the direct a-b bond and finds the shortest alternative path.
+    // For a ring of size `ring_size`, the alternative path has ring_size - 1 edges.
+    min_path_excluding2(mol, a, b, a, a, ring_size).is_some_and(|d| d == ring_size - 1)
+}
+
 /// Returns the ideal bond angle accounting for rings topological constraints
 /// Helper: compute the ring interior angle for a given hybridization and ring size.
 /// Matches RDKit's _setRingAngle logic.
@@ -308,11 +410,16 @@ fn ring_angle_for(ahyb: &Hybridization, ring_size: usize) -> f64 {
         } else {
             109.5 * PI / 180.0
         }
+    } else if *ahyb == Hybridization::SP3D {
+        105.0 * PI / 180.0
     } else {
-        get_ideal_angle(ahyb)
+        // RDKit's _setRingAngle defaults to 120° for unhandled hybridizations (SP, SP3D2, etc.)
+        120.0 * PI / 180.0
     }
 }
 
+/// Returns the ideal 1–2–3 bond angle (radians) between atoms `n1`–`center`–`n2`,
+/// accounting for ring strain in small rings (3-, 4-, 5-membered).
 pub fn get_corrected_ideal_angle(
     mol: &Molecule,
     center: petgraph::graph::NodeIndex,
@@ -336,7 +443,7 @@ pub fn get_corrected_ideal_angle(
     // the exocyclic angle is widened: 116° for 3-ring, 112° for 4-ring.
     // dist > 2 means the pair is not directly in any 3-ring (dist=1) or 4-ring (dist=2),
     // so it's either in a larger ring envelope (fused system) or truly exocyclic.
-    if *ahyb == Hybridization::SP3 && dist.map_or(true, |d| d > 2) {
+    if *ahyb == Hybridization::SP3 && dist.is_none_or(|d| d > 2) {
         let nbs: Vec<_> = mol.graph.neighbors(center).collect();
         let mut smallest_ring = 0usize;
         for i in 0..nbs.len() {
@@ -344,9 +451,17 @@ pub fn get_corrected_ideal_angle(
                 if let Some(p) = min_path_excluding(mol, nbs[i], nbs[j], center, 8) {
                     let rs = p + 2;
                     if rs == 3 {
-                        smallest_ring = if smallest_ring == 0 { 3 } else { smallest_ring.min(3) };
+                        smallest_ring = if smallest_ring == 0 {
+                            3
+                        } else {
+                            smallest_ring.min(3)
+                        };
                     } else if rs == 4 && smallest_ring != 3 {
-                        smallest_ring = if smallest_ring == 0 { 4 } else { smallest_ring.min(4) };
+                        smallest_ring = if smallest_ring == 0 {
+                            4
+                        } else {
+                            smallest_ring.min(4)
+                        };
                     }
                 }
             }
@@ -382,8 +497,7 @@ pub fn get_corrected_ideal_angle(
 
             let ring_count = in_ring.iter().filter(|&&x| x).count();
             // Identify which pair index corresponds to (n1, n2)
-            let target_idx = if (nbs[0] == n1 && nbs[1] == n2) || (nbs[1] == n1 && nbs[0] == n2)
-            {
+            let target_idx = if (nbs[0] == n1 && nbs[1] == n2) || (nbs[1] == n1 && nbs[0] == n2) {
                 0
             } else if (nbs[0] == n1 && nbs[2] == n2) || (nbs[2] == n1 && nbs[0] == n2) {
                 1
