@@ -181,3 +181,140 @@ The line search uses the following strategy:
 2. **Backtracking**: cubic/quadratic interpolation
 3. **Sufficient decrease**: Armijo condition with $c = 10^{-4}$
 4. **Maximum step**: scaled to not exceed 100.0
+
+---
+
+## 3. MMFF94 Force Field
+
+The **Merck Molecular Force Field 94 (MMFF94)** is used for post-embedding energy refinement and geometry optimization of organic drug-like molecules. sci-form implements the full four-term MMFF94 energy function with analytical gradients.
+
+### Atom Types
+
+MMFF94 assigns each heavy atom a chemical context type used to look up force constants:
+
+| Type | Description |
+|------|-------------|
+| `HC`   | Hydrogen bonded to carbon |
+| `CSp`  | sp³ carbon |
+| `CSp2` | sp² carbon (non-aromatic) |
+| `CB`   | Aromatic carbon |
+| `CR`   | sp³ carbon in ring |
+| `NR`   | sp³ nitrogen in ring |
+| `N2`   | sp² nitrogen |
+| `NAm`  | Amide nitrogen |
+| `NR2`  | Aromatic nitrogen |
+| `NC`   | Nitrile nitrogen |
+| `OR`   | sp³ oxygen |
+| `O2`   | sp² oxygen |
+| `F`    | Fluorine |
+| `P`    | Phosphorus |
+| `S`    | Sulfur |
+| `Cl`   | Chlorine |
+| `Br`   | Bromine |
+| `I`    | Iodine |
+
+### Energy Function
+
+<img src="/svg/mmff94-energy-terms.svg" alt="MMFF94 four energy terms" class="svg-diagram" />
+
+$$E_{\text{MMFF94}} = E_s + E_\theta + E_\phi + E_\text{vdW}$$
+
+#### 1. Bond Stretching (Quartic Form)
+
+MMFF94 uses a quartic Taylor expansion around the equilibrium bond length $r_0$:
+
+$$E_s = 143.9325 \cdot \frac{1}{2} \cdot k_b \cdot \Delta r^2 \left[1 + c_s \Delta r + \frac{7}{12} c_s^2 \Delta r^2\right]$$
+
+where:
+- $\Delta r = r - r_0$ is the bond length deviation (Å)
+- $k_b$ is the bond force constant (md/Å)
+- $c_s = -2.0\ \text{Å}^{-1}$ is the **cubic stretch constant**
+- The factor 143.9325 converts md/Å to kcal/mol
+
+The quartic form captures asymmetric bond behaviour: bonds are harder to compress than to stretch.
+
+**Analytical gradient** (used in sci-form):
+
+$$\frac{\partial E_s}{\partial r} = 143.9325 \cdot k_b \cdot \Delta r \left[1 + \frac{3}{2} c_s \Delta r + \frac{7}{6} c_s^2 \Delta r^2\right]$$
+
+#### 2. Angle Bending (Cubic Form)
+
+$$E_\theta = 0.043844 \cdot \frac{1}{2} \cdot k_a \cdot \Delta\theta^2 \left[1 + c_b \Delta\theta\right]$$
+
+where:
+- $\Delta\theta = \theta - \theta_0$ in **degrees**
+- $k_a$ is the angle force constant (md·Å/rad²)
+- $c_b = -0.014\ \text{deg}^{-1}$ is the **cubic bend constant**
+- The factor 0.043844 converts to kcal/mol
+
+The cubic term models the asymmetry of valence angle deformation near linearity.
+
+**Analytical gradient:**
+
+$$\frac{\partial E_\theta}{\partial \theta} = 0.043844 \cdot k_a \cdot \Delta\theta \left[1 + \frac{3}{2} c_b \Delta\theta\right] \cdot \frac{180}{\pi}$$
+
+#### 3. Torsion (3-Term Fourier)
+
+$$E_\phi = \frac{1}{2}\left[V_1(1 + \cos\phi) + V_2(1 - \cos 2\phi) + V_3(1 + \cos 3\phi)\right]$$
+
+where $V_1$, $V_2$, $V_3$ are barrier heights (kcal/mol) specific to each atom-type quadruplet $(i\text{-}j\text{-}k\text{-}l)$ and $\phi$ is the dihedral angle in radians.
+
+The three Fourier terms model:
+- $V_1$: one-fold periodicity (conformational asymmetry)
+- $V_2$: two-fold periodicity (conjugation effects)
+- $V_3$: three-fold periodicity (staggered/eclipsed preference)
+
+The dihedral gradient uses **numerical central differences** ($\varepsilon = 10^{-5}$):
+
+$$\frac{\partial E_\phi}{\partial x_i} \approx \frac{E_\phi(x_i + \varepsilon) - E_\phi(x_i - \varepsilon)}{2\varepsilon}$$
+
+#### 4. Buffered 14-7 van der Waals (Halgren 1996)
+
+MMFF94 replaces the Lennard-Jones 12-6 potential with Halgren's **Buffered 14-7** form, which provides a softer repulsive wall and better treatment of close contacts:
+
+$$E_\text{vdW} = \varepsilon_{ij} \left(\frac{1.07\,R^*_{ij}}{R_{ij} + 0.07\,R^*_{ij}}\right)^7 \left(\frac{1.12\,(R^*_{ij})^7}{R_{ij}^7 + 0.12\,(R^*_{ij})^7} - 2\right)$$
+
+where:
+- $R_{ij}$ is the interatomic distance
+- $R^*_{ij}$ is the empirical combined van der Waals radius
+- $\varepsilon_{ij}$ is the well depth
+
+The **1.07** and **0.07** buffer factors soften the repulsive wall relative to Lennard-Jones 12-6, and the **1.12** / **0.12** attractive factors give a smoother well minimum.
+
+**Analytical gradient** (Cartesian components):
+
+$$\frac{\partial E_\text{vdW}}{\partial \mathbf{x}_i} = \varepsilon_{ij} \left[\frac{\partial (\text{rep})}{\partial R} \cdot \text{att} + \text{rep} \cdot \frac{\partial (\text{att})}{\partial R}\right] \frac{\mathbf{x}_i - \mathbf{x}_j}{R_{ij}}$$
+
+### Implementation: `Mmff94Builder`
+
+The `Mmff94Builder` constructs the force field from a parsed molecule:
+
+```rust
+use sci_form::forcefield::mmff94::Mmff94Builder;
+
+let mol = sci_form::parse("CCO")?;
+let mut builder = Mmff94Builder::new(&mol);
+builder.build();  // Assigns atom types and creates all energy terms
+
+// Evaluate energy + inject gradients
+let mut grad = vec![0.0; mol.atoms.len() * 3];
+let energy = builder.total_energy(&coords, &mut grad);
+```
+
+### Gradient Validation
+
+sci-form provides a `validate_gradients()` utility that checks analytical gradients against central-difference numerical gradients:
+
+```rust
+use sci_form::forcefield::mmff94::validate_gradients;
+
+let max_err = validate_gradients(&term, &coords, 1e-5);
+assert!(max_err < 1e-4, "gradient error: {max_err}");
+```
+
+This is used in the test suite to verify correctness of all four term types.
+
+### References
+
+1. Halgren, T. A. *Merck Molecular Force Field.* J. Comput. Chem. **1996**, 17, 490–519.
+2. Halgren, T. A. *MMFF VII. Characterization of MMFF94, MMFF94s, and other widely available force fields.* J. Comput. Chem. **1999**, 20, 730–748.
