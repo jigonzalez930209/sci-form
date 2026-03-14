@@ -1,4 +1,16 @@
-#![allow(unused_imports, unused_variables, dead_code, clippy::unnecessary_cast, clippy::needless_range_loop, clippy::manual_repeat_n, clippy::manual_str_repeat, clippy::manual_is_multiple_of, clippy::redundant_field_names, clippy::useless_vec, clippy::single_range_in_vec_init)]
+#![allow(
+    unused_imports,
+    unused_variables,
+    dead_code,
+    clippy::unnecessary_cast,
+    clippy::needless_range_loop,
+    clippy::manual_repeat_n,
+    clippy::manual_str_repeat,
+    clippy::manual_is_multiple_of,
+    clippy::redundant_field_names,
+    clippy::useless_vec,
+    clippy::single_range_in_vec_init
+)]
 use sci_form::distgeom;
 use sci_form::distgeom::{
     compute_initial_coords_rdkit, identify_chiral_sets, identify_tetrahedral_centers,

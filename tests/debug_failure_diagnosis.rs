@@ -1,4 +1,16 @@
-#![allow(unused_imports, unused_variables, dead_code, clippy::unnecessary_cast, clippy::needless_range_loop, clippy::manual_repeat_n, clippy::manual_str_repeat, clippy::manual_is_multiple_of, clippy::redundant_field_names, clippy::useless_vec, clippy::single_range_in_vec_init)]
+#![allow(
+    unused_imports,
+    unused_variables,
+    dead_code,
+    clippy::unnecessary_cast,
+    clippy::needless_range_loop,
+    clippy::manual_repeat_n,
+    clippy::manual_str_repeat,
+    clippy::manual_is_multiple_of,
+    clippy::redundant_field_names,
+    clippy::useless_vec,
+    clippy::single_range_in_vec_init
+)]
 //! Debug: identify which atom pairs cause the largest distance errors in failing molecules.
 
 use serde::Deserialize;

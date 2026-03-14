@@ -49,7 +49,6 @@ fn main() {
 
     let mut results = Vec::new();
     for (_i, entry) in data.iter().enumerate().take(limit.min(data.len())) {
-
         let mol = build_mol_from_ref(entry);
         let csd_torsions = build_csd_torsions(&entry.torsions);
         let result = generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
