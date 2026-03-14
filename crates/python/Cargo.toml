@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-python"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Python bindings for sci-form 3D conformer generation"
 
@@ -9,6 +9,6 @@ name = "sci_form"
 crate-type = ["cdylib"]
 
 [dependencies]
-sci-form-core = { path = "../..", package = "sci-form", version = "0.2.0", default-features = false, features = ["parallel"] }
+sci-form-core = { path = "../..", package = "sci-form", version = "0.3.0", default-features = false, features = ["parallel"] }
 pyo3 = { version = "0.22", features = ["extension-module"] }
 rayon = "1.10"
