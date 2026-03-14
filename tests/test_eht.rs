@@ -123,7 +123,7 @@ fn test_h2_orbital_to_mesh() {
     // Generate volumetric grid for bonding orbital (MO 0)
     let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &pos, 0.2, 3.0);
 
-    assert!(grid.values.len() > 0, "Grid should have values");
+    assert!(!grid.values.is_empty(), "Grid should have values");
     assert_eq!(
         grid.values.len(),
         grid.dims[0] * grid.dims[1] * grid.dims[2],
