@@ -1,4 +1,6 @@
 <svg viewBox="0 0 450 280" xmlns="http://www.w3.org/2000/svg" style="max-width:420px;margin:2em auto;display:block;">
+  <rect x="0" y="0" width="450" height="280" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <g font-family="system-ui,sans-serif">
     <!-- Good tetrahedron (left) -->
     <text x="115" y="20" text-anchor="middle" fill="#14532d" font-weight="700" font-size="13">✓ Valid</text>

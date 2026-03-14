@@ -5,6 +5,8 @@
       <stop offset="100%" stop-color="#2563eb"/>
     </linearGradient>
   </defs>
+  <rect x="0" y="0" width="720" height="340" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
 
   <g font-family="system-ui,sans-serif">
     <!-- Title -->

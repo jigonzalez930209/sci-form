@@ -4,6 +4,8 @@
       <polygon points="0 0, 8 3, 0 6" fill="#2563eb"/>
     </marker>
   </defs>
+  <rect x="0" y="0" width="700" height="200" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <g font-family="system-ui,sans-serif">
     <!-- SMILES string -->
     <rect x="10" y="60" width="140" height="60" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
