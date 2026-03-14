@@ -14,7 +14,7 @@ name = "sci-form"
 path = "src/main.rs"
 
 [dependencies]
-sci-form = { path = "../.." }
+sci-form = { path = "../..", version = "0.1.7" }
 clap = { version = "4", features = ["derive"] }
 rayon = "1.10"
 serde_json = "1.0"

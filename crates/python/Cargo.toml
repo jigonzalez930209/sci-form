@@ -9,6 +9,6 @@ name = "sci_form"
 crate-type = ["cdylib"]
 
 [dependencies]
-sci-form-core = { path = "../..", package = "sci-form", default-features = false, features = ["parallel"] }
+sci-form-core = { path = "../..", package = "sci-form", version = "0.1.7", default-features = false, features = ["parallel"] }
 pyo3 = { version = "0.22", features = ["extension-module"] }
 rayon = "1.10"
