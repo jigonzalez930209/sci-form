@@ -56,9 +56,9 @@ fn test_population_formaldehyde_carbon_charge() {
     // H₂C=O: Carbon bonded to O (electron-withdrawing) should be slightly positive
     let elements = vec![6u8, 8, 1, 1]; // C, O, H, H
     let positions = vec![
-        [0.0, 0.0, 0.0],    // C
-        [1.21, 0.0, 0.0],   // O (C=O ≈ 1.21 Å)
-        [-0.55, 0.93, 0.0], // H
+        [0.0, 0.0, 0.0],     // C
+        [1.21, 0.0, 0.0],    // O (C=O ≈ 1.21 Å)
+        [-0.55, 0.93, 0.0],  // H
         [-0.55, -0.93, 0.0], // H
     ];
     let result = sci_form::compute_population(&elements, &positions).unwrap();
@@ -92,10 +92,7 @@ fn test_population_lowdin_vs_mulliken_bounded() {
         assert!(m.is_finite(), "Mulliken charge[{i}] is NaN/Inf");
         assert!(l.is_finite(), "Löwdin charge[{i}] is NaN/Inf");
         // Both should be within reasonable range for neutral small molecules
-        assert!(
-            m.abs() < 3.0,
-            "Mulliken charge[{i}] = {m:.4} out of range"
-        );
+        assert!(m.abs() < 3.0, "Mulliken charge[{i}] = {m:.4} out of range");
         assert!(l.abs() < 3.0, "Löwdin charge[{i}] = {l:.4} out of range");
     }
 }
@@ -168,10 +165,8 @@ fn test_dipole_vector_magnitude_consistent() {
     let positions = vec![[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
     let result = sci_form::compute_dipole(&elements, &positions).unwrap();
 
-    let calc_mag = (result.vector[0].powi(2)
-        + result.vector[1].powi(2)
-        + result.vector[2].powi(2))
-    .sqrt();
+    let calc_mag =
+        (result.vector[0].powi(2) + result.vector[1].powi(2) + result.vector[2].powi(2)).sqrt();
 
     assert!(
         (calc_mag - result.magnitude).abs() < 1e-10,
@@ -225,8 +220,7 @@ fn test_dipole_direction_hf() {
     assert!(result.magnitude > 0.1, "HF should have nonzero dipole");
     // The dipole vector should be primarily along x-axis
     assert!(
-        result.vector[0].abs()
-            > result.vector[1].abs().max(result.vector[2].abs()),
+        result.vector[0].abs() > result.vector[1].abs().max(result.vector[2].abs()),
         "HF dipole should be primarily along the bond axis (x)"
     );
 }
@@ -331,8 +325,7 @@ fn test_dos_grid_matches_parameters() {
     let elements = vec![8u8, 1, 1];
     let positions = vec![[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
     let n_points = 300;
-    let result =
-        sci_form::compute_dos(&elements, &positions, 0.3, -30.0, 5.0, n_points).unwrap();
+    let result = sci_form::compute_dos(&elements, &positions, 0.3, -30.0, 5.0, n_points).unwrap();
 
     assert_eq!(result.energies.len(), n_points);
     assert_eq!(result.total_dos.len(), n_points);
@@ -421,10 +414,7 @@ fn test_dos_pdos_nonnegative() {
 
     for (a, pdos) in result.pdos.iter().enumerate() {
         for (i, &val) in pdos.iter().enumerate() {
-            assert!(
-                val >= -1e-10,
-                "PDOS[atom={a}][{i}] = {val:.8} is negative"
-            );
+            assert!(val >= -1e-10, "PDOS[atom={a}][{i}] = {val:.8} is negative");
         }
     }
 }
@@ -463,10 +453,7 @@ fn test_rmsd_known_value() {
     let rmsd = sci_form::compute_rmsd(&shifted, &reference);
     // After alignment, the rigid part should be aligned; the remaining error
     // is at most 1 Å for one atom out of 3
-    assert!(
-        rmsd < 1.0,
-        "RMSD should be < 1.0 Å, got {rmsd:.4}"
-    );
+    assert!(rmsd < 1.0, "RMSD should be < 1.0 Å, got {rmsd:.4}");
 }
 
 #[test]
@@ -545,14 +532,14 @@ fn test_uff_energy_finite_ethane() {
     let smiles = "CC";
     // Ethane-like coordinates
     let coords = vec![
-        0.0, 0.0, 0.0,       // C1
-        1.54, 0.0, 0.0,      // C2
-        -0.36, 1.01, 0.0,    // H
-        -0.36, -0.51, 0.87,  // H
+        0.0, 0.0, 0.0, // C1
+        1.54, 0.0, 0.0, // C2
+        -0.36, 1.01, 0.0, // H
+        -0.36, -0.51, 0.87, // H
         -0.36, -0.51, -0.87, // H
-        1.90, 1.01, 0.0,     // H
-        1.90, -0.51, 0.87,   // H
-        1.90, -0.51, -0.87,  // H
+        1.90, 1.01, 0.0, // H
+        1.90, -0.51, 0.87, // H
+        1.90, -0.51, -0.87, // H
     ];
     let energy = sci_form::compute_uff_energy(smiles, &coords).unwrap();
     assert!(energy.is_finite(), "Ethane UFF energy should be finite");
@@ -564,13 +551,11 @@ fn test_uff_energy_distorted_higher() {
     let smiles = "C";
     // Reasonable tetrahedral CH4
     let good_coords = vec![
-        0.0, 0.0, 0.0, 0.63, 0.63, 0.63, -0.63, -0.63, 0.63, -0.63, 0.63, -0.63, 0.63,
-        -0.63, -0.63,
+        0.0, 0.0, 0.0, 0.63, 0.63, 0.63, -0.63, -0.63, 0.63, -0.63, 0.63, -0.63, 0.63, -0.63, -0.63,
     ];
     // Distorted: compress all H atoms closer
     let bad_coords = vec![
-        0.0, 0.0, 0.0, 0.30, 0.30, 0.30, -0.30, -0.30, 0.30, -0.30, 0.30, -0.30, 0.30,
-        -0.30, -0.30,
+        0.0, 0.0, 0.0, 0.30, 0.30, 0.30, -0.30, -0.30, 0.30, -0.30, 0.30, -0.30, 0.30, -0.30, -0.30,
     ];
 
     let e_good = sci_form::compute_uff_energy(smiles, &good_coords).unwrap();
@@ -593,7 +578,10 @@ fn test_uff_energy_gradient_finite() {
     ];
     let energy = sci_form::compute_uff_energy(smiles, &coords).unwrap();
     assert!(energy.is_finite(), "Water UFF energy should be finite");
-    assert!(energy > -1000.0 && energy < 10000.0, "Energy {energy} out of reasonable range");
+    assert!(
+        energy > -1000.0 && energy < 10000.0,
+        "Energy {energy} out of reasonable range"
+    );
 }
 
 #[test]
@@ -601,8 +589,7 @@ fn test_uff_energy_stretched_bond_higher() {
     // Stretching a C-H bond should increase energy
     let smiles = "C";
     let base = vec![
-        0.0, 0.0, 0.0, 0.63, 0.63, 0.63, -0.63, -0.63, 0.63, -0.63, 0.63, -0.63, 0.63,
-        -0.63, -0.63,
+        0.0, 0.0, 0.0, 0.63, 0.63, 0.63, -0.63, -0.63, 0.63, -0.63, 0.63, -0.63, 0.63, -0.63, -0.63,
     ];
     // Stretch first H far away
     let mut stretched = base.clone();
@@ -678,8 +665,7 @@ fn test_dos_energy_range_covers_eigenvalues() {
     let positions = vec![[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
 
     // Compute with wide energy window
-    let result =
-        sci_form::compute_dos(&elements, &positions, 0.3, -50.0, 20.0, 500).unwrap();
+    let result = sci_form::compute_dos(&elements, &positions, 0.3, -50.0, 20.0, 500).unwrap();
 
     let max_dos = result.total_dos.iter().cloned().fold(0.0f64, f64::max);
     assert!(
@@ -715,7 +701,11 @@ fn test_embed_then_population_pipeline() {
         return;
     }
 
-    let positions: Vec<[f64; 3]> = result.coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let positions: Vec<[f64; 3]> = result
+        .coords
+        .chunks_exact(3)
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
     let pop = sci_form::compute_population(&result.elements, &positions).unwrap();
     assert_eq!(pop.num_atoms, result.num_atoms);
 
