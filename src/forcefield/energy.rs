@@ -4,26 +4,28 @@ use petgraph::visit::EdgeRef;
 /// UFF VDW parameters by element: (x1 = VDW distance in Å, d1 = well depth in kcal/mol)
 pub fn uff_vdw_params(element: u8) -> (f32, f32) {
     match element {
-        1  => (2.886, 0.044),   // H
-        5  => (3.637, 0.180),   // B
-        6  => (3.851, 0.105),   // C
-        7  => (3.660, 0.069),   // N
-        8  => (3.500, 0.060),   // O
-        9  => (3.364, 0.050),   // F
-        14 => (4.295, 0.402),   // Si
-        15 => (4.147, 0.305),   // P
-        16 => (4.035, 0.274),   // S
-        17 => (3.947, 0.227),   // Cl
-        35 => (4.189, 0.251),   // Br
-        53 => (4.500, 0.339),   // I
-        _  => (3.851, 0.105),   // default to C
+        1 => (2.886, 0.044),  // H
+        5 => (3.637, 0.180),  // B
+        6 => (3.851, 0.105),  // C
+        7 => (3.660, 0.069),  // N
+        8 => (3.500, 0.060),  // O
+        9 => (3.364, 0.050),  // F
+        14 => (4.295, 0.402), // Si
+        15 => (4.147, 0.305), // P
+        16 => (4.035, 0.274), // S
+        17 => (3.947, 0.227), // Cl
+        35 => (4.189, 0.251), // Br
+        53 => (4.500, 0.339), // I
+        _ => (3.851, 0.105),  // default to C
     }
 }
 
 /// LJ 12-6 VDW energy between two atoms
 pub fn vdw_energy(p1: &Vector3<f32>, p2: &Vector3<f32>, r_star: f32, epsilon: f32) -> f32 {
     let r = (p1 - p2).norm();
-    if r < 0.5 || r > 8.0 { return 0.0; }
+    if !(0.5..=8.0).contains(&r) {
+        return 0.0;
+    }
     let u = r_star / r;
     let u6 = u * u * u * u * u * u;
     let u12 = u6 * u6;
@@ -295,8 +297,7 @@ pub fn calculate_total_energy(
             let v = edge.target();
             let hyb_u = mol.graph[u].hybridization;
             let hyb_v = mol.graph[v].hybridization;
-            if hyb_u == crate::graph::Hybridization::SP
-                || hyb_v == crate::graph::Hybridization::SP
+            if hyb_u == crate::graph::Hybridization::SP || hyb_v == crate::graph::Hybridization::SP
             {
                 continue;
             }
@@ -331,7 +332,15 @@ pub fn calculate_total_energy(
                             coords[(nv.index(), 2)],
                         ),
                     );
-                    energy += torsional_energy(&p1, &p2, &p3, &p4, params.k_omega * weight, n_fold, gamma);
+                    energy += torsional_energy(
+                        &p1,
+                        &p2,
+                        &p3,
+                        &p4,
+                        params.k_omega * weight,
+                        n_fold,
+                        gamma,
+                    );
                 }
             }
         }
@@ -346,23 +355,45 @@ pub fn calculate_total_energy(
             if crate::graph::min_path_excluding2(mol, u, v, u, v, 7).is_some() {
                 continue;
             }
-            let m6 = crate::forcefield::etkdg_lite::infer_etkdg_parameters(mol, u.index(), v.index());
+            let m6 =
+                crate::forcefield::etkdg_lite::infer_etkdg_parameters(mol, u.index(), v.index());
             // Skip if all coefficients are zero
-            if m6.v.iter().all(|&x| x.abs() < 1e-6) { continue; }
+            if m6.v.iter().all(|&x| x.abs() < 1e-6) {
+                continue;
+            }
 
             let neighbors_u: Vec<_> = mol.graph.neighbors(u).filter(|&x| x != v).collect();
             let neighbors_v: Vec<_> = mol.graph.neighbors(v).filter(|&x| x != u).collect();
-            if neighbors_u.is_empty() || neighbors_v.is_empty() { continue; }
+            if neighbors_u.is_empty() || neighbors_v.is_empty() {
+                continue;
+            }
             // Use first neighbor pair only (matching RDKit's approach for ETKDG)
             let nu = neighbors_u[0];
             let nv = neighbors_v[0];
             let (p1, p2, p3, p4) = (
-                Vector3::new(coords[(nu.index(), 0)], coords[(nu.index(), 1)], coords[(nu.index(), 2)]),
-                Vector3::new(coords[(u.index(), 0)], coords[(u.index(), 1)], coords[(u.index(), 2)]),
-                Vector3::new(coords[(v.index(), 0)], coords[(v.index(), 1)], coords[(v.index(), 2)]),
-                Vector3::new(coords[(nv.index(), 0)], coords[(nv.index(), 1)], coords[(nv.index(), 2)]),
+                Vector3::new(
+                    coords[(nu.index(), 0)],
+                    coords[(nu.index(), 1)],
+                    coords[(nu.index(), 2)],
+                ),
+                Vector3::new(
+                    coords[(u.index(), 0)],
+                    coords[(u.index(), 1)],
+                    coords[(u.index(), 2)],
+                ),
+                Vector3::new(
+                    coords[(v.index(), 0)],
+                    coords[(v.index(), 1)],
+                    coords[(v.index(), 2)],
+                ),
+                Vector3::new(
+                    coords[(nv.index(), 0)],
+                    coords[(nv.index(), 1)],
+                    coords[(nv.index(), 2)],
+                ),
             );
-            energy += crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6);
+            energy +=
+                crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6);
         }
     }
 
@@ -400,7 +431,9 @@ pub fn calculate_total_energy(
                 for &nv in &neighbors_v {
                     let a = nu.index();
                     let b = nv.index();
-                    if a == b { continue; }
+                    if a == b {
+                        continue;
+                    }
                     let (lo, hi) = if a < b { (a, b) } else { (b, a) };
                     if !excluded.contains(&(lo, hi)) {
                         is_14.insert((lo, hi));
@@ -414,7 +447,9 @@ pub fn calculate_total_energy(
             let (xi, di) = uff_vdw_params(ei);
             let pi = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
             for j in (i + 1)..n {
-                if excluded.contains(&(i, j)) { continue; }
+                if excluded.contains(&(i, j)) {
+                    continue;
+                }
                 let ej = mol.graph[petgraph::graph::NodeIndex::new(j)].element;
                 let (xj, dj) = uff_vdw_params(ej);
                 let r_star = (xi + xj) * 0.5;
@@ -437,9 +472,9 @@ pub fn torsion_params(
     use crate::graph::Hybridization::*;
     let pi = std::f32::consts::PI;
     match (hyb_u, hyb_v) {
-        (SP3, SP3) => (3.0, 0.0, 1.0),              // staggered, normal weight
-        (SP2, SP2) => (2.0, pi, 5.0),                // planar, strong weight
-        (SP2, SP3) | (SP3, SP2) => (6.0, pi, 0.5),   // 6-fold weak barrier
+        (SP3, SP3) => (3.0, 0.0, 1.0),             // staggered, normal weight
+        (SP2, SP2) => (2.0, pi, 5.0),              // planar, strong weight
+        (SP2, SP3) | (SP3, SP2) => (6.0, pi, 0.5), // 6-fold weak barrier
         _ => (3.0, 0.0, 1.0),
     }
 }

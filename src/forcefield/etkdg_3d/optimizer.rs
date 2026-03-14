@@ -1,7 +1,7 @@
 //! BFGS optimizers and torsion correction for the ETKDG 3D force field.
 
-use nalgebra::{DMatrix, Vector3};
 use super::*;
+use nalgebra::{DMatrix, Vector3};
 
 pub fn minimize_etkdg_3d(
     mol: &crate::graph::Molecule,
@@ -73,18 +73,31 @@ pub fn minimize_etkdg_3d(
         }
 
         if debug && _iter < 3 {
-            println!("  3D iter={} g_norm={:.4} max_g={:.4} e_old={:.4} g_dot_p={:.4} p_norm={:.4}",
-                _iter, g_norm, g.abs().max(), e_old, g_dot_p, p.norm());
+            println!(
+                "  3D iter={} g_norm={:.4} max_g={:.4} e_old={:.4} g_dot_p={:.4} p_norm={:.4}",
+                _iter,
+                g_norm,
+                g.abs().max(),
+                e_old,
+                g_dot_p,
+                p.norm()
+            );
         }
 
         let mut found_step = false;
         for ls in 0..20 {
             let next_coords = &coords + step * &p;
             let e_new = super::etkdg_3d_energy(&next_coords, mol, &ff);
-            
+
             if debug && _iter < 3 && ls < 10 {
-                println!("    ls={} step={:.10} e_new={:.4} armijo_rhs={:.4} pass={}",
-                    ls, step, e_new, e_old + c1 * step * g_dot_p, e_new < e_old + c1 * step * g_dot_p);
+                println!(
+                    "    ls={} step={:.10} e_new={:.4} armijo_rhs={:.4} pass={}",
+                    ls,
+                    step,
+                    e_new,
+                    e_old + c1 * step * g_dot_p,
+                    e_new < e_old + c1 * step * g_dot_p
+                );
             }
 
             if e_new < e_old + c1 * step * g_dot_p {
@@ -138,14 +151,18 @@ pub fn correct_torsion_angles(
     for tc in torsion_contribs {
         // Skip very weak torsions
         let total_v: f64 = tc.v.iter().map(|x| x.abs()).sum();
-        if total_v < 0.5 { continue; }
+        if total_v < 0.5 {
+            continue;
+        }
 
         // Skip ring torsions — rotating ring bonds would distort ring geometry
         // Check if j-k bond is in a ring
         let j_ni = petgraph::graph::NodeIndex::new(tc.j);
         let k_ni = petgraph::graph::NodeIndex::new(tc.k);
         let in_ring = crate::graph::min_path_excluding2(mol, j_ni, k_ni, j_ni, k_ni, 7).is_some();
-        if in_ring { continue; }
+        if in_ring {
+            continue;
+        }
 
         // Current dihedral angle
         let p1 = Vector3::new(coords[(tc.i, 0)], coords[(tc.i, 1)], coords[(tc.i, 2)]);
@@ -173,7 +190,9 @@ pub fn correct_torsion_angles(
             if e <= e_prev && e <= e_next {
                 // This is a local minimum — check if it's closer than current best
                 let mut dist = (a - current_angle).abs();
-                if dist > std::f32::consts::PI { dist = 2.0 * std::f32::consts::PI - dist; }
+                if dist > std::f32::consts::PI {
+                    dist = 2.0 * std::f32::consts::PI - dist;
+                }
                 if best_dist == 0.0 || dist < best_dist {
                     best_angle = a;
                     best_dist = dist;
@@ -192,7 +211,9 @@ pub fn correct_torsion_angles(
             rotation_angle
         };
 
-        if rotation_angle.abs() < 0.05 { continue; } // Less than ~3° — skip
+        if rotation_angle.abs() < 0.05 {
+            continue;
+        } // Less than ~3° — skip
 
         // Find atoms on the "l side" of the j-k bond (BFS from k, excluding j)
         let mut on_k_side = vec![false; n];
@@ -202,7 +223,9 @@ pub fn correct_torsion_angles(
             let ni = petgraph::graph::NodeIndex::new(node);
             for nb in mol.graph.neighbors(ni) {
                 let nbi = nb.index();
-                if nbi == tc.j { continue; }
+                if nbi == tc.j {
+                    continue;
+                }
                 if !on_k_side[nbi] {
                     on_k_side[nbi] = true;
                     stack.push(nbi);
@@ -213,18 +236,23 @@ pub fn correct_torsion_angles(
         on_k_side[tc.j] = false;
 
         // Rotate all atoms on k-side around the j-k axis by rotation_angle
-        let axis = (&p3 - &p2).normalize();
-        if axis.norm() < 1e-6 { continue; }
+        let axis = (p3 - p2).normalize();
+        if axis.norm() < 1e-6 {
+            continue;
+        }
         let origin = p2;
         let cos_r = rotation_angle.cos();
         let sin_r = rotation_angle.sin();
 
         for a in 0..n {
-            if !on_k_side[a] { continue; }
+            if !on_k_side[a] {
+                continue;
+            }
             let pos = Vector3::new(coords[(a, 0)], coords[(a, 1)], coords[(a, 2)]);
             let rel = pos - origin;
             // Rodrigues' rotation formula
-            let rotated = rel * cos_r + axis.cross(&rel) * sin_r + axis * axis.dot(&rel) * (1.0 - cos_r);
+            let rotated =
+                rel * cos_r + axis.cross(&rel) * sin_r + axis * axis.dot(&rel) * (1.0 - cos_r);
             let new_pos = rotated + origin;
             coords[(a, 0)] = new_pos[0];
             coords[(a, 1)] = new_pos[1];
@@ -234,7 +262,12 @@ pub fn correct_torsion_angles(
 }
 
 /// Calculate dihedral angle in radians
-pub(crate) fn calc_dihedral(p1: &Vector3<f32>, p2: &Vector3<f32>, p3: &Vector3<f32>, p4: &Vector3<f32>) -> f32 {
+pub(crate) fn calc_dihedral(
+    p1: &Vector3<f32>,
+    p2: &Vector3<f32>,
+    p3: &Vector3<f32>,
+    p4: &Vector3<f32>,
+) -> f32 {
     let b1 = p2 - p1;
     let b2 = p3 - p2;
     let b3 = p4 - p3;
@@ -242,13 +275,19 @@ pub(crate) fn calc_dihedral(p1: &Vector3<f32>, p2: &Vector3<f32>, p3: &Vector3<f
     let n2 = b2.cross(&b3);
     let n1_len = n1.norm();
     let n2_len = n2.norm();
-    if n1_len < 1e-6 || n2_len < 1e-6 { return 0.0; }
+    if n1_len < 1e-6 || n2_len < 1e-6 {
+        return 0.0;
+    }
     let n1u = n1 / n1_len;
     let n2u = n2 / n2_len;
     let cos_d = n1u.dot(&n2u).clamp(-1.0, 1.0);
     let sign = n1u.dot(&b3);
     let angle = cos_d.acos();
-    if sign < 0.0 { -angle } else { angle }
+    if sign < 0.0 {
+        -angle
+    } else {
+        angle
+    }
 }
 
 /// Calculate M6 torsion energy at a given angle
@@ -280,11 +319,15 @@ pub fn minimize_etkdg_3d_with_ff(
 
     for _iter in 0..max_iter {
         let g_norm = g.norm();
-        if g_norm < tol { break; }
+        if g_norm < tol {
+            break;
+        }
         // RDKit-style gradient scaling: 0.1× base, halve until max*scale ≤ 10
         let max_g = g.abs().max();
         let mut scale = 0.1f32;
-        while max_g * scale > 10.0 { scale *= 0.5; }
+        while max_g * scale > 10.0 {
+            scale *= 0.5;
+        }
         let g_scaled = &g * scale;
         let mut p = -g_scaled.clone();
         if !s_hist.is_empty() {
@@ -295,7 +338,8 @@ pub fn minimize_etkdg_3d_with_ff(
                 p -= alpha * &y_hist[i];
                 alphas[i] = alpha;
             }
-            let gamma = s_hist[k-1].dot(&y_hist[k-1]) / y_hist[k-1].dot(&y_hist[k-1]).max(1e-10);
+            let gamma =
+                s_hist[k - 1].dot(&y_hist[k - 1]) / y_hist[k - 1].dot(&y_hist[k - 1]).max(1e-10);
             p *= gamma;
             for i in 0..k {
                 let beta = rho_hist[i] * y_hist[i].dot(&p);
@@ -307,7 +351,9 @@ pub fn minimize_etkdg_3d_with_ff(
         let e_old = super::etkdg_3d_energy(&coords, mol, ff);
         let g_dot_p = g.dot(&p);
         if g_dot_p >= 0.0 {
-            s_hist.clear(); y_hist.clear(); rho_hist.clear();
+            s_hist.clear();
+            y_hist.clear();
+            rho_hist.clear();
             continue;
         }
         let mut found_step = false;
@@ -320,8 +366,14 @@ pub fn minimize_etkdg_3d_with_ff(
                 let y = &next_g - &g;
                 let sy = s.dot(&y);
                 if sy > 1e-10 {
-                    if s_hist.len() >= m { s_hist.remove(0); y_hist.remove(0); rho_hist.remove(0); }
-                    s_hist.push(s); y_hist.push(y); rho_hist.push(1.0 / sy);
+                    if s_hist.len() >= m {
+                        s_hist.remove(0);
+                        y_hist.remove(0);
+                        rho_hist.remove(0);
+                    }
+                    s_hist.push(s);
+                    y_hist.push(y);
+                    rho_hist.push(1.0 / sy);
                 }
                 coords = next_coords;
                 g = next_g;
@@ -331,15 +383,19 @@ pub fn minimize_etkdg_3d_with_ff(
             step *= 0.5;
         }
         if !found_step {
-            s_hist.clear(); y_hist.clear(); rho_hist.clear();
-            if step < 1e-10 { break; }
+            s_hist.clear();
+            y_hist.clear();
+            rho_hist.clear();
+            if step < 1e-10 {
+                break;
+            }
         }
     }
     coords
 }
 /// f64-precision version of etkdg_3d_energy.
 /// All computation done in f64 to match RDKit's double-precision force field.
-
+///
 /// RDKit-style cubic/quadratic line search (Numerical Recipes 9.7) - f64 precision
 pub(crate) fn rdkit_linear_search_f64(
     dim: usize,
@@ -360,7 +416,9 @@ pub(crate) fn rdkit_linear_search_f64(
     let sum: f64 = dir.iter().map(|x| x * x).sum::<f64>().sqrt();
     if sum > max_step {
         let scale = max_step / sum;
-        for d in dir.iter_mut() { *d *= scale; }
+        for d in dir.iter_mut() {
+            *d *= scale;
+        }
     }
 
     let slope: f64 = dir.iter().zip(grad.iter()).map(|(d, g)| d * g).sum();
@@ -372,7 +430,9 @@ pub(crate) fn rdkit_linear_search_f64(
     let mut test = 0.0f64;
     for i in 0..dim {
         let temp = dir[i].abs() / old_pt[i].abs().max(1.0);
-        if temp > test { test = temp; }
+        if temp > test {
+            test = temp;
+        }
     }
     let lambda_min = MOVETOL / test.max(1e-30);
 
@@ -404,7 +464,8 @@ pub(crate) fn rdkit_linear_search_f64(
                 tmp_lambda = 0.5 * lambda;
             } else {
                 let a = (rhs1 / (lambda * lambda) - rhs2 / (lambda2 * lambda2)) / denom;
-                let b = (-lambda2 * rhs1 / (lambda * lambda) + lambda * rhs2 / (lambda2 * lambda2)) / denom;
+                let b = (-lambda2 * rhs1 / (lambda * lambda) + lambda * rhs2 / (lambda2 * lambda2))
+                    / denom;
                 if a.abs() < 1e-30 {
                     tmp_lambda = -slope / (2.0 * b);
                 } else {
@@ -468,7 +529,9 @@ pub fn minimize_etkdg_3d_bfgs(
         let mut max_grad = -1e8f64;
         for v in g.iter_mut() {
             *v *= grad_scale;
-            if v.abs() > max_grad { max_grad = v.abs(); }
+            if v.abs() > max_grad {
+                max_grad = v.abs();
+            }
         }
         if max_grad > 10.0 {
             while max_grad * grad_scale > 10.0 {
@@ -485,10 +548,14 @@ pub fn minimize_etkdg_3d_bfgs(
     let (mut grad, _gs) = grad_flat_scaled(&pos);
 
     let mut inv_hess = vec![0.0f64; dim * dim];
-    for i in 0..dim { inv_hess[i * dim + i] = 1.0; }
+    for i in 0..dim {
+        inv_hess[i * dim + i] = 1.0;
+    }
 
     let mut xi = vec![0.0f64; dim];
-    for i in 0..dim { xi[i] = -grad[i]; }
+    for i in 0..dim {
+        xi[i] = -grad[i];
+    }
 
     let sum_sq: f64 = pos.iter().map(|x| x * x).sum();
     let max_step = MAXSTEP * sum_sq.sqrt().max(dim as f64);
@@ -499,7 +566,16 @@ pub fn minimize_etkdg_3d_bfgs(
 
     for _iter in 0..max_iter {
         let (func_val, status) = rdkit_linear_search_f64(
-            dim, &pos, fp, &grad, &mut xi, &mut new_pt, mol, ff, max_step, n,
+            dim,
+            &pos,
+            fp,
+            &grad,
+            &mut xi,
+            &mut new_pt,
+            mol,
+            ff,
+            max_step,
+            n,
         );
         if status < 0 {
             // RDKit: CHECK_INVARIANT(status >= 0, "bad direction in linearSearch")
@@ -514,10 +590,14 @@ pub fn minimize_etkdg_3d_bfgs(
             xi[i] = new_pt[i] - pos[i];
             pos[i] = new_pt[i];
             let temp = xi[i].abs() / pos[i].abs().max(1.0);
-            if temp > test { test = temp; }
+            if temp > test {
+                test = temp;
+            }
             d_grad[i] = grad[i];
         }
-        if test < TOLX { break; }
+        if test < TOLX {
+            break;
+        }
 
         let (new_grad, grad_scale) = grad_flat_scaled(&pos);
         grad = new_grad;
@@ -526,11 +606,15 @@ pub fn minimize_etkdg_3d_bfgs(
         let term = (func_val * grad_scale).max(1.0);
         for i in 0..dim {
             let temp = grad[i].abs() * pos[i].abs().max(1.0);
-            if temp > test { test = temp; }
+            if temp > test {
+                test = temp;
+            }
             d_grad[i] = grad[i] - d_grad[i];
         }
         test /= term;
-        if test < tol { break; }
+        if test < tol {
+            break;
+        }
 
         let mut fac = 0.0f64;
         let mut fae = 0.0f64;

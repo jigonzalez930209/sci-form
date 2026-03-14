@@ -30,7 +30,9 @@ pub fn minimize_energy_lbfgs(
     for iter in 0..max_iter {
         let g_norm = g.norm();
         if g_norm < tol {
-            if debug { println!("L-BFGS converged in {} iterations", iter); }
+            if debug {
+                println!("L-BFGS converged in {} iterations", iter);
+            }
             break;
         }
 
@@ -73,8 +75,15 @@ pub fn minimize_energy_lbfgs(
         let g_dot_p = g.dot(&p);
 
         if debug && iter < 3 {
-            println!("  iter={} g_norm={:.4} max_g={:.4} e_old={:.4} g_dot_p={:.4} p_norm={:.4}",
-                iter, g_norm, g.abs().max(), e_old, g_dot_p, p.norm());
+            println!(
+                "  iter={} g_norm={:.4} max_g={:.4} e_old={:.4} g_dot_p={:.4} p_norm={:.4}",
+                iter,
+                g_norm,
+                g.abs().max(),
+                e_old,
+                g_dot_p,
+                p.norm()
+            );
         }
 
         let mut found_step = false;
@@ -88,8 +97,14 @@ pub fn minimize_energy_lbfgs(
             );
 
             if debug && iter < 3 && ls < 5 {
-                println!("    ls={} step={:.6} e_new={:.4} armijo_rhs={:.4} pass={}",
-                    ls, step, e_new, e_old + c1 * step * g_dot_p, e_new < e_old + c1 * step * g_dot_p);
+                println!(
+                    "    ls={} step={:.6} e_new={:.4} armijo_rhs={:.4} pass={}",
+                    ls,
+                    step,
+                    e_new,
+                    e_old + c1 * step * g_dot_p,
+                    e_new < e_old + c1 * step * g_dot_p
+                );
             }
 
             if e_new < e_old + c1 * step * g_dot_p {
@@ -133,7 +148,9 @@ pub fn minimize_energy_lbfgs(
             y_hist.clear();
             rho_hist.clear();
             if step < 1e-7 {
-                if debug { println!("  STOPPING: step too small after {} iters", iter); }
+                if debug {
+                    println!("  STOPPING: step too small after {} iters", iter);
+                }
                 break;
             }
         }
@@ -142,6 +159,10 @@ pub fn minimize_energy_lbfgs(
     coords
 }
 
+/// Compute the RMSD between two coordinate matrices after optimal superposition (Kabsch algorithm).
+///
+/// Both matrices must have shape `N × 3`. Centers are subtracted, then the optimal rotation
+/// is found via SVD of the covariance matrix, and RMSD is computed on the aligned coordinates.
 pub fn calculate_rmsd_kabsch(coords: &DMatrix<f32>, reference: &DMatrix<f32>) -> f32 {
     let n = coords.nrows();
     if n == 0 {

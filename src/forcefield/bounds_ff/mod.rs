@@ -1,13 +1,13 @@
 //! Bounds distance force field for initial embedding optimization.
 //! Includes bounds violation energy/gradient, chiral enforcement, and BFGS optimizer.
 
+pub mod bfgs;
 pub mod energy;
 pub mod lbfgs;
-pub mod bfgs;
 
+pub use bfgs::*;
 pub use energy::*;
 pub use lbfgs::*;
-pub use bfgs::*;
 
 /// A chiral constraint set matching RDKit's ChiralViolationContribs.
 pub struct ChiralSet {

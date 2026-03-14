@@ -1,7 +1,7 @@
 //! LBFGS and BFGS optimizers for bounds distance force field.
 
-use nalgebra::DMatrix;
 use super::*;
+use nalgebra::DMatrix;
 
 pub fn minimize_bounds_lbfgs(
     coords: &mut DMatrix<f32>,
@@ -10,7 +10,15 @@ pub fn minimize_bounds_lbfgs(
     max_iters: usize,
     force_tol: f32,
 ) {
-    minimize_bounds_lbfgs_ex(coords, bounds, chiral_sets, max_iters, force_tol, 1000.0, 0.1);
+    minimize_bounds_lbfgs_ex(
+        coords,
+        bounds,
+        chiral_sets,
+        max_iters,
+        force_tol,
+        1000.0,
+        0.1,
+    );
 }
 
 /// Returns true if converged (gradient norm < force_tol), false if max_iters reached
@@ -23,7 +31,16 @@ pub fn minimize_bounds_lbfgs_ex(
     basin_thresh: f32,
     weight_4d: f32,
 ) -> bool {
-    minimize_bounds_lbfgs_full(coords, bounds, chiral_sets, max_iters, force_tol, basin_thresh, weight_4d, 1.0)
+    minimize_bounds_lbfgs_full(
+        coords,
+        bounds,
+        chiral_sets,
+        max_iters,
+        force_tol,
+        basin_thresh,
+        weight_4d,
+        1.0,
+    )
 }
 
 /// Full bounds FF minimizer with configurable chiral weight.
@@ -263,8 +280,7 @@ pub fn minimize_bounds_with_torsions(
             };
             e += crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6);
             crate::forcefield::etkdg_lite::calc_torsion_grad_m6(
-                &p1, &p2, &p3, &p4, &m6,
-                &mut g, tc.i, tc.j, tc.k, tc.l,
+                &p1, &p2, &p3, &p4, &m6, &mut g, tc.i, tc.j, tc.k, tc.l,
             );
         }
         (e, g)
@@ -389,7 +405,6 @@ pub fn minimize_bounds_with_torsions(
     converged
 }
 
-
 pub fn minimize_embedding_lbfgs(
     coords: &mut DMatrix<f32>,
     bounds: &DMatrix<f64>,
@@ -489,38 +504,58 @@ pub fn minimize_embedding_lbfgs(
         q.copy_from_slice(&g);
         for i in (0..k).rev() {
             alpha[i] = rho_hist[i] * dot(&s_hist[i], &q);
-            for j in 0..dim_tot { q[j] -= alpha[i] * y_hist[i][j]; }
+            for j in 0..dim_tot {
+                q[j] -= alpha[i] * y_hist[i][j];
+            }
         }
         let gamma = if k > 0 {
             dot(&s_hist[k - 1], &y_hist[k - 1]) / dot(&y_hist[k - 1], &y_hist[k - 1]).max(1e-10)
-        } else { 1.0 };
-        for j in 0..dim_tot { dir[j] = q[j] * gamma; }
+        } else {
+            1.0
+        };
+        for j in 0..dim_tot {
+            dir[j] = q[j] * gamma;
+        }
         for i in 0..k {
             let beta = rho_hist[i] * dot(&y_hist[i], &dir);
-            for j in 0..dim_tot { dir[j] += (alpha[i] - beta) * s_hist[i][j]; }
+            for j in 0..dim_tot {
+                dir[j] += (alpha[i] - beta) * s_hist[i][j];
+            }
         }
-        for j in 0..dim_tot { dir[j] = -dir[j]; }
+        for j in 0..dim_tot {
+            dir[j] = -dir[j];
+        }
 
         let mut step = 1.0f32;
         let c1 = 1e-4;
         let dg = dot(&g, &dir);
         let dir_norm: f32 = dir.iter().map(|x| x * x).sum::<f32>().sqrt();
-        if step * dir_norm > 0.5 { step = 0.5 / dir_norm; }
+        if step * dir_norm > 0.5 {
+            step = 0.5 / dir_norm;
+        }
 
         let f0 = f;
         for _ in 0..20 {
-            for j in 0..dim_tot { x_new[j] = x[j] + step * dir[j]; }
+            for j in 0..dim_tot {
+                x_new[j] = x[j] + step * dir[j];
+            }
             unflatten(&x_new, coords);
             let f_new = calc_energy(coords);
-            if f_new <= f0 + c1 * step * dg { break; }
+            if f_new <= f0 + c1 * step * dg {
+                break;
+            }
             step *= 0.5;
         }
 
-        for j in 0..dim_tot { x_new[j] = x[j] + step * dir[j]; }
+        for j in 0..dim_tot {
+            x_new[j] = x[j] + step * dir[j];
+        }
         unflatten(&x_new, coords);
         let (f_new, g_new_mat) = calc_energy_and_grad(coords);
         for i in 0..n {
-            for d in 0..dim_coords { g_new[i * dim_coords + d] = g_new_mat[(i, d)]; }
+            for d in 0..dim_coords {
+                g_new[i * dim_coords + d] = g_new_mat[(i, d)];
+            }
         }
         for j in 0..dim_tot {
             s_k[j] = x_new[j] - x[j];
@@ -528,7 +563,11 @@ pub fn minimize_embedding_lbfgs(
         }
         let ys = dot(&y_k, &s_k);
         if ys > 1e-10 {
-            if s_hist.len() == m { s_hist.remove(0); y_hist.remove(0); rho_hist.remove(0); }
+            if s_hist.len() == m {
+                s_hist.remove(0);
+                y_hist.remove(0);
+                rho_hist.remove(0);
+            }
             s_hist.push(s_k.clone());
             y_hist.push(y_k.clone());
             rho_hist.push(1.0 / ys);
@@ -539,11 +578,11 @@ pub fn minimize_embedding_lbfgs(
         g.copy_from_slice(&g_new);
 
         let g_norm: f32 = g_new.iter().map(|x| x * x).sum::<f32>().sqrt();
-        if g_norm < force_tol { break; }
+        if g_norm < force_tol {
+            break;
+        }
     }
     unflatten(&x, coords);
 }
 
 // ── RDKit-matching full BFGS optimizer ──────────────────────────────────────
-
-

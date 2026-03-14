@@ -2,11 +2,12 @@ use nalgebra::DMatrix;
 use petgraph::visit::EdgeRef;
 use std::collections::{HashSet, VecDeque};
 
-/// Identifies rotatable bonds and optimizes torsion angles via greedy scanning.
-/// This approximates ETKDG's torsion knowledge terms by directly setting
-/// preferred torsion angles after DG embedding.
+// Identifies rotatable bonds and optimizes torsion angles via greedy scanning.
+// This approximates ETKDG's torsion knowledge terms by directly setting
+// preferred torsion angles after DG embedding.
 
 /// A rotatable bond with its torsion atom indices and the atoms to rotate.
+#[allow(dead_code)]
 struct RotatableBond {
     /// The 4 atom indices defining the dihedral: a-b-c-d
     /// b-c is the rotatable bond
@@ -137,7 +138,14 @@ fn get_preferred_angles(
         }
         (SP2, SP3) | (SP3, SP2) => {
             // Mixed: 0, 60, 120, 180, 240, 300
-            vec![0.0, PI / 3.0, 2.0 * PI / 3.0, PI, 4.0 * PI / 3.0, 5.0 * PI / 3.0]
+            vec![
+                0.0,
+                PI / 3.0,
+                2.0 * PI / 3.0,
+                PI,
+                4.0 * PI / 3.0,
+                5.0 * PI / 3.0,
+            ]
         }
         _ => {
             // Generic: try all 30-degree increments
@@ -278,7 +286,8 @@ pub fn optimize_torsions_greedy(
             let [a, b, c, d] = rb.dihedral;
             let current_angle = compute_dihedral(coords, a, b, c, d);
 
-            let current_energy = super::energy::calculate_total_energy(coords, mol, &params, bounds);
+            let current_energy =
+                super::energy::calculate_total_energy(coords, mol, &params, bounds);
             let mut best_energy = current_energy;
             let mut best_rotation = 0.0f32;
 

@@ -305,8 +305,8 @@ impl ForceFieldContribution for UffInversion {
 pub struct UffLennardJones {
     pub atom_i_idx: usize,
     pub atom_j_idx: usize,
-    pub r_star: f64,   // x_ij = (x_i + x_j) / 2
-    pub epsilon: f64,  // ε_ij = √(D_i · D_j) [already scaled before construction]
+    pub r_star: f64,  // x_ij = (x_i + x_j) / 2
+    pub epsilon: f64, // ε_ij = √(D_i · D_j) [already scaled before construction]
 }
 
 impl ForceFieldContribution for UffLennardJones {
@@ -314,26 +314,26 @@ impl ForceFieldContribution for UffLennardJones {
         let ri = self.atom_i_idx * 3;
         let rj = self.atom_j_idx * 3;
 
-        let dx = coords[ri]     - coords[rj];
+        let dx = coords[ri] - coords[rj];
         let dy = coords[ri + 1] - coords[rj + 1];
         let dz = coords[ri + 2] - coords[rj + 2];
         let r2 = (dx * dx + dy * dy + dz * dz).max(1e-6);
-        let r  = r2.sqrt();
+        let r = r2.sqrt();
 
-        let u   = self.r_star / r;
-        let u6  = u * u * u * u * u * u;
+        let u = self.r_star / r;
+        let u6 = u * u * u * u * u * u;
         let u12 = u6 * u6;
 
         let energy = self.epsilon * (u12 - 2.0 * u6);
 
         // dE/dr = ε · (-12 u¹² + 12 u⁶) / r  →  scatter onto grad
         let de_dr = self.epsilon * 12.0 * (u6 - u12) / r;
-        let pre   = de_dr / r;
+        let pre = de_dr / r;
 
-        grad[ri]     += pre * dx;
+        grad[ri] += pre * dx;
         grad[ri + 1] += pre * dy;
         grad[ri + 2] += pre * dz;
-        grad[rj]     -= pre * dx;
+        grad[rj] -= pre * dx;
         grad[rj + 1] -= pre * dy;
         grad[rj + 2] -= pre * dz;
 
