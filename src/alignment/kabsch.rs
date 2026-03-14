@@ -110,8 +110,7 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
             coords[i * 3 + 2] - c1[2],
         ];
         for k in 0..3 {
-            let rotated =
-                r_mat[(k, 0)] * p[0] + r_mat[(k, 1)] * p[1] + r_mat[(k, 2)] * p[2];
+            let rotated = r_mat[(k, 0)] * p[0] + r_mat[(k, 1)] * p[1] + r_mat[(k, 2)] * p[2];
             aligned[i * 3 + k] = rotated + c2[k];
         }
         for k in 0..3 {
@@ -187,15 +186,33 @@ pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
     //        [ Syz-Szy, Sxx-Syy-Szz, Sxy+Syx, Szx+Sxz ],
     //        [ Szx-Sxz, Sxy+Syx, -Sxx+Syy-Szz, Syz+Szy ],
     //        [ Sxy-Syx, Szx+Sxz, Syz+Szy, -Sxx-Syy+Szz ]]
-    let sxx = r[0][0]; let sxy = r[0][1]; let sxz = r[0][2];
-    let syx = r[1][0]; let syy = r[1][1]; let syz = r[1][2];
-    let szx = r[2][0]; let szy = r[2][1]; let szz = r[2][2];
+    let sxx = r[0][0];
+    let sxy = r[0][1];
+    let sxz = r[0][2];
+    let syx = r[1][0];
+    let syy = r[1][1];
+    let syz = r[1][2];
+    let szx = r[2][0];
+    let szy = r[2][1];
+    let szz = r[2][2];
 
     let f = nalgebra::Matrix4::new(
-        sxx + syy + szz,  syz - szy,        szx - sxz,        sxy - syx,
-        syz - szy,        sxx - syy - szz,  sxy + syx,        szx + sxz,
-        szx - sxz,        sxy + syx,       -sxx + syy - szz,  syz + szy,
-        sxy - syx,        szx + sxz,        syz + szy,       -sxx - syy + szz,
+        sxx + syy + szz,
+        syz - szy,
+        szx - sxz,
+        sxy - syx,
+        syz - szy,
+        sxx - syy - szz,
+        sxy + syx,
+        szx + sxz,
+        szx - sxz,
+        sxy + syx,
+        -sxx + syy - szz,
+        syz + szy,
+        sxy - syx,
+        szx + sxz,
+        syz + szy,
+        -sxx - syy + szz,
     );
 
     // The optimal rotation quaternion is the eigenvector of F with the largest eigenvalue
@@ -245,8 +262,7 @@ pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
             coords[i * 3 + 2] - c1[2],
         ];
         for k in 0..3 {
-            let rotated =
-                rotation[k][0] * p[0] + rotation[k][1] * p[1] + rotation[k][2] * p[2];
+            let rotated = rotation[k][0] * p[0] + rotation[k][1] * p[1] + rotation[k][2] * p[2];
             aligned[i * 3 + k] = rotated + c2[k];
         }
         for k in 0..3 {
@@ -355,9 +371,7 @@ mod tests {
     #[test]
     fn test_quaternion_matches_kabsch() {
         // Both methods should give the same RMSD.
-        let reference = vec![
-            0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.5, 1.0,
-        ];
+        let reference = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.5, 0.5, 1.0];
         let perturbed = vec![
             0.1, -0.05, 0.02, 1.1, 0.1, -0.05, -0.1, 0.9, 0.1, 0.6, 0.4, 1.1,
         ];
