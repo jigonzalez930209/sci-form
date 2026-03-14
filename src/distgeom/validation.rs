@@ -107,7 +107,7 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
             }
         }
     }
-    let cycle_rank = num_edges - n + num_components;
+    let cycle_rank = (num_edges + num_components).saturating_sub(n);
     if cycle_rank == 0 {
         return vec![];
     }
