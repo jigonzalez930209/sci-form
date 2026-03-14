@@ -103,11 +103,7 @@ pub fn chunk_esp_grid(grid: &crate::esp::EspGrid, chunk_size: usize) -> ChunkedI
 
 /// Split coordinate data into chunks (aligned to xyz triples).
 pub fn chunk_coordinates(coords: &[f64], atoms_per_chunk: usize) -> ChunkedIterator {
-    ChunkedIterator::new(
-        coords.to_vec(),
-        atoms_per_chunk * 3,
-        ChunkKind::Coordinates,
-    )
+    ChunkedIterator::new(coords.to_vec(), atoms_per_chunk * 3, ChunkKind::Coordinates)
 }
 
 /// Split DOS data into chunks.
@@ -211,7 +207,7 @@ mod tests {
         };
         let chunks = chunk_dos(&dos, 2);
         assert_eq!(chunks.len(), 3); // 5 / 2 = 3
-        // First chunk: [e0, d0, e1, d1]
+                                     // First chunk: [e0, d0, e1, d1]
         assert_eq!(chunks[0].values, vec![1.0, 0.1, 2.0, 0.2]);
         assert_eq!(chunks[0].count, 2);
     }
