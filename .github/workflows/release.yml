@@ -1,0 +1,350 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Release pipeline:
+#   1. pre-release-tests  — full test suite on all 3 platforms (gate)
+#   2. lint               — clippy -D warnings + fmt --check (gate)
+#   3. build-cli          — cross-compile CLI for 5 targets
+#   4. build-python       — maturin wheels (3 platforms × 3.11)
+#   5. build-wasm         — wasm-pack bundler + nodejs targets
+#   6. verify-python      — install wheel + smoke test
+#   7. verify-node        — install npm pkg + smoke test
+#   8. verify-cli-linux   — run the linux binary + smoke test
+#   9. publish-crate      — cargo publish to crates.io
+#  10. publish-python     — twine upload to PyPI
+#  11. publish-npm        — npm publish
+#  12. release            — GitHub Release with all artifacts
+# ─────────────────────────────────────────────────────────────────────────────
+
+jobs:
+  # ─── Gate 1: Full test suite ───────────────────────────────────────────────
+  pre-release-tests:
+    name: Pre-release Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Unit tests (lib)
+        run: cargo test --lib --release
+      - name: Integration — diverse molecules
+        run: cargo test --release --test test_diverse_molecules -- --nocapture
+      - name: Integration — gradient check
+        run: cargo test --release --test test_gradient_check -- --nocapture
+      - name: Integration — geometry quality
+        run: cargo test --release --test test_geometry_quality -- --nocapture
+
+  # ─── Gate 2: Lint & format ─────────────────────────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all-targets -- -D warnings
+
+  # ─── CLI Binaries (Linux, macOS, Windows) ──────────────────────────────────
+  build-cli:
+    name: CLI (${{ matrix.target }})
+    needs: [pre-release-tests, lint]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: sci-form-linux-x86_64
+            bin: sci-form
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: sci-form-linux-aarch64
+            bin: sci-form
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: sci-form-macos-x86_64
+            bin: sci-form
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: sci-form-macos-aarch64
+            bin: sci-form
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: sci-form-windows-x86_64.exe
+            bin: sci-form.exe
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cross-compilation tools (aarch64-linux)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Build CLI
+        run: cargo build --release --package sci-form-cli --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      - name: Stage artifact
+        shell: bash
+        run: |
+          cp target/${{ matrix.target }}/release/${{ matrix.bin }} ${{ matrix.artifact }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  # ─── Python Wheels ─────────────────────────────────────────────────────────
+  build-python:
+    name: Python (${{ matrix.os }})
+    needs: [pre-release-tests, lint]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install maturin
+        run: pip install maturin
+      - name: Build wheel
+        run: cd crates/python && maturin build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel-${{ matrix.os }}
+          path: target/wheels/*.whl
+
+  # ─── WASM / npm ────────────────────────────────────────────────────────────
+  build-wasm:
+    name: WASM / npm
+    needs: [pre-release-tests, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Build WASM (bundler — for Webpack/Vite)
+        run: cd crates/wasm && wasm-pack build --target bundler --release
+      - name: Build WASM (nodejs — for Node.js / Jest)
+        run: cd crates/wasm && wasm-pack build --target nodejs --release --out-dir pkg-node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-pkg
+          path: crates/wasm/pkg/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wasm-pkg-node
+          path: crates/wasm/pkg-node/
+
+  # ─── Verify: Python wheel installs cleanly ─────────────────────────────────
+  verify-python:
+    name: Verify Python install
+    needs: [build-python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-wheel-ubuntu-latest
+          path: wheels/
+      - name: Install wheel
+        run: pip install wheels/*.whl
+      - name: Smoke test — embed caffeine
+        run: |
+          python3 -c "
+          import sci_form
+          result = sci_form.embed('Cn1cnc2c1c(=O)n(c(=O)n2C)C', 42)
+          assert result.num_atoms > 0, 'embed failed'
+          assert len(result.coords) == result.num_atoms * 3, 'coords size mismatch'
+          assert result.error is None, f'error: {result.error}'
+          print(f'OK: {result.num_atoms} atoms embedded')
+          "
+      - name: Smoke test — batch embed
+        run: |
+          python3 -c "
+          import sci_form
+          smiles = ['CCO', 'c1ccccc1', 'CC(=O)O', 'C1CCCCC1']
+          results = [sci_form.embed(s, 42) for s in smiles]
+          failed = [r.smiles for r in results if r.error is not None]
+          assert not failed, f'Failed: {failed}'
+          print(f'OK: {len(results)} molecules embedded')
+          "
+
+  # ─── Verify: WASM/Node package installs cleanly ───────────────────────────
+  verify-node:
+    name: Verify Node.js install
+    needs: [build-wasm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg-node
+          path: pkg-node/
+      - name: Smoke test — embed caffeine (Node.js CJS)
+        run: |
+          node -e "
+          const sci = require('./pkg-node/sci_form_wasm.js');
+          const result = JSON.parse(sci.embed('Cn1cnc2c1c(=O)n(c(=O)n2C)C', 42));
+          if (result.error) throw new Error('embed failed: ' + result.error);
+          if (result.num_atoms !== 24) throw new Error('expected 24 atoms, got ' + result.num_atoms);
+          console.log('OK: ' + result.num_atoms + ' atoms embedded');
+          "
+
+  # ─── Verify: CLI binary runs ───────────────────────────────────────────────
+  verify-cli:
+    name: Verify CLI binary
+    needs: [build-cli]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sci-form-linux-x86_64
+          path: .
+      - name: Make executable
+        run: chmod +x sci-form-linux-x86_64
+      - name: Smoke test — version
+        run: ./sci-form-linux-x86_64 --version
+      - name: Smoke test — embed caffeine
+        run: |
+          ./sci-form-linux-x86_64 embed "Cn1cnc2c1c(=O)n(c(=O)n2C)C" \
+            | grep -E '"num_atoms":[0-9]+' || (echo "CLI embed failed"; exit 1)
+      - name: Smoke test — parse
+        run: |
+          ./sci-form-linux-x86_64 parse "CCO" \
+            | grep -E '"atoms"' || (echo "CLI parse failed"; exit 1)
+
+  # ─── Publish: crates.io ────────────────────────────────────────────────────
+  publish-crate:
+    name: Publish to crates.io
+    needs: [verify-python, verify-node, verify-cli]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Publish sci-form (lib)
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Wait for crates.io propagation
+        run: sleep 30
+      - name: Publish sci-form-cli
+        run: cd crates/cli && cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # ─── Publish: PyPI ─────────────────────────────────────────────────────────
+  publish-python:
+    name: Publish to PyPI
+    needs: [verify-python]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: python-wheel-*
+          path: dist/
+          merge-multiple: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Publish
+        run: pip install twine && twine upload dist/*.whl
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
+  # ─── Publish: npm ──────────────────────────────────────────────────────────
+  publish-npm:
+    name: Publish to npm
+    needs: [verify-node]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg
+          path: pkg/
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Publish
+        run: cd pkg && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ─── GitHub Release ────────────────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [publish-crate, publish-python, publish-npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/sci-form-linux-x86_64/*
+            artifacts/sci-form-linux-aarch64/*
+            artifacts/sci-form-macos-x86_64/*
+            artifacts/sci-form-macos-aarch64/*
+            artifacts/sci-form-windows-x86_64.exe/*
+            artifacts/python-wheel-*/*.whl
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            ### Python
+            ```bash
+            pip install sci-form
+            ```
+
+            ### Node.js / TypeScript
+            ```bash
+            npm install sci-form-wasm
+            ```
+
+            ### Rust
+            ```toml
+            [dependencies]
+            sci-form = "0.1"
+            ```
+
+            ### CLI
+            Download the binary for your platform from the assets below.
+            - **Linux x86_64**: `sci-form-linux-x86_64`
+            - **Linux aarch64**: `sci-form-linux-aarch64`
+            - **macOS x86_64**: `sci-form-macos-x86_64`
+            - **macOS Apple Silicon**: `sci-form-macos-aarch64`
+            - **Windows x86_64**: `sci-form-windows-x86_64.exe`
+
+
