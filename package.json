@@ -1,0 +1,31 @@
+{
+  "name": "sci-form",
+  "version": "1.0.0",
+  "description": "**High-performance 3D molecular conformer generation** using ETKDG distance geometry, written in Rust.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jigonzalez930209/sci-form.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jigonzalez930209/sci-form/issues"
+  },
+  "homepage": "https://github.com/jigonzalez930209/sci-form#readme",
+  "devDependencies": {
+    "markdown-it-mathjax3": "^4.3.2",
+    "vitepress": "^1.6.4"
+  }
+}

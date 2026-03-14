@@ -2,7 +2,9 @@
 name = "sci-form-wasm"
 version = "0.1.0"
 edition = "2021"
-description = "WASM/TypeScript bindings for sci-form 3D conformer generation"
+description = "WASM/TypeScript bindings for high-performance 3D molecular conformer generation"
+license = "MIT"
+repository = "https://github.com/sci-form/sci-form"
 
 [lib]
 crate-type = ["cdylib"]

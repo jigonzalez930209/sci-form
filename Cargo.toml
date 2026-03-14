@@ -6,8 +6,22 @@ name = "sci-form"
 version = "0.1.0"
 edition = "2021"
 authors = ["Sci-Form Team"]
-description = "VeloSci 3D Conformer Engine — high-performance molecular conformer generation"
+description = "High-performance 3D molecular conformer generation using ETKDG distance geometry"
 license = "MIT"
+repository = "https://github.com/sci-form/sci-form"
+homepage = "https://sci-form.dev"
+documentation = "https://docs.rs/sci-form"
+readme = "README.md"
+keywords = ["chemistry", "conformer", "3d", "molecule", "etkdg"]
+categories = ["science", "algorithms"]
+exclude = [
+    "rdkit-master/",
+    "tests/fixtures/*.json",
+    "data/",
+    "scripts/",
+    "GDB20.50000.smi",
+    "docs/",
+]
 
 [lib]
 crate-type = ["rlib"]
