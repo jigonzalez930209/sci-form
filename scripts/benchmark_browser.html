@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>sci-form WASM Browser Benchmark</title>
+  <style>
+    body { font-family: monospace; margin: 2em; }
+    table { border-collapse: collapse; margin: 1em 0; }
+    td, th { border: 1px solid #ccc; padding: 6px 12px; text-align: right; }
+    th { background: #f0f0f0; text-align: left; }
+    .ok { color: green; }
+    .fail { color: red; }
+    #status { margin: 1em 0; color: #666; }
+  </style>
+</head>
+<body>
+<h1>sci-form WASM Browser Benchmark</h1>
+<p>Compares sci-form WASM conformer generation against RDKit MinimalLib (if loaded).</p>
+
+<div id="status">Loading WASM modules...</div>
+<div id="results"></div>
+
+<script type="module">
+const SMILES = [
+  "C",
+  "CC",
+  "c1ccccc1",
+  "CC(=O)O",
+  "c1ccc(cc1)O",
+  "CC(C)CC1=CC=C(C=C1)C(C)C(=O)O",
+  "O=C(O)c1ccccc1O",
+  "CC12CCC3C(C1CCC2O)CCC4=CC(=O)CCC34C",
+  "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+  "CC(=O)OC1=CC=CC=C1C(=O)O",
+  "OC[C@@H](O1)[C@@H](O)[C@H](O)[C@@H](O)[C@@H]1O",
+  "c1ccc2c(c1)cc1ccc3cccc4ccc2c1c34",
+  "CC(C)(C)c1ccc(cc1)C(O)c1ccccc1",
+  "C(#N)c1ccc(cc1)-c1ccc(cc1)C#N",
+  "O=C(NC1=CC=CC=C1)C1=CC=CC=C1NC(=O)C1=CC=CC=C1",
+];
+
+const status = document.getElementById("status");
+const results = document.getElementById("results");
+
+async function run() {
+  let sciform = null;
+  try {
+    // Attempt to load from ../pkg/ (wasm-pack default output)
+    const mod = await import("../pkg/sci_form.js");
+    await mod.default();
+    sciform = mod;
+    status.textContent = "sci-form loaded. Running benchmark...";
+  } catch (e) {
+    status.textContent = "Failed to load sci-form WASM: " + e.message;
+    return;
+  }
+
+  const rows = [];
+  for (const smi of SMILES) {
+    const t0 = performance.now();
+    const json = sciform.embed(smi, 42);
+    const t1 = performance.now();
+    const res = JSON.parse(json);
+    const ok = !res.error;
+    rows.push({
+      smiles: smi.length > 40 ? smi.slice(0, 37) + "..." : smi,
+      atoms: res.num_atoms || 0,
+      ms: (t1 - t0).toFixed(2),
+      ok,
+    });
+  }
+
+  // Typed-array benchmark
+  const t_start = performance.now();
+  for (const smi of SMILES) {
+    sciform.embed_coords_typed(smi, 42);
+  }
+  const t_typed = performance.now() - t_start;
+
+  // JSON benchmark
+  const j_start = performance.now();
+  for (const smi of SMILES) {
+    sciform.embed_coords(smi, 42);
+  }
+  const j_typed = performance.now() - j_start;
+
+  let html = "<h2>Per-molecule results</h2><table>";
+  html += "<tr><th>SMILES</th><th>Atoms</th><th>ms</th><th>Status</th></tr>";
+  for (const r of rows) {
+    html += `<tr><td>${r.smiles}</td><td>${r.atoms}</td><td>${r.ms}</td>`;
+    html += `<td class="${r.ok ? "ok" : "fail"}">${r.ok ? "OK" : "FAIL"}</td></tr>`;
+  }
+  html += "</table>";
+
+  const total_ms = rows.reduce((s, r) => s + parseFloat(r.ms), 0);
+  const avg_ms = (total_ms / rows.length).toFixed(2);
+  const throughput = (1000 / parseFloat(avg_ms)).toFixed(1);
+
+  html += `<h2>Summary</h2>`;
+  html += `<p>Total: ${total_ms.toFixed(1)} ms for ${rows.length} molecules</p>`;
+  html += `<p>Average: ${avg_ms} ms/mol (${throughput} mol/s)</p>`;
+  html += `<p>Typed-array batch: ${t_typed.toFixed(1)} ms</p>`;
+  html += `<p>JSON batch: ${j_typed.toFixed(1)} ms</p>`;
+  html += `<p>Overhead reduction: ${((1 - t_typed / j_typed) * 100).toFixed(1)}%</p>`;
+
+  status.textContent = "Benchmark complete.";
+  results.innerHTML = html;
+}
+
+run();
+</script>
+</body>
+</html>
