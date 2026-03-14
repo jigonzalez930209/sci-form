@@ -65,7 +65,7 @@ export default defineConfig({
       ],
       '/algorithm/': [
         {
-          text: 'Algorithm',
+          text: 'Conformer Generation',
           items: [
             { text: 'Pipeline Overview', link: '/algorithm/overview' },
             { text: 'SMILES Parsing', link: '/algorithm/smiles-parsing' },
@@ -76,6 +76,25 @@ export default defineConfig({
             { text: 'ETKDG Refinement', link: '/algorithm/etkdg-refinement' },
             { text: 'SMARTS Matching', link: '/algorithm/smarts-matching' },
             { text: 'Validation', link: '/algorithm/validation' },
+          ],
+        },
+        {
+          text: 'Properties & Analysis',
+          items: [
+            { text: 'Extended Hückel Theory', link: '/algorithm/extended-huckel-theory' },
+            { text: 'Electrostatic Potential', link: '/algorithm/electrostatic-potential' },
+            { text: 'Density of States', link: '/algorithm/density-of-states' },
+            { text: 'Population Analysis', link: '/algorithm/population-analysis' },
+            { text: 'Dipole Moments', link: '/algorithm/dipole-moments' },
+            { text: 'Strain Energy', link: '/algorithm/strain-energy' },
+            { text: 'Molecular Alignment', link: '/algorithm/molecular-alignment' },
+          ],
+        },
+        {
+          text: 'Materials',
+          items: [
+            { text: 'Materials Assembly', link: '/algorithm/materials-assembly' },
+            { text: 'Web Transport', link: '/algorithm/web-transport' },
           ],
         },
       ],
