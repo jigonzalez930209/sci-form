@@ -2,14 +2,24 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 
+pub mod alignment;
+pub mod charges;
 pub mod conformer;
+pub mod dipole;
 pub mod distgeom;
+pub mod dos;
+pub mod eht;
+pub mod esp;
 pub mod etkdg;
 pub mod forcefield;
 pub mod graph;
+pub mod materials;
 pub mod optimization;
+pub mod population;
 pub mod smarts;
 pub mod smiles;
+pub mod surface;
+pub mod transport;
 
 use serde::{Deserialize, Serialize};
 
@@ -178,4 +188,165 @@ pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Vec<Confor
 /// Parse a SMILES string and return molecular structure (no 3D generation).
 pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
     graph::Molecule::from_smiles(smiles)
+}
+
+/// Compute Gasteiger-Marsili partial charges from a SMILES string.
+///
+/// Parses the molecule, extracts bonds and elements, then runs 6 iterations
+/// of electronegativity equalization.
+pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+    let formal_charges: Vec<i8> = (0..n)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].formal_charge)
+        .collect();
+    let bonds: Vec<(usize, usize)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            (a.index(), b.index())
+        })
+        .collect();
+    charges::gasteiger::gasteiger_marsili_charges(&elements, &bonds, &formal_charges, 6)
+}
+
+/// Compute solvent-accessible surface area from SMILES + 3D coordinates.
+///
+/// The `coords_flat` parameter is a flat [x0,y0,z0, x1,y1,z1,...] array.
+pub fn compute_sasa(
+    elements: &[u8],
+    coords_flat: &[f64],
+    probe_radius: Option<f64>,
+) -> Result<surface::sasa::SasaResult, String> {
+    if coords_flat.len() != elements.len() * 3 {
+        return Err(format!(
+            "coords length {} != 3 * elements {}",
+            coords_flat.len(),
+            elements.len()
+        ));
+    }
+    let positions: Vec<[f64; 3]> = coords_flat
+        .chunks_exact(3)
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
+    Ok(surface::sasa::compute_sasa(
+        elements,
+        &positions,
+        probe_radius,
+        None,
+    ))
+}
+
+/// Compute Mulliken & Löwdin population analysis from atomic elements and positions.
+pub fn compute_population(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<population::PopulationResult, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    Ok(population::compute_population(
+        elements,
+        positions,
+        &eht_result.coefficients,
+        eht_result.n_electrons,
+    ))
+}
+
+/// Compute molecular dipole moment (Debye) from atomic elements and positions.
+pub fn compute_dipole(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<dipole::DipoleResult, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    Ok(dipole::compute_dipole_from_eht(
+        elements,
+        positions,
+        &eht_result.coefficients,
+        eht_result.n_electrons,
+    ))
+}
+
+/// Compute ESP grid from atomic elements, positions and Mulliken charges.
+pub fn compute_esp(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    spacing: f64,
+    padding: f64,
+) -> Result<esp::EspGrid, String> {
+    let pop = compute_population(elements, positions)?;
+    Ok(esp::compute_esp_grid(
+        elements,
+        positions,
+        &pop.mulliken_charges,
+        spacing,
+        padding,
+    ))
+}
+
+/// Compute DOS/PDOS from EHT orbital energies.
+pub fn compute_dos(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> Result<dos::DosResult, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    let flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
+    Ok(dos::compute_pdos(
+        elements,
+        &flat,
+        &eht_result.energies,
+        &eht_result.coefficients,
+        eht_result.n_electrons,
+        sigma,
+        e_min,
+        e_max,
+        n_points,
+    ))
+}
+
+/// Compute RMSD between two coordinate sets after Kabsch alignment.
+pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
+    alignment::compute_rmsd(coords, reference)
+}
+
+/// Compute UFF force field energy for a molecule.
+pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    if coords.len() != n * 3 {
+        return Err(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n
+        ));
+    }
+    let ff = forcefield::builder::build_uff_force_field(&mol);
+    let mut gradient = vec![0.0f64; n * 3];
+    let energy = ff.compute_system_energy_and_gradients(coords, &mut gradient);
+    Ok(energy)
+}
+
+/// Create a periodic unit cell from lattice parameters (a, b, c in Å; α, β, γ in degrees).
+pub fn create_unit_cell(a: f64, b: f64, c: f64, alpha: f64, beta: f64, gamma: f64) -> materials::UnitCell {
+    materials::UnitCell::from_parameters(&materials::CellParameters {
+        a, b, c, alpha, beta, gamma,
+    })
+}
+
+/// Assemble a framework crystal structure from node/linker SBUs on a topology.
+///
+/// Returns the assembled crystal structure as a JSON-serializable `CrystalStructure`.
+pub fn assemble_framework(
+    node: &materials::Sbu,
+    linker: &materials::Sbu,
+    topology: &materials::Topology,
+    cell: &materials::UnitCell,
+) -> materials::CrystalStructure {
+    materials::assemble_framework(node, linker, topology, cell)
 }
