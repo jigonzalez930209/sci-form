@@ -1,14 +1,28 @@
+use super::geometry::*;
 use crate::graph::Molecule;
 use nalgebra::DMatrix;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use std::collections::HashSet;
-use super::geometry::*;
 
+/// Compute the distance-bounds matrix for a molecule using default settings.
+///
+/// Equivalent to `calculate_bounds_matrix_opts(mol, true)`.
 pub fn calculate_bounds_matrix(mol: &Molecule) -> DMatrix<f64> {
     calculate_bounds_matrix_opts(mol, true)
 }
 
+/// Compute the distance-bounds matrix for a molecule.
+///
+/// The matrix `B` encodes lower and upper distance constraints between every pair
+/// of atoms. It is populated in four passes:
+///
+/// 1. **1-2 bounds** — bond lengths from UFF covalent radii.
+/// 2. **1-3 bounds** — from bond lengths and ideal angles (law of cosines).
+/// 3. **1-4 bounds** — from torsion angle extremes; Set-1 improved bounds if `use_set15 = true`.
+/// 4. **VDW bounds** — lower bounds from Van der Waals radii for all other pairs.
+///
+/// `use_set15` enables improved 1-4 bounds that better match RDKit's ETKDGv2.
 pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<f64> {
     let n = mol.graph.node_count();
     let mut bounds = DMatrix::from_element(n, n, 0.0f64);
@@ -52,26 +66,51 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
         let clb = b[(ma, mi)];
         let cub = b[(mi, ma)];
         // Lower bound: if no prior bounds (≤0.01), set directly; otherwise take smaller
-        if clb <= 0.01 {
-            b[(ma, mi)] = l;
-        } else if l < clb && l > 0.01 {
+        if (clb <= 0.01) || (l < clb && l > 0.01) {
             b[(ma, mi)] = l;
         }
         // Upper bound: if no prior bounds (≥999), set directly; otherwise take larger
-        if cub >= 999.0 {
+        if (cub >= 999.0) || (u > cub && u < 999.0) {
             b[(mi, ma)] = u;
-        } else if u > cub && u < 999.0 {
-            b[(mi, ma)] = u;
+        }
+    }
+    // === squishAtoms: flag atoms adjacent to larger heteroatoms in conjugated 5-rings ===
+    // RDKit adds extra flexibility for bonds involving these atoms
+    let mut squish_atoms = vec![false; n];
+    for bond in mol.graph.edge_references() {
+        let (si, ti) = (bond.source(), bond.target());
+        let sa = &mol.graph[si];
+        let ta = &mol.graph[ti];
+        // RDKit checks bond->getIsConjugated() && (atomicNum > 10) && inRingOfSize(5)
+        let bond_is_conjugated = matches!(
+            sa.hybridization,
+            crate::graph::Hybridization::SP2 | crate::graph::Hybridization::SP
+        ) && matches!(
+            ta.hybridization,
+            crate::graph::Hybridization::SP2 | crate::graph::Hybridization::SP
+        );
+        if bond_is_conjugated
+            && (sa.element > 10 || ta.element > 10)
+            && crate::graph::bond_in_ring_of_size(mol, si, ti, 5)
+        {
+            squish_atoms[si.index()] = true;
+            squish_atoms[ti.index()] = true;
         }
     }
     for bond in mol.graph.edge_references() {
         let d = get_bond_length(mol, bond.source(), bond.target());
+        let extra_squish =
+            if squish_atoms[bond.source().index()] || squish_atoms[bond.target().index()] {
+                0.2
+            } else {
+                0.0
+            };
         set_b(
             &mut bounds,
             bond.source().index(),
             bond.target().index(),
-            d - 0.01,
-            d + 0.01,
+            d - extra_squish - 0.01,
+            d + extra_squish + 0.01,
         );
     }
     for i in 0..n {
@@ -81,8 +120,18 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
             for k in (j + 1)..nbs.len() {
                 let (n1, n2) = (nbs[j], nbs[k]);
 
-                // RDKit uses DIST13_TOL = 0.04 for all 1,3 pairs
-                let tol: f64 = 0.04;
+                // RDKit uses DIST13_TOL = 0.04, doubled for each isLargerSP2Atom
+                let mut tol: f64 = 0.04;
+                // isLargerSP2Atom: atomicNum > 13, SP2, in a ring
+                for &atom_idx in &[n1, ni, n2] {
+                    let atom = &mol.graph[atom_idx];
+                    if atom.element > 13
+                        && atom.hybridization == crate::graph::Hybridization::SP2
+                        && crate::graph::atom_in_ring(mol, atom_idx)
+                    {
+                        tol *= 2.0;
+                    }
+                }
 
                 // Always compute angle-based 1,3 distance, even for 3-ring
                 // atoms where n1-n2 are bonded. RDKit computes the distance
@@ -133,9 +182,8 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
                             // Only record the path type for set15Bounds.
                             // Ring size = 3 (path ni→n1→n2→nj) + alt_path_length.
                             // For ring ≤5: alt_path ≤ 2.
-                            let in_small_ring = crate::graph::min_path_excluding2(
-                                mol, ni, nj, n1, n2, 2,
-                            ).is_some();
+                            let in_small_ring =
+                                crate::graph::min_path_excluding2(mol, ni, nj, n1, n2, 2).is_some();
 
                             let hyb_n1 = mol.graph[n1].hybridization;
                             let hyb_n2 = mol.graph[n2].hybridization;
@@ -150,17 +198,15 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
                             } else if stereo == crate::graph::BondStereo::E {
                                 (dt - 0.06, dt + 0.06, Path14Type::Trans)
                             } else if both_sp2 {
-                                let ring_back = crate::graph::min_path_excluding2(
-                                    mol, ni, nj, n1, n2, 5,
-                                );
+                                let ring_back =
+                                    crate::graph::min_path_excluding2(mol, ni, nj, n1, n2, 5);
                                 if ring_back.is_some() {
                                     (dc - 0.06, dc + 0.06, Path14Type::Cis)
                                 } else {
                                     // Check partial ring: n1,n2 share a ring (don't exclude
                                     // ni/nj since ring path may go through them)
-                                    let shared_ring = crate::graph::min_path_excluding2(
-                                        mol, n1, n2, n1, n1, 6,
-                                    );
+                                    let shared_ring =
+                                        crate::graph::min_path_excluding2(mol, n1, n2, n1, n1, 6);
                                     if shared_ring.is_some() {
                                         // n1-n2 is a ring bond. Determine if outer atoms are in ring.
                                         // RDKit logic:
@@ -168,10 +214,12 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
                                         //  - One external, one in ring (_setTwoInSameRing14Bounds) → TRANS
                                         let ni_in_ring = crate::graph::min_path_excluding2(
                                             mol, ni, n2, n1, n1, 7,
-                                        ).is_some();
+                                        )
+                                        .is_some();
                                         let nj_in_ring = crate::graph::min_path_excluding2(
                                             mol, nj, n1, n2, n2, 7,
-                                        ).is_some();
+                                        )
+                                        .is_some();
                                         if ni_in_ring || nj_in_ring {
                                             // External substituent is trans to ring atom
                                             (dt - 0.06, dt + 0.06, Path14Type::Trans)
@@ -190,32 +238,36 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
                                         (dl_v, du_v, Path14Type::Other)
                                     } else {
                                         // Check _checkAmideEster14 first (C=O in path)
-                                        let pref14 = detect_amide_ester14(
-                                            mol, ni, n1, n2, nj,
-                                        );
+                                        let pref14 = detect_amide_ester14(mol, ni, n1, n2, nj);
                                         if pref14 != AmidePref::None {
                                             match pref14 {
-                                                AmidePref::Cis => (dc - 0.06, dc + 0.06, Path14Type::Cis),
-                                                AmidePref::Trans => (dt - 0.06, dt + 0.06, Path14Type::Trans),
+                                                AmidePref::Cis => {
+                                                    (dc - 0.06, dc + 0.06, Path14Type::Cis)
+                                                }
+                                                AmidePref::Trans => {
+                                                    (dt - 0.06, dt + 0.06, Path14Type::Trans)
+                                                }
                                                 AmidePref::None => unreachable!(),
                                             }
                                         } else {
                                             // Then check _checkAmideEster15 (C=O separate branch)
-                                            let pref = detect_amide_ester_preference(
-                                                mol, ni, n1, n2, nj,
-                                            );
+                                            let pref =
+                                                detect_amide_ester_preference(mol, ni, n1, n2, nj);
                                             match pref {
-                                                AmidePref::Cis => (dc - 0.06, dc + 0.06, Path14Type::Cis),
-                                                AmidePref::Trans => (dt - 0.06, dt + 0.06, Path14Type::Trans),
+                                                AmidePref::Cis => {
+                                                    (dc - 0.06, dc + 0.06, Path14Type::Cis)
+                                                }
+                                                AmidePref::Trans => {
+                                                    (dt - 0.06, dt + 0.06, Path14Type::Trans)
+                                                }
                                                 AmidePref::None => {
-                                                    {
-                                                        let (mut dl_v, mut du_v) = (dc.min(dt), dc.max(dt));
-                                                        if (du_v - dl_v).abs() < 0.01 {
-                                                            dl_v -= 0.06;
-                                                            du_v += 0.06;
-                                                        }
-                                                        (dl_v, du_v, Path14Type::Other)
+                                                    let (mut dl_v, mut du_v) =
+                                                        (dc.min(dt), dc.max(dt));
+                                                    if (du_v - dl_v).abs() < 0.01 {
+                                                        dl_v -= 0.06;
+                                                        du_v += 0.06;
                                                     }
+                                                    (dl_v, du_v, Path14Type::Other)
                                                 }
                                             }
                                         }
@@ -227,14 +279,18 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
                                 if pref14 != AmidePref::None {
                                     match pref14 {
                                         AmidePref::Cis => (dc - 0.06, dc + 0.06, Path14Type::Cis),
-                                        AmidePref::Trans => (dt - 0.06, dt + 0.06, Path14Type::Trans),
+                                        AmidePref::Trans => {
+                                            (dt - 0.06, dt + 0.06, Path14Type::Trans)
+                                        }
                                         AmidePref::None => unreachable!(),
                                     }
                                 } else {
                                     let pref = detect_amide_ester_preference(mol, ni, n1, n2, nj);
                                     match pref {
                                         AmidePref::Cis => (dc - 0.06, dc + 0.06, Path14Type::Cis),
-                                        AmidePref::Trans => (dt - 0.06, dt + 0.06, Path14Type::Trans),
+                                        AmidePref::Trans => {
+                                            (dt - 0.06, dt + 0.06, Path14Type::Trans)
+                                        }
                                         AmidePref::None => {
                                             let (mut dl_v, mut du_v) = (dc.min(dt), dc.max(dt));
                                             if (du_v - dl_v).abs() < 0.01 {
@@ -273,80 +329,113 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
     }
     // === set15Bounds ===
     if use_set15 {
-    let mut set15_atoms: HashSet<(usize, usize)> = HashSet::new();
-    let dist15_tol: f64 = 0.08;
-    for &(a1, a2, a3, a4, path_type) in &path14_list {
-        let na4 = NodeIndex::new(a4);
-        for a5_node in mol.graph.neighbors(na4) {
-            let a5 = a5_node.index();
-            if a5 == a1 { continue; }
-            if top_dist[(a1, a5)] < 4 { continue; }
-            // Only set if no prior bounds, or already touched by set15
-            let (lo, hi) = if a1 < a5 { (a1, a5) } else { (a5, a1) };
-            let current_lb = bounds[(hi, lo)];
-            if current_lb > 0.01 && !set15_atoms.contains(&(a1, a5)) && !set15_atoms.contains(&(a5, a1)) {
-                continue;
-            }
-            let d1 = get_bond_length(mol, NodeIndex::new(a1), NodeIndex::new(a2));
-            let d2 = get_bond_length(mol, NodeIndex::new(a2), NodeIndex::new(a3));
-            let d3 = get_bond_length(mol, NodeIndex::new(a3), na4);
-            let d4 = get_bond_length(mol, na4, a5_node);
-            let ang12 = crate::graph::get_corrected_ideal_angle(mol, NodeIndex::new(a2), NodeIndex::new(a1), NodeIndex::new(a3));
-            let ang23 = crate::graph::get_corrected_ideal_angle(mol, NodeIndex::new(a3), NodeIndex::new(a2), na4);
-            let ang34 = crate::graph::get_corrected_ideal_angle(mol, na4, NodeIndex::new(a3), a5_node);
+        let mut set15_atoms: HashSet<(usize, usize)> = HashSet::new();
+        let dist15_tol: f64 = 0.08;
+        for &(a1, a2, a3, a4, path_type) in &path14_list {
+            let na4 = NodeIndex::new(a4);
+            for a5_node in mol.graph.neighbors(na4) {
+                let a5 = a5_node.index();
+                if a5 == a1 {
+                    continue;
+                }
+                if top_dist[(a1, a5)] < 4 {
+                    continue;
+                }
+                // Only set if no prior bounds, or already touched by set15
+                let (lo, hi) = if a1 < a5 { (a1, a5) } else { (a5, a1) };
+                let current_lb = bounds[(hi, lo)];
+                if current_lb > 0.01
+                    && !set15_atoms.contains(&(a1, a5))
+                    && !set15_atoms.contains(&(a5, a1))
+                {
+                    continue;
+                }
+                let d1 = get_bond_length(mol, NodeIndex::new(a1), NodeIndex::new(a2));
+                let d2 = get_bond_length(mol, NodeIndex::new(a2), NodeIndex::new(a3));
+                let d3 = get_bond_length(mol, NodeIndex::new(a3), na4);
+                let d4 = get_bond_length(mol, na4, a5_node);
+                let ang12 = crate::graph::get_corrected_ideal_angle(
+                    mol,
+                    NodeIndex::new(a2),
+                    NodeIndex::new(a1),
+                    NodeIndex::new(a3),
+                );
+                let ang23 = crate::graph::get_corrected_ideal_angle(
+                    mol,
+                    NodeIndex::new(a3),
+                    NodeIndex::new(a2),
+                    na4,
+                );
+                let ang34 =
+                    crate::graph::get_corrected_ideal_angle(mol, na4, NodeIndex::new(a3), a5_node);
 
-            let second_is_cis = cis_keys.contains(&(a2, a3, a4, a5));
-            let second_is_trans = trans_keys.contains(&(a2, a3, a4, a5));
+                let second_is_cis = cis_keys.contains(&(a2, a3, a4, a5));
+                let second_is_trans = trans_keys.contains(&(a2, a3, a4, a5));
 
-            let (dl, mut du): (f64, f64) = match path_type {
-                Path14Type::Cis => {
-                    if second_is_cis {
-                        let d = compute15_cis_cis(d1, d2, d3, d4, ang12, ang23, ang34);
-                        (d - dist15_tol, d + dist15_tol)
-                    } else if second_is_trans {
-                        let d = compute15_cis_trans(d1, d2, d3, d4, ang12, ang23, ang34);
-                        (d - dist15_tol, d + dist15_tol)
-                    } else {
-                        (compute15_cis_cis(d1, d2, d3, d4, ang12, ang23, ang34) - dist15_tol,
-                         compute15_cis_trans(d1, d2, d3, d4, ang12, ang23, ang34) + dist15_tol)
+                let (dl, mut du): (f64, f64) = match path_type {
+                    Path14Type::Cis => {
+                        if second_is_cis {
+                            let d = compute15_cis_cis(d1, d2, d3, d4, ang12, ang23, ang34);
+                            (d - dist15_tol, d + dist15_tol)
+                        } else if second_is_trans {
+                            let d = compute15_cis_trans(d1, d2, d3, d4, ang12, ang23, ang34);
+                            (d - dist15_tol, d + dist15_tol)
+                        } else {
+                            (
+                                compute15_cis_cis(d1, d2, d3, d4, ang12, ang23, ang34) - dist15_tol,
+                                compute15_cis_trans(d1, d2, d3, d4, ang12, ang23, ang34)
+                                    + dist15_tol,
+                            )
+                        }
                     }
-                }
-                Path14Type::Trans => {
-                    if second_is_cis {
-                        let d = compute15_trans_cis(d1, d2, d3, d4, ang12, ang23, ang34);
-                        (d - dist15_tol, d + dist15_tol)
-                    } else if second_is_trans {
-                        let d = compute15_trans_trans(d1, d2, d3, d4, ang12, ang23, ang34);
-                        (d - dist15_tol, d + dist15_tol)
-                    } else {
-                        (compute15_trans_cis(d1, d2, d3, d4, ang12, ang23, ang34) - dist15_tol,
-                         compute15_trans_trans(d1, d2, d3, d4, ang12, ang23, ang34) + dist15_tol)
+                    Path14Type::Trans => {
+                        if second_is_cis {
+                            let d = compute15_trans_cis(d1, d2, d3, d4, ang12, ang23, ang34);
+                            (d - dist15_tol, d + dist15_tol)
+                        } else if second_is_trans {
+                            let d = compute15_trans_trans(d1, d2, d3, d4, ang12, ang23, ang34);
+                            (d - dist15_tol, d + dist15_tol)
+                        } else {
+                            (
+                                compute15_trans_cis(d1, d2, d3, d4, ang12, ang23, ang34)
+                                    - dist15_tol,
+                                compute15_trans_trans(d1, d2, d3, d4, ang12, ang23, ang34)
+                                    + dist15_tol,
+                            )
+                        }
                     }
-                }
-                Path14Type::Other => {
-                    if second_is_cis {
-                        (compute15_cis_cis(d4, d3, d2, d1, ang34, ang23, ang12) - dist15_tol,
-                         compute15_cis_trans(d4, d3, d2, d1, ang34, ang23, ang12) + dist15_tol)
-                    } else if second_is_trans {
-                        (compute15_trans_cis(d4, d3, d2, d1, ang34, ang23, ang12) - dist15_tol,
-                         compute15_trans_trans(d4, d3, d2, d1, ang34, ang23, ang12) + dist15_tol)
-                    } else {
-                        let vw1 = crate::graph::get_vdw_radius(mol.graph[NodeIndex::new(a1)].element);
-                        let vw5 = crate::graph::get_vdw_radius(mol.graph[a5_node].element);
-                        (0.7 * (vw1 + vw5), -1.0)
+                    Path14Type::Other => {
+                        if second_is_cis {
+                            (
+                                compute15_cis_cis(d4, d3, d2, d1, ang34, ang23, ang12) - dist15_tol,
+                                compute15_cis_trans(d4, d3, d2, d1, ang34, ang23, ang12)
+                                    + dist15_tol,
+                            )
+                        } else if second_is_trans {
+                            (
+                                compute15_trans_cis(d4, d3, d2, d1, ang34, ang23, ang12)
+                                    - dist15_tol,
+                                compute15_trans_trans(d4, d3, d2, d1, ang34, ang23, ang12)
+                                    + dist15_tol,
+                            )
+                        } else {
+                            let vw1 =
+                                crate::graph::get_vdw_radius(mol.graph[NodeIndex::new(a1)].element);
+                            let vw5 = crate::graph::get_vdw_radius(mol.graph[a5_node].element);
+                            (0.7 * (vw1 + vw5), -1.0)
+                        }
                     }
+                };
+                if du < 0.0 {
+                    du = 1000.0;
                 }
-            };
-            if du < 0.0 {
-                du = 1000.0;
+                set_b_union(&mut bounds, a1, a5, dl, du);
+                set15_atoms.insert((a1, a5));
+                set15_atoms.insert((a5, a1));
             }
-            set_b_union(&mut bounds, a1, a5, dl, du);
-            set15_atoms.insert((a1, a5));
-            set15_atoms.insert((a5, a1));
         }
-    }
     } // end use_set15
-    // VDW lower bounds — only for pairs not already covered by 1-2/1-3/1-4/1-5
+      // VDW lower bounds — only for pairs not already covered by 1-2/1-3/1-4/1-5
     for i in 0..n {
         for j in (i + 1)..n {
             let current_lower = bounds[(j, i)];

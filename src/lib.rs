@@ -1,3 +1,7 @@
+// Scientific/numerical code patterns that are idiomatic in this domain
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::needless_range_loop)]
+
 pub mod conformer;
 pub mod distgeom;
 pub mod etkdg;

@@ -1,3 +1,9 @@
+/// Trait for RNG sources used in distance geometry embedding.
+/// Both MinstdRand and Mt19937 implement this.
+pub trait DistGeomRng {
+    fn next_double(&mut self) -> f64;
+}
+
 pub struct MinstdRand {
     state: u64,
 }
@@ -20,7 +26,9 @@ impl MinstdRand {
         self.state
     }
 
-    /// Returns next double in [0, 1) matching boost::uniform_01
+    /// Returns next double in [0, 1) matching boost::uniform_real_distribution<>(0.0, 1.0)
+    /// Formula: (val - min()) / (max() - min() + 1) = (val - 1) / (M - 1)
+    /// where min()=1, max()=M-1, M=2^31-1
     pub fn next_double(&mut self) -> f64 {
         let val = self.next_int();
         (val as f64 - 1.0) / (Self::M as f64 - 1.0)
@@ -82,5 +90,17 @@ impl Mt19937 {
     /// Formula: mt_output / (mt_max + 1.0) = mt_output / 4294967296.0
     pub fn next_double(&mut self) -> f64 {
         self.next_u32() as f64 / 4294967296.0
+    }
+}
+
+impl DistGeomRng for MinstdRand {
+    fn next_double(&mut self) -> f64 {
+        self.next_double()
+    }
+}
+
+impl DistGeomRng for Mt19937 {
+    fn next_double(&mut self) -> f64 {
+        self.next_double()
     }
 }
