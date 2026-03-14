@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 200" width="780" height="200" font-family="system-ui, sans-serif">
+  <rect x="0" y="0" width="780" height="200" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <!-- Background -->
   <rect width="780" height="200" fill="#f8fafc" rx="8"/>
 
@@ -55,6 +57,4 @@
       <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
     </marker>
   </defs>
-  <rect x="0" y="0" width="780" height="200" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
 </svg>
