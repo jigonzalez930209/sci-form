@@ -103,11 +103,7 @@ pub fn compute_sasa(
 
         for pt in &unit_points {
             // Transform unit sphere point to atom surface
-            let test = [
-                pi[0] + ri * pt[0],
-                pi[1] + ri * pt[1],
-                pi[2] + ri * pt[2],
-            ];
+            let test = [pi[0] + ri * pt[0], pi[1] + ri * pt[1], pi[2] + ri * pt[2]];
 
             // Check if this point is buried inside any other atom's sphere
             let mut buried = false;
@@ -206,11 +202,7 @@ mod tests {
     fn test_water_sasa() {
         // H₂O: O at origin, 2 H at typical geometry
         let elems = vec![8, 1, 1];
-        let pos = vec![
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let pos = vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let result = compute_sasa(&elems, &pos, Some(1.4), Some(960));
         // SASA for water should be reasonable (roughly 50–150 Ų depending on probe)
         assert!(
