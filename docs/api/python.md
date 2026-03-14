@@ -3,10 +3,13 @@
 ## Installation
 
 ```bash
-pip install sci-form
+pip install sciforma        # package name on PyPI
+import sci_form             # import name
 ```
 
-## Functions
+---
+
+## Conformer Generation
 
 ### `embed`
 
@@ -14,14 +17,17 @@ pip install sci-form
 def embed(smiles: str, seed: int = 42) -> ConformerResult
 ```
 
-Generate a 3D conformer for a single molecule.
+Generate a 3D conformer for a single molecule via ETKDGv2.
 
 ```python
 from sci_form import embed
 
 result = embed("CCO", seed=42)
-print(result.num_atoms)   # 9
-print(result.coords[:3])  # [x₀, y₀, z₀]
+print(result)  # ConformerResult(smiles='CCO', atoms=9, time=8.3ms)
+
+if result.is_ok():
+    positions = result.get_positions()  # list of (x, y, z) tuples
+    print(f"O atom: {positions[2]}")
 ```
 
 ### `embed_batch`
@@ -30,18 +36,19 @@ print(result.coords[:3])  # [x₀, y₀, z₀]
 def embed_batch(
     smiles_list: list[str],
     seed: int = 42,
-    num_threads: int = 0
+    num_threads: int = 0,
 ) -> list[ConformerResult]
 ```
 
-Generate conformers for multiple molecules. Uses Rust-level parallelism when `num_threads > 1` (or `0` for auto-detect).
+Batch-generate conformers. `num_threads=0` auto-detects CPU count.
 
 ```python
 from sci_form import embed_batch
 
 results = embed_batch(["CCO", "c1ccccc1", "CC(=O)O"], seed=42)
 for r in results:
-    print(f"{r.smiles}: {r.num_atoms} atoms, {r.time_ms:.1f}ms")
+    if r.is_ok():
+        print(f"{r.smiles}: {r.num_atoms} atoms, {r.time_ms:.1f}ms")
 ```
 
 ### `parse`
@@ -50,66 +57,456 @@ for r in results:
 def parse(smiles: str) -> dict
 ```
 
-Parse SMILES into a molecular graph representation.
+Parse SMILES to a molecular graph without generating 3D coordinates.
 
 ```python
 from sci_form import parse
 
 mol = parse("CCO")
-# Returns dict with atoms, bonds, ring info
+print(mol["num_atoms"])   # 9
+print(mol["atoms"][0])    # {'element': 8, 'hybridization': 'SP3', 'formal_charge': 0}
 ```
 
-### `version`
+---
+
+## Gasteiger Charges
+
+### `charges`
 
 ```python
-def version() -> str
+def charges(smiles: str) -> ChargeResult
 ```
 
-Returns version string, e.g. `"sci-form 0.1.0"`.
+Compute Gasteiger-Marsili partial charges (6 iterations).
 
-## `ConformerResult`
+```python
+from sci_form import charges
 
-Returned by `embed()` and `embed_batch()`.
+result = charges("CCO")
+print(result)  # ChargeResult(n_atoms=9, total_charge=0.0000, iterations=6)
+print(result.charges)      # [-0.387, -0.042, -0.228, 0.123, ...]
+print(result.total_charge) # ~0.0
+```
 
-### Attributes
+---
+
+## SASA
+
+### `sasa`
+
+```python
+def sasa(
+    elements: list[int],
+    coords: list[float],
+    probe_radius: float = 1.4,
+) -> SasaResult
+```
+
+Compute solvent-accessible surface area (Shrake-Rupley).
+
+```python
+from sci_form import embed, sasa
+
+conf = embed("CCO")
+result = sasa(conf.elements, conf.coords, probe_radius=1.4)
+print(result)             # SasaResult(total=82.31 Ų, n_atoms=9, probe=1.40 Å)
+print(result.total_sasa)  # Å²
+print(result.atom_sasa)   # per-atom list
+```
+
+---
+
+## EHT — Extended Hückel Theory
+
+### `eht_calculate`
+
+```python
+def eht_calculate(
+    elements: list[int],
+    coords: list[float],
+    k: float = 1.75,
+) -> EhtResult
+```
+
+Run an EHT semi-empirical calculation. `k` is the Wolfsberg-Helmholtz constant (default 1.75).
+
+```python
+from sci_form import embed, eht_calculate
+
+conf = embed("CCO")
+eht = eht_calculate(conf.elements, conf.coords)
+print(eht)              # EhtResult(n_mo=9, gap=7.831 eV, HOMO=-12.453 eV, LUMO=-4.622 eV)
+print(eht.homo_energy)  # eV
+print(eht.gap)          # HOMO-LUMO gap in eV
+print(eht.energies)     # all orbital energies (eV)
+```
+
+### `eht_orbital_mesh`
+
+```python
+def eht_orbital_mesh(
+    elements: list[int],
+    coords: list[float],
+    mo_index: int,
+    spacing: float = 0.2,
+    isovalue: float = 0.02,
+) -> dict
+```
+
+Generate a 3D isosurface mesh for a molecular orbital at the given isovalue.
+
+```python
+from sci_form import embed, eht_orbital_mesh
+
+conf = embed("CCO")
+eht = eht_calculate(conf.elements, conf.coords)
+
+# HOMO mesh
+homo_idx = eht.homo_index
+mesh = eht_orbital_mesh(conf.elements, conf.coords, homo_idx, isovalue=0.02)
+print(mesh.keys())  # dict_keys(['vertices', 'normals', 'indices', 'num_triangles', 'isovalue'])
+
+# Use in Three.js / Open3D / matplotlib
+vertices = mesh["vertices"]   # flat [x,y,z, ...] array
+triangles = mesh["indices"]   # flat [i0,i1,i2, ...] triangle index array
+```
+
+---
+
+## Population Analysis
+
+### `population`
+
+```python
+def population(
+    elements: list[int],
+    coords: list[float],
+) -> PopulationResult
+```
+
+Mulliken and Löwdin population analysis from EHT.
+
+```python
+from sci_form import embed, population
+
+conf = embed("CCO")
+pop = population(conf.elements, conf.coords)
+print(pop)                       # PopulationResult(n_atoms=9, total_mulliken=0.0000)
+print(pop.mulliken_charges)      # per-atom Mulliken charges
+print(pop.lowdin_charges)        # per-atom Löwdin charges
+print(pop.total_charge_mulliken) # sum ≈ 0 for neutral
+```
+
+---
+
+## Dipole Moment
+
+### `dipole`
+
+```python
+def dipole(
+    elements: list[int],
+    coords: list[float],
+) -> DipoleResult
+```
+
+Compute molecular dipole moment in Debye.
+
+```python
+from sci_form import embed, dipole
+
+conf = embed("CCO")
+d = dipole(conf.elements, conf.coords)
+print(d)              # DipoleResult(1.847 Debye)
+print(d.magnitude)    # 1.847 (Debye)
+print(d.vector)       # [x, y, z] in Debye
+print(d.unit)         # "Debye"
+```
+
+---
+
+## Density of States
+
+### `dos`
+
+```python
+def dos(
+    elements: list[int],
+    coords: list[float],
+    sigma: float = 0.3,
+    e_min: float = -30.0,
+    e_max: float = 5.0,
+    n_points: int = 500,
+) -> DosResult
+```
+
+Compute total DOS from EHT orbital energies with Gaussian smearing $\sigma$.
+
+```python
+from sci_form import embed, dos
+import matplotlib.pyplot as plt
+
+conf = embed("c1ccccc1")
+result = dos(conf.elements, conf.coords, sigma=0.2, e_min=-25.0, e_max=5.0, n_points=300)
+
+plt.plot(result.energies, result.total_dos)
+plt.xlabel("Energy (eV)")
+plt.ylabel("DOS (states/eV)")
+plt.show()
+```
+
+---
+
+## Molecular Alignment
+
+### `rmsd`
+
+```python
+def rmsd(
+    coords: list[float],
+    reference: list[float],
+) -> AlignmentResult
+```
+
+Kabsch optimal alignment and RMSD computation.
+
+```python
+from sci_form import embed, rmsd
+
+conf1 = embed("CCO", seed=42)
+conf2 = embed("CCO", seed=123)
+result = rmsd(conf1.coords, conf2.coords)
+print(result)              # AlignmentResult(rmsd=0.0342 Å)
+print(result.aligned_coords)  # conf1 coords after optimal rotation onto conf2
+```
+
+---
+
+## Force Field Energy
+
+### `uff_energy`
+
+```python
+def uff_energy(smiles: str, coords: list[float]) -> float
+```
+
+Evaluate UFF force field energy in kcal/mol.
+
+```python
+from sci_form import embed, uff_energy
+
+conf = embed("CCO")
+e = uff_energy("CCO", conf.coords)
+print(f"UFF energy: {e:.3f} kcal/mol")
+```
+
+---
+
+## Materials
+
+### `unit_cell`
+
+```python
+def unit_cell(
+    a: float, b: float, c: float,
+    alpha: float = 90.0,
+    beta: float = 90.0,
+    gamma: float = 90.0,
+) -> UnitCell
+```
+
+Create a periodic unit cell from crystallographic parameters (a, b, c in Å; angles in degrees).
+
+```python
+from sci_form import unit_cell
+
+cell = unit_cell(10.0, 10.0, 10.0)           # cubic
+cell = unit_cell(5.0, 5.0, 12.0, 90, 90, 120)  # hexagonal
+print(cell.volume)   # Å³
+print(cell.lattice)  # 3×3 matrix
+```
+
+### `assemble_framework`
+
+```python
+def assemble_framework(
+    topology: str = "pcu",
+    metal: int = 30,
+    geometry: str = "octahedral",
+    lattice_a: float = 10.0,
+    supercell: int = 1,
+) -> CrystalStructure
+```
+
+Assemble a MOF-type framework crystal structure. `topology` ∈ {"pcu", "dia", "sql"}. `geometry` ∈ {"linear", "trigonal", "tetrahedral", "square_planar", "octahedral"}.
+
+```python
+from sci_form import assemble_framework
+
+mof = assemble_framework(topology="pcu", metal=30, geometry="octahedral", lattice_a=26.3)
+print(mof.num_atoms)    # total atoms
+print(mof.elements)     # atomic numbers
+print(mof.cart_coords)  # Cartesian coordinates
+print(mof.frac_coords)  # fractional coordinates
+```
+
+---
+
+## Transport / Batch Streaming
+
+### `pack_conformers`
+
+```python
+def pack_conformers(results: list[ConformerResult]) -> RecordBatch
+```
+
+Pack conformer results into Arrow-compatible columnar format for efficient transfer.
+
+```python
+from sci_form import embed_batch, pack_conformers
+
+results = embed_batch(["CCO", "c1ccccc1"])
+batch = pack_conformers(results)
+print(batch.num_rows)        # 2
+print(batch.column_names)    # ['smiles', 'num_atoms', 'coords', ...]
+print(batch.float_data)      # {'coords': [...], 'time_ms': [...]}
+```
+
+### `split_worker_tasks`
+
+```python
+def split_worker_tasks(
+    smiles: list[str],
+    n_workers: int = 4,
+    seed: int = 42,
+) -> list[dict]
+```
+
+Split a SMILES list into balanced worker tasks for multi-process/web-worker dispatch.
+
+### `estimate_workers`
+
+```python
+def estimate_workers(n_items: int, max_workers: int = 8) -> int
+```
+
+Estimate the optimal number of workers for a given batch size.
+
+---
+
+## Return Types
+
+### `ConformerResult`
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `smiles` | `str` | Input SMILES string |
-| `num_atoms` | `int` | Total atom count including implicit H |
-| `coords` | `list[float]` | Flat 3D coordinates `[x₀, y₀, z₀, ...]` |
+| `smiles` | `str` | Input SMILES |
+| `num_atoms` | `int` | Atom count |
+| `coords` | `list[float]` | Flat coords `[x₀,y₀,z₀,…]` |
 | `elements` | `list[int]` | Atomic numbers |
-| `bonds` | `list[tuple]` | `(atom_a, atom_b, order_string)` |
-| `error` | `str \| None` | Error message, or `None` on success |
-| `time_ms` | `float` | Generation time in milliseconds |
+| `bonds` | `list[tuple]` | `(a, b, order_str)` |
+| `error` | `str \| None` | Error message or `None` |
+| `time_ms` | `float` | Generation time ms |
 
-### Methods
+**Methods:** `get_positions() → list[tuple[float,float,float]]`, `is_ok() → bool`
 
-#### `to_xyz()`
+### `EhtResult`
 
-```python
-def to_xyz(self) -> str
-```
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `energies` | `list[float]` | All MO energies (eV) |
+| `n_electrons` | `int` | Total electron count |
+| `homo_index` | `int` | Index of HOMO orbital |
+| `lumo_index` | `int` | Index of LUMO orbital |
+| `homo_energy` | `float` | HOMO energy (eV) |
+| `lumo_energy` | `float` | LUMO energy (eV) |
+| `gap` | `float` | HOMO-LUMO gap (eV) |
 
-Returns XYZ-format string:
-```
-9
-CCO
-C    0.123   0.456   0.789
-...
-```
+### `ChargeResult`
 
-#### `to_dict()`
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `charges` | `list[float]` | Per-atom partial charges |
+| `iterations` | `int` | Convergence iterations |
+| `total_charge` | `float` | Sum of all charges |
 
-```python
-def to_dict(self) -> dict
-```
+### `SasaResult`
 
-Serializes result to a Python dictionary.
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `total_sasa` | `float` | Total SASA in Å² |
+| `atom_sasa` | `list[float]` | Per-atom SASA in Å² |
+| `probe_radius` | `float` | Probe radius used (Å) |
+| `num_points` | `int` | Fibonacci sphere points per atom |
+
+### `PopulationResult`
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `mulliken_charges` | `list[float]` | Per-atom Mulliken charges |
+| `lowdin_charges` | `list[float]` | Per-atom Löwdin charges |
+| `num_atoms` | `int` | Atom count |
+| `total_charge_mulliken` | `float` | Total Mulliken charge |
+
+### `DipoleResult`
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `vector` | `list[float]` | Dipole vector [x, y, z] in Debye |
+| `magnitude` | `float` | Dipole magnitude in Debye |
+| `unit` | `str` | Always `"Debye"` |
+
+### `DosResult`
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `energies` | `list[float]` | Energy axis (eV) |
+| `total_dos` | `list[float]` | Total DOS curve |
+| `sigma` | `float` | Smearing width used (eV) |
+
+### `AlignmentResult`
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `rmsd` | `float` | RMSD after Kabsch alignment (Å) |
+| `aligned_coords` | `list[float]` | Transformed coordinates |
+
+---
 
 ## Integration Examples
 
-### RDKit Conversion
+### NumPy Array
+
+```python
+import numpy as np
+from sci_form import embed
+
+result = embed("CCO")
+coords = np.array(result.coords).reshape(-1, 3)  # (9, 3)
+elements = np.array(result.elements)              # (9,)
+```
+
+### Pandas DataFrame
+
+```python
+import pandas as pd
+from sci_form import embed_batch, charges
+
+smiles = ["CCO", "c1ccccc1", "CC(=O)O"]
+results = embed_batch(smiles)
+
+df = pd.DataFrame([
+    {
+        "smiles": r.smiles,
+        "num_atoms": r.num_atoms,
+        "time_ms": r.time_ms,
+        "ok": r.is_ok(),
+    }
+    for r in results
+])
+```
+
+### RDKit Interop
 
 ```python
 from rdkit import Chem
@@ -122,34 +519,32 @@ mol = Chem.AddHs(mol)
 
 conf = Chem.Conformer(result.num_atoms)
 for i in range(result.num_atoms):
-    x = result.coords[i * 3]
-    y = result.coords[i * 3 + 1]
-    z = result.coords[i * 3 + 2]
-    conf.SetAtomPosition(i, (x, y, z))
+    conf.SetAtomPosition(i, (
+        result.coords[i*3],
+        result.coords[i*3+1],
+        result.coords[i*3+2],
+    ))
 
 mol.AddConformer(conf, assignId=True)
 ```
 
-### NumPy Array
+### DOS + matplotlib
 
 ```python
-import numpy as np
-from sci_form import embed
+import matplotlib.pyplot as plt
+from sci_form import embed, dos
 
-result = embed("CCO")
-coords = np.array(result.coords).reshape(-1, 3)
-# coords.shape = (9, 3)
+conf = embed("c1ccccc1")   # benzene
+result = dos(conf.elements, conf.coords, sigma=0.3)
+
+plt.figure(figsize=(8, 4))
+plt.plot(result.energies, result.total_dos, 'b-', lw=1.5)
+plt.axvline(x=0, color='k', ls='--', label='Fermi level (HOMO)')
+plt.xlabel("Energy (eV)")
+plt.ylabel("DOS (states/eV)")
+plt.title("Benzene DOS")
+plt.legend()
+plt.tight_layout()
+plt.show()
 ```
 
-### Pandas DataFrame
-
-```python
-import pandas as pd
-from sci_form import embed_batch
-
-smiles = ["CCO", "c1ccccc1", "CC(=O)O"]
-results = embed_batch(smiles)
-
-df = pd.DataFrame([r.to_dict() for r in results])
-print(df[["smiles", "num_atoms", "time_ms"]])
-```
