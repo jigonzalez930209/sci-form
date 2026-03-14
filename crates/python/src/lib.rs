@@ -219,7 +219,11 @@ fn eht_calculate(elements: Vec<u8>, coords: Vec<f64>, k: f64) -> PyResult<EhtRes
         ));
     }
     let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
-    let k_opt = if (k - 1.75).abs() < 1e-10 { None } else { Some(k) };
+    let k_opt = if (k - 1.75).abs() < 1e-10 {
+        None
+    } else {
+        Some(k)
+    };
 
     match sci_form_core::eht::solve_eht(&elements, &positions, k_opt) {
         Ok(r) => Ok(EhtResultPy {
@@ -626,17 +630,23 @@ fn assemble_framework(
         "tetrahedral" => sci_form_core::materials::CoordinationGeometry::Tetrahedral,
         "square_planar" => sci_form_core::materials::CoordinationGeometry::SquarePlanar,
         "octahedral" => sci_form_core::materials::CoordinationGeometry::Octahedral,
-        _ => return Err(pyo3::exceptions::PyValueError::new_err(
-            format!("Unknown geometry: {}", geometry),
-        )),
+        _ => {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Unknown geometry: {}",
+                geometry
+            )))
+        }
     };
     let topo = match topology {
         "pcu" => sci_form_core::materials::Topology::pcu(),
         "dia" => sci_form_core::materials::Topology::dia(),
         "sql" => sci_form_core::materials::Topology::sql(),
-        _ => return Err(pyo3::exceptions::PyValueError::new_err(
-            format!("Unknown topology: {}", topology),
-        )),
+        _ => {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Unknown topology: {}",
+                topology
+            )))
+        }
     };
     let node = sci_form_core::materials::Sbu::metal_node(metal, 0.0, geom);
     let linker = sci_form_core::materials::Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
@@ -650,7 +660,11 @@ fn assemble_framework(
     Ok(CrystalStructurePy {
         num_atoms: structure.num_atoms(),
         elements: structure.elements(),
-        frac_coords: structure.atoms.iter().map(|a| a.frac_coords.to_vec()).collect(),
+        frac_coords: structure
+            .atoms
+            .iter()
+            .map(|a| a.frac_coords.to_vec())
+            .collect(),
         cart_coords: cart.iter().map(|c| c.to_vec()).collect(),
         labels: structure.labels,
         lattice: structure.cell.lattice.iter().map(|r| r.to_vec()).collect(),
@@ -722,7 +736,11 @@ fn pack_conformers(results: Vec<ConformerResult>) -> RecordBatchPy {
 /// Split SMILES batch into worker tasks.
 #[pyfunction]
 #[pyo3(signature = (smiles, n_workers=4, seed=42))]
-fn split_worker_tasks(smiles: Vec<String>, n_workers: usize, seed: u64) -> Vec<std::collections::HashMap<String, String>> {
+fn split_worker_tasks(
+    smiles: Vec<String>,
+    n_workers: usize,
+    seed: u64,
+) -> Vec<std::collections::HashMap<String, String>> {
     let tasks = sci_form_core::transport::split_batch(&smiles, n_workers, seed);
     tasks
         .iter()
@@ -730,7 +748,14 @@ fn split_worker_tasks(smiles: Vec<String>, n_workers: usize, seed: u64) -> Vec<s
             let mut m = std::collections::HashMap::new();
             m.insert("id".to_string(), t.id.to_string());
             // Format SMILES as JSON-like array string
-            let smiles_str = format!("[{}]", t.smiles.iter().map(|s| format!("\"{}\"", s)).collect::<Vec<_>>().join(","));
+            let smiles_str = format!(
+                "[{}]",
+                t.smiles
+                    .iter()
+                    .map(|s| format!("\"{}\"", s))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            );
             m.insert("smiles".to_string(), smiles_str);
             m.insert("kind".to_string(), format!("{:?}", t.kind));
             m
