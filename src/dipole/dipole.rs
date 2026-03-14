@@ -34,10 +34,7 @@ pub struct DipoleResult {
 ///
 /// - `mulliken_charges`: per-atom partial charges from population analysis
 /// - `positions`: atom positions in Ångström
-pub fn compute_dipole(
-    mulliken_charges: &[f64],
-    positions: &[[f64; 3]],
-) -> DipoleResult {
+pub fn compute_dipole(mulliken_charges: &[f64], positions: &[[f64; 3]]) -> DipoleResult {
     let n = mulliken_charges.len();
     let mut mu = [0.0, 0.0, 0.0];
 
@@ -91,7 +88,8 @@ mod tests {
         let elems = vec![1u8, 1];
         let pos = vec![[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]];
         let result = solve_eht(&elems, &pos, None).unwrap();
-        let dipole = compute_dipole_from_eht(&elems, &pos, &result.coefficients, result.n_electrons);
+        let dipole =
+            compute_dipole_from_eht(&elems, &pos, &result.coefficients, result.n_electrons);
 
         assert!(
             dipole.magnitude < 0.1,
@@ -103,13 +101,10 @@ mod tests {
     #[test]
     fn test_water_nonzero_dipole() {
         let elems = vec![8u8, 1, 1];
-        let pos = vec![
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let pos = vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let result = solve_eht(&elems, &pos, None).unwrap();
-        let dipole = compute_dipole_from_eht(&elems, &pos, &result.coefficients, result.n_electrons);
+        let dipole =
+            compute_dipole_from_eht(&elems, &pos, &result.coefficients, result.n_electrons);
 
         // Water has a significant dipole (EHT may not match ab initio exactly,
         // but should be clearly nonzero)
@@ -123,13 +118,10 @@ mod tests {
     #[test]
     fn test_dipole_vector_components() {
         let elems = vec![8u8, 1, 1];
-        let pos = vec![
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let pos = vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let result = solve_eht(&elems, &pos, None).unwrap();
-        let dipole = compute_dipole_from_eht(&elems, &pos, &result.coefficients, result.n_electrons);
+        let dipole =
+            compute_dipole_from_eht(&elems, &pos, &result.coefficients, result.n_electrons);
 
         // z component should be ~0 (planar molecule in xy)
         assert!(
