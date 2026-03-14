@@ -42,18 +42,14 @@ pub fn build_hamiltonian(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::basis::build_basis;
     use super::super::overlap::build_overlap_matrix;
+    use super::*;
 
     #[test]
     fn test_hamiltonian_diagonal_vsip() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let basis = build_basis(&elements, &positions);
         let s = build_overlap_matrix(&basis);
         let h = build_hamiltonian(&basis, &s, None);
@@ -63,7 +59,10 @@ mod tests {
             assert!(
                 (h[(i, i)] - orb.vsip).abs() < 1e-12,
                 "H[{},{}] = {}, expected VSIP = {}",
-                i, i, h[(i, i)], orb.vsip,
+                i,
+                i,
+                h[(i, i)],
+                orb.vsip,
             );
         }
     }
@@ -71,11 +70,7 @@ mod tests {
     #[test]
     fn test_hamiltonian_symmetry() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let basis = build_basis(&elements, &positions);
         let s = build_overlap_matrix(&basis);
         let h = build_hamiltonian(&basis, &s, None);
@@ -83,7 +78,9 @@ mod tests {
             for j in 0..h.ncols() {
                 assert!(
                     (h[(i, j)] - h[(j, i)]).abs() < 1e-14,
-                    "H not symmetric at ({},{})", i, j,
+                    "H not symmetric at ({},{})",
+                    i,
+                    j,
                 );
             }
         }
@@ -102,7 +99,8 @@ mod tests {
         assert!(
             (h[(0, 1)] - expected).abs() < 1e-12,
             "H_01 = {}, expected = {}",
-            h[(0, 1)], expected,
+            h[(0, 1)],
+            expected,
         );
     }
 
