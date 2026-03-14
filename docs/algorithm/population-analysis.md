@@ -8,7 +8,7 @@ Given the density matrix $P$ and overlap matrix $S$ from the EHT solution, popul
 
 ## Mulliken Population Analysis
 
-<img src="/svg/population-mulliken.svg" alt="Mulliken population analysis" class="svg-diagram" />
+<SvgDiagram src="/svg/population-mulliken.svg" alt="Mulliken population analysis" />
 
 ### Density Matrix
 
@@ -45,7 +45,7 @@ This follows from $\text{Tr}(PS) = N_{\text{electrons}}$.
 
 ## Löwdin Population Analysis
 
-<img src="/svg/population-lowdin.svg" alt="Löwdin population analysis" class="svg-diagram" />
+<SvgDiagram src="/svg/population-lowdin.svg" alt="Löwdin population analysis" />
 
 ### Symmetric Orthogonalization
 

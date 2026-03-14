@@ -4,7 +4,7 @@ After minimization, each candidate conformer must pass a series of geometric val
 
 ## Validation Pipeline
 
-<img src="/svg/validation-pipeline.svg" alt="validation-pipeline" class="svg-diagram" />
+<SvgDiagram src="/svg/validation-pipeline.svg" alt="validation-pipeline" />
 
 ## Check 1: Energy Per Atom
 
@@ -23,7 +23,7 @@ For each carbon or nitrogen atom that:
 
 The volume of the tetrahedron formed by its 4 neighbors must be substantial:
 
-<img src="/svg/validation-tetrahedral.svg" alt="validation-tetrahedral" class="svg-diagram" />
+<SvgDiagram src="/svg/validation-tetrahedral.svg" alt="validation-tetrahedral" />
 
 ### Volume Computation
 
@@ -85,7 +85,7 @@ $$\cos\theta + 1 > 10^{-3}$$
 
 where $\theta$ is the angle between a substituent and the double bond vector. A value near 180° (cos θ ≈ −1) would mean the substituent is collinear with the double bond — a physically impossible configuration.
 
-<img src="/svg/validation-double-bond.svg" alt="validation-double-bond" class="svg-diagram" />
+<SvgDiagram src="/svg/validation-double-bond.svg" alt="validation-double-bond" />
 
 ## Summary of Thresholds
 

@@ -120,7 +120,7 @@ If any check fails, we reject this embedding and retry with the next RNG state.
 
 For a 4-atom molecule with bounds:
 
-<img src="/svg/embedding-eigendecomp.svg" alt="embedding-eigendecomp" class="svg-diagram" />
+<SvgDiagram src="/svg/embedding-eigendecomp.svg" alt="embedding-eigendecomp" />
 
 ## Random Box Fallback
 
