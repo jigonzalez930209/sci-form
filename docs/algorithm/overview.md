@@ -10,7 +10,7 @@ sci-form implements **ETKDGv2** (Experimental Torsion Knowledge Distance Geometr
 
 ### The 9-Step Pipeline
 
-<img src="/svg/pipeline-overview.svg" alt="pipeline-overview" class="svg-diagram" />
+<SvgDiagram src="/svg/pipeline-overview.svg" alt="pipeline-overview" />
 
 ### Phase 1: Topology → Bounds (Steps 1–3)
 

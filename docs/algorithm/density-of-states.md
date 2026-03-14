@@ -4,7 +4,7 @@ The density of states (DOS) describes how many electronic states exist at each e
 
 ## DOS via Gaussian Smearing
 
-<img src="/svg/dos-smearing.svg" alt="DOS Gaussian smearing" class="svg-diagram" />
+<SvgDiagram src="/svg/dos-smearing.svg" alt="DOS Gaussian smearing" />
 
 ### Total DOS Formula
 

@@ -4,7 +4,7 @@ sci-form supports assembly of **Metal-Organic Frameworks (MOFs)** and other crys
 
 ## Unit Cell and Lattice Vectors
 
-<img src="/svg/materials-unit-cell.svg" alt="Crystallographic unit cell" class="svg-diagram" />
+<SvgDiagram src="/svg/materials-unit-cell.svg" alt="Crystallographic unit cell" />
 
 ### Lattice Parameters
 
@@ -86,7 +86,7 @@ Lattice vectors scale: $\vec{a}' = n_a \vec{a}$, etc.
 
 ## Framework Assembly
 
-<img src="/svg/materials-assembly.svg" alt="Framework assembly pipeline" class="svg-diagram" />
+<SvgDiagram src="/svg/materials-assembly.svg" alt="Framework assembly pipeline" />
 
 ### Assembly Pipeline
 

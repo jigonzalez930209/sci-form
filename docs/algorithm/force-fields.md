@@ -20,7 +20,7 @@ $$E_{\text{dist}} = \sum_{i<j} \begin{cases}
 0 & \text{otherwise}
 \end{cases}$$
 
-<img src="/svg/force-fields-overview.svg" alt="force-fields-overview" class="svg-diagram" />
+<SvgDiagram src="/svg/force-fields-overview.svg" alt="force-fields-overview" />
 
 The **basin filter** ($u - l \leq 5.0$) skips widely constrained pairs (typically distant non-bonded atoms) to focus optimization on well-determined distances.
 
@@ -92,7 +92,7 @@ $$
 \end{aligned}
 $$
 
-<img src="/svg/force-fields-torsion.svg" alt="force-fields-torsion" class="svg-diagram" />
+<SvgDiagram src="/svg/force-fields-torsion.svg" alt="force-fields-torsion" />
 
 #### UFF Inversion Terms
 
@@ -215,7 +215,7 @@ MMFF94 assigns each heavy atom a chemical context type used to look up force con
 
 ### Energy Function
 
-<img src="/svg/mmff94-energy-terms.svg" alt="MMFF94 four energy terms" class="svg-diagram" />
+<SvgDiagram src="/svg/mmff94-energy-terms.svg" alt="MMFF94 four energy terms" />
 
 $$E_{\text{MMFF94}} = E_s + E_\theta + E_\phi + E_\text{vdW}$$
 

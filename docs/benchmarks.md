@@ -26,7 +26,7 @@ where $\mathcal{P}$ is the set of all heavy-atom pairs.
 
 ### Per-Category Results
 
-<img src="/svg/benchmarks-rmsd.svg" alt="benchmarks-rmsd" class="svg-diagram" />
+<SvgDiagram src="/svg/benchmarks-rmsd.svg" alt="benchmarks-rmsd" />
 
 ### Embed Failures
 
@@ -57,7 +57,7 @@ Heavy-atom pairwise-distance RMSD between sci-form and RDKit conformers. Multi-s
 
 ### RMSD Distribution
 
-<img src="/svg/benchmarks-timing.svg" alt="benchmarks-timing" class="svg-diagram" />
+<SvgDiagram src="/svg/benchmarks-timing.svg" alt="benchmarks-timing" />
 
 ### Hardest Categories
 
@@ -114,7 +114,7 @@ Lower throughput is expected for larger molecules due to $O(N^3)$ scaling of Flo
 
 ## Performance Scaling
 
-<img src="/svg/benchmarks-success.svg" alt="benchmarks-success" class="svg-diagram" />
+<SvgDiagram src="/svg/benchmarks-success.svg" alt="benchmarks-success" />
 
 The dominant cost is the Floyd-Warshall triangle smoothing ($O(N^3)$) and the BFGS optimization (each iteration is $O(N^2)$ for the inverse Hessian update).
 

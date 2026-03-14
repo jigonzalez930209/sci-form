@@ -42,7 +42,30 @@ mjx-container[display="true"] > svg {
   overflow-wrap: break-word;
 }
 
-/* ── External SVG diagrams (from /public/svg/) ── */
+/* ── External SVG diagrams — Vue SvgDiagram component ── */
+.svg-diagram-wrap {
+  margin: 2em 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* The inline SVG fills the wrapper with correct aspect ratio */
+.svg-inline > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Skeleton placeholder while SVG loads */
+.svg-skeleton {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--vp-c-bg-soft);
+  border-radius: 12px;
+}
+
+/* ── Legacy .svg-diagram class (keep for any remaining direct img usage) ── */
 .svg-diagram {
   display: block;
   width: 100%;

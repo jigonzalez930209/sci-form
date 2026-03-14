@@ -4,7 +4,7 @@ sci-form implements a full **Extended Hückel Theory** (EHT) pipeline for semiem
 
 ## Overview
 
-<img src="/svg/eht-pipeline.svg" alt="EHT pipeline phases B1–B5" class="svg-diagram" />
+<SvgDiagram src="/svg/eht-pipeline.svg" alt="EHT pipeline phases B1–B5" />
 
 EHT was introduced by Hoffmann (1963) as an extension of Hückel theory to all valence electrons (not just π electrons). It requires only:
 
