@@ -434,17 +434,15 @@ fn main() {
             }
         }
 
-        Commands::Charges { smiles } => {
-            match sci_form::compute_charges(&smiles) {
-                Ok(result) => {
-                    println!("{}", serde_json::to_string_pretty(&result).unwrap());
-                }
-                Err(e) => {
-                    eprintln!("Charges error: {}", e);
-                    std::process::exit(1);
-                }
+        Commands::Charges { smiles } => match sci_form::compute_charges(&smiles) {
+            Ok(result) => {
+                println!("{}", serde_json::to_string_pretty(&result).unwrap());
             }
-        }
+            Err(e) => {
+                eprintln!("Charges error: {}", e);
+                std::process::exit(1);
+            }
+        },
 
         Commands::Sasa {
             elements,
@@ -571,7 +569,11 @@ fn main() {
                         .zip(result.total_dos.iter())
                         .map(|(e, d)| format!("[{:.4},{:.6}]", e, d))
                         .collect();
-                    println!("{{\"sigma\":{},\"data\":[{}]}}", result.sigma, pairs.join(","));
+                    println!(
+                        "{{\"sigma\":{},\"data\":[{}]}}",
+                        result.sigma,
+                        pairs.join(",")
+                    );
                 }
                 Err(e) => {
                     eprintln!("DOS error: {}", e);
@@ -610,7 +612,14 @@ fn main() {
             }
         }
 
-        Commands::Cell { a, b, c, alpha, beta, gamma } => {
+        Commands::Cell {
+            a,
+            b,
+            c,
+            alpha,
+            beta,
+            gamma,
+        } => {
             let cell = sci_form::create_unit_cell(a, b, c, alpha, beta, gamma);
             let vol = cell.volume();
             let p = cell.parameters();
@@ -620,7 +629,13 @@ fn main() {
             );
         }
 
-        Commands::Assemble { topology, a, metal, geometry, supercell } => {
+        Commands::Assemble {
+            topology,
+            a,
+            metal,
+            geometry,
+            supercell,
+        } => {
             let geom = match geometry.as_str() {
                 "linear" => sci_form::materials::CoordinationGeometry::Linear,
                 "trigonal" => sci_form::materials::CoordinationGeometry::Trigonal,
