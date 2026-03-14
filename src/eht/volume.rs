@@ -132,7 +132,9 @@ pub fn evaluate_orbital_on_grid(
     let mut values = vec![0.0f32; total];
 
     // Pre-extract MO coefficients for this orbital
-    let c_mu: Vec<f64> = (0..basis.len()).map(|mu| coefficients[mu][mo_index]).collect();
+    let c_mu: Vec<f64> = (0..basis.len())
+        .map(|mu| coefficients[mu][mo_index])
+        .collect();
 
     for ix in 0..dims[0] {
         for iy in 0..dims[1] {
@@ -177,7 +179,9 @@ pub fn evaluate_orbital_on_grid_parallel(
 
     let (origin, dims) = compute_grid_extents(positions, padding, spacing);
     let total = dims[0] * dims[1] * dims[2];
-    let c_mu: Vec<f64> = (0..basis.len()).map(|mu| coefficients[mu][mo_index]).collect();
+    let c_mu: Vec<f64> = (0..basis.len())
+        .map(|mu| coefficients[mu][mo_index])
+        .collect();
     let ny = dims[1];
     let nz = dims[2];
 
@@ -236,7 +240,9 @@ pub fn evaluate_orbital_on_grid_chunked(
     padding: f64,
 ) -> (VolumetricGrid, Vec<VolumeSlab>) {
     let (origin, dims) = compute_grid_extents(positions, padding, spacing);
-    let c_mu: Vec<f64> = (0..basis.len()).map(|mu| coefficients[mu][mo_index]).collect();
+    let c_mu: Vec<f64> = (0..basis.len())
+        .map(|mu| coefficients[mu][mo_index])
+        .collect();
 
     let mut slabs = Vec::with_capacity(dims[0]);
     let mut all_values = Vec::with_capacity(dims[0] * dims[1] * dims[2]);
@@ -264,7 +270,10 @@ pub fn evaluate_orbital_on_grid_chunked(
         }
 
         all_values.extend_from_slice(&slab_values);
-        slabs.push(VolumeSlab { ix, values: slab_values });
+        slabs.push(VolumeSlab {
+            ix,
+            values: slab_values,
+        });
     }
 
     let grid = VolumetricGrid {
@@ -286,9 +295,8 @@ pub fn evaluate_density_on_grid(
     spacing: f64,
     padding: f64,
 ) -> VolumetricGrid {
-    let mut grid = evaluate_orbital_on_grid(
-        basis, coefficients, mo_index, positions, spacing, padding,
-    );
+    let mut grid =
+        evaluate_orbital_on_grid(basis, coefficients, mo_index, positions, spacing, padding);
     for v in &mut grid.values {
         *v = (*v) * (*v);
     }
@@ -297,9 +305,9 @@ pub fn evaluate_density_on_grid(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::solver::solve_eht;
     use super::super::basis::build_basis;
+    use super::super::solver::solve_eht;
+    use super::*;
 
     #[test]
     fn test_grid_extents_h2() {
@@ -331,7 +339,11 @@ mod tests {
         assert!(grid.num_points() > 0);
         // Bonding orbital should have nonzero values
         let max_val = grid.values.iter().map(|v| v.abs()).fold(0.0f32, f32::max);
-        assert!(max_val > 0.01, "max |Ψ_bond| = {}, expected > 0.01", max_val);
+        assert!(
+            max_val > 0.01,
+            "max |Ψ_bond| = {}, expected > 0.01",
+            max_val
+        );
     }
 
     #[test]
@@ -342,22 +354,21 @@ mod tests {
         let basis = build_basis(&elements, &positions);
 
         // Antibonding MO 1
-        let grid = evaluate_orbital_on_grid(
-            &basis,
-            &result.coefficients,
-            1,
-            &positions,
-            0.5,
-            3.0,
-        );
+        let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 1, &positions, 0.5, 3.0);
 
         let max_val = grid.values.iter().map(|v| v.abs()).fold(0.0f32, f32::max);
-        assert!(max_val > 0.01, "antibonding orbital should have nonzero amplitude");
+        assert!(
+            max_val > 0.01,
+            "antibonding orbital should have nonzero amplitude"
+        );
 
         // Antibonding orbital should have a nodal plane — both positive and negative values
         let has_positive = grid.values.iter().any(|&v| v > 0.01);
         let has_negative = grid.values.iter().any(|&v| v < -0.01);
-        assert!(has_positive && has_negative, "antibonding MO should have sign change");
+        assert!(
+            has_positive && has_negative,
+            "antibonding MO should have sign change"
+        );
     }
 
     #[test]
@@ -367,14 +378,7 @@ mod tests {
         let result = solve_eht(&elements, &positions, None).unwrap();
         let basis = build_basis(&elements, &positions);
 
-        let grid = evaluate_density_on_grid(
-            &basis,
-            &result.coefficients,
-            0,
-            &positions,
-            0.5,
-            3.0,
-        );
+        let grid = evaluate_density_on_grid(&basis, &result.coefficients, 0, &positions, 0.5, 3.0);
 
         for v in &grid.values {
             assert!(*v >= 0.0, "Density should never be negative: {}", v);
@@ -396,12 +400,10 @@ mod tests {
         let result = solve_eht(&elements, &positions, None).unwrap();
         let basis = build_basis(&elements, &positions);
 
-        let full_grid = evaluate_orbital_on_grid(
-            &basis, &result.coefficients, 0, &positions, 0.5, 3.0,
-        );
-        let (chunked_grid, slabs) = evaluate_orbital_on_grid_chunked(
-            &basis, &result.coefficients, 0, &positions, 0.5, 3.0,
-        );
+        let full_grid =
+            evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &positions, 0.5, 3.0);
+        let (chunked_grid, slabs) =
+            evaluate_orbital_on_grid_chunked(&basis, &result.coefficients, 0, &positions, 0.5, 3.0);
 
         // Grid metadata must match
         assert_eq!(full_grid.dims, chunked_grid.dims);
