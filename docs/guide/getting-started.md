@@ -29,14 +29,16 @@ fn main() {
 
 ## Python
 
+The package is published as **`sciforma`** on PyPI. The import name is `sci_form`.
+
 ```bash
-pip install sci-form
+pip install sciforma
 ```
 
 ```python
 import sci_form
 
-result = sci_form.embed("c1ccccc1")  # benzene
+result = sci_form.embed("c1ccccc1")  # benzene, seed=42 default
 print(f"Atoms: {result.num_atoms}, Time: {result.time_ms:.1f}ms")
 
 for i, (x, y, z) in enumerate(result.get_positions()):
@@ -47,16 +49,25 @@ for i, (x, y, z) in enumerate(result.get_positions()):
 
 ## TypeScript / JavaScript
 
+The npm package is **`sci-form-wasm`**.
+
 ```bash
-npm install sci-form
+npm install sci-form-wasm
 ```
 
-```typescript
-import { embed } from 'sci-form';
-
-const result = JSON.parse(embed("CC(=O)O", 42));  // acetic acid
+**Node.js (CommonJS)**
+```javascript
+const sci = require('sci-form-wasm');
+const result = JSON.parse(sci.embed('CC(=O)O', 42));  // acetic acid
 console.log(`Atoms: ${result.num_atoms}`);
-console.log(`Coords: ${result.coords}`);
+```
+
+**ES Module / TypeScript**
+```typescript
+import init, { embed } from 'sci-form-wasm';
+await init();
+const result = JSON.parse(embed('CC(=O)O', 42));
+console.log(`Atoms: ${result.num_atoms}`);
 ```
 
 → See the [TypeScript guide](/guide/typescript) for full API details.
@@ -77,7 +88,11 @@ sci-form embed "CCO" --format xyz
 sci-form batch -i molecules.smi -o output.sdf --format sdf --threads 8
 
 # Parse SMILES (no 3D generation)
-sci-form parse "c1ccccc1" | jq .
+sci-form parse "c1ccccc1"
+```
+
+→ See the [CLI guide](/guide/cli) for all commands and options.
+
 ```
 
 → See the [CLI guide](/guide/cli) for all subcommands.
