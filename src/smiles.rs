@@ -295,31 +295,72 @@ impl<'a> SmilesParser<'a> {
 
         let element: u8 = match elem_str.as_str() {
             "H" => 1,
+            "HE" | "He" => 2,
+            "LI" | "Li" => 3,
+            "BE" | "Be" => 4,
+            "B" => 5,
             "C" => 6,
             "N" => 7,
             "O" => 8,
+            "F" => 9,
+            "NE" | "Ne" => 10,
+            "NA" | "Na" => 11,
+            "MG" | "Mg" => 12,
+            "AL" | "Al" => 13,
+            "SI" | "Si" => 14,
             "P" => 15,
             "S" => 16,
-            "F" => 9,
             "CL" | "Cl" => 17,
-            "BR" | "Br" => 35,
-            "I" => 53,
-            "FE" | "Fe" => 26,
-            "ZN" | "Zn" => 30,
-            "CO" | "Co" => 27,
-            "CU" | "Cu" => 29,
-            "B" => 5,
-            "AG" | "Ag" => 47,
-            "AU" | "Au" => 79,
-            "PT" | "Pt" => 78,
-            "PD" | "Pd" => 46,
-            "NA" | "Na" => 11,
+            "AR" | "Ar" => 18,
             "K" => 19,
-            "LI" | "Li" => 3,
             "CA" | "Ca" => 20,
-            "MG" | "Mg" => 12,
+            "SC" | "Sc" => 21,
+            "TI" | "Ti" => 22,
+            "V" => 23,
+            "CR" | "Cr" => 24,
+            "MN" | "Mn" => 25,
+            "FE" | "Fe" => 26,
+            "CO" | "Co" => 27,
+            "NI" | "Ni" => 28,
+            "CU" | "Cu" => 29,
+            "ZN" | "Zn" => 30,
+            "GA" | "Ga" => 31,
+            "GE" | "Ge" => 32,
+            "AS" | "As" => 33,
+            "SE" | "Se" => 34,
+            "BR" | "Br" => 35,
+            "KR" | "Kr" => 36,
+            "RB" | "Rb" => 37,
+            "SR" | "Sr" => 38,
+            "Y" => 39,
+            "ZR" | "Zr" => 40,
+            "MO" | "Mo" => 42,
+            "RU" | "Ru" => 44,
+            "RH" | "Rh" => 45,
+            "PD" | "Pd" => 46,
+            "AG" | "Ag" => 47,
+            "CD" | "Cd" => 48,
+            "IN" | "In" => 49,
+            "SN" | "Sn" => 50,
+            "SB" | "Sb" => 51,
+            "TE" | "Te" => 52,
+            "I" => 53,
+            "XE" | "Xe" => 54,
+            "CS" | "Cs" => 55,
+            "BA" | "Ba" => 56,
+            "LA" | "La" => 57,
+            "W" => 74,
+            "RE" | "Re" => 75,
+            "OS" | "Os" => 76,
+            "IR" | "Ir" => 77,
+            "PT" | "Pt" => 78,
+            "AU" | "Au" => 79,
+            "HG" | "Hg" => 80,
+            "TL" | "Tl" => 81,
+            "PB" | "Pb" => 82,
+            "BI" | "Bi" => 83,
             "*" => 0,
-            _ => 6, // Default fallback
+            _ => return Err(format!("Unknown bracket element: {}", elem_str)),
         };
 
         // Chirality
@@ -488,7 +529,8 @@ impl<'a> SmilesParser<'a> {
             let atom = &self.mol.graph[ni];
             // If it's aromatic, an uncharged Carbon expects 3 bonds normally (2 from ring, 1 external or 1 H).
             let target_val = match atom.element {
-                6 => 4, // C
+                5 => 3,  // B
+                6 => 4,  // C
                 7 => {
                     if atom.formal_charge == 1 {
                         4
@@ -504,8 +546,15 @@ impl<'a> SmilesParser<'a> {
                     }
                 } // O
                 9 | 17 | 35 | 53 => 1, // Halogens
-                16 => 2, // S
+                14 => 4, // Si
                 15 => 3, // P
+                16 => 2, // S
+                32 => 4, // Ge
+                33 => 3, // As
+                34 => 2, // Se
+                50 => 4, // Sn
+                51 => 3, // Sb
+                52 => 2, // Te
                 _ => 0,
             };
 
