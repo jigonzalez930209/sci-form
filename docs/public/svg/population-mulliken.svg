@@ -1,0 +1,72 @@
+<svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" style="max-width:680px;margin:2em auto;display:block;">
+  <defs>
+    <linearGradient id="popGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+
+  <g font-family="system-ui,sans-serif">
+    <!-- Title -->
+    <text x="360" y="30" text-anchor="middle" fill="#1e293b" font-size="16" font-weight="700">Mulliken Population Analysis</text>
+
+    <!-- Density Matrix Box -->
+    <rect x="20" y="55" width="200" height="80" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="120" y="78" text-anchor="middle" fill="#5b21b6" font-weight="600" font-size="13">Density Matrix P</text>
+    <text x="120" y="100" text-anchor="middle" fill="#64748b" font-size="12">P = C · n · Cᵀ</text>
+    <text x="120" y="118" text-anchor="middle" fill="#64748b" font-size="11">n = occupation numbers</text>
+
+    <!-- Arrow -->
+    <line x1="230" y1="95" x2="272" y2="95" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#popArrow)"/>
+
+    <!-- PS Product Box -->
+    <rect x="280" y="55" width="180" height="80" rx="8" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+    <text x="370" y="78" text-anchor="middle" fill="#5b21b6" font-weight="600" font-size="13">Overlap Product</text>
+    <text x="370" y="100" text-anchor="middle" fill="#64748b" font-size="12">(PS)ᵤᵤ = Σᵥ Pᵤᵥ Sᵤᵥ</text>
+    <text x="370" y="118" text-anchor="middle" fill="#64748b" font-size="11">S = overlap matrix</text>
+
+    <!-- Arrow -->
+    <line x1="470" y1="95" x2="512" y2="95" stroke="#7c3aed" stroke-width="1.5" marker-end="url(#popArrow)"/>
+
+    <!-- Charge Box -->
+    <rect x="520" y="55" width="180" height="80" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+    <text x="610" y="78" text-anchor="middle" fill="#5b21b6" font-weight="700" font-size="13">Mulliken Charge</text>
+    <text x="610" y="100" text-anchor="middle" fill="#3730a3" font-size="12" font-weight="600">qₐ = Zₐ − Σᵤ∈ₐ (PS)ᵤᵤ</text>
+    <text x="610" y="118" text-anchor="middle" fill="#64748b" font-size="11">Z = nuclear charge</text>
+
+    <!-- Formula detail section -->
+    <rect x="20" y="160" width="680" height="160" rx="10" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1"/>
+
+    <text x="40" y="188" fill="#5b21b6" font-weight="700" font-size="14">Key Properties</text>
+
+    <!-- Charge conservation -->
+    <circle cx="50" cy="210" r="6" fill="#7c3aed"/>
+    <text x="50" y="214" text-anchor="middle" fill="white" font-size="9" font-weight="bold">1</text>
+    <text x="66" y="214" fill="#1e293b" font-size="12" font-weight="600">Charge conservation:</text>
+    <text x="220" y="214" fill="#64748b" font-size="12">Σᵢ qᵢ = Q_total (net molecular charge)</text>
+
+    <!-- Gross orbital -->
+    <circle cx="50" cy="238" r="6" fill="#7c3aed"/>
+    <text x="50" y="242" text-anchor="middle" fill="white" font-size="9" font-weight="bold">2</text>
+    <text x="66" y="242" fill="#1e293b" font-size="12" font-weight="600">Gross orbital population:</text>
+    <text x="250" y="242" fill="#64748b" font-size="12">gᵤ = (PS)ᵤᵤ ≥ 0 for each AO μ</text>
+
+    <!-- Basis set dependence -->
+    <circle cx="50" cy="266" r="6" fill="#7c3aed"/>
+    <text x="50" y="270" text-anchor="middle" fill="white" font-size="9" font-weight="bold">3</text>
+    <text x="66" y="270" fill="#1e293b" font-size="12" font-weight="600">Basis-set dependent:</text>
+    <text x="228" y="270" fill="#64748b" font-size="12">Charges shift with basis set size (known limitation)</text>
+
+    <!-- Electron count -->
+    <circle cx="50" cy="294" r="6" fill="#7c3aed"/>
+    <text x="50" y="298" text-anchor="middle" fill="white" font-size="9" font-weight="bold">4</text>
+    <text x="66" y="298" fill="#1e293b" font-size="12" font-weight="600">Electron counting:</text>
+    <text x="210" y="298" fill="#64748b" font-size="12">Tr(PS) = N_electrons (total electron count)</text>
+  </g>
+
+  <defs>
+    <marker id="popArrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7c3aed"/>
+    </marker>
+  </defs>
+</svg>
