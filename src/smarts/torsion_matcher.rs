@@ -1,11 +1,11 @@
 //! Match CSD torsion patterns against a molecule using SMARTS matching.
 //! Equivalent to RDKit's getExperimentalTorsions from TorsionPreferences.cpp.
 
-use crate::forcefield::etkdg_3d::M6TorsionContrib;
-use crate::graph::Molecule;
-use super::matcher::{substruct_match_with_ring_info, precompute_ring_info};
+use super::matcher::{precompute_ring_info, substruct_match_with_ring_info};
 use super::parser::{parse_smarts, SmartsPattern};
 use super::torsion_data::{TORSION_PREFS_MACROCYCLES, TORSION_PREFS_V2};
+use crate::forcefield::etkdg_3d::M6TorsionContrib;
+use crate::graph::Molecule;
 use std::collections::HashSet;
 
 /// A parsed torsion pattern with its Fourier coefficients.
@@ -27,23 +27,36 @@ fn parse_table(table: &[(&str, [f32; 12])]) -> Vec<TorsionEntry> {
         let mut map_idx = [usize::MAX; 4];
         for (i, atom) in pattern.atoms.iter().enumerate() {
             if let Some(m) = atom.map_idx {
-                if m >= 1 && m <= 4 {
+                if (1..=4).contains(&m) {
                     map_idx[(m - 1) as usize] = i;
                 }
             }
         }
-        if map_idx.iter().any(|&x| x == usize::MAX) {
+        if map_idx.contains(&usize::MAX) {
             continue;
         }
         let signs = [
-            coeffs[0] as f64, coeffs[2] as f64, coeffs[4] as f64,
-            coeffs[6] as f64, coeffs[8] as f64, coeffs[10] as f64,
+            coeffs[0] as f64,
+            coeffs[2] as f64,
+            coeffs[4] as f64,
+            coeffs[6] as f64,
+            coeffs[8] as f64,
+            coeffs[10] as f64,
         ];
         let v = [
-            coeffs[1] as f64, coeffs[3] as f64, coeffs[5] as f64,
-            coeffs[7] as f64, coeffs[9] as f64, coeffs[11] as f64,
+            coeffs[1] as f64,
+            coeffs[3] as f64,
+            coeffs[5] as f64,
+            coeffs[7] as f64,
+            coeffs[9] as f64,
+            coeffs[11] as f64,
         ];
-        entries.push(TorsionEntry { pattern, map_idx, signs, v });
+        entries.push(TorsionEntry {
+            pattern,
+            map_idx,
+            signs,
+            v,
+        });
     }
     entries
 }
@@ -177,7 +190,10 @@ fn compute_excluded_bonds(mol: &Molecule, ring_bonds: &[Vec<usize>]) -> HashSet<
                 continue;
             }
             // Count shared bonds
-            let shared = ring_bonds[i].iter().filter(|b| ring_bonds[j].contains(b)).count();
+            let shared = ring_bonds[i]
+                .iter()
+                .filter(|b| ring_bonds[j].contains(b))
+                .count();
             if shared > 1 {
                 // Exclude all bonds of small rings
                 if sssr[i].len() < MIN_MACROCYCLE_SIZE {
@@ -205,6 +221,9 @@ mod tests {
         let mol = Molecule::from_smiles("C#CCC1COCC2(C)CC(NC23CCOC3)C1=O").unwrap();
         let torsions = match_experimental_torsions(&mol);
         assert_eq!(torsions.len(), 1);
-        assert_eq!((torsions[0].i, torsions[0].j, torsions[0].k, torsions[0].l), (1, 2, 3, 4));
+        assert_eq!(
+            (torsions[0].i, torsions[0].j, torsions[0].k, torsions[0].l),
+            (1, 2, 3, 4)
+        );
     }
 }

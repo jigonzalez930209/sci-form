@@ -22,24 +22,24 @@ pub struct SmartsBond {
 
 #[derive(Debug, Clone)]
 pub enum AtomQuery {
-    True, // matches any atom (used for *)
-    Element(u8),         // aliphatic element by atomic number
-    AromaticElem(u8),    // aromatic element (c=6, n=7, o=8, s=16, p=15)
-    AnyAromatic,         // 'a'
-    AnyAliphatic,        // 'A'
-    AtomicNum(u8),       // #N
-    NotAtomicNum(u8),    // !#N
-    TotalH(u8),          // HN
-    TotalDegree(u8),     // XN (total connections including implicit H)
-    HeavyDegree(u8),     // DN (connections to non-H)
-    RingBondCount(u8),   // xN
-    InRing,              // R (in any ring)
-    RingSize(u8),        // rN (in ring of exactly size N)
+    True,                  // matches any atom (used for *)
+    Element(u8),           // aliphatic element by atomic number
+    AromaticElem(u8),      // aromatic element (c=6, n=7, o=8, s=16, p=15)
+    AnyAromatic,           // 'a'
+    AnyAliphatic,          // 'A'
+    AtomicNum(u8),         // #N
+    NotAtomicNum(u8),      // !#N
+    TotalH(u8),            // HN
+    TotalDegree(u8),       // XN (total connections including implicit H)
+    HeavyDegree(u8),       // DN (connections to non-H)
+    RingBondCount(u8),     // xN
+    InRing,                // R (in any ring)
+    RingSize(u8),          // rN (in ring of exactly size N)
     RingSizeRange(u8, u8), // r{N-M}
-    RingSizeMin(u8),     // r{N-}
-    FormalCharge(i8),    // +N or -N
-    Hybridization(u8),   // ^N
-    RingCount(u8),       // RN (number of SSSR rings containing this atom)
+    RingSizeMin(u8),       // r{N-}
+    FormalCharge(i8),      // +N or -N
+    Hybridization(u8),     // ^N
+    RingCount(u8),         // RN (number of SSSR rings containing this atom)
     Recursive(Box<SmartsPattern>),
     And(Vec<AtomQuery>),
     Or(Vec<AtomQuery>),
@@ -51,11 +51,11 @@ pub enum BondQuery {
     Single,
     Double,
     Triple,
-    Aromatic,     // ':'
-    Any,          // '~'
-    Ring,         // '@'
-    NotRing,      // '!@'
-    Implicit,     // default (single or aromatic)
+    Aromatic, // ':'
+    Any,      // '~'
+    Ring,     // '@'
+    NotRing,  // '!@'
+    Implicit, // default (single or aromatic)
     And(Vec<BondQuery>),
     Not(Box<BondQuery>),
 }
@@ -95,7 +95,9 @@ impl<'a> SmartsParser<'a> {
 
     fn advance(&mut self) -> Option<u8> {
         let c = self.input.get(self.pos).copied();
-        if c.is_some() { self.pos += 1; }
+        if c.is_some() {
+            self.pos += 1;
+        }
         c
     }
 
@@ -124,9 +126,8 @@ impl<'a> SmartsParser<'a> {
                     self.parse_chain(prev)?;
                     self.expect(b')')?;
                 }
-                b'[' | b'*' | b'c' | b'n' | b'o' | b's' | b'p' |
-                b'C' | b'N' | b'O' | b'S' | b'P' | b'F' | b'B' | b'I' |
-                b'a' | b'A' | b'H' => {
+                b'[' | b'*' | b'c' | b'n' | b'o' | b's' | b'p' | b'C' | b'N' | b'O' | b'S'
+                | b'P' | b'F' | b'B' | b'I' | b'a' | b'A' | b'H' => {
                     // Parse optional bond before atom
                     let bond_q = self.parse_bond_if_present();
                     let atom_idx = self.parse_atom()?;
@@ -175,10 +176,8 @@ impl<'a> SmartsParser<'a> {
     /// Try to parse a bond query if one is present (without consuming atom chars).
     fn parse_bond_if_present(&mut self) -> Option<BondQuery> {
         match self.peek() {
-            Some(b'-') | Some(b'=') | Some(b'#') | Some(b'~') |
-            Some(b'!') | Some(b'@') | Some(b':') => {
-                self.parse_bond().ok()
-            }
+            Some(b'-') | Some(b'=') | Some(b'#') | Some(b'~') | Some(b'!') | Some(b'@')
+            | Some(b':') => self.parse_bond().ok(),
             _ => None,
         }
     }
@@ -188,12 +187,30 @@ impl<'a> SmartsParser<'a> {
         let mut parts = Vec::new();
         loop {
             match self.peek() {
-                Some(b'-') => { self.advance(); parts.push(BondQuery::Single); }
-                Some(b'=') => { self.advance(); parts.push(BondQuery::Double); }
-                Some(b'#') => { self.advance(); parts.push(BondQuery::Triple); }
-                Some(b'~') => { self.advance(); parts.push(BondQuery::Any); }
-                Some(b':') => { self.advance(); parts.push(BondQuery::Aromatic); }
-                Some(b'@') => { self.advance(); parts.push(BondQuery::Ring); }
+                Some(b'-') => {
+                    self.advance();
+                    parts.push(BondQuery::Single);
+                }
+                Some(b'=') => {
+                    self.advance();
+                    parts.push(BondQuery::Double);
+                }
+                Some(b'#') => {
+                    self.advance();
+                    parts.push(BondQuery::Triple);
+                }
+                Some(b'~') => {
+                    self.advance();
+                    parts.push(BondQuery::Any);
+                }
+                Some(b':') => {
+                    self.advance();
+                    parts.push(BondQuery::Aromatic);
+                }
+                Some(b'@') => {
+                    self.advance();
+                    parts.push(BondQuery::Ring);
+                }
                 Some(b'!') => {
                     self.advance();
                     if self.peek() == Some(b'@') {
@@ -204,7 +221,9 @@ impl<'a> SmartsParser<'a> {
                         parts.push(BondQuery::Not(Box::new(inner)));
                     }
                 }
-                Some(b';') => { self.advance(); } // AND separator, continue
+                Some(b';') => {
+                    self.advance();
+                } // AND separator, continue
                 Some(b',') => {
                     // OR — not typically used in torsion SMARTS bonds
                     self.advance();
@@ -223,7 +242,13 @@ impl<'a> SmartsParser<'a> {
     fn parse_atom(&mut self) -> Result<usize, String> {
         let atom = match self.peek() {
             Some(b'[') => self.parse_bracket_atom()?,
-            Some(b'*') => { self.advance(); SmartsAtom { query: AtomQuery::True, map_idx: None } }
+            Some(b'*') => {
+                self.advance();
+                SmartsAtom {
+                    query: AtomQuery::True,
+                    map_idx: None,
+                }
+            }
             _ => self.parse_organic_atom()?,
         };
         let idx = self.atoms.len();
@@ -235,8 +260,14 @@ impl<'a> SmartsParser<'a> {
     fn parse_organic_atom(&mut self) -> Result<SmartsAtom, String> {
         let c = self.advance().ok_or("unexpected end")?;
         let query = match c {
-            b'C' if self.peek() == Some(b'l') => { self.advance(); AtomQuery::Element(17) }
-            b'B' if self.peek() == Some(b'r') => { self.advance(); AtomQuery::Element(35) }
+            b'C' if self.peek() == Some(b'l') => {
+                self.advance();
+                AtomQuery::Element(17)
+            }
+            b'B' if self.peek() == Some(b'r') => {
+                self.advance();
+                AtomQuery::Element(35)
+            }
             b'C' => AtomQuery::Element(6),
             b'N' => AtomQuery::Element(7),
             b'O' => AtomQuery::Element(8),
@@ -253,9 +284,18 @@ impl<'a> SmartsParser<'a> {
             b'p' => AtomQuery::AromaticElem(15),
             b'a' => AtomQuery::AnyAromatic,
             b'A' => AtomQuery::AnyAliphatic,
-            _ => return Err(format!("unexpected atom char '{}' at pos {}", c as char, self.pos - 1)),
+            _ => {
+                return Err(format!(
+                    "unexpected atom char '{}' at pos {}",
+                    c as char,
+                    self.pos - 1
+                ))
+            }
         };
-        Ok(SmartsAtom { query, map_idx: None })
+        Ok(SmartsAtom {
+            query,
+            map_idx: None,
+        })
     }
 
     /// Parse a bracket atom [...]
@@ -281,8 +321,11 @@ impl<'a> SmartsParser<'a> {
             self.advance();
             parts.push(self.parse_atom_query_or()?);
         }
-        if parts.len() == 1 { Ok(parts.pop().unwrap()) }
-        else { Ok(AtomQuery::And(parts)) }
+        if parts.len() == 1 {
+            Ok(parts.pop().unwrap())
+        } else {
+            Ok(AtomQuery::And(parts))
+        }
     }
 
     /// Parse an atom query with OR (comma-separated).
@@ -292,8 +335,11 @@ impl<'a> SmartsParser<'a> {
             self.advance();
             parts.push(self.parse_atom_query_and()?);
         }
-        if parts.len() == 1 { Ok(parts.pop().unwrap()) }
-        else { Ok(AtomQuery::Or(parts)) }
+        if parts.len() == 1 {
+            Ok(parts.pop().unwrap())
+        } else {
+            Ok(AtomQuery::Or(parts))
+        }
     }
 
     /// Parse an atom query with high-priority AND (implicit juxtaposition or &).
@@ -302,7 +348,9 @@ impl<'a> SmartsParser<'a> {
         loop {
             match self.peek() {
                 Some(b']') | Some(b',') | Some(b':') | Some(b';') | None => break,
-                Some(b'&') => { self.advance(); } // explicit high-priority AND
+                Some(b'&') => {
+                    self.advance();
+                } // explicit high-priority AND
                 _ => parts.push(self.parse_atom_primitive()?),
             }
         }
@@ -340,7 +388,9 @@ impl<'a> SmartsParser<'a> {
                         b')' => depth -= 1,
                         _ => {}
                     }
-                    if depth > 0 { self.pos += 1; }
+                    if depth > 0 {
+                        self.pos += 1;
+                    }
                 }
                 let inner_str = std::str::from_utf8(&self.input[start..self.pos])
                     .map_err(|_| "invalid utf8 in recursive SMARTS")?;
@@ -361,7 +411,7 @@ impl<'a> SmartsParser<'a> {
             b'H' => {
                 self.advance();
                 // H followed by digit = hydrogen count; otherwise H0 is "no H"
-                if self.peek().map_or(false, |c| c.is_ascii_digit()) {
+                if self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     let n = self.parse_number()? as u8;
                     Ok(AtomQuery::TotalH(n))
                 } else {
@@ -371,7 +421,7 @@ impl<'a> SmartsParser<'a> {
             }
             b'D' => {
                 self.advance();
-                if self.peek().map_or(false, |c| c.is_ascii_digit()) {
+                if self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     let n = self.parse_number()? as u8;
                     Ok(AtomQuery::HeavyDegree(n))
                 } else {
@@ -380,7 +430,7 @@ impl<'a> SmartsParser<'a> {
             }
             b'R' => {
                 self.advance();
-                if self.peek().map_or(false, |c| c.is_ascii_digit()) {
+                if self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     let n = self.parse_number()? as u8;
                     Ok(AtomQuery::RingCount(n))
                 } else {
@@ -415,7 +465,7 @@ impl<'a> SmartsParser<'a> {
                             Ok(AtomQuery::RingSize(n))
                         }
                     }
-                } else if self.peek().map_or(false, |c| c.is_ascii_digit()) {
+                } else if self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     let n = self.parse_number()? as u8;
                     Ok(AtomQuery::RingSize(n))
                 } else {
@@ -424,7 +474,7 @@ impl<'a> SmartsParser<'a> {
             }
             b'+' => {
                 self.advance();
-                if self.peek().map_or(false, |c| c.is_ascii_digit()) {
+                if self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     let n = self.parse_number()? as i8;
                     Ok(AtomQuery::FormalCharge(n))
                 } else {
@@ -434,7 +484,7 @@ impl<'a> SmartsParser<'a> {
             b'-' => {
                 // Careful: '-' can also be a bond. Inside bracket atom, it's charge.
                 self.advance();
-                if self.peek().map_or(false, |c| c.is_ascii_digit()) {
+                if self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     let n = self.parse_number()? as i8;
                     Ok(AtomQuery::FormalCharge(-n))
                 } else {
@@ -462,26 +512,70 @@ impl<'a> SmartsParser<'a> {
             }
             b'C' => {
                 self.advance();
-                if self.peek() == Some(b'l') { self.advance(); Ok(AtomQuery::Element(17)) }
-                else { Ok(AtomQuery::Element(6)) }
+                if self.peek() == Some(b'l') {
+                    self.advance();
+                    Ok(AtomQuery::Element(17))
+                } else {
+                    Ok(AtomQuery::Element(6))
+                }
             }
-            b'N' => { self.advance(); Ok(AtomQuery::Element(7)) }
-            b'O' => { self.advance(); Ok(AtomQuery::Element(8)) }
-            b'S' => { self.advance(); Ok(AtomQuery::Element(16)) }
-            b'P' => { self.advance(); Ok(AtomQuery::Element(15)) }
-            b'F' => { self.advance(); Ok(AtomQuery::Element(9)) }
+            b'N' => {
+                self.advance();
+                Ok(AtomQuery::Element(7))
+            }
+            b'O' => {
+                self.advance();
+                Ok(AtomQuery::Element(8))
+            }
+            b'S' => {
+                self.advance();
+                Ok(AtomQuery::Element(16))
+            }
+            b'P' => {
+                self.advance();
+                Ok(AtomQuery::Element(15))
+            }
+            b'F' => {
+                self.advance();
+                Ok(AtomQuery::Element(9))
+            }
             b'B' => {
                 self.advance();
-                if self.peek() == Some(b'r') { self.advance(); Ok(AtomQuery::Element(35)) }
-                else { Ok(AtomQuery::Element(5)) }
+                if self.peek() == Some(b'r') {
+                    self.advance();
+                    Ok(AtomQuery::Element(35))
+                } else {
+                    Ok(AtomQuery::Element(5))
+                }
             }
-            b'I' => { self.advance(); Ok(AtomQuery::Element(53)) }
-            b'c' => { self.advance(); Ok(AtomQuery::AromaticElem(6)) }
-            b'n' => { self.advance(); Ok(AtomQuery::AromaticElem(7)) }
-            b'o' => { self.advance(); Ok(AtomQuery::AromaticElem(8)) }
-            b's' => { self.advance(); Ok(AtomQuery::AromaticElem(16)) }
-            b'p' => { self.advance(); Ok(AtomQuery::AromaticElem(15)) }
-            _ => Err(format!("unexpected '{}' at pos {} in atom spec", c as char, self.pos)),
+            b'I' => {
+                self.advance();
+                Ok(AtomQuery::Element(53))
+            }
+            b'c' => {
+                self.advance();
+                Ok(AtomQuery::AromaticElem(6))
+            }
+            b'n' => {
+                self.advance();
+                Ok(AtomQuery::AromaticElem(7))
+            }
+            b'o' => {
+                self.advance();
+                Ok(AtomQuery::AromaticElem(8))
+            }
+            b's' => {
+                self.advance();
+                Ok(AtomQuery::AromaticElem(16))
+            }
+            b'p' => {
+                self.advance();
+                Ok(AtomQuery::AromaticElem(15))
+            }
+            _ => Err(format!(
+                "unexpected '{}' at pos {} in atom spec",
+                c as char, self.pos
+            )),
         }
     }
 
@@ -493,8 +587,7 @@ impl<'a> SmartsParser<'a> {
         if self.pos == start {
             return Err(format!("expected number at pos {}", self.pos));
         }
-        let s = std::str::from_utf8(&self.input[start..self.pos])
-            .map_err(|_| "invalid utf8")?;
+        let s = std::str::from_utf8(&self.input[start..self.pos]).map_err(|_| "invalid utf8")?;
         s.parse::<i32>().map_err(|e| e.to_string())
     }
 }
@@ -547,7 +640,9 @@ mod tests {
         let mut failures = Vec::new();
         for line in data.lines() {
             let smarts = line.split('\t').next().unwrap().trim();
-            if smarts.is_empty() { continue; }
+            if smarts.is_empty() {
+                continue;
+            }
             match parse_smarts(smarts) {
                 Ok(p) => {
                     ok += 1;
@@ -562,7 +657,9 @@ mod tests {
                 }
             }
         }
-        for f in &failures { eprintln!("{}", f); }
+        for f in &failures {
+            eprintln!("{}", f);
+        }
         eprintln!("\nParsed: {} ok, {} failed out of {}", ok, fail, ok + fail);
         assert_eq!(fail, 0, "{} patterns failed to parse", fail);
     }
