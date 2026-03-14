@@ -45,7 +45,7 @@ mjx-container[display="true"] > svg {
 /* ── External SVG diagrams (from /public/svg/) ── */
 .svg-diagram {
   display: block;
-  max-width: 100%;
+  width: 100%;
   height: auto;
   margin: 2em auto;
   border-radius: 12px;
@@ -63,7 +63,7 @@ mjx-container[display="true"] > svg {
 
 .svg-figure svg,
 .svg-figure img {
-  max-width: 100%;
+  width: 100%;
   height: auto;
 }
 
