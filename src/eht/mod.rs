@@ -17,8 +17,8 @@ pub mod volume;
 
 pub use basis::{AtomicOrbital, GaussianPrimitive, SlaterOrbital};
 pub use hamiltonian::build_hamiltonian;
+pub use marching_cubes::{marching_cubes, IsosurfaceMesh};
 pub use overlap::build_overlap_matrix;
 pub use params::{EhtParams, OrbitalDef};
-pub use solver::{EhtResult, solve_eht};
-pub use volume::{VolumetricGrid, evaluate_orbital_on_grid};
-pub use marching_cubes::{IsosurfaceMesh, marching_cubes};
+pub use solver::{solve_eht, EhtResult};
+pub use volume::{evaluate_orbital_on_grid, VolumetricGrid};
