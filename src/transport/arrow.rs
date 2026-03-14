@@ -145,11 +145,7 @@ impl RecordBatch {
 
     /// Total byte size of all buffers (for transfer cost estimation).
     pub fn byte_size(&self) -> usize {
-        let f64_bytes: usize = self
-            .float_columns
-            .iter()
-            .map(|c| c.values.len() * 8)
-            .sum();
+        let f64_bytes: usize = self.float_columns.iter().map(|c| c.values.len() * 8).sum();
         let i32_bytes: usize = self.int_columns.iter().map(|c| c.values.len() * 4).sum();
         let u8_bytes: usize = self.uint8_columns.iter().map(|c| c.values.len()).sum();
         f64_bytes + i32_bytes + u8_bytes
