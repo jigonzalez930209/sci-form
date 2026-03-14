@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "sciforma"
-version = "0.1.7"
+version = "0.2.0"
 description = "High-performance 3D molecular conformer generation — Python bindings"
 requires-python = ">=3.8"
 license = {text = "MIT"}
