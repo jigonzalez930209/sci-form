@@ -1,12 +1,11 @@
 use petgraph::visit::EdgeRef;
 use sci_form::distgeom::{
     calculate_bounds_matrix_opts, compute_initial_coords_rdkit, identify_chiral_sets,
-    identify_tetrahedral_centers, pick_rdkit_distances, triangle_smooth_tol, MinstdRand,
+    pick_rdkit_distances, triangle_smooth_tol, MinstdRand,
 };
 use sci_form::forcefield::bounds_ff::minimize_bfgs_rdkit;
 use sci_form::forcefield::etkdg_3d::{build_etkdg_3d_ff_with_torsions, minimize_etkdg_3d_bfgs};
 use sci_form::graph::Molecule;
-use sci_form::smiles::SmilesParser;
 
 fn dist(coords: &nalgebra::DMatrix<f64>, i: usize, j: usize) -> f64 {
     let dx = coords[(i, 0)] - coords[(j, 0)];

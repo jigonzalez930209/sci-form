@@ -27,10 +27,10 @@ const MAX_MINIMIZED_E_PER_ATOM: f64 = 0.05;
 fn compute_bounds_energy(
     coords: &DMatrix<f64>,
     bounds: &DMatrix<f64>,
-    chiral_sets: &[ChiralSet],
+    _chiral_sets: &[ChiralSet],
     basin_thresh: f64,
-    w4d: f64,
-    wchiral: f64,
+    _w4d: f64,
+    _wchiral: f64,
 ) -> f64 {
     let n = coords.nrows();
     let dim = coords.ncols();

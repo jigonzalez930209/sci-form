@@ -28,6 +28,7 @@ struct RefTorsion {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct RefMolecule {
     smiles: String,
     atoms: Vec<RefAtom>,
@@ -47,8 +48,7 @@ fn main() {
     .unwrap();
 
     let mut results = Vec::new();
-    for i in 0..limit.min(data.len()) {
-        let entry = &data[i];
+    for (_i, entry) in data.iter().enumerate().take(limit.min(data.len())) {
 
         let mol = build_mol_from_ref(entry);
         let csd_torsions = build_csd_torsions(&entry.torsions);

@@ -7,12 +7,13 @@ use sci_form::distgeom::embedding::{compute_initial_coords_rdkit, pick_rdkit_dis
 use sci_form::distgeom::validation::{
     check_chiral_centers, check_tetrahedral_centers, identify_tetrahedral_centers,
 };
-use sci_form::forcefield::bounds_ff::{minimize_bfgs_rdkit, ChiralSet};
+use sci_form::forcefield::bounds_ff::minimize_bfgs_rdkit;
 
 use serde::Deserialize;
 use std::env;
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct RefAtom {
     element: u8,
     x: f32,
@@ -123,7 +124,7 @@ fn main() {
         let r = &data[idx];
         let mol = build_mol(r);
         let n = mol.graph.node_count();
-        let torsions = build_torsions(&r.torsions);
+        let _torsions = build_torsions(&r.torsions);
 
         // Reproduce the conformer generation step by step
         let bounds = {

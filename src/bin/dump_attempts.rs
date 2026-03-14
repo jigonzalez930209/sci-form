@@ -1,4 +1,3 @@
-use nalgebra::DMatrix;
 use sci_form::distgeom::*;
 use sci_form::forcefield::bounds_ff::*;
 use sci_form::graph::Molecule;

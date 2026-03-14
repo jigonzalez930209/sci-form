@@ -86,7 +86,7 @@ fn calculate_rmsd_icp_refined(
     }
 
     // Direct Kabsch RMSD
-    sci_form::forcefield::minimizer::calculate_rmsd_kabsch(&coords, &reference)
+    sci_form::forcefield::minimizer::calculate_rmsd_kabsch(coords, reference)
 }
 
 fn main() {
@@ -108,7 +108,7 @@ fn main() {
     // Seleccionar 100 moléculas aleatorias
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut indices: Vec<usize> = (0..all_reference_mols.len()).collect();
-    let _ = indices.shuffle(&mut rng);
+    indices.shuffle(&mut rng);
     indices.truncate(100);
 
     // Crear lista de SMILES a procesar

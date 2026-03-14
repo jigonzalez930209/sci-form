@@ -36,6 +36,7 @@ fn main() {
     sum_sq_all /= (n * n) as f64;
 
     let mut d0 = vec![0.0f64; n];
+    #[allow(clippy::needless_range_loop)]
     for i in 0..n {
         let mut row_sum = 0.0f64;
         for j in 0..n {
@@ -70,10 +71,12 @@ fn main() {
                 println!("  λ{} = {:.15}", i, ev);
             }
             println!("\nFirst eigenvector (first 5):");
+            #[allow(clippy::needless_range_loop)]
             for j in 0..5.min(n) {
                 println!("  v0[{}] = {:.15}", j, eigenvectors[0][j]);
             }
             println!("\nSecond eigenvector (first 5):");
+            #[allow(clippy::needless_range_loop)]
             for j in 0..5.min(n) {
                 println!("  v1[{}] = {:.15}", j, eigenvectors[1][j]);
             }
