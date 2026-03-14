@@ -48,7 +48,14 @@ pub fn marching_cubes(grid: &VolumetricGrid, isovalue: f32) -> IsosurfaceMesh {
         for iy in 0..ny - 1 {
             for iz in 0..nz - 1 {
                 process_cube(
-                    grid, ix, iy, iz, isovalue, &mut vertices, &mut normals, &mut indices,
+                    grid,
+                    ix,
+                    iy,
+                    iz,
+                    isovalue,
+                    &mut vertices,
+                    &mut normals,
+                    &mut indices,
                 );
             }
         }
@@ -114,9 +121,8 @@ fn process_cube(
         return;
     }
 
-    let positions: [[f64; 3]; 8] = core::array::from_fn(|i| {
-        grid.point_position(corners[i].0, corners[i].1, corners[i].2)
-    });
+    let positions: [[f64; 3]; 8] =
+        core::array::from_fn(|i| grid.point_position(corners[i].0, corners[i].1, corners[i].2));
 
     // Interpolate edge vertices
     let mut edge_verts = [[0.0f64; 3]; 12];
@@ -137,13 +143,8 @@ fn process_cube(
 
     for (ei, &(a, b)) in edges.iter().enumerate() {
         if edge_flags & (1 << ei) != 0 {
-            edge_verts[ei] = interpolate_vertex(
-                &positions[a],
-                &positions[b],
-                vals[a],
-                vals[b],
-                isovalue,
-            );
+            edge_verts[ei] =
+                interpolate_vertex(&positions[a], &positions[b], vals[a], vals[b], isovalue);
         }
     }
 
@@ -175,13 +176,7 @@ fn process_cube(
     }
 }
 
-fn interpolate_vertex(
-    p1: &[f64; 3],
-    p2: &[f64; 3],
-    v1: f32,
-    v2: f32,
-    iso: f32,
-) -> [f64; 3] {
+fn interpolate_vertex(p1: &[f64; 3], p2: &[f64; 3], v1: f32, v2: f32, iso: f32) -> [f64; 3] {
     let diff = v2 - v1;
     let t = if diff.abs() < 1e-10 {
         0.5
@@ -214,12 +209,12 @@ fn estimate_normal(grid: &VolumetricGrid, point: &[f64; 3], _iso: f32) -> [f64; 
         grid.values[grid.index(ix as usize, iy as usize, iz as usize)] as f64
     };
 
-    let gx = sample(&[point[0] + h, point[1], point[2]])
-        - sample(&[point[0] - h, point[1], point[2]]);
-    let gy = sample(&[point[0], point[1] + h, point[2]])
-        - sample(&[point[0], point[1] - h, point[2]]);
-    let gz = sample(&[point[0], point[1], point[2] + h])
-        - sample(&[point[0], point[1], point[2] - h]);
+    let gx =
+        sample(&[point[0] + h, point[1], point[2]]) - sample(&[point[0] - h, point[1], point[2]]);
+    let gy =
+        sample(&[point[0], point[1] + h, point[2]]) - sample(&[point[0], point[1] - h, point[2]]);
+    let gz =
+        sample(&[point[0], point[1], point[2] + h]) - sample(&[point[0], point[1], point[2] - h]);
 
     let len = (gx * gx + gy * gy + gz * gz).sqrt();
     if len < 1e-12 {
@@ -530,8 +525,8 @@ static TRI_TABLE: [[i8; 16]; 256] = [
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::volume::VolumetricGrid;
+    use super::*;
 
     fn sphere_grid(radius: f64, spacing: f64) -> VolumetricGrid {
         let extent = radius + 1.0;
