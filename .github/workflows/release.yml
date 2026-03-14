@@ -245,7 +245,7 @@ jobs:
       - name: Smoke test — parse
         run: |
           ./sci-form-linux-x86_64 parse "CCO" \
-            | grep -E '"atoms"' || (echo "CLI parse failed"; exit 1)
+            | grep -iE 'Atoms:' || (echo "CLI parse failed"; exit 1)
 
   # ─── Publish: crates.io ────────────────────────────────────────────────────
   publish-crate:
@@ -268,22 +268,28 @@ jobs:
     name: Publish to PyPI
     needs: [verify-python]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           pattern: python-wheel-*
           path: dist/
           merge-multiple: true
-      - uses: actions/setup-python@v5
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          python-version: "3.11"
-      - name: Publish
-        run: pip install twine && twine upload --skip-existing dist/*.whl
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
+          verbose: true
 
   # ─── Publish: npm ──────────────────────────────────────────────────────────
+  # NOTE: NPM_TOKEN must be a Granular Access Token with Automation type.
+  # Classic tokens require OTP even in CI. To create one:
+  #   npmjs.com → Avatar → Access Tokens → Generate New Token
+  #   → Granular Access Token → Expiration → Packages: sci-form-wasm (Read+Write)
+  #   → Token type: Automation → Generate Token
+  # Then update the NPM_TOKEN repository secret with the new token.
   publish-npm:
     name: Publish to npm
     needs: [verify-node]
