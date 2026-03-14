@@ -1,4 +1,16 @@
-#![allow(unused_imports, unused_variables, dead_code, clippy::unnecessary_cast, clippy::needless_range_loop, clippy::manual_repeat_n, clippy::manual_str_repeat, clippy::manual_is_multiple_of, clippy::redundant_field_names, clippy::useless_vec, clippy::single_range_in_vec_init)]
+#![allow(
+    unused_imports,
+    unused_variables,
+    dead_code,
+    clippy::unnecessary_cast,
+    clippy::needless_range_loop,
+    clippy::manual_repeat_n,
+    clippy::manual_str_repeat,
+    clippy::manual_is_multiple_of,
+    clippy::redundant_field_names,
+    clippy::useless_vec,
+    clippy::single_range_in_vec_init
+)]
 //! Diagnostic test: compare 3D FF energy at our coordinates vs RDKit reference.
 //!
 //! Run: cargo test --release --test debug_ff_energy -- --nocapture
