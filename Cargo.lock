@@ -553,6 +553,7 @@ dependencies = [
 name = "sci-form"
 version = "0.2.0"
 dependencies = [
+ "approx",
  "nalgebra",
  "petgraph",
  "rand",
@@ -585,6 +586,7 @@ name = "sci-form-wasm"
 version = "0.2.0"
 dependencies = [
  "getrandom",
+ "js-sys",
  "sci-form",
  "serde_json",
  "wasm-bindgen",
