@@ -4,7 +4,7 @@
 
 ### Pre-built Binaries
 
-Download from [GitHub Releases](https://github.com/lestard/sci-form/releases):
+Download from [GitHub Releases](https://github.com/jigonzalez930209/sci-form/releases):
 - `sci-form-x86_64-unknown-linux-gnu` — Linux x86_64
 - `sci-form-x86_64-apple-darwin` — macOS Intel
 - `sci-form-aarch64-apple-darwin` — macOS Apple Silicon
@@ -16,6 +16,8 @@ Download from [GitHub Releases](https://github.com/lestard/sci-form/releases):
 ```bash
 cargo install sci-form-cli
 ```
+
+---
 
 ## Commands
 
@@ -37,18 +39,12 @@ sci-form embed <SMILES> [OPTIONS]
 **Examples:**
 
 ```bash
-# JSON output (default)
-sci-form embed "CCO"
-
-# XYZ format
-sci-form embed "c1ccccc1" -f xyz
-
-# SDF format with custom seed
+sci-form embed "CCO"                # JSON
+sci-form embed "c1ccccc1" -f xyz    # XYZ
 sci-form embed "CC(=O)O" -f sdf -s 123
 ```
 
-**JSON output structure:**
-
+**JSON output:**
 ```json
 {
   "smiles": "CCO",
@@ -60,6 +56,8 @@ sci-form embed "CC(=O)O" -f sdf -s 123
   "time_ms": 2.34
 }
 ```
+
+---
 
 ### `batch`
 
@@ -77,8 +75,7 @@ sci-form batch <FILE> [OPTIONS]
 | `-f, --format <FMT>` | `json` | Output format: `json`, `xyz`, `sdf` |
 | `-t, --threads <N>` | `0` | Number of threads (`0` = auto) |
 
-**Input file format:** One SMILES per line, optionally followed by a name:
-
+**Input file format:** One SMILES per line (name optional):
 ```
 CCO ethanol
 c1ccccc1 benzene
@@ -88,22 +85,17 @@ CC(=O)O acetic_acid
 **Examples:**
 
 ```bash
-# Process file
 sci-form batch molecules.smi
-
-# XYZ with 4 threads
-sci-form batch molecules.smi -f xyz -t 4
-
-# Pipe from stdin
+sci-form batch molecules.smi -f xyz -t 8
 cat molecules.smi | sci-form batch /dev/stdin
-
-# Save JSON output
 sci-form batch molecules.smi > conformers.json
 ```
 
+---
+
 ### `parse`
 
-Parse SMILES without generating coordinates.
+Parse SMILES and return molecular graph info (no 3D generation).
 
 ```
 sci-form parse <SMILES>
@@ -114,23 +106,105 @@ sci-form parse "c1ccccc1"
 ```
 
 Output:
-
 ```json
 {
   "num_atoms": 12,
   "num_bonds": 12,
   "elements": [6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1],
-  "bonds": [[0, 1, "AROMATIC"], [1, 2, "AROMATIC"], ...]
+  "bonds": [[0, 1, "AROMATIC"], ...]
 }
 ```
 
+---
+
+### `charges`
+
+Compute Gasteiger-Marsili partial charges.
+
+```
+sci-form charges <SMILES>
+```
+
+```bash
+sci-form charges "CCO"
+```
+
+Output:
+```json
+{
+  "charges": [-0.387, -0.042, -0.228, 0.123, ...],
+  "iterations": 6,
+  "total_charge": 0.0
+}
+```
+
+---
+
+### `energy`
+
+Evaluate UFF force field energy.
+
+```
+sci-form energy <SMILES> [OPTIONS]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--coords <FILE>` | JSON file with flat coordinate array |
+| `--from-smiles` | Generate conformer first, then evaluate energy |
+
+```bash
+# Auto-generate + evaluate
+sci-form energy "CCO" --from-smiles
+
+# From existing coords
+sci-form energy "CCO" --coords coords.json
+```
+
+Output:
+```json
+{"energy": 12.345, "unit": "kcal/mol"}
+```
+
+---
+
 ### `info`
 
-Display build and version information.
+Display build and feature information.
 
 ```bash
 sci-form info
 ```
+
+Output includes: version, compiled features (`parallel`, etc.), supported platforms.
+
+---
+
+## Output Formats
+
+### JSON
+
+Default format. Returns the full `ConformerResult` as compact JSON.
+
+### XYZ
+
+Standard XYZ format for molecular viewers (Avogadro, VESTA, VMD):
+
+```
+9
+CCO seed=42
+C    0.123   0.456   0.789
+O    1.234   0.567   0.890
+...
+```
+
+### SDF
+
+MDL Structure Data File format. Compatible with RDKit, OpenBabel, MarvinSuite.
+
+---
 
 ## Exit Codes
 
@@ -140,13 +214,9 @@ sci-form info
 | `1` | Invalid SMILES or embedding failure |
 | `2` | File not found or I/O error |
 
+---
+
 ## Pipeline Examples
-
-### Extract coordinates with jq
-
-```bash
-sci-form embed "CCO" | jq '.coords | [range(0; length; 3)] | map(. as $i | [input.coords[$i], input.coords[$i+1], input.coords[$i+2]])'
-```
 
 ### Filter successful results
 
@@ -154,13 +224,7 @@ sci-form embed "CCO" | jq '.coords | [range(0; length; 3)] | map(. as $i | [inpu
 sci-form batch molecules.smi | jq -c 'select(.error == null)'
 ```
 
-### Convert batch to XYZ file
-
-```bash
-sci-form batch molecules.smi -f xyz > all_conformers.xyz
-```
-
-### Get statistics
+### Get batch statistics
 
 ```bash
 sci-form batch molecules.smi | jq -s '{
@@ -170,8 +234,23 @@ sci-form batch molecules.smi | jq -s '{
 }'
 ```
 
+### Convert batch to XYZ
+
+```bash
+sci-form batch molecules.smi -f xyz > all_conformers.xyz
+```
+
+### Compute charges for all molecules in a file
+
+```bash
+while read smiles; do
+  sci-form charges "$smiles"
+done < molecules.smi | jq -s '.'
+```
+
 ### Parallel processing with GNU Parallel
 
 ```bash
 cat huge_set.smi | parallel -j8 --pipe -N100 sci-form batch /dev/stdin > results.json
 ```
+
