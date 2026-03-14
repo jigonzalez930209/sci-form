@@ -6,8 +6,6 @@
 //! - Numerical robustness (edge cases, cross-module consistency)
 //! - Round-trip fidelity (export → import identity)
 
-use sci_form;
-
 // ═══════════════════════════════════════════════════════════════════════════
 // C2: Population Analysis — Mulliken & Löwdin
 // ═══════════════════════════════════════════════════════════════════════════
