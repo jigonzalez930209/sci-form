@@ -1,5 +1,3 @@
-use sci_form;
-
 #[test]
 fn test_population_water() {
     let elements = vec![8u8, 1, 1];
@@ -111,7 +109,7 @@ fn test_esp_water() {
     let elements = vec![8u8, 1, 1];
     let positions = vec![[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
     let grid = sci_form::compute_esp(&elements, &positions, 0.5, 2.0).unwrap();
-    assert!(grid.values.len() > 0);
+    assert!(!grid.values.is_empty());
     assert_eq!(grid.values.len(), grid.dims[0] * grid.dims[1] * grid.dims[2]);
     // No NaN values
     assert!(grid.values.iter().all(|v| v.is_finite()));
