@@ -3,7 +3,11 @@ use std::io::{self, BufRead, Write};
 use std::time::Instant;
 
 #[derive(Parser)]
-#[command(name = "sci-form", version, about = "3D molecular conformer generation")]
+#[command(
+    name = "sci-form",
+    version,
+    about = "3D molecular conformer generation"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -79,7 +83,10 @@ fn format_sdf(result: &sci_form::ConformerResult) -> String {
     let nb = result.bonds.len();
     let mut out = format!("{}\n  sci-form\n\n", result.smiles);
     // Counts line: V2000
-    out.push_str(&format!("{:3}{:3}  0  0  0  0  0  0  0  0999 V2000\n", n, nb));
+    out.push_str(&format!(
+        "{:3}{:3}  0  0  0  0  0  0  0  0999 V2000\n",
+        n, nb
+    ));
     // Atom block
     for i in 0..n {
         let x = result.coords[i * 3];
@@ -154,11 +161,10 @@ fn main() {
         } => {
             let lines: Vec<String> = match input {
                 Some(path) => {
-                    let content = std::fs::read_to_string(&path)
-                        .unwrap_or_else(|e| {
-                            eprintln!("Error reading {}: {}", path, e);
-                            std::process::exit(1);
-                        });
+                    let content = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+                        eprintln!("Error reading {}: {}", path, e);
+                        std::process::exit(1);
+                    });
                     content
                         .lines()
                         .filter(|l| !l.trim().is_empty())
@@ -179,7 +185,15 @@ fn main() {
 
             let total = lines.len();
             let start = Instant::now();
-            eprintln!("Processing {} molecules ({} threads)...", total, if threads == 0 { "auto".to_string() } else { threads.to_string() });
+            eprintln!(
+                "Processing {} molecules ({} threads)...",
+                total,
+                if threads == 0 {
+                    "auto".to_string()
+                } else {
+                    threads.to_string()
+                }
+            );
 
             let smiles_refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
             let config = sci_form::ConformerConfig {
@@ -192,12 +206,10 @@ fn main() {
 
             // Write output
             let mut writer: Box<dyn Write> = match output {
-                Some(path) => Box::new(
-                    std::fs::File::create(&path).unwrap_or_else(|e| {
-                        eprintln!("Error creating {}: {}", path, e);
-                        std::process::exit(1);
-                    }),
-                ),
+                Some(path) => Box::new(std::fs::File::create(&path).unwrap_or_else(|e| {
+                    eprintln!("Error creating {}: {}", path, e);
+                    std::process::exit(1);
+                })),
                 None => Box::new(io::stdout()),
             };
 

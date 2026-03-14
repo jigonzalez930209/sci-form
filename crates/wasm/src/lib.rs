@@ -12,9 +12,7 @@ pub fn version() -> String {
 #[wasm_bindgen]
 pub fn embed(smiles: &str, seed: u32) -> String {
     let result = sci_form::embed(smiles, seed as u64);
-    serde_json::to_string(&result).unwrap_or_else(|e| {
-        format!("{{\"error\":\"{}\"}}", e)
-    })
+    serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
 }
 
 /// Generate 3D coordinates only (compact format).
@@ -53,9 +51,7 @@ pub fn embed_batch(smiles_list: &str, seed: u32) -> String {
         num_threads: 0,
     };
     let results = sci_form::embed_batch(&lines, &config);
-    serde_json::to_string(&results).unwrap_or_else(|e| {
-        format!("[{{\"error\":\"{}\"}}]", e)
-    })
+    serde_json::to_string(&results).unwrap_or_else(|e| format!("[{{\"error\":\"{}\"}}]", e))
 }
 
 /// Parse a SMILES string and return molecular info (no 3D).

@@ -89,10 +89,7 @@ fn embed(smiles: &str, seed: u64) -> ConformerResult {
 #[pyo3(signature = (smiles_list, seed=42, num_threads=0))]
 fn embed_batch(smiles_list: Vec<String>, seed: u64, num_threads: usize) -> Vec<ConformerResult> {
     let refs: Vec<&str> = smiles_list.iter().map(|s| s.as_str()).collect();
-    let config = sci_form_core::ConformerConfig {
-        seed,
-        num_threads,
-    };
+    let config = sci_form_core::ConformerConfig { seed, num_threads };
     sci_form_core::embed_batch(&refs, &config)
         .into_iter()
         .map(|r| r.into())
