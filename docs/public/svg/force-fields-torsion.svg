@@ -1,0 +1,29 @@
+<svg viewBox="0 0 550 220" xmlns="http://www.w3.org/2000/svg" style="max-width:520px;margin:2em auto;display:block;">
+  <g font-family="system-ui,sans-serif">
+    <!-- Axes -->
+    <line x1="60" y1="180" x2="520" y2="180" stroke="#94a3b8" stroke-width="1"/>
+    <line x1="60" y1="180" x2="60" y2="20" stroke="#94a3b8" stroke-width="1"/>
+    <text x="50" y="22" text-anchor="end" fill="#334155" font-weight="600" font-size="11">E</text>
+
+    <!-- X labels -->
+    <text x="60" y="198" text-anchor="middle" fill="#64748b" font-size="10">-180°</text>
+    <text x="175" y="198" text-anchor="middle" fill="#64748b" font-size="10">-90°</text>
+    <text x="290" y="198" text-anchor="middle" fill="#64748b" font-size="10">0°</text>
+    <text x="405" y="198" text-anchor="middle" fill="#64748b" font-size="10">90°</text>
+    <text x="520" y="198" text-anchor="middle" fill="#64748b" font-size="10">180°</text>
+
+    <!-- Typical V3 torsion (SP3-SP3, 3-fold) -->
+    <path d="M 60 100 C 98 40 137 40 175 100 C 213 160 252 160 290 100 C 328 40 367 40 405 100 C 443 160 482 160 520 100" fill="none" stroke="#2563eb" stroke-width="2"/>
+    <text x="470" y="90" fill="#2563eb" font-size="11" font-weight="600">V₃ (SP3-SP3)</text>
+
+    <!-- Typical V2 torsion (amide, 2-fold) -->
+    <path d="M 60 40 C 137 175 213 175 290 40 C 367 175 443 175 520 40" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 3"/>
+    <text x="470" y="40" fill="#ef4444" font-size="11" font-weight="600">V₂ (amide)</text>
+
+    <!-- Minima markers -->
+    <circle cx="175" cy="175" r="3" fill="#2563eb"/>
+    <circle cx="405" cy="175" r="3" fill="#2563eb"/>
+    <text x="175" y="215" text-anchor="middle" fill="#2563eb" font-size="9">gauche</text>
+    <text x="290" y="215" text-anchor="middle" fill="#ef4444" font-size="9">trans</text>
+  </g>
+</svg>

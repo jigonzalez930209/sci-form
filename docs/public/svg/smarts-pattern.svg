@@ -1,0 +1,32 @@
+<svg viewBox="0 0 650 120" xmlns="http://www.w3.org/2000/svg" style="max-width:620px;margin:2em auto;display:block;">
+  <defs>
+    <marker id="sarr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <g font-family="system-ui,sans-serif" font-size="12">
+    <rect x="10" y="25" width="130" height="50" rx="6" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="75" y="45" text-anchor="middle" fill="#1e3a5f" font-weight="600">Molecule</text>
+    <text x="75" y="62" text-anchor="middle" fill="#64748b" font-size="10">graph + rings</text>
+
+    <line x1="145" y1="50" x2="175" y2="50" stroke="#2563eb" stroke-width="1.5" marker-end="url(#sarr)"/>
+
+    <rect x="180" y="25" width="150" height="50" rx="6" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
+    <text x="255" y="45" text-anchor="middle" fill="#713f12" font-weight="600">837 SMARTS Patterns</text>
+    <text x="255" y="62" text-anchor="middle" fill="#64748b" font-size="10">parse → match</text>
+
+    <line x1="335" y1="50" x2="365" y2="50" stroke="#2563eb" stroke-width="1.5" marker-end="url(#sarr)"/>
+
+    <rect x="370" y="25" width="130" height="50" rx="6" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
+    <text x="435" y="45" text-anchor="middle" fill="#14532d" font-weight="600">Torsion Map</text>
+    <text x="435" y="62" text-anchor="middle" fill="#64748b" font-size="10">bond → V₁..V₆</text>
+
+    <line x1="505" y1="50" x2="535" y2="50" stroke="#2563eb" stroke-width="1.5" marker-end="url(#sarr)"/>
+
+    <rect x="540" y="25" width="100" height="50" rx="6" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
+    <text x="590" y="45" text-anchor="middle" fill="#14532d" font-weight="600">ETKDG FF</text>
+    <text x="590" y="62" text-anchor="middle" fill="#64748b" font-size="10">forces</text>
+
+    <text x="325" y="100" text-anchor="middle" fill="#94a3b8" font-size="10">First-match-wins per rotatable bond</text>
+  </g>
+</svg>

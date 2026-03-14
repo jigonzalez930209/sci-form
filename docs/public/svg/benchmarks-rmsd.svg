@@ -1,0 +1,68 @@
+<svg viewBox="0 0 700 470" xmlns="http://www.w3.org/2000/svg" style="max-width:680px;margin:2em auto;display:block;">
+  <g font-family="system-ui,sans-serif" font-size="11">
+    <text x="350" y="15" text-anchor="middle" fill="#1e3a5f" font-weight="700" font-size="14">Embed Success Rate by Category</text>
+
+    <!-- Axis -->
+    <line x1="150" y1="30" x2="150" y2="400" stroke="#e2e8f0" stroke-width="1"/>
+    <line x1="150" y1="400" x2="680" y2="400" stroke="#e2e8f0" stroke-width="1"/>
+
+    <!-- 100% marker -->
+    <line x1="150" y1="30" x2="680" y2="30" stroke="#e2e8f0" stroke-width="0.5" stroke-dasharray="3 2"/>
+    <text x="145" y="35" text-anchor="end" fill="#64748b" font-size="9">100%</text>
+
+    <!-- 50% marker -->
+    <line x1="150" y1="215" x2="680" y2="215" stroke="#e2e8f0" stroke-width="0.5" stroke-dasharray="3 2"/>
+    <text x="145" y="220" text-anchor="end" fill="#64748b" font-size="9">50%</text>
+
+    <!-- Bars — representative categories -->
+    <!-- bar height: 100% = 370px (y=30 to y=400) -->
+    <rect x="160" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="169" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,169,420)">simple</text>
+
+    <rect x="185" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="194" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,194,420)">alcohol</text>
+
+    <rect x="210" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="219" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,219,420)">amine</text>
+
+    <rect x="235" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="244" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,244,420)">aromatic</text>
+
+    <rect x="260" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="269" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,269,420)">halogen</text>
+
+    <rect x="285" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="294" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,294,420)">n-heterocycle</text>
+
+    <rect x="310" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="319" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,319,420)">drug</text>
+
+    <rect x="335" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="344" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,344,420)">stereo</text>
+
+    <rect x="360" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="369" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,369,420)">fused</text>
+
+    <rect x="385" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="394" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,394,420)">bridged</text>
+
+    <rect x="410" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="419" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,419,420)">macrocycle</text>
+
+    <rect x="435" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="444" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,444,420)">silicon</text>
+
+    <rect x="460" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="469" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,469,420)">boron</text>
+
+    <rect x="485" y="30" width="18" height="370" fill="#10b981" rx="2"/>
+    <text x="494" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,494,420)">selenium</text>
+
+    <!-- Partial success categories -->
+    <rect x="510" y="215" width="18" height="185" fill="#ca8a04" rx="2"/>
+    <text x="519" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,519,420)">polycyclic</text>
+
+    <rect x="535" y="215" width="18" height="185" fill="#ca8a04" rx="2"/>
+    <text x="544" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,544,420)">strained</text>
+  </g>
+</svg>
