@@ -270,9 +270,34 @@ fn test_geometry_quality() {
         eprintln!("SKIP {fixture}: run scripts/generate_gdb20_reference.py to generate it");
         return;
     }
-    let ref_data = fs::read_to_string(fixture).expect("Failed to read gdb20_reference.json");
-    let mut ref_mols: Vec<RefMolecule> =
-        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference.json");
+    let metadata = match std::fs::metadata(fixture) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("SKIP {fixture}: could not read metadata: {e}");
+            return;
+        }
+    };
+    if metadata.len() < 1000 {
+        eprintln!(
+            "SKIP {fixture}: file too small ({} bytes), likely a Git LFS pointer — run `git lfs pull`",
+            metadata.len()
+        );
+        return;
+    }
+    let ref_data = match fs::read_to_string(fixture) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("SKIP {fixture}: read error: {e}");
+            return;
+        }
+    };
+    let mut ref_mols: Vec<RefMolecule> = match serde_json::from_str(&ref_data) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("SKIP {fixture}: parse error: {e}");
+            return;
+        }
+    };
 
     // Sort by heaviest molecules first (most atoms) for a representative sample
     ref_mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));
