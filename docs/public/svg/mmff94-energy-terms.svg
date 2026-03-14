@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 180" width="760" height="180" font-family="system-ui, sans-serif">
+  <rect x="0" y="0" width="760" height="180" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <!-- Background -->
   <rect width="760" height="180" fill="#f8fafc" rx="8"/>
 

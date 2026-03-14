@@ -1,4 +1,6 @@
 <svg viewBox="0 0 550 250" xmlns="http://www.w3.org/2000/svg" style="max-width:520px;margin:2em auto;display:block;">
+  <rect x="0" y="0" width="550" height="250" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <g font-family="system-ui,sans-serif">
     <!-- Axes -->
     <line x1="80" y1="200" x2="500" y2="200" stroke="#94a3b8" stroke-width="1"/>

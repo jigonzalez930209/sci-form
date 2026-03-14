@@ -1,4 +1,6 @@
 <svg viewBox="0 0 620 320" xmlns="http://www.w3.org/2000/svg" style="max-width:600px;margin:2em auto;display:block;">
+  <rect x="0" y="0" width="620" height="320" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <g font-family="system-ui,sans-serif">
     <!-- Matrix grid -->
     <rect x="100" y="40" width="250" height="250" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>

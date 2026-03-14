@@ -1,4 +1,6 @@
 <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg" style="max-width:680px;margin:2em auto;display:block;">
+  <rect x="0" y="0" width="720" height="380" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <g font-family="system-ui,sans-serif">
     <!-- Title -->
     <text x="360" y="30" text-anchor="middle" fill="#1e293b" font-size="16" font-weight="700">Arrow Columnar Memory Layout</text>

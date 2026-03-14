@@ -1,4 +1,6 @@
 <svg viewBox="0 0 400 262" xmlns="http://www.w3.org/2000/svg" style="max-width:380px;margin:2em auto;display:block;">
+  <rect x="0" y="0" width="400" height="262" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
   <g font-family="system-ui,sans-serif">
     <!-- Benzene ring -->
     <line x1="200" y1="40" x2="260" y2="75" stroke="#2563eb" stroke-width="2"/>
