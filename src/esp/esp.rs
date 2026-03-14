@@ -61,11 +61,7 @@ pub fn compute_esp_grid(
         }
     }
 
-    let origin = [
-        min[0] - padding,
-        min[1] - padding,
-        min[2] - padding,
-    ];
+    let origin = [min[0] - padding, min[1] - padding, min[2] - padding];
     let dims = [
         ((max[0] - min[0] + 2.0 * padding) / spacing).ceil() as usize + 1,
         ((max[1] - min[1] + 2.0 * padding) / spacing).ceil() as usize + 1,
@@ -192,7 +188,12 @@ pub fn compute_esp_grid_parallel(
         })
         .collect();
 
-    EspGrid { origin, spacing, dims, values }
+    EspGrid {
+        origin,
+        spacing,
+        dims,
+        values,
+    }
 }
 
 /// Map an ESP value to an RGB color.
@@ -271,9 +272,21 @@ pub fn export_cube<W: Write>(
 
     // Axis vectors (orthogonal, spacing in bohr)
     let sp = grid.spacing * ANG_TO_BOHR;
-    writeln!(writer, "{:5} {:12.6} {:12.6} {:12.6}", grid.dims[0], sp, 0.0, 0.0)?;
-    writeln!(writer, "{:5} {:12.6} {:12.6} {:12.6}", grid.dims[1], 0.0, sp, 0.0)?;
-    writeln!(writer, "{:5} {:12.6} {:12.6} {:12.6}", grid.dims[2], 0.0, 0.0, sp)?;
+    writeln!(
+        writer,
+        "{:5} {:12.6} {:12.6} {:12.6}",
+        grid.dims[0], sp, 0.0, 0.0
+    )?;
+    writeln!(
+        writer,
+        "{:5} {:12.6} {:12.6} {:12.6}",
+        grid.dims[1], 0.0, sp, 0.0
+    )?;
+    writeln!(
+        writer,
+        "{:5} {:12.6} {:12.6} {:12.6}",
+        grid.dims[2], 0.0, 0.0, sp
+    )?;
 
     // Atom lines
     for i in 0..n_atoms {
@@ -398,11 +411,7 @@ mod tests {
     fn water_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![8, 1, 1],
-            vec![
-                [0.0, 0.0, 0.0],
-                [0.757, 0.586, 0.0],
-                [-0.757, 0.586, 0.0],
-            ],
+            vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]],
         )
     }
 
@@ -414,7 +423,10 @@ mod tests {
 
         let grid = compute_esp_grid(&elems, &pos, &pop.mulliken_charges, 0.5, 2.0);
 
-        assert_eq!(grid.values.len(), grid.dims[0] * grid.dims[1] * grid.dims[2]);
+        assert_eq!(
+            grid.values.len(),
+            grid.dims[0] * grid.dims[1] * grid.dims[2]
+        );
         assert!(grid.dims[0] > 0 && grid.dims[1] > 0 && grid.dims[2] > 0);
     }
 
@@ -452,11 +464,7 @@ mod tests {
                 phi += charges[a] / (dist * ANG_TO_BOHR);
             }
         }
-        assert!(
-            phi < 0.0,
-            "ESP near oxygen should be negative, got {}",
-            phi
-        );
+        assert!(phi < 0.0, "ESP near oxygen should be negative, got {}", phi);
     }
 
     #[test]
