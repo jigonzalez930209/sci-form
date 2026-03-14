@@ -1,7 +1,7 @@
+pub mod assembly;
 pub mod cell;
 pub mod sbu;
-pub mod assembly;
 
+pub use assembly::*;
 pub use cell::*;
 pub use sbu::*;
-pub use assembly::*;
