@@ -1,0 +1,49 @@
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" style="max-width:680px;margin:2em auto;display:block;">
+  <defs>
+    <marker id="lowArrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#0891b2"/>
+    </marker>
+  </defs>
+
+  <g font-family="system-ui,sans-serif">
+    <!-- Title -->
+    <text x="360" y="30" text-anchor="middle" fill="#1e293b" font-size="16" font-weight="700">Löwdin Population Analysis</text>
+
+    <!-- Step 1: S^-1/2 -->
+    <rect x="20" y="55" width="200" height="90" rx="8" fill="#ecfeff" stroke="#0891b2" stroke-width="1.5"/>
+    <text x="120" y="78" text-anchor="middle" fill="#0e7490" font-weight="600" font-size="13">Orthogonalization</text>
+    <text x="120" y="100" text-anchor="middle" fill="#64748b" font-size="12">Diagonalize S = UΛUᵀ</text>
+    <text x="120" y="118" text-anchor="middle" fill="#64748b" font-size="12">S⁻¹ᐟ² = U Λ⁻¹ᐟ² Uᵀ</text>
+    <text x="120" y="134" text-anchor="middle" fill="#94a3b8" font-size="10">symmetric orthogonalizer</text>
+
+    <!-- Arrow -->
+    <line x1="230" y1="100" x2="272" y2="100" stroke="#0891b2" stroke-width="1.5" marker-end="url(#lowArrow)"/>
+
+    <!-- Step 2: Transform P -->
+    <rect x="280" y="55" width="180" height="90" rx="8" fill="#ecfeff" stroke="#0891b2" stroke-width="1.5"/>
+    <text x="370" y="78" text-anchor="middle" fill="#0e7490" font-weight="600" font-size="13">Löwdin Density</text>
+    <text x="370" y="100" text-anchor="middle" fill="#64748b" font-size="12">P̃ = S⁻¹ᐟ² P S⁻¹ᐟ²</text>
+    <text x="370" y="118" text-anchor="middle" fill="#64748b" font-size="11">basis-set orthogonalized</text>
+    <text x="370" y="134" text-anchor="middle" fill="#94a3b8" font-size="10">rotationally invariant</text>
+
+    <!-- Arrow -->
+    <line x1="470" y1="100" x2="512" y2="100" stroke="#0891b2" stroke-width="1.5" marker-end="url(#lowArrow)"/>
+
+    <!-- Step 3: Charge -->
+    <rect x="520" y="55" width="180" height="90" rx="8" fill="#cffafe" stroke="#0891b2" stroke-width="2"/>
+    <text x="610" y="78" text-anchor="middle" fill="#0e7490" font-weight="700" font-size="13">Löwdin Charge</text>
+    <text x="610" y="100" text-anchor="middle" fill="#155e75" font-size="12" font-weight="600">qₐ = Zₐ − Σᵤ∈ₐ P̃ᵤᵤ</text>
+    <text x="610" y="118" text-anchor="middle" fill="#64748b" font-size="11">less basis-dependent</text>
+    <text x="610" y="134" text-anchor="middle" fill="#94a3b8" font-size="10">always 0 ≤ P̃ᵤᵤ ≤ 2</text>
+
+    <!-- Comparison box -->
+    <rect x="20" y="175" width="680" height="100" rx="10" fill="#f0fdfa" stroke="#99f6e4" stroke-width="1"/>
+    <text x="40" y="200" fill="#0e7490" font-weight="700" font-size="14">Mulliken vs Löwdin</text>
+
+    <text x="40" y="225" fill="#1e293b" font-size="12" font-weight="600">Mulliken:</text>
+    <text x="120" y="225" fill="#64748b" font-size="12">qₐ = Zₐ − Σᵤ∈ₐ (PS)ᵤᵤ — splits overlap 50/50 between atoms, basis-sensitive</text>
+
+    <text x="40" y="250" fill="#1e293b" font-size="12" font-weight="600">Löwdin:</text>
+    <text x="120" y="250" fill="#64748b" font-size="12">qₐ = Zₐ − Σᵤ∈ₐ (S⁻¹ᐟ²PS⁻¹ᐟ²)ᵤᵤ — orthogonalizes first, more stable</text>
+  </g>
+</svg>
