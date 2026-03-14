@@ -1,9 +1,9 @@
 use nalgebra::{DMatrix, Matrix3};
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
 use sci_form::graph::Molecule;
 use std::fs;
-use std::io::{BufReader, BufRead};
-use rand::SeedableRng;
-use rand::seq::SliceRandom;
+use std::io::{BufRead, BufReader};
 
 mod oracle {
     use serde::Deserialize;
@@ -22,10 +22,16 @@ mod oracle {
     }
 }
 
-fn calculate_rmsd_icp_refined(coords: &DMatrix<f32>, reference: &DMatrix<f32>, _elements: &[u8]) -> f32 {
+fn calculate_rmsd_icp_refined(
+    coords: &DMatrix<f32>,
+    reference: &DMatrix<f32>,
+    _elements: &[u8],
+) -> f32 {
     let n = coords.nrows();
-    if n == 0 { return 0.0; }
-    
+    if n == 0 {
+        return 0.0;
+    }
+
     // Simple element-based matching: group atoms by element type
     // and match by element, then by distance
     let mut c1 = nalgebra::Vector3::zeros();
@@ -36,7 +42,7 @@ fn calculate_rmsd_icp_refined(coords: &DMatrix<f32>, reference: &DMatrix<f32>, _
     }
     c1 /= n as f32;
     c2 /= n as f32;
-    
+
     // Center coordinates
     let mut coords_centered = DMatrix::from_element(n, 3, 0.0);
     let mut ref_centered = DMatrix::from_element(n, 3, 0.0);
@@ -48,15 +54,23 @@ fn calculate_rmsd_icp_refined(coords: &DMatrix<f32>, reference: &DMatrix<f32>, _
         ref_centered[(i, 1)] = reference[(i, 1)] - c2[1];
         ref_centered[(i, 2)] = reference[(i, 2)] - c2[2];
     }
-    
+
     // Kabsch SVD
     let mut h = Matrix3::zeros();
     for i in 0..n {
-        let p = nalgebra::Vector3::new(coords_centered[(i, 0)], coords_centered[(i, 1)], coords_centered[(i, 2)]);
-        let q = nalgebra::Vector3::new(ref_centered[(i, 0)], ref_centered[(i, 1)], ref_centered[(i, 2)]);
+        let p = nalgebra::Vector3::new(
+            coords_centered[(i, 0)],
+            coords_centered[(i, 1)],
+            coords_centered[(i, 2)],
+        );
+        let q = nalgebra::Vector3::new(
+            ref_centered[(i, 0)],
+            ref_centered[(i, 1)],
+            ref_centered[(i, 2)],
+        );
         h += p * q.transpose();
     }
-    
+
     let svd = h.svd(true, true);
     if let (Some(u), Some(vt)) = (svd.u, svd.v_t) {
         let det = (u * vt).determinant();
@@ -70,7 +84,7 @@ fn calculate_rmsd_icp_refined(coords: &DMatrix<f32>, reference: &DMatrix<f32>, _
             return (sum / n as f32).sqrt();
         }
     }
-    
+
     // Direct Kabsch RMSD
     sci_form::forcefield::minimizer::calculate_rmsd_kabsch(&coords, &reference)
 }
@@ -90,13 +104,13 @@ fn main() {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default();
-    
+
     // Seleccionar 100 moléculas aleatorias
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut indices: Vec<usize> = (0..all_reference_mols.len()).collect();
     let _ = indices.shuffle(&mut rng);
     indices.truncate(100);
-    
+
     // Crear lista de SMILES a procesar
     let mut test_smiles: Vec<String> = Vec::new();
     for idx in &indices {
@@ -104,10 +118,13 @@ fn main() {
             test_smiles.push(smiles_list[*idx].clone());
         }
     }
-    
+
     // Crear mapa de reference para acceso rápido
-    let reference_map: std::collections::HashMap<String, &oracle::OracleMolecule> = 
-        all_reference_mols.iter().map(|m| (m.smiles.clone(), m)).collect();
+    let reference_map: std::collections::HashMap<String, &oracle::OracleMolecule> =
+        all_reference_mols
+            .iter()
+            .map(|m| (m.smiles.clone(), m))
+            .collect();
 
     let mut max_rmsd = 0.0;
     let mut avg_rmsd = 0.0;
@@ -120,9 +137,9 @@ fn main() {
             let mut bounds = sci_form::distgeom::calculate_bounds_matrix(&mol);
             sci_form::distgeom::triangle_smooth(&mut bounds);
             let smoothed = bounds;
-            
+
             let chiral_sets = sci_form::distgeom::identify_chiral_sets(&mol);
-            
+
             let params = sci_form::forcefield::FFParams {
                 kb: 2000.0,
                 k_theta: 1000.0,
@@ -132,15 +149,15 @@ fn main() {
                 k_chiral: 500.0,
                 k_vdw: 0.0,
             };
-            
+
             // Fast mode: 1 solo intento
             let seed = 42 + (smi.len() as u64 * 7);
             let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-            
+
             let dists = sci_form::distgeom::pick_etkdg_distances(&mut rng, &smoothed);
             let metric = sci_form::distgeom::compute_metric_matrix(&dists);
             let mut coords4d = sci_form::distgeom::generate_nd_coordinates(&mut rng, &metric, 4);
-            
+
             sci_form::forcefield::bounds_ff::minimize_bounds_lbfgs(
                 &mut coords4d,
                 &smoothed,
@@ -184,13 +201,23 @@ fn main() {
                         println!("DEBUG: CC#C | RMSD: {:.3} Å", rmsd);
                         println!("DEBUG CC#C Coords generated:");
                         for i in 0..n {
-                            println!("  Atom {}: ({:.3}, {:.3}, {:.3})", 
-                                i, coords3d[(i, 0)], coords3d[(i, 1)], coords3d[(i, 2)]);
+                            println!(
+                                "  Atom {}: ({:.3}, {:.3}, {:.3})",
+                                i,
+                                coords3d[(i, 0)],
+                                coords3d[(i, 1)],
+                                coords3d[(i, 2)]
+                            );
                         }
                         println!("DEBUG CC#C Reference coords:");
                         for i in 0..n {
-                            println!("  Atom {}: ({:.3}, {:.3}, {:.3})", 
-                                i, ref_coords[(i, 0)], ref_coords[(i, 1)], ref_coords[(i, 2)]);
+                            println!(
+                                "  Atom {}: ({:.3}, {:.3}, {:.3})",
+                                i,
+                                ref_coords[(i, 0)],
+                                ref_coords[(i, 1)],
+                                ref_coords[(i, 2)]
+                            );
                         }
                         let ana = sci_form::forcefield::gradients::compute_analytical_gradient(
                             &coords3d, &mol, &params, &smoothed,

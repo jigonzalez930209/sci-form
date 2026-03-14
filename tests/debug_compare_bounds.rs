@@ -54,7 +54,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -109,13 +113,23 @@ fn test_compare_bounds() {
         let hj = &ref_mol.atoms[j].hybridization;
         println!(
             "  ({:2},{:2}) e{}({})-e{}({}) [{}]: {:.6} ± {:.6}",
-            i, j, ei, hi, ej, hj, bond.order, mid, (upper - lower) / 2.0
+            i,
+            j,
+            ei,
+            hi,
+            ej,
+            hj,
+            bond.order,
+            mid,
+            (upper - lower) / 2.0
         );
     }
 
     // Load RDKit bounds
-    let rdkit_data: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string("/tmp/rdkit_bounds_phenylacetylene.json").unwrap()).unwrap();
+    let rdkit_data: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string("/tmp/rdkit_bounds_phenylacetylene.json").unwrap(),
+    )
+    .unwrap();
     let rdkit_bounds = rdkit_data["bounds"].as_array().unwrap();
 
     // Compare all pairs
@@ -134,7 +148,14 @@ fn test_compare_bounds() {
         let diff_upper = (our_upper - rdkit_upper).abs();
         let max_diff = diff_lower.max(diff_upper);
 
-        diffs.push((i, j, diff_lower, diff_upper, our_lower - rdkit_lower, our_upper - rdkit_upper));
+        diffs.push((
+            i,
+            j,
+            diff_lower,
+            diff_upper,
+            our_lower - rdkit_lower,
+            our_upper - rdkit_upper,
+        ));
     }
 
     // Sort by max difference
@@ -144,16 +165,19 @@ fn test_compare_bounds() {
         mb.partial_cmp(&ma).unwrap()
     });
 
-    println!("  {:>5} | {:>12} {:>12} | {:>12} {:>12} | {:>10} {:>10}",
-        "pair", "our_lower", "rdkit_lower", "our_upper", "rdkit_upper", "Δ_lower", "Δ_upper");
+    println!(
+        "  {:>5} | {:>12} {:>12} | {:>12} {:>12} | {:>10} {:>10}",
+        "pair", "our_lower", "rdkit_lower", "our_upper", "rdkit_upper", "Δ_lower", "Δ_upper"
+    );
     println!("  {}", "-".repeat(90));
 
     for (idx, &(i, j, dl, du, sl, su)) in diffs.iter().enumerate().take(30) {
         let ei = ref_mol.atoms[i].element;
         let ej = ref_mol.atoms[j].element;
-        let rdkit_entry = rdkit_bounds.iter().find(|e| {
-            e["i"].as_u64().unwrap() == i as u64 && e["j"].as_u64().unwrap() == j as u64
-        }).unwrap();
+        let rdkit_entry = rdkit_bounds
+            .iter()
+            .find(|e| e["i"].as_u64().unwrap() == i as u64 && e["j"].as_u64().unwrap() == j as u64)
+            .unwrap();
         let rl = rdkit_entry["lower"].as_f64().unwrap();
         let ru = rdkit_entry["upper"].as_f64().unwrap();
         let ol = bounds[(j, i)];
@@ -172,8 +196,9 @@ fn test_compare_bounds() {
     // Compare smoothed bounds
     println!("\n=== Smoothed Bounds Comparison (largest differences) ===");
     let rdkit_smoothed: serde_json::Value = serde_json::from_str(
-        &fs::read_to_string("/tmp/rdkit_bounds_phenylacetylene.json").unwrap()
-    ).unwrap();
+        &fs::read_to_string("/tmp/rdkit_bounds_phenylacetylene.json").unwrap(),
+    )
+    .unwrap();
     // Note: rdkit_bounds IS already smoothed (GetMoleculeBoundsMatrix returns smoothed)
 
     let mut sdiffs: Vec<(usize, usize, f64, f64)> = Vec::new();
@@ -198,8 +223,10 @@ fn test_compare_bounds() {
         mb.partial_cmp(&ma).unwrap()
     });
 
-    println!("  {:>5} | {:>12} {:>12} | {:>10} {:>10}",
-        "pair", "Δ_lower", "Δ_upper", "our_lower", "our_upper");
+    println!(
+        "  {:>5} | {:>12} {:>12} | {:>10} {:>10}",
+        "pair", "Δ_lower", "Δ_upper", "our_lower", "our_upper"
+    );
     println!("  {}", "-".repeat(65));
     for &(i, j, dl, du) in sdiffs.iter().take(30) {
         let ol = smoothed[(j, i)];

@@ -1,18 +1,37 @@
 //! Isolate WHICH torsion contribution has the gradient bug.
 //! Run:  cargo test --release --test test_grad_torsion_detail -- --nocapture
 
-use std::fs;
 use nalgebra::DMatrix;
 use serde::Deserialize;
+use std::fs;
 
 #[derive(Deserialize)]
-struct RefAtom { element: u8, formal_charge: i8, x: f64, y: f64, z: f64 }
+struct RefAtom {
+    element: u8,
+    formal_charge: i8,
+    x: f64,
+    y: f64,
+    z: f64,
+}
 #[derive(Deserialize)]
-struct RefBond { start: usize, end: usize, order: String }
+struct RefBond {
+    start: usize,
+    end: usize,
+    order: String,
+}
 #[derive(Deserialize)]
-struct RefTorsion { atoms: Vec<usize>, signs: Vec<i32>, v: Vec<f64> }
+struct RefTorsion {
+    atoms: Vec<usize>,
+    signs: Vec<i32>,
+    v: Vec<f64>,
+}
 #[derive(Deserialize)]
-struct RefMolecule { smiles: String, atoms: Vec<RefAtom>, bonds: Vec<RefBond>, torsions: Vec<RefTorsion> }
+struct RefMolecule {
+    smiles: String,
+    atoms: Vec<RefAtom>,
+    bonds: Vec<RefBond>,
+    torsions: Vec<RefTorsion>,
+}
 
 fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
     let mut mol = sci_form::graph::Molecule::new(&ref_mol.smiles);
@@ -25,7 +44,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization: sci_form::graph::Hybridization::Unknown,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -37,22 +60,39 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             _ => sci_form::graph::BondOrder::Single,
         };
         mol.add_bond(
-            node_indices[bond.start], node_indices[bond.end],
-            sci_form::graph::Bond { order, stereo: sci_form::graph::BondStereo::None },
+            node_indices[bond.start],
+            node_indices[bond.end],
+            sci_form::graph::Bond {
+                order,
+                stereo: sci_form::graph::BondStereo::None,
+            },
         );
     }
     mol
 }
 
 fn build_csd_torsions(t: &[RefTorsion]) -> Vec<sci_form::forcefield::etkdg_3d::M6TorsionContrib> {
-    t.iter().filter_map(|t| {
-        if t.atoms.len() < 4 || t.v.len() < 6 || t.signs.len() < 6 { return None; }
-        let mut signs = [0.0f64; 6]; let mut v = [0.0f64; 6];
-        for k in 0..6 { signs[k] = t.signs[k] as f64; v[k] = t.v[k]; }
-        Some(sci_form::forcefield::etkdg_3d::M6TorsionContrib {
-            i: t.atoms[0], j: t.atoms[1], k: t.atoms[2], l: t.atoms[3], signs, v,
+    t.iter()
+        .filter_map(|t| {
+            if t.atoms.len() < 4 || t.v.len() < 6 || t.signs.len() < 6 {
+                return None;
+            }
+            let mut signs = [0.0f64; 6];
+            let mut v = [0.0f64; 6];
+            for k in 0..6 {
+                signs[k] = t.signs[k] as f64;
+                v[k] = t.v[k];
+            }
+            Some(sci_form::forcefield::etkdg_3d::M6TorsionContrib {
+                i: t.atoms[0],
+                j: t.atoms[1],
+                k: t.atoms[2],
+                l: t.atoms[3],
+                signs,
+                v,
+            })
         })
-    }).collect()
+        .collect()
 }
 
 #[test]
@@ -78,20 +118,35 @@ fn test_torsion_gradient_detail() {
     let bounds = {
         let raw = sci_form::distgeom::calculate_bounds_matrix_opts(&mol, true);
         let mut b = raw.clone();
-        if sci_form::distgeom::triangle_smooth_tol(&mut b, 0.0) { b }
-        else {
+        if sci_form::distgeom::triangle_smooth_tol(&mut b, 0.0) {
+            b
+        } else {
             let raw2 = sci_form::distgeom::calculate_bounds_matrix_opts(&mol, false);
             let mut b2 = raw2.clone();
-            if sci_form::distgeom::triangle_smooth_tol(&mut b2, 0.0) { b2 }
-            else { let mut b3 = raw2; sci_form::distgeom::triangle_smooth_tol(&mut b3, 0.05); b3 }
+            if sci_form::distgeom::triangle_smooth_tol(&mut b2, 0.0) {
+                b2
+            } else {
+                let mut b3 = raw2;
+                sci_form::distgeom::triangle_smooth_tol(&mut b3, 0.05);
+                b3
+            }
         }
     };
 
     let ff_full = sci_form::forcefield::etkdg_3d::build_etkdg_3d_ff_with_torsions(
-        &mol, &coords_mat, &bounds, &csd_torsions,
+        &mol,
+        &coords_mat,
+        &bounds,
+        &csd_torsions,
     );
 
-    println!("\n=== mol[{}] {} (n={}, {} torsions) ===", mol_idx, ref_mol.smiles, n, ff_full.torsion_contribs.len());
+    println!(
+        "\n=== mol[{}] {} (n={}, {} torsions) ===",
+        mol_idx,
+        ref_mol.smiles,
+        n,
+        ff_full.torsion_contribs.len()
+    );
 
     // Test each torsion individually
     for (ti, tc) in ff_full.torsion_contribs.iter().enumerate() {
@@ -111,52 +166,81 @@ fn test_torsion_gradient_detail() {
         let anal = sci_form::forcefield::etkdg_3d::etkdg_3d_gradient_f64(&coords, n, &mol, &ff_one);
         let num = numerical_gradient(
             &|c| sci_form::forcefield::etkdg_3d::etkdg_3d_energy_f64(c, n, &mol, &ff_one),
-            &coords, eps,
+            &coords,
+            eps,
         );
 
         let mut worst_i = 0;
         let mut worst_rel = 0.0f64;
-        for i in 0..(n*3) {
+        for i in 0..(n * 3) {
             let denom = anal[i].abs().max(num[i].abs()).max(1e-8);
             let rel = (anal[i] - num[i]).abs() / denom;
-            if rel > worst_rel { worst_rel = rel; worst_i = i; }
+            if rel > worst_rel {
+                worst_rel = rel;
+                worst_i = i;
+            }
         }
 
         // Compute cos_phi for this torsion
         let c = |atom: usize, d: usize| -> f64 { coords[atom * 3 + d] };
-        let r1 = [c(tc.i,0)-c(tc.j,0), c(tc.i,1)-c(tc.j,1), c(tc.i,2)-c(tc.j,2)];
-        let r2 = [c(tc.k,0)-c(tc.j,0), c(tc.k,1)-c(tc.j,1), c(tc.k,2)-c(tc.j,2)];
-        let r3 = [c(tc.j,0)-c(tc.k,0), c(tc.j,1)-c(tc.k,1), c(tc.j,2)-c(tc.k,2)];
-        let r4 = [c(tc.l,0)-c(tc.k,0), c(tc.l,1)-c(tc.k,1), c(tc.l,2)-c(tc.k,2)];
-        let t1 = [r1[1]*r2[2]-r1[2]*r2[1], r1[2]*r2[0]-r1[0]*r2[2], r1[0]*r2[1]-r1[1]*r2[0]];
-        let t2 = [r3[1]*r4[2]-r3[2]*r4[1], r3[2]*r4[0]-r3[0]*r4[2], r3[0]*r4[1]-r3[1]*r4[0]];
-        let d1 = (t1[0]*t1[0]+t1[1]*t1[1]+t1[2]*t1[2]).sqrt();
-        let d2 = (t2[0]*t2[0]+t2[1]*t2[1]+t2[2]*t2[2]).sqrt();
+        let r1 = [
+            c(tc.i, 0) - c(tc.j, 0),
+            c(tc.i, 1) - c(tc.j, 1),
+            c(tc.i, 2) - c(tc.j, 2),
+        ];
+        let r2 = [
+            c(tc.k, 0) - c(tc.j, 0),
+            c(tc.k, 1) - c(tc.j, 1),
+            c(tc.k, 2) - c(tc.j, 2),
+        ];
+        let r3 = [
+            c(tc.j, 0) - c(tc.k, 0),
+            c(tc.j, 1) - c(tc.k, 1),
+            c(tc.j, 2) - c(tc.k, 2),
+        ];
+        let r4 = [
+            c(tc.l, 0) - c(tc.k, 0),
+            c(tc.l, 1) - c(tc.k, 1),
+            c(tc.l, 2) - c(tc.k, 2),
+        ];
+        let t1 = [
+            r1[1] * r2[2] - r1[2] * r2[1],
+            r1[2] * r2[0] - r1[0] * r2[2],
+            r1[0] * r2[1] - r1[1] * r2[0],
+        ];
+        let t2 = [
+            r3[1] * r4[2] - r3[2] * r4[1],
+            r3[2] * r4[0] - r3[0] * r4[2],
+            r3[0] * r4[1] - r3[1] * r4[0],
+        ];
+        let d1 = (t1[0] * t1[0] + t1[1] * t1[1] + t1[2] * t1[2]).sqrt();
+        let d2 = (t2[0] * t2[0] + t2[1] * t2[1] + t2[2] * t2[2]).sqrt();
         let cos_phi = if d1 > 1e-10 && d2 > 1e-10 {
-            let n1 = [t1[0]/d1, t1[1]/d1, t1[2]/d1];
-            let n2 = [t2[0]/d2, t2[1]/d2, t2[2]/d2];
-            (n1[0]*n2[0]+n1[1]*n2[1]+n1[2]*n2[2]).clamp(-1.0, 1.0)
-        } else { 999.0 };
-        let sin_phi = (1.0 - cos_phi*cos_phi).max(0.0).sqrt();
+            let n1 = [t1[0] / d1, t1[1] / d1, t1[2] / d1];
+            let n2 = [t2[0] / d2, t2[1] / d2, t2[2] / d2];
+            (n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2]).clamp(-1.0, 1.0)
+        } else {
+            999.0
+        };
+        let sin_phi = (1.0 - cos_phi * cos_phi).max(0.0).sqrt();
 
         let atom = worst_i / 3;
-        let dim = ["x","y","z"][worst_i % 3];
+        let dim = ["x", "y", "z"][worst_i % 3];
         if worst_rel > 1e-3 {
             println!("  [BAD] torsion[{}] ({}-{}-{}-{}) cos={:.6} sin={:.6} V=[{:.4},{:.4},{:.4},{:.4},{:.4},{:.4}] s=[{:.0},{:.0},{:.0},{:.0},{:.0},{:.0}]",
                 ti, tc.i, tc.j, tc.k, tc.l,
                 cos_phi, sin_phi,
                 tc.v[0], tc.v[1], tc.v[2], tc.v[3], tc.v[4], tc.v[5],
                 tc.signs[0], tc.signs[1], tc.signs[2], tc.signs[3], tc.signs[4], tc.signs[5]);
-            println!("        worst: atom {} {} A={:.6e} N={:.6e} rel={:.4e}", atom, dim, anal[worst_i], num[worst_i], worst_rel);
+            println!(
+                "        worst: atom {} {} A={:.6e} N={:.6e} rel={:.4e}",
+                atom, dim, anal[worst_i], num[worst_i], worst_rel
+            );
         }
     }
 }
 
-fn numerical_gradient(
-    energy_fn: &dyn Fn(&[f64]) -> f64,
-    coords: &[f64],
-    eps: f64,
-) -> Vec<f64> {
+fn numerical_gradient(energy_fn: &dyn Fn(&[f64]) -> f64, coords: &[f64], eps: f64) -> Vec<f64> {
     let dim = coords.len();
     let mut grad = vec![0.0f64; dim];
     for i in 0..dim {

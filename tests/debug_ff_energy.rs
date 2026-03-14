@@ -56,7 +56,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -133,10 +137,8 @@ fn pairwise_rmsd(coords: &nalgebra::DMatrix<f32>, ref_atoms: &[RefAtom]) -> f32 
 
 #[test]
 fn test_ff_energy_comparison() {
-    use sci_form::forcefield::etkdg_3d::{
-        build_etkdg_3d_ff_with_torsions, etkdg_3d_energy_f64,
-    };
     use sci_form::distgeom::bounds::{calculate_bounds_matrix_opts, triangle_smooth_tol};
+    use sci_form::forcefield::etkdg_3d::{build_etkdg_3d_ff_with_torsions, etkdg_3d_energy_f64};
 
     let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json")
         .expect("Run scripts/generate_gdb20_reference.py first");
@@ -157,7 +159,8 @@ fn test_ff_energy_comparison() {
     for (idx, ref_mol) in ref_mols.iter().enumerate() {
         let mol = build_mol_from_ref(ref_mol);
         let csd_torsions = build_csd_torsions(&ref_mol.torsions);
-        let result = sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
+        let result =
+            sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
         if let Ok(coords) = result {
             let rmsd = pairwise_rmsd(&coords, &ref_mol.atoms);
             if rmsd > 0.5 {
@@ -177,17 +180,16 @@ fn test_ff_energy_comparison() {
         let csd_torsions = build_csd_torsions(&ref_mol.torsions);
 
         // Generate our conformer
-        let our_coords = sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions)
-            .unwrap();
+        let our_coords =
+            sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions)
+                .unwrap();
 
         // Build reference coords (RDKit's)
-        let ref_coords_f32 = nalgebra::DMatrix::from_fn(n, 3, |i, j| {
-            match j {
-                0 => ref_mol.atoms[i].x,
-                1 => ref_mol.atoms[i].y,
-                2 => ref_mol.atoms[i].z,
-                _ => unreachable!(),
-            }
+        let ref_coords_f32 = nalgebra::DMatrix::from_fn(n, 3, |i, j| match j {
+            0 => ref_mol.atoms[i].x,
+            1 => ref_mol.atoms[i].y,
+            2 => ref_mol.atoms[i].z,
+            _ => unreachable!(),
         });
 
         // Build bounds matrix (same as in pipeline)
@@ -210,21 +212,43 @@ fn test_ff_energy_comparison() {
         };
 
         // Build 3D FF using OUR coordinates (this is what the pipeline does)
-        let ff_ours = build_etkdg_3d_ff_with_torsions(&mol, &our_coords.map(|v| v as f64), &bounds, &csd_torsions);
+        let ff_ours = build_etkdg_3d_ff_with_torsions(
+            &mol,
+            &our_coords.map(|v| v as f64),
+            &bounds,
+            &csd_torsions,
+        );
 
         // Build 3D FF using REFERENCE coordinates (this is what RDKit would do)
-        let ff_ref = build_etkdg_3d_ff_with_torsions(&mol, &ref_coords_f32.map(|v| v as f64), &bounds, &csd_torsions);
+        let ff_ref = build_etkdg_3d_ff_with_torsions(
+            &mol,
+            &ref_coords_f32.map(|v| v as f64),
+            &bounds,
+            &csd_torsions,
+        );
 
         // Evaluate our FF at our coordinates
-        let our_coords_f64: Vec<f64> = (0..n).flat_map(|i| {
-            vec![our_coords[(i, 0)] as f64, our_coords[(i, 1)] as f64, our_coords[(i, 2)] as f64]
-        }).collect();
+        let our_coords_f64: Vec<f64> = (0..n)
+            .flat_map(|i| {
+                vec![
+                    our_coords[(i, 0)] as f64,
+                    our_coords[(i, 1)] as f64,
+                    our_coords[(i, 2)] as f64,
+                ]
+            })
+            .collect();
         let e_our_at_our = etkdg_3d_energy_f64(&our_coords_f64, n, &mol, &ff_ours);
 
         // Evaluate our FF at reference coordinates
-        let ref_coords_f64: Vec<f64> = (0..n).flat_map(|i| {
-            vec![ref_mol.atoms[i].x as f64, ref_mol.atoms[i].y as f64, ref_mol.atoms[i].z as f64]
-        }).collect();
+        let ref_coords_f64: Vec<f64> = (0..n)
+            .flat_map(|i| {
+                vec![
+                    ref_mol.atoms[i].x as f64,
+                    ref_mol.atoms[i].y as f64,
+                    ref_mol.atoms[i].z as f64,
+                ]
+            })
+            .collect();
         let e_our_at_ref = etkdg_3d_energy_f64(&ref_coords_f64, n, &mol, &ff_ours);
 
         // Evaluate reference FF at reference coordinates
@@ -245,11 +269,18 @@ fn test_ff_energy_comparison() {
 
         println!("\n--- #{} SMILES={} RMSD={:.4} ---", rank + 1, smi, rmsd);
         println!("  Atoms: {}, Bonds: {}", n, mol.graph.edge_count());
-        println!("  CSD torsions: {}, Ring/chain torsions: {}", 
-                 csd_torsions.len(), n_torsions - csd_torsions.len());
+        println!(
+            "  CSD torsions: {}, Ring/chain torsions: {}",
+            csd_torsions.len(),
+            n_torsions - csd_torsions.len()
+        );
         println!("  Inversion contribs: {}", n_inversions);
-        println!("  Dist constraints: {} (approx {} bond + {} other)", 
-                 n_dist, n_bond_constraints, n_dist - n_bond_constraints);
+        println!(
+            "  Dist constraints: {} (approx {} bond + {} other)",
+            n_dist,
+            n_bond_constraints,
+            n_dist - n_bond_constraints
+        );
         println!("  Angle constraints: {}", n_angles);
         println!("  FF(ours) @ our coords:   {:.6}", e_our_at_our);
         println!("  FF(ours) @ ref coords:   {:.6}", e_our_at_ref);
@@ -257,7 +288,7 @@ fn test_ff_energy_comparison() {
         println!("  FF(ref)  @ our coords:   {:.6}", e_ref_at_our);
 
         // The key comparison:
-        // If e_our_at_our < e_our_at_ref: our optimizer found a lower-energy state 
+        // If e_our_at_our < e_our_at_ref: our optimizer found a lower-energy state
         //   (for our FF). The FF landscape differs from RDKit's.
         // If e_our_at_our > e_our_at_ref: our optimizer missed a better minimum in
         //   our own FF landscape. Optimizer bug.

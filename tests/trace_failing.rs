@@ -4,10 +4,8 @@
 
 use nalgebra::DMatrix;
 use sci_form::distgeom::{
-    calculate_bounds_matrix_opts, triangle_smooth_tol,
-    identify_chiral_sets, identify_tetrahedral_centers,
-    pick_rdkit_distances, compute_initial_coords_rdkit,
-    MinstdRand,
+    calculate_bounds_matrix_opts, compute_initial_coords_rdkit, identify_chiral_sets,
+    identify_tetrahedral_centers, pick_rdkit_distances, triangle_smooth_tol, MinstdRand,
 };
 use sci_form::forcefield::bounds_ff::minimize_bfgs_rdkit;
 use sci_form::forcefield::etkdg_3d::{build_etkdg_3d_ff_with_torsions, minimize_etkdg_3d_bfgs};
@@ -54,7 +52,9 @@ fn test_trace_failing_molecule() {
     let ref_data = std::fs::read_to_string("tests/fixtures/gdb20_reference.json")
         .expect("Reference file needed");
     let ref_mols: Vec<serde_json::Value> = serde_json::from_str(&ref_data).unwrap();
-    let ref_mol = ref_mols.iter().find(|m| m["smiles"].as_str().unwrap() == smiles)
+    let ref_mol = ref_mols
+        .iter()
+        .find(|m| m["smiles"].as_str().unwrap() == smiles)
         .expect("Molecule not found in reference");
 
     let mut mol = sci_form::graph::Molecule::new(smiles);
@@ -94,8 +94,14 @@ fn test_trace_failing_molecule() {
             "AROMATIC" => sci_form::graph::BondOrder::Aromatic,
             _ => sci_form::graph::BondOrder::Single,
         };
-        mol.add_bond(node_indices[start], node_indices[end],
-            sci_form::graph::Bond { order, stereo: sci_form::graph::BondStereo::None });
+        mol.add_bond(
+            node_indices[start],
+            node_indices[end],
+            sci_form::graph::Bond {
+                order,
+                stereo: sci_form::graph::BondStereo::None,
+            },
+        );
     }
 
     let n = mol.graph.node_count();
@@ -104,7 +110,11 @@ fn test_trace_failing_molecule() {
 
     // Load RDKit bounds
     let rdkit_bounds = load_npy_f64("/tmp/rdkit_bounds_fail.npy");
-    println!("RDKit bounds loaded: {}x{}", rdkit_bounds.nrows(), rdkit_bounds.ncols());
+    println!(
+        "RDKit bounds loaded: {}x{}",
+        rdkit_bounds.nrows(),
+        rdkit_bounds.ncols()
+    );
 
     // Our bounds
     let raw = calculate_bounds_matrix_opts(&mol, true);
@@ -140,15 +150,26 @@ fn test_trace_failing_molecule() {
         }
     }
     println!("\n=== Bounds Comparison ===");
-    println!("UB diffs (>1e-10): {} max: {:.2e}", ub_diff_count, max_ub_diff);
-    println!("LB diffs (>1e-10): {} max: {:.2e}", lb_diff_count, max_lb_diff);
+    println!(
+        "UB diffs (>1e-10): {} max: {:.2e}",
+        ub_diff_count, max_ub_diff
+    );
+    println!(
+        "LB diffs (>1e-10): {} max: {:.2e}",
+        lb_diff_count, max_lb_diff
+    );
 
     // Run our pipeline
     let chiral_sets = identify_chiral_sets(&mol);
     let _tet_centers = identify_tetrahedral_centers(&mol);
     let use_4d = !chiral_sets.is_empty();
     let embed_dim = if use_4d { 4 } else { 3 };
-    println!("\nChiral sets: {}, use_4d: {}, embed_dim: {}", chiral_sets.len(), use_4d, embed_dim);
+    println!(
+        "\nChiral sets: {}, use_4d: {}, embed_dim: {}",
+        chiral_sets.len(),
+        use_4d,
+        embed_dim
+    );
 
     let mut rng = MinstdRand::new(42);
 
@@ -176,13 +197,22 @@ fn test_trace_failing_molecule() {
                     max_dist_diff = diff;
                 }
                 if dist_diff_count <= 5 {
-                    println!("  d({},{}) ours={:.12} rdkit_b={:.12} diff={:.2e}",
-                        i, j, dists[(i, j)], dists_from_rdkit_bounds[(i, j)], diff);
+                    println!(
+                        "  d({},{}) ours={:.12} rdkit_b={:.12} diff={:.2e}",
+                        i,
+                        j,
+                        dists[(i, j)],
+                        dists_from_rdkit_bounds[(i, j)],
+                        diff
+                    );
                 }
             }
         }
     }
-    println!("Total distance diffs: {} max: {:.2e}", dist_diff_count, max_dist_diff);
+    println!(
+        "Total distance diffs: {} max: {:.2e}",
+        dist_diff_count, max_dist_diff
+    );
 
     // Step 2: Compute metric matrix and eigen decomposition (to print eigenvalues)
     {
@@ -204,7 +234,11 @@ fn test_trace_failing_molecule() {
         for i in 0..n {
             let mut row_sum = 0.0f64;
             for j in 0..n {
-                let idx = if i >= j { i * (i + 1) / 2 + j } else { j * (j + 1) / 2 + i };
+                let idx = if i >= j {
+                    i * (i + 1) / 2 + j
+                } else {
+                    j * (j + 1) / 2 + i
+                };
                 row_sum += sq_packed[idx];
             }
             d0[i] = row_sum / n as f64 - sum_sq_all;
@@ -214,7 +248,11 @@ fn test_trace_failing_molecule() {
         for i in 0..n {
             let id = i * (i + 1) / 2;
             for j in 0..=i {
-                let sq_val = sq_packed[if i >= j { i * (i + 1) / 2 + j } else { j * (j + 1) / 2 + i }];
+                let sq_val = sq_packed[if i >= j {
+                    i * (i + 1) / 2 + j
+                } else {
+                    j * (j + 1) / 2 + i
+                }];
                 t_packed[id + j] = 0.5 * (d0[i] + d0[j] - sq_val);
             }
         }
@@ -223,15 +261,23 @@ fn test_trace_failing_molecule() {
         println!("\n=== Metric Matrix Diagnostics ===");
         println!("sum_sq_all = {:.10}", sum_sq_all);
         println!("eigen_seed = {}", eigen_seed);
-        println!("d0[0]={:.10}, d0[1]={:.10}, d0[2]={:.10}", d0[0], d0[1], d0[2]);
-        println!("t_packed[46]={:.10} t_packed[47]={:.10}", t_packed[46], t_packed[47]);
+        println!(
+            "d0[0]={:.10}, d0[1]={:.10}, d0[2]={:.10}",
+            d0[0], d0[1], d0[2]
+        );
+        println!(
+            "t_packed[46]={:.10} t_packed[47]={:.10}",
+            t_packed[46], t_packed[47]
+        );
 
         let result = sci_form::distgeom::power_eigen_solver(3, &mut t_packed, n, eigen_seed);
         match result {
             Some((eigenvalues, eigenvectors)) => {
                 for (i, ev) in eigenvalues.iter().enumerate() {
-                    println!("  λ{} = {:.10}  v[0..3] = [{:.10}, {:.10}, {:.10}]",
-                        i, ev, eigenvectors[i][0], eigenvectors[i][1], eigenvectors[i][2]);
+                    println!(
+                        "  λ{} = {:.10}  v[0..3] = [{:.10}, {:.10}, {:.10}]",
+                        i, ev, eigenvectors[i][0], eigenvectors[i][1], eigenvectors[i][2]
+                    );
                 }
             }
             None => println!("  Power iteration FAILED!"),
@@ -249,8 +295,13 @@ fn test_trace_failing_molecule() {
     };
     println!("\n=== Initial Coordinates (first 5 atoms) ===");
     for i in 0..n.min(5) {
-        println!("  {}: ({:.8}, {:.8}, {:.8})",
-            i, coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
+        println!(
+            "  {}: ({:.8}, {:.8}, {:.8})",
+            i,
+            coords[(i, 0)],
+            coords[(i, 1)],
+            coords[(i, 2)]
+        );
     }
 
     // Step 3: First minimization (bounds FF)
@@ -260,22 +311,39 @@ fn test_trace_failing_molecule() {
     let mut iters = 0;
     while need_more != 0 {
         need_more = minimize_bfgs_rdkit(
-            &mut coords, &bounds, &chiral_sets,
-            400, force_tol, basin, 0.1, 1.0,
+            &mut coords,
+            &bounds,
+            &chiral_sets,
+            400,
+            force_tol,
+            basin,
+            0.1,
+            1.0,
         );
         iters += 1;
     }
     println!("\n=== After Bounds FF (stage 1, {} rounds) ===", iters);
     for i in 0..n.min(5) {
-        println!("  {}: ({:.8}, {:.8}, {:.8})",
-            i, coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
+        println!(
+            "  {}: ({:.8}, {:.8}, {:.8})",
+            i,
+            coords[(i, 0)],
+            coords[(i, 1)],
+            coords[(i, 2)]
+        );
     }
 
     // Step 4: Check energy
     let e_total = sci_form::forcefield::bounds_ff::bounds_violation_energy_basin(
-        &coords.map(|v| v as f32), &bounds, basin,
+        &coords.map(|v| v as f32),
+        &bounds,
+        basin,
     );
-    println!("Bounds energy: {:.6}, energy/atom: {:.6}", e_total, e_total / n as f32);
+    println!(
+        "Bounds energy: {:.6}, energy/atom: {:.6}",
+        e_total,
+        e_total / n as f32
+    );
 
     // Step 5: Second minimization if 4D
     if use_4d {
@@ -283,15 +351,26 @@ fn test_trace_failing_molecule() {
         let mut iters2 = 0;
         while need_more2 != 0 {
             need_more2 = minimize_bfgs_rdkit(
-                &mut coords, &bounds, &chiral_sets,
-                200, force_tol, basin, 1.0, 0.2,
+                &mut coords,
+                &bounds,
+                &chiral_sets,
+                200,
+                force_tol,
+                basin,
+                1.0,
+                0.2,
             );
             iters2 += 1;
         }
         println!("\n=== After Bounds FF (stage 2, {} rounds) ===", iters2);
         for i in 0..n.min(5) {
-            println!("  {}: ({:.8}, {:.8}, {:.8})",
-                i, coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
+            println!(
+                "  {}: ({:.8}, {:.8}, {:.8})",
+                i,
+                coords[(i, 0)],
+                coords[(i, 1)],
+                coords[(i, 2)]
+            );
         }
     }
 
@@ -299,8 +378,13 @@ fn test_trace_failing_molecule() {
     let coords3d = coords.columns(0, 3).into_owned();
     println!("\n=== After Drop to 3D (first 5) ===");
     for i in 0..n.min(5) {
-        println!("  {}: ({:.8}, {:.8}, {:.8})",
-            i, coords3d[(i, 0)], coords3d[(i, 1)], coords3d[(i, 2)]);
+        println!(
+            "  {}: ({:.8}, {:.8}, {:.8})",
+            i,
+            coords3d[(i, 0)],
+            coords3d[(i, 1)],
+            coords3d[(i, 2)]
+        );
     }
 
     // Step 7: ETKDG 3D FF minimization
@@ -308,16 +392,26 @@ fn test_trace_failing_molecule() {
     let refined = minimize_etkdg_3d_bfgs(&mol, &coords3d, &ff, 300, 1e-3);
     println!("\n=== After ETKDG 3D Minimization (first 5) ===");
     for i in 0..n.min(5) {
-        println!("  {}: ({:.8}, {:.8}, {:.8})",
-            i, refined[(i, 0)], refined[(i, 1)], refined[(i, 2)]);
+        println!(
+            "  {}: ({:.8}, {:.8}, {:.8})",
+            i,
+            refined[(i, 0)],
+            refined[(i, 1)],
+            refined[(i, 2)]
+        );
     }
 
     // Load RDKit final coordinates for comparison
     let rdkit_coords = load_npy_f64("/tmp/rdkit_coords_fail.npy");
     println!("\n=== RDKit Final Coordinates (first 5) ===");
     for i in 0..n.min(5) {
-        println!("  {}: ({:.8}, {:.8}, {:.8})",
-            i, rdkit_coords[(i, 0)], rdkit_coords[(i, 1)], rdkit_coords[(i, 2)]);
+        println!(
+            "  {}: ({:.8}, {:.8}, {:.8})",
+            i,
+            rdkit_coords[(i, 0)],
+            rdkit_coords[(i, 1)],
+            rdkit_coords[(i, 2)]
+        );
     }
 
     // Compute RMSD (with alignment)
@@ -331,11 +425,19 @@ fn test_trace_failing_molecule() {
     let mut rd_cy = 0.0f32;
     let mut rd_cz = 0.0f32;
     for i in 0..n {
-        our_cx += our_f32[(i, 0)]; our_cy += our_f32[(i, 1)]; our_cz += our_f32[(i, 2)];
-        rd_cx += rdkit_f32[(i, 0)]; rd_cy += rdkit_f32[(i, 1)]; rd_cz += rdkit_f32[(i, 2)];
+        our_cx += our_f32[(i, 0)];
+        our_cy += our_f32[(i, 1)];
+        our_cz += our_f32[(i, 2)];
+        rd_cx += rdkit_f32[(i, 0)];
+        rd_cy += rdkit_f32[(i, 1)];
+        rd_cz += rdkit_f32[(i, 2)];
     }
-    our_cx /= n as f32; our_cy /= n as f32; our_cz /= n as f32;
-    rd_cx /= n as f32; rd_cy /= n as f32; rd_cz /= n as f32;
+    our_cx /= n as f32;
+    our_cy /= n as f32;
+    our_cz /= n as f32;
+    rd_cx /= n as f32;
+    rd_cy /= n as f32;
+    rd_cz /= n as f32;
     let mut sum_sq = 0.0f32;
     for i in 0..n {
         let dx = (our_f32[(i, 0)] - our_cx) - (rdkit_f32[(i, 0)] - rd_cx);
@@ -344,5 +446,8 @@ fn test_trace_failing_molecule() {
         sum_sq += dx * dx + dy * dy + dz * dz;
     }
     let rmsd_no_rotation = (sum_sq / n as f32).sqrt();
-    println!("\nRMSD (centroid-only, no rotation): {:.4}", rmsd_no_rotation);
+    println!(
+        "\nRMSD (centroid-only, no rotation): {:.4}",
+        rmsd_no_rotation
+    );
 }

@@ -1,6 +1,6 @@
+use serde::Deserialize;
 /// Pipeline trace diagnostic: dump intermediate values for failing molecules
 use std::fs;
-use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct RefAtom {
@@ -54,7 +54,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -95,7 +99,11 @@ fn pairwise_rmsd_f64(coords: &nalgebra::DMatrix<f64>, ref_atoms: &[RefAtom]) -> 
             npairs += 1;
         }
     }
-    if npairs > 0 { (sq_sum / npairs as f64).sqrt() } else { 0.0 }
+    if npairs > 0 {
+        (sq_sum / npairs as f64).sqrt()
+    } else {
+        0.0
+    }
 }
 
 /// Compare power method eigendecomposition with nalgebra
@@ -105,7 +113,9 @@ fn test_trace_pipeline() {
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
 
     let limit: usize = std::env::var("GDB20_LIMIT")
-        .ok().and_then(|s| s.parse().ok()).unwrap_or(200);
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(200);
     let threshold = 0.5;
 
     let mut n_pass = 0;
@@ -129,41 +139,65 @@ fn test_trace_pipeline() {
         let rng_state = rng.get_state();
         let coords_power = sci_form::distgeom::compute_initial_coords_rdkit(&mut rng, &dists, 3);
         let mut rng2 = sci_form::distgeom::MinstdRand::new(rng_state as u32);
-        let coords_nalgebra = sci_form::distgeom::compute_initial_coords_nalgebra_f64(&mut rng2, &dists, 3);
+        let coords_nalgebra =
+            sci_form::distgeom::compute_initial_coords_nalgebra_f64(&mut rng2, &dists, 3);
 
         let max_dist_diff = match (&coords_power, &coords_nalgebra) {
             (Some(cp), Some(cn)) => {
                 let mut max_dd = 0.0f64;
                 for i in 0..n {
-                    for j in (i+1)..n {
-                        let d_p = ((cp[(i,0)]-cp[(j,0)]).powi(2) + (cp[(i,1)]-cp[(j,1)]).powi(2) + (cp[(i,2)]-cp[(j,2)]).powi(2)).sqrt();
-                        let d_n = ((cn[(i,0)]-cn[(j,0)]).powi(2) + (cn[(i,1)]-cn[(j,1)]).powi(2) + (cn[(i,2)]-cn[(j,2)]).powi(2)).sqrt();
+                    for j in (i + 1)..n {
+                        let d_p = ((cp[(i, 0)] - cp[(j, 0)]).powi(2)
+                            + (cp[(i, 1)] - cp[(j, 1)]).powi(2)
+                            + (cp[(i, 2)] - cp[(j, 2)]).powi(2))
+                        .sqrt();
+                        let d_n = ((cn[(i, 0)] - cn[(j, 0)]).powi(2)
+                            + (cn[(i, 1)] - cn[(j, 1)]).powi(2)
+                            + (cn[(i, 2)] - cn[(j, 2)]).powi(2))
+                        .sqrt();
                         let diff = (d_p - d_n).abs();
-                        if diff > max_dd { max_dd = diff; }
+                        if diff > max_dd {
+                            max_dd = diff;
+                        }
                     }
                 }
                 max_dd
-            },
+            }
             _ => f64::NAN,
         };
 
         // Always run the full pipeline to compute RMSD
-        let csd_torsions: Vec<sci_form::forcefield::etkdg_3d::M6TorsionContrib> = ref_mol.torsions.iter().filter_map(|t| {
-            if t.atoms.len() < 4 || t.v.len() < 6 || t.signs.len() < 6 { return None; }
-            let mut signs = [0.0f64; 6];
-            let mut v = [0.0f64; 6];
-            for k in 0..6 { signs[k] = t.signs[k] as f64; v[k] = t.v[k]; }
-            Some(sci_form::forcefield::etkdg_3d::M6TorsionContrib {
-                i: t.atoms[0], j: t.atoms[1], k: t.atoms[2], l: t.atoms[3], signs, v,
+        let csd_torsions: Vec<sci_form::forcefield::etkdg_3d::M6TorsionContrib> = ref_mol
+            .torsions
+            .iter()
+            .filter_map(|t| {
+                if t.atoms.len() < 4 || t.v.len() < 6 || t.signs.len() < 6 {
+                    return None;
+                }
+                let mut signs = [0.0f64; 6];
+                let mut v = [0.0f64; 6];
+                for k in 0..6 {
+                    signs[k] = t.signs[k] as f64;
+                    v[k] = t.v[k];
+                }
+                Some(sci_form::forcefield::etkdg_3d::M6TorsionContrib {
+                    i: t.atoms[0],
+                    j: t.atoms[1],
+                    k: t.atoms[2],
+                    l: t.atoms[3],
+                    signs,
+                    v,
+                })
             })
-        }).collect();
+            .collect();
 
-        let result = sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
+        let result =
+            sci_form::conformer::generate_3d_conformer_with_torsions(&mol, 42, &csd_torsions);
         let rmsd = match &result {
             Ok(coords) => {
                 let coords_f64 = coords.map(|v| v as f64);
                 pairwise_rmsd_f64(&coords_f64, &ref_mol.atoms)
-            },
+            }
             Err(_) => f64::NAN,
         };
 
@@ -186,7 +220,11 @@ fn test_trace_pipeline() {
             for i in 0..n {
                 let mut row_sum = 0.0f64;
                 for j in 0..n {
-                    let idx = if i >= j { i * (i + 1) / 2 + j } else { j * (j + 1) / 2 + i };
+                    let idx = if i >= j {
+                        i * (i + 1) / 2 + j
+                    } else {
+                        j * (j + 1) / 2 + i
+                    };
                     row_sum += sq_packed[idx];
                 }
                 d0[i] = row_sum / n as f64 - sum_sq_all;
@@ -194,10 +232,14 @@ fn test_trace_pipeline() {
             let mut t_full = nalgebra::DMatrix::from_element(n, n, 0.0f64);
             for i in 0..n {
                 for j in 0..=i {
-                    let sq_val = sq_packed[if i >= j { i*(i+1)/2 + j } else { j*(j+1)/2 + i }];
+                    let sq_val = sq_packed[if i >= j {
+                        i * (i + 1) / 2 + j
+                    } else {
+                        j * (j + 1) / 2 + i
+                    }];
                     let val = 0.5 * (d0[i] + d0[j] - sq_val);
-                    t_full[(i,j)] = val;
-                    t_full[(j,i)] = val;
+                    t_full[(i, j)] = val;
+                    t_full[(j, i)] = val;
                 }
             }
             let eigen = nalgebra::SymmetricEigen::new(t_full);
@@ -221,12 +263,22 @@ fn test_trace_pipeline() {
     }
 
     eprintln!("\n=== SUMMARY ===");
-    eprintln!("Pass: {}, Fail: {} ({:.1}%)", n_pass, n_fail, 100.0 * n_fail as f64 / (n_pass + n_fail) as f64);
+    eprintln!(
+        "Pass: {}, Fail: {} ({:.1}%)",
+        n_pass,
+        n_fail,
+        100.0 * n_fail as f64 / (n_pass + n_fail) as f64
+    );
 
     // Analyze correlation between negative eigenvalues and failures
     if !fail_eigenval_stats.is_empty() {
-        let avg_min_eig: f64 = fail_eigenval_stats.iter().map(|s| s.2).sum::<f64>() / fail_eigenval_stats.len() as f64;
-        let avg_neg_count: f64 = fail_eigenval_stats.iter().map(|s| s.3 as f64).sum::<f64>() / fail_eigenval_stats.len() as f64;
-        eprintln!("Failing molecules: avg_min_eigenvalue={:.4}, avg_neg_eigenvalue_count={:.1}", avg_min_eig, avg_neg_count);
+        let avg_min_eig: f64 =
+            fail_eigenval_stats.iter().map(|s| s.2).sum::<f64>() / fail_eigenval_stats.len() as f64;
+        let avg_neg_count: f64 = fail_eigenval_stats.iter().map(|s| s.3 as f64).sum::<f64>()
+            / fail_eigenval_stats.len() as f64;
+        eprintln!(
+            "Failing molecules: avg_min_eigenvalue={:.4}, avg_neg_eigenvalue_count={:.1}",
+            avg_min_eig, avg_neg_count
+        );
     }
 }
