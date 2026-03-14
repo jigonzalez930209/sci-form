@@ -55,7 +55,11 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             formal_charge: atom.formal_charge,
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
-            explicit_h: if atom.element == 1 || atom.element == 0 { 1 } else { 0 },
+            explicit_h: if atom.element == 1 || atom.element == 0 {
+                1
+            } else {
+                0
+            },
         };
         node_indices.push(mol.add_atom(new_atom));
     }
@@ -108,11 +112,19 @@ fn build_csd_torsions(
 
 #[test]
 fn test_gradient_finite_diff() {
-    let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json")
-        .expect("Run scripts/generate_gdb20_reference.py first");
-    let ref_mols: Vec<RefMolecule> =
+    let fixture = "tests/fixtures/gdb20_reference.json";
+    if !std::path::Path::new(fixture).exists() {
+        eprintln!("SKIP {fixture}: run scripts/generate_gdb20_reference.py to generate it");
+        return;
+    }
+    let ref_data = fs::read_to_string(fixture).expect("Failed to read gdb20_reference.json");
+    let mut ref_mols: Vec<RefMolecule> =
         serde_json::from_str(&ref_data).expect("Invalid gdb20_reference.json");
 
+    // Sort by heaviest molecules first (most atoms) for a representative sample
+    ref_mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));
+
+    // Optional limit — default 100 heaviest; use GDB20_LIMIT=0 for all
     let limit: usize = std::env::var("GDB20_LIMIT")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -159,13 +171,14 @@ fn test_gradient_finite_diff() {
         };
 
         let ff = sci_form::forcefield::etkdg_3d::build_etkdg_3d_ff_with_torsions(
-            &mol, &coords_mat, &bounds, &csd_torsions,
+            &mol,
+            &coords_mat,
+            &bounds,
+            &csd_torsions,
         );
 
         // Compute analytical gradient
-        let grad = sci_form::forcefield::etkdg_3d::etkdg_3d_gradient_f64(
-            &coords, n, &mol, &ff,
-        );
+        let grad = sci_form::forcefield::etkdg_3d::etkdg_3d_gradient_f64(&coords, n, &mol, &ff);
 
         // Compute numerical gradient (central difference)
         let mut num_grad = vec![0.0f64; n * 3];
@@ -219,9 +232,15 @@ fn test_gradient_finite_diff() {
 
     println!("\n=== GRADIENT CHECK RESULTS ===");
     println!("Molecules checked: {}", total_checked);
-    println!("Bad gradient (rel_err > 1e-3): {} ({:.2}%)",
-        total_bad, total_bad as f64 / total_checked.max(1) as f64 * 100.0);
-    println!("Worst relative error: {:.6e} ({})", worst_rel_err, worst_mol);
+    println!(
+        "Bad gradient (rel_err > 1e-3): {} ({:.2}%)",
+        total_bad,
+        total_bad as f64 / total_checked.max(1) as f64 * 100.0
+    );
+    println!(
+        "Worst relative error: {:.6e} ({})",
+        worst_rel_err, worst_mol
+    );
 
     if total_bad > 0 {
         println!("\nWARNING: Gradient bugs detected!");
