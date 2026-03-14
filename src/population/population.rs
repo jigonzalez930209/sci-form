@@ -137,8 +137,7 @@ pub fn lowdin_charges(
             s_sqrt_diag[(i, i)] = val.sqrt();
         }
     }
-    let s_sqrt =
-        &s_eigen.eigenvectors * &s_sqrt_diag * s_eigen.eigenvectors.transpose();
+    let s_sqrt = &s_eigen.eigenvectors * &s_sqrt_diag * s_eigen.eigenvectors.transpose();
 
     // S^{1/2} P S^{1/2}
     let sps = &s_sqrt * &p * &s_sqrt;
@@ -189,8 +188,7 @@ pub fn compute_population(
             s_sqrt_diag[(i, i)] = val.sqrt();
         }
     }
-    let s_sqrt =
-        &s_eigen.eigenvectors * &s_sqrt_diag * s_eigen.eigenvectors.transpose();
+    let s_sqrt = &s_eigen.eigenvectors * &s_sqrt_diag * s_eigen.eigenvectors.transpose();
     let sps = &s_sqrt * &p * &s_sqrt;
     let mut lowdin_pop = vec![0.0; n_atoms];
     for mu in 0..n_ao {
@@ -223,11 +221,7 @@ mod tests {
     fn water_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![8, 1, 1],
-            vec![
-                [0.0, 0.0, 0.0],
-                [0.757, 0.586, 0.0],
-                [-0.757, 0.586, 0.0],
-            ],
+            vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]],
         )
     }
 
