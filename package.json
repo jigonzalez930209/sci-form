@@ -1,6 +1,6 @@
 {
   "name": "sci-form",
-  "version": "1.0.0",
+  "version": "0.1.4",
   "description": "**High-performance 3D molecular conformer generation** using ETKDG distance geometry, written in Rust.",
   "main": "index.js",
   "directories": {
