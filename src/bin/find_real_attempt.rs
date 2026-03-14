@@ -4,6 +4,7 @@ use serde::Deserialize;
 use std::env;
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct RefAtom {
     element: u8,
     x: f32,
