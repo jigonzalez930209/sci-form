@@ -108,7 +108,7 @@ jobs:
         shell: bash
         run: |
           cp target/${{ matrix.target }}/release/${{ matrix.bin }} ${{ matrix.artifact }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
@@ -123,7 +123,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - uses: dtolnay/rust-toolchain@stable
@@ -132,7 +132,7 @@ jobs:
         run: pip install maturin
       - name: Build wheel
         run: cd crates/python && maturin build --release
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: python-wheel-${{ matrix.os }}
           path: target/wheels/*.whl
@@ -154,11 +154,11 @@ jobs:
         run: cd crates/wasm && wasm-pack build --target bundler --release
       - name: Build WASM (nodejs — for Node.js / Jest)
         run: cd crates/wasm && wasm-pack build --target nodejs --release --out-dir pkg-node
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: wasm-pkg
           path: crates/wasm/pkg/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: wasm-pkg-node
           path: crates/wasm/pkg-node/
@@ -170,10 +170,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: python-wheel-ubuntu-latest
           path: wheels/
@@ -210,7 +210,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: wasm-pkg-node
           path: pkg-node/
@@ -230,7 +230,7 @@ jobs:
     needs: [build-cli]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: sci-form-linux-x86_64
           path: .
@@ -271,7 +271,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: python-wheel-*
           path: dist/
@@ -297,7 +297,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: wasm-pkg
           path: pkg/
@@ -317,7 +317,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts/
       - name: Create GitHub Release
