@@ -116,10 +116,9 @@ python tests/test_python_integration.py
 ## 5. WebAssembly / Node.js (`crates/wasm/`)
 
 ```bash
-# Build for Node.js (CommonJS) — WITHOUT parallelization
-# Note: Node.js does not have Web Worker support, so parallel feature is disabled
+# Build for Node.js (CommonJS) — sequential, no parallelization
 cd crates/wasm
-wasm-pack build --target nodejs --release --out-dir pkg-node --no-default-features
+wasm-pack build --target nodejs --release --out-dir pkg-node
 
 # Smoke test via Node.js
 node - <<'EOF'
@@ -131,7 +130,7 @@ console.log("Node smoke test passed — ethanol has", result.num_atoms, "atoms")
 EOF
 
 # Build for browsers and modern dev servers (ESM / Vite) — WITH parallelization
-wasm-pack build --target web --release --out-dir pkg-web
+wasm-pack build --target web --release --out-dir pkg-web --features parallel
 
 # Full JS integration tests
 node tests/test_wasm_integration.js
@@ -183,7 +182,7 @@ cd -
 
 # 4. WASM / Node
 cd crates/wasm
-wasm-pack build --target nodejs --release --out-dir pkg-node --no-default-features
+wasm-pack build --target nodejs --release --out-dir pkg-node
 node - <<'EOF'
 const sci = require("./pkg-node/sci_form_wasm.js");
 const result = JSON.parse(sci.embed("CCO", 42));

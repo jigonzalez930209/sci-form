@@ -312,13 +312,13 @@ const pop = compute_population(elements, coords);            // All 14 functions
 cd crates/wasm
 
 # Browser build (Vite, Webpack, Parcel, etc.) - WITH parallelization
-wasm-pack build --target web --release
+wasm-pack build --target web --release --features parallel
 
 # Node.js build - sequential (no parallelization)
-wasm-pack build --target nodejs --release --out-dir pkg-node --no-default-features
+wasm-pack build --target nodejs --release --out-dir pkg-node
 ```
 
 **Targets:**
-- `--target web` — Browser with Web Workers support for parallelization (requires `parallel` feature)
-- `--target nodejs` — Server-side Node.js without Web Workers (compiled without `parallel` feature)
+- `--target web` with `--features parallel` — Browser with Web Workers support for parallelization
+- `--target nodejs` — Server-side Node.js without Web Workers (sequential execution)
 - ⚠️ `--target bundler` is NOT compatible with threading; use `web` instead
