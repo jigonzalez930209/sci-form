@@ -17,3 +17,4 @@ GDB20.50000.smi
 # data/chembl_36_chemreps.txt.gz       → LFS
 *.log
 nohup.out
+.venv-ci

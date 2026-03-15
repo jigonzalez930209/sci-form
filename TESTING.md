@@ -129,8 +129,8 @@ console.assert(result.num_atoms === 9, `expected 9, got ${result.num_atoms}`);
 console.log("Node smoke test passed — ethanol has", result.num_atoms, "atoms");
 EOF
 
-# Build for bundlers (ESM / webpack / vite)
-wasm-pack build --target bundler --release --out-dir pkg-bundler
+# Build for browsers and modern dev servers (ESM / Vite)
+wasm-pack build --target web --release --out-dir pkg-web
 
 # Full JS integration tests
 node tests/test_wasm_integration.js

@@ -1,5 +1,89 @@
 use wasm_bindgen::prelude::*;
 
+pub use wasm_bindgen_rayon::init_thread_pool;
+
+fn parse_elements_and_positions(
+    elements: &str,
+    coords_flat: &str,
+) -> Result<(Vec<u8>, Vec<[f64; 3]>), String> {
+    let elems: Vec<u8> =
+        serde_json::from_str(elements).map_err(|e| format!("bad elements: {}", e))?;
+    let flat: Vec<f64> =
+        serde_json::from_str(coords_flat).map_err(|e| format!("bad coords: {}", e))?;
+
+    if flat.len() != elems.len() * 3 {
+        return Err(format!(
+            "coords length {} != 3 * elements {}",
+            flat.len(),
+            elems.len()
+        ));
+    }
+
+    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    Ok((elems, positions))
+}
+
+fn orbital_grid_from_coefficients(
+    elements: &str,
+    coords_flat: &str,
+    coefficients_json: &str,
+    mo_index: usize,
+    spacing: f64,
+) -> Result<sci_form::eht::VolumetricGrid, String> {
+    let (elems, positions) = parse_elements_and_positions(elements, coords_flat)?;
+    let coefficients: Vec<Vec<f64>> =
+        serde_json::from_str(coefficients_json).map_err(|e| format!("bad coefficients: {}", e))?;
+    let basis = sci_form::eht::basis::build_basis(&elems, &positions);
+
+    if basis.is_empty() {
+        return Err("No basis functions found for orbital evaluation".to_string());
+    }
+    if mo_index >= coefficients.len() {
+        return Err(format!(
+            "orbital index {} out of range for {} orbitals",
+            mo_index,
+            coefficients.len()
+        ));
+    }
+    if coefficients.len() != basis.len() {
+        return Err(format!(
+            "coefficient row count {} does not match basis size {}",
+            coefficients.len(),
+            basis.len()
+        ));
+    }
+    if coefficients.iter().any(|row| mo_index >= row.len()) {
+        return Err(format!(
+            "orbital index {} exceeds coefficient columns",
+            mo_index
+        ));
+    }
+
+    #[cfg(feature = "parallel")]
+    {
+        Ok(sci_form::eht::evaluate_orbital_on_grid_parallel(
+            &basis,
+            &coefficients,
+            mo_index,
+            &positions,
+            spacing,
+            3.0,
+        ))
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    {
+        Ok(sci_form::eht::evaluate_orbital_on_grid(
+            &basis,
+            &coefficients,
+            mo_index,
+            &positions,
+            spacing,
+            3.0,
+        ))
+    }
+}
+
 // ─── Typed-array WASM APIs ───────────────────────────────────────────────────
 // These avoid JSON serialization overhead for large numeric data, returning
 // Float64Array / Float32Array directly for zero-copy transfer to JavaScript.
@@ -28,15 +112,10 @@ pub fn compute_esp_grid_typed(
     spacing: f64,
     padding: f64,
 ) -> js_sys::Float64Array {
-    let elems: Vec<u8> = match serde_json::from_str(elements) {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
         Ok(v) => v,
         Err(_) => return js_sys::Float64Array::new_with_length(0),
     };
-    let flat: Vec<f64> = match serde_json::from_str(coords_flat) {
-        Ok(v) => v,
-        Err(_) => return js_sys::Float64Array::new_with_length(0),
-    };
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::compute_esp(&elems, &positions, spacing, padding) {
         Ok(grid) => {
             let arr = js_sys::Float64Array::new_with_length(grid.values.len() as u32);
@@ -55,15 +134,10 @@ pub fn compute_esp_grid_info(
     spacing: f64,
     padding: f64,
 ) -> String {
-    let elems: Vec<u8> = match serde_json::from_str(elements) {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
         Ok(v) => v,
-        Err(e) => return format!("{{\"error\":\"bad elements: {}\"}}", e),
+        Err(e) => return format!("{{\"error\":\"{}\"}}", e),
     };
-    let flat: Vec<f64> = match serde_json::from_str(coords_flat) {
-        Ok(v) => v,
-        Err(e) => return format!("{{\"error\":\"bad coords: {}\"}}", e),
-    };
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::compute_esp(&elems, &positions, spacing, padding) {
         Ok(grid) => format!(
             "{{\"origin\":[{:.4},{:.4},{:.4}],\"spacing\":{:.4},\"dims\":[{},{},{}]}}",
@@ -89,29 +163,49 @@ pub fn eht_orbital_grid_typed(
     mo_index: usize,
     spacing: f64,
 ) -> js_sys::Float32Array {
-    let elems: Vec<u8> = match serde_json::from_str(elements) {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
         Ok(v) => v,
         Err(_) => return js_sys::Float32Array::new_with_length(0),
     };
-    let flat: Vec<f64> = match serde_json::from_str(coords_flat) {
-        Ok(v) => v,
-        Err(_) => return js_sys::Float32Array::new_with_length(0),
-    };
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
 
     let result = match sci_form::eht::solve_eht(&elems, &positions, None) {
         Ok(r) => r,
         Err(_) => return js_sys::Float32Array::new_with_length(0),
     };
-    let basis = sci_form::eht::basis::build_basis(&elems, &positions);
-    let grid = sci_form::eht::evaluate_orbital_on_grid(
-        &basis,
-        &result.coefficients,
+    let coeff_json = match serde_json::to_string(&result.coefficients) {
+        Ok(json) => json,
+        Err(_) => return js_sys::Float32Array::new_with_length(0),
+    };
+    let grid =
+        match orbital_grid_from_coefficients(elements, coords_flat, &coeff_json, mo_index, spacing)
+        {
+            Ok(grid) => grid,
+            Err(_) => return js_sys::Float32Array::new_with_length(0),
+        };
+    let arr = js_sys::Float32Array::new_with_length(grid.values.len() as u32);
+    arr.copy_from(&grid.values);
+    arr
+}
+
+/// Compute orbital grid from precomputed EHT coefficients as Float32Array.
+#[wasm_bindgen]
+pub fn eht_orbital_grid_from_coefficients_typed(
+    elements: &str,
+    coords_flat: &str,
+    coefficients_json: &str,
+    mo_index: usize,
+    spacing: f64,
+) -> js_sys::Float32Array {
+    let grid = match orbital_grid_from_coefficients(
+        elements,
+        coords_flat,
+        coefficients_json,
         mo_index,
-        &positions,
         spacing,
-        3.0,
-    );
+    ) {
+        Ok(grid) => grid,
+        Err(_) => return js_sys::Float32Array::new_with_length(0),
+    };
     let arr = js_sys::Float32Array::new_with_length(grid.values.len() as u32);
     arr.copy_from(&grid.values);
     arr
@@ -195,22 +289,10 @@ pub fn parse_smiles(smiles: &str) -> String {
 /// Returns JSON with energies, coefficients, HOMO/LUMO info.
 #[wasm_bindgen]
 pub fn eht_calculate(elements: &str, coords_flat: &str, k: f64) -> String {
-    let elems: Vec<u8> = match serde_json::from_str(elements) {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
         Ok(v) => v,
-        Err(e) => return format!("{{\"error\":\"bad elements: {}\"}}", e),
+        Err(e) => return format!("{{\"error\":\"{}\"}}", e),
     };
-    let flat: Vec<f64> = match serde_json::from_str(coords_flat) {
-        Ok(v) => v,
-        Err(e) => return format!("{{\"error\":\"bad coords: {}\"}}", e),
-    };
-    if flat.len() != elems.len() * 3 {
-        return format!(
-            "{{\"error\":\"coords length {} != 3 * elements {}\"}}",
-            flat.len(),
-            elems.len()
-        );
-    }
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     let k_opt = if k <= 0.0 { None } else { Some(k) };
 
     match sci_form::eht::solve_eht(&elems, &positions, k_opt) {
@@ -237,33 +319,22 @@ pub fn eht_orbital_mesh(
     spacing: f64,
     isovalue: f32,
 ) -> String {
-    let elems: Vec<u8> = match serde_json::from_str(elements) {
-        Ok(v) => v,
-        Err(e) => return format!("{{\"error\":\"bad elements: {}\"}}", e),
+    let result_json = eht_calculate(elements, coords_flat, 0.0);
+    let result: sci_form::eht::EhtResult = match serde_json::from_str(&result_json) {
+        Ok(result) => result,
+        Err(_) => return result_json,
     };
-    let flat: Vec<f64> = match serde_json::from_str(coords_flat) {
-        Ok(v) => v,
-        Err(e) => return format!("{{\"error\":\"bad coords: {}\"}}", e),
-    };
-    if flat.len() != elems.len() * 3 {
-        return format!("{{\"error\":\"coords length mismatch\"}}");
-    }
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
 
-    let result = match sci_form::eht::solve_eht(&elems, &positions, None) {
-        Ok(r) => r,
+    let coeff_json = match serde_json::to_string(&result.coefficients) {
+        Ok(json) => json,
         Err(e) => return format!("{{\"error\":\"{}\"}}", e),
     };
-
-    let basis = sci_form::eht::basis::build_basis(&elems, &positions);
-    let grid = sci_form::eht::evaluate_orbital_on_grid(
-        &basis,
-        &result.coefficients,
-        mo_index,
-        &positions,
-        spacing,
-        3.0,
-    );
+    let grid =
+        match orbital_grid_from_coefficients(elements, coords_flat, &coeff_json, mo_index, spacing)
+        {
+            Ok(grid) => grid,
+            Err(e) => return format!("{{\"error\":\"{}\"}}", e),
+        };
     let mesh = sci_form::eht::marching_cubes(&grid, isovalue);
     serde_json::to_string(&mesh).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
 }
