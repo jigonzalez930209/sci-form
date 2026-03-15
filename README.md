@@ -29,8 +29,14 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 ### Electrostatics & Surface
 - **Electrostatic Potential (ESP)** — Coulomb grid from Mulliken charges, color mapping (red/white/blue), `.cube` export
 - **Parallel ESP** — rayon-accelerated grid computation (`parallel` feature)
-- **Solvent-Accessible Surface Area (SASA)** — Shrake-Rupley algorithm, Fibonacci sphere, Bondi radii
+- **Solvent-Accessible Surface Area (SASA)** — Shrake-Rupley algorithm, Fibonacci sphere, Bondi radii, parallelized per-atom evaluation
 - **Gasteiger-Marsili partial charges** — 6-iteration electronegativity equalization
+
+### Parallel Computation
+- **Automatic rayon thread pool** — all compute functions (DOS, ESP SASA, population, dipole, etc.) parallelized with work-stealing queue
+- **Zero-configuration** — no API changes needed; parallelization enabled by default via `parallel` feature
+- **Intra-library parallelism** — grid point loops, per-atom evaluation, force field term accumulation all use `par_iter()`
+- **CPU-aware workload balancing** — handles small molecules (sequential) and large molecules (parallel) automatically
 
 ### Force Fields
 - **UFF** — Universal Force Field for 50+ element types (including transition metals Ti–Zn, Pd, Pt, Au)
