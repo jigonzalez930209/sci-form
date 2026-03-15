@@ -6,6 +6,10 @@
 use crate::eht::basis::{build_basis, AtomicOrbital};
 use crate::eht::overlap::build_overlap_matrix;
 
+fn gaussian_value(energy: f64, center: f64, norm: f64, inv_2s2: f64) -> f64 {
+    norm * (-(energy - center).powi(2) * inv_2s2).exp()
+}
+
 /// Result of a DOS/PDOS calculation.
 #[derive(Debug, Clone)]
 pub struct DosResult {
@@ -44,6 +48,41 @@ pub fn compute_dos(
             orbital_energies
                 .iter()
                 .map(|&ei| norm * (-(e - ei).powi(2) * inv_2s2).exp())
+                .sum()
+        })
+        .collect();
+
+    DosResult {
+        energies,
+        total_dos,
+        pdos: Vec::new(),
+        sigma,
+    }
+}
+
+/// Compute total DOS using rayon over the energy grid.
+#[cfg(feature = "parallel")]
+pub fn compute_dos_parallel(
+    orbital_energies: &[f64],
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> DosResult {
+    use rayon::prelude::*;
+
+    let step = (e_max - e_min) / (n_points - 1).max(1) as f64;
+    let energies: Vec<f64> = (0..n_points).map(|i| e_min + i as f64 * step).collect();
+
+    let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
+    let inv_2s2 = 1.0 / (2.0 * sigma * sigma);
+
+    let total_dos: Vec<f64> = energies
+        .par_iter()
+        .map(|&energy| {
+            orbital_energies
+                .iter()
+                .map(|&center| gaussian_value(energy, center, norm, inv_2s2))
                 .sum()
         })
         .collect();
@@ -147,6 +186,103 @@ pub fn compute_pdos(
     }
 
     let _ = n_electrons; // used contextually; weight already normalized via Mulliken
+
+    DosResult {
+        energies,
+        total_dos,
+        pdos,
+        sigma,
+    }
+}
+
+/// Compute atom-projected DOS using rayon for orbital weights and atom-grid accumulation.
+#[cfg(feature = "parallel")]
+#[allow(clippy::too_many_arguments)]
+pub fn compute_pdos_parallel(
+    elements: &[u8],
+    positions: &[f64],
+    orbital_energies: &[f64],
+    coefficients: &[Vec<f64>],
+    n_electrons: usize,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> DosResult {
+    use rayon::prelude::*;
+
+    let n_atoms = elements.len();
+    let pos_arr: Vec<[f64; 3]> = positions
+        .chunks_exact(3)
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
+    let basis: Vec<AtomicOrbital> = build_basis(elements, &pos_arr);
+    let overlap = build_overlap_matrix(&basis);
+    let n_basis = basis.len();
+    let n_orb = orbital_energies.len().min(coefficients.len());
+
+    let orbital_atom_weight: Vec<Vec<f64>> = (0..n_orb)
+        .into_par_iter()
+        .map(|k| {
+            let mut weights = vec![0.0f64; n_atoms];
+            for mu in 0..n_basis {
+                if coefficients.len() <= mu || coefficients[mu].len() <= k {
+                    continue;
+                }
+                let atom_mu = basis[mu].atom_index;
+                let mut weight = 0.0;
+                for nu in 0..n_basis {
+                    if coefficients.len() <= nu || coefficients[nu].len() <= k {
+                        continue;
+                    }
+                    weight += coefficients[mu][k] * overlap[(mu, nu)] * coefficients[nu][k];
+                }
+                weights[atom_mu] += weight;
+            }
+
+            let total_weight: f64 = weights.iter().sum();
+            if total_weight.abs() > 1e-12 {
+                for weight in &mut weights {
+                    *weight /= total_weight;
+                }
+            }
+            weights
+        })
+        .collect();
+
+    let step = (e_max - e_min) / (n_points - 1).max(1) as f64;
+    let energies: Vec<f64> = (0..n_points).map(|i| e_min + i as f64 * step).collect();
+
+    let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
+    let inv_2s2 = 1.0 / (2.0 * sigma * sigma);
+
+    let total_dos: Vec<f64> = energies
+        .par_iter()
+        .map(|&energy| {
+            (0..n_orb)
+                .map(|k| gaussian_value(energy, orbital_energies[k], norm, inv_2s2))
+                .sum()
+        })
+        .collect();
+
+    let pdos: Vec<Vec<f64>> = (0..n_atoms)
+        .into_par_iter()
+        .map(|atom_index| {
+            energies
+                .iter()
+                .map(|&energy| {
+                    (0..n_orb)
+                        .map(|k| {
+                            orbital_atom_weight[k][atom_index]
+                                * gaussian_value(energy, orbital_energies[k], norm, inv_2s2)
+                        })
+                        .sum()
+                })
+                .collect()
+        })
+        .collect();
+
+    let _ = n_electrons;
 
     DosResult {
         energies,
