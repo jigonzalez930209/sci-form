@@ -150,10 +150,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Build WASM (web — for browser/Vite) with parallelization
-        run: cd crates/wasm && wasm-pack build --target web --release --features parallel
-      - name: Build WASM (nodejs — for Node.js / Jest) without parallelization
-        run: cd crates/wasm && wasm-pack build --target nodejs --release --out-dir pkg-node --no-default-features
+      - name: Build WASM packages (web + nodejs)
+        run: cd crates/wasm && bash build.sh
       - name: Verify Node.js install
         run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.log('✓ Node.js WASM works');"
       - uses: actions/upload-artifact@v6

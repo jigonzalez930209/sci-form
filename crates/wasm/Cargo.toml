@@ -5,6 +5,7 @@ edition = "2021"
 description = "WASM/TypeScript bindings for high-performance 3D molecular conformer generation"
 license = "MIT"
 repository = "https://github.com/jigonzalez930209/sci-form"
+readme = "../../README.md"
 
 [lib]
 crate-type = ["cdylib"]
