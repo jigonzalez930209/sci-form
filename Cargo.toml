@@ -3,7 +3,7 @@ members = [".", "crates/cli", "crates/python", "crates/wasm"]
 
 [package]
 name = "sci-form"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 authors = ["Sci-Form Team"]
 description = "High-performance 3D molecular conformer generation using ETKDG distance geometry"
