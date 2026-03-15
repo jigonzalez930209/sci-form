@@ -6,4 +6,6 @@
 
 pub mod sasa;
 
+#[cfg(feature = "parallel")]
+pub use sasa::compute_sasa_parallel;
 pub use sasa::{compute_sasa, SasaResult};

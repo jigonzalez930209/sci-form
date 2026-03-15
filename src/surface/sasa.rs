@@ -65,6 +65,39 @@ fn generate_sphere_points(n: usize) -> Vec<[f64; 3]> {
         .collect()
 }
 
+fn compute_atom_sasa(
+    atom_index: usize,
+    positions: &[[f64; 3]],
+    radii: &[f64],
+    unit_points: &[[f64; 3]],
+) -> f64 {
+    let ri = radii[atom_index];
+    let pi = &positions[atom_index];
+    let npts = unit_points.len();
+    let area_per_point = 4.0 * PI * ri * ri / npts as f64;
+
+    let accessible = unit_points
+        .iter()
+        .filter(|pt| {
+            let test = [pi[0] + ri * pt[0], pi[1] + ri * pt[1], pi[2] + ri * pt[2]];
+
+            !positions.iter().enumerate().any(|(j, pos_j)| {
+                if j == atom_index {
+                    return false;
+                }
+                let rj = radii[j];
+                let dx = test[0] - pos_j[0];
+                let dy = test[1] - pos_j[1];
+                let dz = test[2] - pos_j[2];
+                let dist_sq = dx * dx + dy * dy + dz * dz;
+                dist_sq < rj * rj
+            })
+        })
+        .count();
+
+    accessible as f64 * area_per_point
+}
+
 /// Compute solvent-accessible surface area for a set of atoms.
 ///
 /// # Arguments
@@ -90,45 +123,39 @@ pub fn compute_sasa(
     // Precompute radii (vdw + probe)
     let radii: Vec<f64> = elements.iter().map(|&z| vdw_radius(z) + probe).collect();
 
-    let mut atom_sasa = vec![0.0f64; n];
+    let atom_sasa: Vec<f64> = (0..n)
+        .map(|i| compute_atom_sasa(i, positions, &radii, &unit_points))
+        .collect();
 
-    for i in 0..n {
-        let ri = radii[i];
-        let pi = &positions[i];
+    let total_sasa: f64 = atom_sasa.iter().sum();
 
-        // Surface area per point for this atom's sphere
-        let area_per_point = 4.0 * PI * ri * ri / npts as f64;
-
-        let mut accessible = 0usize;
-
-        for pt in &unit_points {
-            // Transform unit sphere point to atom surface
-            let test = [pi[0] + ri * pt[0], pi[1] + ri * pt[1], pi[2] + ri * pt[2]];
-
-            // Check if this point is buried inside any other atom's sphere
-            let mut buried = false;
-            for j in 0..n {
-                if j == i {
-                    continue;
-                }
-                let rj = radii[j];
-                let dx = test[0] - positions[j][0];
-                let dy = test[1] - positions[j][1];
-                let dz = test[2] - positions[j][2];
-                let dist_sq = dx * dx + dy * dy + dz * dz;
-                if dist_sq < rj * rj {
-                    buried = true;
-                    break;
-                }
-            }
-
-            if !buried {
-                accessible += 1;
-            }
-        }
-
-        atom_sasa[i] = accessible as f64 * area_per_point;
+    SasaResult {
+        total_sasa,
+        atom_sasa,
+        probe_radius: probe,
+        num_points: npts,
     }
+}
+
+/// Compute SASA using rayon to evaluate atoms independently.
+#[cfg(feature = "parallel")]
+pub fn compute_sasa_parallel(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    probe_radius: Option<f64>,
+    num_points: Option<usize>,
+) -> SasaResult {
+    use rayon::prelude::*;
+
+    let probe = probe_radius.unwrap_or(DEFAULT_PROBE_RADIUS);
+    let npts = num_points.unwrap_or(DEFAULT_NUM_POINTS);
+    let unit_points = generate_sphere_points(npts);
+    let radii: Vec<f64> = elements.iter().map(|&z| vdw_radius(z) + probe).collect();
+
+    let atom_sasa: Vec<f64> = (0..elements.len())
+        .into_par_iter()
+        .map(|i| compute_atom_sasa(i, positions, &radii, &unit_points))
+        .collect();
 
     let total_sasa: f64 = atom_sasa.iter().sum();
 

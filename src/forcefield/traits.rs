@@ -30,25 +30,41 @@ impl MolecularForceField {
     pub fn compute_system_energy_and_gradients(&self, coords: &[f64], grad: &mut [f64]) -> f64 {
         grad.fill(0.0);
 
-        // Parallel evaluation using rayon
-        // We use a mutex or temporary local gradients to avoid data races when writing to 'grad'
-        // For simplicity and matching r.md, we use a local grad vector per term if needed,
-        // or just sequential for now if the number of terms is small.
-        // Actually r.md suggests:
-        /*
-        let mut local_grads = vec![0.0; grad.len()];
-        let total_energy = self.iter_terms.iter().map(|term| {
-            term.evaluate_energy_and_inject_gradient(coords, &mut local_grads)
-        }).sum();
-        */
-        // But the above has a shared local_grads which is still a problem if parallel.
+        #[cfg(feature = "parallel")]
+        {
+            use rayon::prelude::*;
 
-        // Let's implement it sequentially first as a baseline, or use rayon's fold/reduce if parallel.
-        let mut total_energy = 0.0;
-        for term in &self.iter_terms {
-            total_energy += term.evaluate_energy_and_inject_gradient(coords, grad);
+            let (total_energy, total_grad) = self
+                .iter_terms
+                .par_iter()
+                .map(|term| {
+                    let mut local_grad = vec![0.0; grad.len()];
+                    let energy = term.evaluate_energy_and_inject_gradient(coords, &mut local_grad);
+                    (energy, local_grad)
+                })
+                .reduce(
+                    || (0.0, vec![0.0; grad.len()]),
+                    |mut left, right| {
+                        left.0 += right.0;
+                        for (dst, src) in left.1.iter_mut().zip(right.1.into_iter()) {
+                            *dst += src;
+                        }
+                        left
+                    },
+                );
+
+            grad.copy_from_slice(&total_grad);
+            total_energy
         }
 
-        total_energy
+        #[cfg(not(feature = "parallel"))]
+        {
+            let mut total_energy = 0.0;
+            for term in &self.iter_terms {
+                total_energy += term.evaluate_energy_and_inject_gradient(coords, grad);
+            }
+
+            total_energy
+        }
     }
 }

@@ -21,4 +21,6 @@ pub use marching_cubes::{marching_cubes, IsosurfaceMesh};
 pub use overlap::build_overlap_matrix;
 pub use params::{EhtParams, OrbitalDef};
 pub use solver::{solve_eht, EhtResult};
+#[cfg(feature = "parallel")]
+pub use volume::evaluate_orbital_on_grid_parallel;
 pub use volume::{evaluate_orbital_on_grid, VolumetricGrid};
