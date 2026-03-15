@@ -161,15 +161,164 @@ for (let i = 0; i < num_atoms; i++) {
 }
 ```
 
+## Molecular Properties & Analysis
+
+### Extended Hückel Theory (EHT)
+
+Compute electronic structure, orbital energies, and visualization:
+
+```typescript
+import { eht_calculate, eht_orbital_mesh } from 'sci-form-wasm';
+
+const eht = JSON.parse(eht_calculate(elements, coords, 0.0));
+console.log(`HOMO energy: ${eht.homo_energy.toFixed(3)} eV`);
+console.log(`LUMO energy: ${eht.lumo_energy.toFixed(3)} eV`);
+console.log(`Gap: ${eht.gap.toFixed(3)} eV`);
+
+// Generate 3D orbital isosurface mesh for visualization
+const mesh = JSON.parse(eht_orbital_mesh(elements, coords, eht.homo_index, 0.2, 0.02));
+// mesh.vertices, mesh.normals, mesh.indices → Three.js BufferGeometry
+```
+
+### Electrostatic Potential (ESP)
+
+```typescript
+import { compute_esp_grid_typed, compute_esp_grid_info } from 'sci-form-wasm';
+
+const spacing = 0.3;  // Ångströms
+const padding = 3.0;  // padding around molecule
+
+const info = JSON.parse(compute_esp_grid_info(elements, coords, spacing, padding));
+console.log(`Grid dimensions: ${info.dims}`);  // [nx, ny, nz]
+console.log(`Origin: ${info.origin}`);        // [x, y, z]
+
+// Compute grid values (Fast: typed array, no JSON overhead)
+const espValues = compute_esp_grid_typed(elements, coords, spacing, padding);
+// espValues is Float64Array of length nx * ny * nz
+```
+
+### Solvent-Accessible Surface Area (SASA)
+
+```typescript
+import { compute_sasa } from 'sci-form-wasm';
+
+const result = JSON.parse(compute_sasa(elements, coords, 1.4));
+console.log(`Total SASA: ${result.total_sasa.toFixed(2)} Ų`);
+console.log(`Per-atom SASA: ${result.per_atom_sasa}`);  // [a₀, a₁, ...]
+```
+
+### Population Analysis
+
+```typescript
+import { compute_population } from 'sci-form-wasm';
+
+const pop = JSON.parse(compute_population(elements, coords));
+console.log(`Mulliken charges: ${pop.mulliken_charges}`);
+console.log(`Löwdin charges: ${pop.lowdin_charges}`);
+console.log(`HOMO: ${pop.homo_energy.toFixed(3)} eV`);
+console.log(`LUMO: ${pop.lumo_energy.toFixed(3)} eV`);
+```
+
+### Molecular Dipole Moment
+
+```typescript
+import { compute_dipole } from 'sci-form-wasm';
+
+const dipole = JSON.parse(compute_dipole(elements, coords));
+console.log(`|μ| = ${dipole.magnitude.toFixed(3)} Debye`);
+console.log(`Vector: [${dipole.vector.join(', ')}] D`);
+```
+
+### Density of States (DOS)
+
+```typescript
+import { compute_dos } from 'sci-form-wasm';
+
+const dos = JSON.parse(compute_dos(
+  elements, coords,
+  0.3,           // sigma (Gaussian broadening)
+  -30.0,         // e_min (eV)
+  5.0,           // e_max (eV)
+  500            // n_points
+));
+
+console.log(`HOMO–LUMO gap: ${dos.homo_lumo_gap.toFixed(3)} eV`);
+console.log(`Orbital energies: ${dos.orbital_energies}`);
+console.log(`Total DOS: ${dos.total_dos}`);     // [dos₀, dos₁, ...]
+console.log(`Projected DOS: ${dos.pdos}`);     // per-orbital DOS
+```
+
+### Partial Charges (Gasteiger-Marsili)
+
+```typescript
+import { compute_charges } from 'sci-form-wasm';
+
+const charges = JSON.parse(compute_charges(smiles));
+console.log(`Per-atom charges: ${charges.charges}`);
+console.log(`Total charge: ${charges.total_charge.toFixed(3)}`);
+```
+
+### RMSD Alignment
+
+```typescript
+import { compute_rmsd } from 'sci-form-wasm';
+
+const reference = JSON.stringify([x0, y0, z0, x1, y1, z1, ...]);
+const coords_flat = JSON.stringify([...]);
+
+const result = JSON.parse(compute_rmsd(coords_flat, reference));
+console.log(`RMSD: ${result.rmsd.toFixed(3)} Ų`);
+console.log(`Aligned coords: ${result.aligned_coords}`);
+```
+
+### Force Field Energy (UFF)
+
+```typescript
+import { compute_uff_energy } from 'sci-form-wasm';
+
+const energy = JSON.parse(compute_uff_energy(smiles, coords));
+console.log(`UFF energy: ${energy} kcal/mol`);
+```
+
+## Parallel Computation (Browser Only)
+
+All compute functions in the **browser** use **`rayon` work-stealing thread pool** when built with the `parallel` feature (default). This provides:
+
+- **Automatic thread scheduling** — no manual thread pool configuration needed
+- **Shared work queue** — efficient load balancing across cores
+- **Zero-copy data sharing** — immutable borrows avoid synchronization overhead
+- **Intra-library parallelism** — grid point evaluation, population loops, force field terms all parallelized
+
+To use: No changes required. Functions automatically use available CPU cores:
+
+```typescript
+// Browser: These run in parallel across cores
+const sasa = compute_sasa(elements, coords, 1.4);           // Shrake-Rupley per-atom parallel
+const esp = compute_esp_grid_typed(elements, coords, 0.3);  // Grid point evaluation parallel
+const dos = compute_dos(elements, coords, 0.3, -30, 5, 500); // Energy grid parallel
+const pop = compute_population(elements, coords);            // All 14 functions parallelizable
+```
+
+**Node.js Limitation:** Web Workers are not available in standard Node.js workers, so the Node.js build is compiled without the `parallel` feature. Functions execute sequentially but maintain full API compatibility. For CPU-intensive computations in Node.js, consider:
+- Using Python bindings (which support true process-level parallelization)
+- Batching requests across multiple Node processes
+- Running the web version in a headless browser (Puppeteer, etc.)
+
+**Performance Note:** For molecules with **< 20 atoms** or **< 1000 grid points**, overhead of thread queue scheduling may exceed speedup. Sequential execution is automatically selected in these cases.
+
 ## Building from Source
 
 ```bash
 cd crates/wasm
-wasm-pack build --target bundler --release
 
-# For Node.js
-wasm-pack build --target nodejs --release
-
-# For browser (no bundler)
+# Browser build (Vite, Webpack, Parcel, etc.) - WITH parallelization
 wasm-pack build --target web --release
+
+# Node.js build - sequential (no parallelization)
+wasm-pack build --target nodejs --release --out-dir pkg-node --no-default-features
 ```
+
+**Targets:**
+- `--target web` — Browser with Web Workers support for parallelization (requires `parallel` feature)
+- `--target nodejs` — Server-side Node.js without Web Workers (compiled without `parallel` feature)
+- ⚠️ `--target bundler` is NOT compatible with threading; use `web` instead
