@@ -51,8 +51,10 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build WASM (web)
         run: cd crates/wasm && wasm-pack build --target web --release
-      - name: Build WASM (nodejs)
-        run: cd crates/wasm && wasm-pack build --target nodejs --release --out-dir pkg-node
+      - name: Build WASM (nodejs) 
+        run: cd crates/wasm && wasm-pack build --target nodejs --release --out-dir pkg-node --no-default-features
+      - name: Verify Node.js install
+        run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); console.log('Node.js module loaded successfully');"
       - uses: actions/upload-artifact@v6
         with:
           name: wasm-pkg

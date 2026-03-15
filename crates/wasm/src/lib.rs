@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+#[cfg(feature = "parallel")]
 pub use wasm_bindgen_rayon::init_thread_pool;
 
 fn parse_elements_and_positions(
