@@ -10,7 +10,7 @@ repository = "https://github.com/jigonzalez930209/sci-form"
 crate-type = ["cdylib"]
 
 [features]
-default = ["parallel"]
+default = []
 parallel = ["sci-form/parallel", "wasm-bindgen-rayon"]
 
 [dependencies]
