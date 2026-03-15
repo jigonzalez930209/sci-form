@@ -233,12 +233,26 @@ pub fn compute_sasa(
         .chunks_exact(3)
         .map(|c| [c[0], c[1], c[2]])
         .collect();
-    Ok(surface::sasa::compute_sasa(
-        elements,
-        &positions,
-        probe_radius,
-        None,
-    ))
+
+    #[cfg(feature = "parallel")]
+    {
+        Ok(surface::sasa::compute_sasa_parallel(
+            elements,
+            &positions,
+            probe_radius,
+            None,
+        ))
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    {
+        Ok(surface::sasa::compute_sasa(
+            elements,
+            &positions,
+            probe_radius,
+            None,
+        ))
+    }
 }
 
 /// Compute Mulliken & Löwdin population analysis from atomic elements and positions.
@@ -277,13 +291,27 @@ pub fn compute_esp(
     padding: f64,
 ) -> Result<esp::EspGrid, String> {
     let pop = compute_population(elements, positions)?;
-    Ok(esp::compute_esp_grid(
-        elements,
-        positions,
-        &pop.mulliken_charges,
-        spacing,
-        padding,
-    ))
+    #[cfg(feature = "parallel")]
+    {
+        Ok(esp::compute_esp_grid_parallel(
+            elements,
+            positions,
+            &pop.mulliken_charges,
+            spacing,
+            padding,
+        ))
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    {
+        Ok(esp::compute_esp_grid(
+            elements,
+            positions,
+            &pop.mulliken_charges,
+            spacing,
+            padding,
+        ))
+    }
 }
 
 /// Compute DOS/PDOS from EHT orbital energies.
@@ -297,17 +325,36 @@ pub fn compute_dos(
 ) -> Result<dos::DosResult, String> {
     let eht_result = eht::solve_eht(elements, positions, None)?;
     let flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
-    Ok(dos::compute_pdos(
-        elements,
-        &flat,
-        &eht_result.energies,
-        &eht_result.coefficients,
-        eht_result.n_electrons,
-        sigma,
-        e_min,
-        e_max,
-        n_points,
-    ))
+
+    #[cfg(feature = "parallel")]
+    {
+        Ok(dos::compute_pdos_parallel(
+            elements,
+            &flat,
+            &eht_result.energies,
+            &eht_result.coefficients,
+            eht_result.n_electrons,
+            sigma,
+            e_min,
+            e_max,
+            n_points,
+        ))
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    {
+        Ok(dos::compute_pdos(
+            elements,
+            &flat,
+            &eht_result.energies,
+            &eht_result.coefficients,
+            eht_result.n_electrons,
+            sigma,
+            e_min,
+            e_max,
+            n_points,
+        ))
+    }
 }
 
 /// Compute RMSD between two coordinate sets after Kabsch alignment.
