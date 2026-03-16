@@ -10,6 +10,8 @@
 use nalgebra::{DMatrix, DVector, SymmetricEigen};
 use serde::{Deserialize, Serialize};
 
+use super::params::{analyze_eht_support, EhtSupport};
+
 /// Result of an EHT calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EhtResult {
@@ -30,6 +32,8 @@ pub struct EhtResult {
     pub lumo_energy: f64,
     /// HOMO-LUMO gap in eV.
     pub gap: f64,
+    /// Capability and confidence metadata for this element set.
+    pub support: EhtSupport,
 }
 
 /// Solve the generalized eigenproblem HC = SCE using Löwdin orthogonalization.
@@ -88,18 +92,28 @@ fn count_valence_electrons(elements: &[u8]) -> usize {
     elements
         .iter()
         .map(|&z| match z {
-            1 => 1,  // H
-            5 => 3,  // B
-            6 => 4,  // C
-            7 => 5,  // N
-            8 => 6,  // O
-            9 => 7,  // F
-            14 => 4, // Si
-            15 => 5, // P
-            16 => 6, // S
-            17 => 7, // Cl
-            35 => 7, // Br
-            53 => 7, // I
+            1 => 1,                 // H
+            5 => 3,                 // B
+            6 => 4,                 // C
+            7 => 5,                 // N
+            8 => 6,                 // O
+            9 => 7,                 // F
+            14 => 4,                // Si
+            15 => 5,                // P
+            16 => 6,                // S
+            17 => 7,                // Cl
+            35 => 7,                // Br
+            53 => 7,                // I
+            21 | 39 => 3,           // group 3: Sc, Y
+            22 | 40 | 72 => 4,     // group 4: Ti, Zr, Hf
+            23 | 41 | 73 => 5,     // group 5: V, Nb, Ta
+            24 | 42 | 74 => 6,     // group 6: Cr, Mo, W
+            25 | 43 | 75 => 7,     // group 7: Mn, Tc, Re
+            26 | 44 | 76 => 8,     // group 8: Fe, Ru, Os
+            27 | 45 | 77 => 9,     // group 9: Co, Rh, Ir
+            28 | 46 | 78 => 10,    // group 10: Ni, Pd, Pt
+            29 | 47 | 79 => 11,    // group 11: Cu, Ag, Au
+            30 | 48 | 80 => 12,    // group 12: Zn, Cd, Hg
             _ => 0,
         })
         .sum()
@@ -121,6 +135,11 @@ pub fn solve_eht(
 
     if elements.len() != positions.len() {
         return Err("Element and position arrays must have equal length".to_string());
+    }
+
+    let support = analyze_eht_support(elements);
+    if !support.unsupported_elements.is_empty() {
+        return Err(support.warnings.join(" "));
     }
 
     let basis = build_basis(elements, positions);
@@ -161,6 +180,7 @@ pub fn solve_eht(
         homo_energy,
         lumo_energy,
         gap: lumo_energy - homo_energy,
+        support,
     })
 }
 
@@ -278,5 +298,55 @@ mod tests {
         assert_eq!(count_valence_electrons(&[8, 1, 1]), 8); // H2O
         assert_eq!(count_valence_electrons(&[6, 1, 1, 1, 1]), 8); // CH4
         assert_eq!(count_valence_electrons(&[7, 1, 1, 1]), 8); // NH3
+    }
+
+    #[test]
+    fn test_valence_electron_count_transition_metals() {
+        // 3d series
+        assert_eq!(count_valence_electrons(&[21]), 3); // Sc group 3
+        assert_eq!(count_valence_electrons(&[22]), 4); // Ti group 4
+        assert_eq!(count_valence_electrons(&[26]), 8); // Fe group 8
+        assert_eq!(count_valence_electrons(&[28]), 10); // Ni group 10
+        assert_eq!(count_valence_electrons(&[29]), 11); // Cu group 11
+        assert_eq!(count_valence_electrons(&[30]), 12); // Zn group 12
+        // 4d series
+        assert_eq!(count_valence_electrons(&[39]), 3); // Y group 3
+        assert_eq!(count_valence_electrons(&[46]), 10); // Pd group 10
+        assert_eq!(count_valence_electrons(&[47]), 11); // Ag group 11
+        assert_eq!(count_valence_electrons(&[48]), 12); // Cd group 12
+        // 5d series (Hf=72 is group 4, NOT group 3)
+        assert_eq!(count_valence_electrons(&[72]), 4); // Hf group 4
+        assert_eq!(count_valence_electrons(&[73]), 5); // Ta group 5
+        assert_eq!(count_valence_electrons(&[74]), 6); // W group 6
+        assert_eq!(count_valence_electrons(&[76]), 8); // Os group 8
+        assert_eq!(count_valence_electrons(&[77]), 9); // Ir group 9
+        assert_eq!(count_valence_electrons(&[78]), 10); // Pt group 10
+        assert_eq!(count_valence_electrons(&[79]), 11); // Au group 11
+        assert_eq!(count_valence_electrons(&[80]), 12); // Hg group 12
+    }
+
+    #[test]
+    fn test_cisplatin_has_even_electron_count() {
+        // Pt(10) + 2×Cl(7) + 2×N(5) + 6×H(1) = 40
+        let elements = [78u8, 17, 17, 7, 7, 1, 1, 1, 1, 1, 1];
+        assert_eq!(count_valence_electrons(&elements), 40);
+    }
+
+    #[test]
+    fn test_transition_metal_support_metadata() {
+        let elements = [26u8];
+        let positions = [[0.0, 0.0, 0.0]];
+        let result = solve_eht(&elements, &positions, None).unwrap();
+        assert!(result.support.has_transition_metals);
+        assert_eq!(result.support.provisional_elements, vec![26]);
+        assert!(!result.support.warnings.is_empty());
+    }
+
+    #[test]
+    fn test_unsupported_element_reports_capability_error() {
+        let elements = [118u8];
+        let positions = [[0.0, 0.0, 0.0]];
+        let error = solve_eht(&elements, &positions, None).unwrap_err();
+        assert!(error.contains("No EHT parameters are available"));
     }
 }
