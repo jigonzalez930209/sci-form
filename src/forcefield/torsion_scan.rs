@@ -1,5 +1,7 @@
 use nalgebra::DMatrix;
 use petgraph::visit::EdgeRef;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use std::collections::{HashSet, VecDeque};
 
 // Identifies rotatable bonds and optimizes torsion angles via greedy scanning.
@@ -361,4 +363,87 @@ pub fn optimize_torsions_bounds(
         }
     }
     num_rotatable
+}
+
+/// Monte Carlo torsion sampling using bounds-violation energy as acceptance criterion.
+///
+/// A random rotatable bond is selected each step and perturbed to a random angle.
+/// Moves are accepted by Metropolis criterion with a lightweight temperature parameter.
+pub fn optimize_torsions_monte_carlo_bounds(
+    coords: &mut DMatrix<f32>,
+    mol: &crate::graph::Molecule,
+    bounds: &DMatrix<f64>,
+    seed: u64,
+    n_steps: usize,
+    temperature: f32,
+) -> usize {
+    let rotatable = find_rotatable_bonds(mol);
+    let num_rotatable = rotatable.len();
+    if rotatable.is_empty() || n_steps == 0 {
+        return num_rotatable;
+    }
+
+    let mut rng = StdRng::seed_from_u64(seed);
+    let temp = temperature.max(1e-6);
+    let two_pi = 2.0 * std::f32::consts::PI;
+    let mut current_energy = super::bounds_ff::bounds_violation_energy(coords, bounds);
+
+    for _ in 0..n_steps {
+        let rb = &rotatable[rng.gen_range(0..rotatable.len())];
+        let [a, b, c, d] = rb.dihedral;
+        let current_angle = compute_dihedral(coords, a, b, c, d);
+        let target = rng.gen_range(-std::f32::consts::PI..std::f32::consts::PI);
+        let mut delta = target - current_angle;
+        delta = (delta + std::f32::consts::PI).rem_euclid(two_pi) - std::f32::consts::PI;
+
+        rotate_atoms(coords, &rb.mobile_atoms, b, c, delta);
+        let trial_energy = super::bounds_ff::bounds_violation_energy(coords, bounds);
+        let d_e = trial_energy - current_energy;
+
+        let accept = if d_e <= 0.0 {
+            true
+        } else {
+            let p_accept = (-d_e / temp).exp();
+            rng.gen::<f32>() < p_accept
+        };
+
+        if accept {
+            current_energy = trial_energy;
+        } else {
+            rotate_atoms(coords, &rb.mobile_atoms, b, c, -delta);
+        }
+    }
+
+    num_rotatable
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn flat_to_matrix(coords: &[f64], n_atoms: usize) -> DMatrix<f32> {
+        let mut m = DMatrix::<f32>::zeros(n_atoms, 3);
+        for i in 0..n_atoms {
+            m[(i, 0)] = coords[3 * i] as f32;
+            m[(i, 1)] = coords[3 * i + 1] as f32;
+            m[(i, 2)] = coords[3 * i + 2] as f32;
+        }
+        m
+    }
+
+    #[test]
+    fn test_monte_carlo_torsion_optimizer_runs_for_butane() {
+        let smiles = "CCCC";
+        let mol = crate::graph::Molecule::from_smiles(smiles).unwrap();
+        let conf = crate::embed(smiles, 42);
+        assert!(conf.error.is_none());
+
+        let bounds =
+            crate::distgeom::smooth_bounds_matrix(crate::distgeom::calculate_bounds_matrix(&mol));
+        let mut coords = flat_to_matrix(&conf.coords, mol.graph.node_count());
+        let rot = optimize_torsions_monte_carlo_bounds(&mut coords, &mol, &bounds, 123, 64, 0.3);
+
+        assert!(rot >= 1);
+        assert!(coords.iter().all(|v| v.is_finite()));
+    }
 }
