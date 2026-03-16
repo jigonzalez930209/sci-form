@@ -8,6 +8,34 @@
 use nalgebra::{DMatrix, SymmetricEigen};
 use serde::{Deserialize, Serialize};
 
+/// Bond-order metrics for one atom pair.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BondOrderEntry {
+    /// First atom index.
+    pub atom_i: usize,
+    /// Second atom index.
+    pub atom_j: usize,
+    /// Interatomic distance in Å.
+    pub distance: f64,
+    /// Wiberg-like bond index computed in a Löwdin-orthogonalized AO basis.
+    pub wiberg: f64,
+    /// Mayer-like bond index computed from the PS matrix.
+    pub mayer: f64,
+}
+
+/// Full bond-order analysis across all atom pairs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BondOrderResult {
+    /// Bond-order metrics for each unique atom pair.
+    pub bonds: Vec<BondOrderEntry>,
+    /// Number of atoms in the system.
+    pub num_atoms: usize,
+    /// Sum of Wiberg-like bond indices touching each atom.
+    pub wiberg_valence: Vec<f64>,
+    /// Sum of Mayer-like bond indices touching each atom.
+    pub mayer_valence: Vec<f64>,
+}
+
 /// Result of a population analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopulationResult {
@@ -31,7 +59,7 @@ pub struct PopulationResult {
 ///
 /// - `coefficients`: rows = AO, cols = MO (same layout as EhtResult.coefficients)
 /// - `n_electrons`: total electrons (fills lowest MOs, 2 per orbital)
-fn build_density_matrix(coefficients: &[Vec<f64>], n_electrons: usize) -> DMatrix<f64> {
+pub(crate) fn build_density_matrix(coefficients: &[Vec<f64>], n_electrons: usize) -> DMatrix<f64> {
     let n_ao = coefficients.len();
     let n_occupied = n_electrons / 2;
     let mut p = DMatrix::zeros(n_ao, n_ao);
@@ -77,8 +105,22 @@ fn valence_electrons(z: u8) -> f64 {
 }
 
 /// Map each AO index to its parent atom index.
-fn ao_to_atom_map(basis: &[crate::eht::basis::AtomicOrbital]) -> Vec<usize> {
+pub(crate) fn ao_to_atom_map(basis: &[crate::eht::basis::AtomicOrbital]) -> Vec<usize> {
     basis.iter().map(|ao| ao.atom_index).collect()
+}
+
+fn lowdin_orthogonalized_density(overlap: &DMatrix<f64>, density: &DMatrix<f64>) -> DMatrix<f64> {
+    let n_ao = overlap.nrows();
+    let s_eigen = SymmetricEigen::new(overlap.clone());
+    let mut s_sqrt_diag = DMatrix::zeros(n_ao, n_ao);
+    for i in 0..n_ao {
+        let val = s_eigen.eigenvalues[i];
+        if val > 1e-10 {
+            s_sqrt_diag[(i, i)] = val.sqrt();
+        }
+    }
+    let s_sqrt = &s_eigen.eigenvectors * &s_sqrt_diag * s_eigen.eigenvectors.transpose();
+    &s_sqrt * density * &s_sqrt
 }
 
 /// Compute Mulliken charges.
@@ -129,18 +171,7 @@ pub fn lowdin_charges(
     let p = build_density_matrix(coefficients, n_electrons);
 
     // Build S^{1/2}
-    let s_eigen = SymmetricEigen::new(overlap.clone());
-    let mut s_sqrt_diag = DMatrix::zeros(n_ao, n_ao);
-    for i in 0..n_ao {
-        let val = s_eigen.eigenvalues[i];
-        if val > 1e-10 {
-            s_sqrt_diag[(i, i)] = val.sqrt();
-        }
-    }
-    let s_sqrt = &s_eigen.eigenvectors * &s_sqrt_diag * s_eigen.eigenvectors.transpose();
-
-    // S^{1/2} P S^{1/2}
-    let sps = &s_sqrt * &p * &s_sqrt;
+    let sps = lowdin_orthogonalized_density(overlap, &p);
 
     let mut atom_pop = vec![0.0; n_atoms];
     for mu in 0..n_ao {
@@ -180,16 +211,7 @@ pub fn compute_population(
     let total_mulliken: f64 = mulliken_charges.iter().sum();
 
     // Löwdin: S^{1/2} P S^{1/2}
-    let s_eigen = SymmetricEigen::new(overlap.clone());
-    let mut s_sqrt_diag = DMatrix::zeros(n_ao, n_ao);
-    for i in 0..n_ao {
-        let val = s_eigen.eigenvalues[i];
-        if val > 1e-10 {
-            s_sqrt_diag[(i, i)] = val.sqrt();
-        }
-    }
-    let s_sqrt = &s_eigen.eigenvectors * &s_sqrt_diag * s_eigen.eigenvectors.transpose();
-    let sps = &s_sqrt * &p * &s_sqrt;
+    let sps = lowdin_orthogonalized_density(&overlap, &p);
     let mut lowdin_pop = vec![0.0; n_atoms];
     for mu in 0..n_ao {
         lowdin_pop[ao_map[mu]] += sps[(mu, mu)];
@@ -206,6 +228,70 @@ pub fn compute_population(
         num_atoms: n_atoms,
         total_charge_mulliken: total_mulliken,
         total_charge_lowdin: total_lowdin,
+    }
+}
+
+/// Compute Wiberg-like and Mayer-like bond orders from an EHT density matrix.
+pub fn compute_bond_orders(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    coefficients: &[Vec<f64>],
+    n_electrons: usize,
+) -> BondOrderResult {
+    let basis = crate::eht::basis::build_basis(elements, positions);
+    let overlap = crate::eht::build_overlap_matrix(&basis);
+    let ao_map = ao_to_atom_map(&basis);
+    let density = build_density_matrix(coefficients, n_electrons);
+    let ps = &density * &overlap;
+    let p_orth = lowdin_orthogonalized_density(&overlap, &density);
+
+    let mut atom_aos = vec![Vec::new(); elements.len()];
+    for (ao_idx, &atom_idx) in ao_map.iter().enumerate() {
+        atom_aos[atom_idx].push(ao_idx);
+    }
+
+    let mut bonds = Vec::new();
+    let mut wiberg_valence = vec![0.0; elements.len()];
+    let mut mayer_valence = vec![0.0; elements.len()];
+
+    for atom_i in 0..elements.len() {
+        for atom_j in (atom_i + 1)..elements.len() {
+            let mut wiberg = 0.0;
+            let mut mayer = 0.0;
+
+            for &mu in &atom_aos[atom_i] {
+                for &nu in &atom_aos[atom_j] {
+                    let p_orth_mn = p_orth[(mu, nu)];
+                    wiberg += p_orth_mn * p_orth_mn;
+                    mayer += ps[(mu, nu)] * ps[(nu, mu)];
+                }
+            }
+
+            let dx = positions[atom_i][0] - positions[atom_j][0];
+            let dy = positions[atom_i][1] - positions[atom_j][1];
+            let dz = positions[atom_i][2] - positions[atom_j][2];
+            let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+
+            wiberg_valence[atom_i] += wiberg;
+            wiberg_valence[atom_j] += wiberg;
+            mayer_valence[atom_i] += mayer;
+            mayer_valence[atom_j] += mayer;
+
+            bonds.push(BondOrderEntry {
+                atom_i,
+                atom_j,
+                distance,
+                wiberg,
+                mayer,
+            });
+        }
+    }
+
+    BondOrderResult {
+        bonds,
+        num_atoms: elements.len(),
+        wiberg_valence,
+        mayer_valence,
     }
 }
 
@@ -325,5 +411,46 @@ mod tests {
             total,
             result.n_electrons
         );
+    }
+
+    #[test]
+    fn test_h2_bond_order_is_positive() {
+        let (elems, pos) = h2_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        let bond_orders =
+            compute_bond_orders(&elems, &pos, &result.coefficients, result.n_electrons);
+
+        assert_eq!(bond_orders.bonds.len(), 1);
+        assert!(bond_orders.bonds[0].wiberg > 0.1);
+        assert!(bond_orders.bonds[0].mayer > 0.1);
+    }
+
+    #[test]
+    fn test_water_oh_bonds_exceed_hh_bond_order() {
+        let (elems, pos) = water_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        let bond_orders =
+            compute_bond_orders(&elems, &pos, &result.coefficients, result.n_electrons);
+
+        let oh_1 = bond_orders
+            .bonds
+            .iter()
+            .find(|bond| bond.atom_i == 0 && bond.atom_j == 1)
+            .unwrap();
+        let oh_2 = bond_orders
+            .bonds
+            .iter()
+            .find(|bond| bond.atom_i == 0 && bond.atom_j == 2)
+            .unwrap();
+        let hh = bond_orders
+            .bonds
+            .iter()
+            .find(|bond| bond.atom_i == 1 && bond.atom_j == 2)
+            .unwrap();
+
+        assert!(oh_1.wiberg > hh.wiberg);
+        assert!(oh_2.wiberg > hh.wiberg);
+        assert!(oh_1.mayer > hh.mayer);
+        assert!(oh_2.mayer > hh.mayer);
     }
 }

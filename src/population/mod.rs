@@ -5,4 +5,7 @@
 
 #[allow(clippy::module_inception)]
 pub mod population;
-pub use population::{compute_population, lowdin_charges, mulliken_charges, PopulationResult};
+pub use population::{
+    compute_bond_orders, compute_population, lowdin_charges, mulliken_charges, BondOrderEntry,
+    BondOrderResult, PopulationResult,
+};
