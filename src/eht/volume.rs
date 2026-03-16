@@ -3,9 +3,8 @@
 //! Evaluates Ψ_i(x,y,z) = Σ_μ C_μi φ_μ(x,y,z) on a regular 3D grid.
 
 use serde::{Deserialize, Serialize};
-use std::f64::consts::PI;
 
-use super::basis::AtomicOrbital;
+use super::basis::{gaussian_cartesian_value, orbital_cartesian_terms, AtomicOrbital};
 
 /// A 3D regular grid holding scalar field values.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,34 +75,14 @@ fn evaluate_ao_at_point(orb: &AtomicOrbital, point_ang: &[f64; 3]) -> f64 {
     let px = point_ang[0] * ang_to_bohr - orb.center[0];
     let py = point_ang[1] * ang_to_bohr - orb.center[1];
     let pz = point_ang[2] * ang_to_bohr - orb.center[2];
-    let r2 = px * px + py * py + pz * pz;
-
     let mut val = 0.0;
+    let terms = orbital_cartesian_terms(orb.l, orb.m);
     for g in &orb.gaussians {
-        let exp_val = (-g.alpha * r2).exp();
-        match (orb.l, orb.m) {
-            (0, _) => {
-                // s-type
-                let norm = (2.0 * g.alpha / PI).powf(0.75);
-                val += g.coeff * norm * exp_val;
-            }
-            (1, -1) => {
-                // px
-                let norm = (128.0 * g.alpha.powi(5) / (PI * PI * PI)).powf(0.25);
-                val += g.coeff * norm * px * exp_val;
-            }
-            (1, 0) => {
-                // py
-                let norm = (128.0 * g.alpha.powi(5) / (PI * PI * PI)).powf(0.25);
-                val += g.coeff * norm * py * exp_val;
-            }
-            (1, 1) => {
-                // pz
-                let norm = (128.0 * g.alpha.powi(5) / (PI * PI * PI)).powf(0.25);
-                val += g.coeff * norm * pz * exp_val;
-            }
-            _ => {}
+        let mut g_val = 0.0;
+        for (coef, [lx, ly, lz]) in &terms {
+            g_val += coef * gaussian_cartesian_value(g.alpha, px, py, pz, *lx, *ly, *lz);
         }
+        val += g.coeff * g_val;
     }
 
     val
@@ -421,5 +400,17 @@ mod tests {
         for slab in &slabs {
             assert_eq!(slab.values.len(), slab_size);
         }
+    }
+
+    #[test]
+    fn test_metal_orbital_grid_generation_smoke() {
+        let elements = [26u8, 17, 17];
+        let positions = [[0.0, 0.0, 0.0], [2.2, 0.0, 0.0], [-2.2, 0.0, 0.0]];
+        let result = solve_eht(&elements, &positions, None).unwrap();
+        let basis = build_basis(&elements, &positions);
+        let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &positions, 0.7, 2.5);
+
+        assert!(grid.num_points() > 0);
+        assert!(grid.values.iter().all(|v| v.is_finite()));
     }
 }

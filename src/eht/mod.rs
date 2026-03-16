@@ -19,7 +19,10 @@ pub use basis::{AtomicOrbital, GaussianPrimitive, SlaterOrbital};
 pub use hamiltonian::build_hamiltonian;
 pub use marching_cubes::{marching_cubes, IsosurfaceMesh};
 pub use overlap::build_overlap_matrix;
-pub use params::{EhtParams, OrbitalDef};
+pub use params::{
+    analyze_eht_support, is_transition_metal, support_level_for_element, EhtParams, EhtSupport,
+    OrbitalDef, SupportLevel,
+};
 pub use solver::{solve_eht, EhtResult};
 #[cfg(feature = "parallel")]
 pub use volume::evaluate_orbital_on_grid_parallel;

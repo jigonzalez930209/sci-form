@@ -6,7 +6,7 @@
 use nalgebra::DMatrix;
 use std::f64::consts::PI;
 
-use super::basis::AtomicOrbital;
+use super::basis::{orbital_cartesian_terms, AtomicOrbital};
 
 /// Build the symmetric overlap matrix S for the given molecular basis.
 pub fn build_overlap_matrix(basis: &[AtomicOrbital]) -> DMatrix<f64> {
@@ -35,121 +35,105 @@ fn overlap_integral(a: &AtomicOrbital, b: &AtomicOrbital) -> f64 {
 
     let mut s = 0.0;
 
+    let terms_a = orbital_cartesian_terms(a.l, a.m);
+    let terms_b = orbital_cartesian_terms(b.l, b.m);
+
     for ga in &a.gaussians {
         for gb in &b.gaussians {
             let alpha = ga.alpha;
             let beta = gb.alpha;
             let gamma = alpha + beta;
 
-            // Gaussian product center
             let px = (alpha * a.center[0] + beta * b.center[0]) / gamma;
             let py = (alpha * a.center[1] + beta * b.center[1]) / gamma;
             let pz = (alpha * a.center[2] + beta * b.center[2]) / gamma;
 
-            // Pre-exponential factor from Gaussian product theorem
-            let k_ab = (-alpha * beta / gamma * r2_ab).exp();
+            let pa = [px - a.center[0], py - a.center[1], pz - a.center[2]];
+            let pb = [px - b.center[0], py - b.center[1], pz - b.center[2]];
+            let pre = (-alpha * beta / gamma * r2_ab).exp();
 
-            let contrib = match (a.l, a.m, b.l, b.m) {
-                // (s|s) overlap
-                (0, 0, 0, 0) => {
-                    let norm_a = (2.0 * alpha / PI).powf(0.75);
-                    let norm_b = (2.0 * beta / PI).powf(0.75);
-                    let s_prim = (PI / gamma).powf(1.5) * k_ab;
-                    norm_a * norm_b * s_prim
+            let mut prim_sum = 0.0;
+            for (coef_a, [lax, lay, laz]) in &terms_a {
+                for (coef_b, [lbx, lby, lbz]) in &terms_b {
+                    let ix = overlap_1d(*lax as usize, *lbx as usize, pa[0], pb[0], gamma);
+                    let iy = overlap_1d(*lay as usize, *lby as usize, pa[1], pb[1], gamma);
+                    let iz = overlap_1d(*laz as usize, *lbz as usize, pa[2], pb[2], gamma);
+
+                    let norm_a = cart_norm(alpha, *lax as i32, *lay as i32, *laz as i32);
+                    let norm_b = cart_norm(beta, *lbx as i32, *lby as i32, *lbz as i32);
+                    prim_sum += coef_a * coef_b * norm_a * norm_b * ix * iy * iz;
                 }
-                // (s|p) overlap
-                (0, 0, 1, m) | (1, m, 0, 0) => {
-                    let (s_orb, p_orb, s_alpha, p_alpha) = if a.l == 0 {
-                        (a, b, alpha, beta)
-                    } else {
-                        (b, a, beta, alpha)
-                    };
-                    let s_a = s_alpha;
-                    let p_a = p_alpha;
-                    let g = s_a + p_a;
+            }
 
-                    let norm_s = (2.0 * s_a / PI).powf(0.75);
-                    let norm_p = (128.0 * p_a.powi(5) / (PI * PI * PI)).powf(0.25);
-
-                    // Product center
-                    let pc = [
-                        (s_a * s_orb.center[0] + p_a * p_orb.center[0]) / g,
-                        (s_a * s_orb.center[1] + p_a * p_orb.center[1]) / g,
-                        (s_a * s_orb.center[2] + p_a * p_orb.center[2]) / g,
-                    ];
-
-                    // Component index from m: -1→x, 0→y, 1→z
-                    let comp_idx = match m {
-                        -1 => 0usize,
-                        0 => 1,
-                        1 => 2,
-                        _ => 0,
-                    };
-
-                    // (P - B_p) where B_p is the p-orbital center
-                    let pb = pc[comp_idx] - p_orb.center[comp_idx];
-
-                    let base = (PI / g).powf(1.5) * k_ab;
-                    norm_s * norm_p * pb * base
-                }
-                // (p|p) overlap
-                (1, m_a, 1, m_b) => {
-                    let norm_a = (128.0 * alpha.powi(5) / (PI * PI * PI)).powf(0.25);
-                    let norm_b = (128.0 * beta.powi(5) / (PI * PI * PI)).powf(0.25);
-
-                    let comp_a = match m_a {
-                        -1 => 0usize,
-                        0 => 1,
-                        1 => 2,
-                        _ => 0,
-                    };
-                    let comp_b = match m_b {
-                        -1 => 0usize,
-                        0 => 1,
-                        1 => 2,
-                        _ => 0,
-                    };
-
-                    // PA_i and PB_j
-                    let pa_i = px - a.center[comp_a];
-                    let pb_j;
-                    // For p-p: if same direction use shift product + 1/(2γ),
-                    // else just shift product
-                    if comp_a == comp_b {
-                        let shift_a = match comp_a {
-                            0 => px - a.center[0],
-                            1 => py - a.center[1],
-                            2 => pz - a.center[2],
-                            _ => 0.0,
-                        };
-                        let shift_b = match comp_b {
-                            0 => px - b.center[0],
-                            1 => py - b.center[1],
-                            2 => pz - b.center[2],
-                            _ => 0.0,
-                        };
-                        let base = (PI / gamma).powf(1.5) * k_ab;
-                        let val = shift_a * shift_b + 0.5 / gamma;
-                        norm_a * norm_b * val * base
-                    } else {
-                        pb_j = match comp_b {
-                            0 => px - b.center[0],
-                            1 => py - b.center[1],
-                            2 => pz - b.center[2],
-                            _ => 0.0,
-                        };
-                        let base = (PI / gamma).powf(1.5) * k_ab;
-                        norm_a * norm_b * pa_i * pb_j * base
-                    }
-                }
-                _ => 0.0,
-            };
-
-            s += ga.coeff * gb.coeff * contrib;
+            s += ga.coeff * gb.coeff * pre * prim_sum;
         }
     }
 
     s
+}
+
+fn odd_double_factorial(n: i32) -> f64 {
+    if n <= 0 {
+        return 1.0;
+    }
+    let mut acc = 1.0;
+    let mut k = n;
+    while k > 0 {
+        acc *= k as f64;
+        k -= 2;
+    }
+    acc
+}
+
+fn cart_norm(alpha: f64, lx: i32, ly: i32, lz: i32) -> f64 {
+    let lsum = lx + ly + lz;
+    let pref = (2.0 * alpha / PI).powf(0.75);
+    let ang = (4.0 * alpha).powf(lsum as f64 / 2.0);
+    let denom = (odd_double_factorial(2 * lx - 1)
+        * odd_double_factorial(2 * ly - 1)
+        * odd_double_factorial(2 * lz - 1))
+    .sqrt();
+    pref * ang / denom
+}
+
+fn overlap_1d(la: usize, lb: usize, pa: f64, pb: f64, gamma: f64) -> f64 {
+    let mut e = vec![vec![0.0f64; lb + 1]; la + 1];
+    e[0][0] = (PI / gamma).sqrt();
+
+    for i in 1..=la {
+        let term1 = pa * e[i - 1][0];
+        let term2 = if i > 1 {
+            (i as f64 - 1.0) * e[i - 2][0] / (2.0 * gamma)
+        } else {
+            0.0
+        };
+        e[i][0] = term1 + term2;
+    }
+
+    for j in 1..=lb {
+        let term1 = pb * e[0][j - 1];
+        let term2 = if j > 1 {
+            (j as f64 - 1.0) * e[0][j - 2] / (2.0 * gamma)
+        } else {
+            0.0
+        };
+        e[0][j] = term1 + term2;
+    }
+
+    for i in 1..=la {
+        for j in 1..=lb {
+            let t1 = pb * e[i][j - 1];
+            let t2 = if j > 1 {
+                (j as f64 - 1.0) * e[i][j - 2] / (2.0 * gamma)
+            } else {
+                0.0
+            };
+            let t3 = (i as f64) * e[i - 1][j - 1] / (2.0 * gamma);
+            e[i][j] = t1 + t2 + t3;
+        }
+    }
+
+    e[la][lb]
 }
 
 #[cfg(test)]
@@ -224,5 +208,19 @@ mod tests {
         assert_eq!(s.nrows(), 2);
         let s12 = s[(0, 1)];
         assert!(s12 > 0.3 && s12 < 0.9, "S_12 for H2 = {}", s12);
+    }
+
+    #[test]
+    fn test_metal_overlap_matrix_is_finite() {
+        let elements = [26u8, 17, 17];
+        let positions = [[0.0, 0.0, 0.0], [2.2, 0.0, 0.0], [-2.2, 0.0, 0.0]];
+        let basis = build_basis(&elements, &positions);
+        let s = build_overlap_matrix(&basis);
+
+        for i in 0..s.nrows() {
+            for j in 0..s.ncols() {
+                assert!(s[(i, j)].is_finite(), "S[{},{}] is not finite", i, j);
+            }
+        }
     }
 }

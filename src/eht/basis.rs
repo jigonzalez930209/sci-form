@@ -6,6 +6,19 @@
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
+fn odd_double_factorial(n: i32) -> f64 {
+    if n <= 0 {
+        return 1.0;
+    }
+    let mut acc = 1.0;
+    let mut k = n;
+    while k > 0 {
+        acc *= k as f64;
+        k -= 2;
+    }
+    acc
+}
+
 /// A single Gaussian primitive: coefficient × exp(-alpha × r²).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GaussianPrimitive {
@@ -117,6 +130,65 @@ static STO3G_5SP_OUTER: [(f64, f64); 3] = [
     (0.497340, 0.025335),
 ];
 
+/// STO-3G for nd shells (tabulated at zeta=1.0).
+///
+/// The 3d table is the canonical STO-3G contraction and we reuse it for
+/// higher nd shells as an initial EHT approximation.
+static STO3G_3D: [(f64, f64); 3] = [
+    (0.219767, 2.488296),
+    (0.655547, 0.798105),
+    (0.286573, 0.331966),
+];
+
+/// Cartesian angular terms for one AO in the real-harmonic basis.
+///
+/// Each entry is `(coefficient, [lx, ly, lz])` representing
+/// `coefficient * x^lx y^ly z^lz`.
+pub fn orbital_cartesian_terms(l: u8, m: i8) -> Vec<(f64, [u8; 3])> {
+    match (l, m) {
+        (0, _) => vec![(1.0, [0, 0, 0])],
+        (1, -1) => vec![(1.0, [1, 0, 0])], // p_x
+        (1, 0) => vec![(1.0, [0, 1, 0])],  // p_y
+        (1, 1) => vec![(1.0, [0, 0, 1])],  // p_z
+        (2, -2) => vec![(1.0, [1, 1, 0])], // d_xy
+        (2, -1) => vec![(1.0, [1, 0, 1])], // d_xz
+        (2, 0) => vec![(1.0, [0, 1, 1])],  // d_yz
+        // d_x2-y2 = (1/sqrt(2)) (d_xx - d_yy)
+        (2, 1) => vec![
+            (1.0 / 2.0f64.sqrt(), [2, 0, 0]),
+            (-1.0 / 2.0f64.sqrt(), [0, 2, 0]),
+        ],
+        // d_z2 = (1/sqrt(6)) (2 d_zz - d_xx - d_yy)
+        (2, 2) => vec![
+            (-1.0 / 6.0f64.sqrt(), [2, 0, 0]),
+            (-1.0 / 6.0f64.sqrt(), [0, 2, 0]),
+            (2.0 / 6.0f64.sqrt(), [0, 0, 2]),
+        ],
+        _ => vec![],
+    }
+}
+
+/// Normalization factor for a Cartesian Gaussian
+/// `x^lx y^ly z^lz exp(-alpha r^2)`.
+pub fn gaussian_cartesian_norm(alpha: f64, lx: u8, ly: u8, lz: u8) -> f64 {
+    let lsum = (lx + ly + lz) as i32;
+    let pref = (2.0 * alpha / PI).powf(0.75);
+    let ang = (4.0 * alpha).powf(lsum as f64 / 2.0);
+    let denom = (odd_double_factorial(2 * lx as i32 - 1)
+        * odd_double_factorial(2 * ly as i32 - 1)
+        * odd_double_factorial(2 * lz as i32 - 1))
+    .sqrt();
+    pref * ang / denom
+}
+
+/// Evaluate one normalized Cartesian Gaussian component
+/// `N x^lx y^ly z^lz exp(-alpha r^2)`.
+pub fn gaussian_cartesian_value(alpha: f64, x: f64, y: f64, z: f64, lx: u8, ly: u8, lz: u8) -> f64 {
+    let norm = gaussian_cartesian_norm(alpha, lx, ly, lz);
+    let poly = x.powi(lx as i32) * y.powi(ly as i32) * z.powi(lz as i32);
+    norm * poly * (-alpha * (x * x + y * y + z * z)).exp()
+}
+
 /// Build STO-3G Gaussian primitives for an orbital with given n, l, and ζ.
 pub fn sto3g_expansion(n: u8, l: u8, zeta: f64) -> Vec<GaussianPrimitive> {
     let zeta_sq = zeta * zeta;
@@ -127,10 +199,13 @@ pub fn sto3g_expansion(n: u8, l: u8, zeta: f64) -> Vec<GaussianPrimitive> {
         (2, 1) => &STO3G_2SP_OUTER,
         (3, 0) => &STO3G_3SP_INNER,
         (3, 1) => &STO3G_3SP_OUTER,
+        (3, 2) => &STO3G_3D,
         (4, 0) => &STO3G_4SP_INNER,
         (4, 1) => &STO3G_4SP_OUTER,
+        (4, 2) => &STO3G_3D,
         (5, 0) => &STO3G_5SP_INNER,
         (5, 1) => &STO3G_5SP_OUTER,
+        (5, 2) => &STO3G_3D,
         _ => return vec![],
     };
 
@@ -209,6 +284,23 @@ pub fn build_basis(elements: &[u8], positions: &[[f64; 3]]) -> Vec<AtomicOrbital
                         gaussians: sto3g_expansion(orb_def.n, 1, orb_def.zeta),
                     });
                 }
+            } else if orb_def.l == 2 {
+                // real d orbitals: dxy, dxz, dyz, dx2-y2, dz2
+                let d_labels = ["xy", "xz", "yz", "x2-y2", "z2"];
+                let m_values: [i8; 5] = [-2, -1, 0, 1, 2];
+                for (idx, &m) in m_values.iter().enumerate() {
+                    basis.push(AtomicOrbital {
+                        atom_index: atom_idx,
+                        center,
+                        n: orb_def.n,
+                        l: 2,
+                        m,
+                        vsip: orb_def.vsip,
+                        zeta: orb_def.zeta,
+                        label: format!("{}_{}{}", symbol, orb_def.label, d_labels[idx]),
+                        gaussians: sto3g_expansion(orb_def.n, 2, orb_def.zeta),
+                    });
+                }
             }
         }
     }
@@ -284,5 +376,20 @@ mod tests {
         assert!(v0 > v1);
         assert!(v1 > v5);
         assert!(v5 > 0.0);
+    }
+
+    #[test]
+    fn test_sto3g_d_expansion() {
+        let gs = sto3g_expansion(3, 2, 1.0);
+        assert_eq!(gs.len(), 3);
+    }
+
+    #[test]
+    fn test_fe_basis_contains_nine_functions() {
+        let elements = [26u8];
+        let positions = [[0.0, 0.0, 0.0]];
+        let basis = build_basis(&elements, &positions);
+        // Fe parameterization includes 4s (1 AO), 4p (3 AO), and 3d (5 AO).
+        assert_eq!(basis.len(), 9);
     }
 }
