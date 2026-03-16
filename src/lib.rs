@@ -8,18 +8,24 @@ pub mod conformer;
 pub mod dipole;
 pub mod distgeom;
 pub mod dos;
+pub mod dynamics;
 pub mod eht;
 pub mod esp;
 pub mod etkdg;
 pub mod forcefield;
 pub mod graph;
 pub mod materials;
+pub mod ml;
 pub mod optimization;
+pub mod pm3;
 pub mod population;
+pub mod reactivity;
 pub mod smarts;
 pub mod smiles;
 pub mod surface;
+pub mod topology;
 pub mod transport;
+pub mod xtb;
 
 use serde::{Deserialize, Serialize};
 
@@ -54,6 +60,207 @@ pub struct ConformerConfig {
     pub num_threads: usize,
 }
 
+/// One conformer entry in a ranked conformer-search ensemble.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConformerEnsembleMember {
+    /// RNG seed used for this embedding attempt.
+    pub seed: u64,
+    /// Cluster identifier assigned after RMSD clustering.
+    pub cluster_id: Option<usize>,
+    /// Flat xyz coordinates: [x0, y0, z0, x1, y1, z1, ...].
+    pub coords: Vec<f64>,
+    /// UFF energy in kcal/mol.
+    pub energy_kcal_mol: f64,
+}
+
+/// One RMSD-based cluster summary in a conformer-search ensemble.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConformerClusterSummary {
+    /// Cluster identifier.
+    pub cluster_id: usize,
+    /// Seed of the representative (lowest-energy) conformer in this cluster.
+    pub representative_seed: u64,
+    /// Number of conformers assigned to this cluster.
+    pub size: usize,
+    /// Seeds of all conformers assigned to this cluster.
+    pub member_seeds: Vec<u64>,
+}
+
+/// Result of a conformer-search workflow with UFF ranking and RMSD filtering.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConformerSearchResult {
+    /// Number of successful embedded conformers before filtering.
+    pub generated: usize,
+    /// Number of conformers retained after RMSD duplicate filtering.
+    pub unique: usize,
+    /// Number of rotatable bonds detected in the molecule.
+    pub rotatable_bonds: usize,
+    /// Ranked conformers (lowest UFF energy first).
+    pub conformers: Vec<ConformerEnsembleMember>,
+    /// RMSD-based clusters with representative/member mapping.
+    pub clusters: Vec<ConformerClusterSummary>,
+    /// Non-fatal notes and warnings.
+    pub notes: Vec<String>,
+}
+
+/// Capability status for one operation on a given element set.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodCapability {
+    /// Whether the operation is available for the provided element set.
+    pub available: bool,
+    /// Confidence level for the operation.
+    pub confidence: eht::SupportLevel,
+    /// Elements that block operation support.
+    pub unsupported_elements: Vec<u8>,
+    /// Human-readable warnings.
+    pub warnings: Vec<String>,
+}
+
+/// Explicit computational method exposed by top-level planning APIs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ScientificMethod {
+    Embed,
+    Uff,
+    Eht,
+    Pm3,
+    Xtb,
+    Mmff94,
+}
+
+/// Property domain used when choosing a recommended computational method.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PropertyRequest {
+    Geometry,
+    ForceFieldEnergy,
+    Orbitals,
+    Population,
+    OrbitalGrid,
+}
+
+/// Structured metadata for one method on a specific element set.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodMetadata {
+    pub method: ScientificMethod,
+    pub available: bool,
+    pub confidence: eht::SupportLevel,
+    pub confidence_score: f64,
+    pub limitations: Vec<String>,
+    pub warnings: Vec<String>,
+}
+
+/// Recommended method plan for one requested property domain.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PropertyMethodPlan {
+    pub property: PropertyRequest,
+    pub recommended: Option<ScientificMethod>,
+    pub fallback: Option<ScientificMethod>,
+    pub rationale: Vec<String>,
+    pub methods: Vec<MethodMetadata>,
+}
+
+/// Full method-planning summary for a molecule element set.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemMethodPlan {
+    pub capabilities: SystemCapabilities,
+    pub geometry: PropertyMethodPlan,
+    pub force_field_energy: PropertyMethodPlan,
+    pub orbitals: PropertyMethodPlan,
+    pub population: PropertyMethodPlan,
+    pub orbital_grid: PropertyMethodPlan,
+}
+
+/// Capability summary for core operations on a given element set.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemCapabilities {
+    pub embed: MethodCapability,
+    pub uff: MethodCapability,
+    pub eht: MethodCapability,
+    pub population: MethodCapability,
+    pub orbital_grid: MethodCapability,
+}
+
+/// Result of an electronic workflow with optional UFF fallback.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum ElectronicWorkflowResult {
+    Eht {
+        result: eht::EhtResult,
+    },
+    UffFallback {
+        energy_kcal_mol: f64,
+        reason: String,
+        support: eht::EhtSupport,
+    },
+}
+
+/// Execution status for one method inside a multi-method comparison run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MethodComparisonStatus {
+    Success,
+    Unavailable,
+    Error,
+}
+
+/// Compact per-method payload for multi-method comparison.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum MethodComparisonPayload {
+    Eht {
+        homo_energy: f64,
+        lumo_energy: f64,
+        gap: f64,
+        support: eht::EhtSupport,
+    },
+    Uff {
+        energy_kcal_mol: f64,
+    },
+}
+
+/// One method row in the multi-method comparison workflow.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodComparisonEntry {
+    pub method: ScientificMethod,
+    pub status: MethodComparisonStatus,
+    pub available: bool,
+    pub confidence: eht::SupportLevel,
+    pub confidence_score: f64,
+    pub warnings: Vec<String>,
+    pub limitations: Vec<String>,
+    pub payload: Option<MethodComparisonPayload>,
+    pub error: Option<String>,
+}
+
+/// Structured comparison result for multiple methods on the same geometry/system.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MethodComparisonResult {
+    pub plan: SystemMethodPlan,
+    pub comparisons: Vec<MethodComparisonEntry>,
+}
+
+/// Aromaticity analysis summary from graph-level bond annotations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AromaticityAnalysis {
+    pub aromatic_atoms: Vec<bool>,
+    pub aromatic_bonds: Vec<(usize, usize)>,
+}
+
+/// Graph-level stereocenter analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StereocenterAnalysis {
+    pub tagged_tetrahedral_centers: Vec<usize>,
+    pub inferred_tetrahedral_centers: Vec<usize>,
+}
+
+/// Combined structural graph feature analysis for UI/API consumers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphFeatureAnalysis {
+    pub aromaticity: AromaticityAnalysis,
+    pub stereocenters: StereocenterAnalysis,
+}
+
 impl Default for ConformerConfig {
     fn default() -> Self {
         Self {
@@ -68,6 +275,273 @@ impl Default for ConformerConfig {
 /// Library version string.
 pub fn version() -> String {
     format!("sci-form {}", env!("CARGO_PKG_VERSION"))
+}
+
+/// Report EHT capability metadata for a given element list.
+pub fn get_eht_support(elements: &[u8]) -> eht::EhtSupport {
+    eht::analyze_eht_support(elements)
+}
+
+fn is_uff_element_supported(z: u8) -> bool {
+    matches!(
+        z,
+        1 | 5
+            | 6
+            | 7
+            | 8
+            | 9
+            | 14
+            | 15
+            | 16
+            | 17
+            | 22
+            | 23
+            | 24
+            | 25
+            | 26
+            | 27
+            | 28
+            | 29
+            | 30
+            | 32
+            | 33
+            | 34
+            | 35
+            | 42
+            | 46
+            | 47
+            | 50
+            | 51
+            | 52
+            | 53
+            | 78
+            | 79
+    )
+}
+
+fn unique_sorted_unsupported(elements: &[u8], pred: impl Fn(u8) -> bool) -> Vec<u8> {
+    let mut out: Vec<u8> = elements.iter().copied().filter(|&z| !pred(z)).collect();
+    out.sort_unstable();
+    out.dedup();
+    out
+}
+
+/// Report operation capability metadata for a given element list.
+pub fn get_system_capabilities(elements: &[u8]) -> SystemCapabilities {
+    let eht_support = get_eht_support(elements);
+    let uff_unsupported = unique_sorted_unsupported(elements, is_uff_element_supported);
+
+    let embed = MethodCapability {
+        available: !elements.is_empty(),
+        confidence: eht::SupportLevel::Experimental,
+        unsupported_elements: Vec::new(),
+        warnings: vec![
+            "Embed capability is inferred from element presence only; final success still depends on full molecular graph and geometry constraints.".to_string(),
+        ],
+    };
+
+    let uff = if uff_unsupported.is_empty() {
+        MethodCapability {
+            available: true,
+            confidence: eht::SupportLevel::Supported,
+            unsupported_elements: Vec::new(),
+            warnings: Vec::new(),
+        }
+    } else {
+        MethodCapability {
+            available: false,
+            confidence: eht::SupportLevel::Unsupported,
+            unsupported_elements: uff_unsupported.clone(),
+            warnings: vec![format!(
+                "UFF atom typing is unavailable for elements {:?}.",
+                uff_unsupported
+            )],
+        }
+    };
+
+    let eht = MethodCapability {
+        available: eht_support.unsupported_elements.is_empty(),
+        confidence: eht_support.level,
+        unsupported_elements: eht_support.unsupported_elements.clone(),
+        warnings: eht_support.warnings.clone(),
+    };
+
+    let population = MethodCapability {
+        available: eht.available,
+        confidence: eht.confidence,
+        unsupported_elements: eht.unsupported_elements.clone(),
+        warnings: eht.warnings.clone(),
+    };
+
+    let orbital_grid = MethodCapability {
+        available: eht.available,
+        confidence: eht.confidence,
+        unsupported_elements: eht.unsupported_elements.clone(),
+        warnings: eht.warnings.clone(),
+    };
+
+    SystemCapabilities {
+        embed,
+        uff,
+        eht,
+        population,
+        orbital_grid,
+    }
+}
+
+fn confidence_score_for_method(method: ScientificMethod, capability: &MethodCapability) -> f64 {
+    if !capability.available {
+        return 0.0;
+    }
+
+    match method {
+        ScientificMethod::Embed => 0.8,
+        ScientificMethod::Uff | ScientificMethod::Mmff94 => match capability.confidence {
+            eht::SupportLevel::Supported => 0.95,
+            eht::SupportLevel::Experimental => 0.75,
+            eht::SupportLevel::Unsupported => 0.0,
+        },
+        ScientificMethod::Eht | ScientificMethod::Pm3 | ScientificMethod::Xtb => match capability.confidence {
+            eht::SupportLevel::Supported => 0.95,
+            eht::SupportLevel::Experimental => 0.6,
+            eht::SupportLevel::Unsupported => 0.0,
+        },
+    }
+}
+
+fn build_method_metadata(
+    method: ScientificMethod,
+    capability: &MethodCapability,
+    extra_limitations: &[&str],
+) -> MethodMetadata {
+    let mut limitations: Vec<String> = extra_limitations.iter().map(|s| s.to_string()).collect();
+
+    if !capability.unsupported_elements.is_empty() {
+        limitations.push(format!(
+            "Unsupported elements for this method: {:?}.",
+            capability.unsupported_elements
+        ));
+    }
+
+    if matches!(method, ScientificMethod::Eht)
+        && matches!(capability.confidence, eht::SupportLevel::Experimental)
+    {
+        limitations.push(
+            "Transition-metal EHT parameters remain provisional and should be treated as experimental."
+                .to_string(),
+        );
+    }
+
+    MethodMetadata {
+        method,
+        available: capability.available,
+        confidence: capability.confidence,
+        confidence_score: confidence_score_for_method(method, capability),
+        limitations,
+        warnings: capability.warnings.clone(),
+    }
+}
+
+fn build_property_plan(
+    property: PropertyRequest,
+    recommended: Option<ScientificMethod>,
+    fallback: Option<ScientificMethod>,
+    rationale: Vec<String>,
+    methods: Vec<MethodMetadata>,
+) -> PropertyMethodPlan {
+    PropertyMethodPlan {
+        property,
+        recommended,
+        fallback,
+        rationale,
+        methods,
+    }
+}
+
+/// Build a structured method plan with recommendations, fallback paths, and confidence scores.
+pub fn get_system_method_plan(elements: &[u8]) -> SystemMethodPlan {
+    let capabilities = get_system_capabilities(elements);
+
+    let geometry_method = build_method_metadata(
+        ScientificMethod::Embed,
+        &capabilities.embed,
+        &["Geometry generation still depends on graph topology, stereochemistry, and embedding constraints."],
+    );
+    let geometry = build_property_plan(
+        PropertyRequest::Geometry,
+        geometry_method.available.then_some(ScientificMethod::Embed),
+        None,
+        vec!["Embedding is the top-level geometry generation path in sci-form.".to_string()],
+        vec![geometry_method],
+    );
+
+    let uff_method = build_method_metadata(
+        ScientificMethod::Uff,
+        &capabilities.uff,
+        &["This recommendation applies to force-field energy evaluation, not molecular orbital analysis."],
+    );
+    let force_field_energy = build_property_plan(
+        PropertyRequest::ForceFieldEnergy,
+        uff_method.available.then_some(ScientificMethod::Uff),
+        None,
+        vec![
+            "UFF is the top-level force-field energy path when atom typing is available."
+                .to_string(),
+        ],
+        vec![uff_method],
+    );
+
+    let eht_method = build_method_metadata(
+        ScientificMethod::Eht,
+        &capabilities.eht,
+        &["EHT is the only current top-level orbital method in sci-form."],
+    );
+    let orbitals = build_property_plan(
+        PropertyRequest::Orbitals,
+        eht_method.available.then_some(ScientificMethod::Eht),
+        None,
+        vec!["Orbital energies and MO coefficients are produced by the EHT workflow.".to_string()],
+        vec![eht_method.clone()],
+    );
+
+    let population_method = build_method_metadata(
+        ScientificMethod::Eht,
+        &capabilities.population,
+        &["Population analysis is derived from the EHT density and overlap matrices."],
+    );
+    let population = build_property_plan(
+        PropertyRequest::Population,
+        population_method.available.then_some(ScientificMethod::Eht),
+        None,
+        vec!["Population analysis currently requires a successful EHT calculation.".to_string()],
+        vec![population_method],
+    );
+
+    let orbital_grid_method = build_method_metadata(
+        ScientificMethod::Eht,
+        &capabilities.orbital_grid,
+        &["Orbital-grid rendering currently depends on EHT molecular-orbital coefficients."],
+    );
+    let orbital_grid = build_property_plan(
+        PropertyRequest::OrbitalGrid,
+        orbital_grid_method
+            .available
+            .then_some(ScientificMethod::Eht),
+        None,
+        vec![
+            "Orbital-grid generation currently requires a successful EHT calculation.".to_string(),
+        ],
+        vec![orbital_grid_method],
+    );
+
+    SystemMethodPlan {
+        capabilities,
+        geometry,
+        force_field_energy,
+        orbitals,
+        population,
+        orbital_grid,
+    }
 }
 
 /// Generate a 3D conformer from a SMILES string.
@@ -283,6 +757,321 @@ pub fn compute_dipole(
     ))
 }
 
+/// Compute atom-resolved HOMO/LUMO frontier descriptors from EHT.
+pub fn compute_frontier_descriptors(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<reactivity::FrontierDescriptors, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    Ok(reactivity::compute_frontier_descriptors(
+        elements,
+        positions,
+        &eht_result,
+    ))
+}
+
+/// Compute Fukui-function workflows and condensed per-atom descriptors from EHT.
+pub fn compute_fukui_descriptors(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<reactivity::FukuiDescriptors, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    Ok(reactivity::compute_fukui_descriptors(
+        elements,
+        positions,
+        &eht_result,
+    ))
+}
+
+/// Build empirical reactivity rankings using condensed Fukui descriptors and Mulliken charges.
+pub fn compute_reactivity_ranking(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<reactivity::ReactivityRanking, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    let fukui = reactivity::compute_fukui_descriptors(elements, positions, &eht_result);
+    let pop = population::compute_population(
+        elements,
+        positions,
+        &eht_result.coefficients,
+        eht_result.n_electrons,
+    );
+    Ok(reactivity::rank_reactivity_sites(
+        &fukui,
+        &pop.mulliken_charges,
+    ))
+}
+
+/// Build an exploratory UV-Vis-like spectrum from low-cost EHT transitions.
+pub fn compute_uv_vis_spectrum(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> Result<reactivity::UvVisSpectrum, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    Ok(reactivity::compute_uv_vis_like_spectrum(
+        &eht_result,
+        sigma,
+        e_min,
+        e_max,
+        n_points,
+    ))
+}
+
+/// Compute Wiberg-like and Mayer-like bond orders from EHT.
+pub fn compute_bond_orders(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<population::BondOrderResult, String> {
+    let eht_result = eht::solve_eht(elements, positions, None)?;
+    Ok(population::compute_bond_orders(
+        elements,
+        positions,
+        &eht_result.coefficients,
+        eht_result.n_electrons,
+    ))
+}
+
+/// Compute structured topology analysis for transition-metal coordination environments.
+pub fn compute_topology(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> topology::TopologyAnalysisResult {
+    topology::analyze_topology(elements, positions)
+}
+
+/// Analyze aromaticity and graph-level stereocenters from a SMILES string.
+pub fn analyze_graph_features(smiles: &str) -> Result<GraphFeatureAnalysis, String> {
+    use petgraph::visit::EdgeRef;
+
+    let mol = parse(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    let mut aromatic_atoms = vec![false; n_atoms];
+    let mut aromatic_bonds = Vec::new();
+
+    for edge in mol.graph.edge_references() {
+        if matches!(edge.weight().order, graph::BondOrder::Aromatic) {
+            let i = edge.source().index();
+            let j = edge.target().index();
+            aromatic_atoms[i] = true;
+            aromatic_atoms[j] = true;
+            aromatic_bonds.push((i, j));
+        }
+    }
+
+    let mut tagged_tetrahedral_centers = Vec::new();
+    let mut inferred_tetrahedral_centers = Vec::new();
+    for i in 0..n_atoms {
+        let idx = petgraph::graph::NodeIndex::new(i);
+        let atom = &mol.graph[idx];
+        if matches!(
+            atom.chiral_tag,
+            graph::ChiralType::TetrahedralCW | graph::ChiralType::TetrahedralCCW
+        ) {
+            tagged_tetrahedral_centers.push(i);
+        }
+
+        let neighbors: Vec<_> = mol.graph.neighbors(idx).collect();
+        if neighbors.len() == 4 && matches!(atom.hybridization, graph::Hybridization::SP3) {
+            let mut signature: Vec<u8> = neighbors.iter().map(|n| mol.graph[*n].element).collect();
+            signature.sort_unstable();
+            signature.dedup();
+            if signature.len() >= 3 {
+                inferred_tetrahedral_centers.push(i);
+            }
+        }
+    }
+
+    Ok(GraphFeatureAnalysis {
+        aromaticity: AromaticityAnalysis {
+            aromatic_atoms,
+            aromatic_bonds,
+        },
+        stereocenters: StereocenterAnalysis {
+            tagged_tetrahedral_centers,
+            inferred_tetrahedral_centers,
+        },
+    })
+}
+
+/// Compute electronic properties with automatic fallback to UFF energy.
+///
+/// If EHT is unsupported for the element set, this function routes directly to UFF.
+/// If EHT is experimental and `allow_experimental_eht` is false, it also routes to UFF.
+pub fn compute_eht_or_uff_fallback(
+    smiles: &str,
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    allow_experimental_eht: bool,
+) -> Result<ElectronicWorkflowResult, String> {
+    let support = get_eht_support(elements);
+    let should_fallback = match support.level {
+        eht::SupportLevel::Unsupported => true,
+        eht::SupportLevel::Experimental => !allow_experimental_eht,
+        eht::SupportLevel::Supported => false,
+    };
+
+    if should_fallback {
+        let coords_flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
+        let energy = compute_uff_energy(smiles, &coords_flat).map_err(|e| {
+            format!(
+                "EHT is not appropriate for this system (support: {:?}) and UFF fallback failed: {}",
+                support.level, e
+            )
+        })?;
+        return Ok(ElectronicWorkflowResult::UffFallback {
+            energy_kcal_mol: energy,
+            reason: if matches!(support.level, eht::SupportLevel::Unsupported) {
+                "EHT unsupported for one or more elements; routed to UFF-only workflow.".to_string()
+            } else {
+                "EHT confidence is experimental and experimental mode is disabled; routed to UFF-only workflow."
+                    .to_string()
+            },
+            support,
+        });
+    }
+
+    let result = eht::solve_eht(elements, positions, None)?;
+    Ok(ElectronicWorkflowResult::Eht { result })
+}
+
+/// Compare multiple supported methods on the same geometry/system.
+///
+/// This workflow executes available methods independently and returns per-method
+/// status, confidence metadata, warnings, limitations, and compact outputs.
+pub fn compare_methods(
+    smiles: &str,
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    allow_experimental_eht: bool,
+) -> MethodComparisonResult {
+    let plan = get_system_method_plan(elements);
+    let mut comparisons = Vec::new();
+
+    let coords_flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
+
+    {
+        let meta = build_method_metadata(
+            ScientificMethod::Uff,
+            &plan.capabilities.uff,
+            &["Comparison uses UFF force-field energy as the UFF observable."],
+        );
+        if !meta.available {
+            comparisons.push(MethodComparisonEntry {
+                method: ScientificMethod::Uff,
+                status: MethodComparisonStatus::Unavailable,
+                available: false,
+                confidence: meta.confidence,
+                confidence_score: meta.confidence_score,
+                warnings: meta.warnings,
+                limitations: meta.limitations,
+                payload: None,
+                error: Some("UFF is unavailable for this element set.".to_string()),
+            });
+        } else {
+            match compute_uff_energy(smiles, &coords_flat) {
+                Ok(energy) => comparisons.push(MethodComparisonEntry {
+                    method: ScientificMethod::Uff,
+                    status: MethodComparisonStatus::Success,
+                    available: true,
+                    confidence: meta.confidence,
+                    confidence_score: meta.confidence_score,
+                    warnings: meta.warnings,
+                    limitations: meta.limitations,
+                    payload: Some(MethodComparisonPayload::Uff {
+                        energy_kcal_mol: energy,
+                    }),
+                    error: None,
+                }),
+                Err(err) => comparisons.push(MethodComparisonEntry {
+                    method: ScientificMethod::Uff,
+                    status: MethodComparisonStatus::Error,
+                    available: true,
+                    confidence: meta.confidence,
+                    confidence_score: meta.confidence_score,
+                    warnings: meta.warnings,
+                    limitations: meta.limitations,
+                    payload: None,
+                    error: Some(err),
+                }),
+            }
+        }
+    }
+
+    {
+        let meta = build_method_metadata(
+            ScientificMethod::Eht,
+            &plan.capabilities.eht,
+            &["Comparison uses frontier orbital energies and gap as the EHT observable."],
+        );
+
+        if !meta.available {
+            comparisons.push(MethodComparisonEntry {
+                method: ScientificMethod::Eht,
+                status: MethodComparisonStatus::Unavailable,
+                available: false,
+                confidence: meta.confidence,
+                confidence_score: meta.confidence_score,
+                warnings: meta.warnings,
+                limitations: meta.limitations,
+                payload: None,
+                error: Some("EHT is unavailable for this element set.".to_string()),
+            });
+        } else if matches!(meta.confidence, eht::SupportLevel::Experimental)
+            && !allow_experimental_eht
+        {
+            comparisons.push(MethodComparisonEntry {
+                method: ScientificMethod::Eht,
+                status: MethodComparisonStatus::Unavailable,
+                available: true,
+                confidence: meta.confidence,
+                confidence_score: meta.confidence_score,
+                warnings: meta.warnings,
+                limitations: meta.limitations,
+                payload: None,
+                error: Some(
+                    "EHT confidence is experimental and allow_experimental_eht=false.".to_string(),
+                ),
+            });
+        } else {
+            match eht::solve_eht(elements, positions, None) {
+                Ok(result) => comparisons.push(MethodComparisonEntry {
+                    method: ScientificMethod::Eht,
+                    status: MethodComparisonStatus::Success,
+                    available: true,
+                    confidence: meta.confidence,
+                    confidence_score: meta.confidence_score,
+                    warnings: meta.warnings,
+                    limitations: meta.limitations,
+                    payload: Some(MethodComparisonPayload::Eht {
+                        homo_energy: result.homo_energy,
+                        lumo_energy: result.lumo_energy,
+                        gap: result.gap,
+                        support: result.support,
+                    }),
+                    error: None,
+                }),
+                Err(err) => comparisons.push(MethodComparisonEntry {
+                    method: ScientificMethod::Eht,
+                    status: MethodComparisonStatus::Error,
+                    available: true,
+                    confidence: meta.confidence,
+                    confidence_score: meta.confidence_score,
+                    warnings: meta.warnings,
+                    limitations: meta.limitations,
+                    payload: None,
+                    error: Some(err),
+                }),
+            }
+        }
+    }
+
+    MethodComparisonResult { plan, comparisons }
+}
+
 /// Compute ESP grid from atomic elements, positions and Mulliken charges.
 pub fn compute_esp(
     elements: &[u8],
@@ -375,6 +1164,295 @@ pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
     Ok(energy)
 }
 
+/// Compute MMFF94 force field energy for a molecule.
+///
+/// `smiles`: SMILES string for bond/topology information.
+/// `coords`: flat xyz coordinates `[x0,y0,z0, x1,y1,z1, ...]`.
+///
+/// Returns total MMFF94 energy in kcal/mol.
+pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    if coords.len() != n * 3 {
+        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+    }
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
+        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+        let order = match mol.graph[e].order {
+            graph::BondOrder::Single => 1u8,
+            graph::BondOrder::Double => 2,
+            graph::BondOrder::Triple => 3,
+            graph::BondOrder::Aromatic => 2,
+            graph::BondOrder::Unknown => 1,
+        };
+        (a.index(), b.index(), order)
+    }).collect();
+    let terms = forcefield::mmff94::Mmff94Builder::build(&elements, &bonds);
+    let (energy, _grad) = forcefield::mmff94::Mmff94Builder::total_energy(&terms, coords);
+    Ok(energy)
+}
+
+/// Run a PM3 semi-empirical calculation.
+///
+/// `elements`: atomic numbers.
+/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
+///
+/// Returns orbital energies, total energy, heat of formation, and Mulliken charges.
+pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Result, String> {
+    pm3::solve_pm3(elements, positions)
+}
+
+/// Run an xTB tight-binding calculation.
+///
+/// `elements`: atomic numbers.
+/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
+///
+/// Returns orbital energies, total energy, gap, and Mulliken charges.
+pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
+    xtb::solve_xtb(elements, positions)
+}
+
+/// Compute molecular descriptors for ML property prediction.
+///
+/// `elements`: atomic numbers.
+/// `bonds`: (atom_i, atom_j, bond_order) list.
+/// `charges`: partial charges (or empty slice for default).
+/// `aromatic_atoms`: aromatic flags per atom (or empty slice).
+pub fn compute_ml_descriptors(
+    elements: &[u8],
+    bonds: &[(usize, usize, u8)],
+    charges: &[f64],
+    aromatic_atoms: &[bool],
+) -> ml::MolecularDescriptors {
+    ml::compute_descriptors(elements, bonds, charges, aromatic_atoms)
+}
+
+/// Predict molecular properties using ML proxy models.
+///
+/// Returns LogP, molar refractivity, solubility, Lipinski flags,
+/// and druglikeness score from molecular descriptors.
+pub fn predict_ml_properties(desc: &ml::MolecularDescriptors) -> ml::MlPropertyResult {
+    ml::predict_properties(desc)
+}
+
+/// Run short exploratory molecular dynamics with Velocity Verlet (NVE-like).
+pub fn compute_md_trajectory(
+    smiles: &str,
+    coords: &[f64],
+    n_steps: usize,
+    dt_fs: f64,
+    seed: u64,
+) -> Result<dynamics::MdTrajectory, String> {
+    dynamics::simulate_velocity_verlet_uff(smiles, coords, n_steps, dt_fs, seed, None)
+}
+
+/// Run short exploratory molecular dynamics with Velocity Verlet + Berendsen NVT thermostat.
+pub fn compute_md_trajectory_nvt(
+    smiles: &str,
+    coords: &[f64],
+    n_steps: usize,
+    dt_fs: f64,
+    seed: u64,
+    target_temp_k: f64,
+    thermostat_tau_fs: f64,
+) -> Result<dynamics::MdTrajectory, String> {
+    dynamics::simulate_velocity_verlet_uff(
+        smiles,
+        coords,
+        n_steps,
+        dt_fs,
+        seed,
+        Some((target_temp_k, thermostat_tau_fs)),
+    )
+}
+
+/// Build a simplified NEB path between two geometries.
+pub fn compute_simplified_neb_path(
+    smiles: &str,
+    start_coords: &[f64],
+    end_coords: &[f64],
+    n_images: usize,
+    n_iter: usize,
+    spring_k: f64,
+    step_size: f64,
+) -> Result<dynamics::NebPathResult, String> {
+    dynamics::compute_simplified_neb_path(
+        smiles,
+        start_coords,
+        end_coords,
+        n_images,
+        n_iter,
+        spring_k,
+        step_size,
+    )
+}
+
+fn coords_flat_to_matrix_f32(coords: &[f64], n_atoms: usize) -> nalgebra::DMatrix<f32> {
+    let mut m = nalgebra::DMatrix::<f32>::zeros(n_atoms, 3);
+    for i in 0..n_atoms {
+        m[(i, 0)] = coords[3 * i] as f32;
+        m[(i, 1)] = coords[3 * i + 1] as f32;
+        m[(i, 2)] = coords[3 * i + 2] as f32;
+    }
+    m
+}
+
+fn coords_matrix_f32_to_flat(m: &nalgebra::DMatrix<f32>) -> Vec<f64> {
+    let mut out = Vec::with_capacity(m.nrows() * 3);
+    for i in 0..m.nrows() {
+        out.push(m[(i, 0)] as f64);
+        out.push(m[(i, 1)] as f64);
+        out.push(m[(i, 2)] as f64);
+    }
+    out
+}
+
+/// Search conformers by sampling multiple embeddings, optimizing torsions, and ranking with UFF.
+///
+/// This workflow:
+/// 1. Generates up to `n_samples` conformers with different seeds.
+/// 2. Applies Monte Carlo torsion sampling plus a greedy rotatable-bond refinement pass.
+/// 3. Scores each conformer with UFF energy (kcal/mol).
+/// 4. Filters near-duplicates using RMSD thresholding.
+/// 5. Builds explicit RMSD clusters and returns representative/member mapping.
+pub fn search_conformers_with_uff(
+    smiles: &str,
+    n_samples: usize,
+    seed: u64,
+    rmsd_threshold: f64,
+) -> Result<ConformerSearchResult, String> {
+    if n_samples == 0 {
+        return Err("n_samples must be > 0".to_string());
+    }
+    if rmsd_threshold <= 0.0 {
+        return Err("rmsd_threshold must be > 0".to_string());
+    }
+
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    let bounds = distgeom::smooth_bounds_matrix(distgeom::calculate_bounds_matrix(&mol));
+
+    let mut generated = Vec::new();
+    let mut notes = Vec::new();
+    let mut rotatable_bonds = 0usize;
+
+    for i in 0..n_samples {
+        let sample_seed = seed.wrapping_add(i as u64);
+        let conf = embed(smiles, sample_seed);
+
+        if conf.error.is_some() || conf.coords.len() != n_atoms * 3 {
+            continue;
+        }
+
+        let mut coords = coords_flat_to_matrix_f32(&conf.coords, n_atoms);
+        let rot_mc = forcefield::optimize_torsions_monte_carlo_bounds(
+            &mut coords,
+            &mol,
+            &bounds,
+            sample_seed ^ 0x9E37_79B9_7F4A_7C15,
+            64,
+            0.4,
+        );
+        let rot_greedy = forcefield::optimize_torsions_bounds(&mut coords, &mol, &bounds, 2);
+        let rot = rot_mc.max(rot_greedy);
+        rotatable_bonds = rot;
+        let coords_flat = coords_matrix_f32_to_flat(&coords);
+
+        match compute_uff_energy(smiles, &coords_flat) {
+            Ok(energy_kcal_mol) => generated.push(ConformerEnsembleMember {
+                seed: sample_seed,
+                cluster_id: None,
+                coords: coords_flat,
+                energy_kcal_mol,
+            }),
+            Err(_) => continue,
+        }
+    }
+
+    if generated.is_empty() {
+        return Err("failed to generate any valid conformers".to_string());
+    }
+
+    generated.sort_by(|a, b| {
+        a.energy_kcal_mol
+            .partial_cmp(&b.energy_kcal_mol)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let generated_count = generated.len();
+
+    let mut unique = Vec::new();
+    let mut cluster_members: Vec<Vec<u64>> = Vec::new();
+    for candidate in generated {
+        let existing_cluster = unique.iter().position(|u: &ConformerEnsembleMember| {
+            compute_rmsd(&candidate.coords, &u.coords) < rmsd_threshold
+        });
+
+        if let Some(cluster_id) = existing_cluster {
+            cluster_members[cluster_id].push(candidate.seed);
+        } else {
+            unique.push(candidate.clone());
+            cluster_members.push(vec![candidate.seed]);
+        }
+    }
+
+    for (cluster_id, member) in unique.iter_mut().enumerate() {
+        member.cluster_id = Some(cluster_id);
+    }
+
+    let clusters: Vec<ConformerClusterSummary> = unique
+        .iter()
+        .enumerate()
+        .map(|(cluster_id, representative)| ConformerClusterSummary {
+            cluster_id,
+            representative_seed: representative.seed,
+            size: cluster_members[cluster_id].len(),
+            member_seeds: cluster_members[cluster_id].clone(),
+        })
+        .collect();
+
+    notes.push(
+        "Conformers are preconditioned with Monte Carlo torsion sampling + greedy torsion refinement, ranked by UFF energy, deduplicated by Kabsch-aligned RMSD threshold, and summarized as explicit RMSD clusters."
+            .to_string(),
+    );
+
+    Ok(ConformerSearchResult {
+        generated: generated_count,
+        unique: unique.len(),
+        rotatable_bonds,
+        conformers: unique,
+        clusters,
+        notes,
+    })
+}
+
+/// Compute UFF energy and apply an aromaticity-informed heuristic correction.
+pub fn compute_uff_energy_with_aromatic_heuristics(
+    smiles: &str,
+    coords: &[f64],
+) -> Result<reactivity::UffHeuristicEnergy, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    if coords.len() != n * 3 {
+        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+    }
+
+    let ff = forcefield::builder::build_uff_force_field(&mol);
+    let mut gradient = vec![0.0f64; n * 3];
+    let raw = ff.compute_system_energy_and_gradients(coords, &mut gradient);
+    Ok(reactivity::apply_aromatic_uff_correction(&mol, raw))
+}
+
+/// Estimate acidic/basic pKa sites from graph environments and Gasteiger-charge heuristics.
+pub fn compute_empirical_pka(smiles: &str) -> Result<reactivity::EmpiricalPkaResult, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let charges = compute_charges(smiles)?;
+    Ok(reactivity::estimate_empirical_pka(&mol, &charges.charges))
+}
+
 /// Create a periodic unit cell from lattice parameters (a, b, c in Å; α, β, γ in degrees).
 pub fn create_unit_cell(
     a: f64,
@@ -404,4 +1482,258 @@ pub fn assemble_framework(
     cell: &materials::UnitCell,
 ) -> materials::CrystalStructure {
     materials::assemble_framework(node, linker, topology, cell)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cisplatin_style_support_metadata() {
+        let smiles = "[Pt](Cl)(Cl)([NH3])[NH3]";
+        let mol = parse(smiles).expect("Cisplatin-style example should parse");
+        let elements: Vec<u8> = (0..mol.graph.node_count())
+            .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+            .collect();
+
+        let caps = get_system_capabilities(&elements);
+        assert!(caps.eht.available);
+        assert!(matches!(
+            caps.eht.confidence,
+            eht::SupportLevel::Experimental
+        ));
+    }
+
+    #[test]
+    fn test_pt_system_routes_to_uff_when_experimental_disabled() {
+        let smiles = "[Pt](Cl)(Cl)([NH3])[NH3]";
+        let mol = parse(smiles).expect("Pt example should parse");
+        let n = mol.graph.node_count();
+        let elements: Vec<u8> = (0..n)
+            .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+            .collect();
+        let positions = vec![[0.0, 0.0, 0.0]; n];
+
+        let result = compute_eht_or_uff_fallback(smiles, &elements, &positions, false)
+            .expect("Fallback workflow should return a result");
+
+        assert!(matches!(
+            result,
+            ElectronicWorkflowResult::UffFallback { .. }
+        ));
+    }
+
+    #[test]
+    fn test_method_plan_prefers_supported_workflows_for_organic_systems() {
+        let plan = get_system_method_plan(&[6, 1, 1, 1, 1]);
+
+        assert_eq!(plan.geometry.recommended, Some(ScientificMethod::Embed));
+        assert_eq!(
+            plan.force_field_energy.recommended,
+            Some(ScientificMethod::Uff)
+        );
+        assert_eq!(plan.orbitals.recommended, Some(ScientificMethod::Eht));
+        assert_eq!(plan.population.recommended, Some(ScientificMethod::Eht));
+        assert_eq!(plan.orbital_grid.recommended, Some(ScientificMethod::Eht));
+        assert!(plan.orbitals.methods[0].confidence_score > 0.9);
+    }
+
+    #[test]
+    fn test_method_plan_marks_metal_orbital_workflow_experimental() {
+        let plan = get_system_method_plan(&[78, 17, 17, 7, 7]);
+
+        assert_eq!(plan.orbitals.recommended, Some(ScientificMethod::Eht));
+        assert_eq!(
+            plan.force_field_energy.recommended,
+            Some(ScientificMethod::Uff)
+        );
+        assert!(matches!(
+            plan.orbitals.methods[0].confidence,
+            eht::SupportLevel::Experimental
+        ));
+        assert!(plan.orbitals.methods[0].confidence_score < 0.9);
+        assert!(!plan.orbitals.methods[0].warnings.is_empty());
+    }
+
+    #[test]
+    fn test_method_plan_reports_unavailable_workflows_for_unsupported_elements() {
+        let plan = get_system_method_plan(&[92]);
+
+        assert_eq!(plan.force_field_energy.recommended, None);
+        assert_eq!(plan.orbitals.recommended, None);
+        assert_eq!(plan.population.recommended, None);
+        assert_eq!(plan.orbital_grid.recommended, None);
+        assert!(!plan.orbitals.methods[0].limitations.is_empty());
+    }
+
+    #[test]
+    fn test_compare_methods_supported_system_returns_success_rows() {
+        let result = compare_methods("CC", &[6, 6], &[[0.0, 0.0, 0.0], [1.54, 0.0, 0.0]], true);
+        assert_eq!(result.comparisons.len(), 2);
+        assert!(result
+            .comparisons
+            .iter()
+            .any(|entry| matches!(entry.method, ScientificMethod::Uff) && entry.available));
+        assert!(result.comparisons.iter().any(|entry| matches!(
+            entry.method,
+            ScientificMethod::Eht
+        ) && matches!(
+            entry.status,
+            MethodComparisonStatus::Success
+        )));
+    }
+
+    #[test]
+    fn test_compare_methods_blocks_experimental_eht_when_disabled() {
+        let result = compare_methods("[O]", &[78], &[[0.0, 0.0, 0.0]], false);
+        let eht_row = result
+            .comparisons
+            .iter()
+            .find(|entry| matches!(entry.method, ScientificMethod::Eht))
+            .expect("EHT row must exist");
+        assert!(matches!(
+            eht_row.status,
+            MethodComparisonStatus::Unavailable
+        ));
+    }
+
+    #[test]
+    fn test_compare_methods_reports_unavailable_for_unsupported_elements() {
+        let result = compare_methods("[O]", &[92], &[[0.0, 0.0, 0.0]], true);
+        assert!(result
+            .comparisons
+            .iter()
+            .all(|entry| matches!(entry.status, MethodComparisonStatus::Unavailable)));
+    }
+
+    #[test]
+    fn test_compute_fukui_descriptors_returns_atomwise_output() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let result = compute_fukui_descriptors(&elements, &positions).unwrap();
+        assert_eq!(result.num_atoms, 3);
+        assert_eq!(result.condensed.len(), 3);
+    }
+
+    #[test]
+    fn test_compute_uv_vis_spectrum_returns_requested_grid_size() {
+        let elements = [6u8, 6, 1, 1, 1, 1];
+        let positions = [
+            [0.0, 0.0, 0.0],
+            [1.34, 0.0, 0.0],
+            [-0.6, 0.92, 0.0],
+            [-0.6, -0.92, 0.0],
+            [1.94, 0.92, 0.0],
+            [1.94, -0.92, 0.0],
+        ];
+        let spectrum = compute_uv_vis_spectrum(&elements, &positions, 0.2, 0.5, 8.0, 256).unwrap();
+        assert_eq!(spectrum.energies_ev.len(), 256);
+        assert_eq!(spectrum.intensities.len(), 256);
+    }
+
+    #[test]
+    fn test_analyze_graph_features_reports_benzene_aromaticity() {
+        let analysis = analyze_graph_features("c1ccccc1").unwrap();
+        assert_eq!(analysis.aromaticity.aromatic_atoms.len(), 12);
+        assert_eq!(
+            analysis
+                .aromaticity
+                .aromatic_atoms
+                .iter()
+                .filter(|v| **v)
+                .count(),
+            6
+        );
+        assert_eq!(analysis.aromaticity.aromatic_bonds.len(), 6);
+    }
+
+    #[test]
+    fn test_compute_empirical_pka_finds_acidic_site_for_acetic_acid() {
+        let result = compute_empirical_pka("CC(=O)O").unwrap();
+        assert!(!result.acidic_sites.is_empty());
+    }
+
+    #[test]
+    fn test_compute_uff_energy_with_aromatic_heuristics_applies_correction() {
+        let conf = embed("c1ccccc1", 42);
+        assert!(conf.error.is_none());
+
+        let result = compute_uff_energy_with_aromatic_heuristics("c1ccccc1", &conf.coords).unwrap();
+        assert!(result.aromatic_bond_count >= 6);
+        assert!(result.corrected_energy_kcal_mol <= result.raw_energy_kcal_mol);
+    }
+
+    #[test]
+    fn test_search_conformers_with_uff_returns_ranked_unique_ensemble() {
+        let result = search_conformers_with_uff("CCCC", 10, 42, 0.2).unwrap();
+        assert!(result.generated >= 1);
+        assert!(result.unique >= 1);
+        assert_eq!(result.unique, result.conformers.len());
+        assert_eq!(result.unique, result.clusters.len());
+        assert!(result.rotatable_bonds >= 1);
+
+        let mut total_members = 0usize;
+        for (i, cluster) in result.clusters.iter().enumerate() {
+            assert_eq!(cluster.cluster_id, i);
+            assert!(cluster.size >= 1);
+            total_members += cluster.size;
+            assert_eq!(result.conformers[i].cluster_id, Some(i));
+            assert_eq!(result.conformers[i].seed, cluster.representative_seed);
+        }
+        assert_eq!(total_members, result.generated);
+
+        for i in 1..result.conformers.len() {
+            assert!(
+                result.conformers[i - 1].energy_kcal_mol <= result.conformers[i].energy_kcal_mol
+            );
+        }
+    }
+
+    #[test]
+    fn test_search_conformers_with_uff_large_rmsd_threshold_collapses_duplicates() {
+        let result = search_conformers_with_uff("CCCC", 8, 123, 10.0).unwrap();
+        assert_eq!(result.unique, 1);
+        assert_eq!(result.clusters.len(), 1);
+        assert_eq!(result.clusters[0].size, result.generated);
+    }
+
+    #[test]
+    fn test_compute_md_trajectory_velocity_verlet_runs() {
+        let conf = embed("CC", 42);
+        assert!(conf.error.is_none());
+
+        let trj = compute_md_trajectory("CC", &conf.coords, 10, 0.25, 7).unwrap();
+        assert_eq!(trj.frames.len(), 11);
+        assert!(trj
+            .frames
+            .iter()
+            .all(|f| f.coords.iter().all(|v| v.is_finite())));
+    }
+
+    #[test]
+    fn test_compute_md_trajectory_nvt_runs() {
+        let conf = embed("CCO", 42);
+        assert!(conf.error.is_none());
+
+        let trj =
+            compute_md_trajectory_nvt("CCO", &conf.coords, 12, 0.25, 17, 300.0, 10.0).unwrap();
+        assert_eq!(trj.frames.len(), 13);
+        assert!(trj.frames.iter().all(|f| f.temperature_k.is_finite()));
+    }
+
+    #[test]
+    fn test_compute_simplified_neb_path_runs() {
+        let c1 = embed("CC", 42);
+        let c2 = embed("CC", 43);
+        assert!(c1.error.is_none());
+        assert!(c2.error.is_none());
+
+        let path =
+            compute_simplified_neb_path("CC", &c1.coords, &c2.coords, 6, 20, 0.01, 1e-5).unwrap();
+        assert_eq!(path.images.len(), 6);
+        assert!(path
+            .images
+            .iter()
+            .all(|img| img.potential_energy_kcal_mol.is_finite()));
+    }
 }
