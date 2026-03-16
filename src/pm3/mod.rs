@@ -9,5 +9,5 @@
 pub mod params;
 pub mod solver;
 
-pub use params::{Pm3Params, get_pm3_params, is_pm3_supported};
-pub use solver::{Pm3Result, solve_pm3};
+pub use params::{get_pm3_params, is_pm3_supported, Pm3Params};
+pub use solver::{solve_pm3, Pm3Result};

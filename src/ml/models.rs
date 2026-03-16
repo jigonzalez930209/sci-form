@@ -4,8 +4,8 @@
 //! aqueous solubility, and toxicity flags via simple linear regression
 //! coefficients fitted to public datasets.
 
-use serde::{Deserialize, Serialize};
 use super::descriptors::MolecularDescriptors;
+use serde::{Deserialize, Serialize};
 
 /// ML-predicted molecular properties.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,8 +53,12 @@ fn predict_logp(desc: &MolecularDescriptors) -> f64 {
     let sp3_correction = -0.180 * desc.fsp3;
     let mw_term = 0.005 * (desc.molecular_weight - 100.0);
 
-    base + h_correction + ring_correction + aromatic_correction
-        + polar_correction + sp3_correction + mw_term
+    base + h_correction
+        + ring_correction
+        + aromatic_correction
+        + polar_correction
+        + sp3_correction
+        + mw_term
 }
 
 /// Predict molar refractivity (CMR) from atom contributions.
@@ -78,8 +82,7 @@ fn predict_solubility(desc: &MolecularDescriptors, logp: f64) -> f64 {
     } else {
         0.0
     };
-    0.16 - 0.63 * logp - 0.0062 * desc.molecular_weight
-        + 0.066 * desc.n_rotatable_bonds as f64
+    0.16 - 0.63 * logp - 0.0062 * desc.molecular_weight + 0.066 * desc.n_rotatable_bonds as f64
         - 0.74 * frac_aromatic
 }
 
@@ -166,7 +169,11 @@ mod tests {
         let desc = compute_descriptors(&elements, &bonds, &[], &[]);
         let result = predict_properties(&desc);
         // Water should be very hydrophilic (low logP)
-        assert!(result.logp < 1.0, "Water logP should be low: {}", result.logp);
+        assert!(
+            result.logp < 1.0,
+            "Water logP should be low: {}",
+            result.logp
+        );
         assert!(result.lipinski.passes, "Water should pass Lipinski");
     }
 
@@ -193,7 +200,10 @@ mod tests {
             sum_polarizability: 80.0,
         };
         let result = predict_properties(&desc);
-        assert!(result.lipinski.violations >= 2, "Should have multiple violations");
+        assert!(
+            result.lipinski.violations >= 2,
+            "Should have multiple violations"
+        );
         assert!(!result.lipinski.passes, "Should fail Lipinski");
     }
 
@@ -201,8 +211,14 @@ mod tests {
     fn test_druglikeness_range() {
         let elements = [6u8, 6, 8, 1, 1, 1, 1, 1, 1];
         let bonds = [
-            (0, 1, 1u8), (1, 2, 1), (0, 3, 1), (0, 4, 1),
-            (0, 5, 1), (1, 6, 1), (1, 7, 1), (2, 8, 1),
+            (0, 1, 1u8),
+            (1, 2, 1),
+            (0, 3, 1),
+            (0, 4, 1),
+            (0, 5, 1),
+            (1, 6, 1),
+            (1, 7, 1),
+            (2, 8, 1),
         ];
         let desc = compute_descriptors(&elements, &bonds, &[], &[]);
         let result = predict_properties(&desc);

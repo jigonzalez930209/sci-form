@@ -1,5 +1,5 @@
-/// Temporary helper: dump new EHT reference values for metal systems.
-/// Run with: cargo test --test dump_new_metal_refs -- --nocapture
+//! Temporary helper: dump new EHT reference values for metal systems.
+//! Run with: cargo test --test dump_new_metal_refs -- --nocapture
 
 fn ferrocene_like() -> (Vec<u8>, Vec<[f64; 3]>) {
     let mut elements = Vec::new();
@@ -30,10 +30,17 @@ fn ferrocene_like() -> (Vec<u8>, Vec<[f64; 3]>) {
 fn cisplatin_like() -> (Vec<u8>, Vec<[f64; 3]>) {
     let elements = vec![78, 17, 17, 7, 7, 1, 1, 1, 1, 1, 1];
     let positions = vec![
-        [0.0, 0.0, 0.0], [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.00, 0.0], [0.0, -2.00, 0.0],
-        [0.90, 2.60, 0.0], [-0.90, 2.60, 0.0], [0.00, 2.00, 0.95],
-        [0.90, -2.60, 0.0], [-0.90, -2.60, 0.0], [0.00, -2.00, -0.95],
+        [0.0, 0.0, 0.0],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.00, 0.0],
+        [0.0, -2.00, 0.0],
+        [0.90, 2.60, 0.0],
+        [-0.90, 2.60, 0.0],
+        [0.00, 2.00, 0.95],
+        [0.90, -2.60, 0.0],
+        [-0.90, -2.60, 0.0],
+        [0.00, -2.00, -0.95],
     ];
     (elements, positions)
 }
@@ -41,8 +48,13 @@ fn cisplatin_like() -> (Vec<u8>, Vec<[f64; 3]>) {
 fn fecl6_octahedral() -> (Vec<u8>, Vec<[f64; 3]>) {
     let elements = vec![26, 17, 17, 17, 17, 17, 17];
     let positions = vec![
-        [0.0, 0.0, 0.0], [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.30, 0.0], [0.0, -2.30, 0.0], [0.0, 0.0, 2.30], [0.0, 0.0, -2.30],
+        [0.0, 0.0, 0.0],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.30, 0.0],
+        [0.0, -2.30, 0.0],
+        [0.0, 0.0, 2.30],
+        [0.0, 0.0, -2.30],
     ];
     (elements, positions)
 }
@@ -50,19 +62,35 @@ fn fecl6_octahedral() -> (Vec<u8>, Vec<[f64; 3]>) {
 fn pdcl4_square_planar() -> (Vec<u8>, Vec<[f64; 3]>) {
     let elements = vec![46, 17, 17, 17, 17];
     let positions = vec![
-        [0.0, 0.0, 0.0], [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.30, 0.0], [0.0, -2.30, 0.0],
+        [0.0, 0.0, 0.0],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.30, 0.0],
+        [0.0, -2.30, 0.0],
     ];
     (elements, positions)
 }
 
 #[test]
 fn dump_metal_refs() {
-    let systems: Vec<(&str, Vec<u8>, Vec<[f64; 3]>)> = vec![
-        { let (e,p) = ferrocene_like(); ("ferrocene_like", e, p) },
-        { let (e,p) = cisplatin_like(); ("cisplatin_like", e, p) },
-        { let (e,p) = fecl6_octahedral(); ("fecl6_octahedral", e, p) },
-        { let (e,p) = pdcl4_square_planar(); ("pdcl4_square_planar", e, p) },
+    type System = (&'static str, Vec<u8>, Vec<[f64; 3]>);
+    let systems: Vec<System> = vec![
+        {
+            let (e, p) = ferrocene_like();
+            ("ferrocene_like", e, p)
+        },
+        {
+            let (e, p) = cisplatin_like();
+            ("cisplatin_like", e, p)
+        },
+        {
+            let (e, p) = fecl6_octahedral();
+            ("fecl6_octahedral", e, p)
+        },
+        {
+            let (e, p) = pdcl4_square_planar();
+            ("pdcl4_square_planar", e, p)
+        },
     ];
 
     println!("\n[");
@@ -79,11 +107,19 @@ fn dump_metal_refs() {
         println!("    \"tolerance\": 0.0001,");
         println!("    \"max_variation_percent\": 0.1");
         print!("  }}");
-        if i < systems.len() - 1 { println!(","); } else { println!(); }
+        if i < systems.len() - 1 {
+            println!(",");
+        } else {
+            println!();
+        }
 
         // Verify sanity
         println!("  // HOMO-LUMO gap: {:.6} eV (non-zero = good)", result.gap);
-        println!("  // n_electrons: {} (even = good: {})", result.n_electrons, result.n_electrons % 2 == 0);
+        println!(
+            "  // n_electrons: {} (even = good: {})",
+            result.n_electrons,
+            result.n_electrons.is_multiple_of(2)
+        );
     }
     println!("]");
 }
