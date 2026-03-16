@@ -60,6 +60,7 @@ export default defineConfig({
             { text: 'Python', link: '/guide/python' },
             { text: 'TypeScript / JS', link: '/guide/typescript' },
             { text: 'CLI', link: '/guide/cli' },
+            { text: 'Metal EHT Validity', link: '/guide/metal-eht-validity' },
           ],
         },
       ],
