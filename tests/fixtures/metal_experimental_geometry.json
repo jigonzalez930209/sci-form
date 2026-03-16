@@ -1,0 +1,51 @@
+[
+  {
+    "name": "ferrocene",
+    "category": "light_transition_metal",
+    "source": "Ferrocene structure section (Fe-C = 2.064 A), Wikipedia summary of crystallographic data",
+    "measurements": [
+      {
+        "label": "Fe-C_mean",
+        "metal_index": 0,
+        "ligand_indices": [1, 3, 5, 7, 9, 11, 13, 15, 17, 19],
+        "experimental_value": 2.064,
+        "allowed_error_percent": 1.0
+      }
+    ]
+  },
+  {
+    "name": "cisplatin",
+    "category": "heavy_transition_metal",
+    "source": "cis-[Pt(NH3)2Cl2] crystallographic consensus values (Pt-Cl approx. 2.32 A, Pt-N approx. 2.05 A)",
+    "measurements": [
+      {
+        "label": "Pt-Cl_mean",
+        "metal_index": 0,
+        "ligand_indices": [1, 2],
+        "experimental_value": 2.32,
+        "allowed_error_percent": 1.0
+      },
+      {
+        "label": "Pt-N_mean",
+        "metal_index": 0,
+        "ligand_indices": [3, 4],
+        "experimental_value": 2.05,
+        "allowed_error_percent": 1.0
+      }
+    ]
+  },
+  {
+    "name": "hexachloroplatinate",
+    "category": "heavy_transition_metal",
+    "source": "Hexachloroplatinate(IV) octahedral motif; representative Pt-Cl experimental value approx. 2.31 A",
+    "measurements": [
+      {
+        "label": "Pt-Cl_mean",
+        "metal_index": 0,
+        "ligand_indices": [1, 2, 3, 4, 5, 6],
+        "experimental_value": 2.31,
+        "allowed_error_percent": 1.0
+      }
+    ]
+  }
+]
