@@ -7,9 +7,9 @@
 //! 4. Run restricted Hartree-Fock SCF with NDDO two-electron integrals
 //! 5. Return orbital energies, total energy, heat of formation
 
-use serde::{Deserialize, Serialize};
+use super::params::{count_pm3_electrons, get_pm3_params, num_pm3_basis_functions};
 use nalgebra::DMatrix;
-use super::params::{get_pm3_params, num_pm3_basis_functions, count_pm3_electrons};
+use serde::{Deserialize, Serialize};
 
 /// PM3 calculation result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,7 +57,11 @@ fn distance_bohr(pos_a: &[f64; 3], pos_b: &[f64; 3]) -> f64 {
 /// STO overlap integral S(n,zeta_a,n,zeta_b,R) for s-s overlap.
 fn sto_ss_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
     if r_bohr < 1e-10 {
-        return if (zeta_a - zeta_b).abs() < 1e-10 { 1.0 } else { 0.0 };
+        return if (zeta_a - zeta_b).abs() < 1e-10 {
+            1.0
+        } else {
+            0.0
+        };
     }
     let p = 0.5 * (zeta_a + zeta_b) * r_bohr;
     let t = 0.5 * (zeta_a - zeta_b) * r_bohr;
@@ -68,10 +72,18 @@ fn sto_ss_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
 
     // Mulliken approximation for general STO overlap
     let a_func = |x: f64| -> f64 {
-        if x.abs() < 1e-8 { 1.0 } else { (-x).exp() * (1.0 + x + x * x / 3.0) }
+        if x.abs() < 1e-8 {
+            1.0
+        } else {
+            (-x).exp() * (1.0 + x + x * x / 3.0)
+        }
     };
     let b_func = |x: f64| -> f64 {
-        if x.abs() < 1e-8 { 1.0 } else { x.exp() * (1.0 - x + x * x / 3.0) - (-x).exp() * (1.0 + x + x * x / 3.0) }
+        if x.abs() < 1e-8 {
+            1.0
+        } else {
+            x.exp() * (1.0 - x + x * x / 3.0) - (-x).exp() * (1.0 + x + x * x / 3.0)
+        }
     };
 
     let s = a_func(p) * b_func(t.abs());
@@ -102,14 +114,12 @@ fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
 /// `positions`: Cartesian coordinates in Å (one [x,y,z] per atom).
 ///
 /// Returns `Pm3Result` with orbital energies, total energy, and heat of formation.
-pub fn solve_pm3(
-    elements: &[u8],
-    positions: &[[f64; 3]],
-) -> Result<Pm3Result, String> {
+pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, String> {
     if elements.len() != positions.len() {
         return Err(format!(
             "elements ({}) and positions ({}) length mismatch",
-            elements.len(), positions.len()
+            elements.len(),
+            positions.len()
         ));
     }
 
@@ -196,7 +206,9 @@ pub fn solve_pm3(
             let pb = get_pm3_params(elements[b]).unwrap();
             let r_bohr = distance_bohr(&positions[a], &positions[b]);
             let r_angstrom = r_bohr * BOHR_TO_ANGSTROM;
-            if r_angstrom < 0.1 { continue; }
+            if r_angstrom < 0.1 {
+                continue;
+            }
 
             // PM3 core-core repulsion: Z_a * Z_b * gamma_ss * f(R)
             let _gamma_ss = 1.0 / r_bohr; // Coulomb term in eV
@@ -331,7 +343,9 @@ pub fn solve_pm3(
 
             // Two-center Coulomb: interaction with other atoms
             for b in 0..n_atoms {
-                if b == atom_a { continue; }
+                if b == atom_a {
+                    continue;
+                }
                 let r_bohr = distance_bohr(&positions[atom_a], &positions[b]);
                 let ev_per_hartree = 27.2114;
                 let gamma_ab = ev_per_hartree / r_bohr.max(0.5);
@@ -375,7 +389,11 @@ pub fn solve_pm3(
     for &z in elements {
         let p = get_pm3_params(z).unwrap();
         // Isolated atom energy approximation
-        e_atom_sum += if z == 1 { p.uss * p.core_charge * 0.5 } else { (p.uss + 3.0 * p.upp) * 0.25 * p.core_charge };
+        e_atom_sum += if z == 1 {
+            p.uss * p.core_charge * 0.5
+        } else {
+            (p.uss + 3.0 * p.upp) * 0.25 * p.core_charge
+        };
         dhf_atom_sum += p.heat_of_atomization;
     }
     let heat_of_formation = (total_energy - e_atom_sum) * EV_TO_KCAL + dhf_atom_sum;
@@ -397,8 +415,16 @@ pub fn solve_pm3(
     let homo_idx = if n_occ > 0 { n_occ - 1 } else { 0 };
     let lumo_idx = n_occ.min(n_basis - 1);
     let homo_energy = orbital_energies[homo_idx];
-    let lumo_energy = if n_occ < n_basis { orbital_energies[lumo_idx] } else { homo_energy };
-    let gap = if n_occ < n_basis { lumo_energy - homo_energy } else { 0.0 };
+    let lumo_energy = if n_occ < n_basis {
+        orbital_energies[lumo_idx]
+    } else {
+        homo_energy
+    };
+    let gap = if n_occ < n_basis {
+        lumo_energy - homo_energy
+    } else {
+        0.0
+    };
 
     Ok(Pm3Result {
         orbital_energies,
@@ -442,7 +468,10 @@ mod tests {
         assert_eq!(result.n_basis, 6); // O: s+3p, 2H: s each
         assert_eq!(result.n_electrons, 8);
         assert!(result.total_energy.is_finite());
-        assert!(result.gap > 0.0, "Water should have a positive HOMO-LUMO gap");
+        assert!(
+            result.gap > 0.0,
+            "Water should have a positive HOMO-LUMO gap"
+        );
         // Check charge separation exists (O more negative than H, or at least different)
         assert!(
             (result.mulliken_charges[0] - result.mulliken_charges[1]).abs() > 0.001,

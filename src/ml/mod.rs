@@ -7,5 +7,5 @@
 pub mod descriptors;
 pub mod models;
 
-pub use descriptors::{MolecularDescriptors, compute_descriptors};
-pub use models::{MlPropertyResult, predict_properties};
+pub use descriptors::{compute_descriptors, MolecularDescriptors};
+pub use models::{predict_properties, MlPropertyResult};

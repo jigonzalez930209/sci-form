@@ -401,11 +401,13 @@ fn confidence_score_for_method(method: ScientificMethod, capability: &MethodCapa
             eht::SupportLevel::Experimental => 0.75,
             eht::SupportLevel::Unsupported => 0.0,
         },
-        ScientificMethod::Eht | ScientificMethod::Pm3 | ScientificMethod::Xtb => match capability.confidence {
-            eht::SupportLevel::Supported => 0.95,
-            eht::SupportLevel::Experimental => 0.6,
-            eht::SupportLevel::Unsupported => 0.0,
-        },
+        ScientificMethod::Eht | ScientificMethod::Pm3 | ScientificMethod::Xtb => {
+            match capability.confidence {
+                eht::SupportLevel::Supported => 0.95,
+                eht::SupportLevel::Experimental => 0.6,
+                eht::SupportLevel::Unsupported => 0.0,
+            }
+        }
     }
 }
 
@@ -1179,17 +1181,21 @@ pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
         .collect();
-    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
-        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-        let order = match mol.graph[e].order {
-            graph::BondOrder::Single => 1u8,
-            graph::BondOrder::Double => 2,
-            graph::BondOrder::Triple => 3,
-            graph::BondOrder::Aromatic => 2,
-            graph::BondOrder::Unknown => 1,
-        };
-        (a.index(), b.index(), order)
-    }).collect();
+    let bonds: Vec<(usize, usize, u8)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            let order = match mol.graph[e].order {
+                graph::BondOrder::Single => 1u8,
+                graph::BondOrder::Double => 2,
+                graph::BondOrder::Triple => 3,
+                graph::BondOrder::Aromatic => 2,
+                graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
+        })
+        .collect();
     let terms = forcefield::mmff94::Mmff94Builder::build(&elements, &bonds);
     let (energy, _grad) = forcefield::mmff94::Mmff94Builder::total_energy(&terms, coords);
     Ok(energy)

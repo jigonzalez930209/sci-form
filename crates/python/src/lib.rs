@@ -1755,7 +1755,8 @@ fn pm3_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Pm3ResultPy> {
     if coords.len() != elements.len() * 3 {
         return Err(pyo3::exceptions::PyValueError::new_err(format!(
             "coords length {} != elements.len() * 3 = {}",
-            coords.len(), elements.len() * 3
+            coords.len(),
+            elements.len() * 3
         )));
     }
     let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
@@ -1819,7 +1820,8 @@ fn xtb_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<XtbResultPy> {
     if coords.len() != elements.len() * 3 {
         return Err(pyo3::exceptions::PyValueError::new_err(format!(
             "coords length {} != elements.len() * 3 = {}",
-            coords.len(), elements.len() * 3
+            coords.len(),
+            elements.len() * 3
         )));
     }
     let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
@@ -1898,23 +1900,26 @@ struct MlPropertyResultPy {
 /// Returns descriptors usable for ML property prediction.
 #[pyfunction]
 fn ml_descriptors(smiles: &str) -> PyResult<MolecularDescriptorsPy> {
-    let mol = sci_form_core::parse(smiles)
-        .map_err(pyo3::exceptions::PyValueError::new_err)?;
+    let mol = sci_form_core::parse(smiles).map_err(pyo3::exceptions::PyValueError::new_err)?;
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[sci_form_core::graph::NodeIndex::new(i)].element)
         .collect();
-    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
-        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-        let order = match mol.graph[e].order {
-            sci_form_core::graph::BondOrder::Single => 1u8,
-            sci_form_core::graph::BondOrder::Double => 2,
-            sci_form_core::graph::BondOrder::Triple => 3,
-            sci_form_core::graph::BondOrder::Aromatic => 2,
-            sci_form_core::graph::BondOrder::Unknown => 1,
-        };
-        (a.index(), b.index(), order)
-    }).collect();
+    let bonds: Vec<(usize, usize, u8)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            let order = match mol.graph[e].order {
+                sci_form_core::graph::BondOrder::Single => 1u8,
+                sci_form_core::graph::BondOrder::Double => 2,
+                sci_form_core::graph::BondOrder::Triple => 3,
+                sci_form_core::graph::BondOrder::Aromatic => 2,
+                sci_form_core::graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
+        })
+        .collect();
     let desc = sci_form_core::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     Ok(MolecularDescriptorsPy {
         molecular_weight: desc.molecular_weight,
@@ -1938,23 +1943,26 @@ fn ml_descriptors(smiles: &str) -> PyResult<MolecularDescriptorsPy> {
 /// Returns LogP, molar refractivity, solubility (log S), Lipinski Ro5, and druglikeness.
 #[pyfunction]
 fn ml_predict(smiles: &str) -> PyResult<MlPropertyResultPy> {
-    let mol = sci_form_core::parse(smiles)
-        .map_err(pyo3::exceptions::PyValueError::new_err)?;
+    let mol = sci_form_core::parse(smiles).map_err(pyo3::exceptions::PyValueError::new_err)?;
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[sci_form_core::graph::NodeIndex::new(i)].element)
         .collect();
-    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
-        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-        let order = match mol.graph[e].order {
-            sci_form_core::graph::BondOrder::Single => 1u8,
-            sci_form_core::graph::BondOrder::Double => 2,
-            sci_form_core::graph::BondOrder::Triple => 3,
-            sci_form_core::graph::BondOrder::Aromatic => 2,
-            sci_form_core::graph::BondOrder::Unknown => 1,
-        };
-        (a.index(), b.index(), order)
-    }).collect();
+    let bonds: Vec<(usize, usize, u8)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            let order = match mol.graph[e].order {
+                sci_form_core::graph::BondOrder::Single => 1u8,
+                sci_form_core::graph::BondOrder::Double => 2,
+                sci_form_core::graph::BondOrder::Triple => 3,
+                sci_form_core::graph::BondOrder::Aromatic => 2,
+                sci_form_core::graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
+        })
+        .collect();
     let desc = sci_form_core::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     let result = sci_form_core::predict_ml_properties(&desc);
     Ok(MlPropertyResultPy {

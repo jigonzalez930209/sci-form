@@ -47,9 +47,18 @@ pub struct MolecularDescriptors {
 /// Atomic weight table for common elements.
 fn atomic_weight(z: u8) -> f64 {
     match z {
-        1 => 1.008, 5 => 10.81, 6 => 12.011, 7 => 14.007,
-        8 => 15.999, 9 => 18.998, 14 => 28.086, 15 => 30.974,
-        16 => 32.06, 17 => 35.45, 35 => 79.904, 53 => 126.904,
+        1 => 1.008,
+        5 => 10.81,
+        6 => 12.011,
+        7 => 14.007,
+        8 => 15.999,
+        9 => 18.998,
+        14 => 28.086,
+        15 => 30.974,
+        16 => 32.06,
+        17 => 35.45,
+        35 => 79.904,
+        53 => 126.904,
         _ => z as f64 * 1.5, // rough fallback
     }
 }
@@ -57,9 +66,18 @@ fn atomic_weight(z: u8) -> f64 {
 /// Pauling electronegativity.
 fn electronegativity(z: u8) -> f64 {
     match z {
-        1 => 2.20, 5 => 2.04, 6 => 2.55, 7 => 3.04,
-        8 => 3.44, 9 => 3.98, 14 => 1.90, 15 => 2.19,
-        16 => 2.58, 17 => 3.16, 35 => 2.96, 53 => 2.66,
+        1 => 2.20,
+        5 => 2.04,
+        6 => 2.55,
+        7 => 3.04,
+        8 => 3.44,
+        9 => 3.98,
+        14 => 1.90,
+        15 => 2.19,
+        16 => 2.58,
+        17 => 3.16,
+        35 => 2.96,
+        53 => 2.66,
         _ => 1.80,
     }
 }
@@ -67,9 +85,18 @@ fn electronegativity(z: u8) -> f64 {
 /// Empirical atomic polarizability (Å³).
 fn atomic_polarizability(z: u8) -> f64 {
     match z {
-        1 => 0.667, 5 => 3.03, 6 => 1.76, 7 => 1.10,
-        8 => 0.802, 9 => 0.557, 14 => 5.38, 15 => 3.63,
-        16 => 2.90, 17 => 2.18, 35 => 3.05, 53 => 5.35,
+        1 => 0.667,
+        5 => 3.03,
+        6 => 1.76,
+        7 => 1.10,
+        8 => 0.802,
+        9 => 0.557,
+        14 => 5.38,
+        15 => 3.63,
+        16 => 2.90,
+        17 => 2.18,
+        35 => 3.05,
+        53 => 5.35,
         _ => 2.0,
     }
 }
@@ -102,24 +129,37 @@ pub fn compute_descriptors(
     }
 
     // Rotatable bonds: single bonds between two heavy atoms with ≥2 neighbors each
-    let n_rot = bonds.iter().filter(|&&(i, j, ord)| {
-        ord == 1 && elements[i] != 1 && elements[j] != 1
-            && adj[i].len() >= 2 && adj[j].len() >= 2
-    }).count();
+    let n_rot = bonds
+        .iter()
+        .filter(|&&(i, j, ord)| {
+            ord == 1
+                && elements[i] != 1
+                && elements[j] != 1
+                && adj[i].len() >= 2
+                && adj[j].len() >= 2
+        })
+        .count();
 
     // H-bond donors: N-H or O-H
-    let n_hbd = (0..n).filter(|&i| {
-        (elements[i] == 7 || elements[i] == 8)
-            && adj[i].iter().any(|&j| elements[j] == 1)
-    }).count();
+    let n_hbd = (0..n)
+        .filter(|&i| {
+            (elements[i] == 7 || elements[i] == 8) && adj[i].iter().any(|&j| elements[j] == 1)
+        })
+        .count();
 
     // H-bond acceptors: N or O
     let n_hba = elements.iter().filter(|&&z| z == 7 || z == 8).count();
 
     // Fsp3: fraction of sp3 carbons (4 neighbors is sp3 proxy)
     let n_c = elements.iter().filter(|&&z| z == 6).count();
-    let n_c_sp3 = (0..n).filter(|&i| elements[i] == 6 && adj[i].len() == 4).count();
-    let fsp3 = if n_c > 0 { n_c_sp3 as f64 / n_c as f64 } else { 0.0 };
+    let n_c_sp3 = (0..n)
+        .filter(|&i| elements[i] == 6 && adj[i].len() == 4)
+        .count();
+    let fsp3 = if n_c > 0 {
+        n_c_sp3 as f64 / n_c as f64
+    } else {
+        0.0
+    };
 
     // Charges
     let (total_abs, max_q, min_q) = if !charges.is_empty() && charges.len() == n {
@@ -146,7 +186,11 @@ pub fn compute_descriptors(
                 }
             }
         }
-        wiener += dist.iter().filter(|&&d| d != u32::MAX).map(|&d| d as f64).sum::<f64>();
+        wiener += dist
+            .iter()
+            .filter(|&&d| d != u32::MAX)
+            .map(|&d| d as f64)
+            .sum::<f64>();
     }
     wiener /= 2.0; // each pair counted twice
 
@@ -155,18 +199,30 @@ pub fn compute_descriptors(
         let mut visited = vec![false; n];
         let mut count = 0usize;
         for start in 0..n {
-            if visited[start] { continue; }
+            if visited[start] {
+                continue;
+            }
             count += 1;
             let mut stack = vec![start];
             while let Some(u) = stack.pop() {
-                if visited[u] { continue; }
+                if visited[u] {
+                    continue;
+                }
                 visited[u] = true;
-                for &v in &adj[u] { if !visited[v] { stack.push(v); } }
+                for &v in &adj[u] {
+                    if !visited[v] {
+                        stack.push(v);
+                    }
+                }
             }
         }
         count
     };
-    let n_rings = if bonds.len() + n_components > n { bonds.len() + n_components - n } else { 0 };
+    let n_rings = if bonds.len() + n_components > n {
+        bonds.len() + n_components - n
+    } else {
+        0
+    };
 
     let n_aromatic = if !aromatic_atoms.is_empty() {
         aromatic_atoms.iter().filter(|&&a| a).count()
@@ -175,7 +231,7 @@ pub fn compute_descriptors(
     };
 
     // Balaban J (simplified)
-    let balaban_j = if bonds.len() > 0 && n > 1 {
+    let balaban_j = if !bonds.is_empty() && n > 1 {
         let mu = bonds.len() as f64 / (n as f64 - 1.0);
         mu.ln().abs() + 1.0
     } else {

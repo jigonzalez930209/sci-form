@@ -3,9 +3,9 @@
 //! Implements a charge-self-consistent tight-binding scheme with
 //! repulsive pair potentials and Mulliken charge analysis.
 
-use serde::{Deserialize, Serialize};
+use super::params::{count_xtb_electrons, get_xtb_params, num_xtb_basis_functions};
 use nalgebra::DMatrix;
-use super::params::{get_xtb_params, count_xtb_electrons, num_xtb_basis_functions};
+use serde::{Deserialize, Serialize};
 
 /// Result of an xTB tight-binding calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,7 +50,11 @@ fn distance_bohr(a: &[f64; 3], b: &[f64; 3]) -> f64 {
 /// Compute damped STO overlap integral (s-s approximation).
 fn sto_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
     if r_bohr < 1e-10 {
-        return if (zeta_a - zeta_b).abs() < 1e-10 { 1.0 } else { 0.0 };
+        return if (zeta_a - zeta_b).abs() < 1e-10 {
+            1.0
+        } else {
+            0.0
+        };
     }
     let p = 0.5 * (zeta_a + zeta_b) * r_bohr;
     (-p).exp() * (1.0 + p + p * p / 3.0)
@@ -61,14 +65,18 @@ fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
     let mut basis = Vec::new();
     for (i, &z) in elements.iter().enumerate() {
         let n = num_xtb_basis_functions(z);
-        if n >= 1 { basis.push((i, 0, 0)); } // s
+        if n >= 1 {
+            basis.push((i, 0, 0));
+        } // s
         if n >= 4 {
             basis.push((i, 1, 0)); // px
             basis.push((i, 1, 1)); // py
             basis.push((i, 1, 2)); // pz
         }
         if n >= 9 {
-            for m in 0..5u8 { basis.push((i, 2, m)); } // d orbitals
+            for m in 0..5u8 {
+                basis.push((i, 2, m));
+            } // d orbitals
         }
     }
     basis
@@ -78,14 +86,12 @@ fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
 ///
 /// `elements`: atomic numbers.
 /// `positions`: Cartesian coordinates in Å.
-pub fn solve_xtb(
-    elements: &[u8],
-    positions: &[[f64; 3]],
-) -> Result<XtbResult, String> {
+pub fn solve_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<XtbResult, String> {
     if elements.len() != positions.len() {
         return Err(format!(
             "elements ({}) and positions ({}) length mismatch",
-            elements.len(), positions.len()
+            elements.len(),
+            positions.len()
         ));
     }
 
@@ -112,15 +118,33 @@ pub fn solve_xtb(
         let (atom_a, la, _) = basis_map[i];
         for j in (i + 1)..n_basis {
             let (atom_b, lb, _) = basis_map[j];
-            if atom_a == atom_b { continue; }
+            if atom_a == atom_b {
+                continue;
+            }
             let r = distance_bohr(&positions[atom_a], &positions[atom_b]);
             let pa = get_xtb_params(elements[atom_a]).unwrap();
             let pb = get_xtb_params(elements[atom_b]).unwrap();
-            let za = match la { 0 => pa.zeta_s, 1 => pa.zeta_p, _ => pa.zeta_d };
-            let zb = match lb { 0 => pb.zeta_s, 1 => pb.zeta_p, _ => pb.zeta_d };
-            if za < 1e-10 || zb < 1e-10 { continue; }
+            let za = match la {
+                0 => pa.zeta_s,
+                1 => pa.zeta_p,
+                _ => pa.zeta_d,
+            };
+            let zb = match lb {
+                0 => pb.zeta_s,
+                1 => pb.zeta_p,
+                _ => pb.zeta_d,
+            };
+            if za < 1e-10 || zb < 1e-10 {
+                continue;
+            }
             // Direction-independent approximation: scale by overlap type
-            let scale = if la == 0 && lb == 0 { 1.0 } else if la == lb { 0.5 } else { 0.6 };
+            let scale = if la == 0 && lb == 0 {
+                1.0
+            } else if la == lb {
+                0.5
+            } else {
+                0.6
+            };
             let sij = sto_overlap(za, zb, r) * scale;
             s_mat[(i, j)] = sij;
             s_mat[(j, i)] = sij;
@@ -132,13 +156,19 @@ pub fn solve_xtb(
     for i in 0..n_basis {
         let (atom_a, la, _) = basis_map[i];
         let pa = get_xtb_params(elements[atom_a]).unwrap();
-        h_mat[(i, i)] = match la { 0 => pa.h_s, 1 => pa.h_p, _ => pa.h_d };
+        h_mat[(i, i)] = match la {
+            0 => pa.h_s,
+            1 => pa.h_p,
+            _ => pa.h_d,
+        };
     }
     for i in 0..n_basis {
         for j in (i + 1)..n_basis {
             let (atom_a, _, _) = basis_map[i];
             let (atom_b, _, _) = basis_map[j];
-            if atom_a == atom_b { continue; }
+            if atom_a == atom_b {
+                continue;
+            }
             let k_wh = 1.75;
             let hij = 0.5 * k_wh * s_mat[(i, j)] * (h_mat[(i, i)] + h_mat[(j, j)]);
             h_mat[(i, j)] = hij;
@@ -158,7 +188,9 @@ pub fn solve_xtb(
                 let dz = positions[a][2] - positions[b][2];
                 (dx * dx + dy * dy + dz * dz).sqrt()
             };
-            if r_ang < 0.1 { continue; }
+            if r_ang < 0.1 {
+                continue;
+            }
             let r_ref = pa.r_cov + pb.r_cov;
             // Short-range repulsive: exponential decay
             let alpha = 6.0; // decay parameter
@@ -205,7 +237,9 @@ pub fn solve_xtb(
             // Charge-dependent shift: γ_AB * q_B
             let mut shift = 0.0;
             for b in 0..n_atoms {
-                if b == atom_a { continue; }
+                if b == atom_a {
+                    continue;
+                }
                 let pb = get_xtb_params(elements[b]).unwrap();
                 let r_bohr = distance_bohr(&positions[atom_a], &positions[b]);
                 let gamma = 1.0 / ((1.0 / pa.eta + 1.0 / pb.eta).powi(2) + r_bohr.powi(2)).sqrt();
@@ -222,7 +256,9 @@ pub fn solve_xtb(
 
         let mut indices: Vec<usize> = (0..n_basis).collect();
         indices.sort_by(|&a, &b| {
-            eigen.eigenvalues[a].partial_cmp(&eigen.eigenvalues[b]).unwrap_or(std::cmp::Ordering::Equal)
+            eigen.eigenvalues[a]
+                .partial_cmp(&eigen.eigenvalues[b])
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         for (new_idx, &old_idx) in indices.iter().enumerate() {
@@ -257,7 +293,9 @@ pub fn solve_xtb(
             let pa = get_xtb_params(elements[a]).unwrap();
             let mut pop = 0.0;
             for i in 0..n_basis {
-                if basis_map[i].0 == a { pop += ps[(i, i)]; }
+                if basis_map[i].0 == a {
+                    pop += ps[(i, i)];
+                }
             }
             new_charges.push(pa.n_valence as f64 - pop);
         }
@@ -291,8 +329,16 @@ pub fn solve_xtb(
     let homo_idx = if n_occ > 0 { n_occ - 1 } else { 0 };
     let lumo_idx = n_occ.min(n_basis - 1);
     let homo_energy = orbital_energies[homo_idx];
-    let lumo_energy = if n_occ < n_basis { orbital_energies[lumo_idx] } else { homo_energy };
-    let gap = if n_occ < n_basis { lumo_energy - homo_energy } else { 0.0 };
+    let lumo_energy = if n_occ < n_basis {
+        orbital_energies[lumo_idx]
+    } else {
+        homo_energy
+    };
+    let gap = if n_occ < n_basis {
+        lumo_energy - homo_energy
+    } else {
+        0.0
+    };
 
     Ok(XtbResult {
         orbital_energies,

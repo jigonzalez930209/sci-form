@@ -346,108 +346,468 @@ static B_ORBITALS: [OrbitalDef; 2] = [
 // Slater exponents (ζ, bohr⁻¹) are single-zeta values from Alvarez tables.
 // The outer np shell is included per Ammeter convention for proper σ/π metal-ligand bonding.
 static SC_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -8.87, zeta: 1.300 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -2.75, zeta: 1.300 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -8.51, zeta: 4.350 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -8.87,
+        zeta: 1.300,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -2.75,
+        zeta: 1.300,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -8.51,
+        zeta: 4.350,
+    },
 ];
 static TI_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -8.97, zeta: 1.075 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -5.44, zeta: 1.075 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -10.81, zeta: 4.550 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -8.97,
+        zeta: 1.075,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -5.44,
+        zeta: 1.075,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -10.81,
+        zeta: 4.550,
+    },
 ];
 static V_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -8.81, zeta: 1.300 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -5.52, zeta: 1.300 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -11.00, zeta: 4.750 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -8.81,
+        zeta: 1.300,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -5.52,
+        zeta: 1.300,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -11.00,
+        zeta: 4.750,
+    },
 ];
 static CR_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -8.66, zeta: 1.700 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -5.24, zeta: 1.700 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -11.22, zeta: 4.950 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -8.66,
+        zeta: 1.700,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -5.24,
+        zeta: 1.700,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -11.22,
+        zeta: 4.950,
+    },
 ];
 static MN_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -9.75, zeta: 1.800 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -5.89, zeta: 1.800 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -11.67, zeta: 5.150 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -9.75,
+        zeta: 1.800,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -5.89,
+        zeta: 1.800,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -11.67,
+        zeta: 5.150,
+    },
 ];
 static FE_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -9.10, zeta: 1.900 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -5.32, zeta: 1.900 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -12.60, zeta: 5.350 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -9.10,
+        zeta: 1.900,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -5.32,
+        zeta: 1.900,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -12.60,
+        zeta: 5.350,
+    },
 ];
 static CO_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -9.21, zeta: 2.000 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -5.29, zeta: 2.000 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -13.18, zeta: 5.550 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -9.21,
+        zeta: 2.000,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -5.29,
+        zeta: 2.000,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -13.18,
+        zeta: 5.550,
+    },
 ];
 static NI_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -10.95, zeta: 2.100 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -6.27, zeta: 2.100 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -13.49, zeta: 5.750 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -10.95,
+        zeta: 2.100,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -6.27,
+        zeta: 2.100,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -13.49,
+        zeta: 5.750,
+    },
 ];
 static CU_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -11.40, zeta: 2.200 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -6.06, zeta: 2.200 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -14.00, zeta: 5.950 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -11.40,
+        zeta: 2.200,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -6.06,
+        zeta: 2.200,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -14.00,
+        zeta: 5.950,
+    },
 ];
 static ZN_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 4, l: 0, label: "4s", vsip: -12.41, zeta: 2.010 },
-    OrbitalDef { n: 4, l: 1, label: "4p", vsip: -6.53, zeta: 2.010 },
-    OrbitalDef { n: 3, l: 2, label: "3d", vsip: -17.10, zeta: 6.150 },
+    OrbitalDef {
+        n: 4,
+        l: 0,
+        label: "4s",
+        vsip: -12.41,
+        zeta: 2.010,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 1,
+        label: "4p",
+        vsip: -6.53,
+        zeta: 2.010,
+    },
+    OrbitalDef {
+        n: 3,
+        l: 2,
+        label: "3d",
+        vsip: -17.10,
+        zeta: 6.150,
+    },
 ];
 
 // ─── Second-row transition metals (4d series): 5s + 5p + 4d ─────────────────
 //
 // Alvarez, S. "Tables of Parameters for Extended Hückel Calculations" (1993).
 static Y_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -7.29, zeta: 1.390 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -4.37, zeta: 1.390 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -8.46, zeta: 3.310 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -7.29,
+        zeta: 1.390,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -4.37,
+        zeta: 1.390,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -8.46,
+        zeta: 3.310,
+    },
 ];
 static ZR_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -8.12, zeta: 1.520 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -5.12, zeta: 1.520 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -10.14, zeta: 3.840 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -8.12,
+        zeta: 1.520,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -5.12,
+        zeta: 1.520,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -10.14,
+        zeta: 3.840,
+    },
 ];
 static NB_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -10.10, zeta: 1.640 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -6.86, zeta: 1.640 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -12.10, zeta: 4.080 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -10.10,
+        zeta: 1.640,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -6.86,
+        zeta: 1.640,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -12.10,
+        zeta: 4.080,
+    },
 ];
 static MO_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -8.34, zeta: 1.730 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -5.24, zeta: 1.730 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -10.50, zeta: 4.540 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -8.34,
+        zeta: 1.730,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -5.24,
+        zeta: 1.730,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -10.50,
+        zeta: 4.540,
+    },
 ];
 static TC_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -9.00, zeta: 1.820 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -5.60, zeta: 1.820 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -11.20, zeta: 4.900 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -9.00,
+        zeta: 1.820,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -5.60,
+        zeta: 1.820,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -11.20,
+        zeta: 4.900,
+    },
 ];
 static RU_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -10.40, zeta: 1.900 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -6.87, zeta: 1.900 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -14.90, zeta: 5.380 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -10.40,
+        zeta: 1.900,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -6.87,
+        zeta: 1.900,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -14.90,
+        zeta: 5.380,
+    },
 ];
 static RH_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -8.09, zeta: 2.135 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -4.57, zeta: 2.135 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -12.50, zeta: 4.290 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -8.09,
+        zeta: 2.135,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -4.57,
+        zeta: 2.135,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -12.50,
+        zeta: 4.290,
+    },
 ];
 static PD_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -7.32, zeta: 2.190 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -3.75, zeta: 2.190 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -12.02, zeta: 5.983 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -7.32,
+        zeta: 2.190,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -3.75,
+        zeta: 2.190,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -12.02,
+        zeta: 5.983,
+    },
 ];
 static AG_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -6.27, zeta: 2.242 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -3.97, zeta: 2.242 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -14.58, zeta: 6.070 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -6.27,
+        zeta: 2.242,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -3.97,
+        zeta: 2.242,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -14.58,
+        zeta: 6.070,
+    },
 ];
 static CD_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 5, l: 0, label: "5s", vsip: -11.79, zeta: 2.300 },
-    OrbitalDef { n: 5, l: 1, label: "5p", vsip: -6.10, zeta: 2.300 },
-    OrbitalDef { n: 4, l: 2, label: "4d", vsip: -17.84, zeta: 6.330 },
+    OrbitalDef {
+        n: 5,
+        l: 0,
+        label: "5s",
+        vsip: -11.79,
+        zeta: 2.300,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 1,
+        label: "5p",
+        vsip: -6.10,
+        zeta: 2.300,
+    },
+    OrbitalDef {
+        n: 4,
+        l: 2,
+        label: "4d",
+        vsip: -17.84,
+        zeta: 6.330,
+    },
 ];
 
 // ─── Third-row transition metals (5d series): 6s + 6p + 5d ──────────────────
@@ -455,49 +815,211 @@ static CD_ORBITALS: [OrbitalDef; 3] = [
 // Alvarez, S. "Tables of Parameters for Extended Hückel Calculations" (1993).
 // Pt values from Thorn, D. L.; Hoffmann, R. Inorg. Chem. 17 (1978): 126.
 static HF_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -8.20, zeta: 1.720 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -4.65, zeta: 1.720 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -11.18, zeta: 4.360 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -8.20,
+        zeta: 1.720,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -4.65,
+        zeta: 1.720,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -11.18,
+        zeta: 4.360,
+    },
 ];
 static TA_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -10.79, zeta: 1.830 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -6.86, zeta: 1.830 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -12.10, zeta: 4.762 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -10.79,
+        zeta: 1.830,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -6.86,
+        zeta: 1.830,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -12.10,
+        zeta: 4.762,
+    },
 ];
 static W_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -8.26, zeta: 1.890 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -5.17, zeta: 1.890 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -10.37, zeta: 4.982 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -8.26,
+        zeta: 1.890,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -5.17,
+        zeta: 1.890,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -10.37,
+        zeta: 4.982,
+    },
 ];
 static RE_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -9.36, zeta: 1.980 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -5.96, zeta: 1.980 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -12.66, zeta: 5.343 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -9.36,
+        zeta: 1.980,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -5.96,
+        zeta: 1.980,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -12.66,
+        zeta: 5.343,
+    },
 ];
 static OS_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -8.17, zeta: 2.070 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -4.81, zeta: 2.070 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -11.84, zeta: 5.571 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -8.17,
+        zeta: 2.070,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -4.81,
+        zeta: 2.070,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -11.84,
+        zeta: 5.571,
+    },
 ];
 static IR_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -11.36, zeta: 2.200 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -4.50, zeta: 2.200 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -12.17, zeta: 5.796 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -11.36,
+        zeta: 2.200,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -4.50,
+        zeta: 2.200,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -12.17,
+        zeta: 5.796,
+    },
 ];
 static PT_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -9.077, zeta: 2.554 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -5.475, zeta: 2.554 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -12.59, zeta: 6.013 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -9.077,
+        zeta: 2.554,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -5.475,
+        zeta: 2.554,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -12.59,
+        zeta: 6.013,
+    },
 ];
 static AU_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -10.92, zeta: 2.602 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -5.55, zeta: 2.602 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -15.07, zeta: 6.163 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -10.92,
+        zeta: 2.602,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -5.55,
+        zeta: 2.602,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -15.07,
+        zeta: 6.163,
+    },
 ];
 static HG_ORBITALS: [OrbitalDef; 3] = [
-    OrbitalDef { n: 6, l: 0, label: "6s", vsip: -13.68, zeta: 2.649 },
-    OrbitalDef { n: 6, l: 1, label: "6p", vsip: -8.47, zeta: 2.649 },
-    OrbitalDef { n: 5, l: 2, label: "5d", vsip: -17.50, zeta: 6.350 },
+    OrbitalDef {
+        n: 6,
+        l: 0,
+        label: "6s",
+        vsip: -13.68,
+        zeta: 2.649,
+    },
+    OrbitalDef {
+        n: 6,
+        l: 1,
+        label: "6p",
+        vsip: -8.47,
+        zeta: 2.649,
+    },
+    OrbitalDef {
+        n: 5,
+        l: 2,
+        label: "5d",
+        vsip: -17.50,
+        zeta: 6.350,
+    },
 ];
 
 /// All supported element parameter sets.

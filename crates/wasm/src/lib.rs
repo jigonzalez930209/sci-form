@@ -863,7 +863,8 @@ pub fn compute_pm3(elements_json: &str, coords_flat_json: &str) -> String {
     if flat.len() != elements.len() * 3 {
         return format!(
             "{{\"error\":\"coords length {} != elements.len()*3 = {}\"}}",
-            flat.len(), elements.len() * 3
+            flat.len(),
+            elements.len() * 3
         );
     }
     let positions: Vec<[f64; 3]> = flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
@@ -897,7 +898,8 @@ pub fn compute_xtb(elements_json: &str, coords_flat_json: &str) -> String {
     if flat.len() != elements.len() * 3 {
         return format!(
             "{{\"error\":\"coords length {} != elements.len()*3 = {}\"}}",
-            flat.len(), elements.len() * 3
+            flat.len(),
+            elements.len() * 3
         );
     }
     let positions: Vec<[f64; 3]> = flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
@@ -927,17 +929,21 @@ pub fn compute_ml_properties(smiles: &str) -> String {
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[sci_form::graph::NodeIndex::new(i)].element)
         .collect();
-    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
-        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-        let order = match mol.graph[e].order {
-            sci_form::graph::BondOrder::Single => 1u8,
-            sci_form::graph::BondOrder::Double => 2,
-            sci_form::graph::BondOrder::Triple => 3,
-            sci_form::graph::BondOrder::Aromatic => 2,
-            sci_form::graph::BondOrder::Unknown => 1,
-        };
-        (a.index(), b.index(), order)
-    }).collect();
+    let bonds: Vec<(usize, usize, u8)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            let order = match mol.graph[e].order {
+                sci_form::graph::BondOrder::Single => 1u8,
+                sci_form::graph::BondOrder::Double => 2,
+                sci_form::graph::BondOrder::Triple => 3,
+                sci_form::graph::BondOrder::Aromatic => 2,
+                sci_form::graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
+        })
+        .collect();
     let desc = sci_form::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     let result = sci_form::predict_ml_properties(&desc);
     format!(
@@ -961,17 +967,21 @@ pub fn compute_molecular_descriptors(smiles: &str) -> String {
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[sci_form::graph::NodeIndex::new(i)].element)
         .collect();
-    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
-        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-        let order = match mol.graph[e].order {
-            sci_form::graph::BondOrder::Single => 1u8,
-            sci_form::graph::BondOrder::Double => 2,
-            sci_form::graph::BondOrder::Triple => 3,
-            sci_form::graph::BondOrder::Aromatic => 2,
-            sci_form::graph::BondOrder::Unknown => 1,
-        };
-        (a.index(), b.index(), order)
-    }).collect();
+    let bonds: Vec<(usize, usize, u8)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            let order = match mol.graph[e].order {
+                sci_form::graph::BondOrder::Single => 1u8,
+                sci_form::graph::BondOrder::Double => 2,
+                sci_form::graph::BondOrder::Triple => 3,
+                sci_form::graph::BondOrder::Aromatic => 2,
+                sci_form::graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
+        })
+        .collect();
     let desc = sci_form::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     serde_json::to_string(&desc).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
 }

@@ -15,7 +15,10 @@ fn phase1_detect_transition_metals_automatically() {
 
     let support_organic = sci_form::get_eht_support(&elements_organic);
     assert!(!support_organic.has_transition_metals);
-    assert_eq!(support_organic.level, sci_form::eht::SupportLevel::Supported);
+    assert_eq!(
+        support_organic.level,
+        sci_form::eht::SupportLevel::Supported
+    );
 
     let support_metal = sci_form::get_eht_support(&elements_metal);
     assert!(support_metal.has_transition_metals);
@@ -44,11 +47,17 @@ fn phase1_uff_fallback_for_unsupported_eht() {
         [0.00, -2.00, -0.95],
     ];
 
-    let result =
-        sci_form::compute_eht_or_uff_fallback("[Pt](Cl)(Cl)([NH3])[NH3]", &elements, &positions, false);
+    let result = sci_form::compute_eht_or_uff_fallback(
+        "[Pt](Cl)(Cl)([NH3])[NH3]",
+        &elements,
+        &positions,
+        false,
+    );
     assert!(result.is_ok());
     match result.unwrap() {
-        sci_form::ElectronicWorkflowResult::UffFallback { energy_kcal_mol, .. } => {
+        sci_form::ElectronicWorkflowResult::UffFallback {
+            energy_kcal_mol, ..
+        } => {
             assert!(energy_kcal_mol.is_finite());
         }
         _ => panic!("Expected UFF fallback when experimental EHT is disabled"),
@@ -70,7 +79,10 @@ fn phase1_capability_query_per_element() {
 fn phase1_low_confidence_mode_for_metals() {
     let elements = [78u8, 17, 17];
     let caps = sci_form::get_system_capabilities(&elements);
-    assert_eq!(caps.eht.confidence, sci_form::eht::SupportLevel::Experimental);
+    assert_eq!(
+        caps.eht.confidence,
+        sci_form::eht::SupportLevel::Experimental
+    );
     assert!(!caps.eht.warnings.is_empty());
 }
 
@@ -89,7 +101,11 @@ fn phase2_d_orbitals_in_basis_set() {
     assert!(l_values.contains(&0), "Missing s orbital");
     assert!(l_values.contains(&1), "Missing p orbital");
     assert!(l_values.contains(&2), "Missing d orbital");
-    assert_eq!(l_values.iter().filter(|&&l| l == 2).count(), 5, "Should have 5 d orbitals");
+    assert_eq!(
+        l_values.iter().filter(|&&l| l == 2).count(),
+        5,
+        "Should have 5 d orbitals"
+    );
 }
 
 #[test]
@@ -97,11 +113,7 @@ fn phase2_first_row_tm_coverage() {
     // Sc(21) through Zn(30) should all be parameterized
     for z in 21..=30u8 {
         let params = sci_form::eht::params::get_params(z);
-        assert!(
-            params.is_some(),
-            "Missing EHT parameters for Z={}",
-            z
-        );
+        assert!(params.is_some(), "Missing EHT parameters for Z={}", z);
     }
 }
 
@@ -110,11 +122,7 @@ fn phase2_second_row_tm_coverage() {
     // Y(39) through Cd(48) should all be parameterized
     for z in 39..=48u8 {
         let params = sci_form::eht::params::get_params(z);
-        assert!(
-            params.is_some(),
-            "Missing EHT parameters for Z={}",
-            z
-        );
+        assert!(params.is_some(), "Missing EHT parameters for Z={}", z);
     }
 }
 
@@ -123,11 +131,7 @@ fn phase2_third_row_tm_subset_coverage() {
     // Hf(72) through Hg(80) should be parameterized
     for z in 72..=80u8 {
         let params = sci_form::eht::params::get_params(z);
-        assert!(
-            params.is_some(),
-            "Missing EHT parameters for Z={}",
-            z
-        );
+        assert!(params.is_some(), "Missing EHT parameters for Z={}", z);
     }
 }
 
@@ -137,16 +141,30 @@ fn phase2_valence_electron_counting_5d_metals() {
     // Hf(72) is group 4 with 4 electrons, not group 3 with 3 electrons
     let cisplatin_elements = [78u8, 17, 17, 7, 7, 1, 1, 1, 1, 1, 1];
     let positions: Vec<[f64; 3]> = vec![
-        [0.0, 0.0, 0.0], [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.00, 0.0], [0.0, -2.00, 0.0],
-        [0.90, 2.60, 0.0], [-0.90, 2.60, 0.0], [0.00, 2.00, 0.95],
-        [0.90, -2.60, 0.0], [-0.90, -2.60, 0.0], [0.00, -2.00, -0.95],
+        [0.0, 0.0, 0.0],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.00, 0.0],
+        [0.0, -2.00, 0.0],
+        [0.90, 2.60, 0.0],
+        [-0.90, 2.60, 0.0],
+        [0.00, 2.00, 0.95],
+        [0.90, -2.60, 0.0],
+        [-0.90, -2.60, 0.0],
+        [0.00, -2.00, -0.95],
     ];
 
     let result = sci_form::eht::solve_eht(&cisplatin_elements, &positions, None).unwrap();
     // Pt(10) + 2×Cl(7) + 2×N(5) + 6×H(1) = 40 (must be even)
-    assert_eq!(result.n_electrons, 40, "Cisplatin must have 40 valence electrons (even)");
-    assert_eq!(result.n_electrons % 2, 0, "Closed-shell system must have even electrons");
+    assert_eq!(
+        result.n_electrons, 40,
+        "Cisplatin must have 40 valence electrons (even)"
+    );
+    assert_eq!(
+        result.n_electrons % 2,
+        0,
+        "Closed-shell system must have even electrons"
+    );
 }
 
 #[test]
@@ -172,8 +190,12 @@ fn phase2_ferrocene_has_nonzero_gap() {
 
     let result = sci_form::eht::solve_eht(&elements, &positions, None).unwrap();
     assert_eq!(result.n_electrons, 58); // Fe(8) + 10C(40) + 10H(10)
-    // With proper s/p/d basis, ferrocene should have a nonzero HOMO-LUMO gap
-    assert!(result.gap > 0.001, "Ferrocene gap should be > 0.001 eV, got {}", result.gap);
+                                        // With proper s/p/d basis, ferrocene should have a nonzero HOMO-LUMO gap
+    assert!(
+        result.gap > 0.001,
+        "Ferrocene gap should be > 0.001 eV, got {}",
+        result.gap
+    );
 }
 
 #[test]
@@ -189,7 +211,8 @@ fn phase2_overlap_supports_spd_combinations() {
             assert!(
                 (s[(i, j)] - s[(j, i)]).abs() < 1e-10,
                 "Overlap matrix not symmetric at ({},{})",
-                i, j
+                i,
+                j
             );
         }
     }
@@ -208,19 +231,30 @@ fn phase2_orbital_grid_supports_d_orbitals() {
     let elements = [26u8, 17, 17, 17, 17, 17, 17];
     let positions = [
         [0.0, 0.0, 0.0],
-        [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.30, 0.0], [0.0, -2.30, 0.0],
-        [0.0, 0.0, 2.30], [0.0, 0.0, -2.30],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.30, 0.0],
+        [0.0, -2.30, 0.0],
+        [0.0, 0.0, 2.30],
+        [0.0, 0.0, -2.30],
     ];
 
     let result = sci_form::eht::solve_eht(&elements, &positions, None).unwrap();
     let basis = sci_form::eht::basis::build_basis(&elements, &positions);
     // Should be able to generate an orbital grid for HOMO
     let grid = sci_form::eht::evaluate_orbital_on_grid(
-        &basis, &result.coefficients, result.homo_index, &positions, 0.4, 3.0,
+        &basis,
+        &result.coefficients,
+        result.homo_index,
+        &positions,
+        0.4,
+        3.0,
     );
     let mesh = sci_form::eht::marching_cubes(&grid, 0.02);
-    assert!(mesh.vertices.len() > 0, "Orbital mesh should have vertices for d-orbital system");
+    assert!(
+        !mesh.vertices.is_empty(),
+        "Orbital mesh should have vertices for d-orbital system"
+    );
 }
 
 #[test]
@@ -228,13 +262,21 @@ fn phase2_energy_ordering_nondecreasing() {
     let elements = [26u8, 17, 17, 17, 17, 17, 17];
     let positions = [
         [0.0, 0.0, 0.0],
-        [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.30, 0.0], [0.0, -2.30, 0.0],
-        [0.0, 0.0, 2.30], [0.0, 0.0, -2.30],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.30, 0.0],
+        [0.0, -2.30, 0.0],
+        [0.0, 0.0, 2.30],
+        [0.0, 0.0, -2.30],
     ];
     let result = sci_form::eht::solve_eht(&elements, &positions, None).unwrap();
     for w in result.energies.windows(2) {
-        assert!(w[0] <= w[1] + 1e-10, "Energies not sorted: {} > {}", w[0], w[1]);
+        assert!(
+            w[0] <= w[1] + 1e-10,
+            "Energies not sorted: {} > {}",
+            w[0],
+            w[1]
+        );
     }
 }
 
@@ -260,8 +302,10 @@ fn phase3_homo_lumo_gap_automatically_computed() {
     let elements = [6u8, 1, 1, 1, 1]; // CH4
     let positions = [
         [0.0, 0.0, 0.0],
-        [0.6, 0.6, 0.6], [-0.6, -0.6, 0.6],
-        [0.6, -0.6, -0.6], [-0.6, 0.6, -0.6],
+        [0.6, 0.6, 0.6],
+        [-0.6, -0.6, 0.6],
+        [0.6, -0.6, -0.6],
+        [-0.6, 0.6, -0.6],
     ];
     let result = sci_form::eht::solve_eht(&elements, &positions, None).unwrap();
     // Gap should be non-negative
@@ -307,9 +351,21 @@ fn phase3_condensed_fukui_descriptors_per_atom() {
     let result = sci_form::compute_fukui_descriptors(&elements, &positions).unwrap();
 
     for atom in &result.condensed {
-        assert!(atom.f_plus >= 0.0, "f+ should be non-negative for atom {}", atom.atom_index);
-        assert!(atom.f_minus >= 0.0, "f- should be non-negative for atom {}", atom.atom_index);
-        assert!(atom.f_radical >= 0.0, "f_radical should be non-negative for atom {}", atom.atom_index);
+        assert!(
+            atom.f_plus >= 0.0,
+            "f+ should be non-negative for atom {}",
+            atom.atom_index
+        );
+        assert!(
+            atom.f_minus >= 0.0,
+            "f- should be non-negative for atom {}",
+            atom.atom_index
+        );
+        assert!(
+            atom.f_radical >= 0.0,
+            "f_radical should be non-negative for atom {}",
+            atom.atom_index
+        );
         assert_eq!(atom.dual_descriptor, atom.f_plus - atom.f_minus);
     }
 }
@@ -348,7 +404,7 @@ fn phase3_empirical_pka_acetic_acid() {
     // The carboxylic acid pKa should be roughly in range [2, 7]
     let best_pka = result.acidic_sites[0].estimated_pka;
     assert!(
-        best_pka >= 2.0 && best_pka <= 7.0,
+        (2.0..=7.0).contains(&best_pka),
         "Acetic acid pKa should be ~4.7, got {}",
         best_pka
     );
@@ -364,7 +420,7 @@ fn phase3_empirical_pka_amine() {
     );
     let best_pka = result.basic_sites[0].estimated_pka;
     assert!(
-        best_pka >= 8.0 && best_pka <= 14.0,
+        (8.0..=14.0).contains(&best_pka),
         "Ethylamine pKa should be ~10.6, got {}",
         best_pka
     );
@@ -376,11 +432,15 @@ fn phase3_uv_vis_spectrum() {
     assert!(conf.error.is_none());
     let positions: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
 
-    let spectrum = sci_form::compute_uv_vis_spectrum(&conf.elements, &positions, 0.3, 0.0, 20.0, 100).unwrap();
+    let spectrum =
+        sci_form::compute_uv_vis_spectrum(&conf.elements, &positions, 0.3, 0.0, 20.0, 100).unwrap();
     assert_eq!(spectrum.energies_ev.len(), 100);
     assert_eq!(spectrum.intensities.len(), 100);
     // Should have at least some peaks
-    assert!(!spectrum.peaks.is_empty(), "Benzene should produce UV-Vis transitions");
+    assert!(
+        !spectrum.peaks.is_empty(),
+        "Benzene should produce UV-Vis transitions"
+    );
     // All peaks should have finite values
     for peak in &spectrum.peaks {
         assert!(peak.energy_ev.is_finite());
@@ -403,8 +463,16 @@ fn phase4_bond_order_analysis() {
     let h_h_bond = &result.bonds[0];
     assert_eq!(h_h_bond.atom_i, 0);
     assert_eq!(h_h_bond.atom_j, 1);
-    assert!(h_h_bond.wiberg > 0.5, "H-H Wiberg BO should be > 0.5, got {}", h_h_bond.wiberg);
-    assert!(h_h_bond.mayer > 0.5, "H-H Mayer BO should be > 0.5, got {}", h_h_bond.mayer);
+    assert!(
+        h_h_bond.wiberg > 0.5,
+        "H-H Wiberg BO should be > 0.5, got {}",
+        h_h_bond.wiberg
+    );
+    assert!(
+        h_h_bond.mayer > 0.5,
+        "H-H Mayer BO should be > 0.5, got {}",
+        h_h_bond.mayer
+    );
 }
 
 #[test]
@@ -415,29 +483,51 @@ fn phase4_bond_order_ethylene_double_bond() {
     let result = sci_form::compute_bond_orders(&conf.elements, &positions).unwrap();
 
     // Find C-C bond (elements 6-6)
-    let cc_bond = result.bonds.iter().find(|b| {
-        conf.elements[b.atom_i] == 6 && conf.elements[b.atom_j] == 6
-    });
+    let cc_bond = result
+        .bonds
+        .iter()
+        .find(|b| conf.elements[b.atom_i] == 6 && conf.elements[b.atom_j] == 6);
     assert!(cc_bond.is_some(), "Should find C=C bond");
     let cc = cc_bond.unwrap();
     // C=C double bond → Wiberg BO should be > 1.2
-    assert!(cc.wiberg > 1.2, "C=C Wiberg BO should be > 1.2, got {}", cc.wiberg);
+    assert!(
+        cc.wiberg > 1.2,
+        "C=C Wiberg BO should be > 1.2, got {}",
+        cc.wiberg
+    );
 }
 
 #[test]
 fn phase4_aromaticity_detection_benzene() {
     let features = sci_form::analyze_graph_features("c1ccccc1").unwrap();
     // All 6 carbons should be aromatic
-    let aromatic_count = features.aromaticity.aromatic_atoms.iter().filter(|&&a| a).count();
-    assert!(aromatic_count >= 6, "Benzene should have ≥6 aromatic atoms, got {}", aromatic_count);
+    let aromatic_count = features
+        .aromaticity
+        .aromatic_atoms
+        .iter()
+        .filter(|&&a| a)
+        .count();
+    assert!(
+        aromatic_count >= 6,
+        "Benzene should have ≥6 aromatic atoms, got {}",
+        aromatic_count
+    );
     // Should have aromatic bonds
-    assert!(!features.aromaticity.aromatic_bonds.is_empty(), "Benzene should have aromatic bonds");
+    assert!(
+        !features.aromaticity.aromatic_bonds.is_empty(),
+        "Benzene should have aromatic bonds"
+    );
 }
 
 #[test]
 fn phase4_aromaticity_detection_methane_not_aromatic() {
     let features = sci_form::analyze_graph_features("C").unwrap();
-    let aromatic_count = features.aromaticity.aromatic_atoms.iter().filter(|&&a| a).count();
+    let aromatic_count = features
+        .aromaticity
+        .aromatic_atoms
+        .iter()
+        .filter(|&&a| a)
+        .count();
     assert_eq!(aromatic_count, 0, "Methane should have no aromatic atoms");
 }
 
@@ -457,9 +547,12 @@ fn phase4_coordination_geometry_octahedral() {
     let elements = [26u8, 17, 17, 17, 17, 17, 17]; // FeCl6
     let positions = [
         [0.0, 0.0, 0.0],
-        [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.30, 0.0], [0.0, -2.30, 0.0],
-        [0.0, 0.0, 2.30], [0.0, 0.0, -2.30],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.30, 0.0],
+        [0.0, -2.30, 0.0],
+        [0.0, 0.0, 2.30],
+        [0.0, 0.0, -2.30],
     ];
     let result = sci_form::compute_topology(&elements, &positions);
     assert_eq!(result.metal_centers.len(), 1);
@@ -476,10 +569,16 @@ fn phase4_coordination_geometry_square_planar() {
     let elements = [78u8, 17, 17, 7, 7, 1, 1, 1, 1, 1, 1]; // cisplatin
     let positions = [
         [0.0, 0.0, 0.0],
-        [2.32, 0.0, 0.0], [-2.32, 0.0, 0.0],
-        [0.0, 2.05, 0.0], [0.0, -2.05, 0.0],
-        [0.90, 2.65, 0.0], [-0.90, 2.65, 0.0], [0.00, 2.05, 0.95],
-        [0.90, -2.65, 0.0], [-0.90, -2.65, 0.0], [0.00, -2.05, -0.95],
+        [2.32, 0.0, 0.0],
+        [-2.32, 0.0, 0.0],
+        [0.0, 2.05, 0.0],
+        [0.0, -2.05, 0.0],
+        [0.90, 2.65, 0.0],
+        [-0.90, 2.65, 0.0],
+        [0.00, 2.05, 0.95],
+        [0.90, -2.65, 0.0],
+        [-0.90, -2.65, 0.0],
+        [0.00, -2.05, -0.95],
     ];
     let result = sci_form::compute_topology(&elements, &positions);
     assert_eq!(result.metal_centers.len(), 1);
@@ -516,9 +615,12 @@ fn phase4_topology_output_is_machine_readable() {
     let elements = [26u8, 17, 17, 17, 17, 17, 17];
     let positions = [
         [0.0, 0.0, 0.0],
-        [2.30, 0.0, 0.0], [-2.30, 0.0, 0.0],
-        [0.0, 2.30, 0.0], [0.0, -2.30, 0.0],
-        [0.0, 0.0, 2.30], [0.0, 0.0, -2.30],
+        [2.30, 0.0, 0.0],
+        [-2.30, 0.0, 0.0],
+        [0.0, 2.30, 0.0],
+        [0.0, -2.30, 0.0],
+        [0.0, 0.0, 2.30],
+        [0.0, 0.0, -2.30],
     ];
     let result = sci_form::compute_topology(&elements, &positions);
     // Should be serializable to JSON
@@ -549,7 +651,10 @@ fn phase5_conformer_search_rmsd_clustering() {
     let result = sci_form::search_conformers_with_uff("CCCC", 10, 42, 100.0).unwrap();
     assert!(result.unique <= result.generated);
     // Very large threshold → all should cluster into 1
-    assert!(result.unique <= 3, "Very large RMSD threshold should aggressively deduplicate");
+    assert!(
+        result.unique <= 3,
+        "Very large RMSD threshold should aggressively deduplicate"
+    );
 }
 
 #[test]
@@ -574,8 +679,8 @@ fn phase5_md_nvt_thermostat() {
     let conf = sci_form::embed("C", 42);
     assert!(conf.error.is_none());
 
-    let traj = sci_form::compute_md_trajectory_nvt("C", &conf.coords, 20, 0.5, 42, 300.0, 10.0)
-        .unwrap();
+    let traj =
+        sci_form::compute_md_trajectory_nvt("C", &conf.coords, 20, 0.5, 42, 300.0, 10.0).unwrap();
     assert_eq!(traj.frames.len(), 21);
 
     // With thermostat, temperature shouldn't diverge wildly
@@ -596,8 +701,15 @@ fn phase5_simplified_neb_path() {
     assert!(conf1.error.is_none() && conf2.error.is_none());
 
     let result = sci_form::compute_simplified_neb_path(
-        "CCO", &conf1.coords, &conf2.coords, 5, 3, 0.1, 0.001,
-    ).unwrap();
+        "CCO",
+        &conf1.coords,
+        &conf2.coords,
+        5,
+        3,
+        0.1,
+        0.001,
+    )
+    .unwrap();
 
     assert_eq!(result.images.len(), 5);
     // First and last images should be close to start/end
@@ -625,7 +737,11 @@ fn phase6_charges_available() {
     assert!(!result.charges.is_empty());
     // Charge sum should be ~0 for neutral molecule
     let sum: f64 = result.charges.iter().sum();
-    assert!(sum.abs() < 0.1, "Charge sum should be ~0 for neutral CCO, got {}", sum);
+    assert!(
+        sum.abs() < 0.1,
+        "Charge sum should be ~0 for neutral CCO, got {}",
+        sum
+    );
 }
 
 #[test]
@@ -667,7 +783,10 @@ fn phase6_esp_available() {
     let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
     let result = sci_form::compute_esp(&elements, &positions, 0.5, 2.0).unwrap();
     assert!(result.dims[0] > 0 && result.dims[1] > 0 && result.dims[2] > 0);
-    assert_eq!(result.values.len(), result.dims[0] * result.dims[1] * result.dims[2]);
+    assert_eq!(
+        result.values.len(),
+        result.dims[0] * result.dims[1] * result.dims[2]
+    );
 }
 
 #[test]
@@ -710,7 +829,12 @@ fn phase7_method_selection_organic() {
         plan.orbitals.recommended,
         Some(sci_form::ScientificMethod::Eht)
     );
-    let eht_meta = plan.orbitals.methods.iter().find(|m| m.method == sci_form::ScientificMethod::Eht).unwrap();
+    let eht_meta = plan
+        .orbitals
+        .methods
+        .iter()
+        .find(|m| m.method == sci_form::ScientificMethod::Eht)
+        .unwrap();
     assert_eq!(eht_meta.confidence, sci_form::eht::SupportLevel::Supported);
     assert!(eht_meta.confidence_score > 0.9);
 }
@@ -720,8 +844,16 @@ fn phase7_method_selection_metal() {
     let elements = [26u8, 17, 17];
     let plan = sci_form::get_system_method_plan(&elements);
     // For metals: EHT should still be available but experimental
-    let eht_meta = plan.orbitals.methods.iter().find(|m| m.method == sci_form::ScientificMethod::Eht).unwrap();
-    assert_eq!(eht_meta.confidence, sci_form::eht::SupportLevel::Experimental);
+    let eht_meta = plan
+        .orbitals
+        .methods
+        .iter()
+        .find(|m| m.method == sci_form::ScientificMethod::Eht)
+        .unwrap();
+    assert_eq!(
+        eht_meta.confidence,
+        sci_form::eht::SupportLevel::Experimental
+    );
     assert!(eht_meta.confidence_score < 0.9);
 }
 
@@ -734,10 +866,18 @@ fn phase7_confidence_scoring() {
     let plan_metal = sci_form::get_system_method_plan(&metal);
 
     // Organic confidence should be higher than metal
-    let organic_eht = plan_organic.orbitals.methods.iter()
-        .find(|m| m.method == sci_form::ScientificMethod::Eht).unwrap();
-    let metal_eht = plan_metal.orbitals.methods.iter()
-        .find(|m| m.method == sci_form::ScientificMethod::Eht).unwrap();
+    let organic_eht = plan_organic
+        .orbitals
+        .methods
+        .iter()
+        .find(|m| m.method == sci_form::ScientificMethod::Eht)
+        .unwrap();
+    let metal_eht = plan_metal
+        .orbitals
+        .methods
+        .iter()
+        .find(|m| m.method == sci_form::ScientificMethod::Eht)
+        .unwrap();
 
     assert!(organic_eht.confidence_score > metal_eht.confidence_score);
 }
@@ -752,8 +892,14 @@ fn phase7_compare_methods_workflow() {
     assert!(!comparison.comparisons.is_empty());
 
     // At least UFF and EHT should be present
-    let uff_entry = comparison.comparisons.iter().find(|c| c.method == sci_form::ScientificMethod::Uff);
-    let eht_entry = comparison.comparisons.iter().find(|c| c.method == sci_form::ScientificMethod::Eht);
+    let uff_entry = comparison
+        .comparisons
+        .iter()
+        .find(|c| c.method == sci_form::ScientificMethod::Uff);
+    let eht_entry = comparison
+        .comparisons
+        .iter()
+        .find(|c| c.method == sci_form::ScientificMethod::Eht);
     assert!(uff_entry.is_some());
     assert!(eht_entry.is_some());
 }
@@ -762,11 +908,18 @@ fn phase7_compare_methods_workflow() {
 fn phase7_method_limitations_exposed() {
     let elements = [26u8, 17, 17];
     let plan = sci_form::get_system_method_plan(&elements);
-    let eht_meta = plan.orbitals.methods.iter()
-        .find(|m| m.method == sci_form::ScientificMethod::Eht).unwrap();
+    let eht_meta = plan
+        .orbitals
+        .methods
+        .iter()
+        .find(|m| m.method == sci_form::ScientificMethod::Eht)
+        .unwrap();
     // Should have at least one limitation about experimental parameters
     assert!(
-        eht_meta.limitations.iter().any(|l| l.contains("provisional") || l.contains("experimental")),
+        eht_meta
+            .limitations
+            .iter()
+            .any(|l| l.contains("provisional") || l.contains("experimental")),
         "Metal EHT should expose limitation about provisional parameters"
     );
 }
@@ -788,8 +941,10 @@ fn invariant_charge_conservation_neutral_molecule() {
 fn invariant_population_charge_conservation() {
     let elements = [6u8, 8, 1, 1];
     let positions = [
-        [0.0, 0.0, 0.0], [1.2, 0.0, 0.0],
-        [-0.5, 0.9, 0.0], [-0.5, -0.9, 0.0],
+        [0.0, 0.0, 0.0],
+        [1.2, 0.0, 0.0],
+        [-0.5, 0.9, 0.0],
+        [-0.5, -0.9, 0.0],
     ];
     let pop = sci_form::compute_population(&elements, &positions).unwrap();
     let mulliken_sum: f64 = pop.mulliken_charges.iter().sum();
@@ -828,11 +983,17 @@ fn invariant_symmetric_molecule_dipole_near_zero() {
     let elements = [6u8, 1, 1, 1, 1];
     let positions = [
         [0.0, 0.0, 0.0],
-        [0.6, 0.6, 0.6], [-0.6, -0.6, 0.6],
-        [0.6, -0.6, -0.6], [-0.6, 0.6, -0.6],
+        [0.6, 0.6, 0.6],
+        [-0.6, -0.6, 0.6],
+        [0.6, -0.6, -0.6],
+        [-0.6, 0.6, -0.6],
     ];
     let d = sci_form::compute_dipole(&elements, &positions).unwrap();
-    assert!(d.magnitude < 2.0, "Methane-like symmetry should give small dipole, got {}", d.magnitude);
+    assert!(
+        d.magnitude < 2.0,
+        "Methane-like symmetry should give small dipole, got {}",
+        d.magnitude
+    );
 }
 
 #[test]
