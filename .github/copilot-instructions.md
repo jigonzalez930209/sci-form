@@ -1,6 +1,6 @@
 # sci-form — Agent Instructions
 
-**sci-form** is a Rust library (v0.3.1) for computational chemistry: 3D conformer generation, semi-empirical quantum chemistry (EHT), molecular properties, and crystallographic materials. It is available as a Rust crate, Python package, WebAssembly/TypeScript module, and a CLI binary.
+**sci-form** is a Rust library (v0.4.3) for computational chemistry: 3D conformer generation, semi-empirical quantum chemistry (EHT, PM3, GFN-xTB), molecular properties, ML property prediction, and crystallographic materials. It is available as a Rust crate, Python package, WebAssembly/TypeScript module, and a CLI binary.
 
 ---
 
@@ -10,6 +10,8 @@
 |--------|----------|
 | Conformer (ETKDG) | SMILES → 3D coordinates (ETKDGv2) |
 | EHT | Semi-empirical Hückel MO theory, orbital grids, isosurfaces |
+| PM3 | NDDO PM3 semi-empirical SCF (heat of formation, HOMO/LUMO) |
+| GFN-xTB | GFN0 tight-binding SCC (25 elements incl. transition metals) |
 | Charges | Gasteiger-Marsili partial charges |
 | SASA | Solvent-accessible surface area (Shrake-Rupley) |
 | Population | Mulliken & Löwdin population analysis |
@@ -18,8 +20,10 @@
 | DOS | Density of states with Gaussian smearing |
 | Alignment | Kabsch SVD & quaternion RMSD alignment |
 | Force Field | UFF and MMFF94 energy evaluation |
+| ML Properties | LogP, MR, solubility, Lipinski Ro5, druglikeness |
+| ML Descriptors | MW, Wiener index, Balaban J, FSP3, 17 descriptors |
 | Materials | Unit cell, MOF framework assembly |
-| Transport | Arrow columnar batch + Web Worker task splitting |
+| Transport | Arrow columnar batch + Web Worker task splitting (parallelizable) |
 
 ---
 
@@ -29,9 +33,9 @@
 
 ```toml
 [dependencies]
-sci-form = "0.3"
-# parallel batch:
-sci-form = { version = "0.3", features = ["parallel"] }
+sci-form = "0.4"
+# parallel batch (rayon):
+sci-form = { version = "0.4", features = ["parallel"] }
 ```
 
 ### Core types
@@ -82,6 +86,36 @@ sci_form::compute_rmsd(coords: &[f64], reference: &[f64]) -> f64
 
 sci_form::compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String>
 
+sci_form::compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String>
+
+// PM3 — NDDO semi-empirical SCF
+sci_form::compute_pm3(elements: &[u8], positions: &[[f64;3]]) -> Result<pm3::Pm3Result, String>
+// Pm3Result { orbital_energies, electronic_energy, nuclear_repulsion, total_energy,
+//             heat_of_formation, n_basis, n_electrons, homo_energy, lumo_energy, gap,
+//             mulliken_charges, scf_iterations, converged }
+
+// GFN-xTB — GFN0 tight-binding SCC (25 elements)
+sci_form::compute_xtb(elements: &[u8], positions: &[[f64;3]]) -> Result<xtb::XtbResult, String>
+// XtbResult { orbital_energies, electronic_energy, repulsive_energy, total_energy,
+//             n_basis, n_electrons, homo_energy, lumo_energy, gap,
+//             mulliken_charges, scc_iterations, converged }
+// Supported: H, B, C, N, O, F, Si, P, S, Cl, Br, I + Ti, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ru, Pd, Ag, Pt, Au
+
+// ML Descriptors + Property Prediction
+sci_form::compute_ml_descriptors(
+    elements: &[u8],
+    bonds: &[(usize, usize, String)],
+    charges: &[f64],
+    aromatic_atoms: &[bool],
+) -> ml::MolecularDescriptors
+// MolecularDescriptors { molecular_weight, n_heavy_atoms, n_hydrogens, n_bonds,
+//   n_rotatable_bonds, n_hbd, n_hba, fsp3, total_abs_charge, max_charge, min_charge,
+//   wiener_index, n_rings, n_aromatic, balaban_j, sum_electronegativity, sum_polarizability }
+
+sci_form::predict_ml_properties(desc: &ml::MolecularDescriptors) -> ml::MlPropertyResult
+// MlPropertyResult { logp, molar_refractivity, log_solubility, lipinski, druglikeness }
+// LipinskiResult { mw_ok, logp_ok, hbd_ok, hba_ok, violations, passes }
+
 // Materials
 sci_form::create_unit_cell(a,b,c,alpha,beta,gamma: f64) -> materials::UnitCell
 sci_form::assemble_framework(node: &Sbu, linker: &Sbu, topology: &Topology, cell: &UnitCell) -> CrystalStructure
@@ -108,6 +142,23 @@ println!("Gap: {:.3} eV", pop.homo_lumo_gap);
 
 let dipole = sci_form::compute_dipole(&conf.elements, &pos).unwrap();
 println!("|μ| = {:.3} D", dipole.magnitude);
+
+// PM3 semi-empirical SCF
+let pm3 = sci_form::compute_pm3(&conf.elements, &pos).unwrap();
+println!("PM3 HOF: {:.2} kcal/mol, gap: {:.3} eV", pm3.heat_of_formation, pm3.gap);
+
+// GFN-xTB (also handles transition metals)
+let xtb = sci_form::compute_xtb(&conf.elements, &pos).unwrap();
+println!("xTB total energy: {:.4} eV, gap: {:.3} eV", xtb.total_energy, xtb.gap);
+
+// ML properties (no 3D needed — only SMILES topology)
+let desc = sci_form::compute_ml_descriptors(&conf.elements, &conf.bonds, &[], &[]);
+let props = sci_form::predict_ml_properties(&desc);
+println!("LogP: {:.2}, Druglikeness: {:.3}", props.logp, props.druglikeness);
+
+// Parallel batch (requires features = ["parallel"])
+let config = sci_form::ConformerConfig { seed: 42, num_threads: 0 };
+let results = sci_form::embed_batch(&["CCO", "c1ccccc1", "CC(=O)O"], &config);
 ```
 
 ---
@@ -127,7 +178,10 @@ import sci_form           # import name
 from sci_form import (
     embed, embed_batch, parse,
     charges, sasa, eht_calculate, eht_orbital_mesh,
-    population, dipole, dos, rmsd, uff_energy,
+    population, dipole, dos, rmsd,
+    uff_energy, mmff94_energy,
+    pm3_calculate, xtb_calculate,
+    ml_descriptors, ml_predict,
     unit_cell, assemble_framework,
     pack_conformers, split_worker_tasks, estimate_workers,
 )
@@ -145,6 +199,29 @@ dipole(elements, coords) -> DipoleResult                 # .magnitude Debye, .ve
 dos(elements, coords, sigma=0.3, e_min=-30.0, e_max=5.0, n_points=500) -> DosResult  # .energies, .total_dos
 rmsd(coords, reference) -> AlignmentResult              # .rmsd Å, .aligned_coords
 uff_energy(smiles, coords) -> float                     # kcal/mol
+mmff94_energy(smiles, coords) -> float                  # kcal/mol
+
+# PM3 — NDDO semi-empirical SCF
+pm3_calculate(elements: list[int], coords: list[float]) -> Pm3Result
+# Pm3Result: .orbital_energies, .electronic_energy, .nuclear_repulsion, .total_energy
+#            .heat_of_formation, .n_basis, .n_electrons, .homo_energy, .lumo_energy
+#            .gap, .mulliken_charges, .scf_iterations, .converged
+
+# GFN-xTB — GFN0 tight-binding (25 elements incl. transition metals)
+extb_calculate(elements: list[int], coords: list[float]) -> XtbResult
+# XtbResult: .orbital_energies, .electronic_energy, .repulsive_energy, .total_energy
+#            .n_basis, .n_electrons, .homo_energy, .lumo_energy
+#            .gap, .mulliken_charges, .scc_iterations, .converged
+
+# ML Descriptors + Property Prediction (topology only, no 3D needed)
+ml_descriptors(smiles: str) -> MolecularDescriptors
+# MolecularDescriptors: .molecular_weight, .n_heavy_atoms, .n_hbd, .n_hba, .fsp3,
+#   .wiener_index, .n_rings, .n_aromatic, .balaban_j, .sum_electronegativity,
+#   .sum_polarizability, .n_hydrogens, .n_bonds, .n_rotatable_bonds
+
+ml_predict(smiles: str) -> MlPropertyResult
+# MlPropertyResult: .logp, .molar_refractivity, .log_solubility, .druglikeness
+#   .lipinski_violations (int), .lipinski_passes (bool)
 
 # EHT
 eht_calculate(elements, coords, k=1.75) -> EhtResult     # .homo_energy, .gap, .energies, .homo_index
@@ -177,7 +254,7 @@ result.time_ms          # float
 ### Typical pipeline
 
 ```python
-from sci_form import embed, population, dipole
+from sci_form import embed, population, dipole, pm3_calculate, xtb_calculate, ml_predict
 
 conf = embed("CCO", seed=42)
 pop = population(conf.elements, conf.coords)
@@ -185,6 +262,22 @@ print(f"HOMO: {pop.homo_energy:.3f} eV, Gap: {pop.homo_energy - pop.lumo_energy:
 
 d = dipole(conf.elements, conf.coords)
 print(f"|μ| = {d.magnitude:.3f} D")
+
+# PM3 semi-empirical
+pm3 = pm3_calculate(conf.elements, conf.coords)
+print(f"PM3 HOF: {pm3.heat_of_formation:.2f} kcal/mol")
+
+# GFN-xTB (also works on [Zn], [Fe], etc.)
+extb = xtb_calculate(conf.elements, conf.coords)
+print(f"xTB gap: {xtb.gap:.3f} eV, converged: {xtb.converged}")
+
+# ML properties (no 3D needed)
+props = ml_predict("CCO")
+print(f"LogP: {props.logp:.2f}, passes Lipinski: {props.lipinski_passes}")
+
+# Parallel batch
+from sci_form import embed_batch
+results = embed_batch(["CCO", "c1ccccc1", "CC(=O)O"], seed=42, num_threads=4)
 ```
 
 ---
@@ -243,6 +336,28 @@ compute_dipole(elements: string, coords_flat: string): string
 compute_dos(elements: string, coords_flat: string, sigma: number, e_min: number, e_max: number, n_points: number): string
 compute_rmsd(coords: string, reference: string): string  // JSON {"rmsd": 0.034}
 compute_uff_energy(smiles: string, coords: string): string
+compute_mmff94_energy(smiles: string, coords: string): string  // JSON {"energy": 12.3}
+
+// PM3 — NDDO semi-empirical SCF
+compute_pm3(elements: string, coords_flat: string): string
+// JSON Pm3Result: {orbital_energies, electronic_energy, nuclear_repulsion, total_energy,
+//   heat_of_formation, n_basis, n_electrons, homo_energy, lumo_energy, gap,
+//   mulliken_charges, scf_iterations, converged}
+
+// GFN-xTB — GFN0 tight-binding (25 elements incl. transition metals)
+compute_xtb(elements: string, coords_flat: string): string
+// JSON XtbResult: {orbital_energies, electronic_energy, repulsive_energy, total_energy,
+//   n_basis, n_electrons, homo_energy, lumo_energy, gap,
+//   mulliken_charges, scc_iterations, converged}
+
+// ML Properties + Descriptors (topology only, no 3D needed)
+compute_ml_properties(smiles: string): string
+// JSON: {logp, molar_refractivity, log_solubility, lipinski_violations, lipinski_passes, druglikeness}
+
+compute_molecular_descriptors(smiles: string): string
+// JSON MolecularDescriptors: {molecular_weight, n_heavy_atoms, n_hydrogens, n_bonds,
+//   n_rotatable_bonds, n_hbd, n_hba, fsp3, wiener_index, n_rings, n_aromatic,
+//   balaban_j, sum_electronegativity, sum_polarizability, ...}
 
 // Materials
 create_unit_cell(a,b,c,alpha,beta,gamma: number): string
@@ -265,6 +380,29 @@ const coords = JSON.stringify(result.coords);                  // "[x0,y0,z0,...
 // Or use typed array path (no JSON):
 const coordsTyped: Float64Array = embed_coords_typed('CCO', 42);
 const coordsJson = JSON.stringify(Array.from(coordsTyped));
+```
+
+### PM3 / xTB energy calculation
+
+```typescript
+import init, { embed, compute_pm3, compute_xtb, compute_ml_properties } from 'sci-form-wasm';
+await init();
+
+const result = JSON.parse(embed('CCO', 42));
+const elements = JSON.stringify(result.elements);
+const coords   = JSON.stringify(result.coords);
+
+// PM3
+const pm3 = JSON.parse(compute_pm3(elements, coords));
+console.log(`PM3 HOF: ${pm3.heat_of_formation.toFixed(2)} kcal/mol, gap: ${pm3.gap.toFixed(3)} eV`);
+
+// GFN-xTB
+const xtb = JSON.parse(compute_xtb(elements, coords));
+console.log(`xTB energy: ${xtb.total_energy.toFixed(4)} eV, converged: ${xtb.converged}`);
+
+// ML properties (no 3D needed)
+const props = JSON.parse(compute_ml_properties('CCO'));
+console.log(`LogP: ${props.logp.toFixed(2)}, Lipinski: ${props.lipinski_passes}`);
 ```
 
 ### Three.js orbital visualization
@@ -364,8 +502,13 @@ cat huge.smi | parallel -j8 --pipe -N100 sci-form batch /dev/stdin > results.jso
 - **`elements` are atomic numbers** (u8/int): 1=H, 6=C, 7=N, 8=O, 9=F, 15=P, 16=S, 17=Cl, 35=Br, 53=I.
 - **WASM: always JSON.stringify arrays** before passing to WASM functions (`elements` and `coords_flat` parameters).
 - **`embed` never panics** — always check `result.error` (Rust) or `result.is_ok()` (Python).
-- **EHT requires 3D coordinates** — run `embed` first, then pass `elements` + `coords`.
+- **EHT / PM3 / xTB all require 3D coordinates** — run `embed` first, then pass `elements` + `coords`.
+- **`ml_predict` / `compute_ml_properties` do NOT need 3D** — they accept SMILES directly.
 - **ESP/DOS are slow for large molecules** — prefer `spacing ≥ 0.3` Å for interactive use.
+- **GFN-xTB transition metals**: supported elements are Ti(22), Cr(24), Mn(25), Fe(26), Co(27), Ni(28), Cu(29), Zn(30), Ru(44), Pd(46), Ag(47), Pt(78), Au(79). EHT also supports all of these.
+- **PM3 `heat_of_formation`** is in kcal/mol; all energies (`electronic_energy`, `total_energy`) are in eV.
+- **xTB field names**: `repulsive_energy` (not `repulsion_energy`), `scc_iterations` (not `scf_iterations`).
+- **Parallel embed**: use `embed_batch` with `features = ["parallel"]` or `num_threads > 0` in Python; parallelize with `split_worker_tasks` in WASM/workers.
 - **`topology` strings**: `"pcu"` (cubic), `"dia"` (diamond), `"sql"` (square lattice).
 - **`geometry` strings**: `"linear"`, `"trigonal"`, `"tetrahedral"`, `"square_planar"`, `"octahedral"`.
 
@@ -376,7 +519,8 @@ cat huge.smi | parallel -j8 --pipe -N100 sci-form batch /dev/stdin > results.jso
 | Quantity | Unit |
 |----------|------|
 | Coordinates | Å (ångströms) |
-| Energies (EHT, DOS, HOMO/LUMO) | eV |
+| Energies (EHT, PM3, xTB, DOS, HOMO/LUMO) | eV |
+| PM3 heat of formation | kcal/mol |
 | Force field energy (UFF, MMFF94) | kcal/mol |
 | Dipole moment | Debye |
 | SASA | Å² |
