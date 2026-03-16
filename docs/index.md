@@ -28,7 +28,7 @@ features:
     details: 0.064 Å avg RMSD vs RDKit. 846 CSD torsion patterns. 100% stereo validation.
   - icon: 🔬
     title: Three QM Methods
-    details: **NEW v0.4** — EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast).
+    details: **v0.4** — EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast).
   - icon: ⚛️
     title: Extended Hückel Theory
     details: Wolfsberg-Helmholtz Hamiltonian, Löwdin orthogonalization, HOMO/LUMO gaps, population analysis, dipole moments.
@@ -37,7 +37,7 @@ features:
     details: Coulomb ESP grids (red/white/blue mapping), total/per-atom DOS with Gaussian smearing, volumetric orbital grids, Marching Cubes isosurfaces.
   - icon: 🧬
     title: ML Descriptors & Properties
-    details: **NEW v0.4** — 17 descriptors (no 3D), LogP, solubility, Lipinski Ro5, druglikeness. SMILES → results in ~1 μs.
+    details: **v0.4** — 17 descriptors (no 3D), LogP, solubility, Lipinski Ro5, druglikeness. SMILES → results in ~1 μs.
   - icon: 🧲
     title: Force Fields
     details: UFF (50+ elements + TM) and MMFF94 (Halgren 14-7 vdW, quartic/cubic bends, Fourier torsions).
