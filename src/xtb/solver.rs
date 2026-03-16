@@ -1,0 +1,355 @@
+//! GFN0-xTB-inspired tight-binding solver.
+//!
+//! Implements a charge-self-consistent tight-binding scheme with
+//! repulsive pair potentials and Mulliken charge analysis.
+
+use serde::{Deserialize, Serialize};
+use nalgebra::DMatrix;
+use super::params::{get_xtb_params, count_xtb_electrons, num_xtb_basis_functions};
+
+/// Result of an xTB tight-binding calculation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct XtbResult {
+    /// Orbital energies (eV), sorted ascending.
+    pub orbital_energies: Vec<f64>,
+    /// Electronic energy (eV).
+    pub electronic_energy: f64,
+    /// Repulsive energy (eV).
+    pub repulsive_energy: f64,
+    /// Total energy (eV) = electronic + repulsive.
+    pub total_energy: f64,
+    /// Number of basis functions.
+    pub n_basis: usize,
+    /// Number of electrons.
+    pub n_electrons: usize,
+    /// HOMO energy (eV).
+    pub homo_energy: f64,
+    /// LUMO energy (eV).
+    pub lumo_energy: f64,
+    /// HOMO-LUMO gap (eV).
+    pub gap: f64,
+    /// Mulliken charges from TB density.
+    pub mulliken_charges: Vec<f64>,
+    /// Number of SCC iterations.
+    pub scc_iterations: usize,
+    /// Whether SCC converged.
+    pub converged: bool,
+}
+
+const ANGSTROM_TO_BOHR: f64 = 1.0 / 0.529177;
+const EV_PER_HARTREE: f64 = 27.2114;
+
+/// Compute distance in bohr between two atoms.
+fn distance_bohr(a: &[f64; 3], b: &[f64; 3]) -> f64 {
+    let dx = (a[0] - b[0]) * ANGSTROM_TO_BOHR;
+    let dy = (a[1] - b[1]) * ANGSTROM_TO_BOHR;
+    let dz = (a[2] - b[2]) * ANGSTROM_TO_BOHR;
+    (dx * dx + dy * dy + dz * dz).sqrt()
+}
+
+/// Compute damped STO overlap integral (s-s approximation).
+fn sto_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
+    if r_bohr < 1e-10 {
+        return if (zeta_a - zeta_b).abs() < 1e-10 { 1.0 } else { 0.0 };
+    }
+    let p = 0.5 * (zeta_a + zeta_b) * r_bohr;
+    (-p).exp() * (1.0 + p + p * p / 3.0)
+}
+
+/// Build basis map: (atom_index, l_quantum, m_offset).
+fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
+    let mut basis = Vec::new();
+    for (i, &z) in elements.iter().enumerate() {
+        let n = num_xtb_basis_functions(z);
+        if n >= 1 { basis.push((i, 0, 0)); } // s
+        if n >= 4 {
+            basis.push((i, 1, 0)); // px
+            basis.push((i, 1, 1)); // py
+            basis.push((i, 1, 2)); // pz
+        }
+        if n >= 9 {
+            for m in 0..5u8 { basis.push((i, 2, m)); } // d orbitals
+        }
+    }
+    basis
+}
+
+/// Run an xTB tight-binding calculation.
+///
+/// `elements`: atomic numbers.
+/// `positions`: Cartesian coordinates in Å.
+pub fn solve_xtb(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<XtbResult, String> {
+    if elements.len() != positions.len() {
+        return Err(format!(
+            "elements ({}) and positions ({}) length mismatch",
+            elements.len(), positions.len()
+        ));
+    }
+
+    for &z in elements {
+        if get_xtb_params(z).is_none() {
+            return Err(format!("xTB parameters not available for Z={}", z));
+        }
+    }
+
+    let n_atoms = elements.len();
+    let basis_map = build_basis_map(elements);
+    let n_basis = basis_map.len();
+    let n_electrons = count_xtb_electrons(elements);
+    let n_occ = n_electrons / 2;
+
+    if n_basis == 0 {
+        return Err("No basis functions".to_string());
+    }
+
+    // Build overlap matrix
+    let mut s_mat = DMatrix::zeros(n_basis, n_basis);
+    for i in 0..n_basis {
+        s_mat[(i, i)] = 1.0;
+        let (atom_a, la, _) = basis_map[i];
+        for j in (i + 1)..n_basis {
+            let (atom_b, lb, _) = basis_map[j];
+            if atom_a == atom_b { continue; }
+            let r = distance_bohr(&positions[atom_a], &positions[atom_b]);
+            let pa = get_xtb_params(elements[atom_a]).unwrap();
+            let pb = get_xtb_params(elements[atom_b]).unwrap();
+            let za = match la { 0 => pa.zeta_s, 1 => pa.zeta_p, _ => pa.zeta_d };
+            let zb = match lb { 0 => pb.zeta_s, 1 => pb.zeta_p, _ => pb.zeta_d };
+            if za < 1e-10 || zb < 1e-10 { continue; }
+            // Direction-independent approximation: scale by overlap type
+            let scale = if la == 0 && lb == 0 { 1.0 } else if la == lb { 0.5 } else { 0.6 };
+            let sij = sto_overlap(za, zb, r) * scale;
+            s_mat[(i, j)] = sij;
+            s_mat[(j, i)] = sij;
+        }
+    }
+
+    // Build Hamiltonian: H_ii = level energy, H_ij = Wolfsberg-Helmholtz
+    let mut h_mat = DMatrix::zeros(n_basis, n_basis);
+    for i in 0..n_basis {
+        let (atom_a, la, _) = basis_map[i];
+        let pa = get_xtb_params(elements[atom_a]).unwrap();
+        h_mat[(i, i)] = match la { 0 => pa.h_s, 1 => pa.h_p, _ => pa.h_d };
+    }
+    for i in 0..n_basis {
+        for j in (i + 1)..n_basis {
+            let (atom_a, _, _) = basis_map[i];
+            let (atom_b, _, _) = basis_map[j];
+            if atom_a == atom_b { continue; }
+            let k_wh = 1.75;
+            let hij = 0.5 * k_wh * s_mat[(i, j)] * (h_mat[(i, i)] + h_mat[(j, j)]);
+            h_mat[(i, j)] = hij;
+            h_mat[(j, i)] = hij;
+        }
+    }
+
+    // Repulsive energy: pair potential
+    let mut e_rep = 0.0;
+    for a in 0..n_atoms {
+        let pa = get_xtb_params(elements[a]).unwrap();
+        for b in (a + 1)..n_atoms {
+            let pb = get_xtb_params(elements[b]).unwrap();
+            let r_ang = {
+                let dx = positions[a][0] - positions[b][0];
+                let dy = positions[a][1] - positions[b][1];
+                let dz = positions[a][2] - positions[b][2];
+                (dx * dx + dy * dy + dz * dz).sqrt()
+            };
+            if r_ang < 0.1 { continue; }
+            let r_ref = pa.r_cov + pb.r_cov;
+            // Short-range repulsive: exponential decay
+            let alpha = 6.0; // decay parameter
+            e_rep += (pa.n_valence as f64) * (pb.n_valence as f64) * EV_PER_HARTREE
+                / (r_ang * ANGSTROM_TO_BOHR)
+                * (-alpha * (r_ang / r_ref - 1.0)).exp();
+        }
+    }
+
+    // SCC (self-consistent charges) loop
+    let max_iter = 50;
+    let convergence = 1e-6;
+    let mut charges = vec![0.0f64; n_atoms];
+    let mut orbital_energies = vec![0.0; n_basis];
+    let mut coefficients = DMatrix::zeros(n_basis, n_basis);
+    let mut converged = false;
+    let mut scc_iter = 0;
+    let mut prev_e_elec = 0.0;
+
+    // Löwdin S^{-1/2}
+    let s_eigen = s_mat.clone().symmetric_eigen();
+    let mut s_half_inv = DMatrix::zeros(n_basis, n_basis);
+    for k in 0..n_basis {
+        let val = s_eigen.eigenvalues[k];
+        if val > 1e-8 {
+            let inv_sqrt = 1.0 / val.sqrt();
+            let col = s_eigen.eigenvectors.column(k);
+            for i in 0..n_basis {
+                for j in 0..n_basis {
+                    s_half_inv[(i, j)] += inv_sqrt * col[i] * col[j];
+                }
+            }
+        }
+    }
+
+    for iter in 0..max_iter {
+        scc_iter = iter + 1;
+
+        // Build charge-shifted Hamiltonian
+        let mut h_scc = h_mat.clone();
+        for i in 0..n_basis {
+            let (atom_a, _, _) = basis_map[i];
+            let pa = get_xtb_params(elements[atom_a]).unwrap();
+            // Charge-dependent shift: γ_AB * q_B
+            let mut shift = 0.0;
+            for b in 0..n_atoms {
+                if b == atom_a { continue; }
+                let pb = get_xtb_params(elements[b]).unwrap();
+                let r_bohr = distance_bohr(&positions[atom_a], &positions[b]);
+                let gamma = 1.0 / ((1.0 / pa.eta + 1.0 / pb.eta).powi(2) + r_bohr.powi(2)).sqrt();
+                shift += gamma * charges[b];
+            }
+            // Self-charge term
+            shift += pa.eta * charges[atom_a];
+            h_scc[(i, i)] += shift;
+        }
+
+        // Solve HC = SCε via Löwdin
+        let f_prime = &s_half_inv * &h_scc * &s_half_inv;
+        let eigen = f_prime.symmetric_eigen();
+
+        let mut indices: Vec<usize> = (0..n_basis).collect();
+        indices.sort_by(|&a, &b| {
+            eigen.eigenvalues[a].partial_cmp(&eigen.eigenvalues[b]).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        for (new_idx, &old_idx) in indices.iter().enumerate() {
+            orbital_energies[new_idx] = eigen.eigenvalues[old_idx];
+        }
+
+        let c_prime = &eigen.eigenvectors;
+        let c_full = &s_half_inv * c_prime;
+        for new_idx in 0..n_basis {
+            let old_idx = indices[new_idx];
+            for i in 0..n_basis {
+                coefficients[(i, new_idx)] = c_full[(i, old_idx)];
+            }
+        }
+
+        // Build density matrix
+        let mut density = DMatrix::zeros(n_basis, n_basis);
+        for i in 0..n_basis {
+            for j in 0..n_basis {
+                let mut val = 0.0;
+                for k in 0..n_occ.min(n_basis) {
+                    val += coefficients[(i, k)] * coefficients[(j, k)];
+                }
+                density[(i, j)] = 2.0 * val;
+            }
+        }
+
+        // Mulliken charges
+        let ps = &density * &s_mat;
+        let mut new_charges = Vec::with_capacity(n_atoms);
+        for a in 0..n_atoms {
+            let pa = get_xtb_params(elements[a]).unwrap();
+            let mut pop = 0.0;
+            for i in 0..n_basis {
+                if basis_map[i].0 == a { pop += ps[(i, i)]; }
+            }
+            new_charges.push(pa.n_valence as f64 - pop);
+        }
+
+        // Electronic energy
+        let mut e_elec = 0.0;
+        for i in 0..n_basis {
+            for j in 0..n_basis {
+                e_elec += 0.5 * density[(i, j)] * (h_mat[(i, j)] + h_scc[(i, j)]);
+            }
+        }
+
+        if (e_elec - prev_e_elec).abs() < convergence && iter > 0 {
+            converged = true;
+            charges = new_charges;
+            break;
+        }
+        prev_e_elec = e_elec;
+
+        // Damped charge mixing
+        let damp = 0.4;
+        for a in 0..n_atoms {
+            charges[a] = damp * charges[a] + (1.0 - damp) * new_charges[a];
+        }
+    }
+
+    // Final electronic energy from last density
+    let e_elec = prev_e_elec;
+    let total_energy = e_elec + e_rep;
+
+    let homo_idx = if n_occ > 0 { n_occ - 1 } else { 0 };
+    let lumo_idx = n_occ.min(n_basis - 1);
+    let homo_energy = orbital_energies[homo_idx];
+    let lumo_energy = if n_occ < n_basis { orbital_energies[lumo_idx] } else { homo_energy };
+    let gap = if n_occ < n_basis { lumo_energy - homo_energy } else { 0.0 };
+
+    Ok(XtbResult {
+        orbital_energies,
+        electronic_energy: e_elec,
+        repulsive_energy: e_rep,
+        total_energy,
+        n_basis,
+        n_electrons,
+        homo_energy,
+        lumo_energy,
+        gap,
+        mulliken_charges: charges,
+        scc_iterations: scc_iter,
+        converged,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_xtb_h2() {
+        let elements = [1u8, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]];
+        let result = solve_xtb(&elements, &positions).unwrap();
+        assert_eq!(result.n_basis, 2);
+        assert_eq!(result.n_electrons, 2);
+        assert!(result.total_energy.is_finite());
+        assert!(result.gap >= 0.0);
+    }
+
+    #[test]
+    fn test_xtb_water() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let result = solve_xtb(&elements, &positions).unwrap();
+        assert_eq!(result.n_basis, 6);
+        assert_eq!(result.n_electrons, 8);
+        assert!(result.total_energy.is_finite());
+        assert!(result.gap > 0.0, "Water should have a positive gap");
+    }
+
+    #[test]
+    fn test_xtb_ferrocene_atom() {
+        // Just Fe atom — should work with s+p+d
+        let elements = [26u8];
+        let positions = [[0.0, 0.0, 0.0]];
+        let result = solve_xtb(&elements, &positions).unwrap();
+        assert_eq!(result.n_basis, 9); // s+p+d
+        assert_eq!(result.n_electrons, 8);
+    }
+
+    #[test]
+    fn test_xtb_unsupported() {
+        let elements = [92u8]; // uranium
+        let positions = [[0.0, 0.0, 0.0]];
+        assert!(solve_xtb(&elements, &positions).is_err());
+    }
+}
