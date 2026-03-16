@@ -138,32 +138,377 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(embed_batch, m)?)?;
     m.add_function(wrap_pyfunction!(parse, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
+    m.add_function(wrap_pyfunction!(system_capabilities, m)?)?;
+    m.add_function(wrap_pyfunction!(system_method_plan, m)?)?;
+    m.add_function(wrap_pyfunction!(compare_methods, m)?)?;
+    m.add_function(wrap_pyfunction!(eht_support, m)?)?;
     m.add_function(wrap_pyfunction!(eht_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(eht_or_uff_fallback, m)?)?;
     m.add_function(wrap_pyfunction!(eht_orbital_mesh, m)?)?;
     m.add_function(wrap_pyfunction!(charges, m)?)?;
     m.add_function(wrap_pyfunction!(sasa, m)?)?;
     m.add_function(wrap_pyfunction!(population, m)?)?;
+    m.add_function(wrap_pyfunction!(bond_orders, m)?)?;
+    m.add_function(wrap_pyfunction!(frontier_descriptors, m)?)?;
+    m.add_function(wrap_pyfunction!(fukui_descriptors, m)?)?;
+    m.add_function(wrap_pyfunction!(reactivity_ranking, m)?)?;
+    m.add_function(wrap_pyfunction!(uvvis_spectrum, m)?)?;
+    m.add_function(wrap_pyfunction!(graph_features, m)?)?;
+    m.add_function(wrap_pyfunction!(topology_analysis, m)?)?;
     m.add_function(wrap_pyfunction!(dipole, m)?)?;
     m.add_function(wrap_pyfunction!(dos, m)?)?;
     m.add_function(wrap_pyfunction!(rmsd, m)?)?;
     m.add_function(wrap_pyfunction!(uff_energy, m)?)?;
+    m.add_function(wrap_pyfunction!(uff_energy_with_aromatic_heuristics, m)?)?;
+    m.add_function(wrap_pyfunction!(empirical_pka, m)?)?;
     m.add_function(wrap_pyfunction!(unit_cell, m)?)?;
     m.add_function(wrap_pyfunction!(assemble_framework, m)?)?;
     m.add_function(wrap_pyfunction!(pack_conformers, m)?)?;
     m.add_function(wrap_pyfunction!(split_worker_tasks, m)?)?;
     m.add_function(wrap_pyfunction!(estimate_workers, m)?)?;
+    m.add_function(wrap_pyfunction!(mmff94_energy, m)?)?;
+    m.add_function(wrap_pyfunction!(pm3_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(xtb_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(ml_descriptors, m)?)?;
+    m.add_function(wrap_pyfunction!(ml_predict, m)?)?;
     m.add_class::<ConformerResult>()?;
+    m.add_class::<SystemCapabilitiesPy>()?;
+    m.add_class::<MethodMetadataPy>()?;
+    m.add_class::<PropertyMethodPlanPy>()?;
+    m.add_class::<SystemMethodPlanPy>()?;
+    m.add_class::<MethodComparisonEntryPy>()?;
+    m.add_class::<MethodComparisonResultPy>()?;
     m.add_class::<EhtResultPy>()?;
+    m.add_class::<EhtSupportPy>()?;
     m.add_class::<ChargeResultPy>()?;
     m.add_class::<SasaResultPy>()?;
     m.add_class::<PopulationResultPy>()?;
+    m.add_class::<BondOrderResultPy>()?;
+    m.add_class::<FrontierDescriptorsPy>()?;
+    m.add_class::<FukuiDescriptorsPy>()?;
+    m.add_class::<ReactivitySiteScorePy>()?;
+    m.add_class::<ReactivityRankingPy>()?;
+    m.add_class::<UvVisPeakPy>()?;
+    m.add_class::<UvVisSpectrumPy>()?;
+    m.add_class::<GraphFeatureAnalysisPy>()?;
+    m.add_class::<MetalCoordinationCenterPy>()?;
+    m.add_class::<TopologyAnalysisResultPy>()?;
     m.add_class::<DipoleResultPy>()?;
     m.add_class::<DosResultPy>()?;
     m.add_class::<AlignmentResultPy>()?;
+    m.add_class::<UffHeuristicEnergyPy>()?;
+    m.add_class::<EmpiricalPkaSitePy>()?;
+    m.add_class::<EmpiricalPkaResultPy>()?;
     m.add_class::<UnitCellPy>()?;
     m.add_class::<CrystalStructurePy>()?;
     m.add_class::<RecordBatchPy>()?;
+    m.add_class::<Pm3ResultPy>()?;
+    m.add_class::<XtbResultPy>()?;
+    m.add_class::<MolecularDescriptorsPy>()?;
+    m.add_class::<MlPropertyResultPy>()?;
     Ok(())
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct MethodCapabilityPy {
+    #[pyo3(get)]
+    available: bool,
+    #[pyo3(get)]
+    confidence: String,
+    #[pyo3(get)]
+    unsupported_elements: Vec<u8>,
+    #[pyo3(get)]
+    warnings: Vec<String>,
+}
+
+impl From<sci_form_core::MethodCapability> for MethodCapabilityPy {
+    fn from(value: sci_form_core::MethodCapability) -> Self {
+        Self {
+            available: value.available,
+            confidence: format!("{:?}", value.confidence).to_lowercase(),
+            unsupported_elements: value.unsupported_elements,
+            warnings: value.warnings,
+        }
+    }
+}
+
+fn scientific_method_name(method: sci_form_core::ScientificMethod) -> String {
+    match method {
+        sci_form_core::ScientificMethod::Embed => "embed",
+        sci_form_core::ScientificMethod::Uff => "uff",
+        sci_form_core::ScientificMethod::Eht => "eht",
+        sci_form_core::ScientificMethod::Pm3 => "pm3",
+        sci_form_core::ScientificMethod::Xtb => "xtb",
+        sci_form_core::ScientificMethod::Mmff94 => "mmff94",
+    }
+    .to_string()
+}
+
+fn property_request_name(property: sci_form_core::PropertyRequest) -> String {
+    match property {
+        sci_form_core::PropertyRequest::Geometry => "geometry",
+        sci_form_core::PropertyRequest::ForceFieldEnergy => "force_field_energy",
+        sci_form_core::PropertyRequest::Orbitals => "orbitals",
+        sci_form_core::PropertyRequest::Population => "population",
+        sci_form_core::PropertyRequest::OrbitalGrid => "orbital_grid",
+    }
+    .to_string()
+}
+
+fn comparison_status_name(status: sci_form_core::MethodComparisonStatus) -> String {
+    match status {
+        sci_form_core::MethodComparisonStatus::Success => "success",
+        sci_form_core::MethodComparisonStatus::Unavailable => "unavailable",
+        sci_form_core::MethodComparisonStatus::Error => "error",
+    }
+    .to_string()
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct SystemCapabilitiesPy {
+    #[pyo3(get)]
+    embed: MethodCapabilityPy,
+    #[pyo3(get)]
+    uff: MethodCapabilityPy,
+    #[pyo3(get)]
+    eht: MethodCapabilityPy,
+    #[pyo3(get)]
+    population: MethodCapabilityPy,
+    #[pyo3(get)]
+    orbital_grid: MethodCapabilityPy,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct MethodMetadataPy {
+    #[pyo3(get)]
+    method: String,
+    #[pyo3(get)]
+    available: bool,
+    #[pyo3(get)]
+    confidence: String,
+    #[pyo3(get)]
+    confidence_score: f64,
+    #[pyo3(get)]
+    limitations: Vec<String>,
+    #[pyo3(get)]
+    warnings: Vec<String>,
+}
+
+impl From<sci_form_core::MethodMetadata> for MethodMetadataPy {
+    fn from(value: sci_form_core::MethodMetadata) -> Self {
+        Self {
+            method: scientific_method_name(value.method),
+            available: value.available,
+            confidence: format!("{:?}", value.confidence).to_lowercase(),
+            confidence_score: value.confidence_score,
+            limitations: value.limitations,
+            warnings: value.warnings,
+        }
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct PropertyMethodPlanPy {
+    #[pyo3(get)]
+    property: String,
+    #[pyo3(get)]
+    recommended: Option<String>,
+    #[pyo3(get)]
+    fallback: Option<String>,
+    #[pyo3(get)]
+    rationale: Vec<String>,
+    #[pyo3(get)]
+    methods: Vec<MethodMetadataPy>,
+}
+
+impl From<sci_form_core::PropertyMethodPlan> for PropertyMethodPlanPy {
+    fn from(value: sci_form_core::PropertyMethodPlan) -> Self {
+        Self {
+            property: property_request_name(value.property),
+            recommended: value.recommended.map(scientific_method_name),
+            fallback: value.fallback.map(scientific_method_name),
+            rationale: value.rationale,
+            methods: value.methods.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct SystemMethodPlanPy {
+    #[pyo3(get)]
+    capabilities: SystemCapabilitiesPy,
+    #[pyo3(get)]
+    geometry: PropertyMethodPlanPy,
+    #[pyo3(get)]
+    force_field_energy: PropertyMethodPlanPy,
+    #[pyo3(get)]
+    orbitals: PropertyMethodPlanPy,
+    #[pyo3(get)]
+    population: PropertyMethodPlanPy,
+    #[pyo3(get)]
+    orbital_grid: PropertyMethodPlanPy,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct MethodComparisonEntryPy {
+    #[pyo3(get)]
+    method: String,
+    #[pyo3(get)]
+    status: String,
+    #[pyo3(get)]
+    available: bool,
+    #[pyo3(get)]
+    confidence: String,
+    #[pyo3(get)]
+    confidence_score: f64,
+    #[pyo3(get)]
+    warnings: Vec<String>,
+    #[pyo3(get)]
+    limitations: Vec<String>,
+    #[pyo3(get)]
+    error: Option<String>,
+    #[pyo3(get)]
+    support_level: Option<String>,
+    #[pyo3(get)]
+    homo_energy: Option<f64>,
+    #[pyo3(get)]
+    lumo_energy: Option<f64>,
+    #[pyo3(get)]
+    gap: Option<f64>,
+    #[pyo3(get)]
+    energy_kcal_mol: Option<f64>,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct MethodComparisonResultPy {
+    #[pyo3(get)]
+    plan: SystemMethodPlanPy,
+    #[pyo3(get)]
+    comparisons: Vec<MethodComparisonEntryPy>,
+}
+
+/// Query operation capabilities for a given element set.
+#[pyfunction]
+fn system_capabilities(elements: Vec<u8>) -> SystemCapabilitiesPy {
+    let caps = sci_form_core::get_system_capabilities(&elements);
+    SystemCapabilitiesPy {
+        embed: caps.embed.into(),
+        uff: caps.uff.into(),
+        eht: caps.eht.into(),
+        population: caps.population.into(),
+        orbital_grid: caps.orbital_grid.into(),
+    }
+}
+
+/// Build a structured method plan with recommendations, fallbacks, and confidence scores.
+#[pyfunction]
+fn system_method_plan(elements: Vec<u8>) -> SystemMethodPlanPy {
+    let plan = sci_form_core::get_system_method_plan(&elements);
+    SystemMethodPlanPy {
+        capabilities: SystemCapabilitiesPy {
+            embed: plan.capabilities.embed.into(),
+            uff: plan.capabilities.uff.into(),
+            eht: plan.capabilities.eht.into(),
+            population: plan.capabilities.population.into(),
+            orbital_grid: plan.capabilities.orbital_grid.into(),
+        },
+        geometry: plan.geometry.into(),
+        force_field_energy: plan.force_field_energy.into(),
+        orbitals: plan.orbitals.into(),
+        population: plan.population.into(),
+        orbital_grid: plan.orbital_grid.into(),
+    }
+}
+
+/// Compare available methods on the same system/geometry.
+#[pyfunction]
+#[pyo3(signature = (smiles, elements, coords, allow_experimental_eht=false))]
+fn compare_methods(
+    smiles: &str,
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    allow_experimental_eht: bool,
+) -> PyResult<MethodComparisonResultPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "coords length must be 3 * len(elements)",
+        ));
+    }
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let result =
+        sci_form_core::compare_methods(smiles, &elements, &positions, allow_experimental_eht);
+
+    let comparisons = result
+        .comparisons
+        .into_iter()
+        .map(|entry| {
+            let mut support_level = None;
+            let mut homo_energy = None;
+            let mut lumo_energy = None;
+            let mut gap = None;
+            let mut energy_kcal_mol = None;
+
+            if let Some(payload) = entry.payload {
+                match payload {
+                    sci_form_core::MethodComparisonPayload::Eht {
+                        homo_energy: h,
+                        lumo_energy: l,
+                        gap: g,
+                        support,
+                    } => {
+                        support_level = Some(format!("{:?}", support.level).to_lowercase());
+                        homo_energy = Some(h);
+                        lumo_energy = Some(l);
+                        gap = Some(g);
+                    }
+                    sci_form_core::MethodComparisonPayload::Uff { energy_kcal_mol: e } => {
+                        energy_kcal_mol = Some(e);
+                    }
+                }
+            }
+
+            MethodComparisonEntryPy {
+                method: scientific_method_name(entry.method),
+                status: comparison_status_name(entry.status),
+                available: entry.available,
+                confidence: format!("{:?}", entry.confidence).to_lowercase(),
+                confidence_score: entry.confidence_score,
+                warnings: entry.warnings,
+                limitations: entry.limitations,
+                error: entry.error,
+                support_level,
+                homo_energy,
+                lumo_energy,
+                gap,
+                energy_kcal_mol,
+            }
+        })
+        .collect();
+
+    Ok(MethodComparisonResultPy {
+        plan: SystemMethodPlanPy {
+            capabilities: SystemCapabilitiesPy {
+                embed: result.plan.capabilities.embed.into(),
+                uff: result.plan.capabilities.uff.into(),
+                eht: result.plan.capabilities.eht.into(),
+                population: result.plan.capabilities.population.into(),
+                orbital_grid: result.plan.capabilities.orbital_grid.into(),
+            },
+            geometry: result.plan.geometry.into(),
+            force_field_energy: result.plan.force_field_energy.into(),
+            orbitals: result.plan.orbitals.into(),
+            population: result.plan.population.into(),
+            orbital_grid: result.plan.orbital_grid.into(),
+        },
+        comparisons,
+    })
 }
 
 // ─── EHT (Extended Hückel Theory) API ────────────────────────────────────────
@@ -186,6 +531,18 @@ struct EhtResultPy {
     lumo_energy: f64,
     #[pyo3(get)]
     gap: f64,
+    #[pyo3(get)]
+    support_level: String,
+    #[pyo3(get)]
+    has_transition_metals: bool,
+    #[pyo3(get)]
+    supported_elements: Vec<u8>,
+    #[pyo3(get)]
+    provisional_elements: Vec<u8>,
+    #[pyo3(get)]
+    unsupported_elements: Vec<u8>,
+    #[pyo3(get)]
+    warnings: Vec<String>,
 }
 
 #[pymethods]
@@ -198,6 +555,37 @@ impl EhtResultPy {
             self.homo_energy,
             self.lumo_energy,
         )
+    }
+}
+
+/// EHT support and confidence metadata for an element set.
+#[pyclass]
+#[derive(Clone)]
+struct EhtSupportPy {
+    #[pyo3(get)]
+    level: String,
+    #[pyo3(get)]
+    has_transition_metals: bool,
+    #[pyo3(get)]
+    supported_elements: Vec<u8>,
+    #[pyo3(get)]
+    provisional_elements: Vec<u8>,
+    #[pyo3(get)]
+    unsupported_elements: Vec<u8>,
+    #[pyo3(get)]
+    warnings: Vec<String>,
+}
+
+impl From<sci_form_core::eht::EhtSupport> for EhtSupportPy {
+    fn from(value: sci_form_core::eht::EhtSupport) -> Self {
+        Self {
+            level: format!("{:?}", value.level).to_lowercase(),
+            has_transition_metals: value.has_transition_metals,
+            supported_elements: value.supported_elements,
+            provisional_elements: value.provisional_elements,
+            unsupported_elements: value.unsupported_elements,
+            warnings: value.warnings,
+        }
     }
 }
 
@@ -234,9 +622,80 @@ fn eht_calculate(elements: Vec<u8>, coords: Vec<f64>, k: f64) -> PyResult<EhtRes
             homo_energy: r.homo_energy,
             lumo_energy: r.lumo_energy,
             gap: r.gap,
+            support_level: format!("{:?}", r.support.level).to_lowercase(),
+            has_transition_metals: r.support.has_transition_metals,
+            supported_elements: r.support.supported_elements,
+            provisional_elements: r.support.provisional_elements,
+            unsupported_elements: r.support.unsupported_elements,
+            warnings: r.support.warnings,
         }),
         Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
     }
+}
+
+/// Run EHT or route to UFF fallback based on support/confidence.
+#[pyfunction]
+#[pyo3(signature = (smiles, elements, coords, allow_experimental_eht=false))]
+fn eht_or_uff_fallback(
+    py: Python<'_>,
+    smiles: &str,
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    allow_experimental_eht: bool,
+) -> PyResult<PyObject> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "coords length must be 3 * len(elements)",
+        ));
+    }
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let result = sci_form_core::compute_eht_or_uff_fallback(
+        smiles,
+        &elements,
+        &positions,
+        allow_experimental_eht,
+    )
+    .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+
+    let dict = PyDict::new_bound(py);
+    match result {
+        sci_form_core::ElectronicWorkflowResult::Eht { result } => {
+            dict.set_item("mode", "eht")?;
+            dict.set_item("energies", result.energies)?;
+            dict.set_item("n_electrons", result.n_electrons)?;
+            dict.set_item("homo_index", result.homo_index)?;
+            dict.set_item("lumo_index", result.lumo_index)?;
+            dict.set_item("homo_energy", result.homo_energy)?;
+            dict.set_item("lumo_energy", result.lumo_energy)?;
+            dict.set_item("gap", result.gap)?;
+            dict.set_item(
+                "support_level",
+                format!("{:?}", result.support.level).to_lowercase(),
+            )?;
+            dict.set_item("warnings", result.support.warnings)?;
+        }
+        sci_form_core::ElectronicWorkflowResult::UffFallback {
+            energy_kcal_mol,
+            reason,
+            support,
+        } => {
+            dict.set_item("mode", "uff_fallback")?;
+            dict.set_item("energy_kcal_mol", energy_kcal_mol)?;
+            dict.set_item("reason", reason)?;
+            dict.set_item(
+                "support_level",
+                format!("{:?}", support.level).to_lowercase(),
+            )?;
+            dict.set_item("warnings", support.warnings)?;
+        }
+    }
+    Ok(dict.into())
+}
+
+/// Query EHT support metadata before running a calculation.
+#[pyfunction]
+fn eht_support(elements: Vec<u8>) -> EhtSupportPy {
+    sci_form_core::get_eht_support(&elements).into()
 }
 
 /// Generate an orbital isosurface mesh as a dict.
@@ -418,6 +877,275 @@ impl PopulationResultPy {
     }
 }
 
+#[pyclass]
+#[derive(Clone)]
+struct BondOrderResultPy {
+    #[pyo3(get)]
+    atom_pairs: Vec<(usize, usize)>,
+    #[pyo3(get)]
+    distances: Vec<f64>,
+    #[pyo3(get)]
+    wiberg: Vec<f64>,
+    #[pyo3(get)]
+    mayer: Vec<f64>,
+    #[pyo3(get)]
+    wiberg_valence: Vec<f64>,
+    #[pyo3(get)]
+    mayer_valence: Vec<f64>,
+    #[pyo3(get)]
+    num_atoms: usize,
+}
+
+#[pymethods]
+impl BondOrderResultPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "BondOrderResult(n_atoms={}, n_pairs={})",
+            self.num_atoms,
+            self.atom_pairs.len()
+        )
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct FrontierDescriptorsPy {
+    #[pyo3(get)]
+    homo_atom_contributions: Vec<f64>,
+    #[pyo3(get)]
+    lumo_atom_contributions: Vec<f64>,
+    #[pyo3(get)]
+    dual_descriptor: Vec<f64>,
+    #[pyo3(get)]
+    homo_energy: f64,
+    #[pyo3(get)]
+    lumo_energy: f64,
+    #[pyo3(get)]
+    gap: f64,
+    #[pyo3(get)]
+    num_atoms: usize,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct FukuiDescriptorsPy {
+    #[pyo3(get)]
+    f_plus: Vec<f64>,
+    #[pyo3(get)]
+    f_minus: Vec<f64>,
+    #[pyo3(get)]
+    f_radical: Vec<f64>,
+    #[pyo3(get)]
+    dual_descriptor: Vec<f64>,
+    #[pyo3(get)]
+    condensed_atom_indices: Vec<usize>,
+    #[pyo3(get)]
+    condensed_f_plus: Vec<f64>,
+    #[pyo3(get)]
+    condensed_f_minus: Vec<f64>,
+    #[pyo3(get)]
+    condensed_f_radical: Vec<f64>,
+    #[pyo3(get)]
+    condensed_dual_descriptor: Vec<f64>,
+    #[pyo3(get)]
+    homo_energy: f64,
+    #[pyo3(get)]
+    lumo_energy: f64,
+    #[pyo3(get)]
+    gap: f64,
+    #[pyo3(get)]
+    num_atoms: usize,
+    #[pyo3(get)]
+    validity_notes: Vec<String>,
+}
+
+#[pymethods]
+impl FukuiDescriptorsPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "FukuiDescriptors(n_atoms={}, gap={:.3} eV)",
+            self.num_atoms, self.gap
+        )
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct ReactivitySiteScorePy {
+    #[pyo3(get)]
+    atom_index: usize,
+    #[pyo3(get)]
+    score: f64,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct ReactivityRankingPy {
+    #[pyo3(get)]
+    nucleophilic_attack_sites: Vec<ReactivitySiteScorePy>,
+    #[pyo3(get)]
+    electrophilic_attack_sites: Vec<ReactivitySiteScorePy>,
+    #[pyo3(get)]
+    radical_attack_sites: Vec<ReactivitySiteScorePy>,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+#[pymethods]
+impl ReactivityRankingPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "ReactivityRanking(nuc={}, elec={}, rad={})",
+            self.nucleophilic_attack_sites.len(),
+            self.electrophilic_attack_sites.len(),
+            self.radical_attack_sites.len()
+        )
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct UvVisPeakPy {
+    #[pyo3(get)]
+    energy_ev: f64,
+    #[pyo3(get)]
+    wavelength_nm: f64,
+    #[pyo3(get)]
+    intensity: f64,
+    #[pyo3(get)]
+    from_mo: usize,
+    #[pyo3(get)]
+    to_mo: usize,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct UvVisSpectrumPy {
+    #[pyo3(get)]
+    energies_ev: Vec<f64>,
+    #[pyo3(get)]
+    intensities: Vec<f64>,
+    #[pyo3(get)]
+    peaks: Vec<UvVisPeakPy>,
+    #[pyo3(get)]
+    sigma: f64,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct GraphFeatureAnalysisPy {
+    #[pyo3(get)]
+    aromatic_atoms: Vec<bool>,
+    #[pyo3(get)]
+    aromatic_bonds: Vec<(usize, usize)>,
+    #[pyo3(get)]
+    tagged_tetrahedral_centers: Vec<usize>,
+    #[pyo3(get)]
+    inferred_tetrahedral_centers: Vec<usize>,
+}
+
+#[pymethods]
+impl GraphFeatureAnalysisPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "GraphFeatureAnalysis(aromatic_atoms={}, tagged_centers={}, inferred_centers={})",
+            self.aromatic_atoms.iter().filter(|v| **v).count(),
+            self.tagged_tetrahedral_centers.len(),
+            self.inferred_tetrahedral_centers.len()
+        )
+    }
+}
+
+#[pymethods]
+impl UvVisSpectrumPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "UvVisSpectrum(n_points={}, n_peaks={})",
+            self.energies_ev.len(),
+            self.peaks.len()
+        )
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct MetalCoordinationCenterPy {
+    #[pyo3(get)]
+    atom_index: usize,
+    #[pyo3(get)]
+    element: u8,
+    #[pyo3(get)]
+    ligand_indices: Vec<usize>,
+    #[pyo3(get)]
+    coordination_number: usize,
+    #[pyo3(get)]
+    geometry: String,
+    #[pyo3(get)]
+    geometry_score: f64,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct TopologyAnalysisResultPy {
+    #[pyo3(get)]
+    metal_centers: Vec<MetalCoordinationCenterPy>,
+    #[pyo3(get)]
+    warnings: Vec<String>,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct UffHeuristicEnergyPy {
+    #[pyo3(get)]
+    raw_energy_kcal_mol: f64,
+    #[pyo3(get)]
+    aromatic_stabilization_kcal_mol: f64,
+    #[pyo3(get)]
+    corrected_energy_kcal_mol: f64,
+    #[pyo3(get)]
+    aromatic_bond_count: usize,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct EmpiricalPkaSitePy {
+    #[pyo3(get)]
+    atom_index: usize,
+    #[pyo3(get)]
+    site_type: String,
+    #[pyo3(get)]
+    environment: String,
+    #[pyo3(get)]
+    estimated_pka: f64,
+    #[pyo3(get)]
+    confidence: f64,
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct EmpiricalPkaResultPy {
+    #[pyo3(get)]
+    acidic_sites: Vec<EmpiricalPkaSitePy>,
+    #[pyo3(get)]
+    basic_sites: Vec<EmpiricalPkaSitePy>,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+#[pymethods]
+impl FrontierDescriptorsPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "FrontierDescriptors(n_atoms={}, gap={:.3} eV)",
+            self.num_atoms, self.gap
+        )
+    }
+}
+
 /// Compute Mulliken & Löwdin population analysis.
 #[pyfunction]
 fn population(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<PopulationResultPy> {
@@ -432,6 +1160,170 @@ fn population(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<PopulationResultP
         }),
         Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
     }
+}
+
+/// Compute Wiberg-like and Mayer-like bond orders from EHT.
+#[pyfunction]
+fn bond_orders(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<BondOrderResultPy> {
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match sci_form_core::compute_bond_orders(&elements, &positions) {
+        Ok(r) => Ok(BondOrderResultPy {
+            atom_pairs: r
+                .bonds
+                .iter()
+                .map(|bond| (bond.atom_i, bond.atom_j))
+                .collect(),
+            distances: r.bonds.iter().map(|bond| bond.distance).collect(),
+            wiberg: r.bonds.iter().map(|bond| bond.wiberg).collect(),
+            mayer: r.bonds.iter().map(|bond| bond.mayer).collect(),
+            wiberg_valence: r.wiberg_valence,
+            mayer_valence: r.mayer_valence,
+            num_atoms: r.num_atoms,
+        }),
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
+}
+
+/// Compute atom-resolved HOMO/LUMO frontier descriptors.
+#[pyfunction]
+fn frontier_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FrontierDescriptorsPy> {
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match sci_form_core::compute_frontier_descriptors(&elements, &positions) {
+        Ok(r) => Ok(FrontierDescriptorsPy {
+            homo_atom_contributions: r.homo_atom_contributions,
+            lumo_atom_contributions: r.lumo_atom_contributions,
+            dual_descriptor: r.dual_descriptor,
+            homo_energy: r.homo_energy,
+            lumo_energy: r.lumo_energy,
+            gap: r.gap,
+            num_atoms: r.num_atoms,
+        }),
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
+}
+
+/// Compute Fukui-function workflows and condensed per-atom descriptors.
+#[pyfunction]
+fn fukui_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FukuiDescriptorsPy> {
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match sci_form_core::compute_fukui_descriptors(&elements, &positions) {
+        Ok(r) => Ok(FukuiDescriptorsPy {
+            condensed_atom_indices: r.condensed.iter().map(|row| row.atom_index).collect(),
+            condensed_f_plus: r.condensed.iter().map(|row| row.f_plus).collect(),
+            condensed_f_minus: r.condensed.iter().map(|row| row.f_minus).collect(),
+            condensed_f_radical: r.condensed.iter().map(|row| row.f_radical).collect(),
+            condensed_dual_descriptor: r.condensed.iter().map(|row| row.dual_descriptor).collect(),
+            f_plus: r.f_plus,
+            f_minus: r.f_minus,
+            f_radical: r.f_radical,
+            dual_descriptor: r.dual_descriptor,
+            homo_energy: r.homo_energy,
+            lumo_energy: r.lumo_energy,
+            gap: r.gap,
+            num_atoms: r.num_atoms,
+            validity_notes: r.validity_notes,
+        }),
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
+}
+
+/// Build empirical local-reactivity rankings from Fukui descriptors and Mulliken charges.
+#[pyfunction]
+fn reactivity_ranking(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReactivityRankingPy> {
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match sci_form_core::compute_reactivity_ranking(&elements, &positions) {
+        Ok(r) => {
+            let to_scores = |scores: Vec<sci_form_core::reactivity::ReactivitySiteScore>| {
+                scores
+                    .into_iter()
+                    .map(|s| ReactivitySiteScorePy {
+                        atom_index: s.atom_index,
+                        score: s.score,
+                    })
+                    .collect::<Vec<_>>()
+            };
+
+            Ok(ReactivityRankingPy {
+                nucleophilic_attack_sites: to_scores(r.nucleophilic_attack_sites),
+                electrophilic_attack_sites: to_scores(r.electrophilic_attack_sites),
+                radical_attack_sites: to_scores(r.radical_attack_sites),
+                notes: r.notes,
+            })
+        }
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
+}
+
+/// Build an exploratory UV-Vis-like spectrum from low-cost EHT transitions.
+#[pyfunction]
+#[pyo3(signature = (elements, coords, sigma=0.25, e_min=0.5, e_max=8.0, n_points=600))]
+fn uvvis_spectrum(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> PyResult<UvVisSpectrumPy> {
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match sci_form_core::compute_uv_vis_spectrum(
+        &elements, &positions, sigma, e_min, e_max, n_points,
+    ) {
+        Ok(r) => Ok(UvVisSpectrumPy {
+            energies_ev: r.energies_ev,
+            intensities: r.intensities,
+            peaks: r
+                .peaks
+                .into_iter()
+                .map(|p| UvVisPeakPy {
+                    energy_ev: p.energy_ev,
+                    wavelength_nm: p.wavelength_nm,
+                    intensity: p.intensity,
+                    from_mo: p.from_mo,
+                    to_mo: p.to_mo,
+                })
+                .collect(),
+            sigma: r.sigma,
+            notes: r.notes,
+        }),
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
+}
+
+/// Analyze aromaticity and graph-level stereocenters from a SMILES string.
+#[pyfunction]
+fn graph_features(smiles: &str) -> PyResult<GraphFeatureAnalysisPy> {
+    match sci_form_core::analyze_graph_features(smiles) {
+        Ok(r) => Ok(GraphFeatureAnalysisPy {
+            aromatic_atoms: r.aromaticity.aromatic_atoms,
+            aromatic_bonds: r.aromaticity.aromatic_bonds,
+            tagged_tetrahedral_centers: r.stereocenters.tagged_tetrahedral_centers,
+            inferred_tetrahedral_centers: r.stereocenters.inferred_tetrahedral_centers,
+        }),
+        Err(e) => Err(pyo3::exceptions::PyValueError::new_err(e)),
+    }
+}
+
+/// Detect metal coordination geometry and return structured topology outputs.
+#[pyfunction]
+fn topology_analysis(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<TopologyAnalysisResultPy> {
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let result = sci_form_core::compute_topology(&elements, &positions);
+    Ok(TopologyAnalysisResultPy {
+        metal_centers: result
+            .metal_centers
+            .into_iter()
+            .map(|center| MetalCoordinationCenterPy {
+                atom_index: center.atom_index,
+                element: center.element,
+                ligand_indices: center.ligand_indices,
+                coordination_number: center.coordination_number,
+                geometry: format!("{:?}", center.geometry).to_lowercase(),
+                geometry_score: center.geometry_score,
+            })
+            .collect(),
+        warnings: result.warnings,
+    })
 }
 
 // ─── Dipole Moment API ──────────────────────────────────────────────────────
@@ -549,6 +1441,47 @@ fn rmsd(coords: Vec<f64>, reference: Vec<f64>) -> PyResult<AlignmentResultPy> {
 fn uff_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
     match sci_form_core::compute_uff_energy(smiles, &coords) {
         Ok(e) => Ok(e),
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
+}
+
+/// Compute UFF energy with aromaticity-informed heuristic correction metadata.
+#[pyfunction]
+fn uff_energy_with_aromatic_heuristics(
+    smiles: &str,
+    coords: Vec<f64>,
+) -> PyResult<UffHeuristicEnergyPy> {
+    match sci_form_core::compute_uff_energy_with_aromatic_heuristics(smiles, &coords) {
+        Ok(result) => Ok(UffHeuristicEnergyPy {
+            raw_energy_kcal_mol: result.raw_energy_kcal_mol,
+            aromatic_stabilization_kcal_mol: result.aromatic_stabilization_kcal_mol,
+            corrected_energy_kcal_mol: result.corrected_energy_kcal_mol,
+            aromatic_bond_count: result.aromatic_bond_count,
+            notes: result.notes,
+        }),
+        Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
+    }
+}
+
+/// Estimate acidic/basic pKa sites from graph and charge heuristics.
+#[pyfunction]
+fn empirical_pka(smiles: &str) -> PyResult<EmpiricalPkaResultPy> {
+    match sci_form_core::compute_empirical_pka(smiles) {
+        Ok(result) => {
+            let map_site = |s: sci_form_core::reactivity::EmpiricalPkaSite| EmpiricalPkaSitePy {
+                atom_index: s.atom_index,
+                site_type: s.site_type,
+                environment: s.environment,
+                estimated_pka: s.estimated_pka,
+                confidence: s.confidence,
+            };
+
+            Ok(EmpiricalPkaResultPy {
+                acidic_sites: result.acidic_sites.into_iter().map(map_site).collect(),
+                basic_sites: result.basic_sites.into_iter().map(map_site).collect(),
+                notes: result.notes,
+            })
+        }
         Err(e) => Err(pyo3::exceptions::PyRuntimeError::new_err(e)),
     }
 }
@@ -768,4 +1701,268 @@ fn split_worker_tasks(
 #[pyo3(signature = (n_items, max_workers=8))]
 fn estimate_workers(n_items: usize, max_workers: usize) -> usize {
     sci_form_core::transport::estimate_workers(n_items, max_workers)
+}
+
+// ─── MMFF94 Force Field ──────────────────────────────────────────────────────
+
+/// Compute MMFF94 force field energy.
+#[pyfunction]
+fn mmff94_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
+    sci_form_core::compute_mmff94_energy(smiles, &coords)
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+// ─── PM3 Semi-Empirical Method ───────────────────────────────────────────────
+
+/// PM3 calculation result.
+#[pyclass]
+#[derive(Clone)]
+struct Pm3ResultPy {
+    #[pyo3(get)]
+    orbital_energies: Vec<f64>,
+    #[pyo3(get)]
+    electronic_energy: f64,
+    #[pyo3(get)]
+    nuclear_repulsion: f64,
+    #[pyo3(get)]
+    total_energy: f64,
+    #[pyo3(get)]
+    heat_of_formation: f64,
+    #[pyo3(get)]
+    n_basis: usize,
+    #[pyo3(get)]
+    n_electrons: usize,
+    #[pyo3(get)]
+    homo_energy: f64,
+    #[pyo3(get)]
+    lumo_energy: f64,
+    #[pyo3(get)]
+    gap: f64,
+    #[pyo3(get)]
+    mulliken_charges: Vec<f64>,
+    #[pyo3(get)]
+    scf_iterations: usize,
+    #[pyo3(get)]
+    converged: bool,
+}
+
+/// Run a PM3 semi-empirical calculation.
+///
+/// `elements`: list of atomic numbers.
+/// `coords`: flat xyz list [x0,y0,z0, x1,y1,z1, ...] in Å.
+#[pyfunction]
+fn pm3_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Pm3ResultPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(), elements.len() * 3
+        )));
+    }
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    sci_form_core::compute_pm3(&elements, &positions)
+        .map(|r| Pm3ResultPy {
+            orbital_energies: r.orbital_energies,
+            electronic_energy: r.electronic_energy,
+            nuclear_repulsion: r.nuclear_repulsion,
+            total_energy: r.total_energy,
+            heat_of_formation: r.heat_of_formation,
+            n_basis: r.n_basis,
+            n_electrons: r.n_electrons,
+            homo_energy: r.homo_energy,
+            lumo_energy: r.lumo_energy,
+            gap: r.gap,
+            mulliken_charges: r.mulliken_charges,
+            scf_iterations: r.scf_iterations,
+            converged: r.converged,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+// ─── xTB Tight-Binding Method ────────────────────────────────────────────────
+
+/// xTB calculation result.
+#[pyclass]
+#[derive(Clone)]
+struct XtbResultPy {
+    #[pyo3(get)]
+    orbital_energies: Vec<f64>,
+    #[pyo3(get)]
+    total_energy: f64,
+    #[pyo3(get)]
+    repulsion_energy: f64,
+    #[pyo3(get)]
+    electronic_energy: f64,
+    #[pyo3(get)]
+    n_basis: usize,
+    #[pyo3(get)]
+    n_electrons: usize,
+    #[pyo3(get)]
+    homo_energy: f64,
+    #[pyo3(get)]
+    lumo_energy: f64,
+    #[pyo3(get)]
+    gap: f64,
+    #[pyo3(get)]
+    mulliken_charges: Vec<f64>,
+    #[pyo3(get)]
+    converged: bool,
+    #[pyo3(get)]
+    scf_iterations: usize,
+}
+
+/// Run an xTB tight-binding calculation.
+///
+/// `elements`: list of atomic numbers.
+/// `coords`: flat xyz list [x0,y0,z0, x1,y1,z1, ...] in Å.
+#[pyfunction]
+fn xtb_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<XtbResultPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(), elements.len() * 3
+        )));
+    }
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    sci_form_core::compute_xtb(&elements, &positions)
+        .map(|r| XtbResultPy {
+            orbital_energies: r.orbital_energies,
+            total_energy: r.total_energy,
+            repulsion_energy: r.repulsive_energy,
+            electronic_energy: r.electronic_energy,
+            n_basis: r.n_basis,
+            n_electrons: r.n_electrons,
+            homo_energy: r.homo_energy,
+            lumo_energy: r.lumo_energy,
+            gap: r.gap,
+            mulliken_charges: r.mulliken_charges,
+            converged: r.converged,
+            scf_iterations: r.scc_iterations,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+// ─── ML Property Proxies ─────────────────────────────────────────────────────
+
+/// Molecular descriptors.
+#[pyclass]
+#[derive(Clone)]
+struct MolecularDescriptorsPy {
+    #[pyo3(get)]
+    molecular_weight: f64,
+    #[pyo3(get)]
+    n_heavy_atoms: usize,
+    #[pyo3(get)]
+    n_hydrogens: usize,
+    #[pyo3(get)]
+    n_bonds: usize,
+    #[pyo3(get)]
+    n_rotatable_bonds: usize,
+    #[pyo3(get)]
+    n_hbd: usize,
+    #[pyo3(get)]
+    n_hba: usize,
+    #[pyo3(get)]
+    fsp3: f64,
+    #[pyo3(get)]
+    wiener_index: f64,
+    #[pyo3(get)]
+    n_rings: usize,
+    #[pyo3(get)]
+    n_aromatic: usize,
+    #[pyo3(get)]
+    sum_electronegativity: f64,
+    #[pyo3(get)]
+    sum_polarizability: f64,
+}
+
+/// ML-predicted property result.
+#[pyclass]
+#[derive(Clone)]
+struct MlPropertyResultPy {
+    #[pyo3(get)]
+    logp: f64,
+    #[pyo3(get)]
+    molar_refractivity: f64,
+    #[pyo3(get)]
+    log_solubility: f64,
+    #[pyo3(get)]
+    lipinski_violations: u8,
+    #[pyo3(get)]
+    lipinski_passes: bool,
+    #[pyo3(get)]
+    druglikeness: f64,
+}
+
+/// Compute molecular descriptors from a SMILES string.
+///
+/// Returns descriptors usable for ML property prediction.
+#[pyfunction]
+fn ml_descriptors(smiles: &str) -> PyResult<MolecularDescriptorsPy> {
+    let mol = sci_form_core::parse(smiles)
+        .map_err(pyo3::exceptions::PyValueError::new_err)?;
+    let n = mol.graph.node_count();
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[sci_form_core::graph::NodeIndex::new(i)].element)
+        .collect();
+    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
+        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+        let order = match mol.graph[e].order {
+            sci_form_core::graph::BondOrder::Single => 1u8,
+            sci_form_core::graph::BondOrder::Double => 2,
+            sci_form_core::graph::BondOrder::Triple => 3,
+            sci_form_core::graph::BondOrder::Aromatic => 2,
+            sci_form_core::graph::BondOrder::Unknown => 1,
+        };
+        (a.index(), b.index(), order)
+    }).collect();
+    let desc = sci_form_core::compute_ml_descriptors(&elements, &bonds, &[], &[]);
+    Ok(MolecularDescriptorsPy {
+        molecular_weight: desc.molecular_weight,
+        n_heavy_atoms: desc.n_heavy_atoms,
+        n_hydrogens: desc.n_hydrogens,
+        n_bonds: desc.n_bonds,
+        n_rotatable_bonds: desc.n_rotatable_bonds,
+        n_hbd: desc.n_hbd,
+        n_hba: desc.n_hba,
+        fsp3: desc.fsp3,
+        wiener_index: desc.wiener_index,
+        n_rings: desc.n_rings,
+        n_aromatic: desc.n_aromatic,
+        sum_electronegativity: desc.sum_electronegativity,
+        sum_polarizability: desc.sum_polarizability,
+    })
+}
+
+/// Predict ML properties from a SMILES string.
+///
+/// Returns LogP, molar refractivity, solubility (log S), Lipinski Ro5, and druglikeness.
+#[pyfunction]
+fn ml_predict(smiles: &str) -> PyResult<MlPropertyResultPy> {
+    let mol = sci_form_core::parse(smiles)
+        .map_err(pyo3::exceptions::PyValueError::new_err)?;
+    let n = mol.graph.node_count();
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[sci_form_core::graph::NodeIndex::new(i)].element)
+        .collect();
+    let bonds: Vec<(usize, usize, u8)> = mol.graph.edge_indices().map(|e| {
+        let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+        let order = match mol.graph[e].order {
+            sci_form_core::graph::BondOrder::Single => 1u8,
+            sci_form_core::graph::BondOrder::Double => 2,
+            sci_form_core::graph::BondOrder::Triple => 3,
+            sci_form_core::graph::BondOrder::Aromatic => 2,
+            sci_form_core::graph::BondOrder::Unknown => 1,
+        };
+        (a.index(), b.index(), order)
+    }).collect();
+    let desc = sci_form_core::compute_ml_descriptors(&elements, &bonds, &[], &[]);
+    let result = sci_form_core::predict_ml_properties(&desc);
+    Ok(MlPropertyResultPy {
+        logp: result.logp,
+        molar_refractivity: result.molar_refractivity,
+        log_solubility: result.log_solubility,
+        lipinski_violations: result.lipinski.violations,
+        lipinski_passes: result.lipinski.passes,
+        druglikeness: result.druglikeness,
+    })
 }
