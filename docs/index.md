@@ -4,7 +4,7 @@ layout: home
 hero:
   name: sci-form
   text: Computational Chemistry in Rust
-  tagline: 3D conformer generation, EHT, ESP, DOS, MMFF94, alignment, materials — Rust, Python, TypeScript, CLI
+  tagline: Conformer generation, EHT, PM3, GFN-xTB, ML properties, force fields — Rust, Python, TypeScript, CLI (v0.4.3)
   image:
     src: /logo.svg
     alt: sci-form
@@ -22,31 +22,34 @@ hero:
 features:
   - icon: ⚡
     title: High Performance
-    details: 60+ conformers/second in native Rust. Parallel batch processing via rayon. Zero runtime dependencies.
+    details: 60+ conformers/second, parallel batch via rayon, zero C++ dependencies. ~2 MB binary.
   - icon: 🎯
     title: RDKit-Quality Accuracy
-    details: 0.00% heavy-atom RMSD above 0.5 Å vs RDKit on GDB-20. 846 CSD torsion patterns for realistic geometry.
+    details: 0.064 Å avg RMSD vs RDKit. 846 CSD torsion patterns. 100% stereo validation.
   - icon: 🔬
+    title: Three QM Methods
+    details: **NEW v0.4** — EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast).
+  - icon: ⚛️
     title: Extended Hückel Theory
-    details: EHT Hamiltonian (Wolfsberg-Helmholtz), Löwdin orthogonalization, HOMO/LUMO gaps, Mulliken & Löwdin population analysis, dipole moments.
+    details: Wolfsberg-Helmholtz Hamiltonian, Löwdin orthogonalization, HOMO/LUMO gaps, population analysis, dipole moments.
   - icon: 🌊
-    title: Electrostatic Potential
-    details: Coulomb ESP grid from Mulliken charges, red/white/blue color mapping, parallel rayon evaluation, Gaussian Cube file export.
-  - icon: 📊
-    title: Density of States
-    details: Total DOS and per-atom PDOS with Gaussian smearing from EHT orbital energies. MSE metric, JSON export.
+    title: Electrostatic Potential & DOS
+    details: Coulomb ESP grids (red/white/blue mapping), total/per-atom DOS with Gaussian smearing, volumetric orbital grids, Marching Cubes isosurfaces.
+  - icon: 🧬
+    title: ML Descriptors & Properties
+    details: **NEW v0.4** — 17 descriptors (no 3D), LogP, solubility, Lipinski Ro5, druglikeness. SMILES → results in ~1 μs.
   - icon: 🧲
     title: Force Fields
-    details: UFF (50+ element types including transition metals) and MMFF94 (Halgren 14-7 vdW, quartic stretch, cubic bend, 3-term torsion).
+    details: UFF (50+ elements + TM) and MMFF94 (Halgren 14-7 vdW, quartic/cubic bends, Fourier torsions).
   - icon: 📐
     title: Molecular Alignment
-    details: Kabsch SVD alignment and quaternion-based Coutsias 2004 method. Optimal rotation, RMSD computation after superposition.
+    details: Kabsch SVD and quaternion-based Coutsias 2004. RMSD after optimal superposition.
   - icon: 🏗️
     title: Materials Assembly
-    details: Periodic unit cells from lattice parameters, secondary building unit (SBU) topology, MOF-type framework crystal structure generation.
+    details: Periodic unit cells, SBU topology, MOF-type framework crystal structure generation.
   - icon: 🌐
-    title: Multi-Platform
-    details: Native Rust library, Python (PyO3), TypeScript/JS (WASM) with typed-array APIs, and cross-platform CLI for Linux, macOS, Windows.
+    title: Multi-Platform Bindings
+    details: Native Rust, PyO3 (Python), WASM (TypeScript/JS, browser/Node.js/Deno/Bun), and CLI.
   - icon: 📖
     title: Documented Algorithms
     details: Complete theoretical foundations with mathematical derivations, SVG diagrams, and step-by-step pipeline explanations for every module.
