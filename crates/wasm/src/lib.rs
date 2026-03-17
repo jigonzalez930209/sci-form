@@ -985,3 +985,178 @@ pub fn compute_molecular_descriptors(smiles: &str) -> String {
     let desc = sci_form::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     serde_json::to_string(&desc).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
 }
+
+// ─── Spectroscopy: UV-Vis sTDA ────────────────────────────────────────────────
+
+/// Compute an sTDA UV-Vis spectrum with proper oscillator strengths.
+///
+/// `elements_json`: JSON array of atomic numbers.
+/// `coords_flat_json`: JSON array of flat xyz coords in Å.
+/// `sigma`: broadening width in eV.
+/// `e_min`, `e_max`: energy range in eV.
+/// `n_points`: grid resolution.
+/// `broadening`: "gaussian" or "lorentzian".
+///
+/// Returns: JSON StdaUvVisSpectrum with energies_ev, wavelengths_nm,
+///          absorptivity, excitations, sigma, broadening.
+#[wasm_bindgen]
+pub fn compute_stda_uvvis(
+    elements_json: &str,
+    coords_flat_json: &str,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    broadening: &str,
+) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return format!("{{\"error\":\"{}\"}}", e),
+    };
+    let bt = match broadening {
+        "lorentzian" | "Lorentzian" => sci_form::reactivity::BroadeningType::Lorentzian,
+        _ => sci_form::reactivity::BroadeningType::Gaussian,
+    };
+    match sci_form::compute_stda_uvvis(&elems, &positions, sigma, e_min, e_max, n_points, bt) {
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
+        Err(e) => format!("{{\"error\":\"{}\"}}", e),
+    }
+}
+
+// ─── Spectroscopy: IR ─────────────────────────────────────────────────────────
+
+/// Perform vibrational analysis via numerical Hessian.
+///
+/// `elements_json`: JSON array of atomic numbers.
+/// `coords_flat_json`: JSON array of flat xyz coords in Å.
+/// `method`: "eht", "pm3", or "xtb".
+/// `step_size`: finite-difference step in Å (0 = default 0.005).
+///
+/// Returns: JSON VibrationalAnalysis with modes, frequencies, IR intensities, ZPVE.
+#[wasm_bindgen]
+pub fn compute_vibrational_analysis(
+    elements_json: &str,
+    coords_flat_json: &str,
+    method: &str,
+    step_size: f64,
+) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return format!("{{\"error\":\"{}\"}}", e),
+    };
+    let step = if step_size > 0.0 {
+        Some(step_size)
+    } else {
+        None
+    };
+    match sci_form::compute_vibrational_analysis(&elems, &positions, method, step) {
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
+        Err(e) => format!("{{\"error\":\"{}\"}}", e),
+    }
+}
+
+/// Generate a Lorentzian-broadened IR spectrum from vibrational analysis JSON.
+///
+/// `analysis_json`: JSON VibrationalAnalysis (from compute_vibrational_analysis).
+/// `gamma`: line width in cm⁻¹.
+/// `wn_min`, `wn_max`: wavenumber range in cm⁻¹.
+/// `n_points`: grid resolution.
+///
+/// Returns: JSON IrSpectrum with wavenumbers, intensities, peaks.
+#[wasm_bindgen]
+pub fn compute_ir_spectrum(
+    analysis_json: &str,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+) -> String {
+    let analysis: sci_form::ir::VibrationalAnalysis = match serde_json::from_str(analysis_json) {
+        Ok(v) => v,
+        Err(e) => return format!("{{\"error\":\"bad analysis JSON: {}\"}}", e),
+    };
+    let result = sci_form::compute_ir_spectrum(&analysis, gamma, wn_min, wn_max, n_points);
+    serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+}
+
+// ─── Spectroscopy: NMR ────────────────────────────────────────────────────────
+
+/// Predict ¹H and ¹³C NMR chemical shifts from SMILES (topology only).
+///
+/// Returns: JSON NmrShiftResult with h_shifts, c_shifts arrays.
+#[wasm_bindgen]
+pub fn predict_nmr_shifts(smiles: &str) -> String {
+    match sci_form::predict_nmr_shifts(smiles) {
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
+        Err(e) => format!("{{\"error\":\"{}\"}}", e),
+    }
+}
+
+/// Predict J-coupling constants.
+///
+/// `smiles`: SMILES string.
+/// `coords_flat_json`: JSON flat xyz coords (or "[]" for topological estimate).
+///
+/// Returns: JSON array of JCoupling objects.
+#[wasm_bindgen]
+pub fn predict_nmr_couplings(smiles: &str, coords_flat_json: &str) -> String {
+    let flat: Vec<f64> = match serde_json::from_str(coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return format!("{{\"error\":\"bad coords: {}\"}}", e),
+    };
+    let positions: Vec<[f64; 3]> = flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match sci_form::predict_nmr_couplings(smiles, &positions) {
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
+        Err(e) => format!("{{\"error\":\"{}\"}}", e),
+    }
+}
+
+/// Generate a complete NMR spectrum from SMILES.
+///
+/// `smiles`: SMILES string.
+/// `nucleus`: "1H" or "13C".
+/// `gamma`: Lorentzian line width in ppm.
+/// `ppm_min`, `ppm_max`: spectral window.
+/// `n_points`: grid resolution.
+///
+/// Returns: JSON NmrSpectrum with ppm_axis, intensities, peaks.
+#[wasm_bindgen]
+pub fn compute_nmr_spectrum(
+    smiles: &str,
+    nucleus: &str,
+    gamma: f64,
+    ppm_min: f64,
+    ppm_max: f64,
+    n_points: usize,
+) -> String {
+    match sci_form::compute_nmr_spectrum(smiles, nucleus, gamma, ppm_min, ppm_max, n_points) {
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
+        Err(e) => format!("{{\"error\":\"{}\"}}", e),
+    }
+}
+
+/// Generate HOSE codes for all atoms in a molecule.
+///
+/// `smiles`: SMILES string.
+/// `max_radius`: maximum number of spheres (typically 2–4).
+///
+/// Returns: JSON array of HoseCode objects.
+#[wasm_bindgen]
+pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> String {
+    match sci_form::compute_hose_codes(smiles, max_radius) {
+        Ok(result) => {
+            serde_json::to_string(&result).unwrap_or_else(|e| format!("{{\"error\":\"{}\"}}", e))
+        }
+        Err(e) => format!("{{\"error\":\"{}\"}}", e),
+    }
+}
