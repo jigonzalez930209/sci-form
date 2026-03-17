@@ -520,10 +520,8 @@ impl<'a> SmilesParser<'a> {
                 if let Some(atom_mut) = self.mol.graph.node_weight_mut(ni) {
                     atom_mut.hybridization = actual_hybridization;
                 }
-            } else {
-                if let Some(atom_mut) = self.mol.graph.node_weight_mut(ni) {
-                    atom_mut.hybridization = Hybridization::SP2;
-                }
+            } else if let Some(atom_mut) = self.mol.graph.node_weight_mut(ni) {
+                atom_mut.hybridization = Hybridization::SP2;
             }
 
             let atom = &self.mol.graph[ni];

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 200" width="820" height="200" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+    </marker>
+    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#3b82f6"/>
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#22c55e"/>
+    </marker>
+    <marker id="arr-violet" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#8b5cf6"/>
+    </marker>
+  </defs>
+  <rect width="820" height="200" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="410" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Track D — Advanced Spectroscopy Pipeline</text>
+
+  <!-- Input box: 3D Geometry -->
+  <rect x="10" y="55" width="120" height="90" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="70" y="88" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">3D Geometry</text>
+  <text x="70" y="103" text-anchor="middle" font-size="9" fill="#64748b">elements[]</text>
+  <text x="70" y="116" text-anchor="middle" font-size="9" fill="#64748b">coords[]</text>
+  <text x="70" y="129" text-anchor="middle" font-size="9" fill="#64748b">SMILES</text>
+
+  <!-- Fan-out arrows to three tracks -->
+  <line x1="130" y1="80" x2="215" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="130" y1="100" x2="215" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="130" y1="120" x2="215" y2="120" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- D1: UV-Vis sTDA -->
+  <rect x="218" y="44" width="150" height="52" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="293" y="64" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">D1 — UV-Vis sTDA</text>
+  <text x="293" y="78" text-anchor="middle" font-size="9" fill="#1d4ed8">EHT/xTB MO transitions</text>
+  <text x="293" y="90" text-anchor="middle" font-size="9" fill="#1d4ed8">Oscillator strengths f</text>
+
+  <!-- D2: IR -->
+  <rect x="218" y="104" width="150" height="52" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="293" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="#166534">D2 — IR Spectroscopy</text>
+  <text x="293" y="138" text-anchor="middle" font-size="9" fill="#15803d">Numerical Hessian (6N)</text>
+  <text x="293" y="150" text-anchor="middle" font-size="9" fill="#15803d">Vibrational modes + ZPVE</text>
+
+  <!-- D3: NMR (below D2 on same arrow) -->
+  <rect x="218" y="162" width="150" height="30" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="293" y="177" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">D3 — NMR Spectroscopy</text>
+  <text x="293" y="188" text-anchor="middle" font-size="9" fill="#6d28d9">HOSE codes + Karplus</text>
+
+  <!-- Arrows D1 → outputs -->
+  <line x1="368" y1="70" x2="450" y2="70" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+  <line x1="368" y1="130" x2="450" y2="130" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-green)"/>
+  <line x1="368" y1="177" x2="450" y2="177" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arr-violet)"/>
+
+  <!-- Output: sTDA spectrum -->
+  <rect x="453" y="44" width="160" height="52" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="533" y="64" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">ε(λ) Spectrum</text>
+  <text x="533" y="78" text-anchor="middle" font-size="9" fill="#1d4ed8">Molar absorptivity</text>
+  <text x="533" y="90" text-anchor="middle" font-size="9" fill="#1d4ed8">Gaussian / Lorentzian</text>
+
+  <!-- Output: IR spectrum -->
+  <rect x="453" y="104" width="160" height="52" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="533" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="#166534">IR Spectrum</text>
+  <text x="533" y="138" text-anchor="middle" font-size="9" fill="#15803d">Frequencies  (cm⁻¹)</text>
+  <text x="533" y="150" text-anchor="middle" font-size="9" fill="#15803d">Intensities (km/mol)</text>
+
+  <!-- Output: NMR spectrum -->
+  <rect x="453" y="162" width="160" height="30" rx="8" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="533" y="177" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">¹H / ¹³C NMR Spectrum</text>
+  <text x="533" y="188" text-anchor="middle" font-size="9" fill="#6d28d9">δ (ppm), multiplets</text>
+
+  <!-- Final arrows to broadening layer -->
+  <line x1="613" y1="100" x2="680" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Broadening box -->
+  <rect x="683" y="55" width="125" height="90" rx="8" fill="#fff7ed" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="745" y="78" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">Broadening</text>
+  <text x="745" y="95" text-anchor="middle" font-size="9" fill="#b45309">Gaussian</text>
+  <text x="745" y="109" text-anchor="middle" font-size="9" fill="#b45309">σ (eV or cm⁻¹)</text>
+  <text x="745" y="123" text-anchor="middle" font-size="9" fill="#b45309">Lorentzian</text>
+  <text x="745" y="136" text-anchor="middle" font-size="9" fill="#b45309">γ (eV or ppm)</text>
+</svg>
