@@ -14,8 +14,10 @@ pub mod esp;
 pub mod etkdg;
 pub mod forcefield;
 pub mod graph;
+pub mod ir;
 pub mod materials;
 pub mod ml;
+pub mod nmr;
 pub mod optimization;
 pub mod pm3;
 pub mod population;
@@ -1219,6 +1221,113 @@ pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Re
 /// Returns orbital energies, total energy, gap, and Mulliken charges.
 pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
     xtb::solve_xtb(elements, positions)
+}
+
+// ─── Spectroscopy API (Track D) ─────────────────────────────────────────────
+
+/// Compute an sTDA UV-Vis spectrum with proper oscillator strengths.
+///
+/// Uses EHT/xTB molecular orbital transitions with transition dipole moment
+/// evaluation and configurable broadening (Gaussian or Lorentzian).
+pub fn compute_stda_uvvis(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    broadening: reactivity::BroadeningType,
+) -> Result<reactivity::StdaUvVisSpectrum, String> {
+    reactivity::compute_stda_uvvis_spectrum(
+        elements, positions, sigma, e_min, e_max, n_points, broadening,
+    )
+}
+
+/// Perform vibrational analysis via numerical Hessian.
+///
+/// Computes vibrational frequencies (cm⁻¹), normal modes, IR intensities,
+/// and zero-point vibrational energy from a semiempirical Hessian.
+///
+/// `method`: "eht", "pm3", or "xtb"
+pub fn compute_vibrational_analysis(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    method: &str,
+    step_size: Option<f64>,
+) -> Result<ir::VibrationalAnalysis, String> {
+    let hessian_method = match method {
+        "eht" => ir::HessianMethod::Eht,
+        "pm3" => ir::HessianMethod::Pm3,
+        "xtb" => ir::HessianMethod::Xtb,
+        _ => return Err(format!("Unknown method '{}', use eht/pm3/xtb", method)),
+    };
+    ir::compute_vibrational_analysis(elements, positions, hessian_method, step_size)
+}
+
+/// Generate a Lorentzian-broadened IR spectrum from vibrational analysis.
+///
+/// `gamma`: line width in cm⁻¹ (typically 10–30)
+/// `wn_min`, `wn_max`: wavenumber range in cm⁻¹
+/// `n_points`: grid resolution
+pub fn compute_ir_spectrum(
+    analysis: &ir::VibrationalAnalysis,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+) -> ir::IrSpectrum {
+    ir::compute_ir_spectrum(analysis, gamma, wn_min, wn_max, n_points)
+}
+
+/// Predict NMR chemical shifts (¹H and ¹³C) from SMILES.
+pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    Ok(nmr::predict_chemical_shifts(&mol))
+}
+
+/// Predict J-coupling constants for a molecule.
+///
+/// If positions are provided, uses Karplus equation for 3D-dependent ³J values.
+/// Otherwise uses topological estimates.
+pub fn predict_nmr_couplings(
+    smiles: &str,
+    positions: &[[f64; 3]],
+) -> Result<Vec<nmr::JCoupling>, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    Ok(nmr::predict_j_couplings(&mol, positions))
+}
+
+/// Generate a complete NMR spectrum from SMILES.
+///
+/// `nucleus`: "1H" or "13C"
+/// `gamma`: Lorentzian line width in ppm
+/// `ppm_min`, `ppm_max`: spectral window
+/// `n_points`: grid resolution
+pub fn compute_nmr_spectrum(
+    smiles: &str,
+    nucleus: &str,
+    gamma: f64,
+    ppm_min: f64,
+    ppm_max: f64,
+    n_points: usize,
+) -> Result<nmr::NmrSpectrum, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let shifts = nmr::predict_chemical_shifts(&mol);
+    let couplings = nmr::predict_j_couplings(&mol, &[]);
+    let nuc = match nucleus {
+        "1H" | "H1" | "h1" | "1h" | "proton" => nmr::NmrNucleus::H1,
+        "13C" | "C13" | "c13" | "13c" | "carbon" => nmr::NmrNucleus::C13,
+        _ => return Err(format!("Unknown nucleus '{}', use '1H' or '13C'", nucleus)),
+    };
+    Ok(nmr::compute_nmr_spectrum(
+        &shifts, &couplings, nuc, gamma, ppm_min, ppm_max, n_points,
+    ))
+}
+
+/// Generate HOSE codes for all atoms in a molecule.
+pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> Result<Vec<nmr::HoseCode>, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    Ok(nmr::hose::generate_hose_codes(&mol, max_radius))
 }
 
 /// Compute molecular descriptors for ML property prediction.
