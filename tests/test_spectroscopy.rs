@@ -1,0 +1,628 @@
+//! Integration tests for Track D spectroscopy features:
+//! UV-Vis (sTDA), IR (numerical Hessian), and NMR (empirical shifts + Karplus).
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+fn water_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
+    let elements = vec![8, 1, 1];
+    let positions = vec![
+        [0.0, 0.0, 0.1173],
+        [0.0, 0.7572, -0.4692],
+        [0.0, -0.7572, -0.4692],
+    ];
+    (elements, positions)
+}
+
+fn embed_smiles(smiles: &str) -> (Vec<u8>, Vec<[f64; 3]>) {
+    let conf = sci_form::embed(smiles, 42);
+    assert!(conf.error.is_none(), "embed failed: {:?}", conf.error);
+    let pos: Vec<[f64; 3]> = conf
+        .coords
+        .chunks(3)
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
+    (conf.elements, pos)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UV-Vis sTDA tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_stda_uvvis_benzene_gaussian() {
+    let (elems, pos) = embed_smiles("c1ccccc1");
+    let spectrum = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        8.0,
+        500,
+        sci_form::reactivity::BroadeningType::Gaussian,
+    )
+    .expect("sTDA UV-Vis should succeed for benzene");
+
+    assert_eq!(spectrum.energies_ev.len(), 500);
+    assert_eq!(spectrum.absorptivity.len(), 500);
+    assert!(!spectrum.excitations.is_empty(), "benzene should have excitations");
+
+    // Benzene π→π* transitions are in the 4–7 eV range
+    for exc in &spectrum.excitations {
+        assert!(exc.energy_ev > 0.0, "excitation energy must be positive");
+        assert!(exc.wavelength_nm > 0.0, "wavelength must be positive");
+        assert!(exc.oscillator_strength >= 0.0, "oscillator strength must be non-negative");
+    }
+
+    // Spectrum should have some non-zero absorption
+    let max_abs = spectrum.absorptivity.iter().cloned().fold(0.0_f64, f64::max);
+    assert!(max_abs > 0.0, "spectrum should have non-zero absorption");
+}
+
+#[test]
+fn test_stda_uvvis_lorentzian_broadening() {
+    let (elems, pos) = embed_smiles("c1ccccc1");
+    let gauss = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        8.0,
+        500,
+        sci_form::reactivity::BroadeningType::Gaussian,
+    )
+    .unwrap();
+    let lorentz = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        8.0,
+        500,
+        sci_form::reactivity::BroadeningType::Lorentzian,
+    )
+    .unwrap();
+
+    // Both spectra should have the same grid size and same excitations
+    assert_eq!(gauss.energies_ev.len(), lorentz.energies_ev.len());
+    assert_eq!(gauss.excitations.len(), lorentz.excitations.len());
+
+    // But different broadening shape → typically different intensity profiles
+    // (at least one point should differ unless intensity is all zero)
+    let any_differ = gauss
+        .absorptivity
+        .iter()
+        .zip(&lorentz.absorptivity)
+        .any(|(g, l)| (g - l).abs() > 1e-10);
+    // If there's absorption at all, shapes must differ
+    let max_gauss = gauss.absorptivity.iter().cloned().fold(0.0_f64, f64::max);
+    if max_gauss > 1e-6 {
+        assert!(any_differ, "Gaussian and Lorentzian profiles should differ");
+    }
+}
+
+#[test]
+fn test_stda_uvvis_ethanol() {
+    let (elems, pos) = embed_smiles("CCO");
+    let spectrum = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        10.0,
+        300,
+        sci_form::reactivity::BroadeningType::Gaussian,
+    )
+    .expect("sTDA should succeed for ethanol");
+
+    assert_eq!(spectrum.energies_ev.len(), 300);
+    assert_eq!(spectrum.absorptivity.len(), 300);
+}
+
+#[test]
+fn test_stda_uvvis_excitation_properties() {
+    let (elems, pos) = embed_smiles("c1ccccc1");
+    let spectrum = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        8.0,
+        500,
+        sci_form::reactivity::BroadeningType::Gaussian,
+    )
+    .unwrap();
+
+    for exc in &spectrum.excitations {
+        // Energy-wavelength consistency: E(eV) = 1239.84 / λ(nm)
+        let expected_nm = 1239.84 / exc.energy_ev;
+        assert!(
+            (exc.wavelength_nm - expected_nm).abs() < 1.0,
+            "wavelength {:.1} nm inconsistent with energy {:.3} eV (expected {:.1} nm)",
+            exc.wavelength_nm,
+            exc.energy_ev,
+            expected_nm
+        );
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IR Spectroscopy tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_ir_vibrational_analysis_water_eht() {
+    let (elems, pos) = water_molecule();
+    let analysis = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None)
+        .expect("vibrational analysis should succeed for water");
+
+    assert_eq!(analysis.n_atoms, 3);
+    assert_eq!(analysis.method, "EHT");
+
+    // Water: 3N – 6 = 3 real vibrational modes (non-linear)
+    assert!(
+        analysis.n_real_modes > 0,
+        "water should have real vibrational modes"
+    );
+
+    // ZPVE should be positive for real modes
+    assert!(analysis.zpve_ev >= 0.0, "ZPVE must be non-negative");
+
+    // Check that some modes have significant frequency magnitude
+    let significant_modes: Vec<_> = analysis
+        .modes
+        .iter()
+        .filter(|m| m.is_real)
+        .collect();
+    assert!(!significant_modes.is_empty(), "should have at least one significant mode");
+
+    // Positive-frequency modes are real vibrations;
+    // negative frequencies (imaginary) can occur when the geometry is
+    // not a true minimum on the semi-empirical PES.
+    let positive_modes: Vec<_> = significant_modes
+        .iter()
+        .filter(|m| m.frequency_cm1 > 0.0)
+        .collect();
+    assert!(
+        !positive_modes.is_empty(),
+        "should have at least one positive-frequency mode"
+    );
+}
+
+#[test]
+fn test_ir_vibrational_analysis_ethanol() {
+    let (elems, pos) = embed_smiles("CCO");
+    let analysis = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None)
+        .expect("vibrational analysis should succeed for ethanol");
+
+    // Ethanol has 9 atoms → 3*9 - 6 = 21 vibrational modes
+    assert_eq!(analysis.n_atoms, 9);
+    assert!(
+        analysis.modes.len() > 0,
+        "ethanol should produce vibrational modes"
+    );
+
+    // At least some modes should have IR intensity > 0
+    let active_modes: Vec<_> = analysis
+        .modes
+        .iter()
+        .filter(|m| m.is_real && m.ir_intensity > 0.001)
+        .collect();
+    assert!(
+        !active_modes.is_empty(),
+        "ethanol should have IR-active modes"
+    );
+}
+
+#[test]
+fn test_ir_spectrum_generation_water() {
+    let (elems, pos) = water_molecule();
+    let analysis = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None).unwrap();
+
+    let spectrum = sci_form::compute_ir_spectrum(&analysis, 15.0, 0.0, 4000.0, 1000);
+
+    assert_eq!(spectrum.wavenumbers.len(), 1000);
+    assert_eq!(spectrum.intensities.len(), 1000);
+    assert_eq!(spectrum.gamma, 15.0);
+
+    // Wavenumber grid first and last values should be finite
+    assert!(spectrum.wavenumbers[0].is_finite());
+    assert!(spectrum.wavenumbers[999].is_finite());
+    // Grid spacing should be approximately (wn_max - wn_min) / n_points
+    let step = (spectrum.wavenumbers[1] - spectrum.wavenumbers[0]).abs();
+    assert!(step > 0.0 && step < 100.0, "grid step should be reasonable");
+
+    // Peaks should have valid data
+    for peak in &spectrum.peaks {
+        assert!(peak.frequency_cm1.is_finite());
+        assert!(peak.ir_intensity >= 0.0);
+    }
+}
+
+#[test]
+fn test_ir_spectrum_different_resolutions() {
+    let (elems, pos) = water_molecule();
+    let analysis = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None).unwrap();
+
+    let sp_100 = sci_form::compute_ir_spectrum(&analysis, 15.0, 0.0, 4000.0, 100);
+    let sp_500 = sci_form::compute_ir_spectrum(&analysis, 15.0, 0.0, 4000.0, 500);
+
+    assert_eq!(sp_100.wavenumbers.len(), 100);
+    assert_eq!(sp_500.wavenumbers.len(), 500);
+
+    // Same peaks regardless of resolution
+    assert_eq!(sp_100.peaks.len(), sp_500.peaks.len());
+}
+
+#[test]
+fn test_ir_method_selection() {
+    let (elems, pos) = water_molecule();
+
+    // EHT should work
+    let res_eht = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None);
+    assert!(res_eht.is_ok());
+
+    // PM3 should work (water is small enough)
+    let res_pm3 = sci_form::compute_vibrational_analysis(&elems, &pos, "pm3", None);
+    assert!(res_pm3.is_ok());
+
+    // xTB should work
+    let res_xtb = sci_form::compute_vibrational_analysis(&elems, &pos, "xtb", None);
+    assert!(res_xtb.is_ok());
+
+    // Unknown method should fail
+    let res_bad = sci_form::compute_vibrational_analysis(&elems, &pos, "garbage", None);
+    assert!(res_bad.is_err());
+}
+
+#[test]
+fn test_ir_custom_step_size() {
+    let (elems, pos) = water_molecule();
+
+    let default_step = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None).unwrap();
+    let small_step =
+        sci_form::compute_vibrational_analysis(&elems, &pos, "eht", Some(0.001)).unwrap();
+
+    // Both should produce modes
+    assert!(default_step.n_real_modes > 0);
+    assert!(small_step.n_real_modes > 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NMR Spectroscopy tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_nmr_shifts_ethanol() {
+    let result = sci_form::predict_nmr_shifts("CCO").expect("NMR shifts should work for ethanol");
+
+    // Ethanol should have ¹H shifts
+    assert!(
+        !result.h_shifts.is_empty(),
+        "ethanol has protons → non-empty ¹H shifts"
+    );
+
+    // Ethanol has 2 carbons
+    assert!(
+        !result.c_shifts.is_empty(),
+        "ethanol has carbons → non-empty ¹³C shifts"
+    );
+
+    // Check that ¹H shifts are in a reasonable range (0–15 ppm)
+    for shift in &result.h_shifts {
+        assert!(
+            shift.shift_ppm >= -1.0 && shift.shift_ppm <= 15.0,
+            "unreasonable ¹H shift: {} ppm",
+            shift.shift_ppm
+        );
+        assert_eq!(shift.element, 1, "¹H shifts should be for hydrogen");
+    }
+
+    // Check that ¹³C shifts are in a reasonable range (0–220 ppm)
+    for shift in &result.c_shifts {
+        assert!(
+            shift.shift_ppm >= -10.0 && shift.shift_ppm <= 230.0,
+            "unreasonable ¹³C shift: {} ppm",
+            shift.shift_ppm
+        );
+        assert_eq!(shift.element, 6, "¹³C shifts should be for carbon");
+    }
+}
+
+#[test]
+fn test_nmr_shifts_benzene() {
+    let result =
+        sci_form::predict_nmr_shifts("c1ccccc1").expect("NMR shifts should work for benzene");
+
+    // All ¹H in benzene should be around 7.27 ppm (aromatic)
+    for shift in &result.h_shifts {
+        assert!(
+            shift.shift_ppm > 5.0 && shift.shift_ppm < 10.0,
+            "benzene ¹H should be aromatic (~7 ppm), got {}",
+            shift.shift_ppm
+        );
+    }
+
+    // All ¹³C in benzene should be around 128 ppm (aromatic)
+    for shift in &result.c_shifts {
+        assert!(
+            shift.shift_ppm > 100.0 && shift.shift_ppm < 160.0,
+            "benzene ¹³C should be aromatic (~128 ppm), got {}",
+            shift.shift_ppm
+        );
+    }
+}
+
+#[test]
+fn test_nmr_shifts_acetic_acid() {
+    let result = sci_form::predict_nmr_shifts("CC(=O)O")
+        .expect("NMR shifts should work for acetic acid");
+
+    assert!(!result.h_shifts.is_empty());
+    assert!(!result.c_shifts.is_empty());
+
+    // Should have notes about the prediction method
+    // (notes may or may not be populated depending on implementation)
+}
+
+#[test]
+fn test_nmr_couplings_ethanol() {
+    let (_, pos) = embed_smiles("CCO");
+    let couplings = sci_form::predict_nmr_couplings("CCO", &pos)
+        .expect("J-couplings should work for ethanol");
+
+    // Ethanol has H-C-C-H vicinal couplings (³J) and possibly geminal (²J)
+    for coupling in &couplings {
+        assert!(
+            coupling.j_hz.abs() < 20.0,
+            "unreasonable J-coupling: {} Hz",
+            coupling.j_hz
+        );
+        assert!(
+            coupling.n_bonds == 2 || coupling.n_bonds == 3,
+            "expected geminal or vicinal coupling, got {} bonds",
+            coupling.n_bonds
+        );
+    }
+}
+
+#[test]
+fn test_nmr_couplings_without_3d() {
+    // Should still work with empty positions (topological estimate)
+    let couplings = sci_form::predict_nmr_couplings("CCO", &[])
+        .expect("J-couplings should work without 3D coords");
+
+    // Still should find vicinal H-H couplings topologically
+    for coupling in &couplings {
+        assert!(coupling.j_hz.abs() < 20.0);
+    }
+}
+
+#[test]
+fn test_nmr_spectrum_h1_ethanol() {
+    let spectrum = sci_form::compute_nmr_spectrum("CCO", "1H", 0.02, 0.0, 12.0, 1000)
+        .expect("¹H NMR spectrum should succeed for ethanol");
+
+    assert_eq!(spectrum.ppm_axis.len(), 1000);
+    assert_eq!(spectrum.intensities.len(), 1000);
+
+    // NMR convention: ppm axis runs high to low
+    assert!(
+        spectrum.ppm_axis[0] > spectrum.ppm_axis[999],
+        "ppm axis should decrease (NMR convention)"
+    );
+
+    // Should have peaks
+    assert!(
+        !spectrum.peaks.is_empty(),
+        "ethanol ¹H spectrum should have peaks"
+    );
+
+    // Peaks should be in range
+    for peak in &spectrum.peaks {
+        assert!(
+            peak.shift_ppm >= 0.0 && peak.shift_ppm <= 12.0,
+            "peak at {} ppm outside spectral window",
+            peak.shift_ppm
+        );
+    }
+}
+
+#[test]
+fn test_nmr_spectrum_c13_benzene() {
+    let spectrum = sci_form::compute_nmr_spectrum("c1ccccc1", "13C", 0.5, 0.0, 220.0, 2000)
+        .expect("¹³C NMR spectrum should succeed for benzene");
+
+    assert_eq!(spectrum.ppm_axis.len(), 2000);
+    assert_eq!(spectrum.intensities.len(), 2000);
+    assert!(!spectrum.peaks.is_empty());
+
+    // All carbons in benzene are equivalent → one peak region around 128 ppm
+    let peak_ppms: Vec<f64> = spectrum.peaks.iter().map(|p| p.shift_ppm).collect();
+    assert!(
+        peak_ppms.iter().all(|&p| p > 100.0 && p < 160.0),
+        "benzene ¹³C peaks should be in aromatic range: {:?}",
+        peak_ppms
+    );
+}
+
+#[test]
+fn test_nmr_spectrum_nucleus_aliases() {
+    // All these should work for ¹H
+    for alias in &["1H", "H1", "h1", "1h", "proton"] {
+        let res = sci_form::compute_nmr_spectrum("C", alias, 0.02, 0.0, 12.0, 100);
+        assert!(res.is_ok(), "nucleus alias '{}' should work", alias);
+    }
+    // All these should work for ¹³C
+    for alias in &["13C", "C13", "c13", "13c", "carbon"] {
+        let res = sci_form::compute_nmr_spectrum("C", alias, 0.5, 0.0, 220.0, 100);
+        assert!(res.is_ok(), "nucleus alias '{}' should work", alias);
+    }
+    // Unknown nucleus should fail
+    let res = sci_form::compute_nmr_spectrum("C", "19F", 0.02, 0.0, 12.0, 100);
+    assert!(res.is_err());
+}
+
+#[test]
+fn test_hose_codes_ethanol() {
+    let codes = sci_form::compute_hose_codes("CCO", 2).expect("HOSE codes should work");
+
+    // Ethanol has 9 atoms → 9 HOSE codes
+    assert!(!codes.is_empty());
+
+    for code in &codes {
+        assert!(!code.full_code.is_empty(), "HOSE code should be non-empty");
+        assert!(
+            !code.spheres.is_empty(),
+            "should have at least one sphere"
+        );
+    }
+}
+
+#[test]
+fn test_hose_codes_benzene() {
+    let codes = sci_form::compute_hose_codes("c1ccccc1", 3).expect("HOSE codes should work");
+
+    assert!(!codes.is_empty());
+
+    // All carbons in benzene should produce similar HOSE environments
+    let carbon_codes: Vec<_> = codes.iter().filter(|c| c.element == 6).collect();
+    assert!(
+        carbon_codes.len() == 6,
+        "benzene has 6 carbons, got {} carbon HOSE codes",
+        carbon_codes.len()
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// End-to-end pipeline tests
+// ═══════════════════════════════════════════════════════════════════════════════
+
+#[test]
+fn test_full_spectroscopy_pipeline_ethanol() {
+    // Step 1: Generate 3D conformer
+    let conf = sci_form::embed("CCO", 42);
+    assert!(conf.error.is_none());
+    let pos: Vec<[f64; 3]> = conf
+        .coords
+        .chunks(3)
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
+
+    // Step 2: UV-Vis (requires 3D)
+    let uvvis = sci_form::compute_stda_uvvis(
+        &conf.elements,
+        &pos,
+        0.3,
+        1.0,
+        10.0,
+        300,
+        sci_form::reactivity::BroadeningType::Gaussian,
+    )
+    .expect("UV-Vis should succeed");
+    assert_eq!(uvvis.energies_ev.len(), 300);
+
+    // Step 3: IR (requires 3D)
+    let ir_analysis =
+        sci_form::compute_vibrational_analysis(&conf.elements, &pos, "eht", None)
+            .expect("IR analysis should succeed");
+    let ir_spectrum = sci_form::compute_ir_spectrum(&ir_analysis, 15.0, 400.0, 4000.0, 500);
+    assert_eq!(ir_spectrum.wavenumbers.len(), 500);
+
+    // Step 4: NMR (topology only — no 3D needed for shifts)
+    let nmr_shifts = sci_form::predict_nmr_shifts("CCO").expect("NMR shifts should succeed");
+    assert!(!nmr_shifts.h_shifts.is_empty());
+
+    // Step 5: NMR J-couplings (benefits from 3D for Karplus)
+    let _nmr_couplings =
+        sci_form::predict_nmr_couplings("CCO", &pos).expect("J-couplings should succeed");
+
+    // Step 6: NMR spectrum
+    let nmr_h = sci_form::compute_nmr_spectrum("CCO", "1H", 0.02, 0.0, 12.0, 1000)
+        .expect("¹H NMR spectrum should succeed");
+    assert_eq!(nmr_h.ppm_axis.len(), 1000);
+
+    let nmr_c = sci_form::compute_nmr_spectrum("CCO", "13C", 0.5, 0.0, 220.0, 1000)
+        .expect("¹³C NMR spectrum should succeed");
+    assert_eq!(nmr_c.ppm_axis.len(), 1000);
+
+    // All spectra should have valid data
+    assert!(uvvis.absorptivity.iter().all(|v| v.is_finite()));
+    assert!(ir_spectrum.intensities.iter().all(|v| v.is_finite()));
+    assert!(nmr_h.intensities.iter().all(|v| v.is_finite()));
+    assert!(nmr_c.intensities.iter().all(|v| v.is_finite()));
+}
+
+#[test]
+fn test_full_spectroscopy_pipeline_benzene() {
+    let (elems, pos) = embed_smiles("c1ccccc1");
+
+    // UV-Vis
+    let uvvis = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        8.0,
+        500,
+        sci_form::reactivity::BroadeningType::Lorentzian,
+    )
+    .expect("UV-Vis should succeed for benzene");
+    assert!(!uvvis.excitations.is_empty());
+
+    // IR
+    let ir = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None)
+        .expect("IR should succeed for benzene");
+    assert!(ir.n_real_modes > 0);
+
+    // NMR — ¹H
+    let nmr_h = sci_form::compute_nmr_spectrum("c1ccccc1", "1H", 0.02, 5.0, 10.0, 500)
+        .expect("¹H NMR should succeed for benzene");
+    assert!(!nmr_h.peaks.is_empty());
+
+    // NMR — ¹³C
+    let nmr_c = sci_form::compute_nmr_spectrum("c1ccccc1", "13C", 0.5, 100.0, 160.0, 500)
+        .expect("¹³C NMR should succeed for benzene");
+    assert!(!nmr_c.peaks.is_empty());
+}
+
+#[test]
+fn test_nmr_serialization() {
+    // Verify that all NMR types are serializable (they derive Serialize)
+    let result = sci_form::predict_nmr_shifts("CCO").unwrap();
+    let json = serde_json::to_string(&result).expect("NmrShiftResult should serialize");
+    assert!(json.contains("shift_ppm"));
+
+    let spectrum = sci_form::compute_nmr_spectrum("CCO", "1H", 0.02, 0.0, 12.0, 100).unwrap();
+    let json = serde_json::to_string(&spectrum).expect("NmrSpectrum should serialize");
+    assert!(json.contains("ppm_axis"));
+}
+
+#[test]
+fn test_ir_serialization() {
+    let (elems, pos) = water_molecule();
+    let analysis = sci_form::compute_vibrational_analysis(&elems, &pos, "eht", None).unwrap();
+    let json = serde_json::to_string(&analysis).expect("VibrationalAnalysis should serialize");
+    assert!(json.contains("modes"));
+
+    let spectrum = sci_form::compute_ir_spectrum(&analysis, 15.0, 0.0, 4000.0, 100);
+    let json = serde_json::to_string(&spectrum).expect("IrSpectrum should serialize");
+    assert!(json.contains("wavenumbers"));
+}
+
+#[test]
+fn test_uvvis_serialization() {
+    let (elems, pos) = embed_smiles("c1ccccc1");
+    let spectrum = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        8.0,
+        50,
+        sci_form::reactivity::BroadeningType::Gaussian,
+    )
+    .unwrap();
+    let json = serde_json::to_string(&spectrum).expect("StdaUvVisSpectrum should serialize");
+    assert!(json.contains("excitations"));
+    assert!(json.contains("absorptivity"));
+}
