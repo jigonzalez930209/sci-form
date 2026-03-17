@@ -6,12 +6,12 @@
 //! - J-coupling estimation via Karplus equation
 //! - Lorentzian-broadened NMR spectrum generation
 
+pub mod coupling;
 pub mod hose;
 pub mod shifts;
-pub mod coupling;
 pub mod spectrum;
 
+pub use coupling::{predict_j_couplings, JCoupling};
 pub use hose::HoseCode;
 pub use shifts::{predict_chemical_shifts, ChemicalShift, NmrShiftResult};
-pub use coupling::{predict_j_couplings, JCoupling};
-pub use spectrum::{compute_nmr_spectrum, NmrPeak, NmrSpectrum, NmrNucleus};
+pub use spectrum::{compute_nmr_spectrum, NmrNucleus, NmrPeak, NmrSpectrum};

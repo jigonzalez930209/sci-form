@@ -126,10 +126,7 @@ pub fn compute_numerical_hessian(
 }
 
 fn flat_to_positions(coords: &[f64]) -> Vec<[f64; 3]> {
-    coords
-        .chunks(3)
-        .map(|c| [c[0], c[1], c[2]])
-        .collect()
+    coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect()
 }
 
 #[cfg(test)]
@@ -153,7 +150,10 @@ mod tests {
                 assert!(
                     (hessian[(i, j)] - hessian[(j, i)]).abs() < 1e-4,
                     "Hessian not symmetric at ({}, {}): {} vs {}",
-                    i, j, hessian[(i, j)], hessian[(j, i)]
+                    i,
+                    j,
+                    hessian[(i, j)],
+                    hessian[(j, i)]
                 );
             }
         }
@@ -180,6 +180,9 @@ mod tests {
                 }
             }
         }
-        assert!(has_nonzero_offdiag, "Hessian should have non-zero off-diagonal elements");
+        assert!(
+            has_nonzero_offdiag,
+            "Hessian should have non-zero off-diagonal elements"
+        );
     }
 }

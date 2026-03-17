@@ -120,11 +120,7 @@ pub fn generate_hose_codes(mol: &Molecule, max_radius: usize) -> Vec<HoseCode> {
             current_frontier = next_frontier;
         }
 
-        let full_code = format!(
-            "{}/{}",
-            spheres[0],
-            spheres[1..].join("/")
-        );
+        let full_code = format!("{}/{}", spheres[0], spheres[1..].join("/"));
 
         codes.push(HoseCode {
             atom_index: atom_idx,

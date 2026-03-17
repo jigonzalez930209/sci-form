@@ -81,10 +81,7 @@ fn karplus_3j(phi_rad: f64) -> f64 {
 /// Currently supports:
 /// - ²J (geminal): topological estimate (typically 2–12 Hz)
 /// - ³J (vicinal): Karplus equation if 3D coords available, else topological estimate (6–8 Hz)
-pub fn predict_j_couplings(
-    mol: &crate::graph::Molecule,
-    positions: &[[f64; 3]],
-) -> Vec<JCoupling> {
+pub fn predict_j_couplings(mol: &crate::graph::Molecule, positions: &[[f64; 3]]) -> Vec<JCoupling> {
     let n = mol.graph.node_count();
     let has_3d = positions.len() == n;
     let mut couplings = Vec::new();
@@ -123,11 +120,11 @@ pub fn predict_j_couplings(
 
             if p1 == p2 {
                 // ²J geminal coupling (both H on same carbon)
-                let j_hz = -12.0; // typical geminal coupling (negative)
+                let j_hz: f64 = -12.0; // typical geminal coupling (negative)
                 couplings.push(JCoupling {
                     h1_index: h1,
                     h2_index: h2,
-                    j_hz: (j_hz as f64).abs(), // report magnitude
+                    j_hz: j_hz.abs(), // report magnitude
                     n_bonds: 2,
                     coupling_type: "geminal_2J".to_string(),
                 });
@@ -169,15 +166,27 @@ mod tests {
     fn test_karplus_equation_values() {
         // At φ = 0° (eclipsed): ³J should be large (~9.06 Hz)
         let j_0 = karplus_3j(0.0);
-        assert!(j_0 > 8.0 && j_0 < 10.0, "³J(0°) = {} Hz, expected ~9 Hz", j_0);
+        assert!(
+            j_0 > 8.0 && j_0 < 10.0,
+            "³J(0°) = {} Hz, expected ~9 Hz",
+            j_0
+        );
 
         // At φ = 90°: ³J should be small (~1.4 Hz)
         let j_90 = karplus_3j(std::f64::consts::FRAC_PI_2);
-        assert!(j_90 > 0.0 && j_90 < 3.0, "³J(90°) = {} Hz, expected ~1.4 Hz", j_90);
+        assert!(
+            j_90 > 0.0 && j_90 < 3.0,
+            "³J(90°) = {} Hz, expected ~1.4 Hz",
+            j_90
+        );
 
         // At φ = 180° (antiperiplanar): ³J should be large (~10.26 Hz with A-S params)
         let j_180 = karplus_3j(std::f64::consts::PI);
-        assert!(j_180 > 6.0 && j_180 < 12.0, "³J(180°) = {} Hz, expected ~10 Hz", j_180);
+        assert!(
+            j_180 > 6.0 && j_180 < 12.0,
+            "³J(180°) = {} Hz, expected ~10 Hz",
+            j_180
+        );
     }
 
     #[test]
@@ -204,10 +213,7 @@ mod tests {
         );
 
         // Check that we find vicinal couplings
-        let vicinal: Vec<&JCoupling> = couplings
-            .iter()
-            .filter(|c| c.n_bonds == 3)
-            .collect();
+        let vicinal: Vec<&JCoupling> = couplings.iter().filter(|c| c.n_bonds == 3).collect();
         assert!(
             !vicinal.is_empty(),
             "Ethane should have ³J vicinal couplings"

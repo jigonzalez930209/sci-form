@@ -170,24 +170,20 @@ fn predict_h_shift(mol: &Molecule, h_idx: NodeIndex) -> (f64, String, f64) {
                             let en_diff = electronegativity(nb_elem) - electronegativity(6);
                             shift += en_diff * 0.5;
 
-                            // Check for aldehyde: C(=O)H  
-                            if nb_elem == 8 {
-                                if mol
-                                    .graph
-                                    .edges(parent)
-                                    .any(|e| {
-                                        let other = if e.source() == parent {
-                                            e.target()
-                                        } else {
-                                            e.source()
-                                        };
-                                        mol.graph[other].element == 8
-                                            && matches!(e.weight().order, BondOrder::Double)
-                                    })
-                                {
-                                    shift = 9.50; // aldehyde H
-                                    return (shift, "aldehyde_C-H".to_string(), 0.82);
-                                }
+                            // Check for aldehyde: C(=O)H
+                            if nb_elem == 8
+                                && mol.graph.edges(parent).any(|e| {
+                                    let other = if e.source() == parent {
+                                        e.target()
+                                    } else {
+                                        e.source()
+                                    };
+                                    mol.graph[other].element == 8
+                                        && matches!(e.weight().order, BondOrder::Double)
+                                })
+                            {
+                                shift = 9.50; // aldehyde H
+                                return (shift, "aldehyde_C-H".to_string(), 0.82);
                             }
                         }
                         (shift, "alkene_C-H".to_string(), 0.70)
@@ -213,8 +209,7 @@ fn predict_h_shift(mol: &Molecule, h_idx: NodeIndex) -> (f64, String, f64) {
                     } else {
                         e.source()
                     };
-                    mol.graph[other].element == 8
-                        && matches!(e.weight().order, BondOrder::Double)
+                    mol.graph[other].element == 8 && matches!(e.weight().order, BondOrder::Double)
                 })
             });
 
@@ -294,9 +289,7 @@ fn predict_c_shift(mol: &Molecule, c_idx: NodeIndex) -> (f64, String, f64) {
             if mol.graph[nb].element != 8 {
                 return false;
             }
-            mol.graph
-                .neighbors(nb)
-                .any(|n| mol.graph[n].element == 1)
+            mol.graph.neighbors(nb).any(|n| mol.graph[n].element == 1)
         });
 
         if has_oh {
@@ -389,7 +382,7 @@ fn predict_c_shift(mol: &Molecule, c_idx: NodeIndex) -> (f64, String, f64) {
                 .neighbors(c_idx)
                 .any(|nb| mol.graph[nb].element == 1);
             if has_h {
-                shift = 70.0; // terminal alkyne  
+                shift = 70.0; // terminal alkyne
             }
             (shift, "alkyne_C".to_string(), 0.70)
         }
@@ -529,12 +522,12 @@ mod tests {
 
         // Check that we detect an aldehyde H in the range ~9-10 ppm
         // Note: depends on how the SMILES parser handles implicit H on C=O
-        let aldehyde_h: Vec<&ChemicalShift> = result
+        let _aldehyde_h: Vec<&ChemicalShift> = result
             .h_shifts
             .iter()
             .filter(|s| s.environment.contains("aldehyde") || s.shift_ppm > 9.0)
             .collect();
         // This may or may not detect depending on SMILES parsing, so just verify count
-        assert!(result.h_shifts.len() > 0);
+        assert!(!result.h_shifts.is_empty());
     }
 }
