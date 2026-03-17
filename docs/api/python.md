@@ -352,6 +352,165 @@ print(mof.frac_coords)  # fractional coordinates
 
 ---
 
+## Spectroscopy (Track D)
+
+### `stda_uvvis`
+
+```python
+def stda_uvvis(
+    elements: list[int],
+    coords: list[float],
+    sigma: float = 0.3,
+    e_min: float = 1.0,
+    e_max: float = 8.0,
+    n_points: int = 500,
+    broadening: str = "gaussian",  # "gaussian" or "lorentzian"
+) -> StdaUvVisSpectrumPy
+```
+
+Compute UV-Vis spectrum via sTDA on EHT MO transitions. Returns a `StdaUvVisSpectrumPy` with `.wavelengths_nm`, `.intensities`, `.excitations` (list of `StdaExcitationPy`), `.gap`, `.homo_energy`, `.lumo_energy`, `.n_transitions`, `.notes`.
+
+```python
+from sci_form import embed, stda_uvvis
+
+conf = embed("c1ccccc1", seed=42)
+spec = stda_uvvis(conf.elements, conf.coords, sigma=0.3, e_min=1.0, e_max=8.0)
+print(f"Gap: {spec.gap:.2f} eV")
+max_i  = max(spec.intensities)
+lam_max = spec.wavelengths_nm[spec.intensities.index(max_i)]
+print(f"λ_max ≈ {lam_max:.1f} nm")
+for ex in sorted(spec.excitations, key=lambda e: -e.oscillator_strength)[:3]:
+    print(f"  {ex.wavelength_nm:.1f} nm  f={ex.oscillator_strength:.4f}  MO{ex.from_mo}→MO{ex.to_mo}")
+```
+
+### `vibrational_analysis`
+
+```python
+def vibrational_analysis(
+    elements: list[int],
+    coords: list[float],
+    method: str = "eht",   # "eht", "pm3", or "xtb"
+    step_size: float = 0.01,
+) -> VibrationalAnalysisPy
+```
+
+Numerical Hessian ($6N$ energy evaluations) + diagonalization. Returns `VibrationalAnalysisPy` with `.n_atoms`, `.modes` (list of `VibrationalModePy`), `.n_real_modes`, `.zpve_ev`, `.method`, `.notes`.
+
+Each `VibrationalModePy` has `.frequency_cm1`, `.ir_intensity` (km/mol), `.displacement` (list, length 3N), `.is_real`.
+
+```python
+from sci_form import embed, vibrational_analysis
+
+conf = embed("CCO", seed=42)
+vib  = vibrational_analysis(conf.elements, conf.coords, method="xtb")
+print(f"ZPVE: {vib.zpve_ev:.4f} eV, {vib.n_real_modes} real modes")
+
+real = [m for m in vib.modes if m.is_real]
+strongest = max(real, key=lambda m: m.ir_intensity)
+print(f"Strongest IR: {strongest.frequency_cm1:.1f} cm⁻¹  ({strongest.ir_intensity:.1f} km/mol)")
+```
+
+### `ir_spectrum`
+
+```python
+def ir_spectrum(
+    analysis: VibrationalAnalysisPy,
+    gamma: float = 15.0,
+    wn_min: float = 600.0,
+    wn_max: float = 4000.0,
+    n_points: int = 1000,
+) -> IrSpectrumPy
+```
+
+Lorentzian-broadened IR spectrum. Returns `IrSpectrumPy` with `.wavenumbers`, `.intensities`, `.peaks` (list of `IrPeakPy`), `.gamma`.
+
+```python
+from sci_form import ir_spectrum
+
+spec = ir_spectrum(vib, gamma=15.0, wn_min=600.0, wn_max=4000.0, n_points=1000)
+import matplotlib.pyplot as plt
+plt.plot(spec.wavenumbers, spec.intensities)
+plt.xlabel("Wavenumber (cm⁻¹)")
+plt.gca().invert_xaxis()
+plt.show()
+```
+
+### `nmr_shifts`
+
+```python
+def nmr_shifts(smiles: str) -> NmrShiftResultPy
+```
+
+Predict ¹H and ¹³C chemical shifts using HOSE code environment matching. Returns `NmrShiftResultPy` with `.h_shifts` and `.c_shifts` (lists of `ChemicalShiftPy`). No 3D geometry needed.
+
+Each `ChemicalShiftPy` has `.atom_index`, `.element`, `.shift_ppm`, `.environment`, `.confidence`.
+
+```python
+from sci_form import nmr_shifts
+
+shifts = nmr_shifts("CCO")
+for h in shifts.h_shifts:
+    print(f"H#{h.atom_index}: {h.shift_ppm:.2f} ppm  [{h.environment}]  conf={h.confidence:.2f}")
+for c in shifts.c_shifts:
+    print(f"C#{c.atom_index}: {c.shift_ppm:.1f} ppm  [{c.environment}]")
+```
+
+### `nmr_couplings`
+
+```python
+def nmr_couplings(
+    smiles: str,
+    coords: list[float] = [],  # flat [x0,y0,z0,...]; empty → free-rotation average
+) -> list[JCouplingPy]
+```
+
+Predict H–H J-coupling constants. With 3D coords uses the Karplus equation for ³J; topology only gives free-rotation averages (~5.3 Hz). Each `JCouplingPy` has `.h1_index`, `.h2_index`, `.j_hz`, `.n_bonds`, `.coupling_type`.
+
+```python
+from sci_form import embed, nmr_couplings
+
+conf = embed("CC", seed=42)
+couplings = nmr_couplings("CC", conf.coords)
+for j in couplings:
+    print(f"{j.n_bonds}J(H{j.h1_index},H{j.h2_index}) = {j.j_hz:.2f} Hz  [{j.coupling_type}]")
+```
+
+### `nmr_spectrum`
+
+```python
+def nmr_spectrum(
+    smiles: str,
+    nucleus: str = "1H",   # "1H" or "13C"
+    gamma: float = 0.01,
+    ppm_min: float = -2.0,
+    ppm_max: float = 14.0,
+    n_points: int = 2000,
+) -> NmrSpectrumPy
+```
+
+Full NMR spectrum pipeline. Returns `NmrSpectrumPy` with `.ppm_axis`, `.intensities`, `.peaks` (list of `NmrPeakPy`), `.nucleus`, `.gamma`.
+
+```python
+from sci_form import nmr_spectrum
+
+spec = nmr_spectrum("CCO", nucleus="1H")
+import matplotlib.pyplot as plt
+plt.plot(spec.ppm_axis, spec.intensities)
+plt.xlabel("δ (ppm)")
+plt.gca().invert_xaxis()
+plt.show()
+```
+
+### `hose_codes`
+
+```python
+def hose_codes(smiles: str, max_radius: int = 4) -> list[HoseCodePy]
+```
+
+Generate HOSE code fingerprints for all atoms. Each `HoseCodePy` has `.atom_index`, `.element`, `.code_string`, `.radius`.
+
+---
+
 ## Transport / Batch Streaming
 
 ### `pack_conformers`

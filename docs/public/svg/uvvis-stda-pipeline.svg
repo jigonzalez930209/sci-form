@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 210" width="860" height="210" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="860" height="210" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="430" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">sTDA UV-Vis Pipeline (Phase D1)</text>
+
+  <!-- Step 1: Geometry -->
+  <rect x="10" y="55" width="120" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="70" y="82" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">Geometry</text>
+  <text x="70" y="97" text-anchor="middle" font-size="9" fill="#64748b">elements[]</text>
+  <text x="70" y="110" text-anchor="middle" font-size="9" fill="#64748b">positions[]</text>
+  <text x="70" y="123" text-anchor="middle" font-size="9" fill="#64748b">Å units</text>
+
+  <line x1="130" y1="95" x2="148" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 2: EHT / xTB -->
+  <rect x="150" y="55" width="130" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="215" y="80" text-anchor="middle" font-size="11" font-weight="700" fill="#1e40af">EHT / xTB</text>
+  <text x="215" y="95" text-anchor="middle" font-size="9" fill="#1d4ed8">MO energies εᵢ</text>
+  <text x="215" y="108" text-anchor="middle" font-size="9" fill="#1d4ed8">Coefficients Cᵤᵢ</text>
+  <text x="215" y="121" text-anchor="middle" font-size="9" fill="#1d4ed8">HOMO index</text>
+
+  <line x1="280" y1="95" x2="298" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 3: Transitions -->
+  <rect x="300" y="55" width="140" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
+  <text x="370" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#713f12">MO Transitions</text>
+  <text x="370" y="93" text-anchor="middle" font-size="9" fill="#92400e">i → a  (occ → virt)</text>
+  <text x="370" y="106" text-anchor="middle" font-size="9" fill="#92400e">ΔEᵢₐ = εₐ − εᵢ</text>
+  <text x="370" y="119" text-anchor="middle" font-size="9" fill="#92400e">λ = 1239.84 / ΔE nm</text>
+
+  <line x1="440" y1="95" x2="458" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 4: Oscillator strength -->
+  <rect x="460" y="55" width="140" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="530" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#9d174d">Oscillator Strength</text>
+  <text x="530" y="93" text-anchor="middle" font-size="9" fill="#be185d">μᵢₐ = ⟨ψᵢ|r|ψₐ⟩</text>
+  <text x="530" y="106" text-anchor="middle" font-size="9" fill="#be185d">f = (2/3)·ΔE·|μ|²</text>
+  <text x="530" y="119" text-anchor="middle" font-size="9" fill="#be185d">one-center approx.</text>
+
+  <line x1="600" y1="95" x2="618" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 5: Broadening -->
+  <rect x="620" y="55" width="140" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="690" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">Broadening</text>
+  <text x="690" y="93" text-anchor="middle" font-size="9" fill="#6d28d9">ε(E) = Σ f·G/L(E,ΔE,σ)</text>
+  <text x="690" y="106" text-anchor="middle" font-size="9" fill="#6d28d9">× 28700 L/(mol·cm)</text>
+  <text x="690" y="119" text-anchor="middle" font-size="9" fill="#6d28d9">Gaussian or Lorentzian</text>
+
+  <!-- Step 6: Output label -->
+  <rect x="770" y="70" width="78" height="50" rx="8" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <line x1="760" y1="95" x2="768" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="809" y="90" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">ε(λ)</text>
+  <text x="809" y="105" text-anchor="middle" font-size="9" fill="#6d28d9">spectrum</text>
+
+  <!-- Bottom labels -->
+  <text x="70"  y="153" text-anchor="middle" font-size="9" fill="#64748b">SCC converged or EHT</text>
+  <text x="215" y="153" text-anchor="middle" font-size="9" fill="#64748b">n_occ × n_virt pairs</text>
+  <text x="370" y="153" text-anchor="middle" font-size="9" fill="#64748b">energy-window filtered</text>
+  <text x="530" y="153" text-anchor="middle" font-size="9" fill="#64748b">⟨Cᵤᵢ Cᵤₐ⟩ overlap proxy</text>
+  <text x="690" y="153" text-anchor="middle" font-size="9" fill="#64748b">n_points grid, e_min→e_max</text>
+
+  <!-- HOMO / LUMO label illustration -->
+  <text x="370" y="175" text-anchor="middle" font-size="9" fill="#94a3b8">HOMO (εᴴ) ──────── LUMO (εᴸ)    ΔEgap = εᴸ − εᴴ</text>
+  <text x="370" y="190" text-anchor="middle" font-size="9" fill="#94a3b8">excitation from occupied MO i to virtual a: ΔEᵢₐ = εₐ − εᵢ</text>
+</svg>

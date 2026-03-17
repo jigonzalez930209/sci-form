@@ -399,6 +399,181 @@ let crystal = sci_form::assemble_framework(&node, &linker, &topology, &cell);
 
 ---
 
+## Spectroscopy (Track D)
+
+### `compute_stda_uvvis`
+
+```rust
+pub fn compute_stda_uvvis(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    broadening: reactivity::BroadeningType,
+) -> Result<reactivity::StdaUvVisSpectrum, String>
+```
+
+Compute a UV-Vis absorption spectrum via the simplified Tamm-Dancoff approximation (sTDA) on EHT MO transitions.
+
+| Parameter | Description |
+|-----------|-------------|
+| `elements` | Atomic numbers |
+| `positions` | 3D Cartesian coordinates (Å) |
+| `sigma` | Broadening width in eV (Gaussian σ or Lorentzian γ) |
+| `e_min` / `e_max` | Energy window in eV |
+| `n_points` | Wavelength grid size |
+| `broadening` | `BroadeningType::Gaussian` or `BroadeningType::Lorentzian` |
+
+**Returns** `StdaUvVisSpectrum { wavelengths_nm, intensities, excitations, homo_energy, lumo_energy, gap, n_transitions, broadening_type, notes }`.
+
+```rust
+use sci_form::{embed, compute_stda_uvvis};
+use sci_form::reactivity::BroadeningType;
+
+let conf = embed("c1ccccc1", 42);
+let pos: Vec<[f64;3]> = conf.coords.chunks(3).map(|c| [c[0],c[1],c[2]]).collect();
+let spec = compute_stda_uvvis(&conf.elements, &pos, 0.3, 1.0, 8.0, 500, BroadeningType::Gaussian).unwrap();
+println!("Gap: {:.2} eV, {} transitions", spec.gap, spec.n_transitions);
+```
+
+---
+
+### `compute_vibrational_analysis`
+
+```rust
+pub fn compute_vibrational_analysis(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    method: &str,
+    step_size: Option<f64>,
+) -> Result<ir::VibrationalAnalysis, String>
+```
+
+Compute numerical Hessian ($6N$ energy evaluations) and diagonalize to obtain vibrational frequencies, normal modes, IR intensities, and ZPVE.
+
+| Parameter | Description |
+|-----------|-------------|
+| `method` | `"eht"`, `"pm3"`, or `"xtb"` |
+| `step_size` | Finite-difference step in Å; `None` → 0.01 Å |
+
+**Returns** `VibrationalAnalysis { n_atoms, modes, n_real_modes, zpve_ev, method, notes }`.
+
+Each `VibrationalMode` has `frequency_cm1`, `ir_intensity` (km/mol), `displacement` (3N), `is_real`.
+
+```rust
+let vib = sci_form::compute_vibrational_analysis(&conf.elements, &pos, "xtb", None).unwrap();
+println!("ZPVE: {:.4} eV", vib.zpve_ev);
+let strongest = vib.modes.iter().filter(|m| m.is_real)
+    .max_by(|a,b| a.ir_intensity.partial_cmp(&b.ir_intensity).unwrap());
+println!("Strongest: {:.1} cm⁻¹  ({:.1} km/mol)",
+    strongest.map(|m| m.frequency_cm1).unwrap_or(0.0),
+    strongest.map(|m| m.ir_intensity).unwrap_or(0.0));
+```
+
+---
+
+### `compute_ir_spectrum`
+
+```rust
+pub fn compute_ir_spectrum(
+    analysis: &ir::VibrationalAnalysis,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+) -> ir::IrSpectrum
+```
+
+Generate a Lorentzian-broadened IR absorption spectrum from a `VibrationalAnalysis`.
+
+**Returns** `IrSpectrum { wavenumbers, intensities, peaks, gamma, notes }`.
+
+```rust
+let spec = sci_form::compute_ir_spectrum(&vib, 15.0, 600.0, 4000.0, 1000);
+let max_i = spec.intensities.iter().cloned().fold(0.0_f64, f64::max);
+let idx   = spec.intensities.iter().position(|&v| v == max_i).unwrap();
+println!("Dominant band: {:.1} cm⁻¹", spec.wavenumbers[idx]);
+```
+
+---
+
+### `predict_nmr_shifts`
+
+```rust
+pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String>
+```
+
+Predict ¹H and ¹³C chemical shifts from SMILES using HOSE code environment matching.
+
+**Returns** `NmrShiftResult { h_shifts, c_shifts, notes }`. Each `ChemicalShift` has `atom_index`, `element`, `shift_ppm`, `environment`, `confidence`.
+
+```rust
+let shifts = sci_form::predict_nmr_shifts("CCO").unwrap();
+for h in &shifts.h_shifts {
+    println!("H#{}: {:.2} ppm ({})", h.atom_index, h.shift_ppm, h.environment);
+}
+```
+
+---
+
+### `predict_nmr_couplings`
+
+```rust
+pub fn predict_nmr_couplings(
+    smiles: &str,
+    positions: &[[f64; 3]],
+) -> Result<Vec<nmr::JCoupling>, String>
+```
+
+Predict $^2$J, $^3$J, and $^4$J H–H coupling constants. Pass 3D positions for Karplus dihedral-angle evaluation; pass `&[]` for topology-based free-rotation averages.
+
+Each `JCoupling` has `h1_index`, `h2_index`, `j_hz`, `n_bonds`, `coupling_type`.
+
+---
+
+### `compute_nmr_spectrum`
+
+```rust
+pub fn compute_nmr_spectrum(
+    smiles: &str,
+    nucleus: &str,     // "1H" or "13C"
+    gamma: f64,
+    ppm_min: f64,
+    ppm_max: f64,
+    n_points: usize,
+) -> Result<nmr::NmrSpectrum, String>
+```
+
+Full NMR spectrum pipeline: SMILES → shifts → couplings → multiplet splitting → Lorentzian broadening.
+
+**Returns** `NmrSpectrum { ppm_axis, intensities, peaks, nucleus, gamma }`.
+
+```rust
+let spec = sci_form::compute_nmr_spectrum("CCO", "1H", 0.01, -2.0, 12.0, 2000).unwrap();
+println!("{} ¹H multiplet lines in spectrum", spec.peaks.len());
+```
+
+---
+
+### `compute_hose_codes`
+
+```rust
+pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> Result<Vec<nmr::HoseCode>, String>
+```
+
+Generate HOSE code environment strings for all atoms in the molecule (breadth-first spherical atom environments).
+
+```rust
+let codes = sci_form::compute_hose_codes("c1ccccc1", 4).unwrap();
+for hose in &codes {
+    println!("Atom {}: {}", hose.atom_index, hose.code_string);
+}
+```
+
+---
+
 ## Internal Module Reference
 
 | Module | Key Types / Functions |
@@ -421,3 +596,6 @@ let crystal = sci_form::assemble_framework(&node, &linker, &topology, &cell);
 | `sci_form::dipole` | `compute_dipole_from_eht()`, `DipoleResult` |
 | `sci_form::materials` | `UnitCell`, `Sbu`, `Topology`, `CrystalStructure`, `assemble_framework()` |
 | `sci_form::transport` | `pack_batch_arrow()`, `ChunkedIterator`, `WorkerTask`, `split_worker_tasks()` |
+| `sci_form::reactivity` | `StdaUvVisSpectrum`, `StdaExcitation`, `BroadeningType`, `compute_stda_uvvis_spectrum()` |
+| `sci_form::ir` | `VibrationalAnalysis`, `VibrationalMode`, `IrSpectrum`, `IrPeak`, `compute_vibrational_analysis()`, `compute_ir_spectrum()` |
+| `sci_form::nmr` | `NmrShiftResult`, `ChemicalShift`, `JCoupling`, `NmrSpectrum`, `NmrPeak`, `HoseCode`, `NmrNucleus` |
