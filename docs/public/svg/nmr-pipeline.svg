@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 210" width="860" height="210" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="860" height="210" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="430" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">NMR Spectroscopy Pipeline (Phase D3)</text>
+
+  <!-- Step 1: SMILES input -->
+  <rect x="10" y="50" width="110" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="65" y="75" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">SMILES</text>
+  <text x="65" y="90" text-anchor="middle" font-size="9" fill="#64748b">topology only</text>
+  <text x="65" y="103" text-anchor="middle" font-size="9" fill="#64748b">no 3D needed</text>
+  <text x="65" y="116" text-anchor="middle" font-size="9" fill="#64748b">for shifts</text>
+  <line x1="120" y1="90" x2="138" y2="90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 2: Molecular graph -->
+  <rect x="140" y="50" width="120" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="200" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#1e40af">Mol. Graph</text>
+  <text x="200" y="88" text-anchor="middle" font-size="9" fill="#1d4ed8">petgraph nodes:</text>
+  <text x="200" y="101" text-anchor="middle" font-size="9" fill="#1d4ed8">element, hybridization</text>
+  <text x="200" y="114" text-anchor="middle" font-size="9" fill="#1d4ed8">edges: bond order</text>
+  <line x1="260" y1="90" x2="278" y2="90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 3: HOSE codes -->
+  <rect x="280" y="50" width="130" height="80" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="345" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#166534">HOSE Codes</text>
+  <text x="345" y="88" text-anchor="middle" font-size="9" fill="#15803d">BFS in spheres</text>
+  <text x="345" y="101" text-anchor="middle" font-size="9" fill="#15803d">r = 1,2,3,4</text>
+  <text x="345" y="114" text-anchor="middle" font-size="9" fill="#15803d">C, N, O(=C)/...</text>
+  <line x1="410" y1="90" x2="428" y2="90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 4: Chemical shifts -->
+  <rect x="430" y="50" width="140" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
+  <text x="500" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#713f12">Chemical Shifts</text>
+  <text x="500" y="88" text-anchor="middle" font-size="9" fill="#92400e">¹H: 0.9–11 ppm</text>
+  <text x="500" y="101" text-anchor="middle" font-size="9" fill="#92400e">¹³C: 20–205 ppm</text>
+  <text x="500" y="114" text-anchor="middle" font-size="9" fill="#92400e">EN + hybridization</text>
+  <line x1="570" y1="90" x2="588" y2="90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 5: J-coupling -->
+  <rect x="590" y="50" width="130" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="655" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#9d174d">J-Coupling</text>
+  <text x="655" y="88" text-anchor="middle" font-size="9" fill="#be185d">³J: Karplus equation</text>
+  <text x="655" y="101" text-anchor="middle" font-size="9" fill="#be185d">A cos²φ − B cosφ + C</text>
+  <text x="655" y="114" text-anchor="middle" font-size="9" fill="#be185d">²J: geminal 12 Hz</text>
+  <line x1="720" y1="90" x2="738" y2="90" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Step 6: NMR Spectrum -->
+  <rect x="740" y="50" width="110" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="795" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">NMR Spectrum</text>
+  <text x="795" y="88" text-anchor="middle" font-size="9" fill="#6d28d9">Pascal splitting</text>
+  <text x="795" y="101" text-anchor="middle" font-size="9" fill="#6d28d9">Lorentzian peaks</text>
+  <text x="795" y="114" text-anchor="middle" font-size="9" fill="#6d28d9">ppm axis ↓</text>
+
+  <!-- Footer labels -->
+  <text x="65"  y="150" text-anchor="middle" font-size="9" fill="#64748b">SMILES → graph</text>
+  <text x="200" y="150" text-anchor="middle" font-size="9" fill="#64748b">sp / sp2 / sp3 hybrids</text>
+  <text x="345" y="150" text-anchor="middle" font-size="9" fill="#64748b">deterministic BTreeSet</text>
+  <text x="500" y="150" text-anchor="middle" font-size="9" fill="#64748b">incremental corrections</text>
+  <text x="655" y="150" text-anchor="middle" font-size="9" fill="#64748b">A=7.76 B=−1.10 C=1.40</text>
+  <text x="795" y="150" text-anchor="middle" font-size="9" fill="#64748b">¹H or ¹³C nucleus</text>
+
+  <!-- HOSE code example row -->
+  <rect x="10" y="168" width="840" height="32" rx="6" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1"/>
+  <text x="430" y="183" text-anchor="middle" font-size="10" fill="#3730a3" font-weight="600">HOSE code example (benzene carbon):  C(CC,,) / sphere-1: two carbons · sphere-2: four carbons (ring)</text>
+  <text x="430" y="197" text-anchor="middle" font-size="10" fill="#3730a3">J-coupling types:  ²J geminal (H−C−H, ~12 Hz)  |  ³J vicinal (H−C−C−H, Karplus 0–12 Hz)</text>
+</svg>

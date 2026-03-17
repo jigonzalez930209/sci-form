@@ -4,7 +4,7 @@ layout: home
 hero:
   name: sci-form
   text: Computational Chemistry in Rust
-  tagline: Conformer generation, EHT, PM3, GFN-xTB, ML properties, force fields — Rust, Python, TypeScript, CLI (v0.4.3)
+  tagline: Conformer generation, EHT, PM3, GFN-xTB, UV-Vis sTDA, IR, NMR, ML properties, force fields — Rust, Python, TypeScript, CLI (v0.5.0)
   image:
     src: /logo.svg
     alt: sci-form
@@ -29,6 +29,9 @@ features:
   - icon: 🔬
     title: Three QM Methods
     details: "**NEW v0.4** — EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast)."
+  - icon: 🌈
+    title: Spectroscopy (Track D)
+    details: "**NEW v0.5** — UV-Vis sTDA with oscillator strengths (Gaussian/Lorentzian broadening), IR via numerical Hessian (3N modes, ZPVE, km/mol intensities), ¹H/¹³C NMR with HOSE codes + Karplus ³J-couplings."
   - icon: ⚛️
     title: Extended Hückel Theory
     details: "Wolfsberg-Helmholtz Hamiltonian, Löwdin orthogonalization, HOMO/LUMO gaps, population analysis, dipole moments."

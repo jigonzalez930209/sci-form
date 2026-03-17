@@ -92,6 +92,14 @@ export default defineConfig({
           ],
         },
         {
+          text: 'Spectroscopy (Track D)',
+          items: [
+            { text: 'UV-Vis Spectroscopy', link: '/algorithm/uvvis-spectroscopy' },
+            { text: 'IR Spectroscopy', link: '/algorithm/ir-spectroscopy' },
+            { text: 'NMR Spectroscopy', link: '/algorithm/nmr-spectroscopy' },
+          ],
+        },
+        {
           text: 'Materials',
           items: [
             { text: 'Materials Assembly', link: '/algorithm/materials-assembly' },
