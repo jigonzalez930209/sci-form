@@ -59,11 +59,11 @@ fn lorentzian(x: f64, x0: f64, gamma: f64) -> f64 {
 /// Determine multiplicity from J-coupling count.
 fn multiplicity_label(n_couplings: usize) -> &'static str {
     match n_couplings {
-        0 => "s",  // singlet
-        1 => "d",  // doublet
-        2 => "t",  // triplet
-        3 => "q",  // quartet
-        _ => "m",  // multiplet
+        0 => "s", // singlet
+        1 => "d", // doublet
+        2 => "t", // triplet
+        3 => "q", // quartet
+        _ => "m", // multiplet
     }
 }
 
@@ -231,15 +231,8 @@ mod tests {
         let shifts = super::super::shifts::predict_chemical_shifts(&mol);
         let couplings = super::super::coupling::predict_j_couplings(&mol, &[]);
 
-        let spectrum = compute_nmr_spectrum(
-            &shifts,
-            &couplings,
-            NmrNucleus::H1,
-            0.02,
-            0.0,
-            12.0,
-            1000,
-        );
+        let spectrum =
+            compute_nmr_spectrum(&shifts, &couplings, NmrNucleus::H1, 0.02, 0.0, 12.0, 1000);
 
         assert_eq!(spectrum.ppm_axis.len(), 1000);
         assert_eq!(spectrum.intensities.len(), 1000);
@@ -255,15 +248,8 @@ mod tests {
         let shifts = super::super::shifts::predict_chemical_shifts(&mol);
         let couplings = super::super::coupling::predict_j_couplings(&mol, &[]);
 
-        let spectrum = compute_nmr_spectrum(
-            &shifts,
-            &couplings,
-            NmrNucleus::C13,
-            1.0,
-            0.0,
-            220.0,
-            1000,
-        );
+        let spectrum =
+            compute_nmr_spectrum(&shifts, &couplings, NmrNucleus::C13, 1.0, 0.0, 220.0, 1000);
 
         assert!(!spectrum.peaks.is_empty(), "Benzene should have ¹³C peaks");
 

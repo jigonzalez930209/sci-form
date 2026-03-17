@@ -232,8 +232,7 @@ pub fn compute_vibrational_analysis(
     // 4. Sort eigenvalues and eigenvectors by eigenvalue
     let mut indices: Vec<usize> = (0..n3).collect();
     indices.sort_by(|&a, &b| {
-        eigen
-            .eigenvalues[a]
+        eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
             .unwrap_or(std::cmp::Ordering::Equal)
     });
@@ -375,10 +374,7 @@ pub fn compute_ir_spectrum(
                 "IR spectrum generated with Lorentzian broadening (γ = {} cm⁻¹).",
                 gamma
             ),
-            format!(
-                "Vibrational analysis method: {}.",
-                analysis.method
-            ),
+            format!("Vibrational analysis method: {}.", analysis.method),
         ],
     }
 }

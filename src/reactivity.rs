@@ -471,9 +471,10 @@ pub fn compute_stda_uvvis_spectrum(
     let span = (e_max - e_min).max(1e-6);
     let step = span / (n_points as f64 - 1.0);
     let energies_ev: Vec<f64> = (0..n_points).map(|i| e_min + step * i as f64).collect();
-    let wavelengths_nm: Vec<f64> = energies_ev.iter().map(|&e| {
-        if e > 0.01 { EV_TO_NM / e } else { 0.0 }
-    }).collect();
+    let wavelengths_nm: Vec<f64> = energies_ev
+        .iter()
+        .map(|&e| if e > 0.01 { EV_TO_NM / e } else { 0.0 })
+        .collect();
     let mut absorptivity = vec![0.0; n_points];
 
     // sTDA: select single excitations
@@ -534,10 +535,11 @@ pub fn compute_stda_uvvis_spectrum(
             // Simplified: ε ∝ f * g(E-ΔE)
             let scale = f_osc * 28700.0; // approximate ε scaling (L/(mol·cm))
             for (idx, &e) in energies_ev.iter().enumerate() {
-                absorptivity[idx] += scale * match broadening {
-                    BroadeningType::Gaussian => gaussian(e, delta_e, sigma),
-                    BroadeningType::Lorentzian => lorentzian(e, delta_e, sigma),
-                };
+                absorptivity[idx] += scale
+                    * match broadening {
+                        BroadeningType::Gaussian => gaussian(e, delta_e, sigma),
+                        BroadeningType::Lorentzian => lorentzian(e, delta_e, sigma),
+                    };
             }
         }
     }
