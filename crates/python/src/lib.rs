@@ -171,6 +171,13 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(xtb_calculate, m)?)?;
     m.add_function(wrap_pyfunction!(ml_descriptors, m)?)?;
     m.add_function(wrap_pyfunction!(ml_predict, m)?)?;
+    m.add_function(wrap_pyfunction!(stda_uvvis, m)?)?;
+    m.add_function(wrap_pyfunction!(vibrational_analysis, m)?)?;
+    m.add_function(wrap_pyfunction!(ir_spectrum, m)?)?;
+    m.add_function(wrap_pyfunction!(nmr_shifts, m)?)?;
+    m.add_function(wrap_pyfunction!(nmr_couplings, m)?)?;
+    m.add_function(wrap_pyfunction!(nmr_spectrum, m)?)?;
+    m.add_function(wrap_pyfunction!(hose_codes, m)?)?;
     m.add_class::<ConformerResult>()?;
     m.add_class::<SystemCapabilitiesPy>()?;
     m.add_class::<MethodMetadataPy>()?;
@@ -206,6 +213,17 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<XtbResultPy>()?;
     m.add_class::<MolecularDescriptorsPy>()?;
     m.add_class::<MlPropertyResultPy>()?;
+    m.add_class::<StdaExcitationPy>()?;
+    m.add_class::<StdaUvVisSpectrumPy>()?;
+    m.add_class::<VibrationalModePy>()?;
+    m.add_class::<VibrationalAnalysisPy>()?;
+    m.add_class::<IrPeakPy>()?;
+    m.add_class::<IrSpectrumPy>()?;
+    m.add_class::<ChemicalShiftPy>()?;
+    m.add_class::<NmrShiftResultPy>()?;
+    m.add_class::<JCouplingPy>()?;
+    m.add_class::<NmrPeakPy>()?;
+    m.add_class::<NmrSpectrumPy>()?;
     Ok(())
 }
 
@@ -1973,4 +1991,445 @@ fn ml_predict(smiles: &str) -> PyResult<MlPropertyResultPy> {
         lipinski_passes: result.lipinski.passes,
         druglikeness: result.druglikeness,
     })
+}
+
+// ─── Spectroscopy: UV-Vis sTDA ────────────────────────────────────────────────
+
+/// sTDA UV-Vis excitation.
+#[pyclass]
+#[derive(Clone)]
+struct StdaExcitationPy {
+    #[pyo3(get)]
+    energy_ev: f64,
+    #[pyo3(get)]
+    wavelength_nm: f64,
+    #[pyo3(get)]
+    oscillator_strength: f64,
+    #[pyo3(get)]
+    from_mo: usize,
+    #[pyo3(get)]
+    to_mo: usize,
+    #[pyo3(get)]
+    transition_dipole: f64,
+}
+
+/// sTDA UV-Vis spectrum result.
+#[pyclass]
+#[derive(Clone)]
+struct StdaUvVisSpectrumPy {
+    #[pyo3(get)]
+    energies_ev: Vec<f64>,
+    #[pyo3(get)]
+    wavelengths_nm: Vec<f64>,
+    #[pyo3(get)]
+    absorptivity: Vec<f64>,
+    #[pyo3(get)]
+    excitations: Vec<StdaExcitationPy>,
+    #[pyo3(get)]
+    sigma: f64,
+    #[pyo3(get)]
+    broadening: String,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+/// Compute sTDA UV-Vis spectrum with proper oscillator strengths.
+///
+/// `elements`: list of atomic numbers.
+/// `coords`: flat xyz list in Å.
+/// `sigma`: broadening width in eV.
+/// `e_min`, `e_max`: energy range in eV.
+/// `n_points`: grid resolution.
+/// `broadening`: "gaussian" (default) or "lorentzian".
+#[pyfunction]
+#[pyo3(signature = (elements, coords, sigma=0.3, e_min=1.0, e_max=8.0, n_points=500, broadening="gaussian"))]
+fn stda_uvvis(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    broadening: &str,
+) -> PyResult<StdaUvVisSpectrumPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(),
+            elements.len() * 3
+        )));
+    }
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let bt = match broadening {
+        "lorentzian" | "Lorentzian" => sci_form_core::reactivity::BroadeningType::Lorentzian,
+        _ => sci_form_core::reactivity::BroadeningType::Gaussian,
+    };
+    sci_form_core::compute_stda_uvvis(&elements, &positions, sigma, e_min, e_max, n_points, bt)
+        .map(|r| StdaUvVisSpectrumPy {
+            energies_ev: r.energies_ev,
+            wavelengths_nm: r.wavelengths_nm,
+            absorptivity: r.absorptivity,
+            excitations: r
+                .excitations
+                .iter()
+                .map(|e| StdaExcitationPy {
+                    energy_ev: e.energy_ev,
+                    wavelength_nm: e.wavelength_nm,
+                    oscillator_strength: e.oscillator_strength,
+                    from_mo: e.from_mo,
+                    to_mo: e.to_mo,
+                    transition_dipole: e.transition_dipole,
+                })
+                .collect(),
+            sigma: r.sigma,
+            broadening: format!("{:?}", r.broadening),
+            notes: r.notes,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+// ─── Spectroscopy: IR ─────────────────────────────────────────────────────────
+
+/// Vibrational mode result.
+#[pyclass]
+#[derive(Clone)]
+struct VibrationalModePy {
+    #[pyo3(get)]
+    frequency_cm1: f64,
+    #[pyo3(get)]
+    ir_intensity: f64,
+    #[pyo3(get)]
+    displacement: Vec<f64>,
+    #[pyo3(get)]
+    is_real: bool,
+}
+
+/// Vibrational analysis result.
+#[pyclass]
+#[derive(Clone)]
+struct VibrationalAnalysisPy {
+    #[pyo3(get)]
+    n_atoms: usize,
+    #[pyo3(get)]
+    modes: Vec<VibrationalModePy>,
+    #[pyo3(get)]
+    n_real_modes: usize,
+    #[pyo3(get)]
+    zpve_ev: f64,
+    #[pyo3(get)]
+    method: String,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+/// IR peak.
+#[pyclass]
+#[derive(Clone)]
+struct IrPeakPy {
+    #[pyo3(get)]
+    frequency_cm1: f64,
+    #[pyo3(get)]
+    ir_intensity: f64,
+    #[pyo3(get)]
+    mode_index: usize,
+}
+
+/// IR spectrum result.
+#[pyclass]
+#[derive(Clone)]
+struct IrSpectrumPy {
+    #[pyo3(get)]
+    wavenumbers: Vec<f64>,
+    #[pyo3(get)]
+    intensities: Vec<f64>,
+    #[pyo3(get)]
+    peaks: Vec<IrPeakPy>,
+    #[pyo3(get)]
+    gamma: f64,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+/// Perform vibrational analysis via numerical Hessian.
+///
+/// `elements`: list of atomic numbers.
+/// `coords`: flat xyz list in Å.
+/// `method`: "eht", "pm3", or "xtb".
+/// `step_size`: finite-difference step in Å (default 0.005).
+#[pyfunction]
+#[pyo3(signature = (elements, coords, method="eht", step_size=None))]
+fn vibrational_analysis(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    method: &str,
+    step_size: Option<f64>,
+) -> PyResult<VibrationalAnalysisPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(),
+            elements.len() * 3
+        )));
+    }
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
+        .map(|r| VibrationalAnalysisPy {
+            n_atoms: r.n_atoms,
+            modes: r
+                .modes
+                .iter()
+                .map(|m| VibrationalModePy {
+                    frequency_cm1: m.frequency_cm1,
+                    ir_intensity: m.ir_intensity,
+                    displacement: m.displacement.clone(),
+                    is_real: m.is_real,
+                })
+                .collect(),
+            n_real_modes: r.n_real_modes,
+            zpve_ev: r.zpve_ev,
+            method: r.method.clone(),
+            notes: r.notes.clone(),
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Generate Lorentzian-broadened IR spectrum.
+///
+/// `elements`: list of atomic numbers.
+/// `coords`: flat xyz list in Å.
+/// `method`: "eht", "pm3", or "xtb".
+/// `gamma`: line width in cm⁻¹ (default 15).
+/// `wn_min`, `wn_max`: wavenumber range in cm⁻¹.
+/// `n_points`: grid resolution.
+#[pyfunction]
+#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, step_size=None))]
+fn ir_spectrum(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    method: &str,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+    step_size: Option<f64>,
+) -> PyResult<IrSpectrumPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(),
+            elements.len() * 3
+        )));
+    }
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let analysis =
+        sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    let spectrum = sci_form_core::compute_ir_spectrum(&analysis, gamma, wn_min, wn_max, n_points);
+    Ok(IrSpectrumPy {
+        wavenumbers: spectrum.wavenumbers,
+        intensities: spectrum.intensities,
+        peaks: spectrum
+            .peaks
+            .iter()
+            .map(|p| IrPeakPy {
+                frequency_cm1: p.frequency_cm1,
+                ir_intensity: p.ir_intensity,
+                mode_index: p.mode_index,
+            })
+            .collect(),
+        gamma: spectrum.gamma,
+        notes: spectrum.notes,
+    })
+}
+
+// ─── Spectroscopy: NMR ────────────────────────────────────────────────────────
+
+/// NMR chemical shift.
+#[pyclass]
+#[derive(Clone)]
+struct ChemicalShiftPy {
+    #[pyo3(get)]
+    atom_index: usize,
+    #[pyo3(get)]
+    element: u8,
+    #[pyo3(get)]
+    shift_ppm: f64,
+    #[pyo3(get)]
+    environment: String,
+    #[pyo3(get)]
+    confidence: f64,
+}
+
+/// NMR chemical shift result (¹H + ¹³C).
+#[pyclass]
+#[derive(Clone)]
+struct NmrShiftResultPy {
+    #[pyo3(get)]
+    h_shifts: Vec<ChemicalShiftPy>,
+    #[pyo3(get)]
+    c_shifts: Vec<ChemicalShiftPy>,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+/// J-coupling constant.
+#[pyclass]
+#[derive(Clone)]
+struct JCouplingPy {
+    #[pyo3(get)]
+    h1_index: usize,
+    #[pyo3(get)]
+    h2_index: usize,
+    #[pyo3(get)]
+    j_hz: f64,
+    #[pyo3(get)]
+    n_bonds: usize,
+    #[pyo3(get)]
+    coupling_type: String,
+}
+
+/// NMR peak.
+#[pyclass]
+#[derive(Clone)]
+struct NmrPeakPy {
+    #[pyo3(get)]
+    shift_ppm: f64,
+    #[pyo3(get)]
+    intensity: f64,
+    #[pyo3(get)]
+    atom_index: usize,
+    #[pyo3(get)]
+    multiplicity: String,
+    #[pyo3(get)]
+    environment: String,
+}
+
+/// NMR spectrum result.
+#[pyclass]
+#[derive(Clone)]
+struct NmrSpectrumPy {
+    #[pyo3(get)]
+    ppm_axis: Vec<f64>,
+    #[pyo3(get)]
+    intensities: Vec<f64>,
+    #[pyo3(get)]
+    peaks: Vec<NmrPeakPy>,
+    #[pyo3(get)]
+    nucleus: String,
+    #[pyo3(get)]
+    gamma: f64,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+/// Predict ¹H and ¹³C NMR chemical shifts from SMILES.
+#[pyfunction]
+fn nmr_shifts(smiles: &str) -> PyResult<NmrShiftResultPy> {
+    sci_form_core::predict_nmr_shifts(smiles)
+        .map(|r| NmrShiftResultPy {
+            h_shifts: r
+                .h_shifts
+                .iter()
+                .map(|s| ChemicalShiftPy {
+                    atom_index: s.atom_index,
+                    element: s.element,
+                    shift_ppm: s.shift_ppm,
+                    environment: s.environment.clone(),
+                    confidence: s.confidence,
+                })
+                .collect(),
+            c_shifts: r
+                .c_shifts
+                .iter()
+                .map(|s| ChemicalShiftPy {
+                    atom_index: s.atom_index,
+                    element: s.element,
+                    shift_ppm: s.shift_ppm,
+                    environment: s.environment.clone(),
+                    confidence: s.confidence,
+                })
+                .collect(),
+            notes: r.notes,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Predict J-coupling constants.
+///
+/// `smiles`: SMILES string.
+/// `coords`: flat xyz list in Å (or empty for topological estimate).
+#[pyfunction]
+#[pyo3(signature = (smiles, coords=vec![]))]
+fn nmr_couplings(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<JCouplingPy>> {
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    sci_form_core::predict_nmr_couplings(smiles, &positions)
+        .map(|couplings| {
+            couplings
+                .iter()
+                .map(|c| JCouplingPy {
+                    h1_index: c.h1_index,
+                    h2_index: c.h2_index,
+                    j_hz: c.j_hz,
+                    n_bonds: c.n_bonds,
+                    coupling_type: c.coupling_type.clone(),
+                })
+                .collect()
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Generate a complete NMR spectrum from SMILES.
+///
+/// `smiles`: SMILES string.
+/// `nucleus`: "1H" or "13C".
+/// `gamma`: Lorentzian line width in ppm.
+/// `ppm_min`, `ppm_max`: spectral window.
+/// `n_points`: grid resolution.
+#[pyfunction]
+#[pyo3(signature = (smiles, nucleus="1H", gamma=0.02, ppm_min=0.0, ppm_max=12.0, n_points=1000))]
+fn nmr_spectrum(
+    smiles: &str,
+    nucleus: &str,
+    gamma: f64,
+    ppm_min: f64,
+    ppm_max: f64,
+    n_points: usize,
+) -> PyResult<NmrSpectrumPy> {
+    sci_form_core::compute_nmr_spectrum(smiles, nucleus, gamma, ppm_min, ppm_max, n_points)
+        .map(|r| NmrSpectrumPy {
+            ppm_axis: r.ppm_axis,
+            intensities: r.intensities,
+            peaks: r
+                .peaks
+                .iter()
+                .map(|p| NmrPeakPy {
+                    shift_ppm: p.shift_ppm,
+                    intensity: p.intensity,
+                    atom_index: p.atom_index,
+                    multiplicity: p.multiplicity.clone(),
+                    environment: p.environment.clone(),
+                })
+                .collect(),
+            nucleus: format!("{:?}", r.nucleus),
+            gamma: r.gamma,
+            notes: r.notes,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Generate HOSE codes for all atoms in a molecule.
+///
+/// `smiles`: SMILES string.
+/// `max_radius`: maximum sphere radius (default 2).
+#[pyfunction]
+#[pyo3(signature = (smiles, max_radius=2))]
+fn hose_codes(smiles: &str, max_radius: usize) -> PyResult<Vec<(usize, u8, String)>> {
+    sci_form_core::compute_hose_codes(smiles, max_radius)
+        .map(|codes| {
+            codes
+                .iter()
+                .map(|c| (c.atom_index, c.element, c.full_code.clone()))
+                .collect()
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }

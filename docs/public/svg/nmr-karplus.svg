@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380" font-family="system-ui, sans-serif">
+  <rect width="640" height="380" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="320" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">Karplus Relation: ³J(H,H) vs Dihedral Angle φ</text>
+  <text x="320" y="42" text-anchor="middle" font-size="11" fill="#64748b">³J = A cos²φ − B cosφ + C &nbsp;&nbsp; (Karplus 1963)</text>
+
+  <!-- Axes -->
+  <line x1="70" y1="290" x2="590" y2="290" stroke="#1e293b" stroke-width="1.5"/>
+  <line x1="70" y1="50" x2="70" y2="290" stroke="#1e293b" stroke-width="1.5"/>
+  <!-- x-axis ticks and labels (0, 60, 120, 180, 240, 300, 360) -->
+  <line x1="70" y1="290" x2="70" y2="295" stroke="#475569" stroke-width="1"/>  <text x="70" y="308" text-anchor="middle" font-size="10" fill="#475569">0°</text>
+  <line x1="157" y1="290" x2="157" y2="295" stroke="#475569" stroke-width="1"/><text x="157" y="308" text-anchor="middle" font-size="10" fill="#475569">60°</text>
+  <line x1="244" y1="290" x2="244" y2="295" stroke="#475569" stroke-width="1"/><text x="244" y="308" text-anchor="middle" font-size="10" fill="#475569">120°</text>
+  <line x1="330" y1="290" x2="330" y2="295" stroke="#475569" stroke-width="1"/><text x="330" y="308" text-anchor="middle" font-size="10" fill="#475569">180°</text>
+  <line x1="417" y1="290" x2="417" y2="295" stroke="#475569" stroke-width="1"/><text x="417" y="308" text-anchor="middle" font-size="10" fill="#475569">240°</text>
+  <line x1="503" y1="290" x2="503" y2="295" stroke="#475569" stroke-width="1"/><text x="503" y="308" text-anchor="middle" font-size="10" fill="#475569">300°</text>
+  <line x1="590" y1="290" x2="590" y2="295" stroke="#475569" stroke-width="1"/><text x="590" y="308" text-anchor="middle" font-size="10" fill="#475569">360°</text>
+  <!-- y-axis ticks and labels (0, 2, 4, 6, 8, 10, 12) -->
+  <line x1="68" y1="290" x2="70" y2="290" stroke="#475569" stroke-width="1"/><text x="60" y="294" text-anchor="end" font-size="10" fill="#475569">0</text>
+  <line x1="68" y1="254" x2="70" y2="254" stroke="#475569" stroke-width="1"/><text x="60" y="258" text-anchor="end" font-size="10" fill="#475569">2</text>
+  <line x1="68" y1="218" x2="70" y2="218" stroke="#475569" stroke-width="1"/><text x="60" y="222" text-anchor="end" font-size="10" fill="#475569">4</text>
+  <line x1="68" y1="182" x2="70" y2="182" stroke="#475569" stroke-width="1"/><text x="60" y="186" text-anchor="end" font-size="10" fill="#475569">6</text>
+  <line x1="68" y1="146" x2="70" y2="146" stroke="#475569" stroke-width="1"/><text x="60" y="150" text-anchor="end" font-size="10" fill="#475569">8</text>
+  <line x1="68" y1="110" x2="70" y2="110" stroke="#475569" stroke-width="1"/><text x="60" y="114" text-anchor="end" font-size="10" fill="#475569">10</text>
+  <line x1="68" y1="74" x2="70" y2="74" stroke="#475569" stroke-width="1"/> <text x="60" y="78" text-anchor="end"  font-size="10" fill="#475569">12</text>
+  <!-- Axis labels -->
+  <text x="330" y="325" text-anchor="middle" font-size="11" fill="#475569" font-weight="600">Dihedral Angle φ</text>
+  <text x="22" y="180" text-anchor="middle" font-size="11" fill="#475569" font-weight="600" transform="rotate(-90,22,180)">³J (Hz)</text>
+  
+  <!-- Grid lines -->
+  <line x1="70" y1="254" x2="590" y2="254" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="70" y1="218" x2="590" y2="218" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="70" y1="182" x2="590" y2="182" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="70" y1="146" x2="590" y2="146" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="70" y1="110" x2="590" y2="110" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="70" y1="74" x2="590" y2="74" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="157" y1="50" x2="157" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="244" y1="50" x2="244" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="330" y1="50" x2="330" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="417" y1="50" x2="417" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
+  <line x1="503" y1="50" x2="503" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
+
+  <!-- Karplus curve: J = 7.76*cos^2(phi) - 1.10*cos(phi) + 1.40 
+       scale: x = 70 + phi_deg*(520/360), y = 290 - J * (240/12)
+       Key points: phi=0 => J=8.06, phi=60 => J=2.63, phi=90 => J=1.40, phi=120 => J=2.43, phi=180 => J=10.26
+   -->
+  <path d="
+    M 70,143
+    C 95,147 110,168 130,196
+    C 150,224 155,247 157,254
+    C 167,270 186,280 200,283
+    C 214,285 225,281 230,278
+    C 237,274 242,265 244,254
+    C 252,234 260,214 278,200
+    C 296,186 310,184 324,183
+    C 330,182 335,182 340,184
+    C 348,192 356,209 368,225
+    C 380,241 400,263 417,272
+    C 434,281 445,282 460,278
+    C 482,268 499,245 503,236
+    C 510,218 515,197 530,183
+    C 545,170 560,161 575,152
+    C 582,148 586,145 590,143"
+    fill="none" stroke="#0ea5e9" stroke-width="3"/>
+
+  <!-- Region shading: eclipsed region (0-±30°) -->
+  <rect x="70" y="50" width="43" height="240" fill="#fef2f2" opacity="0.5"/>
+  <rect x="547" y="50" width="43" height="240" fill="#fef2f2" opacity="0.5"/>
+
+  <!-- Region shading: gauche region (40–80°) -->
+  <rect x="130" y="50" width="100" height="240" fill="#fef9c3" opacity="0.4"/>
+  <rect x="390" y="50" width="100" height="240" fill="#fef9c3" opacity="0.4"/>
+
+  <!-- Region shading: anti region (150–210°) -->
+  <rect x="288" y="50" width="84" height="240" fill="#dcfce7" opacity="0.4"/>
+
+  <!-- Annotations -->
+  <text x="91" y="66" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">eclipsed</text>
+  <text x="91" y="77" text-anchor="middle" font-size="9" fill="#ef4444">φ≈0°</text>
+  <text x="572" y="66" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">eclipsed</text>
+  <text x="572" y="77" text-anchor="middle" font-size="9" fill="#ef4444">φ≈360°</text>
+  <text x="180" y="66" text-anchor="middle" font-size="9" fill="#a16207" font-weight="600">gauche</text>
+  <text x="440" y="66" text-anchor="middle" font-size="9" fill="#a16207" font-weight="600">gauche</text>
+  <text x="330" y="66" text-anchor="middle" font-size="9" fill="#166534" font-weight="600">anti</text>
+
+  <!-- Key value markers -->
+  <!-- phi=0, J=8.06 -->
+  <circle cx="70" cy="143" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
+  <text x="73" y="134" font-size="9" fill="#0369a1">8.1 Hz</text>
+
+  <!-- phi=90, J=1.40 -->
+  <circle cx="200" cy="265" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
+  <text x="204" y="263" font-size="9" fill="#0369a1">1.4 Hz</text>
+
+  <!-- phi=180, J=10.26 -->
+  <circle cx="330" cy="104" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
+  <text x="334" y="100" font-size="9" fill="#0369a1">10.3 Hz</text>
+
+  <!-- phi=270, J=1.40 -->
+  <circle cx="460" cy="265" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
+  <text x="464" y="262" font-size="9" fill="#0369a1">1.4 Hz</text>
+
+  <!-- phi=360, J=8.06 -->
+  <circle cx="590" cy="143" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
+
+  <!-- Parameter box -->
+  <rect x="72" y="332" width="490" height="38" rx="6" fill="#f0f9ff" stroke="#bae6fd" stroke-width="1"/>
+  <text x="317" y="349" text-anchor="middle" font-size="10" fill="#0c4a6e" font-weight="600">Karplus parameters (Haasnoot–de Leeuw, sci-form defaults): A = 7.76, B = 1.10, C = 1.40</text>
+  <text x="317" y="363" text-anchor="middle" font-size="9" fill="#0c4a6e">Coupling small near 90° (orthogonal). Maximum near 0° (eclipsed) and 180° (anti, largest ³J).</text>
+</svg>

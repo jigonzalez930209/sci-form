@@ -380,6 +380,183 @@ Returns `{"energy": 12.345, "unit": "kcal/mol"}` or `{"error": "..."}`.
 
 ---
 
+## Spectroscopy (Track D)
+
+### `compute_stda_uvvis`
+
+```typescript
+function compute_stda_uvvis(
+  elements: string,      // JSON number[]
+  coords_flat: string,   // JSON number[] flat [x0,y0,z0,...]
+  sigma: number,
+  e_min: number,
+  e_max: number,
+  n_points: number,
+  broadening: string     // "gaussian" | "lorentzian"
+): string
+```
+
+Returns JSON `StdaUvVisSpectrum`:
+
+```typescript
+interface StdaUvVisSpectrum {
+  wavelengths_nm: number[];    // wavelength axis in nm
+  intensities: number[];       // ε(λ) values
+  excitations: {
+    energy_ev: number;
+    wavelength_nm: number;
+    oscillator_strength: number;
+    from_mo: number;
+    to_mo: number;
+  }[];
+  homo_energy: number;         // eV
+  lumo_energy: number;         // eV
+  gap: number;                 // eV
+  n_transitions: number;
+  broadening_type: string;
+  notes: string[];
+}
+```
+
+```typescript
+const r = JSON.parse(embed('c1ccccc1', 42));
+const el = JSON.stringify(r.elements);
+const co = JSON.stringify(r.coords);
+const spec = JSON.parse(compute_stda_uvvis(el, co, 0.3, 1.0, 8.0, 500, 'gaussian'));
+const maxIdx = spec.intensities.indexOf(Math.max(...spec.intensities));
+console.log(`λ_max ≈ ${spec.wavelengths_nm[maxIdx].toFixed(1)} nm, gap ${spec.gap.toFixed(2)} eV`);
+```
+
+---
+
+### `compute_vibrational_analysis`
+
+```typescript
+function compute_vibrational_analysis(
+  elements: string,      // JSON number[]
+  coords_flat: string,   // JSON number[] flat
+  method: string,        // "eht" | "pm3" | "xtb"
+  step_size: number | null
+): string
+```
+
+Returns JSON `VibrationalAnalysis`:
+
+```typescript
+interface VibrationalAnalysis {
+  n_atoms: number;
+  modes: {
+    frequency_cm1: number;   // negative = imaginary (transition state)
+    ir_intensity: number;    // km/mol
+    displacement: number[];  // 3N normal-coordinate displacements
+    is_real: boolean;
+  }[];
+  n_real_modes: number;
+  zpve_ev: number;           // zero-point vibrational energy in eV
+  method: string;
+  notes: string[];
+}
+```
+
+```typescript
+const vib = JSON.parse(compute_vibrational_analysis(el, co, 'xtb', null));
+console.log(`ZPVE: ${vib.zpve_ev.toFixed(4)} eV, ${vib.n_real_modes} real modes`);
+```
+
+---
+
+### `compute_ir_spectrum`
+
+```typescript
+function compute_ir_spectrum(
+  analysis_json: string,  // JSON-serialised VibrationalAnalysis
+  gamma: number,          // Lorentzian HWHM in cm⁻¹
+  wn_min: number,
+  wn_max: number,
+  n_points: number
+): string
+```
+
+Returns JSON `IrSpectrum { wavenumbers, intensities, peaks, gamma, notes }`.
+
+```typescript
+const spec = JSON.parse(compute_ir_spectrum(JSON.stringify(vib), 15.0, 600.0, 4000.0, 1000));
+const peak_wn = spec.wavenumbers[spec.intensities.indexOf(Math.max(...spec.intensities))];
+console.log(`Dominant IR band: ${peak_wn.toFixed(1)} cm⁻¹`);
+```
+
+---
+
+### `predict_nmr_shifts`
+
+```typescript
+function predict_nmr_shifts(smiles: string): string
+```
+
+Returns JSON `NmrShiftResult`:
+
+```typescript
+interface NmrShiftResult {
+  h_shifts: { atom_index: number; element: number; shift_ppm: number; environment: string; confidence: number }[];
+  c_shifts: { atom_index: number; element: number; shift_ppm: number; environment: string; confidence: number }[];
+  notes: string[];
+}
+```
+
+```typescript
+const shifts = JSON.parse(predict_nmr_shifts('CCO'));
+shifts.h_shifts.forEach((h: any) =>
+  console.log(`H#${h.atom_index}: ${h.shift_ppm.toFixed(2)} ppm [${h.environment}]`));
+```
+
+---
+
+### `predict_nmr_couplings`
+
+```typescript
+function predict_nmr_couplings(
+  smiles: string,
+  coords_flat: string   // JSON number[] or "[]" for free-rotation average
+): string
+```
+
+Returns JSON array of `JCoupling { h1_index, h2_index, j_hz, n_bonds, coupling_type }`.
+
+---
+
+### `compute_nmr_spectrum`
+
+```typescript
+function compute_nmr_spectrum(
+  smiles: string,
+  nucleus: string,    // "1H" | "13C"
+  gamma: number,
+  ppm_min: number,
+  ppm_max: number,
+  n_points: number
+): string
+```
+
+Full NMR spectrum pipeline. Returns JSON `NmrSpectrum { ppm_axis, intensities, peaks, nucleus, gamma }`.
+
+```typescript
+const spec = JSON.parse(compute_nmr_spectrum('CCO', '1H', 0.01, -2.0, 12.0, 2000));
+const maxIdx = spec.intensities.indexOf(Math.max(...spec.intensities));
+console.log(`Most intense peak: δ ${spec.ppm_axis[maxIdx].toFixed(2)} ppm`);
+```
+
+---
+
+### `compute_hose_codes`
+
+```typescript
+function compute_hose_codes(smiles: string, max_radius: number): string
+```
+
+Returns JSON array of `HoseCode { atom_index, element, code_string, radius }`.
+
+---
+
 ## Materials
 
 ### `create_unit_cell`
