@@ -261,6 +261,17 @@ $$
 
 ---
 
+## Track D: Advanced Spectroscopy and Response Properties
+
+For a detailed breakdown of the spectroscopy development plan, see [docs/spectroscopy_roadmap.md](file:///home/lestad/github/sci-form/docs/spectroscopy_roadmap.md).
+Specific deep-dive for NMR: [docs/nmr_detailed_roadmap.md](file:///home/lestad/github/sci-form/docs/nmr_detailed_roadmap.md).
+
+- [x] **UV-Vis Spectroscopy:** Vertical excitations via sTDA-xTB and spectral broadening (Phase D1)
+- [x] **IR Spectroscopy:** Numerical Hessian, vibrational frequencies, and dipole intensities (Phase D2)
+- [x] **NMR Spectroscopy:** Topological/ML-based prediction for 1H and 13C chemical shifts (Phase D3)
+
+---
+
 ## Priority Order From Here
 
 - [x] Reduce conformer-engine runtime: pre-computed active pair lists, stack-allocated diffs, adaptive restart limits
@@ -270,3 +281,6 @@ $$
 - [x] Implement Kabsch/RMSD (Phase C6) as the production alignment and diversity metric
 - [x] Complete force-field validation (Phase C7) before enabling conformer geometry optimization
 - [x] Evaluate Arrow/WASM-Workers architecture (Phase C9) for browser-side ensemble rendering
+- [x] **[NEW]** Implement sTDA-xTB module for ultrafast UV-Vis screening (Phase D1)
+- [x] **[NEW]** Build numerical Hessian infrastructure for IR vibrational analysis (Phase D2)
+- [x] **[NEW]** Integrate ML models for NMR chemical shift prediction (Phase D3)
