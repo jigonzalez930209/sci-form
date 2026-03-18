@@ -76,8 +76,8 @@ fn distance(positions: &[[f64; 3]], a: usize, b: usize) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::basis::ANG_TO_BOHR;
+    use super::*;
 
     #[test]
     fn test_gcp_positive() {

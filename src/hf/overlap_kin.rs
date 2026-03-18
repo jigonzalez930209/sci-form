@@ -62,15 +62,27 @@ fn compute_shell_pair_st(
             let (sz, tz) = compute_1d_st(shell_a.center[2], shell_b.center[2], ea, eb);
 
             let pre_s = ca * cb * (std::f64::consts::PI / gamma).powf(1.5);
-            
+
             // For S: S3D = Sx * Sy * Sz
             // For T: T3D = Tx*Sy*Sz + Sx*Ty*Sz + Sx*Sy*Tz
-            
+
             // Compute blocks
             let mut s_prim = vec![0.0; na * nb];
             let mut t_prim = vec![0.0; na * nb];
 
-            build_3d_block(shell_a.shell_type, shell_b.shell_type, &sx, &sy, &sz, &tx, &ty, &tz, pre_s, &mut s_prim, &mut t_prim);
+            build_3d_block(
+                shell_a.shell_type,
+                shell_b.shell_type,
+                &sx,
+                &sy,
+                &sz,
+                &tx,
+                &ty,
+                &tz,
+                pre_s,
+                &mut s_prim,
+                &mut t_prim,
+            );
 
             for k in 0..(na * nb) {
                 s_res[k] += s_prim[k];
@@ -84,9 +96,9 @@ fn compute_shell_pair_st(
 fn compute_1d_st(a: f64, b: f64, ea: f64, eb: f64) -> ([[f64; 4]; 2], [[f64; 2]; 2]) {
     let gamma = ea + eb;
     let p = (ea * a + eb * b) / gamma;
-    
+
     let mut s = [[0.0; 4]; 2]; // s[a][b] for a in 0..=1, b in 0..=3
-    
+
     // Scale factor out: we pulled out (pi/gamma)^1.5 already
     s[0][0] = (-ea * eb / gamma * (a - b).powi(2)).exp();
     s[1][0] = (p - a) * s[0][0];
@@ -98,7 +110,7 @@ fn compute_1d_st(a: f64, b: f64, ea: f64, eb: f64) -> ([[f64; 4]; 2], [[f64; 2];
     s[1][3] = (p - a) * s[0][3] + 3.0 / (2.0 * gamma) * s[0][2];
 
     let mut t = [[0.0; 2]; 2]; // t[a][b] for a,b in 0..=1
-    // T = b*(2*l_b+1) * S_ab - 2*b^2 * S_a,b+2
+                               // T = b*(2*l_b+1) * S_ab - 2*b^2 * S_a,b+2
     t[0][0] = eb * 1.0 * s[0][0] - 2.0 * eb * eb * s[0][2];
     t[1][0] = eb * 1.0 * s[1][0] - 2.0 * eb * eb * s[1][2];
     t[0][1] = eb * 3.0 * s[0][1] - 2.0 * eb * eb * s[0][3];
@@ -108,36 +120,53 @@ fn compute_1d_st(a: f64, b: f64, ea: f64, eb: f64) -> ([[f64; 4]; 2], [[f64; 2];
 }
 
 fn build_3d_block(
-    ta: ShellType, tb: ShellType,
-    sx: &[[f64; 4]; 2], sy: &[[f64; 4]; 2], sz: &[[f64; 4]; 2],
-    tx: &[[f64; 2]; 2], ty: &[[f64; 2]; 2], tz: &[[f64; 2]; 2],
-    pre: f64, s_out: &mut [f64], t_out: &mut [f64]
+    ta: ShellType,
+    tb: ShellType,
+    sx: &[[f64; 4]; 2],
+    sy: &[[f64; 4]; 2],
+    sz: &[[f64; 4]; 2],
+    tx: &[[f64; 2]; 2],
+    ty: &[[f64; 2]; 2],
+    tz: &[[f64; 2]; 2],
+    pre: f64,
+    s_out: &mut [f64],
+    t_out: &mut [f64],
 ) {
     let nb = if tb == ShellType::P { 3 } else { 1 };
-    
+
     // Helper closures
-    let get_s = |ax: usize, ay: usize, az: usize, bx: usize, by: usize, bz: usize| -> f64 { sx[ax][bx] * sy[ay][by] * sz[az][bz] };
+    let get_s = |ax: usize, ay: usize, az: usize, bx: usize, by: usize, bz: usize| -> f64 {
+        sx[ax][bx] * sy[ay][by] * sz[az][bz]
+    };
     let get_t = |ax: usize, ay: usize, az: usize, bx: usize, by: usize, bz: usize| -> f64 {
-        tx[ax][bx] * sy[ay][by] * sz[az][bz] + sx[ax][bx] * ty[ay][by] * sz[az][bz] + sx[ax][bx] * sy[ay][by] * tz[az][bz]
+        tx[ax][bx] * sy[ay][by] * sz[az][bz]
+            + sx[ax][bx] * ty[ay][by] * sz[az][bz]
+            + sx[ax][bx] * sy[ay][by] * tz[az][bz]
     };
 
     match (ta, tb) {
         (ShellType::S, ShellType::S) => {
-            s_out[0] = pre * get_s(0,0,0, 0,0,0);
-            t_out[0] = pre * get_t(0,0,0, 0,0,0);
+            s_out[0] = pre * get_s(0, 0, 0, 0, 0, 0);
+            t_out[0] = pre * get_t(0, 0, 0, 0, 0, 0);
         }
         (ShellType::S, ShellType::P) => {
-            s_out[0] = pre * get_s(0,0,0, 1,0,0); t_out[0] = pre * get_t(0,0,0, 1,0,0);
-            s_out[1] = pre * get_s(0,0,0, 0,1,0); t_out[1] = pre * get_t(0,0,0, 0,1,0);
-            s_out[2] = pre * get_s(0,0,0, 0,0,1); t_out[2] = pre * get_t(0,0,0, 0,0,1);
+            s_out[0] = pre * get_s(0, 0, 0, 1, 0, 0);
+            t_out[0] = pre * get_t(0, 0, 0, 1, 0, 0);
+            s_out[1] = pre * get_s(0, 0, 0, 0, 1, 0);
+            t_out[1] = pre * get_t(0, 0, 0, 0, 1, 0);
+            s_out[2] = pre * get_s(0, 0, 0, 0, 0, 1);
+            t_out[2] = pre * get_t(0, 0, 0, 0, 0, 1);
         }
         (ShellType::P, ShellType::S) => {
-            s_out[0*nb] = pre * get_s(1,0,0, 0,0,0); t_out[0*nb] = pre * get_t(1,0,0, 0,0,0);
-            s_out[1*nb] = pre * get_s(0,1,0, 0,0,0); t_out[1*nb] = pre * get_t(0,1,0, 0,0,0);
-            s_out[2*nb] = pre * get_s(0,0,1, 0,0,0); t_out[2*nb] = pre * get_t(0,0,1, 0,0,0);
+            s_out[0] = pre * get_s(1, 0, 0, 0, 0, 0);
+            t_out[0] = pre * get_t(1, 0, 0, 0, 0, 0);
+            s_out[nb] = pre * get_s(0, 1, 0, 0, 0, 0);
+            t_out[nb] = pre * get_t(0, 1, 0, 0, 0, 0);
+            s_out[2 * nb] = pre * get_s(0, 0, 1, 0, 0, 0);
+            t_out[2 * nb] = pre * get_t(0, 0, 1, 0, 0, 0);
         }
         (ShellType::P, ShellType::P) => {
-            let p_axes = [(1,0,0), (0,1,0), (0,0,1)];
+            let p_axes = [(1, 0, 0), (0, 1, 0), (0, 0, 1)];
             for i in 0..3 {
                 for j in 0..3 {
                     let ax = p_axes[i];
@@ -153,8 +182,8 @@ fn build_3d_block(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::basis::build_sto3g_basis;
+    use super::*;
 
     #[test]
     fn test_overlap_diagonal_one() {
@@ -165,11 +194,10 @@ mod tests {
 
     #[test]
     fn test_overlap_symmetric() {
-        let basis = build_sto3g_basis(&[8, 1, 1], &[
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 1.8],
-            [0.0, 1.8, 0.0],
-        ]);
+        let basis = build_sto3g_basis(
+            &[8, 1, 1],
+            &[[0.0, 0.0, 0.0], [0.0, 0.0, 1.8], [0.0, 1.8, 0.0]],
+        );
         let s = compute_overlap_matrix(&basis);
         for i in 0..s.nrows() {
             for j in 0..s.nrows() {

@@ -65,8 +65,7 @@ fn nuclear_shell_pair(
                 let t = gamma * pc2;
                 let f0 = boys_function(0, t);
 
-                let prefactor = -2.0 * std::f64::consts::PI / gamma
-                    * exp_ab * z as f64 * ca * cb;
+                let prefactor = -2.0 * std::f64::consts::PI / gamma * exp_ab * z as f64 * ca * cb;
 
                 match (a.shell_type, b.shell_type) {
                     (ShellType::S, ShellType::S) => {
@@ -97,9 +96,7 @@ fn nuclear_shell_pair(
                                 let pb = p[j] - b.center[j];
                                 let pc_i = p[i] - c[i];
                                 let pc_j = p[j] - c[j];
-                                let mut val = pa * pb * f0
-                                    - pa * pc_j * f1
-                                    - pb * pc_i * f1
+                                let mut val = pa * pb * f0 - pa * pc_j * f1 - pb * pc_i * f1
                                     + pc_i * pc_j * f2;
                                 if i == j {
                                     val += (f0 - f1) / (2.0 * gamma);

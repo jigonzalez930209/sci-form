@@ -40,10 +40,20 @@ pub fn compute_aevs(
         };
         let _ = si; // atom i species (used for symmetry)
         compute_radial_aev(
-            i, elements, positions, &atom_neighbors[i], params, &mut aevs[i],
+            i,
+            elements,
+            positions,
+            &atom_neighbors[i],
+            params,
+            &mut aevs[i],
         );
         compute_angular_aev(
-            i, elements, positions, &atom_neighbors[i], params, &mut aevs[i],
+            i,
+            elements,
+            positions,
+            &atom_neighbors[i],
+            params,
+            &mut aevs[i],
         );
     }
 
@@ -128,8 +138,7 @@ fn compute_angular_aev(
                     for zeta in &params.angular_zeta {
                         for theta_s in &params.angular_theta_s {
                             let cos_term = 1.0 + (theta - theta_s).cos();
-                            let angular = 2.0f64.powf(1.0 - zeta)
-                                * cos_term.powf(*zeta);
+                            let angular = 2.0f64.powf(1.0 - zeta) * cos_term.powf(*zeta);
                             let radial = (-eta * (r_avg - rs).powi(2)).exp();
                             aev[offset + m] += angular * radial * fc_ij * fc_ik;
                             m += 1;
@@ -162,9 +171,9 @@ fn compute_angle(positions: &[[f64; 3]], i: usize, j: usize, k: usize) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::aev_params::default_ani2x_params;
     use super::super::neighbor::CellList;
+    use super::*;
 
     #[test]
     fn test_aev_water() {

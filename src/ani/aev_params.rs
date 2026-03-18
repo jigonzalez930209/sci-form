@@ -40,8 +40,10 @@ impl AevParams {
 
     /// Dimension of the angular sub-vector per species-pair combination.
     pub fn angular_length(&self) -> usize {
-        self.angular_eta.len() * self.angular_rs.len()
-            * self.angular_zeta.len() * self.angular_theta_s.len()
+        self.angular_eta.len()
+            * self.angular_rs.len()
+            * self.angular_zeta.len()
+            * self.angular_theta_s.len()
     }
 
     /// Total AEV length for one atom.
@@ -74,9 +76,7 @@ pub fn default_ani2x_params() -> AevParams {
     let angular_eta = vec![12.5; 4];
     let angular_rs: Vec<f64> = (0..4).map(|i| 0.8 + 0.95 * i as f64).collect();
     let angular_zeta = vec![14.1; 1];
-    let angular_theta_s: Vec<f64> = (0..8)
-        .map(|i| PI * i as f64 / 8.0)
-        .collect();
+    let angular_theta_s: Vec<f64> = (0..8).map(|i| PI * i as f64 / 8.0).collect();
 
     AevParams {
         radial_cutoff: 5.2,
@@ -96,10 +96,10 @@ mod tests {
 
     #[test]
     fn test_species_index() {
-        assert_eq!(species_index(1), Some(0));  // H
-        assert_eq!(species_index(6), Some(1));  // C
-        assert_eq!(species_index(8), Some(3));  // O
-        assert_eq!(species_index(26), None);    // Fe not supported
+        assert_eq!(species_index(1), Some(0)); // H
+        assert_eq!(species_index(6), Some(1)); // C
+        assert_eq!(species_index(8), Some(3)); // O
+        assert_eq!(species_index(26), None); // Fe not supported
     }
 
     #[test]

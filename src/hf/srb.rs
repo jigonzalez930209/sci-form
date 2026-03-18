@@ -26,8 +26,7 @@ pub fn compute_srb(elements: &[u8], positions_bohr: &[[f64; 3]]) -> f64 {
 
             let za = elements[a] as f64;
             let zb = elements[b] as f64;
-            let r_cov = covalent_radius_bohr(elements[a])
-                + covalent_radius_bohr(elements[b]);
+            let r_cov = covalent_radius_bohr(elements[a]) + covalent_radius_bohr(elements[b]);
 
             let gaussian = (-gamma_srb * (r - r_cov).powi(2)).exp();
             let prefactor = s_srb * (za * zb).sqrt();
@@ -65,8 +64,8 @@ fn distance(positions: &[[f64; 3]], a: usize, b: usize) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::basis::ANG_TO_BOHR;
+    use super::*;
 
     #[test]
     fn test_srb_at_equilibrium() {

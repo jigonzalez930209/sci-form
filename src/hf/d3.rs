@@ -113,15 +113,12 @@ fn distance(positions: &[[f64; 3]], a: usize, b: usize) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::basis::ANG_TO_BOHR;
+    use super::*;
 
     #[test]
     fn test_d3_h2() {
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.74 * ANG_TO_BOHR],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.74 * ANG_TO_BOHR]];
         let result = compute_d3_energy(&[1, 1], &positions);
         // D3 energy should be small and negative
         assert!(result.energy < 0.0, "D3 should be attractive");
@@ -132,10 +129,7 @@ mod tests {
     fn test_d3_ethane_larger() {
         // Two carbons + H atoms → more D3
         let r = 1.54 * ANG_TO_BOHR;
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, r],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.0, 0.0, r]];
         let result = compute_d3_energy(&[6, 6], &positions);
         assert!(result.energy < 0.0);
     }

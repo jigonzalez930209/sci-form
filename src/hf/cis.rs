@@ -117,7 +117,8 @@ pub fn compute_cis(
         let dom_a = dom_idx % n_virtual + n_occupied;
 
         // Oscillator strength (dipole-length approximation, simplified)
-        let f_osc = 2.0 / 3.0 * energy * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual);
+        let f_osc =
+            2.0 / 3.0 * energy * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual);
 
         excitations.push(Excitation {
             energy,
@@ -132,15 +133,7 @@ pub fn compute_cis(
 }
 
 /// Compute MO-basis ERI from AO-basis ERIs: (pq|rs) = Σ C_μp C_νq C_λr C_σs (μν|λσ).
-fn mo_eri(
-    c: &DMatrix<f64>,
-    eris: &[f64],
-    n: usize,
-    p: usize,
-    q: usize,
-    r: usize,
-    s: usize,
-) -> f64 {
+fn mo_eri(c: &DMatrix<f64>, eris: &[f64], n: usize, p: usize, q: usize, r: usize, s: usize) -> f64 {
     let mut val = 0.0;
     for mu in 0..n {
         let c_mu_p = c[(mu, p)];
@@ -191,8 +184,7 @@ mod tests {
         // With dummy data, CIS should produce excitations
         let energies = vec![-2.0, -1.0, 0.5, 1.0, 1.5];
         let coeffs = DMatrix::identity(n_basis, n_basis);
-        let eris = vec![0.0; n_basis * (n_basis + 1) / 2
-            * (n_basis * (n_basis + 1) / 2 + 1) / 2];
+        let eris = vec![0.0; n_basis * (n_basis + 1) / 2 * (n_basis * (n_basis + 1) / 2 + 1) / 2];
 
         let result = compute_cis(&energies, &coeffs, &eris, n_basis, n_occ, 3);
         assert!(

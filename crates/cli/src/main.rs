@@ -691,14 +691,18 @@ fn main() {
             });
             let positions: Vec<[f64; 3]> =
                 flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
-            
+
             // For testing against references, we'll just run the test model since we don't have real weights integrated in the CLI yet,
             // or we evaluate AEVs to compare. Let's use the API `compute_ani` with the test model.
             let mut network_map = std::collections::HashMap::new();
             for &element in &[1u8, 6, 7, 8] {
                 network_map.insert(element, sci_form::ani::weights::make_test_model(384));
             }
-            let config = sci_form::ani::api::AniConfig { compute_forces: true, output_aevs: true, ..Default::default() };
+            let config = sci_form::ani::api::AniConfig {
+                compute_forces: true,
+                output_aevs: true,
+                ..Default::default()
+            };
             match sci_form::ani::api::compute_ani(&elems, &positions, &config, &network_map) {
                 Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
                 Err(e) => {
@@ -719,7 +723,7 @@ fn main() {
             });
             let positions: Vec<[f64; 3]> =
                 flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
-            
+
             let config = sci_form::hf::api::HfConfig {
                 n_cis_states: 0,
                 corrections: true,

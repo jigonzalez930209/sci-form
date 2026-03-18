@@ -4,7 +4,6 @@
 //! Each primitive Gaussian has the form:
 //! $$g(\vec{r}) = N x^l y^m z^n \exp(-\alpha |\vec{r} - \vec{R}|^2)$$
 
-
 /// Angular momentum type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShellType {
@@ -38,7 +37,7 @@ impl Shell {
         }
     }
 
-    /// Normalize contraction coefficients by multiplying by primitive norms 
+    /// Normalize contraction coefficients by multiplying by primitive norms
     /// and then normalizing the entire contracted shell.
     pub fn normalize(&mut self) {
         // 1. Multiply by primitive norms
@@ -232,7 +231,7 @@ fn sto3g_shells(z: u8, center_idx: usize, center: [f64; 3]) -> Vec<Shell> {
     for shell in &mut shells {
         shell.normalize();
     }
-    
+
     shells
 }
 
