@@ -101,6 +101,20 @@ sci_form::compute_xtb(elements: &[u8], positions: &[[f64;3]]) -> Result<xtb::Xtb
 //             mulliken_charges, scc_iterations, converged }
 // Supported: H, B, C, N, O, F, Si, P, S, Cl, Br, I + Ti, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ru, Pd, Ag, Pt, Au
 
+// ANI — Accurate Neural Network Potential (ANI-2x)
+sci_form::compute_ani(elements: &[u8], positions: &[[f64;3]], config: &AniConfig, models: &HashMap<u8, FeedForwardNet>) -> Result<AniResult, String>
+// AniResult { energy, forces: Vec<[f64;3]>, species, atomic_energies, aevs }
+
+// HF-3c — Minimal basis Hartree-Fock with corrections (D3, gCP, SRB)
+sci_form::solve_hf3c(elements: &[u8], positions: &[[f64;3]], config: &HfConfig) -> Result<Hf3cResult, String>
+// Hf3cResult { total_energy, electronic_energy, nuclear_repulsion, scf_iterations, converged... }
+
+// IR Spectroscopy
+sci_form::compute_ir_spectrum(elements: &[u8], positions: &[[f64;3]], method: ScientificMethod) -> Result<IrSpectrum, String>
+// IrSpectrum { peaks: Vec<IrPeak>, frequencies: Vec<f64>, intensities: Vec<f64> }
+sci_form::compute_vibrational_analysis(elements: &[u8], positions: &[[f64;3]], method: ScientificMethod) -> Result<VibrationalAnalysis, String>
+// VibrationalAnalysis { modes: Vec<VibrationalMode>, frequencies, intensities }
+
 // ML Descriptors + Property Prediction
 sci_form::compute_ml_descriptors(
     elements: &[u8],
