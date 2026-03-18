@@ -261,6 +261,28 @@ $$
 
 ---
 
+## Track E: Machine Learning Potentials (ANI Family)
+
+This track provides near-DFT accuracy at force-field speeds using physical neural networks.
+
+- [x] **Step 1.1: Spatial Partitioning:** Implemented `CellList` for O(N) neighbor searching within a $5.2 \text{ \AA}$ cutoff radius (`src/ani/neighbor.rs`).
+- [x] **Step 1.2: Atomic Environment Vectors (AEVs):** Encoded Behler-Parrinello radial and angular symmetry functions for translational/rotational invariance (`src/ani/aev.rs`, `src/ani/aev_params.rs`, `src/ani/cutoff.rs`).
+- [x] **Step 1.3: Neural Network Engine:** Created a pure-Rust feed-forward inference engine supporting GELU/CELU activations with a binary weight loader (`src/ani/nn.rs`, `src/ani/weights.rs`).
+- [x] **Step 1.4: Analytical Gradients:** Implemented exact backpropagation through the AEVs to yield analytical forces respecting Newton's third law (`src/ani/gradients.rs`, `src/ani/api.rs`).
+
+---
+
+## Track F: HF-3c Quantum Engine
+
+This track introduces a specialized minimal-basis Hartree-Fock engine with semi-empirical corrections for rapid geometric and spectroscopic screening.
+
+- [x] **Step 2.1: Gaussian Integrals:** Implemented Obara-Saika recurrence for analytical evaluation of overlap, kinetic, nuclear attraction, and electron repulsion integrals (`src/hf/overlap_kin.rs`, `src/hf/nuclear.rs`, `src/hf/integrals.rs`, `src/hf/basis.rs`).
+- [x] **Step 2.2: SCF Cycle:** Created a Roothaan-Hall SCF solver with Löwdin orthogonalization and DIIS convergence acceleration (`src/hf/fock.rs`, `src/hf/scf.rs`).
+- [x] **Step 2.3: Empirical Corrections:** Added Grimme D3-BJ dispersion, geometric counterpoise (gCP), and short-range basis (SRB) corrections (`src/hf/d3.rs`, `src/hf/gcp.rs`, `src/hf/srb.rs`).
+- [x] **Step 2.4: CIS UV-Vis:** Implemented Configuration Interaction Singles (CIS) for vertical excitation energies and oscillator strengths (`src/hf/cis.rs`, `src/hf/api.rs`).
+
+---
+
 ## Track D: Advanced Spectroscopy and Response Properties
 
 For a detailed breakdown of the spectroscopy development plan, see [docs/spectroscopy_roadmap.md](file:///home/lestad/github/sci-form/docs/spectroscopy_roadmap.md).
@@ -284,3 +306,14 @@ Specific deep-dive for NMR: [docs/nmr_detailed_roadmap.md](file:///home/lestad/g
 - [x] **[NEW]** Implement sTDA-xTB module for ultrafast UV-Vis screening (Phase D1)
 - [x] **[NEW]** Build numerical Hessian infrastructure for IR vibrational analysis (Phase D2)
 - [x] **[NEW]** Integrate ML models for NMR chemical shift prediction (Phase D3)
+
+---
+
+## Track G: Large-Scale Algorithmic Validation
+
+With the conformer engine, spectroscopic models, ML potentials (ANI), and quantum engines (HF-3c) essentially built, the system needs to be stress-tested against established standard libraries using comprehensive molecule sets.
+
+- [ ] **Step 3.1: Assembly of Representative Molecule Bank:** Curate a diverse set of at least 100 representative molecules spanning different functional groups, stereocenters, and sizes.
+- [ ] **Step 3.2: Automated Pipeline Benchmarking:** Construct automated Python-based test pipelines linking `sci-form` binaries against reference implementations (e.g., PySCF for quantum targets, RDKit for geometries/descriptors).
+- [ ] **Step 3.3: Metric Evaluation:** Enforce a strict passing threshold (e.g., <1% deviation) across energy evaluations, structure gradients, and physical property predictions.
+- [ ] **Step 3.4: Documentation of Scaling Limits:** Profile execution times and memory consumption on the 100-molecule test bank to pinpoint throughput limiters for optimization.
