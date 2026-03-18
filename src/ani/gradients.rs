@@ -165,10 +165,10 @@ fn backprop_radial_forces(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::aev_params::default_ani2x_params;
     use super::super::neighbor::CellList;
     use super::super::weights::make_test_model;
+    use super::*;
 
     #[test]
     fn test_forces_sum_near_zero() {

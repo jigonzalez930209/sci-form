@@ -114,11 +114,7 @@ pub fn solve_scf(
         density = new_density;
     }
 
-    let final_energy = electronic_energy(
-        &density,
-        h_core,
-        &build_fock(h_core, &density, eris, n),
-    );
+    let final_energy = electronic_energy(&density, h_core, &build_fock(h_core, &density, eris, n));
 
     ScfResult {
         energy: final_energy,
@@ -140,7 +136,7 @@ fn lowdin_orthogonalization(s: &DMatrix<f64>) -> DMatrix<f64> {
         if val > 1e-10 {
             let factor = 1.0 / val.sqrt();
             let col = eigen.eigenvectors.column(i);
-            s_inv_half += factor * &col * col.transpose();
+            s_inv_half += factor * col * col.transpose();
         }
     }
     s_inv_half
@@ -186,7 +182,11 @@ fn diis_extrapolate(focks: &[DMatrix<f64>], errors: &[DMatrix<f64>]) -> DMatrix<
 
     for i in 0..m {
         for j in 0..=i {
-            let bij: f64 = errors[i].iter().zip(errors[j].iter()).map(|(a, b)| a * b).sum();
+            let bij: f64 = errors[i]
+                .iter()
+                .zip(errors[j].iter())
+                .map(|(a, b)| a * b)
+                .sum();
             b[(i, j)] = bij;
             b[(j, i)] = bij;
         }

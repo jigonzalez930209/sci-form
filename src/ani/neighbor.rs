@@ -201,11 +201,7 @@ mod tests {
     #[test]
     fn test_water_neighbors() {
         // Water geometry: O at origin, two H at ~0.96 Å
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let cl = CellList::new(&positions, 5.2);
         let pairs = cl.find_neighbors(&positions);
         // All 3 pairs should be within 5.2 Å

@@ -117,18 +117,15 @@ pub fn compute_ani(
 /// Compute ANI energy using internally-generated test weights.
 ///
 /// This is for testing and demonstration only — not physically meaningful.
-pub fn compute_ani_test(
-    elements: &[u8],
-    positions: &[[f64; 3]],
-) -> Result<AniResult, String> {
+pub fn compute_ani_test(elements: &[u8], positions: &[[f64; 3]]) -> Result<AniResult, String> {
     let params = default_ani2x_params();
     let aev_len = params.total_aev_length();
 
     let mut models = HashMap::new();
     for &z in elements {
-        if !models.contains_key(&z) {
-            models.insert(z, super::weights::make_test_model(aev_len));
-        }
+        models
+            .entry(z)
+            .or_insert_with(|| super::weights::make_test_model(aev_len));
     }
 
     compute_ani(elements, positions, &AniConfig::default(), &models)

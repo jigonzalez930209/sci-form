@@ -1,5 +1,5 @@
 use sci_form::hf::basis::build_sto3g_basis;
-use sci_form::hf::overlap_kin::{compute_overlap_matrix, compute_kinetic_matrix};
+use sci_form::hf::overlap_kin::{compute_kinetic_matrix, compute_overlap_matrix};
 
 fn main() {
     let elements = [6];

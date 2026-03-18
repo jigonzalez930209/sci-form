@@ -51,10 +51,7 @@ impl FeedForwardNet {
     }
 
     /// Forward pass returning all intermediate activations (for backprop).
-    pub fn forward_with_intermediates(
-        &self,
-        input: &DVector<f64>,
-    ) -> Vec<DVector<f64>> {
+    pub fn forward_with_intermediates(&self, input: &DVector<f64>) -> Vec<DVector<f64>> {
         let mut activations = Vec::with_capacity(self.layers.len() + 1);
         activations.push(input.clone());
 
@@ -176,8 +173,7 @@ fn erf(x: f64) -> f64 {
     let t = 1.0 / (1.0 + 0.3275911 * x);
     let poly = t
         * (0.254829592
-            + t * (-0.284496736
-                + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+            + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
     sign * (1.0 - poly * (-x * x).exp())
 }
 
