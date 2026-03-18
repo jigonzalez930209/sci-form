@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 8; }
+      .hl-box { fill: #eff6ff; stroke: #3b82f6; stroke-width: 2; rx: 8; }
+      .text { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; fill: #334155; text-anchor: middle; }
+      .title { font-weight: bold; font-size: 16px; fill: #0f172a; }
+      .line { stroke: #94a3b8; stroke-width: 2; fill: none; }
+      .arrow { fill: #94a3b8; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" class="arrow" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="500" class="bg" />
+
+  <!-- Inputs -->
+  <rect x="50" y="50" width="150" height="60" class="hl-box" />
+  <text x="125" y="75" class="text title">Input Geometry</text>
+  <text x="125" y="95" class="text">Elements &amp; 3D Coords</text>
+
+  <path d="M 125 110 L 125 140" class="line" marker-end="url(#arrowhead)" />
+
+  <!-- Neighbor List -->
+  <rect x="50" y="150" width="150" height="60" class="box" />
+  <text x="125" y="175" class="text title">Cell-List Search</text>
+  <text x="125" y="195" class="text">Cutoff = 5.2 Å</text>
+
+  <path d="M 200 180 L 290 180" class="line" marker-end="url(#arrowhead)" />
+
+  <!-- AEV Computer -->
+  <rect x="300" y="130" width="200" height="100" class="hl-box" />
+  <text x="400" y="160" class="text title">AEV Computer</text>
+  <text x="400" y="180" class="text">Radial &amp; Angular Functions</text>
+  <text x="400" y="200" class="text">Translation/Rotation Invariant</text>
+
+  <path d="M 400 230 L 400 270" class="line" marker-end="url(#arrowhead)" />
+
+  <!-- Neural Network -->
+  <rect x="300" y="280" width="200" height="90" class="box" />
+  <text x="400" y="310" class="text title">Neural Network</text>
+  <text x="400" y="330" class="text">GELU / CELU Activations</text>
+  <text x="400" y="350" class="text">Element-specific weights</text>
+
+  <path d="M 500 325 L 590 325" class="line" marker-end="url(#arrowhead)" />
+
+  <!-- Outputs -->
+  <rect x="600" y="295" width="150" height="60" class="hl-box" />
+  <text x="675" y="320" class="text title">Atomic Energies</text>
+  <text x="675" y="340" class="text">Summed to Total E</text>
+
+  <!-- Gradients -->
+  <path d="M 675 295 L 675 260 L 590 260" class="line" marker-end="url(#arrowhead)" stroke-dasharray="5,5" />
+  <rect x="600" y="150" width="150" height="60" class="hl-box" />
+  <text x="675" y="175" class="text title">Analytical Forces</text>
+  <text x="675" y="195" class="text">Backprop via Autograd</text>
+  <path d="M 500 180 L 590 180" class="line" marker-end="url(#arrowhead)" stroke-dasharray="5,5" />
+
+  <text x="675" y="140" class="text" fill="#64748b" font-style="italic">Reverse Auto-diff</text>
+
+</svg>

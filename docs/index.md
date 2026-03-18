@@ -27,8 +27,8 @@ features:
     title: RDKit-Quality Accuracy
     details: "0.064 Å avg RMSD vs RDKit. 846 CSD torsion patterns. 100% stereo validation."
   - icon: 🔬
-    title: Three QM Methods
-    details: "**NEW v0.4** — EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast)."
+    title: Four QM Methods
+    details: "**NEW v0.6** — HF-3c Engine, EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast)."
   - icon: 🌈
     title: Spectroscopy (Track D)
     details: "**NEW v0.5** — UV-Vis sTDA with oscillator strengths (Gaussian/Lorentzian broadening), IR via numerical Hessian (3N modes, ZPVE, km/mol intensities), ¹H/¹³C NMR with HOSE codes + Karplus ³J-couplings."
@@ -39,8 +39,8 @@ features:
     title: Electrostatic Potential & DOS
     details: "Coulomb ESP grids (red/white/blue mapping), total/per-atom DOS with Gaussian smearing, volumetric orbital grids, Marching Cubes isosurfaces."
   - icon: 🧬
-    title: ML Descriptors & Properties
-    details: "**NEW v0.4** — 17 descriptors (no 3D), LogP, solubility, Lipinski Ro5, druglikeness. SMILES → results in ~1 μs."
+    title: ML Potentials & Descriptors
+    details: "**NEW v0.6** — ANI Neural Network exact replication for energies/forces. Plus 17 descriptors, LogP, solubility, Lipinski Ro5."
   - icon: 🧲
     title: Force Fields
     details: "UFF (50+ elements + TM) and MMFF94 (Halgren 14-7 vdW, quartic/cubic bends, Fourier torsions)."

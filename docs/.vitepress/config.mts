@@ -83,6 +83,8 @@ export default defineConfig({
           text: 'Properties & Analysis',
           items: [
             { text: 'Extended Hückel Theory', link: '/algorithm/extended-huckel-theory' },
+            { text: 'HF-3c Quantum Engine', link: '/algorithm/hf3c-quantum-engine' },
+            { text: 'Machine Learning Potentials', link: '/algorithm/machine-learning-potentials' },
             { text: 'Electrostatic Potential', link: '/algorithm/electrostatic-potential' },
             { text: 'Density of States', link: '/algorithm/density-of-states' },
             { text: 'Population Analysis', link: '/algorithm/population-analysis' },

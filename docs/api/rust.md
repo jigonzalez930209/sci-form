@@ -599,3 +599,5 @@ for hose in &codes {
 | `sci_form::reactivity` | `StdaUvVisSpectrum`, `StdaExcitation`, `BroadeningType`, `compute_stda_uvvis_spectrum()` |
 | `sci_form::ir` | `VibrationalAnalysis`, `VibrationalMode`, `IrSpectrum`, `IrPeak`, `compute_vibrational_analysis()`, `compute_ir_spectrum()` |
 | `sci_form::nmr` | `NmrShiftResult`, `ChemicalShift`, `JCoupling`, `NmrSpectrum`, `NmrPeak`, `HoseCode`, `NmrNucleus` |
+| `sci_form::ani` | `compute_ani()`, `compute_ani_batch()`, `AniConfig`, `AniResult`, `CellList` |
+| `sci_form::hf` | `solve_hf3c()`, `solve_hf3c_batch()`, `HfConfig`, `Hf3cResult`, `compute_cis()` |
