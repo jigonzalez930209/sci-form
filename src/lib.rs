@@ -3,6 +3,7 @@
 #![allow(clippy::needless_range_loop)]
 
 pub mod alignment;
+pub mod ani;
 pub mod charges;
 pub mod conformer;
 pub mod dipole;
@@ -14,6 +15,7 @@ pub mod esp;
 pub mod etkdg;
 pub mod forcefield;
 pub mod graph;
+pub mod hf;
 pub mod ir;
 pub mod materials;
 pub mod ml;
@@ -128,6 +130,8 @@ pub enum ScientificMethod {
     Pm3,
     Xtb,
     Mmff94,
+    Ani,
+    Hf3c,
 }
 
 /// Property domain used when choosing a recommended computational method.
@@ -410,6 +414,16 @@ fn confidence_score_for_method(method: ScientificMethod, capability: &MethodCapa
                 eht::SupportLevel::Unsupported => 0.0,
             }
         }
+        ScientificMethod::Ani => match capability.confidence {
+            eht::SupportLevel::Supported => 0.90,
+            eht::SupportLevel::Experimental => 0.7,
+            eht::SupportLevel::Unsupported => 0.0,
+        },
+        ScientificMethod::Hf3c => match capability.confidence {
+            eht::SupportLevel::Supported => 0.85,
+            eht::SupportLevel::Experimental => 0.65,
+            eht::SupportLevel::Unsupported => 0.0,
+        },
     }
 }
 
