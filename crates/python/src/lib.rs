@@ -259,6 +259,8 @@ fn scientific_method_name(method: sci_form_core::ScientificMethod) -> String {
         sci_form_core::ScientificMethod::Pm3 => "pm3",
         sci_form_core::ScientificMethod::Xtb => "xtb",
         sci_form_core::ScientificMethod::Mmff94 => "mmff94",
+        sci_form_core::ScientificMethod::Ani => "ani",
+        sci_form_core::ScientificMethod::Hf3c => "hf3c",
     }
     .to_string()
 }
