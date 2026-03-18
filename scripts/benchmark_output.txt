@@ -1,0 +1,8 @@
+[1/8] C          | Rust HF:   -41.336106 (Nuc:  13.200437) | PySCF:   -39.724601 (Nuc:  13.200436) | Err: 4.0567%
+Traceback (most recent call last):
+  File "/home/lestad/github/sci-form/scripts/benchmark_hf3c.py", line 88, in <module>
+    main()
+  File "/home/lestad/github/sci-form/scripts/benchmark_hf3c.py", line 83, in main
+    assert err_pct < 1.0, f"Error exceeds 1% for {smi}! ({err_pct:.4f}%)"
+           ^^^^^^^^^^^^^
+AssertionError: Error exceeds 1% for C! (4.0567%)
