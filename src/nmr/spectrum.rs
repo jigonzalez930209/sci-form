@@ -15,6 +15,22 @@ pub enum NmrNucleus {
     H1,
     /// ¹³C NMR
     C13,
+    /// ¹⁹F NMR
+    F19,
+    /// ³¹P NMR
+    P31,
+    /// ¹⁵N NMR
+    N15,
+    /// ¹¹B NMR
+    B11,
+    /// ²⁹Si NMR
+    Si29,
+    /// ⁷⁷Se NMR
+    Se77,
+    /// ¹⁷O NMR
+    O17,
+    /// ³³S NMR
+    S33,
 }
 
 /// A single peak in the NMR spectrum.
@@ -93,6 +109,14 @@ pub fn compute_nmr_spectrum(
     let active_shifts: &[ChemicalShift] = match nucleus {
         NmrNucleus::H1 => &shifts.h_shifts,
         NmrNucleus::C13 => &shifts.c_shifts,
+        NmrNucleus::F19 => &shifts.f_shifts,
+        NmrNucleus::P31 => &shifts.p_shifts,
+        NmrNucleus::N15 => &shifts.n_shifts,
+        NmrNucleus::B11 => &shifts.b_shifts,
+        NmrNucleus::Si29 => &shifts.si_shifts,
+        NmrNucleus::Se77 => &shifts.se_shifts,
+        NmrNucleus::O17 => &shifts.o_shifts,
+        NmrNucleus::S33 => &shifts.s_shifts,
     };
 
     let mut peaks = Vec::with_capacity(active_shifts.len());
@@ -106,7 +130,7 @@ pub fn compute_nmr_spectrum(
                 .filter(|c| c.n_bonds == 3) // only vicinal for splitting
                 .count()
         } else {
-            0 // ¹³C typically shows as singlets in proton-decoupled spectra
+            0 // Non-¹H nuclei typically shown as singlets in decoupled spectra
         };
 
         let mult = multiplicity_label(n_j);
@@ -121,8 +145,8 @@ pub fn compute_nmr_spectrum(
         });
 
         // Simple splitting pattern (first-order only)
-        if n_j == 0 || matches!(nucleus, NmrNucleus::C13) {
-            // Singlet or ¹³C: single Lorentzian
+        if n_j == 0 || !matches!(nucleus, NmrNucleus::H1) {
+            // Singlet or non-¹H: single Lorentzian
             for (idx, &ppm) in ppm_axis.iter().enumerate() {
                 intensities[idx] += intensity * lorentzian(ppm, shift.shift_ppm, gamma);
             }
@@ -165,6 +189,14 @@ pub fn compute_nmr_spectrum(
     let nucleus_label = match nucleus {
         NmrNucleus::H1 => "¹H",
         NmrNucleus::C13 => "¹³C",
+        NmrNucleus::F19 => "¹⁹F",
+        NmrNucleus::P31 => "³¹P",
+        NmrNucleus::N15 => "¹⁵N",
+        NmrNucleus::B11 => "¹¹B",
+        NmrNucleus::Si29 => "²⁹Si",
+        NmrNucleus::Se77 => "⁷⁷Se",
+        NmrNucleus::O17 => "¹⁷O",
+        NmrNucleus::S33 => "³³S",
     };
 
     NmrSpectrum {

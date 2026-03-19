@@ -26,7 +26,7 @@ use nalgebra::DMatrix;
 
 const BASIN_THRESH: f32 = 5.0;
 const FORCE_TOL: f32 = 1e-3;
-const PLANARITY_TOLERANCE: f32 = 0.7;
+const PLANARITY_TOLERANCE: f32 = 1.0;
 const ERROR_TOL: f64 = 1e-5; // RDKit's ERROR_TOL for energy pre-check
 
 /// Generate a 3D conformer from a SMILES string.
@@ -170,9 +170,14 @@ pub fn generate_3d_conformer_with_torsions(
         (n as u32 / 4).max(20)
     };
     let mut random_coord_attempts = 0u32;
-    let max_random_coord_attempts = if n > 100 { 50u32 } else { 100u32 };
+    let max_random_coord_attempts = if n > 100 { 80u32 } else { 150u32 };
     // Scale BFGS restart limit: large molecules converge with fewer restarts
     let bfgs_restart_limit = if n > 100 { 20 } else { 50 };
+
+    // Track energy-check failures for progressive relaxation
+    let mut energy_check_failures = 0u32;
+    // After 30% of iterations fail at the energy check, relax from 0.05 to 0.125
+    let energy_relax_threshold = (max_iterations as f64 * 0.3) as u32;
 
     for _iter in 0..max_iterations {
         // Log attempt number if requested (works in both lib and integration tests)
@@ -246,10 +251,17 @@ pub fn generate_3d_conformer_with_torsions(
             }
         }
 
-        // Step 3: Energy per atom check
+        // Step 3: Energy per atom check with progressive relaxation
+        // For difficult molecules (complex polycyclic), relax energy threshold after many failures
         let bt = basin_thresh as f32;
         let energy = compute_total_bounds_energy_f64(&coords, &bounds, &chiral_sets, bt, 0.1, 1.0);
-        if energy / n as f64 >= MAX_MINIMIZED_E_PER_ATOM as f64 {
+        let effective_e_thresh = if energy_check_failures >= energy_relax_threshold {
+            MAX_MINIMIZED_E_PER_ATOM as f64 * 2.5 // 0.125 — still rejects truly bad conformers
+        } else {
+            MAX_MINIMIZED_E_PER_ATOM as f64
+        };
+        if energy / n as f64 >= effective_e_thresh {
+            energy_check_failures += 1;
             if _log_attempts {
                 eprintln!(
                     "  attempt {} → energy check failed: {:.6}/atom",

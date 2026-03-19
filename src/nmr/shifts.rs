@@ -29,10 +29,26 @@ pub struct ChemicalShift {
 /// Complete NMR shift prediction result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NmrShiftResult {
-    /// Predicted shifts for hydrogen atoms.
+    /// Predicted shifts for hydrogen atoms (¹H).
     pub h_shifts: Vec<ChemicalShift>,
-    /// Predicted shifts for carbon atoms.
+    /// Predicted shifts for carbon atoms (¹³C).
     pub c_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for fluorine atoms (¹⁹F).
+    pub f_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for phosphorus atoms (³¹P).
+    pub p_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for nitrogen atoms (¹⁵N).
+    pub n_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for boron atoms (¹¹B).
+    pub b_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for silicon atoms (²⁹Si).
+    pub si_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for selenium atoms (⁷⁷Se).
+    pub se_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for oxygen atoms (¹⁷O).
+    pub o_shifts: Vec<ChemicalShift>,
+    /// Predicted shifts for sulfur atoms (³³S).
+    pub s_shifts: Vec<ChemicalShift>,
     /// Notes and caveats.
     pub notes: Vec<String>,
 }
@@ -390,37 +406,363 @@ fn predict_c_shift(mol: &Molecule, c_idx: NodeIndex) -> (f64, String, f64) {
     }
 }
 
-/// Predict ¹H and ¹³C chemical shifts for all atoms in a molecule.
+// ─── ¹⁹F Chemical Shift Prediction ────────────────────────────────────────
+// Range: ~ -300 to +100 ppm (CFCl₃ reference = 0 ppm)
+fn predict_f_shift(mol: &Molecule, f_idx: NodeIndex) -> (f64, String, f64) {
+    let neighbors: Vec<NodeIndex> = mol.graph.neighbors(f_idx).collect();
+    if neighbors.is_empty() {
+        return (-100.0, "isolated_F".to_string(), 0.30);
+    }
+    let parent = neighbors[0];
+    let parent_elem = mol.graph[parent].element;
+    let is_aromatic = mol
+        .graph
+        .edges(parent)
+        .any(|e| matches!(e.weight().order, BondOrder::Aromatic));
+
+    match parent_elem {
+        6 if is_aromatic => {
+            // Aryl fluoride: ~-110 to -120 ppm
+            let mut shift = -113.0;
+            for nb in mol.graph.neighbors(parent) {
+                if nb == f_idx {
+                    continue;
+                }
+                let nb_elem = mol.graph[nb].element;
+                let en_diff = electronegativity(nb_elem) - electronegativity(6);
+                shift -= en_diff * 3.0;
+            }
+            (shift, "aryl_C-F".to_string(), 0.65)
+        }
+        6 => {
+            // Aliphatic C-F
+            let n_f_on_parent = mol
+                .graph
+                .neighbors(parent)
+                .filter(|n| mol.graph[*n].element == 9)
+                .count();
+            let shift = match n_f_on_parent {
+                3 => -63.0,  // CF₃
+                2 => -105.0, // CF₂
+                _ => -170.0, // CHF
+            };
+            let env = match n_f_on_parent {
+                3 => "CF3",
+                2 => "CF2",
+                _ => "CHF",
+            };
+            (shift, format!("sp3_{}", env), 0.60)
+        }
+        _ => (-100.0, "other_X-F".to_string(), 0.40),
+    }
+}
+
+// ─── ³¹P Chemical Shift Prediction ────────────────────────────────────────
+// Range: ~ -200 to +250 ppm (H₃PO₄ reference = 0 ppm)
+fn predict_p_shift(mol: &Molecule, p_idx: NodeIndex) -> (f64, String, f64) {
+    let heavy_neighbors: Vec<u8> = mol
+        .graph
+        .neighbors(p_idx)
+        .filter(|nb| mol.graph[*nb].element != 1)
+        .map(|nb| mol.graph[nb].element)
+        .collect();
+    let n_o = heavy_neighbors.iter().filter(|&&e| e == 8).count();
+    let n_c = heavy_neighbors.iter().filter(|&&e| e == 6).count();
+    let n_n = heavy_neighbors.iter().filter(|&&e| e == 7).count();
+    let has_double_o = mol.graph.edges(p_idx).any(|e| {
+        let other = if e.source() == p_idx {
+            e.target()
+        } else {
+            e.source()
+        };
+        mol.graph[other].element == 8 && matches!(e.weight().order, BondOrder::Double)
+    });
+
+    if has_double_o && n_o >= 3 {
+        // Phosphate PO₄³⁻ type
+        (0.0, "phosphate_P=O".to_string(), 0.65)
+    } else if has_double_o && n_o >= 1 {
+        // Phosphonate / phosphine oxide
+        (30.0, "phosphonate_P=O".to_string(), 0.60)
+    } else if n_c >= 3 {
+        // Trialkylphosphine PR₃
+        (-20.0, "trialkylphosphine".to_string(), 0.55)
+    } else if n_c >= 1 && n_o >= 1 {
+        // Phosphite P(OR)₃
+        (140.0, "phosphite".to_string(), 0.55)
+    } else if n_n >= 1 {
+        // Phosphoramide
+        (25.0, "phosphoramide".to_string(), 0.50)
+    } else {
+        (0.0, "other_P".to_string(), 0.40)
+    }
+}
+
+// ─── ¹⁵N Chemical Shift Prediction ────────────────────────────────────────
+// Range: ~ -400 to +900 ppm (liquid NH₃ reference = 0 ppm, or nitromethane at 380.5)
+// We use liquid NH₃ = 0 ppm convention
+fn predict_n_shift(mol: &Molecule, n_idx: NodeIndex) -> (f64, String, f64) {
+    let is_aromatic = mol
+        .graph
+        .edges(n_idx)
+        .any(|e| matches!(e.weight().order, BondOrder::Aromatic));
+    let heavy_neighbors: Vec<u8> = mol
+        .graph
+        .neighbors(n_idx)
+        .filter(|nb| mol.graph[*nb].element != 1)
+        .map(|nb| mol.graph[nb].element)
+        .collect();
+    let n_h = mol
+        .graph
+        .neighbors(n_idx)
+        .filter(|nb| mol.graph[*nb].element == 1)
+        .count();
+    let has_double = mol
+        .graph
+        .edges(n_idx)
+        .any(|e| matches!(e.weight().order, BondOrder::Double));
+
+    if is_aromatic {
+        // Pyridine-type N: ~300-330 ppm
+        (310.0, "aromatic_N".to_string(), 0.55)
+    } else if has_double {
+        // Imine N=C: ~300-350 ppm
+        (320.0, "imine_N=C".to_string(), 0.50)
+    } else if heavy_neighbors.contains(&8) && has_double {
+        // Nitro: ~370 ppm
+        (370.0, "nitro_N".to_string(), 0.50)
+    } else if n_h == 0 && heavy_neighbors.len() >= 3 {
+        // Tertiary amine: ~30-50 ppm
+        (40.0, "tertiary_amine_N".to_string(), 0.55)
+    } else if n_h == 1 {
+        // Secondary amine: ~20-80 ppm
+        (50.0, "secondary_amine_N".to_string(), 0.50)
+    } else if n_h >= 2 {
+        // Primary amine: ~0-30 ppm
+        (20.0, "primary_amine_N".to_string(), 0.55)
+    } else {
+        (30.0, "other_N".to_string(), 0.40)
+    }
+}
+
+// ─── ¹¹B Chemical Shift Prediction ────────────────────────────────────────
+// Range: ~ -120 to +90 ppm (BF₃·Et₂O reference = 0 ppm)
+fn predict_b_shift(mol: &Molecule, b_idx: NodeIndex) -> (f64, String, f64) {
+    let heavy_neighbors: Vec<u8> = mol
+        .graph
+        .neighbors(b_idx)
+        .filter(|nb| mol.graph[*nb].element != 1)
+        .map(|nb| mol.graph[nb].element)
+        .collect();
+    let n_o = heavy_neighbors.iter().filter(|&&e| e == 8).count();
+    let n_c = heavy_neighbors.iter().filter(|&&e| e == 6).count();
+    let n_f = heavy_neighbors.iter().filter(|&&e| e == 9).count();
+    let n_h = mol
+        .graph
+        .neighbors(b_idx)
+        .filter(|nb| mol.graph[*nb].element == 1)
+        .count();
+
+    if n_f >= 3 {
+        (0.0, "BF3".to_string(), 0.65) // reference compound
+    } else if n_o >= 2 {
+        (20.0, "boronic_acid_B(OH)2".to_string(), 0.55)
+    } else if n_c >= 2 && n_h == 0 {
+        (70.0, "triorganoborane_BR3".to_string(), 0.50)
+    } else if n_h >= 2 {
+        (-20.0, "borohydride_BH".to_string(), 0.50)
+    } else {
+        (30.0, "other_B".to_string(), 0.40)
+    }
+}
+
+// ─── ²⁹Si Chemical Shift Prediction ──────────────────────────────────────
+// Range: ~ -200 to +200 ppm (TMS reference = 0 ppm)
+fn predict_si_shift(mol: &Molecule, si_idx: NodeIndex) -> (f64, String, f64) {
+    let heavy_neighbors: Vec<u8> = mol
+        .graph
+        .neighbors(si_idx)
+        .filter(|nb| mol.graph[*nb].element != 1)
+        .map(|nb| mol.graph[nb].element)
+        .collect();
+    let n_o = heavy_neighbors.iter().filter(|&&e| e == 8).count();
+    let n_c = heavy_neighbors.iter().filter(|&&e| e == 6).count();
+    let n_cl = heavy_neighbors.iter().filter(|&&e| e == 17).count();
+
+    if n_c == 4 {
+        // Tetraalkylsilane (TMS-like)
+        (0.0, "tetraalkylsilane_SiR4".to_string(), 0.65)
+    } else if n_o >= 4 {
+        // Silicate SiO₄
+        (-110.0, "silicate_SiO4".to_string(), 0.55)
+    } else if n_o >= 2 {
+        // Alkoxysilane Si(OR)₂
+        (-50.0, "alkoxysilane_Si(OR)2".to_string(), 0.50)
+    } else if n_cl >= 1 {
+        // Chlorosilane
+        (0.0 + n_cl as f64 * 10.0, "chlorosilane".to_string(), 0.50)
+    } else if n_c >= 1 && n_o >= 1 {
+        (-20.0, "organosiloxane".to_string(), 0.50)
+    } else {
+        (0.0, "other_Si".to_string(), 0.40)
+    }
+}
+
+// ─── ⁷⁷Se Chemical Shift Prediction ──────────────────────────────────────
+// Range: ~ -1000 to +2000 ppm (Me₂Se reference = 0 ppm)
+fn predict_se_shift(mol: &Molecule, se_idx: NodeIndex) -> (f64, String, f64) {
+    let heavy_neighbors: Vec<u8> = mol
+        .graph
+        .neighbors(se_idx)
+        .filter(|nb| mol.graph[*nb].element != 1)
+        .map(|nb| mol.graph[nb].element)
+        .collect();
+    let n_c = heavy_neighbors.iter().filter(|&&e| e == 6).count();
+    let n_h = mol
+        .graph
+        .neighbors(se_idx)
+        .filter(|nb| mol.graph[*nb].element == 1)
+        .count();
+
+    if n_c >= 2 {
+        // Dialkyl selenide R₂Se
+        (0.0, "dialkyl_selenide".to_string(), 0.50)
+    } else if n_h >= 1 {
+        // Selenol RSeH
+        (-50.0, "selenol_SeH".to_string(), 0.45)
+    } else {
+        (200.0, "other_Se".to_string(), 0.35)
+    }
+}
+
+// ─── ¹⁷O Chemical Shift Prediction ───────────────────────────────────────
+// Range: ~ -50 to +1200 ppm (H₂O reference = 0 ppm)
+fn predict_o_shift(mol: &Molecule, o_idx: NodeIndex) -> (f64, String, f64) {
+    let is_double = mol
+        .graph
+        .edges(o_idx)
+        .any(|e| matches!(e.weight().order, BondOrder::Double));
+    let heavy_neighbors: Vec<u8> = mol
+        .graph
+        .neighbors(o_idx)
+        .filter(|nb| mol.graph[*nb].element != 1)
+        .map(|nb| mol.graph[nb].element)
+        .collect();
+    let n_h = mol
+        .graph
+        .neighbors(o_idx)
+        .filter(|nb| mol.graph[*nb].element == 1)
+        .count();
+
+    if is_double {
+        // C=O carbonyl oxygen: ~500-600 ppm
+        (550.0, "carbonyl_O=C".to_string(), 0.50)
+    } else if n_h >= 1 && heavy_neighbors.len() == 1 {
+        // Alcohol R-OH: ~-10 to 50 ppm
+        (0.0, "alcohol_O-H".to_string(), 0.55)
+    } else if heavy_neighbors.len() >= 2 {
+        // Ether R-O-R: ~0-100 ppm
+        (50.0, "ether_R-O-R".to_string(), 0.50)
+    } else {
+        (0.0, "other_O".to_string(), 0.40)
+    }
+}
+
+// ─── ³³S Chemical Shift Prediction ────────────────────────────────────────
+// Range: ~ -500 to +800 ppm (CS₂ reference ~ 0 ppm)
+fn predict_s_shift(mol: &Molecule, s_idx: NodeIndex) -> (f64, String, f64) {
+    let is_double = mol
+        .graph
+        .edges(s_idx)
+        .any(|e| matches!(e.weight().order, BondOrder::Double));
+    let heavy_neighbors: Vec<u8> = mol
+        .graph
+        .neighbors(s_idx)
+        .filter(|nb| mol.graph[*nb].element != 1)
+        .map(|nb| mol.graph[nb].element)
+        .collect();
+    let n_o = heavy_neighbors.iter().filter(|&&e| e == 8).count();
+    let n_c = heavy_neighbors.iter().filter(|&&e| e == 6).count();
+    let n_h = mol
+        .graph
+        .neighbors(s_idx)
+        .filter(|nb| mol.graph[*nb].element == 1)
+        .count();
+
+    if n_o >= 3 {
+        // Sulfonate -SO₃⁻
+        (-10.0, "sulfonate_SO3".to_string(), 0.50)
+    } else if n_o >= 2 && is_double {
+        // Sulfone -SO₂-
+        (0.0, "sulfone_SO2".to_string(), 0.50)
+    } else if n_o >= 1 && is_double {
+        // Sulfoxide -S(=O)-
+        (200.0, "sulfoxide_SO".to_string(), 0.45)
+    } else if is_double {
+        // Thioketone C=S
+        (300.0, "thioketone_C=S".to_string(), 0.45)
+    } else if n_c >= 2 {
+        // Dialkyl sulfide R₂S
+        (20.0, "dialkyl_sulfide".to_string(), 0.50)
+    } else if n_h >= 1 {
+        // Thiol RSH
+        (-10.0, "thiol_SH".to_string(), 0.50)
+    } else {
+        (0.0, "other_S".to_string(), 0.40)
+    }
+}
+
+/// Predict chemical shifts for all NMR-active nuclei in a molecule.
 pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
     let n = mol.graph.node_count();
     let mut h_shifts = Vec::new();
     let mut c_shifts = Vec::new();
+    let mut f_shifts = Vec::new();
+    let mut p_shifts = Vec::new();
+    let mut n_shifts = Vec::new();
+    let mut b_shifts = Vec::new();
+    let mut si_shifts = Vec::new();
+    let mut se_shifts = Vec::new();
+    let mut o_shifts = Vec::new();
+    let mut s_shifts = Vec::new();
 
     for atom_idx in 0..n {
         let idx = NodeIndex::new(atom_idx);
         let elem = mol.graph[idx].element;
 
+        let (shift, env, conf) = match elem {
+            1 => predict_h_shift(mol, idx),
+            6 => predict_c_shift(mol, idx),
+            7 => predict_n_shift(mol, idx),
+            8 => predict_o_shift(mol, idx),
+            9 => predict_f_shift(mol, idx),
+            5 => predict_b_shift(mol, idx),
+            14 => predict_si_shift(mol, idx),
+            15 => predict_p_shift(mol, idx),
+            16 => predict_s_shift(mol, idx),
+            34 => predict_se_shift(mol, idx),
+            _ => continue,
+        };
+
+        let cs = ChemicalShift {
+            atom_index: atom_idx,
+            element: elem,
+            shift_ppm: shift,
+            environment: env,
+            confidence: conf,
+        };
+
         match elem {
-            1 => {
-                let (shift, env, conf) = predict_h_shift(mol, idx);
-                h_shifts.push(ChemicalShift {
-                    atom_index: atom_idx,
-                    element: 1,
-                    shift_ppm: shift,
-                    environment: env,
-                    confidence: conf,
-                });
-            }
-            6 => {
-                let (shift, env, conf) = predict_c_shift(mol, idx);
-                c_shifts.push(ChemicalShift {
-                    atom_index: atom_idx,
-                    element: 6,
-                    shift_ppm: shift,
-                    environment: env,
-                    confidence: conf,
-                });
-            }
+            1 => h_shifts.push(cs),
+            6 => c_shifts.push(cs),
+            7 => n_shifts.push(cs),
+            8 => o_shifts.push(cs),
+            9 => f_shifts.push(cs),
+            5 => b_shifts.push(cs),
+            14 => si_shifts.push(cs),
+            15 => p_shifts.push(cs),
+            16 => s_shifts.push(cs),
+            34 => se_shifts.push(cs),
             _ => {}
         }
     }
@@ -428,10 +770,18 @@ pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
     NmrShiftResult {
         h_shifts,
         c_shifts,
+        f_shifts,
+        p_shifts,
+        n_shifts,
+        b_shifts,
+        si_shifts,
+        se_shifts,
+        o_shifts,
+        s_shifts,
         notes: vec![
             "Chemical shifts predicted using empirical additivity rules based on local atomic environment.".to_string(),
-            "Accuracy target: MAE < 0.5 ppm for ¹H, < 3.0 ppm for ¹³C. Values are approximate screening-level predictions.".to_string(),
-            "Aromatic and functional group corrections are applied where detected.".to_string(),
+            "¹H and ¹³C: MAE target < 0.5 / 3.0 ppm. Other nuclei: screening-level approximations.".to_string(),
+            "Supported nuclei: ¹H, ¹³C, ¹⁹F, ³¹P, ¹⁵N, ¹¹B, ²⁹Si, ⁷⁷Se, ¹⁷O, ³³S.".to_string(),
         ],
     }
 }

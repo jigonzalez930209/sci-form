@@ -221,8 +221,8 @@ pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, S
     }
 
     // SCF procedure
-    let max_iter = 100;
-    let convergence_threshold = 1e-6;
+    let max_iter = 200;
+    let convergence_threshold = 1e-5;
 
     // Initial density matrix from core Hamiltonian eigenvectors
     let mut density = DMatrix::zeros(n_basis, n_basis);
@@ -357,16 +357,21 @@ pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, S
                         p_b += new_density[(k, k)];
                     }
                 }
-                let pb_params = get_pm3_params(elements[b]).unwrap();
-                g_mat[(i, i)] += (p_b - pb_params.core_charge) * gamma_ab * 0.0; // Included in h_core already
-
-                // Simplified: add two-center Coulomb
-                g_mat[(i, i)] += p_b * gamma_ab * 0.1; // Damped two-center
+                // Two-center electron-electron Coulomb repulsion
+                // (electron-nuclear attraction is already in h_core)
+                g_mat[(i, i)] += p_b * gamma_ab;
             }
         }
 
         // Damped density mixing for SCF stability
-        let damp = if iter < 5 { 0.5 } else { 0.3 };
+        // Use more conservative mixing (higher damp) at later iterations
+        let damp = if iter < 5 {
+            0.3
+        } else if iter < 30 {
+            0.5
+        } else {
+            0.7
+        };
         density = &density * damp + &new_density * (1.0 - damp);
 
         // New Fock matrix
