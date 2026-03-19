@@ -10,16 +10,16 @@
 
 | Track | Description | Status |
 |-------|-------------|--------|
-| H1 | NMR Spectroscopy | 🔲 Not started |
-| H2 | Vibrational Analysis & IR Spectroscopy | 🔲 Not started |
-| H3 | Charge Modeling & Force-Field Parametrization | 🔲 Not started |
-| H4 | Conformational Sampling Refinement | 🔲 Not started |
-| H5 | Topology & Molecular Descriptors | 🔲 Not started |
-| H6 | Molecular Dynamics & Thermodynamics | 🔲 Not started |
-| H7 | Implicit Solvation Modeling | 🔲 Not started |
-| H8 | Quantum Mechanics: Iterative SCF Evolution | 🔲 Not started |
-| H9 | Stereochemistry & Chirality Perception | 🔲 Not started |
-| H10 | Surface Generation & Scientific Visualization | 🔲 Not started |
+| H1 | NMR Spectroscopy | ✅ Complete |
+| H2 | Vibrational Analysis & IR Spectroscopy | 🟡 Mostly complete (H2.1c pending) |
+| H3 | Charge Modeling & Force-Field Parametrization | 🟡 H3.1 complete, H3.2 partial |
+| H4 | Conformational Sampling Refinement | 🟡 H4.1 complete, H4.2 pending |
+| H5 | Topology & Molecular Descriptors | ✅ Complete |
+| H6 | Molecular Dynamics & Thermodynamics | 🔲 Not started (enhancements) |
+| H7 | Implicit Solvation Modeling | ✅ Complete |
+| H8 | Quantum Mechanics: Iterative SCF Evolution | 🟡 H8.1b/H8.2a partial |
+| H9 | Stereochemistry & Chirality Perception | 🟡 H9.1/H9.2a-b complete, H9.2c pending |
+| H10 | Surface Generation & Scientific Visualization | 🟡 H10.1a/H10.1d complete, rest pending |
 
 ---
 
@@ -33,11 +33,11 @@ Enhance the existing NMR module (`src/nmr/`) with higher-fidelity algorithms for
 
 **Current state:** Basic HOSE code generation exists in `src/nmr/hose.rs`.
 
-- [ ] **H1.1a** Extend HOSE code generation to support sphere radii up to 5 (currently limited)
-- [ ] **H1.1b** Add canonical ordering within each sphere (Morgan-algorithm-based tie-breaking)
-- [ ] **H1.1c** Embed a compile-time HOSE → chemical-shift lookup database (using `phf` or `include!` macro) covering ¹H and ¹³C shifts from NMRShiftDB2 reference data
-- [ ] **H1.1d** Implement database-backed shift prediction: look up the most specific HOSE match (radius 4 → 3 → 2 → 1 fallback) to predict δ(ppm)
-- [ ] **H1.1e** Validate: ¹H shift predictions within ±0.3 ppm MAE on a 50-molecule organic test set; ¹³C within ±3.0 ppm MAE
+- [x] **H1.1a** Extend HOSE code generation to support sphere radii up to 5 (currently limited)
+- [x] **H1.1b** Add canonical ordering within each sphere (Morgan-algorithm-based tie-breaking)
+- [x] **H1.1c** Embed a compile-time HOSE → chemical-shift lookup database (using `phf` or `include!` macro) covering ¹H and ¹³C shifts from NMRShiftDB2 reference data
+- [x] **H1.1d** Implement database-backed shift prediction: look up the most specific HOSE match (radius 4 → 3 → 2 → 1 fallback) to predict δ(ppm)
+- [x] **H1.1e** Validate: ¹H shift predictions within ±0.3 ppm MAE on a 50-molecule organic test set; ¹³C within ±3.0 ppm MAE
 
 ### Phase H1.2: 3D Karplus Equation for J-Couplings
 
@@ -51,10 +51,10 @@ where $A$, $B$, $C$ are empirical parameters depending on the coupling pathway (
 
 **Current state:** Basic Karplus implementation exists in `src/nmr/coupling.rs`.
 
-- [ ] **H1.2a** Expand parameterization tables for all common H-C-X-H pathways (X = C, N, O)
-- [ ] **H1.2b** Add Altona-modified Karplus parameters for sugar/nucleotide systems
-- [ ] **H1.2c** Add ensemble averaging: compute ³J over multiple conformer geometries and Boltzmann-weight the result
-- [ ] **H1.2d** Validate: ³J(H,H) predictions within ±0.5 Hz MAE on ethane, cyclohexane, and butane reference values
+- [x] **H1.2a** Expand parameterization tables for all common H-C-X-H pathways (X = C, N, O)
+- [x] **H1.2b** Add Altona-modified Karplus parameters for sugar/nucleotide systems
+- [x] **H1.2c** Add ensemble averaging: compute ³J over multiple conformer geometries and Boltzmann-weight the result
+- [x] **H1.2d** Validate: ³J(H,H) predictions within ±0.5 Hz MAE on ethane, cyclohexane, and butane reference values
 
 ### Phase H1.3: Lorentzian Broadening for NMR Spectra
 
@@ -68,10 +68,10 @@ where $\gamma$ is the full-width at half-maximum.
 
 **Current state:** Lorentzian broadening implemented in `src/nmr/spectrum.rs`.
 
-- [ ] **H1.3a** Add configurable FWHM per nucleus type (¹H: 1 Hz, ¹³C: 5 Hz defaults)
-- [ ] **H1.3b** Add first-order multiplet splitting from J-couplings (doublet, triplet, quartet patterns)
-- [ ] **H1.3c** Add integration (relative area) calculation for each peak group
-- [ ] **H1.3d** Validate: spectral peak positions match input shifts to <0.01 ppm; multiplet patterns match analytical Pascal's triangle splitting
+- [x] **H1.3a** Add configurable FWHM per nucleus type (¹H: 1 Hz, ¹³C: 5 Hz defaults)
+- [x] **H1.3b** Add first-order multiplet splitting from J-couplings (doublet, triplet, quartet patterns)
+- [x] **H1.3c** Add integration (relative area) calculation for each peak group
+- [x] **H1.3d** Validate: spectral peak positions match input shifts to <0.01 ppm; multiplet patterns match analytical Pascal's triangle splitting
 
 ---
 
@@ -89,10 +89,10 @@ $$
 
 **Current state:** Numerical Hessian implemented in `src/ir/hessian.rs` using central differences.
 
-- [ ] **H2.1a** Add automatic step-size selection based on atomic mass and force-field stiffness
-- [ ] **H2.1b** Add symmetry enforcement: $H_{ij} = H_{ji}$ averaging to reduce numerical noise
+- [x] **H2.1a** Add automatic step-size selection based on atomic mass and force-field stiffness
+- [x] **H2.1b** Add symmetry enforcement: $H_{ij} = H_{ji}$ averaging to reduce numerical noise
 - [ ] **H2.1c** Add analytical Hessian path for UFF bond-stretch and angle-bend terms (avoiding 6N energy evaluations for these)
-- [ ] **H2.1d** Validate: Hessian symmetry error $\|H - H^T\|_F / \|H\|_F < 10^{-6}$
+- [x] **H2.1d** Validate: Hessian symmetry error $\|H - H^T\|_F / \|H\|_F < 10^{-6}$
 
 ### Phase H2.2: Mass-Weighted Diagonalization and Normal Modes
 
@@ -104,10 +104,10 @@ $$
 
 **Current state:** Mass-weighted normal mode analysis implemented in `src/ir/vibrations.rs`.
 
-- [ ] **H2.2a** Add translation/rotation mode removal (project out 6 zero-frequency modes for nonlinear, 5 for linear molecules)
-- [ ] **H2.2b** Add zero-point vibrational energy (ZPVE) with anharmonic correction factor (0.9 × harmonic)
-- [ ] **H2.2c** Add thermochemical properties: thermal energy, entropy, and Gibbs free energy at 298.15 K using the rigid-rotor harmonic-oscillator (RRHO) approximation
-- [ ] **H2.2d** Validate: H₂O frequencies within 5% of NIST values (3657, 1595, 3756 cm⁻¹); CO₂ within 5% of NIST (667, 1388, 2349 cm⁻¹)
+- [x] **H2.2a** Add translation/rotation mode removal (project out 6 zero-frequency modes for nonlinear, 5 for linear molecules)
+- [x] **H2.2b** Add zero-point vibrational energy (ZPVE) with anharmonic correction factor (0.9 × harmonic)
+- [x] **H2.2c** Add thermochemical properties: thermal energy, entropy, and Gibbs free energy at 298.15 K using the rigid-rotor harmonic-oscillator (RRHO) approximation
+- [x] **H2.2d** Validate: H₂O frequencies within 5% of NIST values (3657, 1595, 3756 cm⁻¹); CO₂ within 5% of NIST (667, 1388, 2349 cm⁻¹)
 
 ### Phase H2.3: IR Spectrum Generation with Intensity Calculation
 
@@ -119,10 +119,10 @@ $$
 
 **Current state:** Numerical dipole derivative intensities implemented.
 
-- [ ] **H2.3a** Add spectral assignment: label peaks with functional-group annotations (C=O stretch, O-H stretch, etc.) using frequency ranges
-- [ ] **H2.3b** Add Gaussian broadening option alongside existing Lorentzian
-- [ ] **H2.3c** Add transmittance (%T) output in addition to absorbance
-- [ ] **H2.3d** Validate: key functional group frequencies (C=O ~1700 cm⁻¹, O-H ~3400 cm⁻¹, C-H ~2900 cm⁻¹) within 10% of experimental values
+- [x] **H2.3a** Add spectral assignment: label peaks with functional-group annotations (C=O stretch, O-H stretch, etc.) using frequency ranges
+- [x] **H2.3b** Add Gaussian broadening option alongside existing Lorentzian
+- [x] **H2.3c** Add transmittance (%T) output in addition to absorbance
+- [x] **H2.3d** Validate: key functional group frequencies (C=O ~1700 cm⁻¹, O-H ~3400 cm⁻¹, C-H ~2900 cm⁻¹) within 10% of experimental values
 
 ---
 
@@ -140,10 +140,10 @@ where $\chi(q) = a + bq + cq^2$ and $d$ is the damping factor (typically 0.5).
 
 **Current state:** Gasteiger-Marsili fully implemented in `src/charges/gasteiger.rs` for 12 elements.
 
-- [ ] **H3.1a** Extend element coverage to all main-group elements up to period 4 (Li, Be, Na, Mg, Al, etc.)
-- [ ] **H3.1b** Add configurable damping factor and convergence threshold
-- [ ] **H3.1c** Add formal-charge-aware initialization for charged species (protonated amines, carboxylates)
-- [ ] **H3.1d** Validate: charges on ethanol, acetic acid, benzene within 0.5% of OpenBabel Gasteiger reference
+- [x] **H3.1a** Extend element coverage to all main-group elements up to period 4 (Li, Be, Na, Mg, Al, etc.)
+- [x] **H3.1b** Add configurable damping factor and convergence threshold
+- [x] **H3.1c** Add formal-charge-aware initialization for charged species (protonated amines, carboxylates)
+- [x] **H3.1d** Validate: charges on ethanol, acetic acid, benzene within 0.5% of OpenBabel Gasteiger reference
 
 ### Phase H3.2: SMARTS-Based Atom Typing for Force Fields
 
@@ -152,9 +152,9 @@ where $\chi(q) = a + bq + cq^2$ and $d$ is the damping factor (typically 0.5).
 **Current state:** Basic SMARTS parser and matcher exist in `src/smarts/`. MMFF94 atom typing (28 types) exists in `src/forcefield/`.
 
 - [ ] **H3.2a** Add complete MMFF94 atom-type SMARTS rules with priority ordering (75 rules)
-- [ ] **H3.2b** Add UFF atom-type assignment covering coordination number and hybridization
+- [x] **H3.2b** Add UFF atom-type assignment covering coordination number and hybridization
 - [ ] **H3.2c** Add validation: atom-type assignment for 20 diverse molecules matches RDKit MMFF94 typing exactly
-- [ ] **H3.2d** Add automatic parameter lookup after typing: bond/angle/torsion/vdW parameters from typed atoms
+- [x] **H3.2d** Add automatic parameter lookup after typing: bond/angle/torsion/vdW parameters from typed atoms
 
 ---
 
@@ -168,11 +168,11 @@ where $\chi(q) = a + bq + cq^2$ and $d$ is the damping factor (typically 0.5).
 3. Select the conformer with the most neighbors as a cluster centroid
 4. Remove all its neighbors from the pool; repeat until empty
 
-- [ ] **H4.1a** Implement Butina clustering with configurable RMSD cutoff (default 1.0 Å)
-- [ ] **H4.1b** Add O(N²) RMSD matrix computation with Kabsch alignment from `src/alignment/`
-- [ ] **H4.1c** Return cluster centroids, cluster sizes, and representative conformer indices
+- [x] **H4.1a** Implement Butina clustering with configurable RMSD cutoff (default 1.0 Å)
+- [x] **H4.1b** Add O(N²) RMSD matrix computation with Kabsch alignment from `src/alignment/`
+- [x] **H4.1c** Return cluster centroids, cluster sizes, and representative conformer indices
 - [ ] **H4.1d** Integrate into `embed_batch` pipeline as a post-processing filter
-- [ ] **H4.1e** Validate: clustering of 50 ethane conformers yields ≤3 clusters (gauche, anti, eclipsed)
+- [x] **H4.1e** Validate: clustering of 50 ethane conformers yields ≤3 clusters (gauche, anti, eclipsed)
 
 ### Phase H4.2: Torsional Sampling (Systematic + Simulated Annealing)
 
@@ -201,10 +201,10 @@ $$
 
 **Current state:** Ring detection exists via the `petgraph` cycle basis, but SSSR-specific logic is not fully canonical.
 
-- [ ] **H5.1a** Implement canonical SSSR using Horton's algorithm (shortest-path-based cycle extraction)
-- [ ] **H5.1b** Add ring-size histogram and ring-membership annotation per atom/bond
-- [ ] **H5.1c** Add aromaticity perception: Hückel's rule (4n+2 electrons) applied to SSSR rings with alternating single/double bonds or full conjugation
-- [ ] **H5.1d** Validate: benzene → 1 ring (size 6, aromatic); naphthalene → 2 rings (both size 6, aromatic); cubane → 5 rings (all size 4, non-aromatic)
+- [x] **H5.1a** Implement canonical SSSR using Horton's algorithm (shortest-path-based cycle extraction)
+- [x] **H5.1b** Add ring-size histogram and ring-membership annotation per atom/bond
+- [x] **H5.1c** Add aromaticity perception: Hückel's rule (4n+2 electrons) applied to SSSR rings with alternating single/double bonds or full conjugation
+- [x] **H5.1d** Validate: benzene → 1 ring (size 6, aromatic); naphthalene → 2 rings (both size 6, aromatic); cubane → 5 rings (all size 4, non-aromatic)
 
 ### Phase H5.2: Morgan Algorithm & ECFP Fingerprints
 
@@ -214,11 +214,11 @@ $$
 3. Collect all unique identifiers across all radii as the fingerprint bit set
 4. Fold to a fixed-length bit vector (1024 or 2048 bits) via modular hashing
 
-- [ ] **H5.2a** Implement atom-invariant initialization (element, degree, valence, ring, aromaticity, formal charge)
-- [ ] **H5.2b** Implement iterative neighborhood aggregation with deterministic hashing (FNV-1a or xxHash)
-- [ ] **H5.2c** Add configurable radius (ECFP4 = radius 2, ECFP6 = radius 3)
-- [ ] **H5.2d** Add bit-vector folding to 1024/2048 bits with Tanimoto similarity function
-- [ ] **H5.2e** Validate: Tanimoto(benzene, toluene) > 0.5; Tanimoto(benzene, hexane) < 0.2; self-similarity = 1.0
+- [x] **H5.2a** Implement atom-invariant initialization (element, degree, valence, ring, aromaticity, formal charge)
+- [x] **H5.2b** Implement iterative neighborhood aggregation with deterministic hashing (FNV-1a or xxHash)
+- [x] **H5.2c** Add configurable radius (ECFP4 = radius 2, ECFP6 = radius 3)
+- [x] **H5.2d** Add bit-vector folding to 1024/2048 bits with Tanimoto similarity function
+- [x] **H5.2e** Validate: Tanimoto(benzene, toluene) > 0.5; Tanimoto(benzene, hexane) < 0.2; self-similarity = 1.0
 
 ---
 
@@ -269,10 +269,10 @@ where $\xi$ is the thermostat variable and $Q$ is the thermostat mass.
 
 **Current state:** Full Shrake-Rupley implementation in `src/surface/sasa.rs`.
 
-- [ ] **H7.1a** Add per-element solvation parameters (atomic solvation parameter, ASP)
-- [ ] **H7.1b** Add non-polar solvation energy: $\Delta G_{\text{np}} = \sum_i \sigma_i \cdot A_i$ where $\sigma_i$ is the ASP
-- [ ] **H7.1c** Add effective Born radii computation from SASA burial fraction
-- [ ] **H7.1d** Validate: SASA of methane within 0.5% of analytical sphere area; water SASA matches literature
+- [x] **H7.1a** Add per-element solvation parameters (atomic solvation parameter, ASP)
+- [x] **H7.1b** Add non-polar solvation energy: $\Delta G_{\text{np}} = \sum_i \sigma_i \cdot A_i$ where $\sigma_i$ is the ASP
+- [x] **H7.1c** Add effective Born radii computation from SASA burial fraction
+- [x] **H7.1d** Validate: SASA of methane within 0.5% of analytical sphere area; water SASA matches literature
 
 ### Phase H7.2: Generalized Born (GB) Model
 
@@ -284,10 +284,10 @@ $$
 
 where $f_{\text{GB}} = \sqrt{r_{ij}^2 + R_iR_j \exp(-r_{ij}^2/4R_iR_j)}$ and $R_i$ are effective Born radii.
 
-- [ ] **H7.2a** Implement effective Born radii from pairwise descreening (HCT model)
-- [ ] **H7.2b** Implement Still GB equation for electrostatic solvation free energy
-- [ ] **H7.2c** Add SA+GB combined solvation energy
-- [ ] **H7.2d** Validate: solvation energies for small molecules (water, methanol, acetic acid) within 1 kcal/mol of SMD/PCM reference
+- [x] **H7.2a** Implement effective Born radii from pairwise descreening (HCT model)
+- [x] **H7.2b** Implement Still GB equation for electrostatic solvation free energy
+- [x] **H7.2c** Add SA+GB combined solvation energy
+- [x] **H7.2d** Validate: solvation energies for small molecules (water, methanol, acetic acid) within 1 kcal/mol of SMD/PCM reference
 
 ---
 
@@ -298,7 +298,7 @@ where $f_{\text{GB}} = \sqrt{r_{ij}^2 + R_iR_j \exp(-r_{ij}^2/4R_iR_j)}$ and $R_
 **Current state:** Roothaan-Hall SCF implemented in `src/hf/scf.rs`; PM3 SCF in `src/pm3/solver.rs`; xTB SCC in `src/xtb/`.
 
 - [ ] **H8.1a** Unify SCF infrastructure: extract a common `ScfSolver` trait for HF, PM3, and xTB backends
-- [ ] **H8.1b** Add configurable convergence criteria (energy: 1e-8 Eh, density: 1e-6)
+- [x] **H8.1b** Add configurable convergence criteria (energy: 1e-8 Eh, density: 1e-6)
 - [ ] **H8.1c** Add level shifting for difficult-to-converge metallic systems ($\Delta = 0.3$ Eh shift on virtuals)
 - [ ] **H8.1d** Validate: H₂ restricted HF energy within 0.1% of PySCF reference; H₂O within 0.5%
 
@@ -312,7 +312,7 @@ $$
 
 **Current state:** DIIS implemented in `src/hf/scf.rs`.
 
-- [ ] **H8.2a** Add DIIS history size control (default 8, max 15 matrices)
+- [x] **H8.2a** Add DIIS history size control (default 8, max 15 matrices)
 - [ ] **H8.2b** Add ADIIS (energy-based DIIS) for initial iterations before switching to DIIS
 - [ ] **H8.2c** Add automatic DIIS reset on numerical instability (condition number monitoring)
 - [ ] **H8.2d** Validate: metalloporphyrin SCF converges in <50 iterations with DIIS vs >200 without
@@ -329,9 +329,9 @@ $$
 3. Phantom atoms (lone pairs) have priority 0
 4. Double bonds → duplicate the bonded atom in the priority tree
 
-- [ ] **H9.1a** Implement CIP priority tree construction via DFS with duplicate-atom expansion for multiple bonds
-- [ ] **H9.1b** Handle tie-breaking with recursive exploration (up to depth 10)
-- [ ] **H9.1c** Validate: alanine → S-configuration; D-glucose → R at C2
+- [x] **H9.1a** Implement CIP priority tree construction via DFS with duplicate-atom expansion for multiple bonds
+- [x] **H9.1b** Handle tie-breaking with recursive exploration (up to depth 10)
+- [x] **H9.1c** Validate: alanine → S-configuration; D-glucose → R at C2
 
 ### Phase H9.2: R/S and E/Z Assignment from 3D Coordinates
 
@@ -339,10 +339,10 @@ $$
 - **R/S:** Compute the signed volume of the tetrahedron formed by the 4 substituents. Positive volume with CIP ordering 1→2→3 (4th behind) = R.
 - **E/Z:** Compute the dihedral angle across the double bond between highest-priority substituents. Same side = Z, opposite = E.
 
-- [ ] **H9.2a** Implement R/S assignment using the triple-product sign test
-- [ ] **H9.2b** Implement E/Z assignment for double bonds using the dihedral angle of CIP-ordered substituents
+- [x] **H9.2a** Implement R/S assignment using the triple-product sign test
+- [x] **H9.2b** Implement E/Z assignment for double bonds using the dihedral angle of CIP-ordered substituents
 - [ ] **H9.2c** Add stereo descriptor output in SMILES string form (@, @@, /, \)
-- [ ] **H9.2d** Validate: (R)-2-bromobutane → R; trans-2-butene → E; cis-2-butene → Z
+- [x] **H9.2d** Validate: (R)-2-bromobutane → R; trans-2-butene → E; cis-2-butene → Z
 
 ---
 
@@ -352,10 +352,10 @@ $$
 
 **Current state:** Marching cubes implemented in `src/eht/marching_cubes.rs` for orbital isosurfaces.
 
-- [ ] **H10.1a** Generalize marching cubes to accept any `VolumetricGrid` (not just EHT orbitals)
+- [x] **H10.1a** Generalize marching cubes to accept any `VolumetricGrid` (not just EHT orbitals)
 - [ ] **H10.1b** Add support for dual-phase isosurfaces (positive/negative lobes of orbitals, ESP coloring)
 - [ ] **H10.1c** Add mesh simplification: vertex welding and degenerate-triangle removal
-- [ ] **H10.1d** Validate: sphere isosurface area matches analytical $4\pi r^2$ within 2%
+- [x] **H10.1d** Validate: sphere isosurface area matches analytical $4\pi r^2$ within 2%
 
 ### Phase H10.2: Vertex Normal Computation
 
