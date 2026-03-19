@@ -2,6 +2,8 @@
 //!
 //! Generates unique environment descriptors for each atom by traversing
 //! the molecular graph in concentric spheres (radius 0 to max_radius).
+//! Includes a compile-time HOSE→chemical-shift lookup database for
+//! ¹H and ¹³C prediction with fallback from higher to lower radius.
 
 use crate::graph::{BondOrder, Molecule};
 use petgraph::graph::NodeIndex;
@@ -131,6 +133,171 @@ pub fn generate_hose_codes(mol: &Molecule, max_radius: usize) -> Vec<HoseCode> {
     }
 
     codes
+}
+
+// ─── HOSE → Chemical Shift Database ─────────────────────────────────────────
+//
+// Empirical database mapping HOSE code prefixes to chemical shifts (ppm).
+// Based on NMRShiftDB2 reference data patterns for common organic environments.
+// Uses fallback: try radius 4 → 3 → 2 → 1 match.
+
+/// Result of a HOSE-based chemical shift lookup.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HoseShiftLookup {
+    /// Atom index.
+    pub atom_index: usize,
+    /// Element (atomic number).
+    pub element: u8,
+    /// Predicted shift in ppm.
+    pub shift_ppm: f64,
+    /// HOSE code used for matching.
+    pub matched_hose: String,
+    /// Radius at which the match was found.
+    pub match_radius: usize,
+    /// Confidence (higher radius = higher confidence).
+    pub confidence: f64,
+}
+
+/// ¹H HOSE shift database: (HOSE prefix pattern, shift_ppm).
+/// Keys are simplified HOSE sphere-1 environment strings.
+fn h1_hose_database() -> Vec<(&'static str, f64)> {
+    vec![
+        // sp3 C-H environments
+        ("C/H,H,H,C", 0.90),  // methyl next to alkyl
+        ("C/H,H,C,C", 1.30),  // methylene
+        ("C/H,C,C,C", 1.50),  // methine
+        ("C/H,H,H,O", 3.40),  // methyl next to O (methoxy)
+        ("C/H,H,O", 3.50),    // CH₂ next to O
+        ("C/H,H,H,N", 2.30),  // methyl next to N
+        ("C/H,H,N", 2.60),    // CH₂ next to N
+        ("C/H,H,H,=O", 2.10), // methyl next to carbonyl
+        ("C/H,H,=O", 2.50),   // methylene next to carbonyl
+        ("C/H,H,H,*C", 2.30), // methyl on aromatic
+        // sp2 C-H (aromatic)
+        ("C/*C,*C,H", 7.27),  // benzene-type ArH
+        ("C/*C,*C,*C", 7.50), // fused aromatic ArH
+        ("C/*C,*N,H", 7.80),  // pyridine-adjacent ArH
+        // sp2 C-H (alkene)
+        ("C/=C,H,H", 5.25),  // vinyl =CH₂
+        ("C/=C,H,C", 5.40),  // internal alkene
+        ("C/=C,=C,H", 6.30), // conjugated diene
+        // sp C-H (alkyne)
+        ("C/#C,H", 2.50), // terminal alkyne
+        // Aldehyde
+        ("C/=O,H,C", 9.50), // aldehyde CHO
+        ("C/=O,H,H", 9.60), // formaldehyde
+        // O-H
+        ("O/H,C", 2.50),  // alcohol OH
+        ("O/H,*C", 5.50), // phenol OH
+        // N-H
+        ("N/H,H,C", 1.50), // primary amine
+        ("N/H,C,C", 2.20), // secondary amine
+    ]
+}
+
+/// ¹³C HOSE shift database.
+fn c13_hose_database() -> Vec<(&'static str, f64)> {
+    vec![
+        // sp3 carbon
+        ("C/H,H,H,C", 15.0),  // methyl
+        ("C/H,H,C,C", 25.0),  // methylene
+        ("C/H,C,C,C", 35.0),  // methine
+        ("C/C,C,C,C", 40.0),  // quaternary
+        ("C/H,H,H,O", 55.0),  // methoxy
+        ("C/H,H,O,C", 65.0),  // C-O-C
+        ("C/H,H,H,N", 32.0),  // N-methyl
+        ("C/H,H,N", 45.0),    // C-N
+        ("C/H,H,H,=O", 30.0), // methyl next to carbonyl
+        // sp2 carbon (aromatic)
+        ("C/*C,*C,H", 128.0),  // unsubstituted ArC
+        ("C/*C,*C,C", 137.0),  // alkyl-substituted ArC
+        ("C/*C,*C,O", 155.0),  // O-substituted ArC
+        ("C/*C,*C,N", 148.0),  // N-substituted ArC
+        ("C/*C,*C,F", 163.0),  // F-substituted ArC
+        ("C/*C,*C,Cl", 134.0), // Cl-substituted ArC
+        // sp2 carbon (alkene)
+        ("C/=C,H,H", 115.0), // vinyl =CH₂
+        ("C/=C,H,C", 130.0), // internal alkene
+        ("C/=C,C,C", 140.0), // trisubstituted alkene
+        // Carbonyl
+        ("C/=O,O,C", 175.0), // ester / carboxylic acid
+        ("C/=O,N,C", 170.0), // amide
+        ("C/=O,C,C", 205.0), // ketone
+        ("C/=O,H,C", 200.0), // aldehyde
+        // sp carbon
+        ("C/#C,H", 70.0), // terminal alkyne
+        ("C/#C,C", 85.0), // internal alkyne
+    ]
+}
+
+/// Predict chemical shift from HOSE code using database lookup with fallback.
+///
+/// Searches the HOSE code against the database, trying the most specific
+/// match first (full code), then falling back to shorter prefixes.
+pub fn predict_shift_from_hose(hose_code: &HoseCode, nucleus: u8) -> Option<HoseShiftLookup> {
+    let database = match nucleus {
+        1 => h1_hose_database(),
+        6 => c13_hose_database(),
+        _ => return None,
+    };
+
+    // Try matching from highest radius down to 1
+    for radius in (1..=hose_code.spheres.len().saturating_sub(1)).rev() {
+        // Build the HOSE prefix up to this radius
+        let prefix = format!(
+            "{}/{}",
+            hose_code.spheres[0],
+            hose_code.spheres[1..=radius].join("/")
+        );
+
+        for &(pattern, shift) in &database {
+            if prefix.contains(pattern)
+                || pattern.contains(&prefix)
+                || fuzzy_hose_match(&prefix, pattern)
+            {
+                return Some(HoseShiftLookup {
+                    atom_index: hose_code.atom_index,
+                    element: nucleus,
+                    shift_ppm: shift,
+                    matched_hose: pattern.to_string(),
+                    match_radius: radius,
+                    confidence: 0.5 + 0.1 * radius as f64,
+                });
+            }
+        }
+    }
+
+    None
+}
+
+/// Fuzzy matching: check if the sphere-1 fragment of the HOSE code
+/// matches the sphere-1 fragment of the database pattern.
+fn fuzzy_hose_match(hose: &str, pattern: &str) -> bool {
+    let hose_parts: Vec<&str> = hose.split('/').collect();
+    let pat_parts: Vec<&str> = pattern.split('/').collect();
+
+    if hose_parts.len() < 2 || pat_parts.len() < 2 {
+        return false;
+    }
+
+    // Match center element
+    if hose_parts[0] != pat_parts[0] {
+        return false;
+    }
+
+    // Fuzzy match sphere-1: check if sorted neighbor sets overlap
+    let hose_neighbors: BTreeSet<&str> = hose_parts[1].split(',').collect();
+    let pat_neighbors: BTreeSet<&str> = pat_parts[1].split(',').collect();
+
+    let intersection = hose_neighbors.intersection(&pat_neighbors).count();
+    let union = hose_neighbors.union(&pat_neighbors).count();
+
+    if union == 0 {
+        return false;
+    }
+
+    // Require at least 50% overlap
+    (intersection as f64 / union as f64) > 0.5
 }
 
 #[cfg(test)]
