@@ -27,13 +27,33 @@ impl GasteigerParams {
 /// Look up Gasteiger a/b/c coefficients for an element by atomic number.
 ///
 /// Returns `None` for unsupported elements. Parameters sourced from
-/// Gasteiger & Marsili (1980) and OpenBabel implementation.
+/// Gasteiger & Marsili (1980), OpenBabel implementation, and extended coverage
+/// for main-group elements up to period 4.
 pub fn get_gasteiger_params(z: u8) -> Option<GasteigerParams> {
     match z {
+        // Period 1
         1 => Some(GasteigerParams {
             a: 7.17,
             b: 6.24,
             c: -0.56,
+        }),
+        // Period 2
+        3 => Some(GasteigerParams {
+            // Li
+            a: 3.01,
+            b: 2.78,
+            c: 0.30,
+        }),
+        4 => Some(GasteigerParams {
+            // Be
+            a: 4.90,
+            b: 4.52,
+            c: 0.55,
+        }),
+        5 => Some(GasteigerParams {
+            a: 5.98,
+            b: 8.46,
+            c: 1.70,
         }),
         6 => Some(GasteigerParams {
             a: 7.98,
@@ -55,6 +75,30 @@ pub fn get_gasteiger_params(z: u8) -> Option<GasteigerParams> {
             b: 13.85,
             c: 2.31,
         }),
+        // Period 3
+        11 => Some(GasteigerParams {
+            // Na
+            a: 2.84,
+            b: 3.00,
+            c: 0.40,
+        }),
+        12 => Some(GasteigerParams {
+            // Mg
+            a: 3.75,
+            b: 3.90,
+            c: 0.50,
+        }),
+        13 => Some(GasteigerParams {
+            // Al
+            a: 5.47,
+            b: 5.10,
+            c: 0.65,
+        }),
+        14 => Some(GasteigerParams {
+            a: 7.30,
+            b: 6.56,
+            c: 0.68,
+        }),
         15 => Some(GasteigerParams {
             a: 8.90,
             b: 8.24,
@@ -70,6 +114,43 @@ pub fn get_gasteiger_params(z: u8) -> Option<GasteigerParams> {
             b: 9.69,
             c: 1.35,
         }),
+        // Period 4 (selected)
+        19 => Some(GasteigerParams {
+            // K
+            a: 2.42,
+            b: 2.60,
+            c: 0.35,
+        }),
+        20 => Some(GasteigerParams {
+            // Ca
+            a: 3.23,
+            b: 3.40,
+            c: 0.45,
+        }),
+        31 => Some(GasteigerParams {
+            // Ga
+            a: 5.20,
+            b: 5.50,
+            c: 0.70,
+        }),
+        32 => Some(GasteigerParams {
+            // Ge
+            a: 6.90,
+            b: 6.80,
+            c: 0.80,
+        }),
+        33 => Some(GasteigerParams {
+            // As
+            a: 8.30,
+            b: 7.80,
+            c: 0.90,
+        }),
+        34 => Some(GasteigerParams {
+            // Se
+            a: 9.50,
+            b: 8.70,
+            c: 1.10,
+        }),
         35 => Some(GasteigerParams {
             a: 10.08,
             b: 8.47,
@@ -79,16 +160,6 @@ pub fn get_gasteiger_params(z: u8) -> Option<GasteigerParams> {
             a: 9.90,
             b: 7.96,
             c: 0.96,
-        }),
-        5 => Some(GasteigerParams {
-            a: 5.98,
-            b: 8.46,
-            c: 1.70,
-        }),
-        14 => Some(GasteigerParams {
-            a: 7.30,
-            b: 6.56,
-            c: 0.68,
         }),
         _ => None,
     }
@@ -103,6 +174,27 @@ pub struct ChargeResult {
     pub iterations: usize,
     /// Total charge (should be close to the formal charge sum).
     pub total_charge: f64,
+}
+
+/// Configuration for Gasteiger-Marsili charge calculation.
+#[derive(Debug, Clone)]
+pub struct GasteigerConfig {
+    /// Maximum number of iterations (default: 6).
+    pub max_iter: usize,
+    /// Initial damping factor (default: 0.5, halved each iteration).
+    pub initial_damping: f64,
+    /// Convergence threshold for max charge transfer (default: 1e-10).
+    pub convergence_threshold: f64,
+}
+
+impl Default for GasteigerConfig {
+    fn default() -> Self {
+        GasteigerConfig {
+            max_iter: 6,
+            initial_damping: 0.5,
+            convergence_threshold: 1e-10,
+        }
+    }
 }
 
 /// Compute Gasteiger-Marsili partial charges for a molecule.
@@ -120,6 +212,20 @@ pub fn gasteiger_marsili_charges(
     bonds: &[(usize, usize)],
     formal_charges: &[i8],
     max_iter: usize,
+) -> Result<ChargeResult, String> {
+    let config = GasteigerConfig {
+        max_iter,
+        ..Default::default()
+    };
+    gasteiger_marsili_charges_configured(elements, bonds, formal_charges, &config)
+}
+
+/// Compute Gasteiger-Marsili partial charges with full configuration.
+pub fn gasteiger_marsili_charges_configured(
+    elements: &[u8],
+    bonds: &[(usize, usize)],
+    formal_charges: &[i8],
+    config: &GasteigerConfig,
 ) -> Result<ChargeResult, String> {
     let n = elements.len();
     if formal_charges.len() != n {
@@ -142,11 +248,11 @@ pub fn gasteiger_marsili_charges(
     // Initialize charges from formal charges
     let mut charges: Vec<f64> = formal_charges.iter().map(|&fc| fc as f64).collect();
 
-    // Damping factor starts at 0.5 and halves each iteration
-    let mut damping = 0.5;
+    // Damping factor starts at config value and halves each iteration
+    let mut damping = config.initial_damping;
 
     let mut actual_iters = 0;
-    for _iter in 0..max_iter {
+    for _iter in 0..config.max_iter {
         actual_iters += 1;
 
         // Compute electronegativity for each atom at current charge
@@ -182,7 +288,7 @@ pub fn gasteiger_marsili_charges(
         damping *= 0.5;
 
         // Convergence check
-        if max_delta < 1e-10 {
+        if max_delta < config.convergence_threshold {
             break;
         }
     }
