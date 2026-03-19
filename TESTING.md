@@ -59,33 +59,45 @@ cargo test --lib
 
 ## 3. Integration Tests (`tests/`)
 
-Each file targets a specific aspect of the library. All pass on the release profile.
+Tests are grouped by purpose:
+
+- `tests/ci.rs` is the compact CI gate that exercises every major subsystem.
+- `tests/regression/` holds the functional Rust integration suites.
+- `tests/analysis/` holds comparison and validation helpers.
+- `tests/debug/` holds investigation and trace harnesses.
+- `tests/benchmarks/` holds large-data benchmarks.
+- `tests/integration/` holds Python and Node.js interop scripts.
+
+All Rust suites pass on the release profile.
 
 ```bash
-# All integration tests
+# Compact CI gate
+cargo test --release --test ci -- --nocapture
+
+# All Rust integration tests
 cargo test --tests --release
 
-# Individual tests (useful during development)
-cargo test --release --test test_diverse_molecules -- --nocapture
-cargo test --release --test test_geometry_quality  -- --nocapture
-cargo test --release --test test_gradient_check    -- --nocapture
-cargo test --release --test test_ensemble_rmsd     -- --nocapture
-cargo test --release --test test_gdb20_rmsd        -- --nocapture
-cargo test --release --test test_gdb20             -- --nocapture
-cargo test --release --test test_tet_centers       -- --nocapture
+# Individual suites (useful during development)
+cargo test --release --test regression test_diverse_molecules -- --nocapture
+cargo test --release --test regression test_geometry_quality -- --nocapture
+cargo test --release --test regression test_gradient_check -- --nocapture
+cargo test --release --test regression test_ensemble_rmsd -- --nocapture
+cargo test --release --test regression test_gdb20_rmsd -- --nocapture
+cargo test --release --test regression test_gdb20 -- --nocapture
+cargo test --release --test regression test_tet_centers -- --nocapture
 ```
 
 ### Test descriptions
 
 | Test file | What it validates |
 |-----------|-------------------|
-| `test_diverse_molecules.rs` | Embed 50+ chemically diverse molecules; all produce valid 3-D geometries |
-| `test_geometry_quality.rs` | Bond lengths / angles stay within ±3 σ of CSD distributions |
-| `test_gradient_check.rs` | Force-field gradients match numerical finite-differences (tolerance 1 × 10⁻⁴) |
-| `test_ensemble_rmsd.rs` | Pose diversity: multi-conformer ensembles span expected RMSD range |
-| `test_gdb20_rmsd.rs` | RMSD vs. RDKit/ETKDG on GDB-20 subset (benchmark accuracy) |
-| `test_gdb20.rs` | Success rate ≥ 99 % on GDB-20 subset |
-| `test_tet_centers.rs` | Tetrahedral stereocentres are preserved after embedding |
+| `regression/test_diverse_molecules.rs` | Embed 50+ chemically diverse molecules; all produce valid 3-D geometries |
+| `regression/test_geometry_quality.rs` | Bond lengths / angles stay within ±3 σ of CSD distributions |
+| `regression/test_gradient_check.rs` | Force-field gradients match numerical finite-differences (tolerance 1 × 10⁻⁴) |
+| `regression/test_ensemble_rmsd.rs` | Pose diversity: multi-conformer ensembles span expected RMSD range |
+| `regression/test_gdb20_rmsd.rs` | RMSD vs. RDKit/ETKDG on GDB-20 subset (benchmark accuracy) |
+| `regression/test_gdb20.rs` | Success rate ≥ 99 % on GDB-20 subset |
+| `regression/test_tet_centers.rs` | Tetrahedral stereocentres are preserved after embedding |
 
 ---
 
@@ -108,7 +120,7 @@ print("Python smoke test passed — caffeine has", len(coords) // 3, "atoms")
 EOF
 
 # Full Python integration tests (requires installed wheel)
-python tests/test_python_integration.py
+python tests/integration/test_python_integration.py
 ```
 
 ---
@@ -133,7 +145,7 @@ EOF
 wasm-pack build --target web --release --out-dir pkg-web --features parallel
 
 # Full JS integration tests
-node tests/test_wasm_integration.js
+node tests/integration/test_wasm_integration.js
 ```
 
 ---
@@ -403,13 +415,13 @@ mod tests {
 **Step C (Run the validation suite):**
 ```bash
 # All EHT ground-truth tests
-cargo test --test test_eht_validation --release -- --nocapture
+cargo test --release --test regression test_eht -- --nocapture
 
 # Individual tests
-cargo test --release test_overlap_matrix_h2o -- --nocapture
-cargo test --release test_hamiltonian_matrix_ethane -- --nocapture
-cargo test --release test_eigenvalues_homo_lumo -- --nocapture
-cargo test --release test_eigenvectors_absolute_value -- --nocapture
+cargo test --release --test regression test_overlap_matrix_h2o -- --nocapture
+cargo test --release --test regression test_hamiltonian_matrix_ethane -- --nocapture
+cargo test --release --test regression test_eigenvalues_homo_lumo -- --nocapture
+cargo test --release --test regression test_eigenvectors_absolute_value -- --nocapture
 ```
 
 #### 8.4 Integrating with CI
@@ -420,7 +432,7 @@ Add to `.github/workflows/ci.yml`:
   run: python scripts/generate_eht_reference.py --all
 
 - name: Validate EHT pipeline against ground truth
-  run: cargo test --release test_eht_validation -- --nocapture
+    run: cargo test --release --test regression test_eht -- --nocapture
 ```
 
 This ensures that any regression in the EHT tensor pipeline is caught before merge.
@@ -1063,10 +1075,10 @@ mod force_field_tests {
 
 | Phase | Reference Tool | What to Compare | Tolerance | Test Location |
 |-------|-----------------|-----------------|-----------|---|
-| A (Conformer) | RDKit ETKDG | Heavy-atom RMSD | 0.5 Å | `test_geometry_quality.rs` |
-| B (EHT) | PySCF/Multiwfn | S, H, E, \|C\| | 1e-4 | `test_eht.rs` |
-| C1 (Charges) | PySCF Gasteiger | Partial charges | 1e-4 | `tests/test_charges.rs` |
-| C1 (SASA) | Shrake-Rupley ref | SASA area | ±1 Ų | `tests/test_sasa.rs` |
+| A (Conformer) | RDKit ETKDG | Heavy-atom RMSD | 0.5 Å | `regression/test_geometry_quality.rs` |
+| B (EHT) | PySCF/Multiwfn | S, H, E, \|C\| | 1e-4 | `regression/test_eht.rs` |
+| C1 (Charges) | PySCF Gasteiger | Partial charges | 1e-4 | `regression/test_charges.rs` |
+| C1 (SASA) | Shrake-Rupley ref | SASA area | ±1 Ų | `regression/test_sasa.rs` |
 | C2 (Mulliken) | PySCF Mulliken | Pop. charges | 1e-4 | (Phase C2 candidate) |
 | C3 (Dipole) | ORCA/Gaussian | μ magnitude + direction | 0.05 D / 5° | (Phase C3 candidate) |
 | C4 (ESP) | Gaussian cubegen | .cube grid RMSE | <1e-4 | (Phase C4 candidate) |
@@ -1095,7 +1107,7 @@ push tag v*
 
 | Job | What it does |
 |-----|--------------|
-| `pre-release-tests` | `cargo test --tests --release` on ubuntu, macos, windows |
+| `pre-release-tests` | `cargo test --release --test ci -- --nocapture` on ubuntu, macos, windows |
 | `lint` | `cargo clippy -D warnings` + `cargo fmt --check` |
 | `build-cli` | Cross-compiles for 5 targets (linux x86_64/aarch64, macos x86_64/aarch64, windows x86_64) |
 | `build-python` | `maturin build --release` on ubuntu, macos, windows |
