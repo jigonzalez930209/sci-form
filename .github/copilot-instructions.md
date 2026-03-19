@@ -1,6 +1,6 @@
 # sci-form — Agent Instructions
 
-**sci-form** is a Rust library (v0.4.3) for computational chemistry: 3D conformer generation, semi-empirical quantum chemistry (EHT, PM3, GFN-xTB), molecular properties, ML property prediction, and crystallographic materials. It is available as a Rust crate, Python package, WebAssembly/TypeScript module, and a CLI binary.
+**sci-form** is a Rust library (v0.7.0) for computational chemistry: 3D conformer generation, semi-empirical quantum chemistry (EHT, PM3, GFN-xTB), molecular properties, ML property prediction, stereochemistry, solvation, ring perception, fingerprints, clustering, and crystallographic materials. It is available as a Rust crate, Python package, WebAssembly/TypeScript module, and a CLI binary.
 
 ---
 
@@ -24,6 +24,13 @@
 | ML Descriptors | MW, Wiener index, Balaban J, FSP3, 17 descriptors |
 | Materials | Unit cell, MOF framework assembly |
 | Transport | Arrow columnar batch + Web Worker task splitting (parallelizable) |
+| Stereochemistry | CIP priorities, R/S chirality, E/Z double bond configuration |
+| Solvation | Non-polar SASA solvation, Generalized Born (HCT) electrostatic |
+| SSSR | Smallest Set of Smallest Rings (Horton's algorithm) |
+| ECFP | Extended-Connectivity Fingerprints (Morgan), Tanimoto similarity |
+| Clustering | Butina (Taylor-Butina) RMSD clustering, diversity filtering |
+| NMR | Chemical shifts (HOSE codes), J-coupling (Karplus), ensemble averaging |
+| IR | Vibrational analysis, IR spectrum broadening, thermochemistry (RRHO) |
 
 ---
 
@@ -33,9 +40,9 @@
 
 ```toml
 [dependencies]
-sci-form = "0.4"
+sci-form = "0.7"
 # parallel batch (rayon):
-sci-form = { version = "0.4", features = ["parallel"] }
+sci-form = { version = "0.7", features = ["parallel"] }
 ```
 
 ### Core types
@@ -133,6 +140,50 @@ sci_form::predict_ml_properties(desc: &ml::MolecularDescriptors) -> ml::MlProper
 // Materials
 sci_form::create_unit_cell(a,b,c,alpha,beta,gamma: f64) -> materials::UnitCell
 sci_form::assemble_framework(node: &Sbu, linker: &Sbu, topology: &Topology, cell: &UnitCell) -> CrystalStructure
+
+// Stereochemistry — CIP priorities, R/S, E/Z
+sci_form::analyze_stereo(smiles: &str, coords: &[f64]) -> Result<stereo::StereoAnalysis, String>
+// StereoAnalysis { stereocenters: Vec<Stereocenter>, double_bonds: Vec<DoubleBondStereo>,
+//                  n_stereocenters, n_double_bonds }
+// Stereocenter { atom_index, element, substituent_indices, priorities, configuration: Option<"R"|"S"> }
+// DoubleBondStereo { atom1, atom2, configuration: Option<"E"|"Z">, high_priority_sub1, high_priority_sub2 }
+
+// Solvation — Non-polar SASA + Generalized Born
+sci_form::compute_nonpolar_solvation(elements: &[u8], positions: &[[f64;3]], probe_radius: Option<f64>) -> NonPolarSolvation
+// NonPolarSolvation { energy_kcal_mol, atom_contributions, atom_sasa, total_sasa }
+
+sci_form::compute_gb_solvation(elements: &[u8], positions: &[[f64;3]], charges: &[f64],
+    solvent_dielectric: Option<f64>, solute_dielectric: Option<f64>, probe_radius: Option<f64>) -> GbSolvation
+// GbSolvation { electrostatic_energy_kcal_mol, nonpolar_energy_kcal_mol, total_energy_kcal_mol,
+//               born_radii, charges, solvent_dielectric, solute_dielectric }
+
+// Ring perception — SSSR (Horton's algorithm)
+sci_form::compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, String>
+// SssrResult { rings: Vec<RingInfo>, atom_ring_count, atom_ring_sizes, ring_size_histogram }
+// RingInfo { atoms: Vec<usize>, size, is_aromatic }
+
+// Fingerprints — ECFP (Morgan) + Tanimoto similarity
+sci_form::compute_ecfp(smiles: &str, radius: usize, n_bits: usize) -> Result<rings::ecfp::ECFPFingerprint, String>
+// ECFPFingerprint { n_bits, on_bits: BTreeSet<usize>, radius, raw_features }
+
+sci_form::compute_tanimoto(fp1: &ECFPFingerprint, fp2: &ECFPFingerprint) -> f64
+
+// Clustering — Butina (Taylor-Butina) RMSD clustering
+sci_form::butina_cluster(conformers: &[Vec<f64>], rmsd_cutoff: f64) -> clustering::ClusterResult
+// ClusterResult { n_clusters, assignments, centroid_indices, cluster_sizes, rmsd_cutoff }
+
+sci_form::compute_rmsd_matrix(conformers: &[Vec<f64>]) -> Vec<Vec<f64>>
+
+// NMR — Ensemble-averaged J-couplings
+sci_form::compute_ensemble_j_couplings(smiles: &str, conformer_coords: &[Vec<f64>],
+    energies_kcal: &[f64], temperature_k: f64) -> Result<Vec<nmr::JCoupling>, String>
+
+// IR — Broadened spectrum
+sci_form::compute_ir_spectrum_broadened(analysis: &VibrationalAnalysis, gamma: f64,
+    wn_min: f64, wn_max: f64, n_points: usize, broadening: &str) -> IrSpectrum
+
+// Charges — Configurable Gasteiger-Marsili
+sci_form::compute_charges_configured(smiles: &str, config: &GasteigerConfig) -> Result<ChargeResult, String>
 ```
 
 ### Coordinate convention
@@ -173,6 +224,21 @@ println!("LogP: {:.2}, Druglikeness: {:.3}", props.logp, props.druglikeness);
 // Parallel batch (requires features = ["parallel"])
 let config = sci_form::ConformerConfig { seed: 42, num_threads: 0 };
 let results = sci_form::embed_batch(&["CCO", "c1ccccc1", "CC(=O)O"], &config);
+
+// Stereochemistry
+let stereo = sci_form::analyze_stereo("C(F)(Cl)(Br)I", &conf.coords).unwrap();
+println!("Stereocenters: {}", stereo.n_stereocenters);
+
+// Ring perception + fingerprints
+let rings = sci_form::compute_sssr("c1ccccc1").unwrap();
+println!("Rings: {:?}", rings.ring_size_histogram);
+let fp1 = sci_form::compute_ecfp("c1ccccc1", 2, 2048).unwrap();
+let fp2 = sci_form::compute_ecfp("Cc1ccccc1", 2, 2048).unwrap();
+println!("Tanimoto: {:.3}", sci_form::compute_tanimoto(&fp1, &fp2));
+
+// Solvation
+let solv = sci_form::compute_nonpolar_solvation(&conf.elements, &pos, None);
+println!("Non-polar solvation: {:.2} kcal/mol", solv.energy_kcal_mol);
 ```
 
 ---
@@ -251,6 +317,39 @@ assemble_framework(topology="pcu", metal=30, geometry="octahedral", lattice_a=10
 pack_conformers(results: list[ConformerResult]) -> RecordBatch
 split_worker_tasks(smiles, n_workers=4, seed=42) -> list[dict]
 estimate_workers(n_items, max_workers=8) -> int
+
+# Stereochemistry — CIP priorities, R/S, E/Z
+stereo_analysis(smiles: str, coords: list[float] = []) -> StereoAnalysisPy
+# StereoAnalysisPy: .stereocenters, .double_bonds, .n_stereocenters, .n_double_bonds
+# StereocenterPy: .atom_index, .element, .substituent_indices, .priorities, .configuration
+# DoubleBondStereoPy: .atom1, .atom2, .configuration, .high_priority_sub1, .high_priority_sub2
+
+# Solvation — Non-polar SASA + Generalized Born
+nonpolar_solvation(elements, coords, probe_radius=1.4) -> NonPolarSolvationPy
+# NonPolarSolvationPy: .energy_kcal_mol, .atom_contributions, .atom_sasa, .total_sasa
+
+gb_solvation(elements, coords, charges, solvent_dielectric=78.5, solute_dielectric=1.0, probe_radius=1.4) -> GbSolvationPy
+# GbSolvationPy: .electrostatic_energy_kcal_mol, .nonpolar_energy_kcal_mol, .total_energy_kcal_mol,
+#                .born_radii, .charges, .solvent_dielectric, .solute_dielectric
+
+# Ring perception — SSSR
+sssr(smiles: str) -> SssrResultPy
+# SssrResultPy: .rings, .atom_ring_count, .atom_ring_sizes, .ring_size_histogram
+# RingInfoPy: .atoms, .size, .is_aromatic
+
+# ECFP fingerprints + Tanimoto
+ecfp(smiles: str, radius=2, n_bits=2048) -> ECFPFingerprintPy
+# ECFPFingerprintPy: .n_bits, .on_bits, .radius, .density
+
+tanimoto(fp1: ECFPFingerprintPy, fp2: ECFPFingerprintPy) -> float
+
+# Clustering — Butina RMSD
+butina_cluster(conformers: list[list[float]], rmsd_cutoff=1.0) -> ClusterResultPy
+# ClusterResultPy: .n_clusters, .assignments, .centroid_indices, .cluster_sizes, .rmsd_cutoff
+
+rmsd_matrix(conformers: list[list[float]]) -> list[list[float]]
+
+filter_diverse(conformers: list[list[float]], rmsd_cutoff=1.0) -> list[int]
 ```
 
 ### ConformerResult methods
@@ -288,6 +387,22 @@ print(f"xTB gap: {xtb.gap:.3f} eV, converged: {xtb.converged}")
 # ML properties (no 3D needed)
 props = ml_predict("CCO")
 print(f"LogP: {props.logp:.2f}, passes Lipinski: {props.lipinski_passes}")
+
+# Stereochemistry
+from sci_form import stereo_analysis
+stereo = stereo_analysis("C(F)(Cl)(Br)I")
+print(f"Stereocenters: {stereo.n_stereocenters}")
+
+# Fingerprints + similarity
+from sci_form import ecfp, tanimoto
+fp1 = ecfp("c1ccccc1", radius=2, n_bits=2048)
+fp2 = ecfp("Cc1ccccc1", radius=2, n_bits=2048)
+print(f"Tanimoto: {tanimoto(fp1, fp2):.3f}")
+
+# Solvation
+from sci_form import nonpolar_solvation
+solv = nonpolar_solvation(conf.elements, conf.coords)
+print(f"Non-polar solvation: {solv.energy_kcal_mol:.2f} kcal/mol")
 
 # Parallel batch
 from sci_form import embed_batch
@@ -381,6 +496,35 @@ assemble_framework(topology: string, metal: number, geometry: string, lattice_a:
 pack_batch_arrow(results_json: string): string
 split_worker_tasks(smiles_json: string, n_workers: number, seed: number): string
 estimate_workers(n_items: number, max_workers: number): number
+
+// Stereochemistry — CIP priorities, R/S, E/Z
+analyze_stereo(smiles: string, coords_flat: string): string
+// JSON StereoAnalysis: {stereocenters, double_bonds, n_stereocenters, n_double_bonds}
+
+// Solvation — Non-polar SASA + Generalized Born
+compute_nonpolar_solvation(elements: string, coords_flat: string, probe_radius: number): string
+// JSON NonPolarSolvation: {energy_kcal_mol, atom_contributions, atom_sasa, total_sasa}
+
+compute_gb_solvation(elements: string, coords_flat: string, charges: string, solvent_dielectric: number, solute_dielectric: number, probe_radius: number): string
+// JSON GbSolvation: {electrostatic_energy_kcal_mol, nonpolar_energy_kcal_mol, total_energy_kcal_mol, born_radii}
+
+// Ring perception — SSSR
+compute_sssr(smiles: string): string
+// JSON SssrResult: {rings, atom_ring_count, atom_ring_sizes, ring_size_histogram}
+
+// ECFP fingerprints + Tanimoto
+compute_ecfp(smiles: string, radius: number, n_bits: number): string
+// JSON ECFPFingerprint: {n_bits, on_bits, radius, raw_features}
+
+compute_tanimoto(fp1_json: string, fp2_json: string): string
+// JSON {"tanimoto": 0.85}
+
+// Clustering — Butina RMSD
+butina_cluster(conformers_json: string, rmsd_cutoff: number): string
+// JSON ClusterResult: {n_clusters, assignments, centroid_indices, cluster_sizes}
+
+compute_rmsd_matrix(conformers_json: string): string
+// JSON 2D array
 ```
 
 ### JSON ↔ typed array pattern (critical for performance)
@@ -489,6 +633,22 @@ sci-form energy "CCO" --coords coords.json
 
 # Build info
 sci-form info
+
+# Stereochemistry analysis
+sci-form stereo "C(F)(Cl)(Br)I"
+sci-form stereo "C/C=C/C" --coords "[...]"
+
+# Ring detection (SSSR)
+sci-form sssr "c1ccccc1"
+
+# ECFP fingerprint
+sci-form ecfp "CCO" --radius 2 --n-bits 2048
+
+# Tanimoto similarity
+sci-form tanimoto "c1ccccc1" "Cc1ccccc1"
+
+# Solvation energy
+sci-form solvation "[8,1,1]" "[0,0,0,0.757,0.586,0,-0.757,0.586,0]"
 ```
 
 ### Output formats: `json` (default) | `xyz` | `sdf`
