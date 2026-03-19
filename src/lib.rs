@@ -18,6 +18,7 @@ pub mod graph;
 pub mod hf;
 pub mod ir;
 pub mod materials;
+pub mod mesh;
 pub mod ml;
 pub mod nmr;
 pub mod optimization;
@@ -605,39 +606,49 @@ pub fn embed(smiles: &str, seed: u64) -> ConformerResult {
         })
         .collect();
 
-    match conformer::generate_3d_conformer(&mol, seed) {
-        Ok(coords) => {
-            let mut flat = Vec::with_capacity(n * 3);
-            for i in 0..n {
-                flat.push(coords[(i, 0)] as f64);
-                flat.push(coords[(i, 1)] as f64);
-                flat.push(coords[(i, 2)] as f64);
+    // Try multiple seeds for difficult molecules — if the first seed fails,
+    // retry with different seeds before giving up.
+    let max_seed_retries = 3u64;
+    let mut last_err = String::new();
+    for retry in 0..max_seed_retries {
+        let current_seed = seed.wrapping_add(retry.wrapping_mul(997));
+        match conformer::generate_3d_conformer(&mol, current_seed) {
+            Ok(coords) => {
+                let mut flat = Vec::with_capacity(n * 3);
+                for i in 0..n {
+                    flat.push(coords[(i, 0)] as f64);
+                    flat.push(coords[(i, 1)] as f64);
+                    flat.push(coords[(i, 2)] as f64);
+                }
+                return ConformerResult {
+                    smiles: smiles.to_string(),
+                    num_atoms: n,
+                    coords: flat,
+                    elements,
+                    bonds,
+                    error: None,
+                    #[cfg(not(target_arch = "wasm32"))]
+                    time_ms: start.elapsed().as_secs_f64() * 1000.0,
+                    #[cfg(target_arch = "wasm32")]
+                    time_ms: 0.0,
+                };
             }
-            ConformerResult {
-                smiles: smiles.to_string(),
-                num_atoms: n,
-                coords: flat,
-                elements,
-                bonds,
-                error: None,
-                #[cfg(not(target_arch = "wasm32"))]
-                time_ms: start.elapsed().as_secs_f64() * 1000.0,
-                #[cfg(target_arch = "wasm32")]
-                time_ms: 0.0,
+            Err(e) => {
+                last_err = e;
             }
         }
-        Err(e) => ConformerResult {
-            smiles: smiles.to_string(),
-            num_atoms: n,
-            coords: vec![],
-            elements,
-            bonds,
-            error: Some(e),
-            #[cfg(not(target_arch = "wasm32"))]
-            time_ms: start.elapsed().as_secs_f64() * 1000.0,
-            #[cfg(target_arch = "wasm32")]
-            time_ms: 0.0,
-        },
+    }
+    ConformerResult {
+        smiles: smiles.to_string(),
+        num_atoms: n,
+        coords: vec![],
+        elements,
+        bonds,
+        error: Some(last_err),
+        #[cfg(not(target_arch = "wasm32"))]
+        time_ms: start.elapsed().as_secs_f64() * 1000.0,
+        #[cfg(target_arch = "wasm32")]
+        time_ms: 0.0,
     }
 }
 
@@ -1331,7 +1342,20 @@ pub fn compute_nmr_spectrum(
     let nuc = match nucleus {
         "1H" | "H1" | "h1" | "1h" | "proton" => nmr::NmrNucleus::H1,
         "13C" | "C13" | "c13" | "13c" | "carbon" => nmr::NmrNucleus::C13,
-        _ => return Err(format!("Unknown nucleus '{}', use '1H' or '13C'", nucleus)),
+        "19F" | "F19" | "f19" | "19f" | "fluorine" => nmr::NmrNucleus::F19,
+        "31P" | "P31" | "p31" | "31p" | "phosphorus" => nmr::NmrNucleus::P31,
+        "15N" | "N15" | "n15" | "15n" | "nitrogen" => nmr::NmrNucleus::N15,
+        "11B" | "B11" | "b11" | "11b" | "boron" => nmr::NmrNucleus::B11,
+        "29Si" | "Si29" | "si29" | "29si" | "silicon" => nmr::NmrNucleus::Si29,
+        "77Se" | "Se77" | "se77" | "77se" | "selenium" => nmr::NmrNucleus::Se77,
+        "17O" | "O17" | "o17" | "17o" | "oxygen" => nmr::NmrNucleus::O17,
+        "33S" | "S33" | "s33" | "33s" | "sulfur" => nmr::NmrNucleus::S33,
+        _ => {
+            return Err(format!(
+            "Unknown nucleus '{}'. Supported: 1H, 13C, 19F, 31P, 15N, 11B, 29Si, 77Se, 17O, 33S",
+            nucleus
+        ))
+        }
     };
     Ok(nmr::compute_nmr_spectrum(
         &shifts, &couplings, nuc, gamma, ppm_min, ppm_max, n_points,
@@ -1342,6 +1366,41 @@ pub fn compute_nmr_spectrum(
 pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> Result<Vec<nmr::HoseCode>, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(nmr::hose::generate_hose_codes(&mol, max_radius))
+}
+
+/// Compute orbital isosurface mesh for visualization.
+///
+/// Works with all implemented electronic-structure methods: EHT, PM3, xTB, HF-3c.
+///
+/// - `elements`: atomic numbers
+/// - `positions`: Cartesian coordinates `[x,y,z]` in Å
+/// - `method`: "eht", "pm3", "xtb", or "hf3c"
+/// - `mo_index`: which molecular orbital to visualize
+/// - `spacing`: grid spacing in Å (0.2 typical)
+/// - `padding`: padding around molecule in Å (3.0 typical)
+/// - `isovalue`: isosurface threshold (0.02 typical)
+pub fn compute_orbital_mesh(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    method: &str,
+    mo_index: usize,
+    spacing: f64,
+    padding: f64,
+    isovalue: f32,
+) -> Result<mesh::OrbitalMeshResult, String> {
+    let m = match method.to_lowercase().as_str() {
+        "eht" | "huckel" => mesh::MeshMethod::Eht,
+        "pm3" => mesh::MeshMethod::Pm3,
+        "xtb" | "gfn0" | "gfn-xtb" => mesh::MeshMethod::Xtb,
+        "hf3c" | "hf-3c" | "hf" => mesh::MeshMethod::Hf3c,
+        _ => {
+            return Err(format!(
+                "Unknown method '{}'. Supported: eht, pm3, xtb, hf3c",
+                method
+            ))
+        }
+    };
+    mesh::compute_orbital_mesh(elements, positions, m, mo_index, spacing, padding, isovalue)
 }
 
 /// Compute molecular descriptors for ML property prediction.
@@ -1613,6 +1672,59 @@ pub fn assemble_framework(
     materials::assemble_framework(node, linker, topology, cell)
 }
 
+/// Run a complete HF-3c calculation (Hartree-Fock with D3, gCP, SRB corrections).
+///
+/// `elements`: atomic numbers.
+/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
+/// `config`: calculation parameters (or use `HfConfig::default()`).
+///
+/// Returns orbital energies, total energy, correction energies, and optional CIS states.
+pub fn compute_hf3c(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    config: &hf::HfConfig,
+) -> Result<hf::Hf3cResult, String> {
+    hf::solve_hf3c(elements, positions, config)
+}
+
+/// Compute ANI neural-network potential energy (and optionally forces).
+///
+/// Uses internally-generated test weights — suitable for testing and demonstration.
+/// For physically meaningful results, use `ani::compute_ani()` with trained weights.
+///
+/// `elements`: atomic numbers (supported: H, C, N, O, F, S, Cl).
+/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
+pub fn compute_ani(elements: &[u8], positions: &[[f64; 3]]) -> Result<ani::AniResult, String> {
+    ani::api::compute_ani_test(elements, positions)
+}
+
+/// Compute ANI neural-network potential energy with custom config and pre-loaded models.
+///
+/// `elements`: atomic numbers.
+/// `positions`: Cartesian coordinates in Å.
+/// `config`: ANI configuration (cutoff, force computation flag).
+/// `models`: pre-loaded element→network map from `ani::weights::load_weights()`.
+pub fn compute_ani_with_models(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    config: &ani::AniConfig,
+    models: &std::collections::HashMap<u8, ani::nn::FeedForwardNet>,
+) -> Result<ani::AniResult, String> {
+    ani::compute_ani(elements, positions, config, models)
+}
+
+/// Compute ESP grid and return full result with values, origin, spacing and dimensions.
+///
+/// This is a convenience alias for `compute_esp()` returning the `EspGrid` struct.
+pub fn compute_esp_grid(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    spacing: f64,
+    padding: f64,
+) -> Result<esp::EspGrid, String> {
+    compute_esp(elements, positions, spacing, padding)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1864,5 +1976,46 @@ mod tests {
             .images
             .iter()
             .all(|img| img.potential_energy_kcal_mol.is_finite()));
+    }
+
+    #[test]
+    fn test_compute_hf3c_water() {
+        let conf = embed("O", 42);
+        assert!(conf.error.is_none());
+        let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+
+        let result = compute_hf3c(&conf.elements, &pos, &hf::HfConfig::default());
+        assert!(result.is_ok(), "HF-3c should succeed for water");
+        let r = result.unwrap();
+        assert!(r.energy.is_finite());
+        assert!(!r.orbital_energies.is_empty());
+    }
+
+    #[test]
+    fn test_compute_ani_water() {
+        let conf = embed("O", 42);
+        assert!(conf.error.is_none());
+        let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+
+        let result = compute_ani(&conf.elements, &pos);
+        assert!(result.is_ok(), "ANI should succeed for water");
+        let r = result.unwrap();
+        assert!(r.energy.is_finite());
+        assert_eq!(r.forces.len(), 3); // 3 atoms in water
+        assert_eq!(r.species.len(), 3);
+    }
+
+    #[test]
+    fn test_compute_esp_grid_water() {
+        let conf = embed("O", 42);
+        assert!(conf.error.is_none());
+        let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+
+        let result = compute_esp_grid(&conf.elements, &pos, 0.5, 3.0);
+        assert!(result.is_ok(), "ESP grid should succeed for water");
+        let g = result.unwrap();
+        assert!(!g.values.is_empty());
+        assert!(g.spacing > 0.0);
+        assert!(g.dims[0] > 0 && g.dims[1] > 0 && g.dims[2] > 0);
     }
 }
