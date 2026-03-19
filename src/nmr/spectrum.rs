@@ -61,8 +61,57 @@ pub struct NmrSpectrum {
     pub nucleus: NmrNucleus,
     /// Line width parameter (ppm).
     pub gamma: f64,
+    /// Peak group integrations (relative areas, normalized to largest = 1.0).
+    pub integrations: Vec<PeakIntegration>,
     /// Notes.
     pub notes: Vec<String>,
+}
+
+/// Integration result for a group of equivalent peaks.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PeakIntegration {
+    /// Center of the peak group (ppm).
+    pub center_ppm: f64,
+    /// Integration bounds (ppm_low, ppm_high).
+    pub bounds: (f64, f64),
+    /// Raw area (sum of intensities × step).
+    pub raw_area: f64,
+    /// Relative area (normalized so largest group = 1.0).
+    pub relative_area: f64,
+    /// Number of equivalent atoms contributing.
+    pub n_atoms: usize,
+}
+
+/// Default FWHM (full-width at half-maximum) for each nucleus type, in Hz.
+fn default_fwhm_hz(nucleus: NmrNucleus) -> f64 {
+    match nucleus {
+        NmrNucleus::H1 => 1.0,  // Narrow lines for ¹H
+        NmrNucleus::C13 => 5.0, // Broader for ¹³C
+        NmrNucleus::F19 => 5.0,
+        NmrNucleus::P31 => 10.0,
+        NmrNucleus::N15 => 10.0,
+        NmrNucleus::B11 => 50.0, // Quadrupolar broadening
+        NmrNucleus::Si29 => 5.0,
+        NmrNucleus::Se77 => 20.0,
+        NmrNucleus::O17 => 100.0, // Quadrupolar
+        NmrNucleus::S33 => 100.0, // Quadrupolar
+    }
+}
+
+/// Default spectrometer frequency for each nucleus (MHz).
+fn default_frequency_mhz(nucleus: NmrNucleus) -> f64 {
+    match nucleus {
+        NmrNucleus::H1 => 400.0,
+        NmrNucleus::C13 => 100.6,
+        NmrNucleus::F19 => 376.5,
+        NmrNucleus::P31 => 162.0,
+        NmrNucleus::N15 => 40.6,
+        NmrNucleus::B11 => 128.4,
+        NmrNucleus::Si29 => 79.5,
+        NmrNucleus::Se77 => 76.3,
+        NmrNucleus::O17 => 54.2,
+        NmrNucleus::S33 => 30.7,
+    }
 }
 
 /// Lorentzian line shape: L(x) = (1/π) · γ / [(x - x₀)² + γ²]
@@ -88,7 +137,7 @@ fn multiplicity_label(n_couplings: usize) -> &'static str {
 /// `shifts`: predicted chemical shifts
 /// `couplings`: predicted J-coupling constants
 /// `nucleus`: which nucleus to display
-/// `gamma`: Lorentzian line width in ppm (typically 0.01–0.05 for ¹H, 0.5–2.0 for ¹³C)
+/// `gamma`: Lorentzian line width in ppm (if 0.0, uses nucleus-specific FWHM default)
 /// `ppm_min`, `ppm_max`: spectral window
 /// `n_points`: grid resolution
 pub fn compute_nmr_spectrum(
@@ -105,6 +154,13 @@ pub fn compute_nmr_spectrum(
     // NMR convention: ppm axis runs from high to low
     let ppm_axis: Vec<f64> = (0..n_points).map(|i| ppm_max - step * i as f64).collect();
     let mut intensities = vec![0.0; n_points];
+
+    // Use nucleus-specific FWHM if gamma is 0 or very small
+    let effective_gamma = if gamma > 1e-6 {
+        gamma
+    } else {
+        default_fwhm_hz(nucleus) / default_frequency_mhz(nucleus)
+    };
 
     let active_shifts: &[ChemicalShift] = match nucleus {
         NmrNucleus::H1 => &shifts.h_shifts,
@@ -148,7 +204,7 @@ pub fn compute_nmr_spectrum(
         if n_j == 0 || !matches!(nucleus, NmrNucleus::H1) {
             // Singlet or non-¹H: single Lorentzian
             for (idx, &ppm) in ppm_axis.iter().enumerate() {
-                intensities[idx] += intensity * lorentzian(ppm, shift.shift_ppm, gamma);
+                intensities[idx] += intensity * lorentzian(ppm, shift.shift_ppm, effective_gamma);
             }
         } else {
             // For ¹H with coupling: generate split pattern
@@ -175,7 +231,7 @@ pub fn compute_nmr_spectrum(
                 let line_intensity = intensity * coeff / total;
 
                 for (idx, &ppm) in ppm_axis.iter().enumerate() {
-                    intensities[idx] += line_intensity * lorentzian(ppm, line_ppm, gamma);
+                    intensities[idx] += line_intensity * lorentzian(ppm, line_ppm, effective_gamma);
                 }
             }
 
@@ -199,21 +255,78 @@ pub fn compute_nmr_spectrum(
         NmrNucleus::S33 => "³³S",
     };
 
+    // Compute integrations for each peak group
+    let integration_width = effective_gamma * 10.0; // integrate ±10γ around each peak
+    let integrations =
+        compute_integrations(&peaks, &ppm_axis, &intensities, step, integration_width);
+
     NmrSpectrum {
         ppm_axis,
         intensities,
         peaks,
         nucleus,
-        gamma,
+        gamma: effective_gamma,
+        integrations,
         notes: vec![
             format!(
-                "{} NMR spectrum with Lorentzian broadening (γ = {} ppm).",
-                nucleus_label, gamma
+                "{} NMR spectrum with Lorentzian broadening (γ = {:.4} ppm, FWHM = {:.1} Hz).",
+                nucleus_label, effective_gamma,
+                effective_gamma * default_frequency_mhz(nucleus)
             ),
             "Chemical shifts from empirical additivity rules; J-couplings from Karplus equation.".to_string(),
             "First-order splitting only; higher-order effects (roofing, strong coupling) not modeled.".to_string(),
         ],
     }
+}
+
+/// Compute peak integrations for groups of peaks in the spectrum.
+fn compute_integrations(
+    peaks: &[NmrPeak],
+    ppm_axis: &[f64],
+    intensities: &[f64],
+    step: f64,
+    integration_width: f64,
+) -> Vec<PeakIntegration> {
+    if peaks.is_empty() || ppm_axis.is_empty() {
+        return Vec::new();
+    }
+
+    let mut integrations: Vec<PeakIntegration> = peaks
+        .iter()
+        .map(|peak| {
+            let low = peak.shift_ppm - integration_width;
+            let high = peak.shift_ppm + integration_width;
+
+            let raw_area: f64 = ppm_axis
+                .iter()
+                .zip(intensities.iter())
+                .filter(|(&ppm, _)| ppm >= low && ppm <= high)
+                .map(|(_, &intensity)| intensity * step)
+                .sum();
+
+            PeakIntegration {
+                center_ppm: peak.shift_ppm,
+                bounds: (low, high),
+                raw_area,
+                relative_area: 0.0,
+                n_atoms: 1,
+            }
+        })
+        .collect();
+
+    // Normalize relative areas
+    let max_area = integrations
+        .iter()
+        .map(|i| i.raw_area)
+        .fold(0.0f64, f64::max);
+
+    if max_area > 1e-30 {
+        for int in &mut integrations {
+            int.relative_area = int.raw_area / max_area;
+        }
+    }
+
+    integrations
 }
 
 /// Pascal's triangle row n: [C(n,0), C(n,1), ..., C(n,n)].
