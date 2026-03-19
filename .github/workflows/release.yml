@@ -41,12 +41,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Unit tests (lib)
         run: cargo test --lib --release
-      - name: Integration — diverse molecules
-        run: cargo test --release --test test_diverse_molecules -- --nocapture
-      - name: Integration — gradient check
-        run: cargo test --release --test test_gradient_check -- --nocapture
-      - name: Integration — geometry quality
-        run: cargo test --release --test test_geometry_quality -- --nocapture
+      - name: Smoke battery
+        run: cargo test --release --test ci -- --nocapture
 
   # ─── Gate 2: Lint & format ─────────────────────────────────────────────────
   lint:
