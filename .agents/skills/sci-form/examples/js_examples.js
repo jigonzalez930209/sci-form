@@ -46,6 +46,14 @@ import init, {
   system_capabilities, system_method_plan, compare_methods,
   // DOS / RMSD
   compute_dos, compute_rmsd,
+  // Stereochemistry
+  analyze_stereo,
+  // Solvation
+  compute_nonpolar_solvation, compute_gb_solvation,
+  // Rings & Fingerprints
+  compute_sssr, compute_ecfp, compute_tanimoto,
+  // Clustering
+  butina_cluster, compute_rmsd_matrix,
 } from "sci-form-wasm";
 
 // ─── JSON helpers ──────────────────────────────────────────────────────────────
@@ -339,6 +347,99 @@ async function main() {
   const cmp = fromJSON(compare_methods("O", ELEMENTS, COORDS, false));
   cmp.comparisons.forEach(e =>
     console.log(`  ${e.method}: status=${e.status}  available=${e.available}`)
+  );
+
+
+  // ─── 17. Stereochemistry ───────────────────────────────────────────
+
+  // R/S chirality with 3D coords
+  const chiralResult = fromJSON(embed("C(F)(Cl)(Br)I", 42));
+  const chiralElem   = JSON.stringify(chiralResult.elements);
+  const chiralCoords = JSON.stringify(chiralResult.coords);
+  const stereo = fromJSON(analyze_stereo("C(F)(Cl)(Br)I", chiralCoords));
+  console.log(`Stereocenters: ${stereo.n_stereocenters}  double bonds: ${stereo.n_double_bonds}`);
+  stereo.stereocenters.forEach(sc =>
+    console.log(`  atom ${sc.atom_index}: config=${sc.configuration}  priorities=${JSON.stringify(sc.priorities)}`)
+  );
+
+  // E/Z with 3D coords
+  const alkResult = fromJSON(embed("CC=CC", 42));
+  const ezStereo = fromJSON(analyze_stereo("CC=CC", JSON.stringify(alkResult.coords)));
+  ezStereo.double_bonds.forEach(db =>
+    console.log(`  double bond ${db.atom1}-${db.atom2}: config=${db.configuration}`)
+  );
+
+  // Topology-only (empty coords)
+  const stereoTopo = fromJSON(analyze_stereo("C(F)(Cl)(Br)I", "[]"));
+  console.log("Topology stereocenters:", stereoTopo.n_stereocenters);
+
+
+  // ─── 18. Solvation ────────────────────────────────────────────────
+
+  // Non-polar solvation (SASA ASP model)
+  const npSolv = fromJSON(compute_nonpolar_solvation(ELEMENTS, COORDS, 1.4));
+  console.log(`Non-polar solvation: ${npSolv.energy_kcal_mol.toFixed(4)} kcal/mol  SASA=${npSolv.total_sasa.toFixed(2)} Å²`);
+  npSolv.atom_contributions.forEach((c, i) =>
+    console.log(`  atom ${i}: ΔG=${c.toFixed(4)} kcal/mol  sasa=${npSolv.atom_sasa[i].toFixed(2)} Å²`)
+  );
+
+  // Generalized Born (HCT model)
+  const chargesW = fromJSON(compute_charges("O"));
+  const chargesJSON = JSON.stringify(chargesW.charges);
+  const gb = fromJSON(compute_gb_solvation(ELEMENTS, COORDS, chargesJSON, 78.5, 1.0, 1.4));
+  console.log(`GB electrostatic: ${gb.electrostatic_energy_kcal_mol.toFixed(4)} kcal/mol`);
+  console.log(`GB nonpolar:      ${gb.nonpolar_energy_kcal_mol.toFixed(4)} kcal/mol`);
+  console.log(`GB total:         ${gb.total_energy_kcal_mol.toFixed(4)} kcal/mol`);
+  console.log(`Born radii: ${gb.born_radii.map(r => r.toFixed(3))}`);
+
+
+  // ─── 19. Rings & Fingerprints ─────────────────────────────────────────
+
+  // SSSR — Smallest Set of Smallest Rings
+  const benzRings = fromJSON(compute_sssr(BENZENE));
+  console.log(`Benzene rings: ${benzRings.rings.length}  histogram: ${JSON.stringify(benzRings.ring_size_histogram)}`);
+  benzRings.rings.forEach(r =>
+    console.log(`  ring size ${r.size}  atoms=${JSON.stringify(r.atoms)}  aromatic=${r.is_aromatic}`)
+  );
+
+  const naphRings = fromJSON(compute_sssr("c1ccc2ccccc2c1")); // naphthalene
+  console.log(`Naphthalene: ${naphRings.rings.length} rings`);
+
+  // ECFP fingerprints
+  const fpBenz = fromJSON(compute_ecfp(BENZENE, 2, 2048));
+  const fpTol  = fromJSON(compute_ecfp("Cc1ccccc1", 2, 2048));
+  const fpAcid = fromJSON(compute_ecfp(ACETIC_ACID, 2, 2048));
+  console.log(`Benzene fp: ${fpBenz.n_bits} bits, ${fpBenz.on_bits.length} on`);
+
+  // Tanimoto similarity
+  const simBT = fromJSON(compute_tanimoto(
+    JSON.stringify(fpBenz), JSON.stringify(fpTol)
+  ));
+  const simBA = fromJSON(compute_tanimoto(
+    JSON.stringify(fpBenz), JSON.stringify(fpAcid)
+  ));
+  console.log(`Tanimoto benzene/toluene: ${simBT.tanimoto.toFixed(4)}`);
+  console.log(`Tanimoto benzene/acetic:  ${simBA.tanimoto.toFixed(4)}`);
+
+
+  // ─── 20. Clustering ─────────────────────────────────────────────────
+
+  const smilesList4Cluster = ["c1ccccc1", "Cc1ccccc1", "Clc1ccccc1", "CC(=O)O", "CCO"];
+  const conformerCoords = smilesList4Cluster.map(s => fromJSON(embed(s, 42)).coords);
+  const conformersJSON = JSON.stringify(conformerCoords);
+
+  // Butina RMSD clustering
+  const clustResult = fromJSON(butina_cluster(conformersJSON, 2.0));
+  console.log(`Clusters (cutoff=2.0Å): ${clustResult.n_clusters}`);
+  console.log(`  assignments: ${JSON.stringify(clustResult.assignments)}`);
+  console.log(`  centroids:   ${JSON.stringify(clustResult.centroid_indices)}`);
+  console.log(`  sizes:       ${JSON.stringify(clustResult.cluster_sizes)}`);
+
+  // Pair-wise RMSD matrix
+  const rmsdMat = fromJSON(compute_rmsd_matrix(conformersJSON));
+  console.log(`RMSD matrix: ${rmsdMat.length}×${rmsdMat[0].length}`);
+  rmsdMat.forEach((row, i) =>
+    console.log(`  row ${i}: ${row.map(v => v.toFixed(3))}`))
   );
 }
 

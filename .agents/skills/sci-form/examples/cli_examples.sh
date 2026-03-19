@@ -134,6 +134,68 @@ $SF ani "$ELEMENTS" "$COORDS"
 
 $SF hf3c "$ELEMENTS" "$COORDS"
 
+# ─── 16. Stereochemistry ──────────────────────────────────────────────────────
+
+# R/S chirality (topology-only, no 3D)
+$SF stereo "C(F)(Cl)(Br)I"
+
+# R/S chirality with 3D coords (more accurate)
+CHIRAL_COORDS=$($SF embed "C(F)(Cl)(Br)I" --seed 42 | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)['coords']))")
+$SF stereo "C(F)(Cl)(Br)I" --coords "$CHIRAL_COORDS"
+
+# E/Z double bond configuration with 3D
+ALK_COORDS=$($SF embed "CC=CC" --seed 42 | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin)['coords']))")
+$SF stereo "CC=CC" --coords "$ALK_COORDS"
+
+# ─── 17. Solvation ────────────────────────────────────────────────────────────
+
+# Non-polar solvation (SASA ASP model)
+$SF solvation "$ELEMENTS" "$COORDS"
+
+# With explicit charges for GB
+WATER_CHARGES='[-0.834, 0.417, 0.417]'
+$SF solvation "$ELEMENTS" "$COORDS" --charges "$WATER_CHARGES"
+
+# Custom probe radius
+$SF solvation "$ELEMENTS" "$COORDS" --probe-radius 1.6
+
+# ─── 18. SSSR — Ring Perception ───────────────────────────────────────────────
+
+# Benzene (1 ring, size 6)
+$SF sssr "c1ccccc1"
+
+# Naphthalene (2 fused 6-membered rings)
+$SF sssr "c1ccc2ccccc2c1"
+
+# Cyclopentadiene (5-membered ring)
+$SF sssr "C1=CC=CC1"
+
+# Spiro compound
+$SF sssr "C1CCC2(CC1)CCCC2"
+
+# ─── 19. ECFP Fingerprints ────────────────────────────────────────────────────
+
+# ECFP4 (radius=2, 2048 bits)
+$SF ecfp "c1ccccc1"
+$SF ecfp "c1ccccc1" --radius 2 --n-bits 2048
+
+# ECFP2 (radius=1, 1024 bits)
+$SF ecfp "CC(=O)O" --radius 1 --n-bits 1024
+
+# ─── 20. Tanimoto Similarity ──────────────────────────────────────────────────
+
+# Benzene vs Toluene (should be > 0.5)
+$SF tanimoto "c1ccccc1" "Cc1ccccc1"
+
+# Benzene vs Acetic acid (should be low)
+$SF tanimoto "c1ccccc1" "CC(=O)O"
+
+# Identical molecules (should be 1.0)
+$SF tanimoto "c1ccccc1" "c1ccccc1"
+
+# Custom radius / bit length
+$SF tanimoto "c1ccccc1" "Cc1ccccc1" --radius 3 --n-bits 1024
+
 # ─── Combined Pipeline Examples ───────────────────────────────────────────────
 
 # Pipeline: embed → get coords → run EHT
