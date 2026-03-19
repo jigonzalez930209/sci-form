@@ -172,3 +172,83 @@ pub fn cmd_hf3c(elements: &str, coords: &str) {
         }
     }
 }
+
+pub fn cmd_stereo(smiles: &str, coords: &str) {
+    let flat: Vec<f64> = if coords == "[]" || coords.is_empty() {
+        vec![]
+    } else {
+        serde_json::from_str(coords).unwrap_or_else(|e| {
+            eprintln!("bad coords: {}", e);
+            std::process::exit(1);
+        })
+    };
+    match sci_form::analyze_stereo(smiles, &flat) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("Stereo error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_solvation(elements: &str, coords: &str, charges: &str, probe_radius: f64) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    if charges.is_empty() || charges == "[]" {
+        // Non-polar only
+        let r = sci_form::compute_nonpolar_solvation(&elems, &positions, Some(probe_radius));
+        println!("{}", serde_json::to_string_pretty(&r).unwrap());
+    } else {
+        let q: Vec<f64> = serde_json::from_str(charges).unwrap_or_else(|e| {
+            eprintln!("bad charges: {}", e);
+            std::process::exit(1);
+        });
+        let r = sci_form::compute_gb_solvation(
+            &elems,
+            &positions,
+            &q,
+            Some(78.5),
+            Some(1.0),
+            Some(probe_radius),
+        );
+        println!("{}", serde_json::to_string_pretty(&r).unwrap());
+    }
+}
+
+pub fn cmd_sssr(smiles: &str) {
+    match sci_form::compute_sssr(smiles) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("SSSR error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_ecfp(smiles: &str, radius: usize, n_bits: usize) {
+    match sci_form::compute_ecfp(smiles, radius, n_bits) {
+        Ok(fp) => println!("{}", serde_json::to_string_pretty(&fp).unwrap()),
+        Err(e) => {
+            eprintln!("ECFP error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_tanimoto(smiles1: &str, smiles2: &str, radius: usize, n_bits: usize) {
+    let fp1 = match sci_form::compute_ecfp(smiles1, radius, n_bits) {
+        Ok(fp) => fp,
+        Err(e) => {
+            eprintln!("ECFP error for '{}': {}", smiles1, e);
+            std::process::exit(1);
+        }
+    };
+    let fp2 = match sci_form::compute_ecfp(smiles2, radius, n_bits) {
+        Ok(fp) => fp,
+        Err(e) => {
+            eprintln!("ECFP error for '{}': {}", smiles2, e);
+            std::process::exit(1);
+        }
+    };
+    let t = sci_form::compute_tanimoto(&fp1, &fp2);
+    println!("{{\"tanimoto\": {:.6}}}", t);
+}
