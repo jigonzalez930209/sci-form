@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-cli"
-version = "0.7.1"
+version = "0.8.0"
 edition = "2021"
 description = "CLI tool for high-performance 3D molecular conformer generation"
 license = "MIT"
@@ -18,7 +18,7 @@ default = ["parallel"]
 parallel = ["sci-form/parallel"]
 
 [dependencies]
-sci-form = { path = "../..", version = "0.7.1", default-features = false }
+sci-form = { path = "../..", version = "0.8.0", default-features = false }
 clap = { version = "4", features = ["derive"] }
 rayon = "1.10"
 serde_json = "1.0"
