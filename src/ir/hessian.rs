@@ -51,7 +51,7 @@ fn evaluate_energy(
 /// `elements`: atomic numbers
 /// `positions`: Cartesian coordinates in Å
 /// `method`: which energy method to use
-/// `step_size`: finite difference step in Å (default ~0.005)
+/// `step_size`: finite difference step in Å (if None, auto-selects based on atomic mass)
 pub fn compute_numerical_hessian(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -64,7 +64,9 @@ pub fn compute_numerical_hessian(
     }
 
     let n3 = 3 * n_atoms;
-    let delta = step_size.unwrap_or(0.005); // Å
+
+    // Auto step-size: heavier atoms need larger steps for stable numerics
+    let delta = step_size.unwrap_or_else(|| auto_step_size(elements));
     let delta_sq = delta * delta;
 
     // Reference energy
@@ -122,7 +124,46 @@ pub fn compute_numerical_hessian(
         }
     }
 
+    // Symmetry enforcement: average H and H^T to eliminate numerical noise
+    enforce_symmetry(&mut hessian);
+
     Ok(hessian)
+}
+
+/// Enforce exact symmetry by averaging H[i,j] and H[j,i].
+///
+/// Reduces numerical noise from finite difference evaluation:
+/// $H_{\text{sym}} = \frac{H + H^T}{2}$
+fn enforce_symmetry(hessian: &mut DMatrix<f64>) {
+    let n = hessian.nrows();
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let avg = (hessian[(i, j)] + hessian[(j, i)]) * 0.5;
+            hessian[(i, j)] = avg;
+            hessian[(j, i)] = avg;
+        }
+    }
+}
+
+/// Automatic step-size selection based on the lightest element.
+///
+/// Lighter atoms (H) need smaller steps; heavier atoms allow larger steps.
+/// Uses δ = 0.005 × sqrt(min_mass / 1.008) as a heuristic.
+fn auto_step_size(elements: &[u8]) -> f64 {
+    let min_mass = elements
+        .iter()
+        .map(|&z| match z {
+            1 => 1.008,
+            6 => 12.011,
+            7 => 14.007,
+            8 => 15.999,
+            9 => 18.998,
+            _ => z as f64 * 1.5,
+        })
+        .fold(f64::INFINITY, f64::min);
+
+    // Base step of 0.005 Å scaled by sqrt(mass_ratio)
+    (0.005 * (min_mass / 1.008).sqrt()).clamp(0.003, 0.01)
 }
 
 fn flat_to_positions(coords: &[f64]) -> Vec<[f64; 3]> {

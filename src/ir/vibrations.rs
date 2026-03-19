@@ -66,10 +66,29 @@ pub struct VibrationalAnalysis {
     pub n_real_modes: usize,
     /// Zero-point vibrational energy in eV.
     pub zpve_ev: f64,
+    /// Thermochemistry at 298.15 K (if computed).
+    pub thermochemistry: Option<Thermochemistry>,
     /// Semiempirical method used for Hessian.
     pub method: String,
     /// Notes and caveats.
     pub notes: Vec<String>,
+}
+
+/// Thermochemical properties from RRHO approximation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Thermochemistry {
+    /// Temperature in K.
+    pub temperature_k: f64,
+    /// Zero-point energy in kcal/mol.
+    pub zpve_kcal: f64,
+    /// Thermal energy correction in kcal/mol.
+    pub thermal_energy_kcal: f64,
+    /// Thermal enthalpy correction in kcal/mol (E_thermal + RT).
+    pub enthalpy_correction_kcal: f64,
+    /// Vibrational entropy in cal/(mol·K).
+    pub entropy_vib_cal: f64,
+    /// Gibbs free energy correction in kcal/mol (H - TS).
+    pub gibbs_correction_kcal: f64,
 }
 
 /// A peak in the IR spectrum.
@@ -81,6 +100,8 @@ pub struct IrPeak {
     pub ir_intensity: f64,
     /// Mode index.
     pub mode_index: usize,
+    /// Functional group assignment (e.g., "O-H stretch", "C=O stretch").
+    pub assignment: String,
 }
 
 /// Broadened IR spectrum.
@@ -194,6 +215,111 @@ fn lorentzian(x: f64, x0: f64, gamma: f64) -> f64 {
     g / (std::f64::consts::PI * (dx * dx + g * g))
 }
 
+/// Gaussian line shape: G(x) = (1/(σ√(2π))) · exp(-(x-x₀)²/(2σ²))
+fn gaussian(x: f64, x0: f64, sigma: f64) -> f64 {
+    let s = sigma.max(1e-6);
+    let dx = x - x0;
+    (-(dx * dx) / (2.0 * s * s)).exp() / (s * (2.0 * std::f64::consts::PI).sqrt())
+}
+
+/// Assign functional group label to an IR frequency based on standard ranges.
+fn assign_ir_peak(frequency_cm1: f64) -> String {
+    if frequency_cm1 > 3500.0 {
+        "O-H stretch (broad)".to_string()
+    } else if frequency_cm1 > 3300.0 {
+        "N-H stretch".to_string()
+    } else if frequency_cm1 > 3000.0 {
+        "sp2 C-H stretch".to_string()
+    } else if frequency_cm1 > 2800.0 {
+        "sp3 C-H stretch".to_string()
+    } else if frequency_cm1 > 2100.0 && frequency_cm1 < 2300.0 {
+        "C≡N or C≡C stretch".to_string()
+    } else if frequency_cm1 > 1680.0 && frequency_cm1 < 1800.0 {
+        "C=O stretch".to_string()
+    } else if frequency_cm1 > 1600.0 && frequency_cm1 < 1680.0 {
+        "C=C stretch".to_string()
+    } else if frequency_cm1 > 1400.0 && frequency_cm1 < 1600.0 {
+        "aromatic C=C stretch".to_string()
+    } else if frequency_cm1 > 1300.0 && frequency_cm1 < 1400.0 {
+        "C-H bend".to_string()
+    } else if frequency_cm1 > 1000.0 && frequency_cm1 < 1300.0 {
+        "C-O stretch".to_string()
+    } else if frequency_cm1 > 600.0 && frequency_cm1 < 900.0 {
+        "C-H out-of-plane bend".to_string()
+    } else {
+        "skeletal mode".to_string()
+    }
+}
+
+/// Compute RRHO thermochemistry from vibrational frequencies.
+///
+/// Uses the rigid-rotor harmonic-oscillator approximation at the given temperature.
+fn compute_thermochemistry(frequencies_cm1: &[f64], temperature_k: f64) -> Thermochemistry {
+    // Constants
+    const CM1_TO_EV: f64 = 1.0 / 8065.544;
+    const EV_TO_KCAL: f64 = 23.0605;
+    const R_KCAL: f64 = 0.001987204; // kcal/(mol·K)
+    const R_CAL: f64 = 1.987204; // cal/(mol·K)
+    const KB_EV: f64 = 8.617333e-5; // eV/K
+
+    let kbt_ev = KB_EV * temperature_k;
+
+    let real_freqs: Vec<f64> = frequencies_cm1
+        .iter()
+        .filter(|&&f| f > 50.0)
+        .copied()
+        .collect();
+
+    // ZPVE = Σ (1/2)hν with 0.9 anharmonic scaling
+    let zpve_ev: f64 = real_freqs.iter().map(|&f| 0.5 * f * CM1_TO_EV * 0.9).sum();
+    let zpve_kcal = zpve_ev * EV_TO_KCAL;
+
+    // Thermal energy (vibrational contribution): Σ hν / (exp(hν/kT) - 1)
+    let thermal_e_ev: f64 = real_freqs
+        .iter()
+        .map(|&f| {
+            let hnu = f * CM1_TO_EV;
+            let x = hnu / kbt_ev;
+            if x > 100.0 {
+                0.0
+            } else {
+                hnu / (x.exp() - 1.0)
+            }
+        })
+        .sum();
+    let thermal_energy_kcal = thermal_e_ev * EV_TO_KCAL;
+
+    // Enthalpy correction: E_thermal + RT
+    let enthalpy_correction_kcal = thermal_energy_kcal + R_KCAL * temperature_k;
+
+    // Vibrational entropy: Σ [x/(exp(x)-1) - ln(1-exp(-x))]·R
+    let entropy_vib_cal: f64 = real_freqs
+        .iter()
+        .map(|&f| {
+            let hnu = f * CM1_TO_EV;
+            let x = hnu / kbt_ev;
+            if x > 100.0 {
+                0.0
+            } else {
+                let ex = x.exp();
+                R_CAL * (x / (ex - 1.0) - (1.0 - (-x).exp()).ln())
+            }
+        })
+        .sum();
+
+    // Gibbs correction: H - TS
+    let gibbs_correction_kcal = enthalpy_correction_kcal - temperature_k * entropy_vib_cal / 1000.0;
+
+    Thermochemistry {
+        temperature_k,
+        zpve_kcal,
+        thermal_energy_kcal,
+        enthalpy_correction_kcal,
+        entropy_vib_cal,
+        gibbs_correction_kcal,
+    }
+}
+
 /// Perform a complete vibrational analysis from elements and positions.
 ///
 /// Computes the numerical Hessian, mass-weighted eigenvalue problem,
@@ -305,11 +431,15 @@ pub fn compute_vibrational_analysis(
         HessianMethod::Xtb => "xTB",
     };
 
+    // Compute thermochemistry at 298.15 K
+    let thermochemistry = Some(compute_thermochemistry(&frequencies, 298.15));
+
     Ok(VibrationalAnalysis {
         n_atoms,
         modes,
         n_real_modes: n_real,
         zpve_ev: zpve,
+        thermochemistry,
         method: method_name.to_string(),
         notes: vec![
             format!(
@@ -323,9 +453,18 @@ pub fn compute_vibrational_analysis(
     })
 }
 
-/// Generate a Lorentzian-broadened IR spectrum from vibrational analysis.
+/// Broadening function type for IR spectrum generation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BroadeningType {
+    /// Lorentzian line shape (default).
+    Lorentzian,
+    /// Gaussian line shape.
+    Gaussian,
+}
+
+/// Generate a broadened IR spectrum from vibrational analysis.
 ///
-/// `gamma`: Lorentzian half-width in cm⁻¹ (typically 10–30).
+/// `gamma`: broadening width in cm⁻¹ (typically 10–30).
 /// `wn_min`, `wn_max`: wavenumber range in cm⁻¹.
 /// `n_points`: number of grid points.
 pub fn compute_ir_spectrum(
@@ -334,6 +473,25 @@ pub fn compute_ir_spectrum(
     wn_min: f64,
     wn_max: f64,
     n_points: usize,
+) -> IrSpectrum {
+    compute_ir_spectrum_with_broadening(
+        analysis,
+        gamma,
+        wn_min,
+        wn_max,
+        n_points,
+        BroadeningType::Lorentzian,
+    )
+}
+
+/// Generate a broadened IR spectrum with selectable broadening function.
+pub fn compute_ir_spectrum_with_broadening(
+    analysis: &VibrationalAnalysis,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+    broadening: BroadeningType,
 ) -> IrSpectrum {
     let n_points = n_points.max(2);
     let step = (wn_max - wn_min) / (n_points as f64 - 1.0);
@@ -351,10 +509,15 @@ pub fn compute_ir_spectrum(
             frequency_cm1: mode.frequency_cm1,
             ir_intensity: mode.ir_intensity,
             mode_index: mode_idx,
+            assignment: assign_ir_peak(mode.frequency_cm1),
         });
 
         for (idx, &wn) in wavenumbers.iter().enumerate() {
-            intensities[idx] += mode.ir_intensity * lorentzian(wn, mode.frequency_cm1, gamma);
+            intensities[idx] += mode.ir_intensity
+                * match broadening {
+                    BroadeningType::Lorentzian => lorentzian(wn, mode.frequency_cm1, gamma),
+                    BroadeningType::Gaussian => gaussian(wn, mode.frequency_cm1, gamma),
+                };
         }
     }
 
