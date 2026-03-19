@@ -5,6 +5,7 @@
 pub mod alignment;
 pub mod ani;
 pub mod charges;
+pub mod clustering;
 pub mod conformer;
 pub mod dipole;
 pub mod distgeom;
@@ -25,8 +26,11 @@ pub mod optimization;
 pub mod pm3;
 pub mod population;
 pub mod reactivity;
+pub mod rings;
 pub mod smarts;
 pub mod smiles;
+pub mod solvation;
+pub mod stereo;
 pub mod surface;
 pub mod topology;
 pub mod transport;
@@ -1723,6 +1727,156 @@ pub fn compute_esp_grid(
     padding: f64,
 ) -> Result<esp::EspGrid, String> {
     compute_esp(elements, positions, spacing, padding)
+}
+
+// ─── Stereochemistry API ─────────────────────────────────────────────────────
+
+/// Analyze stereochemistry: detect chiral centers (R/S) and E/Z double bonds.
+pub fn analyze_stereo(smiles: &str, coords: &[f64]) -> Result<stereo::StereoAnalysis, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    Ok(stereo::analyze_stereo(&mol, &positions))
+}
+
+// ─── Solvation API ───────────────────────────────────────────────────────────
+
+/// Compute non-polar solvation energy from SASA and atomic solvation parameters.
+pub fn compute_nonpolar_solvation(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    probe_radius: Option<f64>,
+) -> solvation::NonPolarSolvation {
+    solvation::compute_nonpolar_solvation(elements, positions, probe_radius)
+}
+
+/// Compute Generalized Born electrostatic + non-polar solvation energy.
+pub fn compute_gb_solvation(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    charges: &[f64],
+    solvent_dielectric: Option<f64>,
+    solute_dielectric: Option<f64>,
+    probe_radius: Option<f64>,
+) -> solvation::GbSolvation {
+    solvation::compute_gb_solvation(
+        elements,
+        positions,
+        charges,
+        solvent_dielectric,
+        solute_dielectric,
+        probe_radius,
+    )
+}
+
+// ─── Clustering API ──────────────────────────────────────────────────────────
+
+/// Cluster conformers using Butina (Taylor-Butina) algorithm based on RMSD.
+pub fn butina_cluster(conformers: &[Vec<f64>], rmsd_cutoff: f64) -> clustering::ClusterResult {
+    clustering::butina_cluster(conformers, rmsd_cutoff)
+}
+
+/// Compute all-pairs RMSD matrix for a set of conformers.
+pub fn compute_rmsd_matrix(conformers: &[Vec<f64>]) -> Vec<Vec<f64>> {
+    clustering::compute_rmsd_matrix(conformers)
+}
+
+// ─── Rings & Fingerprints API ────────────────────────────────────────────────
+
+/// Compute the Smallest Set of Smallest Rings (SSSR).
+pub fn compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    Ok(rings::sssr::compute_sssr(&mol))
+}
+
+/// Compute Extended-Connectivity Fingerprint (ECFP/Morgan).
+pub fn compute_ecfp(
+    smiles: &str,
+    radius: usize,
+    n_bits: usize,
+) -> Result<rings::ecfp::ECFPFingerprint, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    Ok(rings::ecfp::compute_ecfp(&mol, radius, n_bits))
+}
+
+/// Compute Tanimoto similarity between two ECFP fingerprints.
+pub fn compute_tanimoto(
+    fp1: &rings::ecfp::ECFPFingerprint,
+    fp2: &rings::ecfp::ECFPFingerprint,
+) -> f64 {
+    rings::ecfp::compute_tanimoto(fp1, fp2)
+}
+
+// ─── Charges configured API ─────────────────────────────────────────────────
+
+/// Compute Gasteiger-Marsili charges with configurable parameters.
+pub fn compute_charges_configured(
+    smiles: &str,
+    config: &charges::gasteiger::GasteigerConfig,
+) -> Result<charges::gasteiger::ChargeResult, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+    let bonds: Vec<(usize, usize)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            (a.index(), b.index())
+        })
+        .collect();
+    let formal_charges: Vec<i8> = (0..n)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].formal_charge)
+        .collect();
+    charges::gasteiger::gasteiger_marsili_charges_configured(
+        &elements,
+        &bonds,
+        &formal_charges,
+        config,
+    )
+}
+
+// ─── NMR Enhanced API ────────────────────────────────────────────────────────
+
+/// Predict J-couplings averaged over a conformer ensemble using Boltzmann weighting.
+pub fn compute_ensemble_j_couplings(
+    smiles: &str,
+    conformer_coords: &[Vec<f64>],
+    energies_kcal: &[f64],
+    temperature_k: f64,
+) -> Result<Vec<nmr::JCoupling>, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let positions: Vec<Vec<[f64; 3]>> = conformer_coords
+        .iter()
+        .map(|c| c.chunks(3).map(|p| [p[0], p[1], p[2]]).collect())
+        .collect();
+    Ok(nmr::coupling::ensemble_averaged_j_couplings(
+        &mol,
+        &positions,
+        energies_kcal,
+        temperature_k,
+    ))
+}
+
+// ─── IR Enhanced API ─────────────────────────────────────────────────────────
+
+/// Compute IR spectrum with configurable broadening type.
+pub fn compute_ir_spectrum_broadened(
+    analysis: &ir::VibrationalAnalysis,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+    broadening: &str,
+) -> ir::IrSpectrum {
+    let bt = match broadening {
+        "gaussian" | "Gaussian" => ir::BroadeningType::Gaussian,
+        _ => ir::BroadeningType::Lorentzian,
+    };
+    ir::vibrations::compute_ir_spectrum_with_broadening(
+        analysis, gamma, wn_min, wn_max, n_points, bt,
+    )
 }
 
 #[cfg(test)]
