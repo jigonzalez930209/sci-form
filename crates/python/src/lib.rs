@@ -15,7 +15,10 @@ mod nmr;
 mod population;
 mod properties;
 mod reactivity;
+mod rings;
+mod solvation;
 mod spectroscopy;
+mod stereo;
 mod system;
 mod transport;
 
@@ -40,5 +43,8 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     hf_ani_esp::register(m)?;
     mesh::register(m)?;
     dynamics::register(m)?;
+    stereo::register(m)?;
+    solvation::register(m)?;
+    rings::register(m)?;
     Ok(())
 }
