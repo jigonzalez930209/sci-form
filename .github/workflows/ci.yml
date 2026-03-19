@@ -23,10 +23,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Unit tests
         run: cargo test --lib --release
-      - name: Diverse molecule test
-        run: cargo test --release --test test_diverse_molecules -- --nocapture
-      - name: Gradient check
-        run: cargo test --release --test test_gradient_check -- --nocapture
+      - name: Smoke battery
+        run: cargo test --release --test ci -- --nocapture
 
   lint:
     name: Lint
