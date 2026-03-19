@@ -433,10 +433,9 @@ console.log(`λ_max ≈ ${spec.wavelengths_nm[maxIdx].toFixed(1)} nm, gap ${spec
 
 ```typescript
 function compute_vibrational_analysis(
-  elements: string,      // JSON number[]
-  coords_flat: string,   // JSON number[] flat
-  method: string,        // "eht" | "pm3" | "xtb"
-  step_size: number | null
+  elements: string,   // JSON number[]
+  coords_flat: string, // JSON number[] flat
+  method: string      // "eht" | "pm3" | "xtb"
 ): string
 ```
 
@@ -450,17 +449,25 @@ interface VibrationalAnalysis {
     ir_intensity: number;    // km/mol
     displacement: number[];  // 3N normal-coordinate displacements
     is_real: boolean;
+    label: string | null;    // functional-group annotation, e.g. "C=O stretch"
   }[];
   n_real_modes: number;
-  zpve_ev: number;           // zero-point vibrational energy in eV
+  zpve_ev: number;
   method: string;
   notes: string[];
+  thermochemistry: {
+    zpve_kcal: number;
+    thermal_energy_kcal: number;
+    entropy_vib_cal: number;
+    gibbs_correction_kcal: number;
+  };
 }
 ```
 
 ```typescript
-const vib = JSON.parse(compute_vibrational_analysis(el, co, 'xtb', null));
+const vib = JSON.parse(compute_vibrational_analysis(el, co, 'xtb'));
 console.log(`ZPVE: ${vib.zpve_ev.toFixed(4)} eV, ${vib.n_real_modes} real modes`);
+console.log(`Gibbs correction: ${vib.thermochemistry.gibbs_correction_kcal.toFixed(3)} kcal/mol`);
 ```
 
 ---
@@ -469,20 +476,44 @@ console.log(`ZPVE: ${vib.zpve_ev.toFixed(4)} eV, ${vib.n_real_modes} real modes`
 
 ```typescript
 function compute_ir_spectrum(
-  analysis_json: string,  // JSON-serialised VibrationalAnalysis
-  gamma: number,          // Lorentzian HWHM in cm⁻¹
-  wn_min: number,
-  wn_max: number,
-  n_points: number
+  elements: string,    // JSON number[]
+  coords_flat: string, // JSON number[] flat
+  method: string       // "eht" | "pm3" | "xtb"
 ): string
 ```
 
-Returns JSON `IrSpectrum { wavenumbers, intensities, peaks, gamma, notes }`.
+Convenience wrapper: runs vibrational analysis + default Lorentzian broadening (γ = 15 cm⁻¹, 600–4000 cm⁻¹, 1000 points).
+
+Returns JSON `IrSpectrum { wavenumbers, intensities, transmittance, peaks, gamma, notes }`.
 
 ```typescript
-const spec = JSON.parse(compute_ir_spectrum(JSON.stringify(vib), 15.0, 600.0, 4000.0, 1000));
+const spec = JSON.parse(compute_ir_spectrum(el, co, 'xtb'));
 const peak_wn = spec.wavenumbers[spec.intensities.indexOf(Math.max(...spec.intensities))];
 console.log(`Dominant IR band: ${peak_wn.toFixed(1)} cm⁻¹`);
+```
+
+---
+
+### `compute_ir_spectrum_broadened`
+
+```typescript
+function compute_ir_spectrum_broadened(
+  analysis_json: string,  // JSON-serialised VibrationalAnalysis
+  gamma: number,          // HWHM (Lorentzian) or σ (Gaussian) in cm⁻¹
+  wn_min: number,
+  wn_max: number,
+  n_points: number,
+  broadening: string      // "lorentzian" | "gaussian"
+): string
+```
+
+Full-control IR broadening from an existing `VibrationalAnalysis` JSON. Returns the same `IrSpectrum` shape with both `.intensities` (absorbance) and `.transmittance` axes.
+
+```typescript
+const spec = JSON.parse(
+  compute_ir_spectrum_broadened(JSON.stringify(vib), 10.0, 400.0, 4000.0, 2000, 'gaussian')
+);
+console.log(`${spec.peaks.length} labelled peaks`);
 ```
 
 ---
@@ -520,7 +551,32 @@ function predict_nmr_couplings(
 ): string
 ```
 
-Returns JSON array of `JCoupling { h1_index, h2_index, j_hz, n_bonds, coupling_type }`.
+Returns JSON array of `JCoupling { h1_index, h2_index, j_hz, n_bonds, coupling_type }`. Parameterized pathways: H-C-C-H (Altona-Sundaralingam), H-C-N-H (Bystrov), H-C-O-H, H-C-S-H.
+
+---
+
+### `compute_ensemble_j_couplings`
+
+```typescript
+function compute_ensemble_j_couplings(
+  smiles: string,
+  conformers_json: string,  // JSON number[][] (array of flat coord arrays)
+  energies_json: string,    // JSON number[] in kcal/mol
+  temperature_k: number
+): string
+```
+
+Boltzmann-average ³J couplings over a conformer ensemble. Returns JSON array of `JCoupling`.
+
+```typescript
+const allCoords = results.map((r: any) => r.coords);
+const energies = new Array(allCoords.length).fill(0);
+const couplings = JSON.parse(
+  compute_ensemble_j_couplings('CCCC', JSON.stringify(allCoords), JSON.stringify(energies), 298.15)
+);
+couplings.forEach((jc: any) =>
+  console.log(`H${jc.h1_index}–H${jc.h2_index}: ${jc.j_hz.toFixed(2)} Hz`));
+```
 
 ---
 
@@ -620,6 +676,225 @@ function estimate_workers(n_items: number, max_workers: number): number
 ```
 
 Heuristic to pick the optimal worker count.
+
+---
+
+## Stereochemistry
+
+### `analyze_stereo`
+
+```typescript
+function analyze_stereo(
+  smiles: string,
+  coords_flat: string  // JSON number[] flat, or "[]" for topology-only
+): string
+```
+
+Assign CIP priorities, R/S at stereocenters, and E/Z at double bonds. Returns JSON:
+
+```typescript
+interface StereoAnalysis {
+  stereocenters: {
+    atom_index: number;
+    element: number;
+    substituent_indices: number[];
+    priorities: number[];          // CIP rank (1 = highest)
+    configuration: 'R' | 'S' | null;
+  }[];
+  double_bonds: {
+    atom1: number;
+    atom2: number;
+    configuration: 'E' | 'Z' | null;
+    high_priority_sub1: number | null;
+    high_priority_sub2: number | null;
+  }[];
+  n_stereocenters: number;
+  n_double_bonds: number;
+}
+```
+
+```typescript
+const r = JSON.parse(embed('C(F)(Cl)(Br)I', 42));
+const stereo = JSON.parse(analyze_stereo('C(F)(Cl)(Br)I', JSON.stringify(r.coords)));
+console.log(`${stereo.n_stereocenters} stereocenters`);
+stereo.stereocenters.forEach((sc: any) =>
+  console.log(`  Atom ${sc.atom_index}: ${sc.configuration}`));
+```
+
+---
+
+## Implicit Solvation
+
+### `compute_nonpolar_solvation`
+
+```typescript
+function compute_nonpolar_solvation(
+  elements: string,     // JSON number[]
+  coords_flat: string,  // JSON number[] flat
+  probe_radius: number  // Å, typically 1.4
+): string
+```
+
+Returns JSON:
+
+```typescript
+interface NonPolarSolvation {
+  energy_kcal_mol: number;
+  atom_contributions: number[];
+  atom_sasa: number[];
+  total_sasa: number;
+}
+```
+
+### `compute_gb_solvation`
+
+```typescript
+function compute_gb_solvation(
+  elements: string,          // JSON number[]
+  coords_flat: string,       // JSON number[] flat
+  charges: string,           // JSON number[]
+  solvent_dielectric: number, // default 78.5
+  solute_dielectric: number,  // default 1.0
+  probe_radius: number        // default 1.4
+): string
+```
+
+GB/SA electrostatic solvation. Returns JSON:
+
+```typescript
+interface GbSolvation {
+  electrostatic_energy_kcal_mol: number;
+  nonpolar_energy_kcal_mol: number;
+  total_energy_kcal_mol: number;
+  born_radii: number[];
+  charges: number[];
+  solvent_dielectric: number;
+  solute_dielectric: number;
+}
+```
+
+```typescript
+const r = JSON.parse(embed('CCO', 42));
+const el        = JSON.stringify(r.elements);
+const co        = JSON.stringify(r.coords);
+const chg       = JSON.parse(compute_charges('CCO')).charges;
+const chgJson   = JSON.stringify(chg);
+
+const np = JSON.parse(compute_nonpolar_solvation(el, co, 1.4));
+console.log(`Non-polar ΔG: ${np.energy_kcal_mol.toFixed(2)} kcal/mol`);
+
+const gb = JSON.parse(compute_gb_solvation(el, co, chgJson, 78.5, 1.0, 1.4));
+console.log(`Total solvation: ${gb.total_energy_kcal_mol.toFixed(2)} kcal/mol`);
+```
+
+---
+
+## Ring Perception
+
+### `compute_sssr`
+
+```typescript
+function compute_sssr(smiles: string): string
+```
+
+Smallest Set of Smallest Rings (Horton's algorithm). Returns JSON:
+
+```typescript
+interface SssrResult {
+  rings: { atoms: number[]; size: number; is_aromatic: boolean }[];
+  atom_ring_count: number[];
+  atom_ring_sizes: number[][];
+  ring_size_histogram: Record<string, number>;
+}
+```
+
+```typescript
+const r = JSON.parse(compute_sssr('c1ccc2ccccc2c1'));  // naphthalene
+console.log(`${r.rings.length} rings`);
+r.rings.forEach((ring: any) =>
+  console.log(`  ${ring.size}-membered, aromatic=${ring.is_aromatic}`));
+```
+
+---
+
+## Fingerprints (ECFP)
+
+### `compute_ecfp`
+
+```typescript
+function compute_ecfp(
+  smiles: string,
+  radius: number,  // ECFP4 = 2, ECFP6 = 3
+  n_bits: number   // 1024 or 2048
+): string
+```
+
+Extended-Connectivity Fingerprint (Morgan algorithm). Returns JSON:
+
+```typescript
+interface ECFPFingerprint {
+  n_bits: number;
+  on_bits: number[];   // set bit indices
+  radius: number;
+  raw_features: number[];
+}
+```
+
+### `compute_tanimoto`
+
+```typescript
+function compute_tanimoto(
+  fp1_json: string,
+  fp2_json: string
+): string
+```
+
+Returns JSON `{ "tanimoto": number }`.
+
+```typescript
+const fp1 = compute_ecfp('c1ccccc1', 2, 2048);
+const fp2 = compute_ecfp('Cc1ccccc1', 2, 2048);
+const t   = JSON.parse(compute_tanimoto(fp1, fp2));
+console.log(`Tanimoto: ${t.tanimoto.toFixed(3)}`);  // ~0.5–0.7
+```
+
+---
+
+## Conformer Clustering
+
+### `butina_cluster`
+
+```typescript
+function butina_cluster(
+  conformers_json: string,  // JSON number[][] (array of flat coord arrays)
+  rmsd_cutoff: number
+): string
+```
+
+Taylor-Butina single-linkage RMSD clustering. Returns JSON:
+
+```typescript
+interface ClusterResult {
+  n_clusters: number;
+  assignments: number[];       // cluster index per conformer
+  centroid_indices: number[];  // representative conformer per cluster
+  cluster_sizes: number[];
+  rmsd_cutoff: number;
+}
+```
+
+### `compute_rmsd_matrix`
+
+```typescript
+function compute_rmsd_matrix(conformers_json: string): string
+// Returns JSON number[][] — pairwise RMSD matrix
+```
+
+```typescript
+const coords = results.map((r: any) => r.coords);
+const cl = JSON.parse(butina_cluster(JSON.stringify(coords), 1.0));
+console.log(`${cl.n_clusters} clusters from ${coords.length} conformers`);
+```
 
 ---
 

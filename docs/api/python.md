@@ -88,6 +88,27 @@ print(result.charges)      # [-0.387, -0.042, -0.228, 0.123, ...]
 print(result.total_charge) # ~0.0
 ```
 
+### `charges_configured`
+
+```python
+def charges_configured(
+    smiles: str,
+    max_iter: int = 6,
+    initial_damping: float = 1.0,
+    convergence_threshold: float = 1e-8,
+) -> ChargeResult
+```
+
+Gasteiger-Marsili charges with full configuration control. Covers all main-group elements up to period 4 (Li, Be, Na, Mg, Al, Si, …) and handles formal charges on charged species.
+
+```python
+from sci_form import charges_configured
+
+# Charged species
+result = charges_configured("[NH4+]", max_iter=12, convergence_threshold=1e-10)
+print(f"Total charge: {result.total_charge:.2f}")  # ~+1.0
+```
+
 ---
 
 ## SASA
@@ -390,13 +411,14 @@ def vibrational_analysis(
     elements: list[int],
     coords: list[float],
     method: str = "eht",   # "eht", "pm3", or "xtb"
-    step_size: float = 0.01,
 ) -> VibrationalAnalysisPy
 ```
 
-Numerical Hessian ($6N$ energy evaluations) + diagonalization. Returns `VibrationalAnalysisPy` with `.n_atoms`, `.modes` (list of `VibrationalModePy`), `.n_real_modes`, `.zpve_ev`, `.method`, `.notes`.
+Numerical Hessian ($6N$ energy evaluations with mass-aware step size) + diagonalization. Removes translation/rotation modes automatically. Returns `VibrationalAnalysisPy` with `.n_atoms`, `.modes` (list of `VibrationalModePy`), `.n_real_modes`, `.zpve_ev`, `.method`, `.notes`, `.thermochemistry`.
 
-Each `VibrationalModePy` has `.frequency_cm1`, `.ir_intensity` (km/mol), `.displacement` (list, length 3N), `.is_real`.
+Each `VibrationalModePy` has `.frequency_cm1`, `.ir_intensity` (km/mol), `.displacement` (list, length 3N), `.is_real`, `.label` (functional group annotation).
+
+`ThermochemistryPy` (RRHO, 298.15 K): `.zpve_kcal`, `.thermal_energy_kcal`, `.entropy_vib_cal`, `.gibbs_correction_kcal`.
 
 ```python
 from sci_form import embed, vibrational_analysis
@@ -404,35 +426,60 @@ from sci_form import embed, vibrational_analysis
 conf = embed("CCO", seed=42)
 vib  = vibrational_analysis(conf.elements, conf.coords, method="xtb")
 print(f"ZPVE: {vib.zpve_ev:.4f} eV, {vib.n_real_modes} real modes")
+print(f"Gibbs correction: {vib.thermochemistry.gibbs_correction_kcal:.3f} kcal/mol")
 
 real = [m for m in vib.modes if m.is_real]
 strongest = max(real, key=lambda m: m.ir_intensity)
-print(f"Strongest IR: {strongest.frequency_cm1:.1f} cm⁻¹  ({strongest.ir_intensity:.1f} km/mol)")
+print(f"Strongest IR: {strongest.frequency_cm1:.1f} cm⁻¹  "
+      f"({strongest.ir_intensity:.1f} km/mol)  [{strongest.label or '?'}]")
 ```
 
 ### `ir_spectrum`
 
 ```python
 def ir_spectrum(
-    analysis: VibrationalAnalysisPy,
-    gamma: float = 15.0,
-    wn_min: float = 600.0,
-    wn_max: float = 4000.0,
-    n_points: int = 1000,
+    elements: list[int],
+    coords: list[float],
+    method: str = "xtb",
 ) -> IrSpectrumPy
 ```
 
-Lorentzian-broadened IR spectrum. Returns `IrSpectrumPy` with `.wavenumbers`, `.intensities`, `.peaks` (list of `IrPeakPy`), `.gamma`.
+Convenience wrapper: runs `vibrational_analysis` and applies default Lorentzian broadening. Returns `IrSpectrumPy` with `.wavenumbers`, `.intensities`, `.transmittance`, `.peaks` (list of `IrPeakPy`), `.gamma`.
 
 ```python
-from sci_form import ir_spectrum
+from sci_form import embed, ir_spectrum
 
-spec = ir_spectrum(vib, gamma=15.0, wn_min=600.0, wn_max=4000.0, n_points=1000)
+conf = embed("CCO", seed=42)
+spec = ir_spectrum(conf.elements, conf.coords, method="xtb")
 import matplotlib.pyplot as plt
 plt.plot(spec.wavenumbers, spec.intensities)
 plt.xlabel("Wavenumber (cm⁻¹)")
 plt.gca().invert_xaxis()
 plt.show()
+```
+
+### `ir_spectrum_broadened`
+
+```python
+def ir_spectrum_broadened(
+    analysis: VibrationalAnalysisPy,
+    gamma: float = 15.0,
+    wn_min: float = 600.0,
+    wn_max: float = 4000.0,
+    n_points: int = 1000,
+    broadening: str = "lorentzian",  # "lorentzian" or "gaussian"
+) -> IrSpectrumPy
+```
+
+Broadened IR spectrum from an existing `VibrationalAnalysisPy` with full parameter control. Includes both absorbance (`.intensities`) and transmittance (`.transmittance`) axes.
+
+```python
+from sci_form import ir_spectrum_broadened
+
+# Gaussian broadening for publication-quality output
+spec = ir_spectrum_broadened(vib, gamma=10.0, wn_min=400.0, wn_max=4000.0,
+                              n_points=2000, broadening="gaussian")
+print(f"{len(spec.peaks)} labelled peaks")
 ```
 
 ### `nmr_shifts`
@@ -464,7 +511,9 @@ def nmr_couplings(
 ) -> list[JCouplingPy]
 ```
 
-Predict H–H J-coupling constants. With 3D coords uses the Karplus equation for ³J; topology only gives free-rotation averages (~5.3 Hz). Each `JCouplingPy` has `.h1_index`, `.h2_index`, `.j_hz`, `.n_bonds`, `.coupling_type`.
+Predict H–H J-coupling constants. With 3D coords uses the Karplus equation for ³J; topology only gives free-rotation averages (~5.3 Hz). Parameterized pathways: H-C-C-H (Altona-Sundaralingam), H-C-N-H (Bystrov), H-C-O-H, H-C-S-H.
+
+Each `JCouplingPy` has `.h1_index`, `.h2_index`, `.j_hz`, `.n_bonds`, `.coupling_type`.
 
 ```python
 from sci_form import embed, nmr_couplings
@@ -473,6 +522,30 @@ conf = embed("CC", seed=42)
 couplings = nmr_couplings("CC", conf.coords)
 for j in couplings:
     print(f"{j.n_bonds}J(H{j.h1_index},H{j.h2_index}) = {j.j_hz:.2f} Hz  [{j.coupling_type}]")
+```
+
+### `ensemble_j_couplings`
+
+```python
+def ensemble_j_couplings(
+    smiles: str,
+    conformer_coords: list[list[float]],
+    energies_kcal: list[float],
+    temperature_k: float = 298.15,
+) -> list[JCouplingPy]
+```
+
+Boltzmann-average ³J couplings over a conformer ensemble.
+
+```python
+from sci_form import embed_batch, ensemble_j_couplings
+
+results = embed_batch(["CCCC"] * 20, seed=42)
+coords = [r.coords for r in results if r.is_ok()]
+energies = [0.0] * len(coords)  # or compute from uff_energy
+couplings = ensemble_j_couplings("CCCC", coords, energies, temperature_k=298.15)
+for jc in couplings:
+    print(f"H{jc.h1_index}–H{jc.h2_index}: {jc.j_hz:.2f} Hz")
 ```
 
 ### `nmr_spectrum`
@@ -508,6 +581,264 @@ def hose_codes(smiles: str, max_radius: int = 4) -> list[HoseCodePy]
 ```
 
 Generate HOSE code fingerprints for all atoms. Each `HoseCodePy` has `.atom_index`, `.element`, `.code_string`, `.radius`.
+
+---
+
+## Stereochemistry
+
+### `stereo_analysis`
+
+```python
+def stereo_analysis(
+    smiles: str,
+    coords: list[float] = [],  # flat [x0,y0,z0,...]; empty → topology-only
+) -> StereoAnalysisPy
+```
+
+Assign CIP priorities and determine R/S at stereocenters and E/Z at double bonds.
+
+```python
+class StereoAnalysisPy:
+    stereocenters: list[StereocenterPy]
+    double_bonds:  list[DoubleBondStereoPy]
+    n_stereocenters: int
+    n_double_bonds: int
+
+class StereocenterPy:
+    atom_index: int
+    element: int
+    substituent_indices: list[int]
+    priorities: list[int]       # CIP rank (1 = highest)
+    configuration: str | None   # "R" or "S"
+
+class DoubleBondStereoPy:
+    atom1: int
+    atom2: int
+    configuration: str | None   # "E" or "Z"
+    high_priority_sub1: int | None
+    high_priority_sub2: int | None
+```
+
+**Example:**
+
+```python
+from sci_form import embed, stereo_analysis
+
+# Chiral center
+conf = embed("C(F)(Cl)(Br)I", seed=42)
+stereo = stereo_analysis("C(F)(Cl)(Br)I", conf.coords)
+print(f"{stereo.n_stereocenters} stereocenters")
+for sc in stereo.stereocenters:
+    print(f"  Atom {sc.atom_index}: {sc.configuration}")
+
+# Double bond geometry
+stereo2 = stereo_analysis("C/C=C/C")  # trans-2-butene
+print(f"E/Z: {stereo2.double_bonds[0].configuration}")
+```
+
+---
+
+## Implicit Solvation
+
+### `nonpolar_solvation`
+
+```python
+def nonpolar_solvation(
+    elements: list[int],
+    coords: list[float],
+    probe_radius: float = 1.4,
+) -> NonPolarSolvationPy
+```
+
+Non-polar solvation $\Delta G_{\mathrm{np}} = \sum_i \sigma_i A_i$ using per-element ASP and Shrake-Rupley SASA.
+
+```python
+class NonPolarSolvationPy:
+    energy_kcal_mol: float
+    atom_contributions: list[float]
+    atom_sasa: list[float]
+    total_sasa: float
+```
+
+### `gb_solvation`
+
+```python
+def gb_solvation(
+    elements: list[int],
+    coords: list[float],
+    charges: list[float],
+    solvent_dielectric: float = 78.5,
+    solute_dielectric: float = 1.0,
+    probe_radius: float = 1.4,
+) -> GbSolvationPy
+```
+
+GB/SA electrostatic solvation (HCT Born radii + Still GB equation).
+
+```python
+class GbSolvationPy:
+    electrostatic_energy_kcal_mol: float
+    nonpolar_energy_kcal_mol: float
+    total_energy_kcal_mol: float
+    born_radii: list[float]
+    charges: list[float]
+    solvent_dielectric: float
+    solute_dielectric: float
+```
+
+**Example:**
+
+```python
+from sci_form import embed, charges as gasteiger_charges, nonpolar_solvation, gb_solvation
+
+conf = embed("CCO", seed=42)
+q = gasteiger_charges("CCO").charges
+
+np_solv = nonpolar_solvation(conf.elements, conf.coords)
+print(f"Non-polar ΔG: {np_solv.energy_kcal_mol:.2f} kcal/mol")
+
+gb = gb_solvation(conf.elements, conf.coords, q)
+print(f"Total solvation: {gb.total_energy_kcal_mol:.2f} kcal/mol")
+```
+
+---
+
+## Ring Perception
+
+### `sssr`
+
+```python
+def sssr(smiles: str) -> SssrResultPy
+```
+
+Smallest Set of Smallest Rings (Horton's algorithm) with Hückel aromaticity.
+
+```python
+class SssrResultPy:
+    rings: list[RingInfoPy]
+    atom_ring_count: list[int]          # rings containing each atom
+    atom_ring_sizes: list[list[int]]    # ring sizes per atom
+    ring_size_histogram: dict[int, int] # size → count
+
+class RingInfoPy:
+    atoms: list[int]    # atom indices
+    size: int
+    is_aromatic: bool
+```
+
+**Example:**
+
+```python
+from sci_form import sssr
+
+r = sssr("c1ccc2ccccc2c1")  # naphthalene
+print(f"{r.rings[0].size}-membered ring, aromatic={r.rings[0].is_aromatic}")
+print(f"Histogram: {r.ring_size_histogram}")  # {6: 2}
+```
+
+---
+
+## Fingerprints (ECFP)
+
+### `ecfp`
+
+```python
+def ecfp(
+    smiles: str,
+    radius: int = 2,   # ECFP4 = radius 2
+    n_bits: int = 2048,
+) -> ECFPFingerprintPy
+```
+
+Extended-Connectivity Fingerprint (Morgan algorithm). Atom invariants: element, degree, valence, ring membership, aromaticity, formal charge.
+
+```python
+class ECFPFingerprintPy:
+    n_bits: int
+    on_bits: list[int]   # set bit indices
+    radius: int
+    density: float       # fraction of set bits
+```
+
+### `tanimoto`
+
+```python
+def tanimoto(
+    fp1: ECFPFingerprintPy,
+    fp2: ECFPFingerprintPy,
+) -> float
+```
+
+Jaccard-Tanimoto similarity $T = |A \cap B| / |A \cup B|$.
+
+**Example:**
+
+```python
+from sci_form import ecfp, tanimoto
+
+fp1 = ecfp("c1ccccc1", radius=2, n_bits=2048)
+fp2 = ecfp("Cc1ccccc1", radius=2, n_bits=2048)
+print(f"Tanimoto: {tanimoto(fp1, fp2):.3f}")  # ~0.5–0.7
+print(f"Self-sim: {tanimoto(fp1, fp1):.3f}")  # 1.0
+```
+
+---
+
+## Conformer Clustering
+
+### `butina_cluster`
+
+```python
+def butina_cluster(
+    conformers: list[list[float]],  # list of flat coord arrays
+    rmsd_cutoff: float = 1.0,
+) -> ClusterResultPy
+```
+
+Taylor-Butina single-linkage RMSD clustering.
+
+```python
+class ClusterResultPy:
+    n_clusters: int
+    assignments: list[int]        # cluster index per conformer
+    centroid_indices: list[int]   # representative conformer per cluster
+    cluster_sizes: list[int]
+    rmsd_cutoff: float
+```
+
+### `rmsd_matrix`
+
+```python
+def rmsd_matrix(conformers: list[list[float]]) -> list[list[float]]
+```
+
+O(N²) pairwise RMSD matrix with Kabsch alignment.
+
+### `filter_diverse`
+
+```python
+def filter_diverse(
+    conformers: list[list[float]],
+    rmsd_cutoff: float = 1.0,
+) -> list[int]
+```
+
+Return indices of cluster centroid (diverse representative) conformers.
+
+**Example:**
+
+```python
+from sci_form import embed_batch, butina_cluster, filter_diverse
+
+results = embed_batch(["CCCC"] * 20, seed=42)
+coords = [r.coords for r in results if r.is_ok()]
+
+clusters = butina_cluster(coords, rmsd_cutoff=0.5)
+print(f"{clusters.n_clusters} clusters, sizes: {clusters.cluster_sizes}")
+
+diverse_idx = filter_diverse(coords, rmsd_cutoff=1.0)
+print(f"Diverse set: {len(diverse_idx)} conformers")
+```
 
 ---
 
