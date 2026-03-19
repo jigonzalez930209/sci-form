@@ -70,5 +70,24 @@ fn main() {
         } => calc_cmds::cmd_assemble(&topology, a, metal, &geometry, supercell),
         Commands::Ani { elements, coords } => calc_cmds::cmd_ani(&elements, &coords),
         Commands::Hf3c { elements, coords } => calc_cmds::cmd_hf3c(&elements, &coords),
+        Commands::Stereo { smiles, coords } => calc_cmds::cmd_stereo(&smiles, &coords),
+        Commands::Solvation {
+            elements,
+            coords,
+            charges,
+            probe_radius,
+        } => calc_cmds::cmd_solvation(&elements, &coords, &charges, probe_radius),
+        Commands::Sssr { smiles } => calc_cmds::cmd_sssr(&smiles),
+        Commands::Ecfp {
+            smiles,
+            radius,
+            n_bits,
+        } => calc_cmds::cmd_ecfp(&smiles, radius, n_bits),
+        Commands::Tanimoto {
+            smiles1,
+            smiles2,
+            radius,
+            n_bits,
+        } => calc_cmds::cmd_tanimoto(&smiles1, &smiles2, radius, n_bits),
     }
 }

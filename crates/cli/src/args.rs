@@ -132,4 +132,46 @@ pub enum Commands {
     Ani { elements: String, coords: String },
     /// Run HF-3c quantum calculation
     Hf3c { elements: String, coords: String },
+    /// Analyze stereochemistry (R/S stereocenters, E/Z double bonds)
+    Stereo {
+        /// SMILES string
+        smiles: String,
+        /// JSON array of flat xyz coords (optional, empty for topology-only)
+        #[arg(short, long, default_value = "[]")]
+        coords: String,
+    },
+    /// Compute non-polar solvation energy (SASA + ASP)
+    Solvation {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// JSON array of partial charges (for GB; omit for non-polar only)
+        #[arg(short, long, default_value = "")]
+        charges: String,
+        /// Probe radius in Å
+        #[arg(short, long, default_value_t = 1.4)]
+        probe_radius: f64,
+    },
+    /// Compute SSSR (Smallest Set of Smallest Rings)
+    Sssr { smiles: String },
+    /// Compute ECFP fingerprint
+    Ecfp {
+        smiles: String,
+        /// Fingerprint radius (2 = ECFP4, 3 = ECFP6)
+        #[arg(short, long, default_value_t = 2)]
+        radius: usize,
+        /// Bit vector length
+        #[arg(short, long, default_value_t = 2048)]
+        n_bits: usize,
+    },
+    /// Compute Tanimoto similarity between two SMILES
+    Tanimoto {
+        smiles1: String,
+        smiles2: String,
+        #[arg(short, long, default_value_t = 2)]
+        radius: usize,
+        #[arg(short, long, default_value_t = 2048)]
+        n_bits: usize,
+    },
 }
