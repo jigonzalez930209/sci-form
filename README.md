@@ -325,11 +325,14 @@ cargo build --release --features parallel
 # All unit tests
 cargo test --lib
 
-# Integration — diverse molecules (97.7% pass rate)
-cargo test --release --test test_diverse_molecules -- --nocapture
+# Smoke battery (CI gate)
+cargo test --release --test ci -- --nocapture
 
-# Integration — gradient correctness
-cargo test --release --test test_gradient_check -- --nocapture
+# Full integration suites
+cargo test --release --test regression -- --nocapture
+cargo test --release --test analysis -- --nocapture
+cargo test --release --test debug -- --nocapture
+cargo test --release --test benchmarks -- --nocapture
 
 # Lint & format
 cargo fmt --all -- --check
