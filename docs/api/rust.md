@@ -4,9 +4,9 @@
 
 ```toml
 [dependencies]
-sci-form = "0.2"
+sci-form = "0.7"
 # For parallel batch processing and ESP parallel:
-sci-form = { version = "0.2", features = ["parallel"] }
+sci-form = { version = "0.7", features = ["parallel"] }
 ```
 
 ---
@@ -108,7 +108,7 @@ Parse SMILES into a molecular graph without generating 3D coordinates. Returns `
 pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, String>
 ```
 
-Compute Gasteiger-Marsili partial charges (6 iterations of electronegativity equalization).
+Compute Gasteiger-Marsili partial charges using default settings (6 iterations).
 
 **Returns:**
 
@@ -124,6 +124,41 @@ pub struct ChargeResult {
 ```rust
 let result = sci_form::compute_charges("CCO").unwrap();
 println!("O charge: {:.4}", result.charges[2]); // ~-0.38
+```
+
+### `compute_charges_configured`
+
+```rust
+pub fn compute_charges_configured(
+    smiles: &str,
+    config: &charges::gasteiger::GasteigerConfig,
+) -> Result<charges::gasteiger::ChargeResult, String>
+```
+
+Compute Gasteiger-Marsili charges with fine-grained control.
+
+```rust
+pub struct GasteigerConfig {
+    pub max_iter: usize,               // default: 6
+    pub initial_damping: f64,          // default: 1.0
+    pub convergence_threshold: f64,    // default: 1e-8
+}
+```
+
+Supports all main-group elements up to period 4 (Li, Be, Na, Mg, Al, Si, …) and formal-charge-aware initialization for charged species.
+
+**Example:**
+
+```rust
+use sci_form::charges::gasteiger::GasteigerConfig;
+
+let config = GasteigerConfig {
+    max_iter: 12,
+    initial_damping: 0.9,
+    convergence_threshold: 1e-10,
+};
+let result = sci_form::compute_charges_configured("[NH4+]", &config).unwrap();
+println!("Total charge: {:.2}", result.total_charge); // ~+1.0
 ```
 
 ---
@@ -446,30 +481,32 @@ println!("Gap: {:.2} eV, {} transitions", spec.gap, spec.n_transitions);
 pub fn compute_vibrational_analysis(
     elements: &[u8],
     positions: &[[f64; 3]],
-    method: &str,
-    step_size: Option<f64>,
+    method: ir::ScientificMethod,
 ) -> Result<ir::VibrationalAnalysis, String>
 ```
 
-Compute numerical Hessian ($6N$ energy evaluations) and diagonalize to obtain vibrational frequencies, normal modes, IR intensities, and ZPVE.
+Compute a numerical Hessian ($6N$ energy evaluations with mass-aware step size) and diagonalize to obtain vibrational frequencies, normal modes, IR intensities, ZPVE, and thermochemistry. Translation/rotation modes are projected out automatically.
 
-| Parameter | Description |
-|-----------|-------------|
-| `method` | `"eht"`, `"pm3"`, or `"xtb"` |
-| `step_size` | Finite-difference step in Å; `None` → 0.01 Å |
+**`ScientificMethod` enum:** `ScientificMethod::Eht`, `ScientificMethod::Pm3`, `ScientificMethod::Xtb`
 
-**Returns** `VibrationalAnalysis { n_atoms, modes, n_real_modes, zpve_ev, method, notes }`.
+**Returns** `VibrationalAnalysis { n_atoms, modes, n_real_modes, zpve_ev, method, notes, thermochemistry }`.
 
-Each `VibrationalMode` has `frequency_cm1`, `ir_intensity` (km/mol), `displacement` (3N), `is_real`.
+Each `VibrationalMode` has `frequency_cm1`, `ir_intensity` (km/mol), `displacement` (3N), `is_real`, `label` (functional group annotation).
+
+`Thermochemistry` (RRHO, 298.15 K): `zpve_kcal`, `thermal_energy_kcal`, `entropy_vib_cal`, `gibbs_correction_kcal`.
 
 ```rust
-let vib = sci_form::compute_vibrational_analysis(&conf.elements, &pos, "xtb", None).unwrap();
+use sci_form::ir::ScientificMethod;
+
+let vib = sci_form::compute_vibrational_analysis(&conf.elements, &pos, ScientificMethod::Xtb).unwrap();
 println!("ZPVE: {:.4} eV", vib.zpve_ev);
+println!("Gibbs correction: {:.3} kcal/mol", vib.thermochemistry.gibbs_correction_kcal);
 let strongest = vib.modes.iter().filter(|m| m.is_real)
     .max_by(|a,b| a.ir_intensity.partial_cmp(&b.ir_intensity).unwrap());
-println!("Strongest: {:.1} cm⁻¹  ({:.1} km/mol)",
+println!("Strongest: {:.1} cm⁻¹  ({:.1} km/mol)  [{}]",
     strongest.map(|m| m.frequency_cm1).unwrap_or(0.0),
-    strongest.map(|m| m.ir_intensity).unwrap_or(0.0));
+    strongest.map(|m| m.ir_intensity).unwrap_or(0.0),
+    strongest.and_then(|m| m.label.as_deref()).unwrap_or("?"));
 ```
 
 ---
@@ -478,23 +515,53 @@ println!("Strongest: {:.1} cm⁻¹  ({:.1} km/mol)",
 
 ```rust
 pub fn compute_ir_spectrum(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    method: ir::ScientificMethod,
+) -> Result<ir::IrSpectrum, String>
+```
+
+Convenience wrapper: runs `compute_vibrational_analysis` and applies default Lorentzian broadening (γ = 15 cm⁻¹, 600–4000 cm⁻¹, 1000 points).
+
+**Returns** `IrSpectrum { wavenumbers, intensities, transmittance, peaks, gamma, notes }`.
+
+```rust
+use sci_form::ir::ScientificMethod;
+
+let spec = sci_form::compute_ir_spectrum(&conf.elements, &pos, ScientificMethod::Xtb).unwrap();
+let max_i = spec.intensities.iter().cloned().fold(0.0_f64, f64::max);
+let idx   = spec.intensities.iter().position(|&v| v == max_i).unwrap();
+println!("Dominant band: {:.1} cm⁻¹", spec.wavenumbers[idx]);
+```
+
+---
+
+### `compute_ir_spectrum_broadened`
+
+```rust
+pub fn compute_ir_spectrum_broadened(
     analysis: &ir::VibrationalAnalysis,
     gamma: f64,
     wn_min: f64,
     wn_max: f64,
     n_points: usize,
+    broadening: &str,
 ) -> ir::IrSpectrum
 ```
 
-Generate a Lorentzian-broadened IR absorption spectrum from a `VibrationalAnalysis`.
+Generate a broadened IR spectrum from an existing `VibrationalAnalysis` with full control over parameters.
 
-**Returns** `IrSpectrum { wavenumbers, intensities, peaks, gamma, notes }`.
+| Parameter | Description |
+|-----------|-------------|
+| `gamma` | Half-width (Lorentzian) or σ (Gaussian) in cm⁻¹ |
+| `broadening` | `"lorentzian"` (default) or `"gaussian"` |
+
+**Returns** `IrSpectrum` with both `intensities` (absorbance) and `transmittance` axes.
 
 ```rust
-let spec = sci_form::compute_ir_spectrum(&vib, 15.0, 600.0, 4000.0, 1000);
-let max_i = spec.intensities.iter().cloned().fold(0.0_f64, f64::max);
-let idx   = spec.intensities.iter().position(|&v| v == max_i).unwrap();
-println!("Dominant band: {:.1} cm⁻¹", spec.wavenumbers[idx]);
+// Gaussian broadening for publication-quality spectra
+let spec = sci_form::compute_ir_spectrum_broadened(&vib, 10.0, 400.0, 4000.0, 2000, "gaussian");
+println!("{} peaks labelled", spec.peaks.len());
 ```
 
 ---
@@ -530,6 +597,38 @@ pub fn predict_nmr_couplings(
 Predict $^2$J, $^3$J, and $^4$J H–H coupling constants. Pass 3D positions for Karplus dihedral-angle evaluation; pass `&[]` for topology-based free-rotation averages.
 
 Each `JCoupling` has `h1_index`, `h2_index`, `j_hz`, `n_bonds`, `coupling_type`.
+
+Parameterized pathways: H-C-C-H (Altona-Sundaralingam), H-C-N-H (Bystrov), H-C-O-H, H-C-S-H.
+
+---
+
+### `compute_ensemble_j_couplings`
+
+```rust
+pub fn compute_ensemble_j_couplings(
+    smiles: &str,
+    conformer_coords: &[Vec<f64>],
+    energies_kcal: &[f64],
+    temperature_k: f64,
+) -> Result<Vec<nmr::JCoupling>, String>
+```
+
+Boltzmann-average ³J couplings over a conformer ensemble.
+
+| Parameter | Description |
+|-----------|-------------|
+| `conformer_coords` | Vec of flat coordinate arrays (one per conformer) |
+| `energies_kcal` | Relative energies in kcal/mol (UFF or xTB) |
+| `temperature_k` | Temperature for Boltzmann weighting (default: 298.15 K) |
+
+```rust
+let confs: Vec<Vec<f64>> = conf_results.iter().map(|r| r.coords.clone()).collect();
+let energies: Vec<f64> = conf_results.iter().map(|r| r.uff_energy).collect();
+let couplings = sci_form::compute_ensemble_j_couplings("CCCC", &confs, &energies, 298.15).unwrap();
+for jc in &couplings {
+    println!("H{}–H{}: {:.2} Hz", jc.h1_index, jc.h2_index, jc.j_hz);
+}
+```
 
 ---
 
@@ -574,6 +673,268 @@ for hose in &codes {
 
 ---
 
+## Stereochemistry
+
+### `analyze_stereo`
+
+```rust
+pub fn analyze_stereo(
+    smiles: &str,
+    coords: &[f64],
+) -> Result<stereo::StereoAnalysis, String>
+```
+
+Assign CIP priorities and determine R/S configuration at stereocenters and E/Z geometry at double bonds using 3D coordinates.
+
+```rust
+pub struct StereoAnalysis {
+    pub stereocenters: Vec<Stereocenter>,
+    pub double_bonds:  Vec<DoubleBondStereo>,
+    pub n_stereocenters: usize,
+    pub n_double_bonds:  usize,
+}
+
+pub struct Stereocenter {
+    pub atom_index: usize,
+    pub element: u8,
+    pub substituent_indices: Vec<usize>,
+    pub priorities: Vec<usize>,           // CIP priority rank (1 = highest)
+    pub configuration: Option<String>,    // "R" or "S"
+}
+
+pub struct DoubleBondStereo {
+    pub atom1: usize,
+    pub atom2: usize,
+    pub configuration: Option<String>,    // "E" or "Z"
+    pub high_priority_sub1: Option<usize>,
+    pub high_priority_sub2: Option<usize>,
+}
+```
+
+CIP logic: DFS priority tree, duplicate-atom expansion for multiple bonds, recursive tie-breaking (up to depth 10), triple-product sign test for R/S, dihedral angle for E/Z.
+
+**Example:**
+
+```rust
+let conf = sci_form::embed("C(F)(Cl)(Br)I", 42);
+let stereo = sci_form::analyze_stereo("C(F)(Cl)(Br)I", &conf.coords).unwrap();
+println!("{} stereocenters", stereo.n_stereocenters);
+for sc in &stereo.stereocenters {
+    println!("Atom {}: {:?}", sc.atom_index, sc.configuration);
+}
+```
+
+---
+
+## Implicit Solvation
+
+### `compute_nonpolar_solvation`
+
+```rust
+pub fn compute_nonpolar_solvation(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    probe_radius: Option<f64>,
+) -> solvation::NonPolarSolvation
+```
+
+Non-polar solvation free energy: $\Delta G_{\text{np}} = \sum_i \sigma_i \cdot A_i$ using per-element atomic solvation parameters (ASP) and Shrake-Rupley SASA.
+
+```rust
+pub struct NonPolarSolvation {
+    pub energy_kcal_mol: f64,
+    pub atom_contributions: Vec<f64>,  // kcal/mol per atom
+    pub atom_sasa: Vec<f64>,           // Å² per atom
+    pub total_sasa: f64,               // Å²
+}
+```
+
+### `compute_gb_solvation`
+
+```rust
+pub fn compute_gb_solvation(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    charges: &[f64],
+    solvent_dielectric: Option<f64>,   // default: 78.5 (water)
+    solute_dielectric: Option<f64>,    // default: 1.0
+    probe_radius: Option<f64>,         // default: 1.4 Å
+) -> solvation::GbSolvation
+```
+
+Generalized Born + Surface Area (GB/SA) electrostatic solvation using the HCT pairwise descreening model for effective Born radii and the Still GB equation.
+
+```rust
+pub struct GbSolvation {
+    pub electrostatic_energy_kcal_mol: f64,
+    pub nonpolar_energy_kcal_mol: f64,
+    pub total_energy_kcal_mol: f64,
+    pub born_radii: Vec<f64>,
+    pub charges: Vec<f64>,
+    pub solvent_dielectric: f64,
+    pub solute_dielectric: f64,
+}
+```
+
+**Example:**
+
+```rust
+let conf = sci_form::embed("CCO", 42);
+let pos: Vec<[f64;3]> = conf.coords.chunks(3).map(|c| [c[0],c[1],c[2]]).collect();
+let charges = sci_form::compute_charges("CCO").unwrap().charges;
+
+let np = sci_form::compute_nonpolar_solvation(&conf.elements, &pos, None);
+println!("Non-polar ΔG: {:.2} kcal/mol", np.energy_kcal_mol);
+
+let gb = sci_form::compute_gb_solvation(&conf.elements, &pos, &charges, None, None, None);
+println!("Total solvation: {:.2} kcal/mol", gb.total_energy_kcal_mol);
+```
+
+---
+
+## Ring Perception (SSSR)
+
+### `compute_sssr`
+
+```rust
+pub fn compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, String>
+```
+
+Smallest Set of Smallest Rings using Horton's shortest-path algorithm with Hückel aromaticity perception.
+
+```rust
+pub struct SssrResult {
+    pub rings: Vec<RingInfo>,
+    pub atom_ring_count: Vec<usize>,              // rings containing each atom
+    pub atom_ring_sizes: Vec<Vec<usize>>,         // ring sizes per atom
+    pub ring_size_histogram: HashMap<usize, usize>, // size → count
+}
+
+pub struct RingInfo {
+    pub atoms: Vec<usize>,   // atom indices (ring traversal order)
+    pub size: usize,
+    pub is_aromatic: bool,   // Hückel 4n+2 rule
+}
+```
+
+**Example:**
+
+```rust
+let r = sci_form::compute_sssr("c1ccc2ccccc2c1").unwrap();  // naphthalene
+println!("{} rings, sizes: {:?}", r.rings.len(),
+    r.rings.iter().map(|r| r.size).collect::<Vec<_>>());
+```
+
+---
+
+## Fingerprints (ECFP)
+
+### `compute_ecfp`
+
+```rust
+pub fn compute_ecfp(
+    smiles: &str,
+    radius: usize,
+    n_bits: usize,
+) -> Result<rings::ecfp::ECFPFingerprint, String>
+```
+
+Extended-Connectivity Fingerprint (Morgan algorithm) with configurable radius and bit-vector size.
+
+```rust
+pub struct ECFPFingerprint {
+    pub n_bits: usize,
+    pub on_bits: BTreeSet<usize>,
+    pub radius: usize,
+    pub raw_features: Vec<u64>,
+}
+impl ECFPFingerprint {
+    pub fn density(&self) -> f64  // fraction of set bits
+}
+```
+
+Atom invariants: element, degree, valence, ring membership, aromaticity, formal charge.
+
+### `compute_tanimoto`
+
+```rust
+pub fn compute_tanimoto(
+    fp1: &rings::ecfp::ECFPFingerprint,
+    fp2: &rings::ecfp::ECFPFingerprint,
+) -> f64
+```
+
+Jaccard-Tanimoto similarity: $T = |A \cap B| / |A \cup B|$. Returns 1.0 for identical fingerprints, 0.0 for disjoint.
+
+**Example:**
+
+```rust
+let fp_benz = sci_form::compute_ecfp("c1ccccc1", 2, 2048).unwrap();
+let fp_tol  = sci_form::compute_ecfp("Cc1ccccc1", 2, 2048).unwrap();
+let t = sci_form::compute_tanimoto(&fp_benz, &fp_tol);
+println!("Tanimoto benzene/toluene: {:.3}", t);  // ~0.5–0.7
+```
+
+---
+
+## Conformer Clustering
+
+### `butina_cluster`
+
+```rust
+pub fn butina_cluster(
+    conformers: &[Vec<f64>],
+    rmsd_cutoff: f64,
+) -> clustering::ClusterResult
+```
+
+Taylor-Butina single-linkage RMSD clustering. Builds an O(N²) RMSD matrix with Kabsch alignment, then assigns conformers to cluster seeds greedily (largest first).
+
+```rust
+pub struct ClusterResult {
+    pub n_clusters: usize,
+    pub assignments: Vec<usize>,       // cluster index per conformer
+    pub centroid_indices: Vec<usize>,  // representative conformer per cluster
+    pub cluster_sizes: Vec<usize>,
+    pub rmsd_cutoff: f64,
+}
+```
+
+### `compute_rmsd_matrix`
+
+```rust
+pub fn compute_rmsd_matrix(conformers: &[Vec<f64>]) -> Vec<Vec<f64>>
+```
+
+O(N²) pairwise RMSD matrix with Kabsch alignment.
+
+### `filter_diverse_conformers`
+
+```rust
+pub fn filter_diverse_conformers(
+    conformers: &[Vec<f64>],
+    rmsd_cutoff: f64,
+) -> Vec<usize>
+```
+
+Return indices of diverse representative conformers (one per cluster centroid).
+
+**Example:**
+
+```rust
+use sci_form::{embed_batch, ConformerConfig, butina_cluster};
+
+let smiles = vec!["CCCC"; 20];
+let cfg = ConformerConfig { seed: 42, num_threads: 0 };
+let results = embed_batch(&smiles, &cfg);
+let coords: Vec<Vec<f64>> = results.iter().map(|r| r.coords.clone()).collect();
+
+let clusters = sci_form::butina_cluster(&coords, 1.0);
+println!("{} clusters from {} conformers", clusters.n_clusters, results.len());
+```
+
+---
+
 ## Internal Module Reference
 
 | Module | Key Types / Functions |
@@ -601,3 +962,9 @@ for hose in &codes {
 | `sci_form::nmr` | `NmrShiftResult`, `ChemicalShift`, `JCoupling`, `NmrSpectrum`, `NmrPeak`, `HoseCode`, `NmrNucleus` |
 | `sci_form::ani` | `compute_ani()`, `compute_ani_batch()`, `AniConfig`, `AniResult`, `CellList` |
 | `sci_form::hf` | `solve_hf3c()`, `solve_hf3c_batch()`, `HfConfig`, `Hf3cResult`, `compute_cis()` |
+| `sci_form::stereo` | `analyze_stereo()`, `StereoAnalysis`, `Stereocenter`, `DoubleBondStereo` |
+| `sci_form::solvation` | `compute_nonpolar_solvation()`, `compute_gb_solvation()`, `compute_born_radii()`, `NonPolarSolvation`, `GbSolvation` |
+| `sci_form::rings::sssr` | `compute_sssr()`, `SssrResult`, `RingInfo` |
+| `sci_form::rings::ecfp` | `compute_ecfp()`, `compute_tanimoto()`, `ECFPFingerprint` |
+| `sci_form::clustering` | `butina_cluster()`, `compute_rmsd_matrix()`, `filter_diverse_conformers()`, `ClusterResult` |
+| `sci_form::charges::gasteiger` | `gasteiger_marsili_charges()`, `gasteiger_marsili_charges_configured()`, `ChargeResult`, `GasteigerConfig` |
