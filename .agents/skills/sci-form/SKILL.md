@@ -49,6 +49,10 @@ description: "High-performance library for 3D molecular conformer generation and
 | 13 | Materials / Crystal | `unit_cell`, `assemble_framework` |
 | 14 | Transport / Batch | `pack_conformers`, `split_worker_tasks`, `estimate_workers` |
 | 15 | System Planning | `system_capabilities`, `system_method_plan`, `compare_methods` |
+| 16 | Stereochemistry | `analyze_stereo`, `stereo_analysis`, `stereo` CLI |
+| 17 | Solvation | `compute_nonpolar_solvation`, `compute_gb_solvation` |
+| 18 | Rings & Fingerprints | `compute_sssr`, `compute_ecfp`, `compute_tanimoto` |
+| 19 | Clustering | `butina_cluster`, `compute_rmsd_matrix`, `filter_diverse` |
 
 ---
 
@@ -140,6 +144,9 @@ Benchmarks all available methods on the same geometry.
 Gasteiger-Marsili iterative partial charges.
 
 **Returns:** `charges: Vec<f64>`, `iterations: usize`, `total_charge: f64`
+
+### `compute_charges_configured(smiles, config)` → ChargeResult
+Configurable Gasteiger-Marsili. `GasteigerConfig { max_iter: usize, initial_damping: f64, convergence_threshold: f64 }`.
 
 ### `compute_sasa(elements, coords, probe_radius)` → SasaResult
 Shrake-Rupley solvent-accessible surface area.
@@ -233,6 +240,11 @@ Lorentzian-broadened IR spectrum from vibrational analysis.
 
 **Returns:** `wavenumbers`, `intensities`, `peaks[]`, `gamma`
 
+### `compute_ir_spectrum_broadened(analysis, gamma, wn_min, wn_max, n_points, broadening)` → IrSpectrum
+Like `compute_ir_spectrum` with explicit broadening type selection.
+
+- `broadening: &str` — `"lorentzian"` (default) or `"gaussian"`
+
 ---
 
 ## 9. Spectroscopy — NMR
@@ -261,6 +273,13 @@ Complete broadened NMR spectrum.
 HOSE sphere codes for atom environment encoding (used in NMR prediction).
 
 - `max_radius: usize` — sphere depth, typically 2–4
+
+### `compute_ensemble_j_couplings(smiles, conformer_coords, energies_kcal, temperature_k)` → Vec\<JCoupling\>
+Boltzmann-weighted ensemble J-couplings across multiple conformers.
+
+- `conformer_coords: &[Vec<f64>]` — flat coord array per conformer
+- `energies_kcal: &[f64]` — relative energies for Boltzmann weighting
+- `temperature_k: f64` — temperature in K (default 298.15)
 
 ---
 
@@ -350,6 +369,84 @@ Checks EHT, UFF, embed support for a specific element set.
 Generates recommended method + fallback plan for a molecule.
 
 **Returns:** structured `geometry/force_field_energy/orbitals/population/orbital_grid` plans with `recommended/fallback/rationale/methods[]`
+
+---
+
+## 16. Stereochemistry
+
+### `analyze_stereo(smiles, coords)` → StereoAnalysis
+CIP priority assignment, R/S chirality at tetrahedral centers, E/Z configuration at double bonds.
+
+- `smiles: &str` — SMILES input
+- `coords: &[f64]` — flat conformer coords (pass `&[]` for topology-only assignment)
+
+**Returns:** `stereocenters[]` with `atom_index/element/substituent_indices/priorities/configuration`, `double_bonds[]` with `atom1/atom2/configuration/high_priority_sub1/high_priority_sub2`, `n_stereocenters`, `n_double_bonds`
+
+Python: `stereo_analysis(smiles, coords=[])` · WASM: `analyze_stereo(smiles, coords_flat)` · CLI: `sci-form stereo "SMILES"`
+
+---
+
+## 17. Solvation
+
+### `compute_nonpolar_solvation(elements, coords, probe_radius)` → NonPolarSolvation
+Non-polar solvation free energy via SASA × atomic surface tension (ASP model).
+
+- `probe_radius: Option<f64>` — Å (default 1.4)
+
+**Returns:** `energy_kcal_mol`, `atom_contributions`, `atom_sasa`, `total_sasa`
+
+### `compute_gb_solvation(elements, coords, charges, solvent_dielectric, solute_dielectric, probe_radius)` → GbSolvation
+Generalized Born electrostatic solvation energy (HCT model).
+
+- `solvent_dielectric: Option<f64>` — default 78.5 (water)
+- `solute_dielectric: Option<f64>` — default 1.0 (vacuum core)
+- `probe_radius: Option<f64>` — Å (default 1.4)
+
+**Returns:** `electrostatic_energy_kcal_mol`, `nonpolar_energy_kcal_mol`, `total_energy_kcal_mol`, `born_radii`, `charges`, `solvent_dielectric`, `solute_dielectric`
+
+Python: `nonpolar_solvation(elements, coords, probe_radius=1.4)` · `gb_solvation(elements, coords, charges, solvent_dielectric=78.5, ...)` · WASM: `compute_nonpolar_solvation(...)` · CLI: `sci-form solvation [ELEMENTS] [COORDS]`
+
+---
+
+## 18. Rings & Fingerprints
+
+### `compute_sssr(smiles)` → SssrResult
+Smallest Set of Smallest Rings via Horton's algorithm.
+
+**Returns:** `rings[]` with `atoms/size/is_aromatic`, `atom_ring_count`, `atom_ring_sizes`, `ring_size_histogram`
+
+### `compute_ecfp(smiles, radius, n_bits)` → ECFPFingerprint
+Extended-Connectivity Fingerprints (ECFP / Morgan algorithm).
+
+- `radius: usize` — default 2 (ECFP4)
+- `n_bits: usize` — typically 1024 or 2048
+
+**Returns:** `n_bits`, `on_bits: BTreeSet<usize>`, `radius`, `raw_features`
+
+### `compute_tanimoto(fp1, fp2)` → f64
+Tanimoto (Jaccard) coefficient between two ECFPs. Returns 0.0–1.0.
+
+Python: `sssr(smiles)` · `ecfp(smiles, radius=2, n_bits=2048)` · `tanimoto(fp1, fp2)` · WASM: JSON-in/JSON-out · CLI: `sci-form sssr "SMILES"`, `sci-form ecfp "SMILES"`, `sci-form tanimoto "SM1" "SM2"`
+
+---
+
+## 19. Clustering
+
+### `butina_cluster(conformers, rmsd_cutoff)` → ClusterResult
+Taylor-Butina leader clustering on flat conformer coordinate arrays.
+
+- `conformers: &[Vec<f64>]` — list of flat coordinate arrays (same atom count)
+- `rmsd_cutoff: f64` — cluster radius in Å (typically 1.0–2.0)
+
+**Returns:** `n_clusters`, `assignments`, `centroid_indices`, `cluster_sizes`, `rmsd_cutoff`
+
+### `compute_rmsd_matrix(conformers)` → Vec\<Vec\<f64\>\>
+Pair-wise RMSD matrix for all conformers.
+
+### `filter_diverse(conformers, rmsd_cutoff)` → Vec\<usize\>  *(Python-only)*
+Greedy diversity filter — returns indices of maximally diverse conformers.
+
+Python: `butina_cluster(conformers, rmsd_cutoff=1.0)` · `rmsd_matrix(conformers)` · `filter_diverse(conformers, rmsd_cutoff=1.0)` · WASM: `butina_cluster(conformers_json, rmsd_cutoff)` · `compute_rmsd_matrix(conformers_json)`
 
 ---
 

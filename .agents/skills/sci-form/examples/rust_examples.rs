@@ -4,14 +4,15 @@
 use sci_form::{
     embed, embed_batch, parse, ConformerConfig,
     eht, alignment,
-    compute_charges, compute_sasa, compute_dipole, compute_esp,
+    compute_charges, compute_charges_configured, compute_sasa, compute_dipole, compute_esp,
     compute_population, compute_bond_orders,
     compute_frontier_descriptors, compute_fukui_descriptors,
     compute_reactivity_ranking, compute_empirical_pka,
     compute_uv_vis_spectrum,
     compute_stda_uvvis, reactivity::BroadeningType,
-    compute_vibrational_analysis, compute_ir_spectrum,
+    compute_vibrational_analysis, compute_ir_spectrum, compute_ir_spectrum_broadened,
     predict_nmr_shifts, predict_nmr_couplings, compute_nmr_spectrum, compute_hose_codes,
+    compute_ensemble_j_couplings,
     compute_pm3, compute_xtb,
     compute_ml_descriptors, predict_ml_properties,
     compute_uff_energy, compute_uff_energy_with_aromatic_heuristics, compute_mmff94_energy,
@@ -19,6 +20,10 @@ use sci_form::{
     create_unit_cell, assemble_framework, materials,
     transport,
     get_system_capabilities, get_system_method_plan, compare_methods,
+    analyze_stereo,
+    compute_nonpolar_solvation, compute_gb_solvation,
+    compute_sssr, compute_ecfp, compute_tanimoto,
+    butina_cluster, compute_rmsd_matrix,
 };
 
 fn water_system() -> (Vec<u8>, Vec<[f64; 3]>, Vec<f64>) {
@@ -207,6 +212,79 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cmp = compare_methods("O", &el, &[[0.0,0.0,0.0],[0.96,0.0,0.0],[-0.24,0.93,0.0]], false);
     for entry in &cmp.comparisons { println!("Method {:?}: status={:?}", entry.method, entry.status); }
+
+    // ── 16. Stereochemistry ────────────────────────────────────────────────────
+    let chiral = embed("C(F)(Cl)(Br)I", 42);
+    let stereo = analyze_stereo("C(F)(Cl)(Br)I", &chiral.coords)?;
+    println!("Stereocenters: {}, double bonds: {}", stereo.n_stereocenters, stereo.n_double_bonds);
+    for sc in &stereo.stereocenters {
+        println!("  atom {}: config={:?}  priorities={:?}", sc.atom_index, sc.configuration, sc.priorities);
+    }
+    let alk = embed("CC=CC", 42);
+    let ez = analyze_stereo("CC=CC", &alk.coords)?;
+    for db in &ez.double_bonds {
+        println!("  double bond {}-{}: config={:?}", db.atom1, db.atom2, db.configuration);
+    }
+
+    // ── 17. Solvation ───────────────────────────────────────────────────────────
+    let (el, pos, _) = water_system();
+    let nonpolar = compute_nonpolar_solvation(&el, &pos, None);
+    println!("Non-polar solvation: {:.4} kcal/mol  SASA={:.2} Å²", nonpolar.energy_kcal_mol, nonpolar.total_sasa);
+
+    let charges_w = compute_charges("O")?;
+    let gb = compute_gb_solvation(&el, &pos, &charges_w.charges, None, None, None);
+    println!("GB electrostatic: {:.4} kcal/mol  total: {:.4} kcal/mol",
+        gb.electrostatic_energy_kcal_mol, gb.total_energy_kcal_mol);
+
+    // ── 18. Rings & Fingerprints ─────────────────────────────────────────────────
+    let sssr = compute_sssr("c1ccccc1")?;
+    println!("Benzene ring histogram: {:?}", sssr.ring_size_histogram);
+
+    let fp_benz = compute_ecfp("c1ccccc1", 2, 2048)?;
+    let fp_tol  = compute_ecfp("Cc1ccccc1", 2, 2048)?;
+    println!("Benzene/Toluene Tanimoto: {:.4}", compute_tanimoto(&fp_benz, &fp_tol));
+    println!("Benzene on-bits: {}", fp_benz.on_bits.len());
+
+    // Multi-ring
+    let sssr_naph = compute_sssr("c1ccc2ccccc2c1")?; // naphthalene
+    println!("Naphthalene rings: {}", sssr_naph.rings.len());
+
+    // ── 19. Clustering ───────────────────────────────────────────────────────────
+    let smiles_set = ["c1ccccc1", "Cc1ccccc1", "CC(=O)O", "CCO"];
+    let conformers: Vec<Vec<f64>> = smiles_set.iter()
+        .map(|s| embed(s, 42).coords)
+        .collect();
+    let clusters = butina_cluster(&conformers, 2.0);
+    println!("Clusters (cutoff=2.0Å): {} total", clusters.n_clusters);
+    println!("Assignments: {:?}", clusters.assignments);
+
+    let rmsd_mat = compute_rmsd_matrix(&conformers);
+    println!("RMSD matrix: {}x{}", rmsd_mat.len(), rmsd_mat[0].len());
+    for (i, row) in rmsd_mat.iter().enumerate() {
+        println!("  row {}: {:?}", i, row.iter().map(|v| format!("{:.3}", v)).collect::<Vec<_>>());
+    }
+
+    // ── NMR ensemble J-couplings ───────────────────────────────────────────────
+    let conf_coords: Vec<Vec<f64>> = (0..3u64).map(|s| embed("CCC", s).coords).collect();
+    let energies_kcal = vec![0.0, 0.5, 1.2];
+    let ens_j = compute_ensemble_j_couplings("CCC", &conf_coords, &energies_kcal, 298.15)?;
+    println!("Ensemble J-couplings: {} pairs", ens_j.len());
+    for c in &ens_j { println!("  J({},{}) = {:.2} Hz  {}", c.h1_index, c.h2_index, c.j_hz, c.coupling_type); }
+
+    // ── IR broadened (Gaussian) ──────────────────────────────────────────────
+    let (el, pos, _) = water_system();
+    let vib2 = compute_vibrational_analysis(&el, &pos, "eht", None)?;
+    let ir_gauss = compute_ir_spectrum_broadened(&vib2, 20.0, 400.0, 4000.0, 1000, "gaussian");
+    println!("IR Gaussian: {} points, {} peaks", ir_gauss.wavenumbers.len(), ir_gauss.peaks.len());
+
+    // ── Charges configured ─────────────────────────────────────────────────
+    let cfg = sci_form::charges::gasteiger::GasteigerConfig {
+        max_iter: 10,
+        initial_damping: 0.4,
+        convergence_threshold: 1e-8,
+    };
+    let ch_cfg = compute_charges_configured("CC(=O)O", &cfg)?;
+    println!("Configured charges: {:?}", ch_cfg.charges.iter().map(|c| format!("{:.3}", c)).collect::<Vec<_>>());
 
     Ok(())
 }
