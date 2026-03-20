@@ -50,6 +50,8 @@ pub mod xtb;
     feature = "experimental-gsm"
 ))]
 pub mod experimental;
+// Experimental modules — isolated, do not affect existing functionality
+pub mod experimental_2;
 
 use serde::{Deserialize, Serialize};
 

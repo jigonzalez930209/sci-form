@@ -1,0 +1,304 @@
+{
+  "_comment": "Reference data from NIST CCCBDB, CRC Handbook, and well-established computational benchmarks",
+  "_sources": [
+    "NIST Computational Chemistry Comparison and Benchmark Database (CCCBDB)",
+    "CRC Handbook of Chemistry and Physics, 97th Ed.",
+    "Hehre, Radom, Schleyer, Pople: Ab Initio Molecular Orbital Theory (1986)",
+    "Szabo & Ostlund: Modern Quantum Chemistry (1996)"
+  ],
+
+  "molecules": {
+    "H2": {
+      "smiles": "[H][H]",
+      "elements": [1, 1],
+      "positions_angstrom": [[0.0, 0.0, 0.0], [0.7414, 0.0, 0.0]],
+      "geometry": "linear",
+      "n_atoms": 2,
+      "n_electrons": 2,
+      "experimental": {
+        "bond_length_ang": 0.7414,
+        "dipole_debye": 0.0,
+        "ionization_ev": 15.43,
+        "dissociation_kcal_mol": 104.2,
+        "ir_frequencies_cm1": [4401]
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -1.1175,
+        "homo_energy_ev": -15.52,
+        "gap_ev": 29.4,
+        "mulliken_charges": [0.0, 0.0]
+      }
+    },
+
+    "HeH_plus": {
+      "smiles": "[He][H+]",
+      "elements": [2, 1],
+      "positions_angstrom": [[0.0, 0.0, 0.0], [0.7743, 0.0, 0.0]],
+      "geometry": "linear",
+      "charge": 1,
+      "n_atoms": 2,
+      "n_electrons": 2,
+      "sto3g_hf": {
+        "total_energy_hartree": -2.8606,
+        "homo_energy_ev": -34.68,
+        "mulliken_charges": [0.17, 0.83]
+      }
+    },
+
+    "H2O": {
+      "smiles": "O",
+      "elements": [8, 1, 1],
+      "positions_angstrom": [
+        [0.0, 0.0, 0.1173],
+        [0.0, 0.7572, -0.4692],
+        [0.0, -0.7572, -0.4692]
+      ],
+      "geometry": "bent",
+      "n_atoms": 3,
+      "n_electrons": 10,
+      "experimental": {
+        "bond_length_ang": 0.9572,
+        "bond_angle_deg": 104.52,
+        "dipole_debye": 1.855,
+        "ionization_ev": 12.62,
+        "ir_frequencies_cm1": [1595, 3657, 3756],
+        "ir_labels": ["H-O-H bend", "O-H sym stretch", "O-H asym stretch"],
+        "nmr_h1_shift_ppm": 4.70
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -74.9659,
+        "homo_energy_ev": -12.44,
+        "gap_ev": 17.2,
+        "mulliken_charges": [-0.37, 0.185, 0.185],
+        "dipole_debye": 1.73
+      }
+    },
+
+    "CH4": {
+      "smiles": "C",
+      "elements": [6, 1, 1, 1, 1],
+      "positions_angstrom": [
+        [0.0, 0.0, 0.0],
+        [0.6276, 0.6276, 0.6276],
+        [-0.6276, -0.6276, 0.6276],
+        [-0.6276, 0.6276, -0.6276],
+        [0.6276, -0.6276, -0.6276]
+      ],
+      "geometry": "tetrahedral",
+      "n_atoms": 5,
+      "n_electrons": 10,
+      "experimental": {
+        "bond_length_ang": 1.0870,
+        "dipole_debye": 0.0,
+        "ionization_ev": 12.61,
+        "ir_frequencies_cm1": [1306, 1534, 2917, 3019],
+        "ir_labels": ["bend", "bend", "C-H sym stretch", "C-H asym stretch"],
+        "nmr_h1_shift_ppm": 0.23,
+        "nmr_c13_shift_ppm": -2.3
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -39.7269,
+        "homo_energy_ev": -14.86,
+        "gap_ev": 19.58,
+        "mulliken_charges": [-0.24, 0.06, 0.06, 0.06, 0.06],
+        "dipole_debye": 0.0
+      }
+    },
+
+    "NH3": {
+      "smiles": "N",
+      "elements": [7, 1, 1, 1],
+      "positions_angstrom": [
+        [0.0, 0.0, 0.1127],
+        [0.0, 0.9377, -0.2630],
+        [0.8121, -0.4689, -0.2630],
+        [-0.8121, -0.4689, -0.2630]
+      ],
+      "geometry": "pyramidal",
+      "n_atoms": 4,
+      "n_electrons": 10,
+      "experimental": {
+        "bond_length_ang": 1.0124,
+        "bond_angle_deg": 106.67,
+        "dipole_debye": 1.47,
+        "ionization_ev": 10.07,
+        "ir_frequencies_cm1": [950, 1627, 3337, 3444],
+        "ir_labels": ["umbrella", "H-N-H bend", "N-H sym stretch", "N-H asym stretch"],
+        "nmr_h1_shift_ppm": 0.40,
+        "nmr_n15_shift_ppm": -380.2
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -55.4544,
+        "homo_energy_ev": -10.80,
+        "gap_ev": 16.7,
+        "mulliken_charges": [-0.36, 0.12, 0.12, 0.12],
+        "dipole_debye": 1.54
+      }
+    },
+
+    "HF_molecule": {
+      "smiles": "F",
+      "elements": [9, 1],
+      "positions_angstrom": [[0.0, 0.0, 0.0], [0.9168, 0.0, 0.0]],
+      "geometry": "linear",
+      "n_atoms": 2,
+      "n_electrons": 10,
+      "experimental": {
+        "bond_length_ang": 0.9168,
+        "dipole_debye": 1.826,
+        "ionization_ev": 16.01,
+        "ir_frequencies_cm1": [4138],
+        "nmr_h1_shift_ppm": 4.26
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -98.5708,
+        "homo_energy_ev": -16.01,
+        "gap_ev": 21.2,
+        "mulliken_charges": [-0.20, 0.20],
+        "dipole_debye": 1.98
+      }
+    },
+
+    "CO": {
+      "smiles": "[C-]#[O+]",
+      "elements": [6, 8],
+      "positions_angstrom": [[0.0, 0.0, 0.0], [1.1282, 0.0, 0.0]],
+      "geometry": "linear",
+      "n_atoms": 2,
+      "n_electrons": 14,
+      "experimental": {
+        "bond_length_ang": 1.1282,
+        "dipole_debye": 0.110,
+        "ionization_ev": 14.01,
+        "ir_frequencies_cm1": [2143]
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -111.2255,
+        "homo_energy_ev": -14.05
+      }
+    },
+
+    "C2H4": {
+      "smiles": "C=C",
+      "elements": [6, 6, 1, 1, 1, 1],
+      "positions_angstrom": [
+        [0.0, 0.0, 0.6695],
+        [0.0, 0.0, -0.6695],
+        [0.0, 0.9289, 1.2321],
+        [0.0, -0.9289, 1.2321],
+        [0.0, 0.9289, -1.2321],
+        [0.0, -0.9289, -1.2321]
+      ],
+      "geometry": "planar",
+      "n_atoms": 6,
+      "n_electrons": 16,
+      "experimental": {
+        "cc_bond_length_ang": 1.339,
+        "dipole_debye": 0.0,
+        "ir_frequencies_cm1": [826, 943, 949, 1023, 1236, 1342, 1444, 1623, 3026, 3083, 3103, 3106],
+        "nmr_h1_shift_ppm": 5.28,
+        "nmr_c13_shift_ppm": 123.3
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -77.0739,
+        "homo_energy_ev": -10.18,
+        "gap_ev": 14.3
+      }
+    },
+
+    "C2H6": {
+      "smiles": "CC",
+      "elements": [6, 6, 1, 1, 1, 1, 1, 1],
+      "positions_angstrom": [
+        [0.0, 0.0, 0.7680],
+        [0.0, 0.0, -0.7680],
+        [0.0, 1.0187, 1.1579],
+        [0.8823, -0.5094, 1.1579],
+        [-0.8823, -0.5094, 1.1579],
+        [0.0, -1.0187, -1.1579],
+        [-0.8823, 0.5094, -1.1579],
+        [0.8823, 0.5094, -1.1579]
+      ],
+      "geometry": "staggered",
+      "n_atoms": 8,
+      "n_electrons": 18,
+      "experimental": {
+        "cc_bond_length_ang": 1.5351,
+        "ch_bond_length_ang": 1.0940,
+        "dipole_debye": 0.0,
+        "nmr_h1_shift_ppm": 0.86,
+        "nmr_c13_shift_ppm": 5.7
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -78.3065,
+        "homo_energy_ev": -12.73
+      }
+    },
+
+    "benzene": {
+      "smiles": "c1ccccc1",
+      "elements": [6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1],
+      "positions_angstrom": [
+        [1.3862, 0.0, 0.0],
+        [0.6931, 1.2004, 0.0],
+        [-0.6931, 1.2004, 0.0],
+        [-1.3862, 0.0, 0.0],
+        [-0.6931, -1.2004, 0.0],
+        [0.6931, -1.2004, 0.0],
+        [2.4618, 0.0, 0.0],
+        [1.2309, 2.1316, 0.0],
+        [-1.2309, 2.1316, 0.0],
+        [-2.4618, 0.0, 0.0],
+        [-1.2309, -2.1316, 0.0],
+        [1.2309, -2.1316, 0.0]
+      ],
+      "geometry": "planar_D6h",
+      "n_atoms": 12,
+      "n_electrons": 42,
+      "experimental": {
+        "cc_bond_length_ang": 1.3970,
+        "ch_bond_length_ang": 1.0840,
+        "dipole_debye": 0.0,
+        "ionization_ev": 9.24,
+        "uv_lambda_max_nm": 254,
+        "uv_transition_ev": 4.88,
+        "ir_frequencies_cm1": [673, 1038, 1479, 3062],
+        "nmr_h1_shift_ppm": 7.27,
+        "nmr_c13_shift_ppm": 128.5
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -228.4572,
+        "homo_energy_ev": -9.21,
+        "gap_ev": 11.5
+      }
+    },
+
+    "formaldehyde": {
+      "smiles": "C=O",
+      "elements": [6, 8, 1, 1],
+      "positions_angstrom": [
+        [0.0, 0.0, 0.0],
+        [0.0, 0.0, 1.2078],
+        [0.0, 0.9437, -0.5876],
+        [0.0, -0.9437, -0.5876]
+      ],
+      "geometry": "planar",
+      "n_atoms": 4,
+      "n_electrons": 16,
+      "experimental": {
+        "co_bond_length_ang": 1.2078,
+        "dipole_debye": 2.332,
+        "ir_frequencies_cm1": [1167, 1249, 1500, 1746, 2783, 2843],
+        "ir_labels": ["CH2 rock", "CH2 wag", "CH2 scissor", "C=O stretch", "C-H sym stretch", "C-H asym stretch"],
+        "nmr_h1_shift_ppm": 9.58,
+        "nmr_c13_shift_ppm": 197.0
+      },
+      "sto3g_hf": {
+        "total_energy_hartree": -112.3522,
+        "homo_energy_ev": -12.24,
+        "gap_ev": 16.2,
+        "dipole_debye": 2.72
+      }
+    }
+  }
+}
