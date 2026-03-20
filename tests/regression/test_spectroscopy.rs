@@ -462,8 +462,13 @@ fn test_nmr_spectrum_nucleus_aliases() {
         let res = sci_form::compute_nmr_spectrum("C", alias, 0.5, 0.0, 220.0, 100);
         assert!(res.is_ok(), "nucleus alias '{}' should work", alias);
     }
+    // All these should also work for ¹⁹F
+    for alias in &["19F", "F19", "f19", "19f", "fluorine"] {
+        let res = sci_form::compute_nmr_spectrum("FC", alias, 0.5, -250.0, 0.0, 100);
+        assert!(res.is_ok(), "nucleus alias '{}' should work", alias);
+    }
     // Unknown nucleus should fail
-    let res = sci_form::compute_nmr_spectrum("C", "19F", 0.02, 0.0, 12.0, 100);
+    let res = sci_form::compute_nmr_spectrum("C", "2H", 0.02, 0.0, 12.0, 100);
     assert!(res.is_err());
 }
 
