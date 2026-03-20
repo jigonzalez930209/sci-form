@@ -32,9 +32,21 @@ fn smoke_conformer_and_clustering() {
     let ethanol_b = sci_form::embed("CCO", 43);
     let ethanol_c = sci_form::embed("CCO", 44);
 
-    assert!(ethanol_a.error.is_none(), "embed failed: {:?}", ethanol_a.error);
-    assert!(ethanol_b.error.is_none(), "embed failed: {:?}", ethanol_b.error);
-    assert!(ethanol_c.error.is_none(), "embed failed: {:?}", ethanol_c.error);
+    assert!(
+        ethanol_a.error.is_none(),
+        "embed failed: {:?}",
+        ethanol_a.error
+    );
+    assert!(
+        ethanol_b.error.is_none(),
+        "embed failed: {:?}",
+        ethanol_b.error
+    );
+    assert!(
+        ethanol_c.error.is_none(),
+        "embed failed: {:?}",
+        ethanol_c.error
+    );
     assert_eq!(ethanol_a.coords.len(), ethanol_a.num_atoms * 3);
 
     let conformers = vec![
@@ -81,17 +93,15 @@ fn smoke_properties_and_solvation() {
     assert!(sasa.total_sasa > 0.0);
     assert_eq!(sasa.atom_sasa.len(), ethanol.num_atoms);
 
-    let population = sci_form::compute_population(&ethanol.elements, &positions)
-        .expect("compute_population");
+    let population =
+        sci_form::compute_population(&ethanol.elements, &positions).expect("compute_population");
     assert_eq!(population.mulliken_charges.len(), ethanol.num_atoms);
     assert_eq!(population.lowdin_charges.len(), ethanol.num_atoms);
 
-    let dipole = sci_form::compute_dipole(&ethanol.elements, &positions)
-        .expect("compute_dipole");
+    let dipole = sci_form::compute_dipole(&ethanol.elements, &positions).expect("compute_dipole");
     assert!(dipole.magnitude.is_finite());
 
-    let esp = sci_form::compute_esp(&ethanol.elements, &positions, 0.8, 2.0)
-        .expect("compute_esp");
+    let esp = sci_form::compute_esp(&ethanol.elements, &positions, 0.8, 2.0).expect("compute_esp");
     assert!(!esp.values.is_empty());
 
     let dos = sci_form::compute_dos(&ethanol.elements, &positions, 0.3, -20.0, 5.0, 64)
@@ -100,8 +110,8 @@ fn smoke_properties_and_solvation() {
     assert_eq!(dos.energies.len(), 64);
 
     let uff = sci_form::compute_uff_energy("CCO", &ethanol.coords).expect("compute_uff_energy");
-    let mmff = sci_form::compute_mmff94_energy("CCO", &ethanol.coords)
-        .expect("compute_mmff94_energy");
+    let mmff =
+        sci_form::compute_mmff94_energy("CCO", &ethanol.coords).expect("compute_mmff94_energy");
     assert!(uff.is_finite());
     assert!(mmff.is_finite());
 
@@ -162,7 +172,14 @@ fn smoke_stereo_rings_and_fingerprints() {
 
     let rings = sci_form::compute_sssr("c1ccccc1").expect("compute_sssr");
     assert!(!rings.rings.is_empty());
-    assert!(rings.ring_size_histogram.get(6).copied().unwrap_or_default() >= 1);
+    assert!(
+        rings
+            .ring_size_histogram
+            .get(6)
+            .copied()
+            .unwrap_or_default()
+            >= 1
+    );
 
     let benzene_fp = sci_form::compute_ecfp("c1ccccc1", 2, 2048).expect("compute_ecfp");
     let toluene_fp = sci_form::compute_ecfp("Cc1ccccc1", 2, 2048).expect("compute_ecfp");
