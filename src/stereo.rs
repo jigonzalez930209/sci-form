@@ -487,6 +487,92 @@ pub fn analyze_stereo(mol: &Molecule, positions: &[[f64; 3]]) -> StereoAnalysis 
     }
 }
 
+/// Generate SMILES-style stereo descriptors from a stereochemistry analysis.
+///
+/// Returns a map of atom indices to their stereo descriptor strings:
+/// - Chiral centers: "@" (S-configuration) or "@@" (R-configuration)
+/// - Double bond atoms: "/" or "\" for E/Z geometry
+///
+/// These descriptors can be embedded into SMILES strings to encode stereochemistry.
+pub fn stereo_descriptors(analysis: &StereoAnalysis) -> StereoDescriptors {
+    let mut center_descriptors = Vec::new();
+    let mut bond_descriptors = Vec::new();
+
+    // R/S → @/@@
+    for sc in &analysis.stereocenters {
+        if let Some(ref config) = sc.configuration {
+            let descriptor = match config.as_str() {
+                "S" => "@".to_string(),
+                "R" => "@@".to_string(),
+                _ => continue,
+            };
+            center_descriptors.push(StereoAtomDescriptor {
+                atom_index: sc.atom_index,
+                descriptor,
+                configuration: config.clone(),
+            });
+        }
+    }
+
+    // E/Z → / and \
+    for db in &analysis.double_bonds {
+        if let Some(ref config) = db.configuration {
+            let (desc1, desc2) = match config.as_str() {
+                "E" => ("/".to_string(), "/".to_string()),
+                "Z" => ("/".to_string(), "\\".to_string()),
+                _ => continue,
+            };
+            bond_descriptors.push(StereoBondDescriptor {
+                atom1: db.atom1,
+                atom2: db.atom2,
+                descriptor_atom1: desc1,
+                descriptor_atom2: desc2,
+                configuration: config.clone(),
+            });
+        }
+    }
+
+    StereoDescriptors {
+        centers: center_descriptors,
+        bonds: bond_descriptors,
+    }
+}
+
+/// Collection of stereo descriptors for a molecule.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StereoDescriptors {
+    /// Stereo descriptors for chiral centers.
+    pub centers: Vec<StereoAtomDescriptor>,
+    /// Stereo descriptors for double bonds.
+    pub bonds: Vec<StereoBondDescriptor>,
+}
+
+/// Stereo descriptor for a single chiral center.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StereoAtomDescriptor {
+    /// Atom index of the chiral center.
+    pub atom_index: usize,
+    /// SMILES descriptor: "@" or "@@".
+    pub descriptor: String,
+    /// Configuration: "R" or "S".
+    pub configuration: String,
+}
+
+/// Stereo descriptor for a double bond.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StereoBondDescriptor {
+    /// First atom of the double bond.
+    pub atom1: usize,
+    /// Second atom of the double bond.
+    pub atom2: usize,
+    /// SMILES bond descriptor for the atom1 side.
+    pub descriptor_atom1: String,
+    /// SMILES bond descriptor for the atom2 side.
+    pub descriptor_atom2: String,
+    /// Configuration: "E" or "Z".
+    pub configuration: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
