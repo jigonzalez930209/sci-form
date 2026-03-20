@@ -52,3 +52,7 @@ mod test_spectroscopy;
 mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
+#[path = "regression/test_experimental_comparison.rs"]
+mod test_experimental_comparison;
+#[path = "regression/test_extended_molecules.rs"]
+mod test_extended_molecules;
