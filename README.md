@@ -26,6 +26,13 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 - **Volumetric orbital grids** — STO-3G basis, chunked evaluation for large molecules, marching cubes isosurfaces
 - **Density of States** — total DOS + per-atom PDOS with Gaussian smearing, JSON export, MSE metric
 
+### Experimental RHF Engine
+- **Isolated `experimental_2` namespace** — next-generation Roothaan-Hall RHF engine without affecting stable APIs
+- **Analytical Gaussian integrals** — overlap, kinetic, nuclear attraction, core Hamiltonian, and two-electron ERIs
+- **SCF with DIIS + parallel ERI** — deterministic RHF/STO-3G workflow with rayon acceleration for the expensive $O(N^4)$ step
+- **Experimental spectroscopy stack** — prototype sTDA UV-Vis, GIAO-like NMR shielding, and semi-numerical IR/Hessian workflows
+- **GPU-oriented architecture** — WGSL shader stubs, orbital grid evaluation, and marching-cubes rendering pipeline prepared for future `wgpu` enablement
+
 ### Electrostatics & Surface
 - **Electrostatic Potential (ESP)** — Coulomb grid from Mulliken charges, color mapping (red/white/blue), `.cube` export
 - **Parallel ESP** — rayon-accelerated grid computation (`parallel` feature)
@@ -217,6 +224,57 @@ Prebuilt binaries available at [GitHub Releases](https://github.com/jigonzalez93
 | Windows x86_64 | `sci-form-windows-x86_64.exe` |
 
 → [Full CLI reference](https://jigonzalez930209.github.io/sci-form/api/cli) · [Guide](https://jigonzalez930209.github.io/sci-form/guide/cli)
+
+---
+
+## Experimental Engine
+
+The repository now includes an isolated experimental quantum-chemistry stack under `sci_form::experimental_2`.
+
+### Phase Status
+
+| Phase | Status | Scope |
+|------|--------|-------|
+| Phase 1 | Complete | GPU infrastructure scaffolding, aligned types, CPU fallback, WGSL interface stubs |
+| Phase 2 | Complete | Gaussian basis, overlap/kinetic/nuclear/core matrices, ERIs, validation helpers |
+| Phase 3 | Complete | RHF SCF loop, Löwdin orthogonalization, DIIS, Mulliken analysis, gradients, optimizer, parallel ERI |
+| Phase 4 | Prototype complete | Experimental sTDA UV-Vis, GIAO-style NMR shielding, Hessian/IR workflows |
+| Phase 5 | Prototype complete | Orbital grid evaluation, marching cubes, isosurface generation, GPU-ready rendering path |
+
+### Current Practical Status
+
+- Stable production APIs remain unchanged; the experimental work is isolated in `experimental_2`
+- Real acceleration today is CPU parallelism via rayon in the ERI build path
+- GPU execution is not enabled yet; `phase1_gpu_infrastructure` currently exposes a CPU fallback plus WGSL-ready interfaces
+- The main known scientific limitation is absolute RHF/STO-3G total energy scaling in the experimental engine; comparative gaps and regression behavior are the primary validation target today
+
+### Validation Snapshot
+
+The experimental stack is covered by dedicated regression suites:
+
+```bash
+# Build all library + test targets
+cargo check --tests
+
+# Base experimental regression suite
+cargo test --test regression test_experimental_comparison -- --nocapture
+
+# Extended complex-molecule battery (fast active tests)
+cargo test --test regression test_extended_molecules -- --nocapture
+
+# Heavy experimental benchmarks and long-running tests
+cargo test --release --test regression test_extended_molecules -- --include-ignored
+```
+
+Current verified results on this repository state:
+
+| Command | Result |
+|--------|--------|
+| `cargo check --tests` | passes |
+| `cargo test --test regression test_experimental_comparison` | **54 passed, 0 failed** |
+| `cargo test --test regression test_extended_molecules` | **14 passed, 0 failed, 7 ignored** |
+
+More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader project plan remains in [ROADMAP.md](ROADMAP.md).
 
 ---
 
