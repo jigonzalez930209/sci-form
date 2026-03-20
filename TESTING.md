@@ -1119,3 +1119,99 @@ push tag v*
 | `publish-python` | `maturin upload` to PyPI |
 | `publish-npm` | `wasm-pack publish` to npm |
 | `release` | Creates GitHub Release with changelog + install instructions |
+
+---
+
+## Experimental Engine Tests (quantum chemistry regression)
+
+Two dedicated regression suites validate the new `src/experimental_2/` Roothaan-Hall RHF engine against NIST data and legacy methods.
+
+### `tests/regression/test_experimental_comparison.rs` — 54 tests
+
+| Module | Count | What it tests |
+|--------|-------|---------------|
+| `experimental_scf_correctness` | 8 | Convergence, negative total energy, positive gap, finite Mulliken charges (H₂, HeH⁺, H₂O, CH₄, NH₃, HF, CO, C₂H₄) |
+| `legacy_vs_experimental_energy` | 8 | Side-by-side EHT/PM3/xTB vs Exp SCF HOMO-LUMO gaps |
+| `legacy_vs_experimental_charges` | 5 | Mulliken charge polarity across methods |
+| `experimental_vs_nist` | 5 | Qualitative comparison vs NIST STO-3G reference energies |
+| `quantum_engine_integrals` | 8 | Overlap matrix: diagonal > 0, off-diagonal finite, Hermitian symmetry |
+| `spectroscopy_comparison` | 5 | sTDA UV-Vis and GIAO NMR legacy vs experimental |
+| `timing_benchmarks` | 5 | All 5 methods timing table |
+| `comprehensive_energy_table` | 10 | 11-molecule all-methods table |
+
+```bash
+cargo test --test regression test_experimental_comparison
+# → test result: ok. 54 passed; 0 failed
+```
+
+### `tests/regression/test_extended_molecules.rs` — 21 tests (14 active, 7 ignored)
+
+Extended battery with more complex molecules, NIST experimental property validation, and parallel ERI benchmarks.
+
+**Active tests (fast, always run):**
+
+| Test | Validates |
+|------|-----------|
+| `test_dipole_moments_vs_nist` | EHT dipole for 11 molecules vs NIST (water, methanol, pyridine, benzene, etc.) |
+| `test_mulliken_charges_heteroatom_polarity` | PM3/xTB charges; xTB conservation; O-atom polarity |
+| `test_gaps_ordering_aromatic_series` | EHT/PM3/xTB/Exp gaps for 6 aromatics; all gaps > 0 |
+| `test_legacy_nmr_benzene_reference_exact` | ¹H ≈ 7.27 ppm, ¹³C ≈ 128.5 ppm (SDBS) |
+| `test_legacy_nmr_carbonyl_downfield` | Carbonyl ¹³C > 150 ppm (acetone, benzaldehyde, formaldehyde) |
+| `test_legacy_nmr_shifts_aromatic_series` | Aromatic ¹H 4.5–10.5 ppm, ¹³C 60–180 ppm |
+| `test_legacy_stda_aromatic_series` | sTDA non-empty excitations with positive energies |
+| `test_excitation_ordering_aromatic_series` | Naphthalene first exc. ≤ benzene + 1.5 eV |
+| `test_ir_spectrum_extended_molecules` | EHT vibrational: ≥ 3N-6 modes for 6 molecules |
+| `test_ml_logp_extended_molecules` | Crippen logP vs experiment for 11 molecules; ≥ 60% within tolerance |
+| `test_ml_lipinski_druglike_molecules` | Lipinski Ro5 for aspirin, caffeine, ibuprofen, paracetamol, cyclosporin A |
+| `test_fingerprint_tanimoto_similarity_series` | ECFP4 Tanimoto; benzene↔toluene > benzene↔methanol; self-sim = 1.0 |
+| `test_druglike_molecules_eht_pm3_xtb` | EHT/PM3/xTB for 5 drugs all converge |
+| `test_solvation_druglike_molecules` | Non-polar SASA solvation for 5 drug-like molecules |
+
+**Heavy tests (marked `#[ignore]`, run with `--release -- --ignored`):**
+
+| Test | Description |
+|------|-------------|
+| `bench_parallel_acceleration_table` | Seq vs parallel ERI speedup table: H₂O, NH₃, CH₄, methanol, formaldehyde |
+| `bench_speedup_scaling_with_molecule_size` | Speedup vs N: H₂O → CH₄ → C₂H₄ |
+| `test_extended_molecules_all_methods_converge` | All 5 methods × 15 molecules convergence |
+| `test_homo_lumo_gap_vs_nist_ip_koopmans` | Koopmans' theorem: −ε_HOMO vs 10 NIST IPs |
+| `test_giao_nmr_vs_legacy_heteroaromatics` | GIAO NMR vs HOSE codes for pyridine, furan, imidazole |
+| `test_druglike_molecules_experimental_scf` | RHF/STO-3G for aspirin, paracetamol, nicotine |
+| `test_master_comparison_table_extended` | Master table: all methods × 12 molecules |
+
+```bash
+# Fast tests only
+cargo test --test regression test_extended_molecules
+# → test result: ok. 14 passed; 0 failed; 7 ignored
+
+# All tests including heavy (release for reasonable speed)
+cargo test --release --test regression test_extended_molecules -- --include-ignored
+```
+
+### Method comparison summary
+
+| Property | EHT | PM3 | GFN-xTB | Exp RHF/STO-3G |
+|----------|-----|-----|---------|----------------|
+| Theory | Extended Hückel | NDDO semi-empirical | GFN0 tight-binding | Roothaan-Hall HF |
+| SCF | No | Yes | Yes | Yes (DIIS) |
+| Speed (debug, ~30 atoms) | < 1 ms | 50 ms | 50 ms | 5–30 s |
+| Energy unit | eV (orbital) | kcal/mol (HOF) | eV (total) | Hartree (total) |
+| GPU | None | None | None | Planned (wgpu stub) |
+| CPU parallel | No | No | No | rayon ERI (yes) |
+
+### Parallel ERI acceleration
+
+```rust
+// Sequential (default)
+let r = run_scf(&system, &ScfConfig::default());
+
+// Parallel via rayon (identical results, faster for N ≥ 20 basis fns)
+let r = run_scf(&system, &ScfConfig::parallel());
+```
+
+Observed on Intel i5-10500H (12 logical cores):
+- N=7 (H₂O): ~0.8–1.1× (overhead dominates at small N)
+- N=36 (benzene): ~3–5× speedup
+- N=42 (pyridine): ~4–6× speedup
+
+GPU acceleration (GTX 1650, CUDA 13.0) is planned via the `phase1_gpu_infrastructure` wgpu stub.
