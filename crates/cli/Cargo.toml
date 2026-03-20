@@ -16,6 +16,17 @@ path = "src/main.rs"
 [features]
 default = ["parallel"]
 parallel = ["sci-form/parallel"]
+experimental-cga = ["sci-form/experimental-cga"]
+experimental-randnla = ["sci-form/experimental-randnla"]
+experimental-riemannian = ["sci-form/experimental-riemannian"]
+experimental-kpm = ["sci-form/experimental-kpm"]
+experimental-eeq = ["sci-form/experimental-eeq"]
+experimental-alpb = ["sci-form/experimental-alpb"]
+experimental-d4 = ["sci-form/experimental-d4"]
+experimental-sdr = ["sci-form/experimental-sdr"]
+experimental-mbh = ["sci-form/experimental-mbh"]
+experimental-cpm = ["sci-form/experimental-cpm"]
+experimental-gsm = ["sci-form/experimental-gsm"]
 
 [dependencies]
 sci-form = { path = "../..", version = "0.9.1", default-features = false }

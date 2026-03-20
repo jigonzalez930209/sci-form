@@ -202,6 +202,7 @@ fn compare_bounds(ref_mol: &RefMolecule, rdkit_file: &str) {
 }
 
 #[test]
+#[ignore = "requires RDKit-generated /tmp/rdkit_bounds_0.json"]
 fn test_compare_bounds_mol0() {
     let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
@@ -211,6 +212,7 @@ fn test_compare_bounds_mol0() {
 /// Finds the first failing molecule by index in gdb20_reference.json
 /// That matches the SMILES C#CC1C(C(O)(CC)CN)CCCC(O)C12CCCO2
 #[test]
+#[ignore = "requires RDKit-generated /tmp/rdkit_bounds_fail1.json"]
 fn test_compare_bounds_fail1() {
     let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();

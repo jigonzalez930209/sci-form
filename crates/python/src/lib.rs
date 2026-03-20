@@ -6,6 +6,7 @@ mod dynamics;
 mod eht;
 mod electronic;
 mod embed;
+mod experimental;
 mod forcefield;
 mod hf_ani_esp;
 mod materials;
@@ -46,5 +47,6 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     stereo::register(m)?;
     solvation::register(m)?;
     rings::register(m)?;
+    experimental::register(m)?;
     Ok(())
 }

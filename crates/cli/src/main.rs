@@ -1,6 +1,7 @@
 mod args;
 mod calc_cmds;
 mod embed_cmds;
+mod experimental_cmds;
 mod format;
 
 use args::{Cli, Commands};
@@ -89,5 +90,19 @@ fn main() {
             radius,
             n_bits,
         } => calc_cmds::cmd_tanimoto(&smiles1, &smiles2, radius, n_bits),
+
+        // Experimental commands
+        #[cfg(feature = "experimental-eeq")]
+        Commands::Eeq { elements, coords, total_charge } =>
+            experimental_cmds::cmd_eeq(&elements, &coords, total_charge),
+        #[cfg(feature = "experimental-alpb")]
+        Commands::Alpb { elements, coords, charges, dielectric } =>
+            experimental_cmds::cmd_alpb(&elements, &coords, &charges, dielectric),
+        #[cfg(feature = "experimental-d4")]
+        Commands::D4 { elements, coords, three_body } =>
+            experimental_cmds::cmd_d4(&elements, &coords, three_body),
+        #[cfg(feature = "experimental-cpm")]
+        Commands::Cpm { elements, coords, mu_ev, dielectric } =>
+            experimental_cmds::cmd_cpm(&elements, &coords, mu_ev, dielectric),
     }
 }
