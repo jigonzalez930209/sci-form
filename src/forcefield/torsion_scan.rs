@@ -9,19 +9,21 @@ use std::collections::{HashSet, VecDeque};
 // preferred torsion angles after DG embedding.
 
 /// A rotatable bond with its torsion atom indices and the atoms to rotate.
-#[allow(dead_code)]
-struct RotatableBond {
+pub struct RotatableBond {
     /// The 4 atom indices defining the dihedral: a-b-c-d
     /// b-c is the rotatable bond
-    dihedral: [usize; 4],
+    pub dihedral: [usize; 4],
     /// Atom indices on the "d side" of the bond (to be rotated)
-    mobile_atoms: Vec<usize>,
+    pub mobile_atoms: Vec<usize>,
     /// Preferred torsion angles to try (radians)
-    preferred_angles: Vec<f32>,
+    pub preferred_angles: Vec<f32>,
 }
 
 /// Find all rotatable bonds in the molecule and prepare rotation data.
-fn find_rotatable_bonds(mol: &crate::graph::Molecule) -> Vec<RotatableBond> {
+///
+/// Excludes ring bonds, double bonds, and terminal groups.
+/// Returns dihedral atom indices and the mobile atoms to rotate.
+pub fn find_rotatable_bonds(mol: &crate::graph::Molecule) -> Vec<RotatableBond> {
     let mut bonds = Vec::new();
     let n = mol.graph.node_count();
 
@@ -157,7 +159,7 @@ fn get_preferred_angles(
 }
 
 /// Compute dihedral angle (in radians, range [-PI, PI]) from 4 atom positions in a DMatrix.
-fn compute_dihedral(coords: &DMatrix<f32>, i: usize, j: usize, k: usize, l: usize) -> f32 {
+pub fn compute_dihedral(coords: &DMatrix<f32>, i: usize, j: usize, k: usize, l: usize) -> f32 {
     let b1 = nalgebra::Vector3::new(
         coords[(j, 0)] - coords[(i, 0)],
         coords[(j, 1)] - coords[(i, 1)],
@@ -183,7 +185,7 @@ fn compute_dihedral(coords: &DMatrix<f32>, i: usize, j: usize, k: usize, l: usiz
 }
 
 /// Rotate a set of atoms around the axis defined by points j→k by a given angle.
-fn rotate_atoms(coords: &mut DMatrix<f32>, mobile: &[usize], j: usize, k: usize, angle: f32) {
+pub fn rotate_atoms(coords: &mut DMatrix<f32>, mobile: &[usize], j: usize, k: usize, angle: f32) {
     if angle.abs() < 1e-8 {
         return;
     }
@@ -415,6 +417,223 @@ pub fn optimize_torsions_monte_carlo_bounds(
     }
 
     num_rotatable
+}
+
+/// Systematic rotor search: enumerate all combinations of torsion angles
+/// for ≤4 rotatable bonds (12 angles per rotor = 30° increments).
+///
+/// For each combination, evaluate the UFF energy and return the coordinates
+/// of all evaluated conformers as flat `Vec<f64>`.
+///
+/// Use with Butina clustering to get a diverse set.
+pub fn systematic_rotor_search(
+    smiles: &str,
+    coords: &[f64],
+    max_rotors: usize,
+) -> Result<Vec<(Vec<f64>, f64)>, String> {
+    use std::f32::consts::PI;
+
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    if coords.len() != n_atoms * 3 {
+        return Err("coords length mismatch".to_string());
+    }
+
+    let rotatable = find_rotatable_bonds(&mol);
+    let n_rot = rotatable.len().min(max_rotors);
+
+    if n_rot == 0 {
+        let e = crate::compute_uff_energy(smiles, coords).unwrap_or(0.0);
+        return Ok(vec![(coords.to_vec(), e)]);
+    }
+
+    let ff = super::builder::build_uff_force_field(&mol);
+    let angles: Vec<f32> = (0..12).map(|i| i as f32 * PI / 6.0).collect();
+
+    // Total combos = 12^n_rot
+    let total: usize = 12usize.pow(n_rot as u32);
+    let mut results = Vec::with_capacity(total);
+
+    let base_matrix = flat_to_matrix_internal(coords, n_atoms);
+
+    for combo_idx in 0..total {
+        let mut matrix = base_matrix.clone();
+
+        // Decode combo_idx into angle indices for each rotor
+        let mut idx = combo_idx;
+        for r in 0..n_rot {
+            let angle_idx = idx % 12;
+            idx /= 12;
+
+            let rb = &rotatable[r];
+            let [a, b, c, d] = rb.dihedral;
+            let current = compute_dihedral(&matrix, a, b, c, d);
+            let target = angles[angle_idx];
+            let mut delta = target - current;
+            delta = (delta + PI).rem_euclid(2.0 * PI) - PI;
+            rotate_atoms(&mut matrix, &rb.mobile_atoms, b, c, delta);
+        }
+
+        let flat = matrix_to_flat(&matrix, n_atoms);
+        let mut grad = vec![0.0f64; n_atoms * 3];
+        let energy = ff.compute_system_energy_and_gradients(&flat, &mut grad);
+
+        if energy.is_finite() {
+            results.push((flat, energy));
+        }
+    }
+
+    // Sort by energy
+    results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    Ok(results)
+}
+
+/// Simulated annealing torsion search with exponential cooling schedule.
+///
+/// Suitable for molecules with >4 rotatable bonds where systematic search is infeasible.
+/// Uses Metropolis acceptance with temperature decreasing from `t_start` to `t_end`.
+pub fn simulated_annealing_torsion_search(
+    smiles: &str,
+    coords: &[f64],
+    n_steps: usize,
+    t_start: f64,
+    t_end: f64,
+    seed: u64,
+) -> Result<Vec<(Vec<f64>, f64)>, String> {
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    if coords.len() != n_atoms * 3 {
+        return Err("coords length mismatch".to_string());
+    }
+
+    let rotatable = find_rotatable_bonds(&mol);
+    if rotatable.is_empty() {
+        let e = crate::compute_uff_energy(smiles, coords).unwrap_or(0.0);
+        return Ok(vec![(coords.to_vec(), e)]);
+    }
+
+    let ff = super::builder::build_uff_force_field(&mol);
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut matrix = flat_to_matrix_internal(coords, n_atoms);
+
+    let flat = matrix_to_flat(&matrix, n_atoms);
+    let mut grad = vec![0.0f64; n_atoms * 3];
+    let mut current_energy = ff.compute_system_energy_and_gradients(&flat, &mut grad);
+
+    let mut best_coords = flat;
+    let mut best_energy = current_energy;
+
+    let cooling_rate = if n_steps > 1 {
+        (t_end / t_start).powf(1.0 / (n_steps - 1) as f64)
+    } else {
+        1.0
+    };
+
+    let mut collected = Vec::new();
+    let collect_interval = (n_steps / 50).max(1); // collect ~50 snapshots
+
+    let mut temp = t_start;
+    for step in 0..n_steps {
+        let rb_idx = rng.gen_range(0..rotatable.len());
+        let rb = &rotatable[rb_idx];
+        let [a, b, c, d] = rb.dihedral;
+        let current_angle = compute_dihedral(&matrix, a, b, c, d);
+        let perturbation: f32 = rng.gen_range(-std::f32::consts::PI..std::f32::consts::PI);
+        let mut delta = perturbation - current_angle;
+        delta = (delta + std::f32::consts::PI).rem_euclid(2.0 * std::f32::consts::PI)
+            - std::f32::consts::PI;
+
+        rotate_atoms(&mut matrix, &rb.mobile_atoms, b, c, delta);
+
+        let trial_flat = matrix_to_flat(&matrix, n_atoms);
+        let trial_energy = ff.compute_system_energy_and_gradients(&trial_flat, &mut grad);
+
+        let d_e = trial_energy - current_energy;
+        let accept = if d_e <= 0.0 {
+            true
+        } else {
+            let p = (-d_e / temp).exp();
+            rng.gen::<f64>() < p
+        };
+
+        if accept && trial_energy.is_finite() {
+            current_energy = trial_energy;
+            if current_energy < best_energy {
+                best_energy = current_energy;
+                best_coords = trial_flat;
+            }
+        } else {
+            rotate_atoms(&mut matrix, &rb.mobile_atoms, b, c, -delta);
+        }
+
+        if step % collect_interval == 0 {
+            let snap = matrix_to_flat(&matrix, n_atoms);
+            collected.push((snap, current_energy));
+        }
+
+        temp *= cooling_rate;
+    }
+
+    // Always include the best
+    collected.push((best_coords, best_energy));
+    collected.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    Ok(collected)
+}
+
+/// Generate a diverse conformer ensemble by torsional sampling + Butina clustering.
+///
+/// For ≤4 rotatable bonds, uses systematic search; for >4, uses simulated annealing.
+/// Results are filtered through Butina RMSD clustering for diversity.
+pub fn torsional_sampling_diverse(
+    smiles: &str,
+    coords: &[f64],
+    rmsd_cutoff: f64,
+    seed: u64,
+) -> Result<Vec<(Vec<f64>, f64)>, String> {
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let rotatable = find_rotatable_bonds(&mol);
+    let n_rot = rotatable.len();
+
+    let conformers = if n_rot <= 4 {
+        systematic_rotor_search(smiles, coords, 4)?
+    } else {
+        simulated_annealing_torsion_search(smiles, coords, 500, 5.0, 0.1, seed)?
+    };
+
+    if conformers.len() <= 1 {
+        return Ok(conformers);
+    }
+
+    let coords_vecs: Vec<Vec<f64>> = conformers.iter().map(|(c, _)| c.clone()).collect();
+    let cluster_result = crate::clustering::butina_cluster(&coords_vecs, rmsd_cutoff);
+
+    let diverse: Vec<(Vec<f64>, f64)> = cluster_result
+        .centroid_indices
+        .iter()
+        .map(|&ci| conformers[ci].clone())
+        .collect();
+
+    Ok(diverse)
+}
+
+fn flat_to_matrix_internal(coords: &[f64], n_atoms: usize) -> DMatrix<f32> {
+    let mut m = DMatrix::<f32>::zeros(n_atoms, 3);
+    for i in 0..n_atoms {
+        m[(i, 0)] = coords[3 * i] as f32;
+        m[(i, 1)] = coords[3 * i + 1] as f32;
+        m[(i, 2)] = coords[3 * i + 2] as f32;
+    }
+    m
+}
+
+fn matrix_to_flat(matrix: &DMatrix<f32>, n_atoms: usize) -> Vec<f64> {
+    let mut flat = vec![0.0f64; n_atoms * 3];
+    for i in 0..n_atoms {
+        flat[3 * i] = matrix[(i, 0)] as f64;
+        flat[3 * i + 1] = matrix[(i, 1)] as f64;
+        flat[3 * i + 2] = matrix[(i, 2)] as f64;
+    }
+    flat
 }
 
 #[cfg(test)]

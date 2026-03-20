@@ -17,7 +17,10 @@ pub mod volume;
 
 pub use basis::{AtomicOrbital, GaussianPrimitive, SlaterOrbital};
 pub use hamiltonian::build_hamiltonian;
-pub use marching_cubes::{marching_cubes, IsosurfaceMesh};
+pub use marching_cubes::{
+    compute_angle_weighted_normals, flip_normals_outward, marching_cubes, marching_cubes_dual,
+    mesh_to_interleaved, simplify_mesh, DualPhaseMesh, IsosurfaceMesh,
+};
 pub use overlap::build_overlap_matrix;
 pub use params::{
     analyze_eht_support, is_transition_metal, support_level_for_element, EhtParams, EhtSupport,
