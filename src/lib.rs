@@ -692,6 +692,52 @@ pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Vec<Confor
         .collect()
 }
 
+/// Generate multiple conformers for a SMILES and filter by Butina RMSD clustering.
+///
+/// Generates `n_conformers` embeddings with different seeds, then clusters the
+/// successful ones by RMSD and returns only the cluster centroids (diverse set).
+///
+/// # Arguments
+/// - `smiles`: SMILES string
+/// - `n_conformers`: number of embedding attempts (different seeds)
+/// - `rmsd_cutoff`: RMSD threshold for clustering (Å), typically 1.0
+/// - `base_seed`: base seed for reproducibility (seeds = base_seed..base_seed+n_conformers)
+pub fn embed_diverse(
+    smiles: &str,
+    n_conformers: usize,
+    rmsd_cutoff: f64,
+    base_seed: u64,
+) -> Vec<ConformerResult> {
+    let all_results: Vec<ConformerResult> = (0..n_conformers as u64)
+        .map(|i| embed(smiles, base_seed.wrapping_add(i)))
+        .collect();
+
+    let successful: Vec<(usize, &ConformerResult)> = all_results
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| r.error.is_none() && !r.coords.is_empty())
+        .collect();
+
+    if successful.len() <= 1 {
+        return all_results
+            .into_iter()
+            .filter(|r| r.error.is_none())
+            .collect();
+    }
+
+    let coords_vecs: Vec<Vec<f64>> = successful.iter().map(|(_, r)| r.coords.clone()).collect();
+    let cluster_result = clustering::butina_cluster(&coords_vecs, rmsd_cutoff);
+
+    cluster_result
+        .centroid_indices
+        .iter()
+        .map(|&ci| {
+            let (orig_idx, _) = successful[ci];
+            all_results[orig_idx].clone()
+        })
+        .collect()
+}
+
 /// Parse a SMILES string and return molecular structure (no 3D generation).
 pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
     graph::Molecule::from_smiles(smiles)
@@ -1277,20 +1323,38 @@ pub fn compute_stda_uvvis(
 /// Computes vibrational frequencies (cm⁻¹), normal modes, IR intensities,
 /// and zero-point vibrational energy from a semiempirical Hessian.
 ///
-/// `method`: "eht", "pm3", or "xtb"
+/// `method`: "eht", "pm3", "xtb", or "uff"
 pub fn compute_vibrational_analysis(
     elements: &[u8],
     positions: &[[f64; 3]],
     method: &str,
     step_size: Option<f64>,
 ) -> Result<ir::VibrationalAnalysis, String> {
-    let hessian_method = match method {
-        "eht" => ir::HessianMethod::Eht,
-        "pm3" => ir::HessianMethod::Pm3,
-        "xtb" => ir::HessianMethod::Xtb,
-        _ => return Err(format!("Unknown method '{}', use eht/pm3/xtb", method)),
-    };
+    let hessian_method =
+        match method {
+            "eht" => ir::HessianMethod::Eht,
+            "pm3" => ir::HessianMethod::Pm3,
+            "xtb" => ir::HessianMethod::Xtb,
+            "uff" => return Err(
+                "UFF vibrational analysis requires SMILES; use compute_vibrational_analysis_uff"
+                    .to_string(),
+            ),
+            _ => return Err(format!("Unknown method '{}', use eht/pm3/xtb/uff", method)),
+        };
     ir::compute_vibrational_analysis(elements, positions, hessian_method, step_size)
+}
+
+/// Perform vibrational analysis using UFF analytical Hessian.
+///
+/// Uses gradient-difference method (O(6N) gradient evaluations) instead of
+/// the standard O(9N²) energy evaluations, leveraging UFF's analytical gradients.
+pub fn compute_vibrational_analysis_uff(
+    smiles: &str,
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    step_size: Option<f64>,
+) -> Result<ir::VibrationalAnalysis, String> {
+    ir::vibrations::compute_vibrational_analysis_uff(smiles, elements, positions, step_size)
 }
 
 /// Generate a Lorentzian-broadened IR spectrum from vibrational analysis.

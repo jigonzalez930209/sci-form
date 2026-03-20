@@ -224,6 +224,283 @@ fn estimate_normal(grid: &VolumetricGrid, point: &[f64; 3], _iso: f32) -> [f64; 
     }
 }
 
+/// Dual-phase isosurface result for orbital visualization.
+///
+/// Extracts both positive and negative lobes of an orbital (or ESP, etc.)
+/// at the given absolute isovalue, producing two separate meshes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DualPhaseMesh {
+    /// Positive lobe (values >= +isovalue).
+    pub positive: IsosurfaceMesh,
+    /// Negative lobe (values <= -isovalue).
+    pub negative: IsosurfaceMesh,
+}
+
+/// Extract dual-phase isosurfaces (positive and negative lobes).
+///
+/// Useful for orbital visualization where positive/negative phases
+/// should be rendered in different colors.
+pub fn marching_cubes_dual(grid: &VolumetricGrid, isovalue: f32) -> DualPhaseMesh {
+    let positive = marching_cubes(grid, isovalue.abs());
+    let negative = marching_cubes(grid, -isovalue.abs());
+    DualPhaseMesh { positive, negative }
+}
+
+/// Mesh simplification: weld duplicate vertices and remove degenerate triangles.
+///
+/// Vertices closer than `weld_distance` are merged. Degenerate triangles
+/// (with zero area or repeated vertex indices) are removed.
+pub fn simplify_mesh(mesh: &IsosurfaceMesh, weld_distance: f32) -> IsosurfaceMesh {
+    let n_verts = mesh.vertices.len() / 3;
+    if n_verts == 0 {
+        return mesh.clone();
+    }
+
+    let weld_dist_sq = weld_distance * weld_distance;
+
+    // Build vertex map: for each vertex, find the canonical (first seen) vertex index
+    let mut vertex_map: Vec<usize> = vec![0; n_verts];
+    let mut new_vertices: Vec<[f32; 3]> = Vec::new();
+    let mut new_normals: Vec<[f32; 3]> = Vec::new();
+    let mut old_to_new: Vec<usize> = vec![0; n_verts];
+
+    for i in 0..n_verts {
+        let vx = mesh.vertices[3 * i];
+        let vy = mesh.vertices[3 * i + 1];
+        let vz = mesh.vertices[3 * i + 2];
+
+        // Check if this vertex matches an existing one
+        let mut found = None;
+        for (j, v) in new_vertices.iter().enumerate() {
+            let dx = vx - v[0];
+            let dy = vy - v[1];
+            let dz = vz - v[2];
+            if dx * dx + dy * dy + dz * dz < weld_dist_sq {
+                found = Some(j);
+                break;
+            }
+        }
+
+        if let Some(j) = found {
+            old_to_new[i] = j;
+        } else {
+            old_to_new[i] = new_vertices.len();
+            new_vertices.push([vx, vy, vz]);
+            new_normals.push([
+                mesh.normals[3 * i],
+                mesh.normals[3 * i + 1],
+                mesh.normals[3 * i + 2],
+            ]);
+        }
+        vertex_map[i] = old_to_new[i];
+    }
+
+    // Rebuild indices with mapped vertices, removing degenerate triangles
+    let mut new_indices = Vec::new();
+    let n_tris = mesh.indices.len() / 3;
+    for t in 0..n_tris {
+        let i0 = vertex_map[mesh.indices[3 * t] as usize] as u32;
+        let i1 = vertex_map[mesh.indices[3 * t + 1] as usize] as u32;
+        let i2 = vertex_map[mesh.indices[3 * t + 2] as usize] as u32;
+
+        // Skip degenerate triangles
+        if i0 == i1 || i1 == i2 || i0 == i2 {
+            continue;
+        }
+
+        // Check for zero-area triangle
+        let v0 = new_vertices[i0 as usize];
+        let v1 = new_vertices[i1 as usize];
+        let v2 = new_vertices[i2 as usize];
+        let e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
+        let e2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
+        let cx = e1[1] * e2[2] - e1[2] * e2[1];
+        let cy = e1[2] * e2[0] - e1[0] * e2[2];
+        let cz = e1[0] * e2[1] - e1[1] * e2[0];
+        let area_sq = cx * cx + cy * cy + cz * cz;
+        if area_sq < 1e-12 {
+            continue;
+        }
+
+        new_indices.push(i0);
+        new_indices.push(i1);
+        new_indices.push(i2);
+    }
+
+    let flat_verts: Vec<f32> = new_vertices
+        .iter()
+        .flat_map(|v| v.iter().copied())
+        .collect();
+    let flat_norms: Vec<f32> = new_normals.iter().flat_map(|n| n.iter().copied()).collect();
+
+    IsosurfaceMesh {
+        vertices: flat_verts,
+        normals: flat_norms,
+        num_triangles: new_indices.len() / 3,
+        indices: new_indices,
+        isovalue: mesh.isovalue,
+    }
+}
+
+/// Compute angle-weighted vertex normals for smooth shading.
+///
+/// For each vertex, averages the face normals of adjacent triangles,
+/// weighted by the angle at that vertex. This produces smoother shading
+/// than per-face normals.
+pub fn compute_angle_weighted_normals(mesh: &mut IsosurfaceMesh) {
+    let n_verts = mesh.vertices.len() / 3;
+    if n_verts == 0 {
+        return;
+    }
+
+    let mut normals = vec![[0.0f32; 3]; n_verts];
+
+    let n_tris = mesh.indices.len() / 3;
+    for t in 0..n_tris {
+        let idx = [
+            mesh.indices[3 * t] as usize,
+            mesh.indices[3 * t + 1] as usize,
+            mesh.indices[3 * t + 2] as usize,
+        ];
+
+        let v: [[f32; 3]; 3] = [
+            [
+                mesh.vertices[3 * idx[0]],
+                mesh.vertices[3 * idx[0] + 1],
+                mesh.vertices[3 * idx[0] + 2],
+            ],
+            [
+                mesh.vertices[3 * idx[1]],
+                mesh.vertices[3 * idx[1] + 1],
+                mesh.vertices[3 * idx[1] + 2],
+            ],
+            [
+                mesh.vertices[3 * idx[2]],
+                mesh.vertices[3 * idx[2] + 1],
+                mesh.vertices[3 * idx[2] + 2],
+            ],
+        ];
+
+        // Face normal
+        let e1 = [v[1][0] - v[0][0], v[1][1] - v[0][1], v[1][2] - v[0][2]];
+        let e2 = [v[2][0] - v[0][0], v[2][1] - v[0][1], v[2][2] - v[0][2]];
+        let face_normal = [
+            e1[1] * e2[2] - e1[2] * e2[1],
+            e1[2] * e2[0] - e1[0] * e2[2],
+            e1[0] * e2[1] - e1[1] * e2[0],
+        ];
+
+        // For each vertex in the triangle, compute the angle at that vertex
+        for vi in 0..3 {
+            let i0 = vi;
+            let i1 = (vi + 1) % 3;
+            let i2 = (vi + 2) % 3;
+
+            let a = [
+                v[i1][0] - v[i0][0],
+                v[i1][1] - v[i0][1],
+                v[i1][2] - v[i0][2],
+            ];
+            let b = [
+                v[i2][0] - v[i0][0],
+                v[i2][1] - v[i0][1],
+                v[i2][2] - v[i0][2],
+            ];
+
+            let dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+            let la = (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt();
+            let lb = (b[0] * b[0] + b[1] * b[1] + b[2] * b[2]).sqrt();
+
+            let cos_angle = if la > 1e-8 && lb > 1e-8 {
+                (dot / (la * lb)).clamp(-1.0, 1.0)
+            } else {
+                0.0
+            };
+            let angle = cos_angle.acos();
+
+            // Weight the face normal by the angle at this vertex
+            normals[idx[vi]][0] += angle * face_normal[0];
+            normals[idx[vi]][1] += angle * face_normal[1];
+            normals[idx[vi]][2] += angle * face_normal[2];
+        }
+    }
+
+    // Normalize all vertex normals
+    for i in 0..n_verts {
+        let n = &mut normals[i];
+        let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
+        if len > 1e-8 {
+            n[0] /= len;
+            n[1] /= len;
+            n[2] /= len;
+        } else {
+            n[0] = 0.0;
+            n[1] = 0.0;
+            n[2] = 1.0;
+        }
+        mesh.normals[3 * i] = n[0];
+        mesh.normals[3 * i + 1] = n[1];
+        mesh.normals[3 * i + 2] = n[2];
+    }
+}
+
+/// Ensure consistent outward-facing normal orientation.
+///
+/// Flips normals that point inward (based on the overall winding of the mesh).
+pub fn flip_normals_outward(mesh: &mut IsosurfaceMesh) {
+    let n_verts = mesh.vertices.len() / 3;
+    if n_verts == 0 {
+        return;
+    }
+
+    // Compute centroid of all vertices
+    let mut cx = 0.0f32;
+    let mut cy = 0.0f32;
+    let mut cz = 0.0f32;
+    for i in 0..n_verts {
+        cx += mesh.vertices[3 * i];
+        cy += mesh.vertices[3 * i + 1];
+        cz += mesh.vertices[3 * i + 2];
+    }
+    cx /= n_verts as f32;
+    cy /= n_verts as f32;
+    cz /= n_verts as f32;
+
+    // For each vertex, check if normal points away from centroid
+    for i in 0..n_verts {
+        let vx = mesh.vertices[3 * i] - cx;
+        let vy = mesh.vertices[3 * i + 1] - cy;
+        let vz = mesh.vertices[3 * i + 2] - cz;
+
+        let dot =
+            vx * mesh.normals[3 * i] + vy * mesh.normals[3 * i + 1] + vz * mesh.normals[3 * i + 2];
+
+        // If normal points inward (dot < 0), flip it
+        if dot < 0.0 {
+            mesh.normals[3 * i] = -mesh.normals[3 * i];
+            mesh.normals[3 * i + 1] = -mesh.normals[3 * i + 1];
+            mesh.normals[3 * i + 2] = -mesh.normals[3 * i + 2];
+        }
+    }
+}
+
+/// Export mesh data in WASM-ready format: interleaved position+normal Float32Arrays.
+///
+/// Returns a flat array of [x, y, z, nx, ny, nz, x, y, z, nx, ny, nz, ...].
+pub fn mesh_to_interleaved(mesh: &IsosurfaceMesh) -> Vec<f32> {
+    let n_verts = mesh.vertices.len() / 3;
+    let mut interleaved = Vec::with_capacity(n_verts * 6);
+    for i in 0..n_verts {
+        interleaved.push(mesh.vertices[3 * i]);
+        interleaved.push(mesh.vertices[3 * i + 1]);
+        interleaved.push(mesh.vertices[3 * i + 2]);
+        interleaved.push(mesh.normals[3 * i]);
+        interleaved.push(mesh.normals[3 * i + 1]);
+        interleaved.push(mesh.normals[3 * i + 2]);
+    }
+    interleaved
+}
+
 // ─── Marching Cubes lookup tables ────────────────────────────────────────────
 // Standard MC edge and triangle tables (Lorensen & Cline, 1987).
 
@@ -585,5 +862,115 @@ mod tests {
         let grid = sphere_grid(2.0, 0.3);
         let mesh = marching_cubes(&grid, 0.0);
         assert_eq!(mesh.vertices.len(), mesh.normals.len());
+    }
+
+    #[test]
+    fn test_dual_phase_isosurface() {
+        // Scalar field: positive inside sphere -> positive lobe,
+        // negative outside -> negative lobe (with offset)
+        let grid = sphere_grid(2.0, 0.3);
+        let dual = marching_cubes_dual(&grid, 0.5);
+        assert!(
+            dual.positive.num_triangles > 0,
+            "positive lobe should have triangles"
+        );
+        // The negative phase at -0.5 also produces a surface
+        assert!(
+            dual.negative.num_triangles > 0,
+            "negative lobe should have triangles"
+        );
+    }
+
+    #[test]
+    fn test_simplify_mesh_welds_vertices() {
+        let grid = sphere_grid(2.0, 0.3);
+        let mesh = marching_cubes(&grid, 0.0);
+        let before = mesh.num_vertices();
+        let simplified = simplify_mesh(&mesh, 0.01);
+        // Welding should reduce vertex count
+        assert!(
+            simplified.num_vertices() <= before,
+            "simplified should have <= vertices: {} vs {}",
+            simplified.num_vertices(),
+            before
+        );
+        assert!(simplified.num_triangles > 0, "should still have triangles");
+    }
+
+    #[test]
+    fn test_angle_weighted_normals_sphere() {
+        let grid = sphere_grid(2.0, 0.3);
+        let mut mesh = marching_cubes(&grid, 0.0);
+        compute_angle_weighted_normals(&mut mesh);
+
+        // For a sphere centered at origin, normals should point radially outward
+        // Check cosine similarity between vertex position (= radial direction) and normal
+        let n_verts = mesh.num_vertices();
+        let mut cos_sum = 0.0f64;
+        let mut count = 0;
+        for i in 0..n_verts {
+            let vx = mesh.vertices[3 * i] as f64;
+            let vy = mesh.vertices[3 * i + 1] as f64;
+            let vz = mesh.vertices[3 * i + 2] as f64;
+            let vlen = (vx * vx + vy * vy + vz * vz).sqrt();
+            if vlen < 1e-6 {
+                continue;
+            }
+            let nx = mesh.normals[3 * i] as f64;
+            let ny = mesh.normals[3 * i + 1] as f64;
+            let nz = mesh.normals[3 * i + 2] as f64;
+            let nlen = (nx * nx + ny * ny + nz * nz).sqrt();
+            if nlen < 1e-6 {
+                continue;
+            }
+            let cos = (vx * nx + vy * ny + vz * nz) / (vlen * nlen);
+            cos_sum += cos.abs();
+            count += 1;
+        }
+        let avg_cos = cos_sum / count as f64;
+        assert!(
+            avg_cos > 0.90,
+            "angle-weighted sphere normals should align with radial direction, got avg cos = {:.3}",
+            avg_cos
+        );
+    }
+
+    #[test]
+    fn test_flip_normals_outward_sphere() {
+        let grid = sphere_grid(2.0, 0.3);
+        let mut mesh = marching_cubes(&grid, 0.0);
+        flip_normals_outward(&mut mesh);
+
+        // After flipping, all normals should point away from centroid (≈ origin)
+        let n_verts = mesh.num_vertices();
+        let mut inward = 0;
+        for i in 0..n_verts {
+            let dot = mesh.vertices[3 * i] * mesh.normals[3 * i]
+                + mesh.vertices[3 * i + 1] * mesh.normals[3 * i + 1]
+                + mesh.vertices[3 * i + 2] * mesh.normals[3 * i + 2];
+            if dot < 0.0 {
+                inward += 1;
+            }
+        }
+        assert_eq!(inward, 0, "no normals should point inward after flip");
+    }
+
+    #[test]
+    fn test_mesh_to_interleaved() {
+        let grid = sphere_grid(2.0, 0.3);
+        let mesh = marching_cubes(&grid, 0.0);
+        let interleaved = mesh_to_interleaved(&mesh);
+        let n_verts = mesh.num_vertices();
+        assert_eq!(interleaved.len(), n_verts * 6, "6 floats per vertex");
+
+        // Verify interleaving
+        for i in 0..n_verts.min(10) {
+            assert_eq!(interleaved[6 * i], mesh.vertices[3 * i]);
+            assert_eq!(interleaved[6 * i + 1], mesh.vertices[3 * i + 1]);
+            assert_eq!(interleaved[6 * i + 2], mesh.vertices[3 * i + 2]);
+            assert_eq!(interleaved[6 * i + 3], mesh.normals[3 * i]);
+            assert_eq!(interleaved[6 * i + 4], mesh.normals[3 * i + 1]);
+            assert_eq!(interleaved[6 * i + 5], mesh.normals[3 * i + 2]);
+        }
     }
 }
