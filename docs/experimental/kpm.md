@@ -9,6 +9,8 @@
 
 Computes the density of states (DOS), density matrix, and Mulliken populations via **Chebyshev polynomial expansion** of the Hamiltonian, avoiding diagonalization entirely. Achieves $O(N)$ scaling for sparse Hamiltonians, enabling electronic structure calculations on systems of thousands of atoms.
 
+<SvgDiagram src="/svg/experimental-kpm.svg" alt="KPM Pipeline" />
+
 ---
 
 ## Theory

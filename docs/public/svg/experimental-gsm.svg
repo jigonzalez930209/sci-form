@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 240" width="780" height="240" font-family="system-ui, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="780" height="240" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">E11: Growing String Method (GSM)</text>
+  <text x="390" y="48" text-anchor="middle" font-size="10" fill="#64748b">Reaction path + transition state finder from force-field gradients</text>
+
+  <!-- Row 1: String growth -->
+  <rect x="10"  y="65" width="170" height="70" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="95"  y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Reactant + Product</text>
+  <text x="95"  y="106" text-anchor="middle" font-size="10" fill="#1d4ed8">Start/end geometries</text>
+  <text x="95"  y="120" text-anchor="middle" font-size="10" fill="#1d4ed8">flat coordinate arrays</text>
+
+  <rect x="200" y="65" width="170" height="70" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
+  <text x="285" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">Interpolate Nodes</text>
+  <text x="285" y="106" text-anchor="middle" font-size="10" fill="#15803d">Linear interp t∈[0,1]</text>
+  <text x="285" y="120" text-anchor="middle" font-size="10" fill="#15803d">n_nodes images</text>
+
+  <rect x="390" y="65" width="170" height="70" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
+  <text x="475" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Grow String</text>
+  <text x="475" y="106" text-anchor="middle" font-size="10" fill="#92400e">Add nodes inward</text>
+  <text x="475" y="120" text-anchor="middle" font-size="10" fill="#92400e">energy evaluation</text>
+
+  <rect x="580" y="65" width="170" height="70" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="665" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">Energy Profile</text>
+  <text x="665" y="106" text-anchor="middle" font-size="10" fill="#be185d">E(node) along path</text>
+  <text x="665" y="120" text-anchor="middle" font-size="10" fill="#be185d">locate maximum</text>
+
+  <!-- Arrows row 1 -->
+  <line x1="180" y1="100" x2="198" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="370" y1="100" x2="388" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="560" y1="100" x2="578" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Row 2: TS refinement -->
+  <rect x="200" y="150" width="170" height="55" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="285" y="172" text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">Refine Saddle</text>
+  <text x="285" y="188" text-anchor="middle" font-size="10" fill="#6d28d9">Optimize TS node</text>
+
+  <rect x="390" y="150" width="170" height="55" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="475" y="172" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">TS Result</text>
+  <text x="475" y="188" text-anchor="middle" font-size="10" fill="#b45309">E_act, E_rev, coords</text>
+
+  <!-- Arrow from profile down -->
+  <line x1="665" y1="135" x2="665" y2="175" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="665" y1="175" x2="562" y2="175" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Arrow refine → result -->
+  <line x1="370" y1="175" x2="388" y2="175" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Advantage badge -->
+  <rect x="180" y="213" width="420" height="24" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
+  <text x="390" y="229" text-anchor="middle" font-size="10" fill="#166534">✓ No initial path guess · Force-field driven · Activation + reverse barriers</text>
+</svg>

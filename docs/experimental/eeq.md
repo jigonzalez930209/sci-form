@@ -9,6 +9,8 @@
 
 Implements **geometry-dependent Electronegativity Equalization (EEQ)** charges, capturing polarization effects that static charge models like Gasteiger-Marsili miss. Charges depend on the 3D molecular geometry through fractional coordination numbers, making them suitable for conformer-dependent property prediction and as input to dispersion and solvation models.
 
+<SvgDiagram src="/svg/experimental-eeq.svg" alt="EEQ Pipeline" />
+
 ---
 
 ## Theory

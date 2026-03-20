@@ -9,6 +9,8 @@
 
 Replaces the $O(N^3)$ EHT diagonalization with the **Randomized Nyström Approximation**, reducing cost to $O(N^2)$ or $O(N \log N)$ for sparse matrices. This enables EHT calculations on systems of thousands of atoms where full diagonalization is impractical.
 
+<SvgDiagram src="/svg/experimental-randnla.svg" alt="RandNLA Pipeline" />
+
 ---
 
 ## Theory

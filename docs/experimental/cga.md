@@ -9,6 +9,8 @@
 
 Replaces the internal geometry engine (separate quaternions + vectors) with Conformal Geometric Algebra $G(4,1)$, unifying rotations and translations into a single multiplicative operator called a **Motor** ($M X \tilde{M}$). This eliminates gimbal lock and enables massively parallelizable geometric operations for conformer generation and MOF assembly.
 
+<SvgDiagram src="/svg/experimental-cga.svg" alt="CGA Pipeline" />
+
 ---
 
 ## Theory

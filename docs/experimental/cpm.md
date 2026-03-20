@@ -9,6 +9,8 @@
 
 Extends charge and electronic property calculations by coupling the molecule to a "virtual electrode" at electrochemical potential $\mu$. Charges fluctuate to equilibrate with the electrode, enabling simulation of **quantum capacitance**, charge response to potential, and electrochemical energy surfaces.
 
+<SvgDiagram src="/svg/experimental-cpm.svg" alt="CPM Pipeline" />
+
 ---
 
 ## Theory
