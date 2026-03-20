@@ -31,6 +31,12 @@
 - ChemBL 10K practical benchmark: 97.54% embed success, 97.18% perfect-geometry rate, about 2.1 mol/s
 - Main remaining conformer-engine gap: throughput. The current single-conformer path is still around 106 ms/mol versus the 11 ms/mol target.
 
+**Experimental engine snapshot:**
+- `src/experimental_2/` is now wired into the crate as an isolated namespace
+- Phase 1 GPU infrastructure, Phase 2 quantum engine, and Phase 3 SCF engine are implemented and compile cleanly
+- Phase 4 spectroscopy and Phase 5 GPU rendering exist as prototype tracks behind the experimental namespace
+- Verified regression status for the experimental stack: `54 passed` in `test_experimental_comparison` and `14 passed, 7 ignored` in `test_extended_molecules`
+
 ---
 
 ## Base Data Model Direction

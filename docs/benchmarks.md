@@ -165,3 +165,36 @@ Full pipeline (embed + charges + EHT + ESP + DOS + SASA + dipole) on a drug-like
 | SASA | < 1 ms |
 | Dipole | < 1 ms |
 | **Total** | **~38 ms** |
+
+## Experimental Quantum Engine Benchmarks
+
+The isolated `experimental_2` stack adds a Roothaan-Hall RHF/STO-3G implementation with explicit two-electron integrals and rayon-parallel ERI construction.
+
+### Regression Coverage
+
+| Suite | Scope | Result |
+|------|-------|--------|
+| `test_experimental_comparison` | SCF correctness, legacy-vs-experimental comparison, NIST references, spectroscopy smoke checks | **54 passed, 0 failed** |
+| `test_extended_molecules` | Complex molecules, NMR/IR/UV-Vis reference checks, ML properties, drug-like molecules | **14 passed, 0 failed, 7 ignored** |
+
+### Parallel ERI Speedups
+
+Observed on an Intel i5-10500H (12 logical cores):
+
+| System size | Typical behavior |
+|------------|------------------|
+| Small systems (< 15 basis functions) | ~0.8–1.1×, parallel overhead dominates |
+| Benzene (~36 basis functions) | ~3–5× speedup |
+| Pyridine (~42 basis functions) | ~4–6× speedup |
+
+The heavy speedup tables are intentionally marked `#[ignore]` in debug-mode regression runs because explicit ERIs scale as $O(N^4)$ and distort CI time on larger aromatic systems. Run them in release mode:
+
+```bash
+cargo test --release --test regression test_extended_molecules -- --include-ignored
+```
+
+### Interpretation
+
+- The current acceleration path is CPU-only via rayon
+- GPU execution is planned, but the current `phase1_gpu_infrastructure` backend is still a CPU fallback with WGSL-ready interfaces
+- The experimental engine is best viewed today as a validated research track rather than the default production quantum backend

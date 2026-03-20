@@ -52,6 +52,7 @@ mod test_spectroscopy;
 mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
+<<<<<<< HEAD
 
 #[cfg(feature = "experimental-cga")]
 #[path = "experimental/test_cga.rs"]
@@ -112,3 +113,9 @@ mod test_gsm;
 ))]
 #[path = "experimental/test_benchmarks.rs"]
 mod test_benchmarks;
+=======
+#[path = "regression/test_experimental_comparison.rs"]
+mod test_experimental_comparison;
+#[path = "regression/test_extended_molecules.rs"]
+mod test_extended_molecules;
+>>>>>>> origin/feat/add-emiemoirical-algoritms
