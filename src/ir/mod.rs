@@ -9,8 +9,9 @@
 pub mod hessian;
 pub mod vibrations;
 
-pub use hessian::{compute_numerical_hessian, HessianMethod};
+pub use hessian::{compute_numerical_hessian, compute_uff_analytical_hessian, HessianMethod};
 pub use vibrations::{
     compute_ir_spectrum, compute_ir_spectrum_with_broadening, compute_vibrational_analysis,
-    BroadeningType, IrPeak, IrSpectrum, Thermochemistry, VibrationalAnalysis, VibrationalMode,
+    compute_vibrational_analysis_uff, BroadeningType, IrPeak, IrSpectrum, Thermochemistry,
+    VibrationalAnalysis, VibrationalMode,
 };

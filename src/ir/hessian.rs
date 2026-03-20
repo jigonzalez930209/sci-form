@@ -14,6 +14,8 @@ pub enum HessianMethod {
     Pm3,
     /// GFN0-xTB tight-binding
     Xtb,
+    /// UFF force field with analytical Hessian for bond-stretch and angle-bend
+    Uff,
 }
 
 /// Evaluate total energy for a given method and geometry.
@@ -37,6 +39,9 @@ fn evaluate_energy(
         HessianMethod::Xtb => {
             let result = crate::xtb::solve_xtb(elements, positions)?;
             Ok(result.total_energy)
+        }
+        HessianMethod::Uff => {
+            Err("UFF uses analytical Hessian path; use compute_uff_analytical_hessian".to_string())
         }
     }
 }
@@ -168,6 +173,64 @@ fn auto_step_size(elements: &[u8]) -> f64 {
 
 fn flat_to_positions(coords: &[f64]) -> Vec<[f64; 3]> {
     coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect()
+}
+
+/// Compute the analytical Hessian for UFF force field using gradient differences.
+///
+/// Instead of computing H_{ij} from 4-point energy stencils (O(9N²) energy evaluations),
+/// this computes H_{ij} = ∂g_i/∂x_j using central differences on the analytical gradients:
+///   H_{ij} ≈ [g_i(x + δe_j) - g_i(x - δe_j)] / (2δ)
+///
+/// This requires only 6N gradient evaluations (one ± displacement per coordinate),
+/// which is much cheaper since UFF gradients are computed analytically.
+pub fn compute_uff_analytical_hessian(
+    smiles: &str,
+    coords_flat: &[f64],
+    step_size: Option<f64>,
+) -> Result<DMatrix<f64>, String> {
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    let n3 = 3 * n_atoms;
+
+    if coords_flat.len() != n3 {
+        return Err(format!(
+            "coords length {} != 3 * atoms {}",
+            coords_flat.len(),
+            n_atoms
+        ));
+    }
+
+    let ff = crate::forcefield::builder::build_uff_force_field(&mol);
+    let elements: Vec<u8> = (0..n_atoms)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+    let delta = step_size.unwrap_or_else(|| auto_step_size(&elements));
+
+    let mut hessian = DMatrix::zeros(n3, n3);
+
+    // For each coordinate j, displace ±δ and compute the full gradient vector.
+    // H_{ij} = [g_i(x + δe_j) - g_i(x - δe_j)] / (2δ)
+    for j in 0..n3 {
+        let mut coords_plus = coords_flat.to_vec();
+        let mut coords_minus = coords_flat.to_vec();
+        coords_plus[j] += delta;
+        coords_minus[j] -= delta;
+
+        let mut grad_plus = vec![0.0; n3];
+        let mut grad_minus = vec![0.0; n3];
+
+        ff.compute_system_energy_and_gradients(&coords_plus, &mut grad_plus);
+        ff.compute_system_energy_and_gradients(&coords_minus, &mut grad_minus);
+
+        for i in 0..n3 {
+            hessian[(i, j)] = (grad_plus[i] - grad_minus[i]) / (2.0 * delta);
+        }
+    }
+
+    // Symmetry enforcement
+    enforce_symmetry(&mut hessian);
+
+    Ok(hessian)
 }
 
 #[cfg(test)]

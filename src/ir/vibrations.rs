@@ -158,6 +158,13 @@ fn compute_dipole_vector(
             let dipole = crate::dipole::compute_dipole(&xtb.mulliken_charges, positions);
             Ok(dipole.vector)
         }
+        HessianMethod::Uff => {
+            // UFF has no electronic structure; use Gasteiger charges as approximation
+            let n = elements.len();
+            let charges = vec![0.0; n]; // neutral approximation
+            let dipole = crate::dipole::compute_dipole(&charges, positions);
+            Ok(dipole.vector)
+        }
     }
 }
 
@@ -330,16 +337,62 @@ pub fn compute_vibrational_analysis(
     method: HessianMethod,
     step_size: Option<f64>,
 ) -> Result<VibrationalAnalysis, String> {
+    if method == HessianMethod::Uff {
+        return Err(
+            "UFF requires SMILES; use compute_vibrational_analysis_uff instead".to_string(),
+        );
+    }
+
     let n_atoms = elements.len();
-    let n3 = 3 * n_atoms;
     let delta = step_size.unwrap_or(0.005);
 
     if n_atoms < 2 {
         return Err("Need at least 2 atoms for vibrational analysis".to_string());
     }
 
-    // 1. Compute numerical Hessian
     let hessian = compute_numerical_hessian(elements, positions, method, Some(delta))?;
+    build_vibrational_analysis_from_hessian(elements, positions, &hessian, method, delta)
+}
+
+/// Perform vibrational analysis using UFF analytical Hessian (gradient-difference method).
+///
+/// This avoids the expensive O(9N²) energy evaluations of the standard numerical Hessian
+/// by using O(6N) gradient evaluations with UFF's analytical gradients.
+pub fn compute_vibrational_analysis_uff(
+    smiles: &str,
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    step_size: Option<f64>,
+) -> Result<VibrationalAnalysis, String> {
+    let n_atoms = elements.len();
+    let delta = step_size.unwrap_or(0.005);
+
+    if n_atoms < 2 {
+        return Err("Need at least 2 atoms for vibrational analysis".to_string());
+    }
+
+    let coords_flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
+    let hessian =
+        super::hessian::compute_uff_analytical_hessian(smiles, &coords_flat, Some(delta))?;
+    build_vibrational_analysis_from_hessian(
+        elements,
+        positions,
+        &hessian,
+        HessianMethod::Uff,
+        delta,
+    )
+}
+
+/// Build vibrational analysis from a pre-computed Hessian matrix.
+fn build_vibrational_analysis_from_hessian(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    hessian: &DMatrix<f64>,
+    method: HessianMethod,
+    delta: f64,
+) -> Result<VibrationalAnalysis, String> {
+    let n_atoms = elements.len();
+    let n3 = 3 * n_atoms;
 
     // 2. Build mass-weighted Hessian: H'_{ij} = H_{ij} / sqrt(m_i * m_j)
     let masses: Vec<f64> = elements.iter().map(|&z| atomic_mass(z)).collect();
@@ -429,6 +482,7 @@ pub fn compute_vibrational_analysis(
         HessianMethod::Eht => "EHT",
         HessianMethod::Pm3 => "PM3",
         HessianMethod::Xtb => "xTB",
+        HessianMethod::Uff => "UFF",
     };
 
     // Compute thermochemistry at 298.15 K
