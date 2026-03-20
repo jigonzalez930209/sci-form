@@ -12,6 +12,7 @@ pub mod eht;
 pub mod electronic;
 pub mod embed;
 pub mod esp;
+pub mod experimental;
 pub mod forcefield;
 pub mod materials;
 pub mod mesh;
