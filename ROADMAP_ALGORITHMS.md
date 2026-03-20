@@ -11,15 +11,15 @@
 | Track | Description | Status |
 |-------|-------------|--------|
 | H1 | NMR Spectroscopy | ✅ Complete |
-| H2 | Vibrational Analysis & IR Spectroscopy | 🟡 Mostly complete (H2.1c pending) |
-| H3 | Charge Modeling & Force-Field Parametrization | 🟡 H3.1 complete, H3.2 partial |
-| H4 | Conformational Sampling Refinement | 🟡 H4.1 complete, H4.2 pending |
+| H2 | Vibrational Analysis & IR Spectroscopy | ✅ Complete |
+| H3 | Charge Modeling & Force-Field Parametrization | ✅ Complete |
+| H4 | Conformational Sampling Refinement | ✅ Complete |
 | H5 | Topology & Molecular Descriptors | ✅ Complete |
-| H6 | Molecular Dynamics & Thermodynamics | 🔲 Not started (enhancements) |
+| H6 | Molecular Dynamics & Thermodynamics | ✅ Complete |
 | H7 | Implicit Solvation Modeling | ✅ Complete |
-| H8 | Quantum Mechanics: Iterative SCF Evolution | 🟡 H8.1b/H8.2a partial |
-| H9 | Stereochemistry & Chirality Perception | 🟡 H9.1/H9.2a-b complete, H9.2c pending |
-| H10 | Surface Generation & Scientific Visualization | 🟡 H10.1a/H10.1d complete, rest pending |
+| H8 | Quantum Mechanics: Iterative SCF Evolution | ✅ Complete |
+| H9 | Stereochemistry & Chirality Perception | ✅ Complete |
+| H10 | Surface Generation & Scientific Visualization | ✅ Complete |
 
 ---
 
@@ -91,7 +91,7 @@ $$
 
 - [x] **H2.1a** Add automatic step-size selection based on atomic mass and force-field stiffness
 - [x] **H2.1b** Add symmetry enforcement: $H_{ij} = H_{ji}$ averaging to reduce numerical noise
-- [ ] **H2.1c** Add analytical Hessian path for UFF bond-stretch and angle-bend terms (avoiding 6N energy evaluations for these)
+- [x] **H2.1c** Add analytical Hessian path for UFF bond-stretch and angle-bend terms (avoiding 6N energy evaluations for these)
 - [x] **H2.1d** Validate: Hessian symmetry error $\|H - H^T\|_F / \|H\|_F < 10^{-6}$
 
 ### Phase H2.2: Mass-Weighted Diagonalization and Normal Modes
@@ -151,9 +151,9 @@ where $\chi(q) = a + bq + cq^2$ and $d$ is the damping factor (typically 0.5).
 
 **Current state:** Basic SMARTS parser and matcher exist in `src/smarts/`. MMFF94 atom typing (28 types) exists in `src/forcefield/`.
 
-- [ ] **H3.2a** Add complete MMFF94 atom-type SMARTS rules with priority ordering (75 rules)
+- [x] **H3.2a** Add complete MMFF94 atom-type SMARTS rules with priority ordering (75 rules)
 - [x] **H3.2b** Add UFF atom-type assignment covering coordination number and hybridization
-- [ ] **H3.2c** Add validation: atom-type assignment for 20 diverse molecules matches RDKit MMFF94 typing exactly
+- [x] **H3.2c** Add validation: atom-type assignment for 20 diverse molecules matches RDKit MMFF94 typing exactly
 - [x] **H3.2d** Add automatic parameter lookup after typing: bond/angle/torsion/vdW parameters from typed atoms
 
 ---
@@ -171,7 +171,7 @@ where $\chi(q) = a + bq + cq^2$ and $d$ is the damping factor (typically 0.5).
 - [x] **H4.1a** Implement Butina clustering with configurable RMSD cutoff (default 1.0 Å)
 - [x] **H4.1b** Add O(N²) RMSD matrix computation with Kabsch alignment from `src/alignment/`
 - [x] **H4.1c** Return cluster centroids, cluster sizes, and representative conformer indices
-- [ ] **H4.1d** Integrate into `embed_batch` pipeline as a post-processing filter
+- [x] **H4.1d** Integrate into `embed_batch` pipeline as a post-processing filter
 - [x] **H4.1e** Validate: clustering of 50 ethane conformers yields ≤3 clusters (gauche, anti, eclipsed)
 
 ### Phase H4.2: Torsional Sampling (Systematic + Simulated Annealing)
@@ -182,11 +182,11 @@ $$
 P(\text{accept}) = \min\left(1, e^{-\Delta E / k_B T}\right)
 $$
 
-- [ ] **H4.2a** Add rotatable-bond detection (exclude ring bonds, double bonds, terminal groups)
-- [ ] **H4.2b** Implement systematic rotor search for ≤4 rotatable bonds (12 angles per rotor)
-- [ ] **H4.2c** Implement simulated annealing with exponential cooling schedule for >4 rotors
-- [ ] **H4.2d** Integrate with Butina clustering to filter the generated ensemble
-- [ ] **H4.2e** Validate: n-butane sampling finds gauche (±60°) and anti (180°) minima; energy difference within 10% of MMFF94 reference
+- [x] **H4.2a** Add rotatable-bond detection (exclude ring bonds, double bonds, terminal groups)
+- [x] **H4.2b** Implement systematic rotor search for ≤4 rotatable bonds (12 angles per rotor)
+- [x] **H4.2c** Implement simulated annealing with exponential cooling schedule for >4 rotors
+- [x] **H4.2d** Integrate with Butina clustering to filter the generated ensemble
+- [x] **H4.2e** Validate: n-butane sampling finds gauche (±60°) and anti (180°) minima; energy difference within 10% of MMFF94 reference
 
 ---
 
@@ -239,10 +239,10 @@ $$
 
 **Current state:** Velocity Verlet with UFF already implemented in `src/dynamics.rs`.
 
-- [ ] **H6.1a** Add support for PM3 and xTB force backends (not just UFF)
-- [ ] **H6.1b** Add energy conservation monitoring (drift < 0.1% over 1000 steps for NVE)
-- [ ] **H6.1c** Add trajectory output in XYZ format for external visualization
-- [ ] **H6.1d** Validate: harmonic oscillator test — period matches analytical $T = 2\pi\sqrt{m/k}$ within 0.5%
+- [x] **H6.1a** Add support for PM3 and xTB force backends (not just UFF)
+- [x] **H6.1b** Add energy conservation monitoring (drift < 0.1% over 1000 steps for NVE)
+- [x] **H6.1c** Add trajectory output in XYZ format for external visualization
+- [x] **H6.1d** Validate: harmonic oscillator test — period matches analytical $T = 2\pi\sqrt{m/k}$ within 0.5%
 
 ### Phase H6.2: Nosé-Hoover Thermostat
 
@@ -256,10 +256,10 @@ where $\xi$ is the thermostat variable and $Q$ is the thermostat mass.
 
 **Current state:** Berendsen thermostat implemented; Nosé-Hoover not yet.
 
-- [ ] **H6.2a** Implement Nosé-Hoover chain thermostat (chain length 3) for rigorous NVT sampling
-- [ ] **H6.2b** Add temperature monitoring and fluctuation analysis
-- [ ] **H6.2c** Add Nosé-Hoover coupling to velocity Verlet integration
-- [ ] **H6.2d** Validate: average temperature within 1% of target; temperature fluctuations $\propto 1/\sqrt{N_{DOF}}$
+- [x] **H6.2a** Implement Nosé-Hoover chain thermostat (chain length 3) for rigorous NVT sampling
+- [x] **H6.2b** Add temperature monitoring and fluctuation analysis
+- [x] **H6.2c** Add Nosé-Hoover coupling to velocity Verlet integration
+- [x] **H6.2d** Validate: average temperature within 1% of target; temperature fluctuations $\propto 1/\sqrt{N_{DOF}}$
 
 ---
 
@@ -297,10 +297,10 @@ where $f_{\text{GB}} = \sqrt{r_{ij}^2 + R_iR_j \exp(-r_{ij}^2/4R_iR_j)}$ and $R_
 
 **Current state:** Roothaan-Hall SCF implemented in `src/hf/scf.rs`; PM3 SCF in `src/pm3/solver.rs`; xTB SCC in `src/xtb/`.
 
-- [ ] **H8.1a** Unify SCF infrastructure: extract a common `ScfSolver` trait for HF, PM3, and xTB backends
+- [x] **H8.1a** Unify SCF infrastructure: extract a common `ScfSolver` trait for HF, PM3, and xTB backends
 - [x] **H8.1b** Add configurable convergence criteria (energy: 1e-8 Eh, density: 1e-6)
-- [ ] **H8.1c** Add level shifting for difficult-to-converge metallic systems ($\Delta = 0.3$ Eh shift on virtuals)
-- [ ] **H8.1d** Validate: H₂ restricted HF energy within 0.1% of PySCF reference; H₂O within 0.5%
+- [x] **H8.1c** Add level shifting for difficult-to-converge metallic systems ($\Delta = 0.3$ Eh shift on virtuals)
+- [x] **H8.1d** Validate: H₂ restricted HF energy within 0.1% of PySCF reference; H₂O within 0.5%
 
 ### Phase H8.2: DIIS Convergence Acceleration
 
@@ -313,9 +313,9 @@ $$
 **Current state:** DIIS implemented in `src/hf/scf.rs`.
 
 - [x] **H8.2a** Add DIIS history size control (default 8, max 15 matrices)
-- [ ] **H8.2b** Add ADIIS (energy-based DIIS) for initial iterations before switching to DIIS
-- [ ] **H8.2c** Add automatic DIIS reset on numerical instability (condition number monitoring)
-- [ ] **H8.2d** Validate: metalloporphyrin SCF converges in <50 iterations with DIIS vs >200 without
+- [x] **H8.2b** Add ADIIS (energy-based DIIS) for initial iterations before switching to DIIS
+- [x] **H8.2c** Add automatic DIIS reset on numerical instability (condition number monitoring)
+- [x] **H8.2d** Validate: metalloporphyrin SCF converges in <50 iterations with DIIS vs >200 without
 
 ---
 
@@ -341,7 +341,7 @@ $$
 
 - [x] **H9.2a** Implement R/S assignment using the triple-product sign test
 - [x] **H9.2b** Implement E/Z assignment for double bonds using the dihedral angle of CIP-ordered substituents
-- [ ] **H9.2c** Add stereo descriptor output in SMILES string form (@, @@, /, \)
+- [x] **H9.2c** Add stereo descriptor output in SMILES string form (@, @@, /, \)
 - [x] **H9.2d** Validate: (R)-2-bromobutane → R; trans-2-butene → E; cis-2-butene → Z
 
 ---
@@ -353,8 +353,8 @@ $$
 **Current state:** Marching cubes implemented in `src/eht/marching_cubes.rs` for orbital isosurfaces.
 
 - [x] **H10.1a** Generalize marching cubes to accept any `VolumetricGrid` (not just EHT orbitals)
-- [ ] **H10.1b** Add support for dual-phase isosurfaces (positive/negative lobes of orbitals, ESP coloring)
-- [ ] **H10.1c** Add mesh simplification: vertex welding and degenerate-triangle removal
+- [x] **H10.1b** Add support for dual-phase isosurfaces (positive/negative lobes of orbitals, ESP coloring)
+- [x] **H10.1c** Add mesh simplification: vertex welding and degenerate-triangle removal
 - [x] **H10.1d** Validate: sphere isosurface area matches analytical $4\pi r^2$ within 2%
 
 ### Phase H10.2: Vertex Normal Computation
@@ -367,10 +367,10 @@ $$
 
 where $\alpha_f$ is the angle at vertex $v$ in face $f$.
 
-- [ ] **H10.2a** Implement angle-weighted vertex normals for smooth shading
-- [ ] **H10.2b** Add normal flipping for consistent outward orientation
-- [ ] **H10.2c** Export mesh data in WASM-ready format (interleaved position+normal Float32Arrays)
-- [ ] **H10.2d** Validate: normals on sphere surface match analytical $\hat{r}$ to cosine similarity > 0.99
+- [x] **H10.2a** Implement angle-weighted vertex normals for smooth shading
+- [x] **H10.2b** Add normal flipping for consistent outward orientation
+- [x] **H10.2c** Export mesh data in WASM-ready format (interleaved position+normal Float32Arrays)
+- [x] **H10.2d** Validate: normals on sphere surface match analytical $\hat{r}$ to cosine similarity > 0.99
 
 ---
 
