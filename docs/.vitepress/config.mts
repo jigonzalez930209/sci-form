@@ -40,6 +40,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Algorithm', link: '/algorithm/overview' },
+      { text: 'Experimental', link: '/experimental/overview' },
       { text: 'API', link: '/api/rust' },
       { text: 'Benchmarks', link: '/benchmarks' },
     ],
@@ -106,6 +107,40 @@ export default defineConfig({
           items: [
             { text: 'Materials Assembly', link: '/algorithm/materials-assembly' },
             { text: 'Web Transport', link: '/algorithm/web-transport' },
+          ],
+        },
+      ],
+      '/experimental/': [
+        {
+          text: 'Experimental Modules',
+          items: [
+            { text: 'Overview', link: '/experimental/overview' },
+          ],
+        },
+        {
+          text: 'Group A — Advanced Geometry',
+          items: [
+            { text: 'E1: CGA', link: '/experimental/cga' },
+            { text: 'E2: RandNLA', link: '/experimental/randnla' },
+            { text: 'E3: Riemannian', link: '/experimental/riemannian' },
+          ],
+        },
+        {
+          text: 'Group B — Electronic Structure',
+          items: [
+            { text: 'E4: KPM', link: '/experimental/kpm' },
+            { text: 'E5: EEQ', link: '/experimental/eeq' },
+            { text: 'E6: ALPB', link: '/experimental/alpb' },
+          ],
+        },
+        {
+          text: 'Group C — Precision Methods',
+          items: [
+            { text: 'E7: D4', link: '/experimental/d4' },
+            { text: 'E8: SDR', link: '/experimental/sdr' },
+            { text: 'E9: MBH', link: '/experimental/mbh' },
+            { text: 'E10: CPM', link: '/experimental/cpm' },
+            { text: 'E11: GSM', link: '/experimental/gsm' },
           ],
         },
       ],
