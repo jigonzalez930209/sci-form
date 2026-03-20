@@ -36,6 +36,21 @@ pub mod topology;
 pub mod transport;
 pub mod xtb;
 
+#[cfg(any(
+    feature = "experimental-cga",
+    feature = "experimental-randnla",
+    feature = "experimental-riemannian",
+    feature = "experimental-kpm",
+    feature = "experimental-eeq",
+    feature = "experimental-alpb",
+    feature = "experimental-d4",
+    feature = "experimental-sdr",
+    feature = "experimental-mbh",
+    feature = "experimental-cpm",
+    feature = "experimental-gsm"
+))]
+pub mod experimental;
+
 use serde::{Deserialize, Serialize};
 
 // ─── Public API Types ────────────────────────────────────────────────────────
