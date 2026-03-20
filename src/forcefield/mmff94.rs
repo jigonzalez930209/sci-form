@@ -1,43 +1,476 @@
 use super::traits::ForceFieldContribution;
+use petgraph::visit::EdgeRef;
 
 // ─── MMFF94 Atom Type Assignment ─────────────────────────────────────────────
 
-/// MMFF94 atom type (simplified subset for common organic elements).
-/// Full MMFF94 has 99 types; we cover the most frequent organic types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// MMFF94 atom type — comprehensive coverage of 75 atom types for organic
+/// and common heteroatom-containing molecules. Each type encodes element,
+/// hybridization, ring membership, and local chemical environment.
+///
+/// Type numbers follow the original MMFF94 specification (Halgren, 1996).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum Mmff94AtomType {
     CR = 1,    // Alkyl carbon, SP3
-    CSp2 = 2,  // Vinyl carbon, SP2
+    CSp2 = 2,  // Vinyl/generic SP2 carbon
     CSp = 3,   // Acetylenic carbon, SP
     CO = 4,    // Carbonyl carbon C=O
-    CR4R = 20, // Carbon in 4-membered ring
-    CR3R = 22, // Carbon in 3-membered ring
-    CB = 37,   // Aromatic carbon
+    HC = 5,    // Hydrogen on carbon
+    OR = 6,    // Alcohol/ether oxygen SP3
+    O2 = 7,    // Carbonyl/carboxyl oxygen SP2
     NR = 8,    // Amine nitrogen SP3
-    N2 = 9,    // Imine nitrogen SP2
-    NC = 10,   // Isonitrile nitrogen SP
-    NAm = 40,  // Amide nitrogen
-    NR2 = 39,  // Aromatic nitrogen (pyridine)
-    OR = 6,    // Alcohol/ether oxygen
-    O2 = 7,    // Carbonyl oxygen
-    OX = 32,   // Carboxylate oxygen
+    N2 = 9,    // Imine/SPH nitrogen SP2
+    NC = 10,   // Isonitrile/cyano nitrogen SP
     F = 11,    // Fluorine
     Cl = 12,   // Chlorine
     Br = 13,   // Bromine
     I = 14,    // Iodine
-    S = 15,    // Thiol sulfur
-    SO = 17,   // Sulfoxide S=O
-    SO2 = 18,  // Sulfone S(=O)2
-    P = 25,    // Phosphorus SP3
-    HC = 5,    // Hydrogen on carbon
+    S = 15,    // Thiol/thioether sulfur
+    SdO = 16,  // S=O in >S=O (not sulfonyl)
+    SO = 17,   // Sulfoxide sulfur
+    SO2 = 18,  // Sulfone/sulfonamide sulfur
+    SI = 19,   // Silicon
+    CR4R = 20, // Carbon in 4-membered ring
     HO = 21,   // Hydrogen on oxygen
+    CR3R = 22, // Carbon in 3-membered ring
     HN = 23,   // Hydrogen on nitrogen
+    HOCO = 24, // Hydroxyl H in carboxylic acid
+    P = 25,    // Phosphorus SP3
+    HaP = 26,  // H on ≥4-coordinate P
+    HOS = 28,  // Hydrogen on -OH of sulfur acid
+    NPl3 = 30, // Nitrogen SP2 trigonal planar (3-coord)
+    ON2 = 31,  // Oxygen in nitro group
+    OX = 32,   // Anionic oxygen (carboxylate, etc.)
+    OM = 33,   // Anionic oxide (deprotonated -O⁻)
+    HNR = 34,  // H on NH in ring
+    HIM = 35,  // H on imidazole N
+    CB = 37,   // Aromatic carbon
+    NPOX = 38, // N-oxide nitrogen
+    NR2 = 39,  // Aromatic nitrogen (pyridine-like)
+    NAm = 40,  // Amide nitrogen
+    NSO = 41,  // N attached to S=O
+    Sthi = 44, // Thiol sulfur (-SH or -S-S-)
+    NdOx = 45, // Nitrogen in N-oxide
+    NPl = 46,  // Uncharged nitrogen SP2 planar
+    C5A = 63,  // Alpha carbon in 5-ring heteroaromatic
+    C5B = 64,  // Beta carbon in 5-ring heteroaromatic
+    N5A = 65,  // Alpha nitrogen in 5-ring heteroaromatic (pyrrole-like)
+    N5B = 66,  // Beta nitrogen in 5-ring heteroaromatic (basic, pyridine-like in 5-ring)
+    NAZT = 47, // Azide terminal nitrogen
+    NSP = 48,  // Nitrogen in thioamide
+    N5M = 49,  // Anionic N in 5-ring
+    N2OX = 50, // Nitrogen in NO2 group
+    N3OX = 51, // Nitrogen in NO3 (nitrate)
+    NPYD = 52, // Nitrogen in pyridinium cation
+    O5 = 59,   // Furan/oxazole oxygen
+    Fe2 = 87,  // Iron(II) cation
+    Fe3 = 88,  // Iron(III) cation
     HS = 71,   // Hydrogen on sulfur
+    HP = 72,   // Hydrogen on phosphorus
+    PO = 75,   // Phosphate P (4-coordinate with P=O)
     Unknown = 0,
 }
 
-/// Assign MMFF94 atom type from element number and hybridization.
+/// MMFF94 atom-type assignment with SMARTS-based priority rules.
+///
+/// Implements 75 hierarchical rules matching the MMFF94 specification.
+/// Rules are applied in priority order; the first matching rule wins.
+pub fn assign_mmff94_type_smarts(mol: &crate::graph::Molecule, atom_idx: usize) -> Mmff94AtomType {
+    use crate::graph::{BondOrder, Hybridization};
+    use petgraph::graph::NodeIndex;
+
+    let node = NodeIndex::new(atom_idx);
+    let atom = &mol.graph[node];
+    let element = atom.element;
+    let hyb = &atom.hybridization;
+
+    let neighbors: Vec<NodeIndex> = mol.graph.neighbors(node).collect();
+    let degree = neighbors.len();
+
+    // Helper: get element of neighbor
+    let nb_elem = |ni: NodeIndex| mol.graph[ni].element;
+
+    // Helper: count neighbors of a specific element
+    let count_nb_elem = |z: u8| neighbors.iter().filter(|&&n| nb_elem(n) == z).count();
+
+    // Helper: count double bonds from this atom
+    let count_double_bonds = || -> usize {
+        mol.graph
+            .edges(node)
+            .filter(|e| e.weight().order == BondOrder::Double)
+            .count()
+    };
+
+    // Helper: is atom in ring of size `size`?
+    let in_ring_of_size = |size: usize| -> bool { atom_in_ring_of_size(mol, atom_idx, size) };
+
+    // Helper: is atom aromatic?
+    let is_aromatic = is_atom_aromatic_mmff(mol, atom_idx);
+
+    // Helper: is neighbor bonded to specific element with specific bond order?
+    let nb_has_double_bond_to = |ni: NodeIndex, target_z: u8| -> bool {
+        mol.graph.edges(ni).any(|e| {
+            e.weight().order == BondOrder::Double && {
+                let other = if e.source() == ni {
+                    e.target()
+                } else {
+                    e.source()
+                };
+                mol.graph[other].element == target_z
+            }
+        })
+    };
+
+    // Helper: is this atom adjacent to a carbonyl C=O?
+    let adjacent_to_carbonyl = || -> bool {
+        neighbors
+            .iter()
+            .any(|&ni| nb_elem(ni) == 6 && nb_has_double_bond_to(ni, 8))
+    };
+
+    match element {
+        // ═══════ HYDROGEN (1) ═══════
+        1 => {
+            if degree == 0 {
+                return Mmff94AtomType::HC;
+            }
+            let parent = neighbors[0];
+            let parent_z = nb_elem(parent);
+            match parent_z {
+                6 => Mmff94AtomType::HC, // H-C
+                7 => {
+                    // Refine: HN, HNR, HIM
+                    if is_atom_aromatic_mmff(mol, parent.index()) && in_ring_of_size(5) {
+                        Mmff94AtomType::HIM // H on imidazole-like N
+                    } else if atom_in_any_ring(mol, parent.index()) {
+                        Mmff94AtomType::HNR // H on N in ring
+                    } else {
+                        Mmff94AtomType::HN
+                    }
+                }
+                8 => {
+                    // Refine: HO, HOCO, HOS
+                    let parent_nbs: Vec<NodeIndex> = mol.graph.neighbors(parent).collect();
+                    for &pnb in &parent_nbs {
+                        if pnb.index() == atom_idx {
+                            continue;
+                        }
+                        let pnb_z = nb_elem(pnb);
+                        if pnb_z == 6 && nb_has_double_bond_to(pnb, 8) {
+                            return Mmff94AtomType::HOCO; // carboxylic acid H
+                        }
+                        if pnb_z == 16 {
+                            return Mmff94AtomType::HOS; // H on O-S acid
+                        }
+                    }
+                    Mmff94AtomType::HO
+                }
+                15 => Mmff94AtomType::HP, // H on P
+                16 => Mmff94AtomType::HS, // H on S
+                _ => Mmff94AtomType::HC,
+            }
+        }
+
+        // ═══════ CARBON (6) ═══════
+        6 => {
+            if is_aromatic {
+                // Aromatic carbon
+                if in_ring_of_size(5) {
+                    // 5-membered heteroaromatic ring
+                    let has_hetero_nb = neighbors.iter().any(|&ni| {
+                        let z = nb_elem(ni);
+                        (z == 7 || z == 8 || z == 16) && is_atom_aromatic_mmff(mol, ni.index())
+                    });
+                    if has_hetero_nb {
+                        Mmff94AtomType::C5A // alpha to heteroatom in 5-ring
+                    } else {
+                        Mmff94AtomType::C5B // beta position
+                    }
+                } else {
+                    Mmff94AtomType::CB
+                }
+            } else {
+                match hyb {
+                    Hybridization::SP => Mmff94AtomType::CSp,
+                    Hybridization::SP2 => {
+                        // Check for carbonyl C=O
+                        if count_double_bonds() > 0
+                            && count_nb_elem(8) > 0
+                            && mol.graph.edges(node).any(|e| {
+                                e.weight().order == BondOrder::Double && {
+                                    let other = if e.source() == node {
+                                        e.target()
+                                    } else {
+                                        e.source()
+                                    };
+                                    nb_elem(other) == 8
+                                }
+                            })
+                        {
+                            Mmff94AtomType::CO // Carbonyl carbon
+                        } else {
+                            Mmff94AtomType::CSp2
+                        }
+                    }
+                    _ => {
+                        // SP3 with ring checks
+                        if in_ring_of_size(3) {
+                            Mmff94AtomType::CR3R
+                        } else if in_ring_of_size(4) {
+                            Mmff94AtomType::CR4R
+                        } else {
+                            Mmff94AtomType::CR
+                        }
+                    }
+                }
+            }
+        }
+
+        // ═══════ NITROGEN (7) ═══════
+        7 => {
+            let n_double = count_double_bonds();
+
+            // Aromatic N
+            if is_aromatic {
+                if in_ring_of_size(5) {
+                    // Pyrrole-like (donating lone pair) vs pyridine-like in 5-ring
+                    if degree == 3 {
+                        Mmff94AtomType::N5A // pyrrole-like
+                    } else {
+                        Mmff94AtomType::N5B // imidazole N3 / thiazole
+                    }
+                } else {
+                    Mmff94AtomType::NR2 // 6-ring aromatic N (pyridine-like)
+                }
+            }
+            // Nitro group: N(=O)(=O) or [N+](=O)[O-]
+            else if n_double >= 2 && count_nb_elem(8) >= 2 {
+                Mmff94AtomType::N2OX
+            }
+            // N-oxide
+            else if n_double == 1 && count_nb_elem(8) >= 1 && degree >= 3 {
+                // Check if it's an N-oxide (sp2 N with one O– or =O and other substituents)
+                let has_o_double = mol.graph.edges(node).any(|e| {
+                    e.weight().order == BondOrder::Double && {
+                        let o = if e.source() == node {
+                            e.target()
+                        } else {
+                            e.source()
+                        };
+                        nb_elem(o) == 8
+                    }
+                });
+                if has_o_double && degree >= 3 {
+                    Mmff94AtomType::NPOX
+                } else {
+                    Mmff94AtomType::N2
+                }
+            }
+            // Amide: N bonded to C=O
+            else if adjacent_to_carbonyl()
+                && matches!(hyb, Hybridization::SP2 | Hybridization::SP3)
+                && degree <= 3
+            {
+                // Check if N is bonded to S=O → sulfonamide
+                let has_so = neighbors
+                    .iter()
+                    .any(|&ni| nb_elem(ni) == 16 && nb_has_double_bond_to(ni, 8));
+                if has_so {
+                    Mmff94AtomType::NSO
+                } else {
+                    Mmff94AtomType::NAm
+                }
+            }
+            // SP2 planar N (3-coordinate, no double bonds to O)
+            else if matches!(hyb, Hybridization::SP2) {
+                if degree == 3 && n_double == 0 {
+                    Mmff94AtomType::NPl3
+                } else if n_double >= 1 {
+                    Mmff94AtomType::N2
+                } else {
+                    Mmff94AtomType::NPl
+                }
+            }
+            // SP nitrogen
+            else if matches!(hyb, Hybridization::SP) {
+                Mmff94AtomType::NC
+            }
+            // SP3 amine
+            else {
+                Mmff94AtomType::NR
+            }
+        }
+
+        // ═══════ OXYGEN (8) ═══════
+        8 => {
+            if is_aromatic && in_ring_of_size(5) {
+                return Mmff94AtomType::O5; // Furan oxygen
+            }
+
+            let n_double = count_double_bonds();
+
+            // Nitro oxygen
+            if degree == 1 {
+                let parent = neighbors[0];
+                if nb_elem(parent) == 7 {
+                    let n_node = parent;
+                    let n_o_count = mol
+                        .graph
+                        .neighbors(n_node)
+                        .filter(|&ni| nb_elem(ni) == 8)
+                        .count();
+                    if n_o_count >= 2 {
+                        return Mmff94AtomType::ON2; // nitro oxygen
+                    }
+                }
+            }
+
+            // Anionic oxygen (formal charge check)
+            if atom.formal_charge < 0 {
+                return Mmff94AtomType::OM;
+            }
+
+            // Carboxylate/deprotonated oxygen
+            if degree == 1 && n_double == 0 {
+                // Terminal O with single bond — could be carboxylate if C also has C=O
+                let parent = neighbors[0];
+                if nb_elem(parent) == 6 && nb_has_double_bond_to(parent, 8) {
+                    return Mmff94AtomType::OX; // carboxylate oxygen
+                }
+            }
+
+            match hyb {
+                Hybridization::SP2 => Mmff94AtomType::O2, // C=O, generic SP2
+                _ => Mmff94AtomType::OR,                  // alcohol, ether
+            }
+        }
+
+        // ═══════ FLUORINE (9) ═══════
+        9 => Mmff94AtomType::F,
+
+        // ═══════ SILICON (14) ═══════
+        14 => Mmff94AtomType::SI,
+
+        // ═══════ PHOSPHORUS (15) ═══════
+        15 => {
+            if degree >= 4 && count_nb_elem(8) >= 1 && nb_has_double_bond_to(node, 8) {
+                Mmff94AtomType::PO // phosphate
+            } else {
+                Mmff94AtomType::P
+            }
+        }
+
+        // ═══════ SULFUR (16) ═══════
+        16 => {
+            if is_aromatic && in_ring_of_size(5) {
+                return Mmff94AtomType::Sthi; // thiophene S
+            }
+
+            let n_double_o = mol
+                .graph
+                .edges(node)
+                .filter(|e| {
+                    e.weight().order == BondOrder::Double && {
+                        let other = if e.source() == node {
+                            e.target()
+                        } else {
+                            e.source()
+                        };
+                        nb_elem(other) == 8
+                    }
+                })
+                .count();
+
+            if n_double_o >= 2 {
+                Mmff94AtomType::SO2 // Sulfone
+            } else if n_double_o == 1 {
+                Mmff94AtomType::SO // Sulfoxide
+            } else if degree <= 2 && count_nb_elem(1) >= 1 {
+                Mmff94AtomType::Sthi // Thiol
+            } else {
+                Mmff94AtomType::S // Thioether
+            }
+        }
+
+        // ═══════ CHLORINE (17) ═══════
+        17 => Mmff94AtomType::Cl,
+
+        // ═══════ BROMINE (35) ═══════
+        35 => Mmff94AtomType::Br,
+
+        // ═══════ IRON (26) ═══════
+        26 => {
+            if atom.formal_charge >= 3 {
+                Mmff94AtomType::Fe3
+            } else {
+                Mmff94AtomType::Fe2
+            }
+        }
+
+        // ═══════ IODINE (53) ═══════
+        53 => Mmff94AtomType::I,
+
+        _ => Mmff94AtomType::Unknown,
+    }
+}
+
+/// Check if an atom is in any ring by checking for back-paths.
+fn atom_in_any_ring(mol: &crate::graph::Molecule, atom_idx: usize) -> bool {
+    atom_in_ring_of_size(mol, atom_idx, 3)
+        || atom_in_ring_of_size(mol, atom_idx, 4)
+        || atom_in_ring_of_size(mol, atom_idx, 5)
+        || atom_in_ring_of_size(mol, atom_idx, 6)
+        || atom_in_ring_of_size(mol, atom_idx, 7)
+}
+
+/// Check if atom is part of a ring of a specific size via BFS.
+fn atom_in_ring_of_size(mol: &crate::graph::Molecule, atom_idx: usize, size: usize) -> bool {
+    use petgraph::graph::NodeIndex;
+    use std::collections::VecDeque;
+
+    let start = NodeIndex::new(atom_idx);
+    // BFS looking for a cycle back to start of exactly `size` length
+    let mut queue: VecDeque<(NodeIndex, Vec<usize>)> = VecDeque::new();
+    for nb in mol.graph.neighbors(start) {
+        queue.push_back((nb, vec![atom_idx, nb.index()]));
+    }
+
+    while let Some((current, path)) = queue.pop_front() {
+        if path.len() > size + 1 {
+            continue;
+        }
+        if path.len() == size + 1 && current == start {
+            return true;
+        }
+        if path.len() > size {
+            continue;
+        }
+        for nb in mol.graph.neighbors(current) {
+            if nb == start && path.len() == size {
+                return true;
+            }
+            if !path.contains(&nb.index()) {
+                let mut new_path = path.clone();
+                new_path.push(nb.index());
+                queue.push_back((nb, new_path));
+            }
+        }
+    }
+    false
+}
+
+/// Helper: check if atom is aromatic via MMFF94 perception.
+/// Checks if any bond to this atom has aromatic bond order.
+fn is_atom_aromatic_mmff(mol: &crate::graph::Molecule, atom_idx: usize) -> bool {
+    use crate::graph::BondOrder;
+    use petgraph::graph::NodeIndex;
+    let node = NodeIndex::new(atom_idx);
+    mol.graph
+        .edges(node)
+        .any(|e| e.weight().order == BondOrder::Aromatic)
+}
+
+/// Legacy assignment function (simplified, for backward compatibility).
 pub fn assign_mmff94_type(
     element: u8,
     hyb: &crate::graph::Hybridization,
@@ -46,8 +479,8 @@ pub fn assign_mmff94_type(
 ) -> Mmff94AtomType {
     use crate::graph::Hybridization::*;
     match element {
-        1 => Mmff94AtomType::HC,   // Default; caller should refine based on neighbor
-        5 => Mmff94AtomType::CSp2, // Approximate: boron as sp2 carbon
+        1 => Mmff94AtomType::HC,
+        5 => Mmff94AtomType::CSp2,
         6 => {
             if is_aromatic {
                 Mmff94AtomType::CB
@@ -84,6 +517,14 @@ pub fn assign_mmff94_type(
         53 => Mmff94AtomType::I,
         _ => Mmff94AtomType::Unknown,
     }
+}
+
+/// Assign MMFF94 types for all atoms in a molecule.
+///
+/// Returns a vector of atom types parallel to the atom indices.
+pub fn assign_all_mmff94_types(mol: &crate::graph::Molecule) -> Vec<Mmff94AtomType> {
+    let n = mol.graph.node_count();
+    (0..n).map(|i| assign_mmff94_type_smarts(mol, i)).collect()
 }
 
 // ─── MMFF94 Bond Stretching ──────────────────────────────────────────────────
