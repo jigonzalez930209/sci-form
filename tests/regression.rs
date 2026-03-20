@@ -52,3 +52,63 @@ mod test_spectroscopy;
 mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
+
+#[cfg(feature = "experimental-cga")]
+#[path = "experimental/test_cga.rs"]
+mod test_cga;
+
+#[cfg(feature = "experimental-randnla")]
+#[path = "experimental/test_randnla.rs"]
+mod test_randnla;
+
+#[cfg(feature = "experimental-riemannian")]
+#[path = "experimental/test_riemannian.rs"]
+mod test_riemannian;
+
+#[cfg(feature = "experimental-kpm")]
+#[path = "experimental/test_kpm.rs"]
+mod test_kpm;
+
+#[cfg(feature = "experimental-eeq")]
+#[path = "experimental/test_eeq.rs"]
+mod test_eeq;
+
+#[cfg(feature = "experimental-alpb")]
+#[path = "experimental/test_alpb.rs"]
+mod test_alpb;
+
+#[cfg(feature = "experimental-d4")]
+#[path = "experimental/test_d4.rs"]
+mod test_d4;
+
+#[cfg(feature = "experimental-sdr")]
+#[path = "experimental/test_sdr.rs"]
+mod test_sdr;
+
+#[cfg(feature = "experimental-mbh")]
+#[path = "experimental/test_mbh.rs"]
+mod test_mbh;
+
+#[cfg(feature = "experimental-cpm")]
+#[path = "experimental/test_cpm.rs"]
+mod test_cpm;
+
+#[cfg(feature = "experimental-gsm")]
+#[path = "experimental/test_gsm.rs"]
+mod test_gsm;
+
+#[cfg(any(
+    feature = "experimental-cga",
+    feature = "experimental-randnla",
+    feature = "experimental-riemannian",
+    feature = "experimental-kpm",
+    feature = "experimental-eeq",
+    feature = "experimental-alpb",
+    feature = "experimental-d4",
+    feature = "experimental-sdr",
+    feature = "experimental-mbh",
+    feature = "experimental-cpm",
+    feature = "experimental-gsm"
+))]
+#[path = "experimental/test_benchmarks.rs"]
+mod test_benchmarks;

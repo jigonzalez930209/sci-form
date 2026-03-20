@@ -174,4 +174,46 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 2048)]
         n_bits: usize,
     },
+
+    // ─── Experimental ──────────────────────────────────────────────────
+
+    /// [experimental] Compute EEQ geometry-dependent charges
+    #[cfg(feature = "experimental-eeq")]
+    Eeq {
+        elements: String,
+        coords: String,
+        #[arg(short, long, default_value_t = 0.0)]
+        total_charge: f64,
+    },
+
+    /// [experimental] Compute ALPB implicit solvation energy
+    #[cfg(feature = "experimental-alpb")]
+    Alpb {
+        elements: String,
+        coords: String,
+        #[arg(short, long, default_value = "")]
+        charges: String,
+        #[arg(short, long, default_value_t = 78.5)]
+        dielectric: f64,
+    },
+
+    /// [experimental] Compute DFT-D4 dispersion correction
+    #[cfg(feature = "experimental-d4")]
+    D4 {
+        elements: String,
+        coords: String,
+        #[arg(long, default_value_t = false)]
+        three_body: bool,
+    },
+
+    /// [experimental] Compute CPM charges at fixed electrochemical potential
+    #[cfg(feature = "experimental-cpm")]
+    Cpm {
+        elements: String,
+        coords: String,
+        #[arg(short, long, default_value_t = -4.44)]
+        mu_ev: f64,
+        #[arg(short, long, default_value_t = 78.5)]
+        dielectric: f64,
+    },
 }
