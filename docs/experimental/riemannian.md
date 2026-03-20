@@ -9,6 +9,8 @@
 
 Replaces the Euclidean BFGS optimizer in the embedding step with **Riemannian L-BFGS** over the manifold of fixed-rank positive semidefinite (PSD) matrices. Negative eigenvalues are eliminated by design, reducing the retry loop failure rate to zero.
 
+<SvgDiagram src="/svg/experimental-riemannian.svg" alt="Riemannian Optimization Pipeline" />
+
 ---
 
 ## Theory

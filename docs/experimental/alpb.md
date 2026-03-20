@@ -9,6 +9,8 @@
 
 Implements the Klamt/Grimme **Analytical Linearized Poisson-Boltzmann (ALPB)** implicit solvation model. Computes solvation free energies $\Delta G_{solv}$ with analytical gradients at negligible computational cost, enabling thermodynamically realistic conformer ranking in solution.
 
+<SvgDiagram src="/svg/experimental-alpb.svg" alt="ALPB Pipeline" />
+
 ---
 
 ## Theory

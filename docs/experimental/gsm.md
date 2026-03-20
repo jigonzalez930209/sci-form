@@ -9,6 +9,8 @@
 
 Implements a **reaction path and transition state finder** driven purely by force-field gradients. Unlike NEB (Nudged Elastic Band), GSM does not require an initial guess of the full path — it grows the string from both reactant and product endpoints, finding the minimum energy path and saddle point with fewer energy evaluations.
 
+<SvgDiagram src="/svg/experimental-gsm.svg" alt="GSM Pipeline" />
+
 ---
 
 ## Theory

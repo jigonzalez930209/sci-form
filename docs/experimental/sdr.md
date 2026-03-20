@@ -9,6 +9,8 @@
 
 Reformulates the conformer embedding problem as a **convex semidefinite program (SDP)**, mathematically guaranteeing that the distance matrix is positive semidefinite before extracting coordinates. This eliminates the retry loop caused by negative eigenvalues in the metric matrix — the most common failure mode in distance geometry embedding.
 
+<SvgDiagram src="/svg/experimental-sdr.svg" alt="SDR Embedding Pipeline" />
+
 ---
 
 ## Theory

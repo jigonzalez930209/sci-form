@@ -9,6 +9,8 @@
 
 Reduces vibrational analysis cost from $O(3N)$ energy evaluations to $O(n_\text{flex})$ by treating rigid groups (aromatic rings, fused ring systems) as rigid bodies with 6 degrees of freedom (3 translation + 3 rotation). Enables real-time IR spectra for large molecules where full Hessian computation is impractical.
 
+<SvgDiagram src="/svg/experimental-mbh.svg" alt="MBH Pipeline" />
+
 ---
 
 ## Theory
