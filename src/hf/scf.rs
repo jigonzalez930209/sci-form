@@ -32,6 +32,9 @@ pub struct ScfConfig {
     pub energy_threshold: f64,
     pub density_threshold: f64,
     pub diis_size: usize,
+    /// Level shift for virtual orbitals (Hartree). 0.0 = disabled.
+    /// Typical values: 0.1-0.5 Eh for difficult convergence.
+    pub level_shift: f64,
 }
 
 impl Default for ScfConfig {
@@ -41,6 +44,7 @@ impl Default for ScfConfig {
             energy_threshold: 1e-8,
             density_threshold: 1e-6,
             diis_size: 6,
+            level_shift: 0.0,
         }
     }
 }
@@ -71,6 +75,8 @@ pub fn solve_scf(
     let mut diis_focks: Vec<DMatrix<f64>> = Vec::new();
     let mut diis_errors: Vec<DMatrix<f64>> = Vec::new();
 
+    let mut prev_error_norm = f64::MAX;
+
     for iter in 0..config.max_iter {
         iterations = iter + 1;
 
@@ -80,6 +86,14 @@ pub fn solve_scf(
         // DIIS error: FPS - SPF
         let error = &fock * &density * s_mat - s_mat * &density * &fock;
         let error_norm = error.iter().map(|v| v * v).sum::<f64>().sqrt();
+
+        // H8.2c: Automatic DIIS reset on instability
+        // If error norm increases by >10x, reset DIIS history
+        if error_norm > prev_error_norm * 10.0 && diis_focks.len() > 2 {
+            diis_focks.clear();
+            diis_errors.clear();
+        }
+        prev_error_norm = error_norm;
 
         // DIIS extrapolation
         diis_focks.push(fock.clone());
@@ -95,7 +109,29 @@ pub fn solve_scf(
             fock
         };
 
-        let (new_energies, new_coeffs) = diagonalize_fock(&fock_diis, &s_half_inv);
+        // Apply level shifting to virtual orbitals if configured
+        let fock_shifted = if config.level_shift > 0.0 && n_occ < n {
+            // Level shifting: add shift to virtual orbital block of Fock matrix
+            // in the orthogonal basis. This helps convergence for metallic systems.
+            let f_orth = s_half_inv.transpose() * &fock_diis * &s_half_inv;
+            let eigen = SymmetricEigen::new(f_orth);
+            let mut shifted_evals = eigen.eigenvalues.clone();
+            let mut idx_sorted: Vec<usize> = (0..n).collect();
+            idx_sorted.sort_by(|&a, &b| shifted_evals[a].partial_cmp(&shifted_evals[b]).unwrap());
+            for &idx in idx_sorted.iter().skip(n_occ) {
+                shifted_evals[idx] += config.level_shift;
+            }
+            let v = &eigen.eigenvectors;
+            let d = DMatrix::from_diagonal(&shifted_evals);
+            let f_shifted = v * d * v.transpose();
+            // Transform back to AO basis: F_AO = S^{1/2} * F_orth * S^{1/2}^T
+            // But for diagonalize_fock, it transforms again, so keep in AO
+            &s_half_inv * f_shifted * s_half_inv.transpose()
+        } else {
+            fock_diis
+        };
+
+        let (new_energies, new_coeffs) = diagonalize_fock(&fock_shifted, &s_half_inv);
         let new_density = build_density(&new_coeffs, n_occ);
 
         let de = (energy - prev_energy).abs();

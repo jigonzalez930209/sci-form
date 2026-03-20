@@ -21,6 +21,10 @@ pub mod integrals;
 pub mod nuclear;
 pub mod overlap_kin;
 pub mod scf;
+pub mod scf_trait;
 pub mod srb;
 
 pub use api::{solve_hf3c, Hf3cResult, HfConfig};
+pub use scf_trait::{
+    HfScfSolver, Pm3ScfSolver, ScfConvergenceConfig, ScfOutput, ScfSolver, XtbScfSolver,
+};
