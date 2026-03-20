@@ -36,6 +36,9 @@ pub mod topology;
 pub mod transport;
 pub mod xtb;
 
+// Experimental modules — isolated, do not affect existing functionality
+pub mod experimental_2;
+
 use serde::{Deserialize, Serialize};
 
 // ─── Public API Types ────────────────────────────────────────────────────────
