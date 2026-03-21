@@ -193,14 +193,13 @@ pub fn compute_eris_gpu(
 /// Each thread processes one unique quartet (i,j,k,l) and writes
 /// all 8 symmetry-related elements to the output tensor.
 ///
-/// Uses a polynomial approximation for the Boys function F₀(x).
+/// Computes contracted ERIs: (μν|λσ) = Σ_{pqrs} Nₚcₚ·Nqcq·Nrcr·Nscs · [pq|rs]
+/// where [pq|rs] = 2π^{5/2}/(p·q·√(p+q)) · Kab·Kcd · F₀(αpq·|PQ|²)
 pub const TWO_ELECTRON_SHADER: &str = r#"
-// Basis function data: center(3) + angular(3) + n_prims + pad + 3×(alpha,coeff) = 14 f32
 struct BasisFunc {
     cx: f32, cy: f32, cz: f32,
     lx: u32, ly: u32, lz: u32,
     n_prims: u32, _pad: u32,
-    // Followed by 3 primitive pairs (alpha, norm_coeff) in the primitives array
 };
 
 struct Params {
@@ -211,49 +210,29 @@ struct Params {
 };
 
 @group(0) @binding(0) var<storage, read> basis: array<BasisFunc>;
-@group(0) @binding(1) var<storage, read> quartets: array<vec4<u32>>;
-@group(0) @binding(2) var<uniform> params: Params;
-@group(0) @binding(3) var<storage, read_write> output: array<f32>;
+@group(0) @binding(1) var<storage, read> primitives: array<vec2<f32>>;  // (alpha, norm*coeff)
+@group(0) @binding(2) var<storage, read> quartets: array<vec4<u32>>;
+@group(0) @binding(3) var<uniform> params: Params;
+@group(0) @binding(4) var<storage, read_write> output: array<f32>;
 
-// Primitives stored separately: basis[mu] has primitives at index mu*3 .. mu*3+2
-// Each primitive is vec2<f32>(alpha, norm_coeff)
-// To keep bindings simple, primitives are embedded in the BasisFunc struct as
-// sequential reads from a flat array. We re-pack in the Rust dispatch.
-
-// Since BasisFunc is 14 f32 = 56 bytes with alignment, we access primitives
-// through a separate flat array to avoid alignment issues.
-
-// Boys function F₀(x) ≈ √(π/(4x)) · erf(√x)
-// Using rational approximation for small x, asymptotic for large x.
+// Boys function F₀(x) via series expansion
 fn boys_f0(x: f32) -> f32 {
     if (x < 1e-7) {
         return 1.0;
     }
     if (x > 30.0) {
-        return 0.886227 / sqrt(x) * 0.5; // √π / (2√x)
+        return 0.8862269 * 0.5 / sqrt(x);  // √π / (2√x)
     }
-    // Series expansion: F₀(x) = e^(-x) Σ (2x)^k / (2k+1)!!
     var sum: f32 = 1.0;
     var term: f32 = 1.0;
-    for (var k: u32 = 1u; k < 60u; k = k + 1u) {
+    for (var k: u32 = 1u; k < 50u; k = k + 1u) {
         term *= 2.0 * x / f32(2u * k + 1u);
         sum += term;
-        if (abs(term) < 1e-7 * abs(sum)) {
+        if (abs(term) < 1e-6 * abs(sum)) {
             break;
         }
     }
     return exp(-x) * sum;
-}
-
-fn dist_sq_3(ax: f32, ay: f32, az: f32, bx: f32, by: f32, bz: f32) -> f32 {
-    let dx = ax - bx;
-    let dy = ay - by;
-    let dz = az - bz;
-    return dx * dx + dy * dy + dz * dz;
-}
-
-fn gauss_prod(alpha: f32, a: f32, beta: f32, b: f32) -> f32 {
-    return (alpha * a + beta * b) / (alpha + beta);
 }
 
 @compute @workgroup_size(64)
@@ -274,38 +253,77 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let bf_k = basis[k];
     let bf_l = basis[l];
 
-    // For the current implementation, we compute s-type ERIs
-    // using the closed-form formula:
-    // (ss|ss) = 2π^{5/2} / (pq√(p+q)) · K_ab · K_cd · F₀(α_pq · |PQ|²)
-
     var eri: f32 = 0.0;
 
-    // Contract over primitives: max 3 per function (STO-3G)
-    // Primitives are accessed via a flat f32 array at binding 0
-    // Since we packed them into the BasisFunc struct, we need separate access.
-    // For simplicity, the contracted ERI loops use the closed-form s-type formula.
+    // Contract over primitives (max 3 per function for STO-3G)
+    for (var pi: u32 = 0u; pi < bf_i.n_prims; pi = pi + 1u) {
+        let prim_a = primitives[i * 3u + pi];
+        let alpha = prim_a.x;
+        let ca = prim_a.y;
+
+        for (var pj: u32 = 0u; pj < bf_j.n_prims; pj = pj + 1u) {
+            let prim_b = primitives[j * 3u + pj];
+            let beta = prim_b.x;
+            let cb = prim_b.y;
+
+            let p = alpha + beta;
+            let mu_ab = alpha * beta / p;
+            let ab2 = (bf_i.cx - bf_j.cx) * (bf_i.cx - bf_j.cx)
+                     + (bf_i.cy - bf_j.cy) * (bf_i.cy - bf_j.cy)
+                     + (bf_i.cz - bf_j.cz) * (bf_i.cz - bf_j.cz);
+            let k_ab = exp(-mu_ab * ab2);
+
+            let px = (alpha * bf_i.cx + beta * bf_j.cx) / p;
+            let py = (alpha * bf_i.cy + beta * bf_j.cy) / p;
+            let pz = (alpha * bf_i.cz + beta * bf_j.cz) / p;
+
+            for (var pk: u32 = 0u; pk < bf_k.n_prims; pk = pk + 1u) {
+                let prim_c = primitives[k * 3u + pk];
+                let gamma = prim_c.x;
+                let cc = prim_c.y;
+
+                for (var pl: u32 = 0u; pl < bf_l.n_prims; pl = pl + 1u) {
+                    let prim_d = primitives[l * 3u + pl];
+                    let delta = prim_d.x;
+                    let cd = prim_d.y;
+
+                    let qq = gamma + delta;
+                    let mu_cd = gamma * delta / qq;
+                    let cd2 = (bf_k.cx - bf_l.cx) * (bf_k.cx - bf_l.cx)
+                             + (bf_k.cy - bf_l.cy) * (bf_k.cy - bf_l.cy)
+                             + (bf_k.cz - bf_l.cz) * (bf_k.cz - bf_l.cz);
+                    let k_cd = exp(-mu_cd * cd2);
+
+                    let qx = (gamma * bf_k.cx + delta * bf_l.cx) / qq;
+                    let qy = (gamma * bf_k.cy + delta * bf_l.cy) / qq;
+                    let qz = (gamma * bf_k.cz + delta * bf_l.cz) / qq;
+
+                    let pq2 = (px - qx) * (px - qx)
+                            + (py - qy) * (py - qy)
+                            + (pz - qz) * (pz - qz);
+                    let alpha_pq = p * qq / (p + qq);
+
+                    // prefactor = 2π^{5/2} / (p · q · √(p+q))
+                    let prefactor = 2.0 * pow(3.14159265, 2.5) / (p * qq * sqrt(p + qq));
+
+                    eri += ca * cb * cc * cd * prefactor * k_ab * k_cd * boys_f0(alpha_pq * pq2);
+                }
+            }
+        }
+    }
 
     let n = params.n_basis;
     let n2 = n * n;
 
     // Store with 8-fold symmetry
-    let val_idx_0 = i * n * n2 + j * n2 + k * n + l;
-    let val_idx_1 = j * n * n2 + i * n2 + k * n + l;
-    let val_idx_2 = i * n * n2 + j * n2 + l * n + k;
-    let val_idx_3 = j * n * n2 + i * n2 + l * n + k;
-    let val_idx_4 = k * n * n2 + l * n2 + i * n + j;
-    let val_idx_5 = l * n * n2 + k * n2 + i * n + j;
-    let val_idx_6 = k * n * n2 + l * n2 + j * n + i;
-    let val_idx_7 = l * n * n2 + k * n2 + j * n + i;
-
-    output[val_idx_0] = eri;
-    output[val_idx_1] = eri;
-    output[val_idx_2] = eri;
-    output[val_idx_3] = eri;
-    output[val_idx_4] = eri;
-    output[val_idx_5] = eri;
-    output[val_idx_6] = eri;
-    output[val_idx_7] = eri;
+    output[i * n * n2 + j * n2 + k * n + l] = eri;
+    output[j * n * n2 + i * n2 + k * n + l] = eri;
+    output[i * n * n2 + j * n2 + l * n + k] = eri;
+    output[j * n * n2 + i * n2 + l * n + k] = eri;
+    output[k * n * n2 + l * n2 + i * n + j] = eri;
+    output[l * n * n2 + k * n2 + i * n + j] = eri;
+    output[k * n * n2 + l * n2 + j * n + i] = eri;
+    output[l * n * n2 + k * n2 + j * n + i] = eri;
 }
 "#;
 
@@ -331,9 +349,11 @@ mod tests {
     #[test]
     fn test_pack_basis_eri() {
         let basis = crate::scf::basis::BasisSet::sto3g(&[1, 1], &[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]]);
-        let bytes = pack_basis_eri(&basis);
-        // Each basis function: 8 u32/f32 header + 6 f32 primitives = 56 bytes
-        assert_eq!(bytes.len(), basis.n_basis * 56);
+        let (basis_bytes, prim_bytes) = pack_basis_eri(&basis);
+        // Basis: 32 bytes per function
+        assert_eq!(basis_bytes.len(), basis.n_basis * 32);
+        // Primitives: 24 bytes per function (3 × 8)
+        assert_eq!(prim_bytes.len(), basis.n_basis * 24);
     }
 
     #[test]

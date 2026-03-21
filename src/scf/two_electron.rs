@@ -80,6 +80,12 @@ impl TwoElectronIntegrals {
         self.n_basis
     }
 
+    /// Construct from pre-computed raw data (e.g. from GPU dispatch).
+    pub fn from_raw(data: Vec<f64>, n_basis: usize) -> Self {
+        debug_assert_eq!(data.len(), n_basis * n_basis * n_basis * n_basis);
+        Self { data, n_basis }
+    }
+
     /// Compute two-electron integrals using rayon parallelism.
     ///
     /// Parallelizes the outer `i` loop. Each thread writes to a
