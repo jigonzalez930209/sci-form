@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-eeq")]
 mod eeq_tests {
-    use sci_form::experimental::eeq::*;
+    use sci_form::charges_eeq::*;
 
     fn ethanol_atoms() -> (Vec<u8>, Vec<[f64; 3]>) {
         let elements = vec![6, 6, 8, 1, 1, 1, 1, 1, 1];

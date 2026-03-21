@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-sdr")]
 mod sdr_tests {
-    use sci_form::experimental::sdr::*;
+    use sci_form::alpha::sdr::*;
 
     #[test]
     fn test_psd_projection_identity() {

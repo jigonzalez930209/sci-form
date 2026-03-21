@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-alpb")]
 mod alpb_tests {
-    use sci_form::experimental::alpb::*;
+    use sci_form::solvation_alpb::*;
 
     fn water_system() -> (Vec<u8>, Vec<[f64; 3]>, Vec<f64>) {
         (

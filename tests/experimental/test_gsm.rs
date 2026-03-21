@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-gsm")]
 mod gsm_tests {
-    use sci_form::experimental::gsm::*;
+    use sci_form::alpha::gsm::*;
 
     fn double_well(coords: &[f64]) -> f64 {
         let x = coords[0];

@@ -12,7 +12,7 @@
 #[cfg(feature = "experimental-randnla")]
 mod bench_randnla_vs_eht {
     use sci_form::eht::solve_eht;
-    use sci_form::experimental::rand_nla::*;
+    use sci_form::beta::rand_nla::*;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -117,7 +117,7 @@ mod bench_randnla_vs_eht {
 #[cfg(feature = "experimental-kpm")]
 mod bench_kpm_vs_eht {
     use sci_form::eht::solve_eht;
-    use sci_form::experimental::kpm::*;
+    use sci_form::beta::kpm::*;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -233,7 +233,7 @@ mod bench_kpm_vs_eht {
 
 #[cfg(feature = "experimental-eeq")]
 mod bench_eeq_vs_gasteiger {
-    use sci_form::experimental::eeq::*;
+    use sci_form::charges_eeq::*;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -332,7 +332,7 @@ mod bench_eeq_vs_gasteiger {
 #[cfg(feature = "experimental-alpb")]
 mod bench_alpb_vs_gb {
     use sci_form::solvation::{compute_gb_solvation, compute_nonpolar_solvation};
-    use sci_form::experimental::alpb::*;
+    use sci_form::solvation_alpb::*;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>, Vec<f64>) {
@@ -442,7 +442,7 @@ mod bench_alpb_vs_gb {
 
 #[cfg(feature = "experimental-d4")]
 mod bench_d4_vs_uff {
-    use sci_form::experimental::d4::*;
+    use sci_form::dispersion::*;
     use std::time::Instant;
 
     fn benzene_dimer() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -545,7 +545,7 @@ mod bench_d4_vs_uff {
 
 #[cfg(feature = "experimental-riemannian")]
 mod bench_riemannian_vs_etkdg {
-    use sci_form::experimental::riemannian::*;
+    use sci_form::beta::riemannian::*;
     use nalgebra::DMatrix;
     use std::time::Instant;
 
@@ -640,7 +640,7 @@ mod bench_riemannian_vs_etkdg {
 
 #[cfg(feature = "experimental-sdr")]
 mod bench_sdr_vs_etkdg {
-    use sci_form::experimental::sdr::*;
+    use sci_form::alpha::sdr::*;
     use std::time::Instant;
 
     #[test]
@@ -719,7 +719,7 @@ mod bench_sdr_vs_etkdg {
 
 #[cfg(feature = "experimental-mbh")]
 mod bench_mbh_vs_full_hessian {
-    use sci_form::experimental::mbh::*;
+    use sci_form::beta::mbh::*;
     use std::time::Instant;
 
     fn ethanol() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -836,7 +836,7 @@ mod bench_mbh_vs_full_hessian {
 
 #[cfg(feature = "experimental-cga")]
 mod bench_cga_geometry {
-    use sci_form::experimental::cga::*;
+    use sci_form::alpha::cga::*;
 
     #[test]
     fn b9_motor_rotation_preserves_distance() {
@@ -906,7 +906,7 @@ mod bench_cga_geometry {
 
 #[cfg(feature = "experimental-cpm")]
 mod bench_cpm_electrochemistry {
-    use sci_form::experimental::cpm::*;
+    use sci_form::beta::cpm::*;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
@@ -980,7 +980,7 @@ mod bench_cpm_electrochemistry {
 
 #[cfg(feature = "experimental-gsm")]
 mod bench_gsm_reaction_path {
-    use sci_form::experimental::gsm::*;
+    use sci_form::alpha::gsm::*;
 
     /// Simple harmonic bond energy for H2: E = k*(d - d0)^2
     fn h2_energy(coords: &[f64]) -> f64 {

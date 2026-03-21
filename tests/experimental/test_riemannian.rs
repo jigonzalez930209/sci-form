@@ -5,7 +5,7 @@
 
 #[cfg(feature = "experimental-riemannian")]
 mod riemannian_tests {
-    use sci_form::experimental::riemannian::*;
+    use sci_form::beta::riemannian::*;
     use nalgebra::{DMatrix, SymmetricEigen};
 
     // ---------------------------------------------------------------

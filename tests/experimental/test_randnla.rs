@@ -5,7 +5,7 @@
 
 #[cfg(feature = "experimental-randnla")]
 mod randnla_tests {
-    use sci_form::experimental::rand_nla::*;
+    use sci_form::beta::rand_nla::*;
 
     use nalgebra::{DMatrix, DVector, SymmetricEigen};
     use rand::rngs::StdRng;

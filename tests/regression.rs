@@ -116,3 +116,5 @@ mod test_benchmarks;
 mod test_experimental_comparison;
 #[path = "regression/test_extended_molecules.rs"]
 mod test_extended_molecules;
+#[path = "regression/test_gpu_candidates.rs"]
+mod test_gpu_candidates;
