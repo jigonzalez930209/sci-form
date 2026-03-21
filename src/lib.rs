@@ -34,24 +34,30 @@ pub mod stereo;
 pub mod surface;
 pub mod topology;
 pub mod transport;
+pub mod scf;
+pub mod gpu;
 pub mod xtb;
+pub mod charges_eeq;
+pub mod dispersion;
+pub mod solvation_alpb;
+pub mod spectroscopy;
+pub mod experimental_status;
 
 #[cfg(any(
-    feature = "experimental-cga",
-    feature = "experimental-randnla",
-    feature = "experimental-riemannian",
-    feature = "experimental-kpm",
-    feature = "experimental-eeq",
-    feature = "experimental-alpb",
-    feature = "experimental-d4",
-    feature = "experimental-sdr",
-    feature = "experimental-mbh",
-    feature = "experimental-cpm",
-    feature = "experimental-gsm"
+    feature = "alpha-cga",
+    feature = "alpha-gsm",
+    feature = "alpha-sdr"
 ))]
-pub mod experimental;
-// Experimental modules — isolated, do not affect existing functionality
-pub mod experimental_2;
+pub mod alpha;
+
+#[cfg(any(
+    feature = "beta-kpm",
+    feature = "beta-mbh",
+    feature = "beta-cpm",
+    feature = "beta-randnla",
+    feature = "beta-riemannian"
+))]
+pub mod beta;
 
 use serde::{Deserialize, Serialize};
 
