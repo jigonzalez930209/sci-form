@@ -318,18 +318,18 @@ mod cpm_py {
 }
 
 /// Register all enabled experimental bindings.
-pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+pub(crate) fn register(_m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "experimental-eeq")]
-    eeq_py::register(m)?;
+    eeq_py::register(_m)?;
 
     #[cfg(feature = "experimental-alpb")]
-    alpb_py::register(m)?;
+    alpb_py::register(_m)?;
 
     #[cfg(feature = "experimental-d4")]
-    d4_py::register(m)?;
+    d4_py::register(_m)?;
 
     #[cfg(feature = "experimental-cpm")]
-    cpm_py::register(m)?;
+    cpm_py::register(_m)?;
 
     Ok(())
 }
