@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-d4")]
 mod d4_tests {
-    use sci_form::experimental::d4::*;
+    use sci_form::dispersion::*;
 
     fn methane() -> (Vec<u8>, Vec<[f64; 3]>) {
         let elements = vec![6, 1, 1, 1, 1];

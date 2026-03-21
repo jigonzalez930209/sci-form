@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-mbh")]
 mod mbh_tests {
-    use sci_form::experimental::mbh::*;
+    use sci_form::beta::mbh::*;
 
     fn harmonic_energy(coords: &[f64]) -> f64 {
         let k = 100.0;

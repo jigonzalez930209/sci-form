@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-kpm")]
 mod kpm_tests {
-    use sci_form::experimental::kpm::*;
+    use sci_form::beta::kpm::*;
     use nalgebra::{DMatrix, SymmetricEigen};
 
     fn huckel_chain(n: usize, alpha: f64, beta: f64) -> DMatrix<f64> {

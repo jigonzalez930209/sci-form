@@ -117,8 +117,8 @@ fn embed_smiles(smiles: &str) -> (Vec<u8>, Vec<[f64; 3]>) {
 
 mod experimental_scf_correctness {
     use super::*;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -436,8 +436,8 @@ mod legacy_vs_experimental_energy {
     use sci_form::pm3::solve_pm3;
     use sci_form::xtb::solve_xtb;
     use sci_form::hf::{solve_hf3c, HfConfig};
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -602,8 +602,8 @@ mod legacy_vs_experimental_charges {
     use super::*;
     use sci_form::pm3::solve_pm3;
     use sci_form::xtb::solve_xtb;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     fn compare_charges(name: &str, elems: &[u8], pos: &[[f64; 3]], element_names: &[&str]) {
         let pm3 = solve_pm3(elems, pos);
@@ -683,8 +683,8 @@ mod legacy_vs_experimental_charges {
 
 mod experimental_vs_nist {
     use super::*;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -792,12 +792,12 @@ mod experimental_vs_nist {
 
 mod quantum_engine_integrals {
     use super::*;
-    use sci_form::experimental_2::phase2_quantum_engine::basis_set::BasisSet;
-    use sci_form::experimental_2::phase2_quantum_engine::core_hamiltonian::{
+    use sci_form::scf::basis::BasisSet;
+    use sci_form::scf::core_matrices::{
         build_core_matrices, nuclear_repulsion_energy,
     };
-    use sci_form::experimental_2::phase2_quantum_engine::overlap_matrix::build_overlap_matrix;
-    use sci_form::experimental_2::phase2_quantum_engine::two_electron::TwoElectronIntegrals;
+    use sci_form::scf::overlap_matrix::build_overlap_matrix;
+    use sci_form::scf::two_electron::TwoElectronIntegrals;
 
     const ANGSTROM_TO_BOHR: f64 = 1.8897259886;
 
@@ -953,11 +953,11 @@ mod quantum_engine_integrals {
 
 mod spectroscopy_comparison {
     use super::*;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
-    use sci_form::experimental_2::phase4_spectroscopy::stda_uvvis::{compute_stda, StdaConfig};
-    use sci_form::experimental_2::phase4_spectroscopy::giao_nmr::{compute_nmr_shieldings, shieldings_to_result};
-    use sci_form::experimental_2::phase2_quantum_engine::basis_set::BasisSet;
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::spectroscopy::{compute_stda, StdaConfig};
+    use sci_form::spectroscopy::{compute_nmr_shieldings, shieldings_to_result};
+    use sci_form::scf::basis::BasisSet;
 
     const HARTREE_TO_EV: f64 = 27.211386;
     const ANGSTROM_TO_BOHR: f64 = 1.8897259886;
@@ -1160,8 +1160,8 @@ mod timing_benchmarks {
     use sci_form::pm3::solve_pm3;
     use sci_form::xtb::solve_xtb;
     use sci_form::hf::{solve_hf3c, HfConfig};
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -1281,8 +1281,8 @@ mod comprehensive_energy_table {
     use sci_form::eht::solve_eht;
     use sci_form::pm3::solve_pm3;
     use sci_form::xtb::solve_xtb;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     const HARTREE_TO_EV: f64 = 27.211386;
 

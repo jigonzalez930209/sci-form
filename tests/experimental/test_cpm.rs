@@ -2,7 +2,7 @@
 
 #[cfg(feature = "experimental-cpm")]
 mod cpm_tests {
-    use sci_form::experimental::cpm::*;
+    use sci_form::beta::cpm::*;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (

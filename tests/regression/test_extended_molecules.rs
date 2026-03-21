@@ -58,8 +58,8 @@ fn ml_props(smiles: &str) -> sci_form::ml::MlPropertyResult {
 
 mod parallel_acceleration {
     use super::*;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     fn run_speedup_benchmark(label: &str, smiles: &str) -> (f64, f64, f64) {
         let (elems, pos) = embed_smiles(smiles);
@@ -197,8 +197,8 @@ mod extended_molecule_battery {
     use sci_form::eht::solve_eht;
     use sci_form::pm3::solve_pm3;
     use sci_form::xtb::solve_xtb;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -497,10 +497,10 @@ mod extended_molecule_battery {
 
 mod nmr_comparison {
     use super::*;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
-    use sci_form::experimental_2::phase4_spectroscopy::giao_nmr::{compute_nmr_shieldings, shieldings_to_result};
-    use sci_form::experimental_2::phase2_quantum_engine::basis_set::BasisSet;
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::spectroscopy::{compute_nmr_shieldings, shieldings_to_result};
+    use sci_form::scf::basis::BasisSet;
 
     const ANGSTROM_TO_BOHR: f64 = 1.8897259886;
 
@@ -933,8 +933,8 @@ mod druglike_molecules {
     use sci_form::eht::solve_eht;
     use sci_form::pm3::solve_pm3;
     use sci_form::xtb::solve_xtb;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     const DRUGS: &[(&str, &str)] = &[
         ("caffeine",   "Cn1cnc2c1c(=O)n(c(=O)n2C)C"),
@@ -1129,8 +1129,8 @@ mod summary_comparison {
     use sci_form::eht::solve_eht;
     use sci_form::pm3::solve_pm3;
     use sci_form::xtb::solve_xtb;
-    use sci_form::experimental_2::types::MolecularSystem;
-    use sci_form::experimental_2::phase3_scf_engine::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
 
     /// Differences between legacy and new experimental algorithms:
     ///

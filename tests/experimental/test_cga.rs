@@ -5,7 +5,7 @@
 
 #[cfg(feature = "experimental-cga")]
 mod cga_tests {
-    use sci_form::experimental::cga::*;
+    use sci_form::alpha::cga::*;
 
     // ---------------------------------------------------------------
     // E1.1 — CGA Algebraic Layer
