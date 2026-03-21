@@ -1,16 +1,17 @@
 //! CLI handlers for experimental modules.
 
+#[allow(unused_imports)]
 use crate::format::parse_elems_coords;
 
 /// EEQ geometry-dependent charges.
 #[cfg(feature = "experimental-eeq")]
 pub fn cmd_eeq(elements: &str, coords: &str, total_charge: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let config = sci_form::experimental::eeq::EeqConfig {
+    let config = sci_form::charges_eeq::EeqConfig {
         total_charge,
         regularization: 1e-10,
     };
-    let r = sci_form::experimental::eeq::compute_eeq_charges(&elems, &positions, &config);
+    let r = sci_form::charges_eeq::compute_eeq_charges(&elems, &positions, &config);
     println!(
         "{}",
         serde_json::json!({
@@ -33,12 +34,12 @@ pub fn cmd_alpb(elements: &str, coords: &str, charges_str: &str, dielectric: f64
             std::process::exit(1);
         })
     };
-    let config = sci_form::experimental::alpb::AlpbConfig {
+    let config = sci_form::solvation_alpb::AlpbConfig {
         solvent_dielectric: dielectric,
         probe_radius: 1.4,
         surface_tension: 0.005,
     };
-    let r = sci_form::experimental::alpb::compute_alpb_solvation(&elems, &positions, &charges, &config);
+    let r = sci_form::solvation_alpb::compute_alpb_solvation(&elems, &positions, &charges, &config);
     println!(
         "{}",
         serde_json::json!({
@@ -55,11 +56,11 @@ pub fn cmd_alpb(elements: &str, coords: &str, charges_str: &str, dielectric: f64
 #[cfg(feature = "experimental-d4")]
 pub fn cmd_d4(elements: &str, coords: &str, three_body: bool) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let config = sci_form::experimental::d4::D4Config {
+    let config = sci_form::dispersion::D4Config {
         s6: 1.0, s8: 0.95, a1: 0.45, a2: 4.0,
         three_body, s9: 1.0,
     };
-    let r = sci_form::experimental::d4::compute_d4_energy(&elems, &positions, &config);
+    let r = sci_form::dispersion::compute_d4_energy(&elems, &positions, &config);
     println!(
         "{}",
         serde_json::json!({
@@ -76,13 +77,13 @@ pub fn cmd_d4(elements: &str, coords: &str, three_body: bool) {
 #[cfg(feature = "experimental-cpm")]
 pub fn cmd_cpm(elements: &str, coords: &str, mu_ev: f64, dielectric: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let config = sci_form::experimental::cpm::CpmConfig {
+    let config = sci_form::beta::cpm::CpmConfig {
         mu_ev,
         dielectric,
         max_iter: 100,
         charge_tol: 1e-6,
     };
-    let r = sci_form::experimental::cpm::compute_cpm_charges(&elems, &positions, &config);
+    let r = sci_form::beta::cpm::compute_cpm_charges(&elems, &positions, &config);
     println!(
         "{}",
         serde_json::json!({

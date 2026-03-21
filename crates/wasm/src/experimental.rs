@@ -3,7 +3,9 @@
 //! Each function is gated behind its experimental feature flag.
 //! All functions accept/return JSON strings.
 
+#[allow(unused_imports)]
 use crate::helpers::{json_error, parse_elements_and_positions};
+#[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
 // ─── E5: EEQ ───────────────────────────────────────────────────────────────
@@ -18,11 +20,11 @@ pub fn compute_eeq_charges(elements: &str, coords_flat: &str, total_charge: f64)
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let config = sci_form::experimental::eeq::EeqConfig {
+    let config = sci_form::charges_eeq::EeqConfig {
         total_charge,
         regularization: 1e-10,
     };
-    let r = sci_form::experimental::eeq::compute_eeq_charges(&elems, &pos, &config);
+    let r = sci_form::charges_eeq::compute_eeq_charges(&elems, &pos, &config);
     serde_json::json!({
         "charges": r.charges,
         "coordination_numbers": r.coordination_numbers,
@@ -41,11 +43,11 @@ pub fn compute_eeq_energy(elements: &str, coords_flat: &str, total_charge: f64) 
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let config = sci_form::experimental::eeq::EeqConfig {
+    let config = sci_form::charges_eeq::EeqConfig {
         total_charge,
         regularization: 1e-10,
     };
-    let r = sci_form::experimental::eeq::compute_eeq_energy(&elems, &pos, &config);
+    let r = sci_form::charges_eeq::compute_eeq_energy(&elems, &pos, &config);
     serde_json::json!({
         "electrostatic_energy": r.electrostatic_energy,
         "charges": r.charges,
@@ -77,12 +79,12 @@ pub fn compute_alpb_solvation(
         Ok(v) => v,
         Err(e) => return json_error(&format!("bad charges: {e}")),
     };
-    let config = sci_form::experimental::alpb::AlpbConfig {
+    let config = sci_form::solvation_alpb::AlpbConfig {
         solvent_dielectric,
         probe_radius,
         surface_tension,
     };
-    let r = sci_form::experimental::alpb::compute_alpb_solvation(&elems, &pos, &q, &config);
+    let r = sci_form::solvation_alpb::compute_alpb_solvation(&elems, &pos, &q, &config);
     serde_json::json!({
         "electrostatic_energy": r.electrostatic_energy,
         "nonpolar_energy": r.nonpolar_energy,
@@ -103,7 +105,7 @@ pub fn compute_alpb_born_radii(elements: &str, coords_flat: &str, probe_radius: 
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let r = sci_form::experimental::alpb::compute_born_radii(&elems, &pos, probe_radius);
+    let r = sci_form::solvation_alpb::compute_born_radii(&elems, &pos, probe_radius);
     serde_json::json!({
         "radii": r.radii,
         "intrinsic": r.intrinsic
@@ -131,10 +133,10 @@ pub fn compute_d4_energy(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let config = sci_form::experimental::d4::D4Config {
+    let config = sci_form::dispersion::D4Config {
         s6, s8, a1, a2, three_body, s9: 1.0,
     };
-    let r = sci_form::experimental::d4::compute_d4_energy(&elems, &pos, &config);
+    let r = sci_form::dispersion::compute_d4_energy(&elems, &pos, &config);
     serde_json::json!({
         "e2_body": r.e2_body,
         "e3_body": r.e3_body,
@@ -162,13 +164,13 @@ pub fn compute_cpm_charges(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let config = sci_form::experimental::cpm::CpmConfig {
+    let config = sci_form::beta::cpm::CpmConfig {
         mu_ev,
         dielectric,
         max_iter: 100,
         charge_tol: 1e-6,
     };
-    let r = sci_form::experimental::cpm::compute_cpm_charges(&elems, &pos, &config);
+    let r = sci_form::beta::cpm::compute_cpm_charges(&elems, &pos, &config);
     serde_json::json!({
         "charges": r.charges,
         "total_charge": r.total_charge,
@@ -198,7 +200,7 @@ pub fn compute_cpm_surface(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let r = sci_form::experimental::cpm::compute_cpm_surface(
+    let r = sci_form::beta::cpm::compute_cpm_surface(
         &elems, &pos, mu_min, mu_max, n_points, dielectric,
     );
     serde_json::json!({
