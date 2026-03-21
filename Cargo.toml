@@ -29,17 +29,30 @@ crate-type = ["rlib"]
 [features]
 default = ["parallel"]
 parallel = ["rayon"]
-experimental-cga = []
-experimental-randnla = []
-experimental-riemannian = []
-experimental-kpm = []
+experimental-gpu-rendering = ["dep:bytemuck"]
+experimental-gpu = ["experimental-gpu-rendering", "dep:wgpu", "dep:pollster"]
+# Legacy experimental flags (kept for backwards compatibility)
+experimental-cga = ["alpha-cga"]
+experimental-randnla = ["beta-randnla"]
+experimental-riemannian = ["beta-riemannian"]
+experimental-kpm = ["beta-kpm"]
 experimental-eeq = []
 experimental-alpb = []
 experimental-d4 = []
-experimental-sdr = []
-experimental-mbh = []
-experimental-cpm = []
-experimental-gsm = []
+experimental-sdr = ["alpha-sdr"]
+experimental-mbh = ["beta-mbh"]
+experimental-cpm = ["beta-cpm"]
+experimental-gsm = ["alpha-gsm"]
+# Alpha — early research, proof-of-concept
+alpha-cga = []
+alpha-gsm = []
+alpha-sdr = []
+# Beta — tested, approaching core readiness
+beta-kpm = []
+beta-mbh = []
+beta-cpm = []
+beta-randnla = []
+beta-riemannian = []
 
 [dependencies]
 petgraph = "0.6.4"
@@ -48,6 +61,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rand = "0.8.5"
 rayon = { version = "1.10", optional = true }
+bytemuck = { version = "1.21", features = ["derive"], optional = true }
+pollster = { version = "0.3", optional = true }
+wgpu = { version = "0.19", optional = true }
 
 [dev-dependencies]
 rayon = "1.10"
