@@ -294,6 +294,66 @@ pub fn ensemble_averaged_j_couplings(
     averaged
 }
 
+/// Parallel ensemble-averaged J-couplings via rayon.
+///
+/// Each conformer's J-coupling prediction is independent, making
+/// this embarrassingly parallel over conformers.
+#[cfg(feature = "parallel")]
+pub fn ensemble_averaged_j_couplings_parallel(
+    mol: &crate::graph::Molecule,
+    conformer_positions: &[Vec<[f64; 3]>],
+    energies_kcal: &[f64],
+    temperature_k: f64,
+) -> Vec<JCoupling> {
+    use rayon::prelude::*;
+
+    if conformer_positions.is_empty() {
+        return Vec::new();
+    }
+    if conformer_positions.len() != energies_kcal.len() {
+        return predict_j_couplings(mol, &conformer_positions[0]);
+    }
+
+    const KB_KCAL: f64 = 0.001987204;
+    let beta = 1.0 / (KB_KCAL * temperature_k);
+    let e_min = energies_kcal.iter().cloned().fold(f64::INFINITY, f64::min);
+
+    let weights: Vec<f64> = energies_kcal
+        .iter()
+        .map(|&e| (-(e - e_min) * beta).exp())
+        .collect();
+    let weight_sum: f64 = weights.iter().sum();
+
+    if weight_sum < 1e-30 {
+        return predict_j_couplings(mol, &conformer_positions[0]);
+    }
+
+    // Parallel J-coupling evaluation per conformer
+    let all_couplings: Vec<Vec<JCoupling>> = conformer_positions
+        .par_iter()
+        .map(|pos| predict_j_couplings(mol, pos))
+        .collect();
+
+    if all_couplings.is_empty() {
+        return Vec::new();
+    }
+
+    let n_couplings = all_couplings[0].len();
+    let mut averaged = all_couplings[0].clone();
+
+    for k in 0..n_couplings {
+        let mut weighted_j = 0.0;
+        for (conf_idx, couplings) in all_couplings.iter().enumerate() {
+            if k < couplings.len() {
+                weighted_j += couplings[k].j_hz * weights[conf_idx];
+            }
+        }
+        averaged[k].j_hz = weighted_j / weight_sum;
+    }
+
+    averaged
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
