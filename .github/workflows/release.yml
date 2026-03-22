@@ -201,7 +201,7 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build WASM packages (web + nodejs)
-        run: cd crates/wasm && bash build.sh
+        run: cd crates/wasm && bash build.sh --web-features "parallel experimental-gpu"
       - name: Install Vite example dependencies
         run: pnpm --dir crates/wasm/examples/vite-webgpu-hybrid install --frozen-lockfile --ignore-scripts
       - name: Build Vite example
