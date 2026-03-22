@@ -50,11 +50,7 @@ pub struct D4Result {
 }
 
 /// Compute D4 dispersion energy.
-pub fn compute_d4_energy(
-    elements: &[u8],
-    positions: &[[f64; 3]],
-    config: &D4Config,
-) -> D4Result {
+pub fn compute_d4_energy(elements: &[u8], positions: &[[f64; 3]], config: &D4Config) -> D4Result {
     let n = elements.len();
     let cn = d4_coordination_number(elements, positions);
     let ang_to_bohr = 1.0 / 0.529177;
@@ -108,12 +104,9 @@ pub fn compute_d4_energy(
 
                     let c9 = -(c6_ab * c6_bc * c6_ca).abs().cbrt().powi(3);
 
-                    let cos_a =
-                        (r_ab * r_ab + r_ca * r_ca - r_bc * r_bc) / (2.0 * r_ab * r_ca);
-                    let cos_b =
-                        (r_ab * r_ab + r_bc * r_bc - r_ca * r_ca) / (2.0 * r_ab * r_bc);
-                    let cos_c =
-                        (r_bc * r_bc + r_ca * r_ca - r_ab * r_ab) / (2.0 * r_bc * r_ca);
+                    let cos_a = (r_ab * r_ab + r_ca * r_ca - r_bc * r_bc) / (2.0 * r_ab * r_ca);
+                    let cos_b = (r_ab * r_ab + r_bc * r_bc - r_ca * r_ca) / (2.0 * r_ab * r_bc);
+                    let cos_c = (r_bc * r_bc + r_ca * r_ca - r_ab * r_ab) / (2.0 * r_bc * r_ca);
 
                     let angular = 3.0 * cos_a * cos_b * cos_c + 1.0;
                     let r_prod = r_ab * r_bc * r_ca;
@@ -217,12 +210,18 @@ mod tests {
         let r2 = compute_d4_energy(
             &elements,
             &pos,
-            &D4Config { three_body: false, ..Default::default() },
+            &D4Config {
+                three_body: false,
+                ..Default::default()
+            },
         );
         let r3 = compute_d4_energy(
             &elements,
             &pos,
-            &D4Config { three_body: true, ..Default::default() },
+            &D4Config {
+                three_body: true,
+                ..Default::default()
+            },
         );
         assert!(
             (r3.total_energy - r2.total_energy).abs() > 0.0,

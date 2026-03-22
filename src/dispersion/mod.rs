@@ -15,10 +15,11 @@
 //! Caldeweyher, Ehlert, Hansen, Bauer, Spicher, Grimme,
 //! J. Chem. Phys. 150, 154122 (2019).
 
-mod params;
+#[allow(clippy::module_inception)]
 mod dispersion;
+mod params;
 
+pub use dispersion::{compute_d4_energy, compute_d4_gradient, D4Config, D4Result};
 pub use params::{
     c8_from_c6, d4_coordination_number, dynamic_c6, get_c6_reference, get_d4_params, D4Params,
 };
-pub use dispersion::{compute_d4_energy, compute_d4_gradient, D4Config, D4Result};
