@@ -18,3 +18,4 @@ GDB20.50000.smi
 *.log
 nohup.out
 .venv-ci
+vendor
