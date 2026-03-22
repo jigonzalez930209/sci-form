@@ -452,14 +452,12 @@ pub fn systematic_rotor_search(
 
     // Total combos = 12^n_rot
     let total: usize = 12usize.pow(n_rot as u32);
-    let mut results = Vec::with_capacity(total);
 
     let base_matrix = flat_to_matrix_internal(coords, n_atoms);
 
-    for combo_idx in 0..total {
+    let eval_combo = |combo_idx: usize| -> Option<(Vec<f64>, f64)> {
         let mut matrix = base_matrix.clone();
 
-        // Decode combo_idx into angle indices for each rotor
         let mut idx = combo_idx;
         for r in 0..n_rot {
             let angle_idx = idx % 12;
@@ -479,9 +477,20 @@ pub fn systematic_rotor_search(
         let energy = ff.compute_system_energy_and_gradients(&flat, &mut grad);
 
         if energy.is_finite() {
-            results.push((flat, energy));
+            Some((flat, energy))
+        } else {
+            None
         }
-    }
+    };
+
+    #[cfg(feature = "parallel")]
+    let mut results: Vec<(Vec<f64>, f64)> = {
+        use rayon::prelude::*;
+        (0..total).into_par_iter().filter_map(eval_combo).collect()
+    };
+
+    #[cfg(not(feature = "parallel"))]
+    let mut results: Vec<(Vec<f64>, f64)> = (0..total).filter_map(eval_combo).collect();
 
     // Sort by energy
     results.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
