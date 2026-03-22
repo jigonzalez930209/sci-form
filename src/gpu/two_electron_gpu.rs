@@ -132,7 +132,7 @@ pub fn compute_eris_gpu(
     // Output buffer (f32, n⁴ elements)
     let output_seed = vec![0u8; n * n * n * n * 4];
 
-    let workgroup_count = [((n_quartets as u32) + 63) / 64, 1, 1];
+    let workgroup_count = [(n_quartets as u32).div_ceil(64), 1, 1];
 
     let descriptor = ComputeDispatchDescriptor {
         label: "two-electron ERI".to_string(),
@@ -221,7 +221,7 @@ fn boys_f0(x: f32) -> f32 {
         return 1.0;
     }
     if (x > 30.0) {
-        return 0.8862269 * 0.5 / sqrt(x);  // √π / (2√x)
+        return 0.8862269 / sqrt(x);  // √π / (2√x)
     }
     var sum: f32 = 1.0;
     var term: f32 = 1.0;
@@ -348,7 +348,8 @@ mod tests {
 
     #[test]
     fn test_pack_basis_eri() {
-        let basis = crate::scf::basis::BasisSet::sto3g(&[1, 1], &[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]]);
+        let basis =
+            crate::scf::basis::BasisSet::sto3g(&[1, 1], &[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]]);
         let (basis_bytes, prim_bytes) = pack_basis_eri(&basis);
         // Basis: 32 bytes per function
         assert_eq!(basis_bytes.len(), basis.n_basis * 32);

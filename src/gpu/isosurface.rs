@@ -188,8 +188,7 @@ mod tests {
             smooth_normals: false,
         };
 
-        let (iso, report) =
-            generate_orbital_isosurface(&basis, &coeffs, 0, &positions, &config);
+        let (iso, report) = generate_orbital_isosurface(&basis, &coeffs, 0, &positions, &config);
         assert!(!report.grid_backend.is_empty());
         assert!((report.isovalue - 0.005).abs() < 1e-10);
         assert_eq!(iso.orbital_index, 0);
@@ -219,12 +218,10 @@ mod tests {
             smooth_normals: false,
         };
 
-        let (homo, _) =
-            generate_homo_isosurface(&basis, &coeffs, 2, &positions, &config);
+        let (homo, _) = generate_homo_isosurface(&basis, &coeffs, 2, &positions, &config);
         assert_eq!(homo.orbital_index, 0); // HOMO for 2 electrons
 
-        let (lumo, _) =
-            generate_lumo_isosurface(&basis, &coeffs, 2, &positions, &config);
+        let (lumo, _) = generate_lumo_isosurface(&basis, &coeffs, 2, &positions, &config);
         assert_eq!(lumo.orbital_index, 1); // LUMO
     }
 }

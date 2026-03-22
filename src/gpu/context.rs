@@ -112,12 +112,13 @@ impl GpuContext {
         #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
         {
             let instance = wgpu::Instance::default();
-            let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            }))
-            .ok_or_else(|| "No GPU adapter found".to_string())?;
+            let adapter =
+                pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+                    power_preference: wgpu::PowerPreference::HighPerformance,
+                    compatible_surface: None,
+                    force_fallback_adapter: false,
+                }))
+                .ok_or_else(|| "No GPU adapter found".to_string())?;
 
             let adapter_info = adapter.get_info();
             let limits = adapter.limits();
@@ -188,9 +189,10 @@ impl GpuContext {
                 gpu_available: false,
                 runtime_ready: false,
                 state: GpuActivationState::NoAdapter,
-                reason: self.runtime_error.clone().unwrap_or_else(|| {
-                    "experimental-gpu enabled but no adapter found".to_string()
-                }),
+                reason: self
+                    .runtime_error
+                    .clone()
+                    .unwrap_or_else(|| "experimental-gpu enabled but no adapter found".to_string()),
             }
         } else {
             GpuActivationReport {
@@ -253,14 +255,13 @@ impl GpuContext {
                     }
                 };
 
-                let buffer =
-                    runtime
-                        .device
-                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                            label: Some(&binding.label),
-                            contents: &binding.bytes,
-                            usage,
-                        });
+                let buffer = runtime
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some(&binding.label),
+                        contents: &binding.bytes,
+                        usage,
+                    });
 
                 layout_entries.push(wgpu::BindGroupLayoutEntry {
                     binding: index as u32,
@@ -411,7 +412,10 @@ impl GpuContext {
                     label: Some(label),
                     source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(source)),
                 });
-            Ok(format!("Shader '{}' compiled on {}", label, self.capabilities.backend))
+            Ok(format!(
+                "Shader '{}' compiled on {}",
+                label, self.capabilities.backend
+            ))
         }
 
         #[cfg(not(all(feature = "experimental-gpu", not(target_arch = "wasm32"))))]
@@ -431,7 +435,7 @@ impl GpuContext {
             len: lhs.len() as u32,
             _pad: [0; 3],
         };
-        let dispatch = ((lhs.len() as u32) + 63) / 64;
+        let dispatch = (lhs.len() as u32).div_ceil(64);
         let output_seed = vec![0.0f32; lhs.len()];
 
         let descriptor = ComputeDispatchDescriptor {
@@ -491,6 +495,45 @@ pub fn bytes_to_f32_vec(bytes: &[u8]) -> Vec<f32> {
         .chunks_exact(4)
         .map(|c| f32::from_ne_bytes(c.try_into().expect("4 bytes")))
         .collect()
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UniformValue {
+    U32(u32),
+    F32(f32),
+}
+
+pub fn pack_uniform_values(values: &[UniformValue]) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(values.len() * 4);
+    for value in values {
+        match value {
+            UniformValue::U32(word) => bytes.extend_from_slice(&word.to_ne_bytes()),
+            UniformValue::F32(word) => bytes.extend_from_slice(&word.to_ne_bytes()),
+        }
+    }
+    bytes
+}
+
+pub fn pack_vec3_positions_f32(positions: &[[f64; 3]]) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(positions.len() * 16);
+    for position in positions {
+        bytes.extend_from_slice(&(position[0] as f32).to_ne_bytes());
+        bytes.extend_from_slice(&(position[1] as f32).to_ne_bytes());
+        bytes.extend_from_slice(&(position[2] as f32).to_ne_bytes());
+        bytes.extend_from_slice(&0.0f32.to_ne_bytes());
+    }
+    bytes
+}
+
+pub fn bytes_to_f64_vec_from_f32(bytes: &[u8]) -> Vec<f64> {
+    bytes_to_f32_vec(bytes)
+        .into_iter()
+        .map(|value| value as f64)
+        .collect()
+}
+
+pub fn ceil_div_u32(value: usize, chunk: u32) -> u32 {
+    (value as u32).div_ceil(chunk)
 }
 
 fn vector_add_params_to_bytes(params: &VectorAddParams) -> Vec<u8> {
@@ -557,9 +600,34 @@ mod tests {
 
     #[test]
     fn test_f32_roundtrip() {
-        let values = vec![1.0f32, 2.5, -3.14, 0.0];
+        let values = vec![1.0f32, 2.5, -std::f32::consts::PI, 0.0];
         let bytes = f32_slice_to_bytes(&values);
         let result = bytes_to_f32_vec(&bytes);
         assert_eq!(values, result);
+    }
+
+    #[test]
+    fn test_uniform_word_packing() {
+        let bytes = pack_uniform_values(&[
+            UniformValue::U32(7),
+            UniformValue::F32(1.5),
+            UniformValue::U32(9),
+            UniformValue::F32(-2.0),
+        ]);
+        assert_eq!(bytes.len(), 16);
+        assert_eq!(u32::from_ne_bytes(bytes[0..4].try_into().unwrap()), 7);
+        assert!((f32::from_ne_bytes(bytes[4..8].try_into().unwrap()) - 1.5).abs() < 1e-6);
+        assert_eq!(u32::from_ne_bytes(bytes[8..12].try_into().unwrap()), 9);
+        assert!((f32::from_ne_bytes(bytes[12..16].try_into().unwrap()) + 2.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_pack_vec3_positions_f32_layout() {
+        let bytes = pack_vec3_positions_f32(&[[1.0, -2.0, 3.5]]);
+        assert_eq!(bytes.len(), 16);
+        assert!((f32::from_ne_bytes(bytes[0..4].try_into().unwrap()) - 1.0).abs() < 1e-6);
+        assert!((f32::from_ne_bytes(bytes[4..8].try_into().unwrap()) + 2.0).abs() < 1e-6);
+        assert!((f32::from_ne_bytes(bytes[8..12].try_into().unwrap()) - 3.5).abs() < 1e-6);
+        assert_eq!(f32::from_ne_bytes(bytes[12..16].try_into().unwrap()), 0.0);
     }
 }

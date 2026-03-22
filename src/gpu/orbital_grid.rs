@@ -8,8 +8,8 @@
 
 use super::backend_report::OrbitalGridReport;
 use super::context::{
-    ComputeBindingDescriptor, ComputeBindingKind, ComputeDispatchDescriptor, GpuContext,
-    f32_slice_to_bytes, bytes_to_f32_vec,
+    bytes_to_f32_vec, f32_slice_to_bytes, ComputeBindingDescriptor, ComputeBindingKind,
+    ComputeDispatchDescriptor, GpuContext,
 };
 use crate::scf::basis::{BasisFunction, BasisSet};
 use nalgebra::DMatrix;
@@ -45,7 +45,11 @@ impl GridParams {
             ((max[2] - min[2] + 2.0 * padding) / spacing).ceil() as usize + 1,
         ];
 
-        Self { origin, spacing, dimensions }
+        Self {
+            origin,
+            spacing,
+            dimensions,
+        }
     }
 
     /// Total number of grid points.
@@ -304,9 +308,9 @@ fn evaluate_orbital_gpu(
 
     let [nx, ny, nz] = params.dimensions;
     let wg = [
-        ((nx as u32) + 7) / 8,
-        ((ny as u32) + 7) / 8,
-        ((nz as u32) + 3) / 4,
+        (nx as u32).div_ceil(8),
+        (ny as u32).div_ceil(8),
+        (nz as u32).div_ceil(4),
     ];
 
     let descriptor = ComputeDispatchDescriptor {

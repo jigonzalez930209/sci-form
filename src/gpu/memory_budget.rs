@@ -47,11 +47,11 @@ pub struct GpuMemoryLimits {
 impl Default for GpuMemoryLimits {
     fn default() -> Self {
         Self {
-            max_storage_buffer_binding_size: 134_217_728,  // 128 MB
-            max_buffer_size: 268_435_456,                   // 256 MB
-            max_uniform_buffer_binding_size: 65_536,        // 64 KB
+            max_storage_buffer_binding_size: 134_217_728, // 128 MB
+            max_buffer_size: 268_435_456,                 // 256 MB
+            max_uniform_buffer_binding_size: 65_536,      // 64 KB
             max_storage_buffers_per_stage: 8,
-            max_workgroup_storage_size: 16_384,             // 16 KB
+            max_workgroup_storage_size: 16_384, // 16 KB
             max_invocations_per_workgroup: 256,
             max_workgroup_size_x: 256,
             max_workgroup_size_y: 256,
@@ -222,8 +222,8 @@ impl GpuMemoryBudget {
             pairwise_bytes,
             total_bytes: total,
             fits_in_webgpu: total <= self.limits.max_buffer_size,
-            max_atoms_for_limit: ((self.limits.max_storage_buffer_binding_size / 4) as f64)
-                .sqrt() as usize,
+            max_atoms_for_limit: ((self.limits.max_storage_buffer_binding_size / 4) as f64).sqrt()
+                as usize,
         })
     }
 
@@ -235,9 +235,9 @@ impl GpuMemoryBudget {
             4u32.min(self.limits.max_workgroup_size_z),
         ];
         let wg_count = [
-            (dims[0] + wg_size[0] - 1) / wg_size[0],
-            (dims[1] + wg_size[1] - 1) / wg_size[1],
-            (dims[2] + wg_size[2] - 1) / wg_size[2],
+            dims[0].div_ceil(wg_size[0]),
+            dims[1].div_ceil(wg_size[1]),
+            dims[2].div_ceil(wg_size[2]),
         ];
         (wg_size, wg_count)
     }
@@ -245,7 +245,7 @@ impl GpuMemoryBudget {
     /// Compute optimal workgroup dispatch for a 1D array.
     pub fn optimal_1d_dispatch(&self, n: u32) -> (u32, u32) {
         let wg_size = 64u32.min(self.limits.max_workgroup_size_x);
-        let wg_count = (n + wg_size - 1) / wg_size;
+        let wg_count = n.div_ceil(wg_size);
         (wg_size, wg_count)
     }
 }
@@ -277,12 +277,31 @@ pub struct PairwiseMemoryEstimate {
 /// Errors from GPU memory budget checks.
 #[derive(Debug, Clone)]
 pub enum MemoryError {
-    BufferTooLarge { requested: u64, max: u64 },
-    BindingTooLarge { requested: u64, max: u64 },
-    TooManyBindings { current: u32, max: u32 },
-    WorkgroupSizeExceeded { requested: [u32; 3], max: [u32; 3] },
-    TooManyInvocations { requested: u32, max: u32 },
-    TooManyWorkgroups { dimension: u32, requested: u32, max: u32 },
+    BufferTooLarge {
+        requested: u64,
+        max: u64,
+    },
+    BindingTooLarge {
+        requested: u64,
+        max: u64,
+    },
+    TooManyBindings {
+        current: u32,
+        max: u32,
+    },
+    WorkgroupSizeExceeded {
+        requested: [u32; 3],
+        max: [u32; 3],
+    },
+    TooManyInvocations {
+        requested: u32,
+        max: u32,
+    },
+    TooManyWorkgroups {
+        dimension: u32,
+        requested: u32,
+        max: u32,
+    },
 }
 
 impl std::fmt::Display for MemoryError {
@@ -298,15 +317,24 @@ impl std::fmt::Display for MemoryError {
                 write!(f, "Need {current} bindings, max {max}")
             }
             MemoryError::WorkgroupSizeExceeded { requested, max } => {
-                write!(f, "Workgroup [{},{},{}] exceeds max [{},{},{}]",
-                    requested[0], requested[1], requested[2],
-                    max[0], max[1], max[2])
+                write!(
+                    f,
+                    "Workgroup [{},{},{}] exceeds max [{},{},{}]",
+                    requested[0], requested[1], requested[2], max[0], max[1], max[2]
+                )
             }
             MemoryError::TooManyInvocations { requested, max } => {
                 write!(f, "{requested} invocations exceeds max {max}")
             }
-            MemoryError::TooManyWorkgroups { dimension, requested, max } => {
-                write!(f, "Dimension {dimension}: {requested} workgroups exceeds max {max}")
+            MemoryError::TooManyWorkgroups {
+                dimension,
+                requested,
+                max,
+            } => {
+                write!(
+                    f,
+                    "Dimension {dimension}: {requested} workgroups exceeds max {max}"
+                )
             }
         }
     }
