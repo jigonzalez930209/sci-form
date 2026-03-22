@@ -19,7 +19,7 @@ mod charges;
 mod energy;
 
 pub use charges::{
-    compute_eeq_charges, fractional_coordination, get_eeq_params,
-    EeqChargeResult, EeqConfig, EeqParams,
+    compute_eeq_charges, fractional_coordination, get_eeq_params, EeqChargeResult, EeqConfig,
+    EeqParams,
 };
 pub use energy::{compute_eeq_energy, compute_eeq_gradient, EeqEnergyResult};

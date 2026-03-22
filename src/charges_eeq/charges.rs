@@ -51,22 +51,102 @@ pub struct EeqChargeResult {
 /// Get EEQ parameters for an element by atomic number.
 pub fn get_eeq_params(z: u8) -> EeqParams {
     match z {
-        1 => EeqParams { chi: 2.20, eta: 13.6, r_eeq: 0.80, r_cov: 0.32 },
-        5 => EeqParams { chi: 2.04, eta: 8.30, r_eeq: 1.40, r_cov: 0.85 },
-        6 => EeqParams { chi: 2.55, eta: 10.0, r_eeq: 1.30, r_cov: 0.77 },
-        7 => EeqParams { chi: 3.04, eta: 14.5, r_eeq: 1.20, r_cov: 0.75 },
-        8 => EeqParams { chi: 3.44, eta: 13.4, r_eeq: 1.10, r_cov: 0.73 },
-        9 => EeqParams { chi: 3.98, eta: 17.4, r_eeq: 1.00, r_cov: 0.71 },
-        14 => EeqParams { chi: 1.90, eta: 8.15, r_eeq: 1.75, r_cov: 1.17 },
-        15 => EeqParams { chi: 2.19, eta: 10.5, r_eeq: 1.60, r_cov: 1.10 },
-        16 => EeqParams { chi: 2.58, eta: 10.4, r_eeq: 1.50, r_cov: 1.04 },
-        17 => EeqParams { chi: 3.16, eta: 13.0, r_eeq: 1.40, r_cov: 0.99 },
-        35 => EeqParams { chi: 2.96, eta: 11.8, r_eeq: 1.55, r_cov: 1.14 },
-        53 => EeqParams { chi: 2.66, eta: 10.5, r_eeq: 1.70, r_cov: 1.33 },
-        26 => EeqParams { chi: 1.83, eta: 7.90, r_eeq: 1.70, r_cov: 1.24 },
-        29 => EeqParams { chi: 1.90, eta: 7.73, r_eeq: 1.60, r_cov: 1.32 },
-        30 => EeqParams { chi: 1.65, eta: 9.39, r_eeq: 1.65, r_cov: 1.22 },
-        _ => EeqParams { chi: 2.20, eta: 10.0, r_eeq: 1.50, r_cov: 1.00 },
+        1 => EeqParams {
+            chi: 2.20,
+            eta: 13.6,
+            r_eeq: 0.80,
+            r_cov: 0.32,
+        },
+        5 => EeqParams {
+            chi: 2.04,
+            eta: 8.30,
+            r_eeq: 1.40,
+            r_cov: 0.85,
+        },
+        6 => EeqParams {
+            chi: 2.55,
+            eta: 10.0,
+            r_eeq: 1.30,
+            r_cov: 0.77,
+        },
+        7 => EeqParams {
+            chi: 3.04,
+            eta: 14.5,
+            r_eeq: 1.20,
+            r_cov: 0.75,
+        },
+        8 => EeqParams {
+            chi: 3.44,
+            eta: 13.4,
+            r_eeq: 1.10,
+            r_cov: 0.73,
+        },
+        9 => EeqParams {
+            chi: 3.98,
+            eta: 17.4,
+            r_eeq: 1.00,
+            r_cov: 0.71,
+        },
+        14 => EeqParams {
+            chi: 1.90,
+            eta: 8.15,
+            r_eeq: 1.75,
+            r_cov: 1.17,
+        },
+        15 => EeqParams {
+            chi: 2.19,
+            eta: 10.5,
+            r_eeq: 1.60,
+            r_cov: 1.10,
+        },
+        16 => EeqParams {
+            chi: 2.58,
+            eta: 10.4,
+            r_eeq: 1.50,
+            r_cov: 1.04,
+        },
+        17 => EeqParams {
+            chi: 3.16,
+            eta: 13.0,
+            r_eeq: 1.40,
+            r_cov: 0.99,
+        },
+        35 => EeqParams {
+            chi: 2.96,
+            eta: 11.8,
+            r_eeq: 1.55,
+            r_cov: 1.14,
+        },
+        53 => EeqParams {
+            chi: 2.66,
+            eta: 10.5,
+            r_eeq: 1.70,
+            r_cov: 1.33,
+        },
+        26 => EeqParams {
+            chi: 1.83,
+            eta: 7.90,
+            r_eeq: 1.70,
+            r_cov: 1.24,
+        },
+        29 => EeqParams {
+            chi: 1.90,
+            eta: 7.73,
+            r_eeq: 1.60,
+            r_cov: 1.32,
+        },
+        30 => EeqParams {
+            chi: 1.65,
+            eta: 9.39,
+            r_eeq: 1.65,
+            r_cov: 1.22,
+        },
+        _ => EeqParams {
+            chi: 2.20,
+            eta: 10.0,
+            r_eeq: 1.50,
+            r_cov: 1.00,
+        },
     }
 }
 
@@ -74,10 +154,7 @@ pub fn get_eeq_params(z: u8) -> EeqParams {
 ///
 /// Uses a Fermi-type counting function:
 /// CN_i = Σ_{j≠i} 1 / (1 + exp(-16 * (r_cov_ij/r_ij - 1)))
-pub fn fractional_coordination(
-    elements: &[u8],
-    positions: &[[f64; 3]],
-) -> Vec<f64> {
+pub fn fractional_coordination(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
     let n = elements.len();
     let mut cn = vec![0.0; n];
 
@@ -192,11 +269,7 @@ mod tests {
     use super::*;
 
     fn water_positions() -> Vec<[f64; 3]> {
-        vec![
-            [0.0, 0.0, 0.0],
-            [0.757, 0.586, 0.0],
-            [-0.757, 0.586, 0.0],
-        ]
+        vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]]
     }
 
     #[test]
