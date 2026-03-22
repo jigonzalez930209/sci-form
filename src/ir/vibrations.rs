@@ -178,6 +178,24 @@ fn compute_ir_intensities(
     method: HessianMethod,
     delta: f64,
 ) -> Result<Vec<f64>, String> {
+    #[cfg(feature = "parallel")]
+    {
+        compute_ir_intensities_parallel(elements, positions, normal_modes, method, delta)
+    }
+    #[cfg(not(feature = "parallel"))]
+    {
+        compute_ir_intensities_sequential(elements, positions, normal_modes, method, delta)
+    }
+}
+
+#[cfg(not(feature = "parallel"))]
+fn compute_ir_intensities_sequential(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    normal_modes: &DMatrix<f64>,
+    method: HessianMethod,
+    delta: f64,
+) -> Result<Vec<f64>, String> {
     let n_atoms = elements.len();
     let n_modes = normal_modes.ncols();
     let masses: Vec<f64> = elements.iter().map(|&z| atomic_mass(z)).collect();
@@ -185,7 +203,6 @@ fn compute_ir_intensities(
     let mut intensities = Vec::with_capacity(n_modes);
 
     for k in 0..n_modes {
-        // Displace along normal mode k
         let mut pos_plus: Vec<[f64; 3]> = positions.to_vec();
         let mut pos_minus: Vec<[f64; 3]> = positions.to_vec();
 
@@ -201,18 +218,61 @@ fn compute_ir_intensities(
         let mu_plus = compute_dipole_vector(elements, &pos_plus, method)?;
         let mu_minus = compute_dipole_vector(elements, &pos_minus, method)?;
 
-        // dμ/dQ ≈ (μ+ - μ-) / (2δ)
         let dmu_dq: Vec<f64> = (0..3)
             .map(|c| (mu_plus[c] - mu_minus[c]) / (2.0 * delta))
             .collect();
 
-        // I ∝ |dμ/dQ|² — convert to km/mol with empirical scaling
         let intensity = dmu_dq.iter().map(|x| x * x).sum::<f64>();
-        // Scale: Debye²/Å²·amu → km/mol (empirical: ~42.256)
         intensities.push(intensity * 42.256);
     }
 
     Ok(intensities)
+}
+
+/// Parallel IR intensities via rayon — each mode's dipole derivative
+/// displacement is independent.
+#[cfg(feature = "parallel")]
+fn compute_ir_intensities_parallel(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    normal_modes: &DMatrix<f64>,
+    method: HessianMethod,
+    delta: f64,
+) -> Result<Vec<f64>, String> {
+    use rayon::prelude::*;
+
+    let n_atoms = elements.len();
+    let n_modes = normal_modes.ncols();
+    let masses: Vec<f64> = elements.iter().map(|&z| atomic_mass(z)).collect();
+
+    let results: Vec<Result<f64, String>> = (0..n_modes)
+        .into_par_iter()
+        .map(|k| {
+            let mut pos_plus: Vec<[f64; 3]> = positions.to_vec();
+            let mut pos_minus: Vec<[f64; 3]> = positions.to_vec();
+
+            for i in 0..n_atoms {
+                let sqrt_m = masses[i].sqrt();
+                for c in 0..3 {
+                    let disp = normal_modes[(3 * i + c, k)] * delta / sqrt_m;
+                    pos_plus[i][c] += disp;
+                    pos_minus[i][c] -= disp;
+                }
+            }
+
+            let mu_plus = compute_dipole_vector(elements, &pos_plus, method)?;
+            let mu_minus = compute_dipole_vector(elements, &pos_minus, method)?;
+
+            let dmu_dq: Vec<f64> = (0..3)
+                .map(|c| (mu_plus[c] - mu_minus[c]) / (2.0 * delta))
+                .collect();
+
+            let intensity = dmu_dq.iter().map(|x| x * x).sum::<f64>();
+            Ok(intensity * 42.256)
+        })
+        .collect();
+
+    results.into_iter().collect()
 }
 
 /// Lorentzian line shape: L(x) = (1/π) · γ / [(x - x₀)² + γ²]
