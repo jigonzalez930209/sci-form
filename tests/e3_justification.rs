@@ -16,9 +16,7 @@
 
 #[cfg(test)]
 mod eeq_justification {
-    use sci_form::charges_eeq::{
-        compute_eeq_charges, compute_eeq_energy, EeqConfig,
-    };
+    use sci_form::charges_eeq::{compute_eeq_charges, compute_eeq_energy, EeqConfig};
 
     /// Water molecule test geometry (Å).
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -301,7 +299,7 @@ mod alpb_justification {
 #[cfg(test)]
 mod stda_justification {
     use nalgebra::DMatrix;
-    use sci_form::spectroscopy::{compute_stda, StdaConfig, ScfInput};
+    use sci_form::spectroscopy::{compute_stda, ScfInput, StdaConfig};
 
     fn mock_scf(n_basis: usize, n_electrons: usize) -> ScfInput {
         let mut energies = Vec::with_capacity(n_basis);
@@ -325,7 +323,10 @@ mod stda_justification {
         let basis_to_atom: Vec<usize> = (0..10).collect();
         let config = StdaConfig::default();
         let result = compute_stda(&scf, &basis_to_atom, &positions, &config);
-        assert!(!result.transitions.is_empty(), "sTDA should produce transitions");
+        assert!(
+            !result.transitions.is_empty(),
+            "sTDA should produce transitions"
+        );
     }
 
     #[test]
@@ -386,8 +387,7 @@ mod stda_justification {
 #[cfg(test)]
 mod giao_justification {
     use nalgebra::DMatrix;
-    use sci_form::spectroscopy::{compute_nmr_shieldings, shieldings_to_shifts, ScfInput,
-    };
+    use sci_form::spectroscopy::{compute_nmr_shieldings, shieldings_to_shifts, ScfInput};
 
     fn h2_system() -> (Vec<u8>, Vec<[f64; 3]>, ScfInput, Vec<usize>) {
         let elements = vec![1, 1];
@@ -511,8 +511,7 @@ mod integration {
 
         // Step 3: ALPB solvation using EEQ charges
         let alpb_config = AlpbConfig::default();
-        let solv =
-            compute_alpb_solvation(&elements, &positions, &charges.charges, &alpb_config);
+        let solv = compute_alpb_solvation(&elements, &positions, &charges.charges, &alpb_config);
         assert!(
             solv.total_energy < 0.0,
             "Methanol in water should have negative solvation energy: {:.4}",
@@ -520,7 +519,10 @@ mod integration {
         );
 
         println!("Pipeline results for methanol:");
-        println!("  EEQ charges: O={:.3}, C={:.3}", charges.charges[1], charges.charges[0]);
+        println!(
+            "  EEQ charges: O={:.3}, C={:.3}",
+            charges.charges[1], charges.charges[0]
+        );
         println!("  D4 dispersion: {:.4} kcal/mol", d4.total_kcal_mol);
         println!("  ALPB solvation: {:.4} kcal/mol", solv.total_energy);
     }
@@ -536,12 +538,8 @@ mod integration {
         ];
 
         let eeq = compute_eeq_charges(&elements, &positions, &EeqConfig::default());
-        let solv = compute_alpb_solvation(
-            &elements,
-            &positions,
-            &eeq.charges,
-            &AlpbConfig::default(),
-        );
+        let solv =
+            compute_alpb_solvation(&elements, &positions, &eeq.charges, &AlpbConfig::default());
 
         // Water in water: electrostatic component should be stabilizing
         assert!(solv.electrostatic_energy < 0.0);

@@ -6,3 +6,5 @@ mod test_10k;
 mod test_chembl_10k;
 #[path = "benchmarks/test_comprehensive_1k_benchmark.rs"]
 mod test_comprehensive_1k_benchmark;
+#[path = "benchmarks/test_new_features_bench.rs"]
+mod test_new_features_bench;
