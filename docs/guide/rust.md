@@ -6,14 +6,21 @@ Add sci-form to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sci-form = "0.1"
+sci-form = "0.9"
 ```
 
 For parallel batch processing, enable the `parallel` feature:
 
 ```toml
 [dependencies]
-sci-form = { version = "0.1", features = ["parallel"] }
+sci-form = { version = "0.9", features = ["parallel"] }
+```
+
+For GPU acceleration (experimental):
+
+```toml
+[dependencies]
+sci-form = { version = "0.9", features = ["experimental-gpu"] }
 ```
 
 ## Core Types
@@ -98,7 +105,7 @@ println!("Atoms: {}, Bonds: {}", mol.graph.node_count(), mol.graph.edge_count())
 ### `version() → String`
 
 ```rust
-println!("{}", sci_form::version()); // "sci-form 0.1.0"
+println!("{}", sci_form::version()); // "sci-form 0.9.1"
 ```
 
 ## Working with Coordinates
@@ -126,3 +133,51 @@ let result = sci_form::embed("CCO", 42);
 let json = serde_json::to_string_pretty(&result).unwrap();
 println!("{}", json);
 ```
+
+## Quantum Chemistry Pipeline
+
+```rust
+let conf = sci_form::embed("c1ccccc1", 42);
+let pos: Vec<[f64;3]> = conf.coords.chunks(3).map(|c| [c[0],c[1],c[2]]).collect();
+
+// PM3 semi-empirical (supports transition metals via PM3(tm))
+let pm3 = sci_form::compute_pm3(&conf.elements, &pos).unwrap();
+println!("PM3 HOF: {:.2} kcal/mol, gap: {:.3} eV", pm3.heat_of_formation, pm3.gap);
+
+// GFN-xTB family
+let xtb = sci_form::compute_xtb(&conf.elements, &pos).unwrap();
+let gfn1 = sci_form::xtb::gfn1::solve_gfn1(&conf.elements, &pos).unwrap();
+let gfn2 = sci_form::xtb::gfn2::solve_gfn2(&conf.elements, &pos).unwrap();
+println!("GFN2 gap: {:.3} eV, D4: {:.4} eV", gfn2.gap, gfn2.dispersion_energy);
+
+// HF-3c with CISD excited states
+let hf = sci_form::solve_hf3c(&conf.elements, &pos, &Default::default()).unwrap();
+println!("HF-3c energy: {:.4} eV, converged: {}", hf.energy, hf.converged);
+```
+
+## 3D Descriptors & ML Models
+
+```rust
+use sci_form::ml::whim::{compute_whim, WhimWeighting};
+use sci_form::ml::advanced_models::*;
+
+let whim = compute_whim(&conf.elements, &pos, WhimWeighting::Mass);
+println!("WHIM spread: {:.3}", whim.total_spread);
+
+// Train a Random Forest
+let rf_config = RandomForestConfig { n_trees: 100, ..Default::default() };
+let rf = train_random_forest(&features, &targets, &rf_config);
+let pred = rf.predict(&new_sample);
+```
+
+## Crystallographic Materials
+
+```rust
+use sci_form::materials::space_groups::space_group_by_number;
+
+let sg = space_group_by_number(225).unwrap(); // Fm-3m
+println!("{}: {} ({})", sg.number, sg.symbol, sg.crystal_system);
+let equiv = sg.generate_equivalent_positions(&[0.0, 0.0, 0.0]);
+```
+
+→ See the [Rust API reference](/api/rust) for all functions and types.

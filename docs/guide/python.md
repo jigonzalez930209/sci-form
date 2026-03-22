@@ -74,7 +74,7 @@ Returns a dict:
 ### `version() → str`
 
 ```python
-print(sci_form.version())  # "sci-form 0.1.0"
+print(sci_form.version())  # "sci-form 0.9.1"
 ```
 
 ## ConformerResult
@@ -280,3 +280,59 @@ result = sci_form.embed("c1ccccc1")
 coords = np.array(result.coords).reshape(-1, 3)
 print(coords.shape)  # (12, 3)
 ```
+
+## Quantum Chemistry
+
+```python
+from sci_form import embed, pm3_calculate, xtb_calculate
+
+conf = embed("CCO", seed=42)
+
+# PM3 semi-empirical (supports transition metals via PM3(tm))
+pm3 = pm3_calculate(conf.elements, conf.coords)
+print(f"PM3 HOF: {pm3.heat_of_formation:.2f} kcal/mol, gap: {pm3.gap:.3f} eV")
+
+# GFN-xTB
+xtb = xtb_calculate(conf.elements, conf.coords)
+print(f"xTB gap: {xtb.gap:.3f} eV, converged: {xtb.converged}")
+
+# HF-3c
+from sci_form import hf3c_calculate
+hf = hf3c_calculate(conf.elements, conf.coords)
+```
+
+## Spectroscopy
+
+```python
+from sci_form import ir_spectrum, stda_uvvis, nmr_spectrum
+
+conf = embed("CCO", seed=42)
+
+# IR spectrum
+ir = ir_spectrum(conf.elements, conf.coords, method="pm3")
+print(f"IR peaks: {len(ir.peaks)}")
+
+# UV-Vis
+uv = stda_uvvis(conf.elements, conf.coords)
+
+# NMR
+nmr = nmr_spectrum("CCO", nucleus="1H")
+```
+
+## Reactivity & Stereochemistry
+
+```python
+from sci_form import stereo_analysis, fukui_descriptors, empirical_pka
+
+# Stereochemistry (R/S, E/Z, helical, atropisomeric)
+stereo = stereo_analysis("C(F)(Cl)(Br)I")
+print(f"Stereocenters: {stereo.n_stereocenters}")
+
+# Fukui functions
+fukui = fukui_descriptors(conf.elements, conf.coords)
+
+# Empirical pKa
+pka = empirical_pka("CC(=O)O")
+```
+
+→ See the [Python API reference](/api/python) for all functions.

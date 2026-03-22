@@ -679,6 +679,99 @@ Heuristic to pick the optimal worker count.
 
 ---
 
+## Semi-Empirical QM
+
+### `compute_pm3`
+
+```typescript
+function compute_pm3(elements: string, coords_flat: string): string
+```
+
+PM3 NDDO semi-empirical SCF. Supports PM3(tm) transition metals.
+
+**Returns JSON:** `{orbital_energies, electronic_energy, nuclear_repulsion, total_energy, heat_of_formation, n_basis, n_electrons, homo_energy, lumo_energy, gap, mulliken_charges, scf_iterations, converged}`
+
+```typescript
+const pm3 = JSON.parse(compute_pm3(elements, coords));
+console.log(`HOF: ${pm3.heat_of_formation.toFixed(2)} kcal/mol`);
+```
+
+### `compute_xtb`
+
+```typescript
+function compute_xtb(elements: string, coords_flat: string): string
+```
+
+GFN0-xTB tight-binding with SCC. Supports 25 elements.
+
+**Returns JSON:** `{orbital_energies, electronic_energy, repulsive_energy, total_energy, n_basis, n_electrons, homo_energy, lumo_energy, gap, mulliken_charges, scc_iterations, converged}`
+
+---
+
+## Bond Orders & Reactivity
+
+### `compute_bond_orders`
+
+```typescript
+function compute_bond_orders(elements: string, coords_flat: string): string
+```
+
+**Returns JSON:** `{atom_pairs, distances, wiberg, mayer, wiberg_valence, mayer_valence}`
+
+### `compute_frontier_descriptors`
+
+```typescript
+function compute_frontier_descriptors(elements: string, coords_flat: string): string
+```
+
+**Returns JSON:** `{homo_atom_contributions, lumo_atom_contributions, dual_descriptor, homo_energy, lumo_energy, gap}`
+
+### `compute_fukui_descriptors`
+
+```typescript
+function compute_fukui_descriptors(elements: string, coords_flat: string): string
+```
+
+**Returns JSON:** `{condensed_atom_indices, condensed_f_plus, condensed_f_minus, condensed_f_radical, dual_descriptor, gap}`
+
+### `compute_reactivity_ranking`
+
+```typescript
+function compute_reactivity_ranking(elements: string, coords_flat: string): string
+```
+
+**Returns JSON:** `{nucleophilic_attack_sites, electrophilic_attack_sites, radical_attack_sites}`
+
+### `compute_empirical_pka`
+
+```typescript
+function compute_empirical_pka(smiles: string): string
+```
+
+**Returns JSON:** `{acidic_sites, basic_sites}`
+
+---
+
+## ML Properties
+
+### `compute_ml_properties`
+
+```typescript
+function compute_ml_properties(smiles: string): string
+```
+
+**Returns JSON:** `{logp, molar_refractivity, log_solubility, lipinski_violations, lipinski_passes, druglikeness}`
+
+### `compute_molecular_descriptors`
+
+```typescript
+function compute_molecular_descriptors(smiles: string): string
+```
+
+**Returns JSON:** `{molecular_weight, n_heavy_atoms, n_hydrogens, n_bonds, n_rotatable_bonds, n_hbd, n_hba, fsp3, wiener_index, n_rings, n_aromatic, balaban_j, ...}`
+
+---
+
 ## Stereochemistry
 
 ### `analyze_stereo`

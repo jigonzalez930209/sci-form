@@ -3,12 +3,21 @@
 **sci-form** is a high-performance computational chemistry library written in **pure Rust** that provides:
 
 1. **3D Molecular Conformer Generation** — SMILES → 3D coordinates via ETKDGv2 algorithm
-2. **Semi-Empirical Quantum Chemistry** — EHT, PM3 (NDDO), GFN-xTB (tight-binding with 25 elements)
-3. **Molecular Properties** — HOMO/LUMO gaps, charges, dipole moments, ESP grids, DOS/PDOS
-4. **Force Fields** — UFF and MMFF94 energy evaluation + strain analysis
-5. **Machine Learning** — Topology-only descriptors, LogP, solubility, Lipinski Ro5, druglikeness
-6. **Molecular Alignment** — Kabsch SVD + quaternion optimal superposition (RMSD)
-7. **Materials** — Periodic unit cells, SBU topology, framework assembly (MOF-type)
+2. **Semi-Empirical Quantum Chemistry** — EHT, PM3/PM3(tm), GFN0/GFN1/GFN2-xTB
+3. **Ab-initio Methods** — HF-3c (D3+gCP+SRB), CISD excited states
+4. **Neural Network Potentials** — ANI-2x, ANI-TM (24 elements incl. transition metals)
+5. **Molecular Properties** — HOMO/LUMO gaps, charges, dipole moments, ESP grids, DOS/PDOS, NPA/NBO
+6. **Force Fields** — UFF and MMFF94 energy evaluation + strain analysis
+7. **Machine Learning** — LogP, solubility, Lipinski, druglikeness, Random Forest, Gradient Boosting
+8. **3D Molecular Descriptors** — WHIM, RDF, GETAWAY
+9. **Spectroscopy** — NMR (¹H, ¹³C shifts, J-coupling), IR (vibrational analysis), UV-Vis (sTDA)
+10. **Stereochemistry** — CIP priorities, R/S, E/Z, helical chirality (M/P), atropisomeric axes
+11. **Molecular Alignment** — Kabsch SVD + quaternion optimal superposition (RMSD)
+12. **Solvation** — Non-polar SASA, Generalized Born (HCT) electrostatic
+13. **Materials** — Unit cells, 230 ITC space groups, framework assembly, geometry optimization with PBC
+14. **Periodic Systems** — PBC-aware bonding, hapticity detection (metallocenes)
+15. **Reaction Transforms** — SMIRKS atom-mapped reactant→product patterns
+16. **Fingerprints & Clustering** — ECFP/Morgan, Tanimoto, Butina RMSD clustering
 
 Everything is available from **four entry points**: Rust, Python, TypeScript/WASM, and CLI — with **no C++ dependencies** and **native performance**.
 
@@ -22,9 +31,16 @@ Everything is available from **four entry points**: Rust, Python, TypeScript/WAS
 | **Conformer Accuracy** | 0.064 Å avg RMSD | — | ~0.5 Å avg RMSD |
 | **Conformer Speed** | 60 mol/s | ~50 mol/s | ~30 mol/s |
 | **EHT / DOS / ESP** | ✅ Built-in | Partial (custom) | ❌ |
-| **PM3 / xTB** | ✅ **NEW in v0.4** | ❌ | ❌ |
-| **Transition Metals** | ✅ Calibrated | Limited | Limited |
+| **PM3 / xTB / HF-3c** | ✅ Built-in | ❌ | ❌ |
+| **GFN1/GFN2-xTB** | ✅ Built-in | ❌ | ❌ |
+| **ANI Neural Potentials** | ✅ ANI-2x + ANI-TM | ❌ | ❌ |
+| **CISD Excited States** | ✅ Built-in | ❌ | ❌ |
+| **NMR / IR / UV-Vis** | ✅ Built-in | ❌ | ❌ |
+| **Transition Metals** | ✅ 24 elements | Limited | Limited |
 | **MMFF94** | ✅ Pure Rust | ✅ C++ only | ✅ C++ only |
+| **3D Descriptors** | ✅ WHIM/RDF/GETAWAY | Partial | ❌ |
+| **ML Models** | ✅ RF + GBM | ❌ | ❌ |
+| **Space Groups** | ✅ 230 ITC | ❌ | ❌ |
 | **Materials (MOF)** | ✅ Built-in | ❌ | Partial |
 | **Binary Size** | ~2 MB | ~100 MB | ~50 MB |
 
