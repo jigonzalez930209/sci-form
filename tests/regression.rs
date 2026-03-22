@@ -32,6 +32,8 @@ mod test_gradient_check;
 mod test_gradient_perterm;
 #[path = "regression/test_metal_experimental_geometry.rs"]
 mod test_metal_experimental_geometry;
+#[path = "regression/test_new_features.rs"]
+mod test_new_features;
 #[path = "regression/test_new_pipeline.rs"]
 mod test_new_pipeline;
 #[path = "regression/test_parallel_public_api.rs"]
@@ -53,63 +55,49 @@ mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
 
-#[cfg(feature = "experimental-cga")]
+#[cfg(feature = "alpha-cga")]
 #[path = "experimental/test_cga.rs"]
 mod test_cga;
 
-#[cfg(feature = "experimental-randnla")]
+#[cfg(feature = "beta-randnla")]
 #[path = "experimental/test_randnla.rs"]
 mod test_randnla;
 
-#[cfg(feature = "experimental-riemannian")]
+#[cfg(feature = "beta-riemannian")]
 #[path = "experimental/test_riemannian.rs"]
 mod test_riemannian;
 
-#[cfg(feature = "experimental-kpm")]
+#[cfg(feature = "beta-kpm")]
 #[path = "experimental/test_kpm.rs"]
 mod test_kpm;
 
-#[cfg(feature = "experimental-eeq")]
+// EEQ, ALPB, D4 promoted to core — always compiled
 #[path = "experimental/test_eeq.rs"]
 mod test_eeq;
 
-#[cfg(feature = "experimental-alpb")]
 #[path = "experimental/test_alpb.rs"]
 mod test_alpb;
 
-#[cfg(feature = "experimental-d4")]
 #[path = "experimental/test_d4.rs"]
 mod test_d4;
 
-#[cfg(feature = "experimental-sdr")]
+#[cfg(feature = "alpha-sdr")]
 #[path = "experimental/test_sdr.rs"]
 mod test_sdr;
 
-#[cfg(feature = "experimental-mbh")]
+#[cfg(feature = "beta-mbh")]
 #[path = "experimental/test_mbh.rs"]
 mod test_mbh;
 
-#[cfg(feature = "experimental-cpm")]
+#[cfg(feature = "beta-cpm")]
 #[path = "experimental/test_cpm.rs"]
 mod test_cpm;
 
-#[cfg(feature = "experimental-gsm")]
+#[cfg(feature = "alpha-gsm")]
 #[path = "experimental/test_gsm.rs"]
 mod test_gsm;
 
-#[cfg(any(
-    feature = "experimental-cga",
-    feature = "experimental-randnla",
-    feature = "experimental-riemannian",
-    feature = "experimental-kpm",
-    feature = "experimental-eeq",
-    feature = "experimental-alpb",
-    feature = "experimental-d4",
-    feature = "experimental-sdr",
-    feature = "experimental-mbh",
-    feature = "experimental-cpm",
-    feature = "experimental-gsm"
-))]
+// Benchmarks — always compiled (EEQ/D4/ALPB are core, rest behind alpha/beta flags)
 #[path = "experimental/test_benchmarks.rs"]
 mod test_benchmarks;
 #[path = "regression/test_experimental_comparison.rs"]
