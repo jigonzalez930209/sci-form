@@ -14,11 +14,11 @@ mod sdr_tests {
 
     #[test]
     fn test_psd_projection_removes_negatives() {
-        let m = nalgebra::DMatrix::from_row_slice(3, 3, &[
-            2.0, 1.0, 0.0,
-            1.0, -1.0, 0.0,
-            0.0, 0.0, 1.0,
-        ]);
+        let m = nalgebra::DMatrix::from_row_slice(
+            3,
+            3,
+            &[2.0, 1.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, 1.0],
+        );
         let (p, neg) = project_psd(&m);
         assert!(neg > 0, "Should have removed negative eigenvalues");
         let eigen = p.symmetric_eigen();
@@ -30,11 +30,7 @@ mod sdr_tests {
     #[test]
     fn test_warm_start_gram_preserves_structure() {
         // Known coordinates
-        let coords: Vec<[f64; 3]> = vec![
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.5, 0.866, 0.0],
-        ];
+        let coords: Vec<[f64; 3]> = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.5, 0.866, 0.0]];
         let mut pairs = Vec::new();
         for i in 0..3 {
             for j in (i + 1)..3 {
@@ -50,7 +46,11 @@ mod sdr_tests {
         // Gram matrix from valid distances should be approximately PSD
         let eigen = gram.symmetric_eigen();
         let min_eval = eigen.eigenvalues.min();
-        assert!(min_eval > -0.1, "Should be approximately PSD: min={}", min_eval);
+        assert!(
+            min_eval > -0.1,
+            "Should be approximately PSD: min={}",
+            min_eval
+        );
     }
 
     #[test]
@@ -85,7 +85,10 @@ mod sdr_tests {
                 assert!(
                     (d_orig - d_new).abs() < 0.2,
                     "Distance ({},{}) orig={:.3} new={:.3}",
-                    i, j, d_orig, d_new
+                    i,
+                    j,
+                    d_orig,
+                    d_new
                 );
             }
         }
@@ -104,8 +107,12 @@ mod sdr_tests {
     fn test_sdr_embed_tetrahedron_distances() {
         let d = 2.0;
         let pairs = vec![
-            (0, 1, d), (0, 2, d), (0, 3, d),
-            (1, 2, d), (1, 3, d), (2, 3, d),
+            (0, 1, d),
+            (0, 2, d),
+            (0, 3, d),
+            (1, 2, d),
+            (1, 3, d),
+            (2, 3, d),
         ];
         let result = sdr_embed(4, &pairs, &SdrConfig::default());
         // All pairwise distances should be approximately d
@@ -116,7 +123,11 @@ mod sdr_tests {
             let da = (dx * dx + dy * dy + dz * dz).sqrt();
             assert!(
                 (da - dt).abs() < 1.0,
-                "Distance ({},{}) target={:.2} actual={:.2}", i, j, dt, da
+                "Distance ({},{}) target={:.2} actual={:.2}",
+                i,
+                j,
+                dt,
+                da
             );
         }
     }
@@ -124,7 +135,14 @@ mod sdr_tests {
     #[test]
     fn test_sdr_convergence_info() {
         let pairs = vec![(0, 1, 1.0), (0, 2, 1.0), (1, 2, 1.0)];
-        let result = sdr_embed(3, &pairs, &SdrConfig { max_iter: 50, ..Default::default() });
+        let result = sdr_embed(
+            3,
+            &pairs,
+            &SdrConfig {
+                max_iter: 50,
+                ..Default::default()
+            },
+        );
         assert!(result.convergence.iterations > 0);
         assert!(result.convergence.iterations <= 50);
     }
@@ -133,13 +151,14 @@ mod sdr_tests {
     fn test_alternating_projections_improves() {
         // Start with a non-PSD matrix and check that AP fixes it
         let n = 3;
-        let x = nalgebra::DMatrix::from_row_slice(n, n, &[
-            1.0, 2.0, 0.5,
-            2.0, 1.0, 0.5,
-            0.5, 0.5, 1.0,
-        ]);
+        let x =
+            nalgebra::DMatrix::from_row_slice(n, n, &[1.0, 2.0, 0.5, 2.0, 1.0, 0.5, 0.5, 0.5, 1.0]);
         let pairs = vec![(0, 1, 1.0), (0, 2, 1.5), (1, 2, 1.2)];
-        let config = SdrConfig { max_iter: 100, tol: 1e-4, ..Default::default() };
+        let config = SdrConfig {
+            max_iter: 100,
+            tol: 1e-4,
+            ..Default::default()
+        };
         let (result, _conv) = alternating_projections(&x, &pairs, &config);
 
         // Result should be PSD

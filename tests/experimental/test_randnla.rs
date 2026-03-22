@@ -94,7 +94,10 @@ mod randnla_tests {
             assert!(
                 (gram[(i, i)] - 1.0).abs() < tol,
                 "E[Ω^T Ω] diagonal ({},{}) = {:.4}, expected ~1 ± {:.4}",
-                i, i, gram[(i, i)], tol
+                i,
+                i,
+                gram[(i, i)],
+                tol
             );
         }
     }
@@ -142,7 +145,8 @@ mod randnla_tests {
         assert!(
             rel_err < 0.50,
             "Relative Frobenius error = {:.2}% with k={}, expected < 50%",
-            rel_err * 100.0, k
+            rel_err * 100.0,
+            k
         );
     }
 
@@ -166,7 +170,9 @@ mod randnla_tests {
             assert!(
                 (product[(i, i)] - 1.0).abs() < 0.15,
                 "S^(-1/2) S S^(-1/2) diagonal ({},{}) = {:.4}, expected ~1",
-                i, i, product[(i, i)]
+                i,
+                i,
+                product[(i, i)]
             );
         }
     }
@@ -198,12 +204,14 @@ mod randnla_tests {
         assert!(
             ((homo_exact - homo_rand) / homo_exact).abs() < 0.01,
             "HOMO error: exact={:.6}, rand={:.6}",
-            homo_exact, homo_rand
+            homo_exact,
+            homo_rand
         );
         assert!(
             (gap_exact - gap_rand).abs() < 0.5,
             "Gap error: exact={:.6}, rand={:.6}",
-            gap_exact, gap_rand
+            gap_exact,
+            gap_rand
         );
     }
 
@@ -291,7 +299,9 @@ mod randnla_tests {
         assert!(
             (gap_exact - gap_rand).abs() < 0.01,
             "Gap error: exact={:.6}, rand={:.6}, diff={:.6}",
-            gap_exact, gap_rand, (gap_exact - gap_rand).abs()
+            gap_exact,
+            gap_rand,
+            (gap_exact - gap_rand).abs()
         );
     }
 }

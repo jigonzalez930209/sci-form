@@ -2,8 +2,8 @@
 
 #[cfg(feature = "experimental-kpm")]
 mod kpm_tests {
-    use sci_form::beta::kpm::*;
     use nalgebra::{DMatrix, SymmetricEigen};
+    use sci_form::beta::kpm::*;
 
     fn huckel_chain(n: usize, alpha: f64, beta: f64) -> DMatrix<f64> {
         let mut h = DMatrix::zeros(n, n);
@@ -26,8 +26,13 @@ mod kpm_tests {
         let eigen = SymmetricEigen::new(h);
         for i in 0..eigen.eigenvalues.len() {
             let e = eigen.eigenvalues[i];
-            assert!(e >= e_min && e <= e_max,
-                "Eigenvalue {:.4} outside bounds [{:.4}, {:.4}]", e, e_min, e_max);
+            assert!(
+                e >= e_min && e <= e_max,
+                "Eigenvalue {:.4} outside bounds [{:.4}, {:.4}]",
+                e,
+                e_min,
+                e_max
+            );
         }
     }
 
@@ -38,8 +43,11 @@ mod kpm_tests {
         let h_t = rescale_matrix(&h, e_min, e_max);
         let eigen = SymmetricEigen::new(h_t);
         for i in 0..eigen.eigenvalues.len() {
-            assert!(eigen.eigenvalues[i].abs() <= 1.0 + 1e-10,
-                "Rescaled eigenvalue {:.6} > 1", eigen.eigenvalues[i]);
+            assert!(
+                eigen.eigenvalues[i].abs() <= 1.0 + 1e-10,
+                "Rescaled eigenvalue {:.6} > 1",
+                eigen.eigenvalues[i]
+            );
         }
     }
 
@@ -74,7 +82,11 @@ mod kpm_tests {
     #[test]
     fn e4_2a_kpm_dos_nonnegative() {
         let h = huckel_chain(30, -5.0, -1.5);
-        let config = KpmConfig { order: 100, n_vectors: 0, ..Default::default() };
+        let config = KpmConfig {
+            order: 100,
+            n_vectors: 0,
+            ..Default::default()
+        };
         let dos = compute_kpm_dos(&h, &config, -10.0, 0.0, 200);
         for &d in &dos.total_dos {
             assert!(d >= -1e-10, "Negative DOS value: {}", d);
@@ -86,16 +98,23 @@ mod kpm_tests {
         // Integral of DOS over band = N (number of states)
         let n = 20;
         let h = huckel_chain(n, 0.0, -1.0);
-        let config = KpmConfig { order: 120, n_vectors: 0, ..Default::default() };
+        let config = KpmConfig {
+            order: 120,
+            n_vectors: 0,
+            ..Default::default()
+        };
         let dos = compute_kpm_dos(&h, &config, -3.0, 3.0, 500);
 
-        let de = (dos.energies.last().unwrap() - dos.energies.first().unwrap()) / (dos.energies.len() - 1) as f64;
+        let de = (dos.energies.last().unwrap() - dos.energies.first().unwrap())
+            / (dos.energies.len() - 1) as f64;
         let integral: f64 = dos.total_dos.iter().sum::<f64>() * de;
 
         // Should be close to N
         assert!(
             (integral - n as f64).abs() < n as f64 * 0.3,
-            "DOS integral = {:.2}, expected ~{}", integral, n
+            "DOS integral = {:.2}, expected ~{}",
+            integral,
+            n
         );
     }
 
@@ -105,11 +124,18 @@ mod kpm_tests {
         let h = huckel_chain(n, -10.0, -2.0);
         let s = DMatrix::identity(n, n);
         let nuclear_charges = vec![1.0; n];
-        let config = KpmConfig { order: 80, n_vectors: 0, ..Default::default() };
+        let config = KpmConfig {
+            order: 80,
+            n_vectors: 0,
+            ..Default::default()
+        };
         let result = compute_kpm_mulliken(&h, &s, n, &nuclear_charges, &config);
         let total_charge: f64 = result.charges.iter().sum();
-        assert!(total_charge.abs() < 2.0,
-            "Total charge = {:.4}, expected ~0", total_charge);
+        assert!(
+            total_charge.abs() < 2.0,
+            "Total charge = {:.4}, expected ~0",
+            total_charge
+        );
     }
 
     // E4.3 — Validation
@@ -127,19 +153,25 @@ mod kpm_tests {
         let e_lo = -15.0;
         let e_hi = -3.0;
         let step = (e_hi - e_lo) / (n_points - 1) as f64;
-        let exact_dos: Vec<f64> = (0..n_points).map(|i| {
-            let e = e_lo + i as f64 * step;
-            let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
-            let inv_2s2 = 1.0 / (2.0 * sigma * sigma);
-            let mut d = 0.0;
-            for k in 0..eigen.eigenvalues.len() {
-                d += norm * (-(e - eigen.eigenvalues[k]).powi(2) * inv_2s2).exp();
-            }
-            d
-        }).collect();
+        let exact_dos: Vec<f64> = (0..n_points)
+            .map(|i| {
+                let e = e_lo + i as f64 * step;
+                let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
+                let inv_2s2 = 1.0 / (2.0 * sigma * sigma);
+                let mut d = 0.0;
+                for k in 0..eigen.eigenvalues.len() {
+                    d += norm * (-(e - eigen.eigenvalues[k]).powi(2) * inv_2s2).exp();
+                }
+                d
+            })
+            .collect();
 
         // KPM DOS
-        let config = KpmConfig { order: 150, n_vectors: 0, ..Default::default() };
+        let config = KpmConfig {
+            order: 150,
+            n_vectors: 0,
+            ..Default::default()
+        };
         let kpm_dos = compute_kpm_dos(&h, &config, e_lo, e_hi, n_points);
 
         // Compare: L2 relative error
@@ -152,8 +184,15 @@ mod kpm_tests {
 
         // Shapes should correlate (peak positions match)
         let exact_peak = exact_dos.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        let kpm_peak = kpm_dos.total_dos.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        assert!(exact_peak > 0.0 && kpm_peak > 0.0, "Peaks should be positive");
+        let kpm_peak = kpm_dos
+            .total_dos
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(
+            exact_peak > 0.0 && kpm_peak > 0.0,
+            "Peaks should be positive"
+        );
     }
 
     #[test]
@@ -161,7 +200,12 @@ mod kpm_tests {
         // 100-site chain: KPM should still work
         let n = 100;
         let h = huckel_chain(n, 0.0, -1.0);
-        let config = KpmConfig { order: 200, n_vectors: 20, seed: 42, ..Default::default() };
+        let config = KpmConfig {
+            order: 200,
+            n_vectors: 20,
+            seed: 42,
+            ..Default::default()
+        };
         let dos = compute_kpm_dos(&h, &config, -3.0, 3.0, 100);
 
         // Should have nonzero DOS inside band

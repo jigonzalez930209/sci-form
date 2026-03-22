@@ -11,14 +11,18 @@
 
 #[cfg(feature = "experimental-randnla")]
 mod bench_randnla_vs_eht {
-    use sci_form::eht::solve_eht;
     use sci_form::beta::rand_nla::*;
+    use sci_form::eht::solve_eht;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![8, 1, 1],
-            vec![[0.0, 0.0, 0.117], [0.0, 0.757, -0.469], [0.0, -0.757, -0.469]],
+            vec![
+                [0.0, 0.0, 0.117],
+                [0.0, 0.757, -0.469],
+                [0.0, -0.757, -0.469],
+            ],
         )
     }
 
@@ -26,9 +30,15 @@ mod bench_randnla_vs_eht {
         (
             vec![6, 6, 8, 1, 1, 1, 1, 1, 1],
             vec![
-                [0.0, 0.0, 0.0], [1.52, 0.0, 0.0], [2.13, 1.21, 0.0],
-                [-0.36, 1.03, 0.0], [-0.36, -0.51, 0.89], [-0.36, -0.51, -0.89],
-                [1.88, -0.51, 0.89], [1.88, -0.51, -0.89], [3.09, 1.21, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.52, 0.0, 0.0],
+                [2.13, 1.21, 0.0],
+                [-0.36, 1.03, 0.0],
+                [-0.36, -0.51, 0.89],
+                [-0.36, -0.51, -0.89],
+                [1.88, -0.51, 0.89],
+                [1.88, -0.51, -0.89],
+                [3.09, 1.21, 0.0],
             ],
         )
     }
@@ -42,7 +52,10 @@ mod bench_randnla_vs_eht {
         let s = sci_form::eht::overlap::build_overlap_matrix(&basis);
         let h = sci_form::eht::hamiltonian::build_hamiltonian(&basis, &s, None);
 
-        let config = RandNlaConfig { seed: 42, ..Default::default() };
+        let config = RandNlaConfig {
+            seed: 42,
+            ..Default::default()
+        };
         let (rand_energies, _, info) = solve_eht_randnla(&h, &s, &config);
 
         let n = eht.energies.len().min(rand_energies.len());
@@ -58,7 +71,8 @@ mod bench_randnla_vs_eht {
 
         assert!(
             max_dev < 0.1 || info.used_fallback,
-            "Eigenvalue deviation {:.4} eV too large without fallback", max_dev
+            "Eigenvalue deviation {:.4} eV too large without fallback",
+            max_dev
         );
     }
 
@@ -84,9 +98,15 @@ mod bench_randnla_vs_eht {
         };
 
         let gap_dev = (eht_gap - rand_gap).abs();
-        println!("[B1] Ethanol HOMO-LUMO gap: EHT={:.3} eV, RandNLA={:.3} eV, Δ={:.4} eV",
-            eht_gap, rand_gap, gap_dev);
-        assert!(gap_dev < 0.5, "Gap deviation {:.3} eV exceeds tolerance", gap_dev);
+        println!(
+            "[B1] Ethanol HOMO-LUMO gap: EHT={:.3} eV, RandNLA={:.3} eV, Δ={:.4} eV",
+            eht_gap, rand_gap, gap_dev
+        );
+        assert!(
+            gap_dev < 0.5,
+            "Gap deviation {:.3} eV exceeds tolerance",
+            gap_dev
+        );
     }
 
     #[test]
@@ -97,16 +117,24 @@ mod bench_randnla_vs_eht {
         let h = sci_form::eht::hamiltonian::build_hamiltonian(&basis, &s, None);
 
         let t0 = Instant::now();
-        for _ in 0..50 { let _ = solve_eht(&elems, &pos, None); }
+        for _ in 0..50 {
+            let _ = solve_eht(&elems, &pos, None);
+        }
         let eht_time = t0.elapsed().as_micros() as f64 / 50.0;
 
         let config = RandNlaConfig::default();
         let t0 = Instant::now();
-        for _ in 0..50 { let _ = solve_eht_randnla(&h, &s, &config); }
+        for _ in 0..50 {
+            let _ = solve_eht_randnla(&h, &s, &config);
+        }
         let rand_time = t0.elapsed().as_micros() as f64 / 50.0;
 
-        println!("[B1] Timing: EHT={:.0} µs, RandNLA={:.0} µs, ratio={:.2}x",
-            eht_time, rand_time, rand_time / eht_time.max(1.0));
+        println!(
+            "[B1] Timing: EHT={:.0} µs, RandNLA={:.0} µs, ratio={:.2}x",
+            eht_time,
+            rand_time,
+            rand_time / eht_time.max(1.0)
+        );
     }
 }
 
@@ -116,14 +144,18 @@ mod bench_randnla_vs_eht {
 
 #[cfg(feature = "experimental-kpm")]
 mod bench_kpm_vs_eht {
-    use sci_form::eht::solve_eht;
     use sci_form::beta::kpm::*;
+    use sci_form::eht::solve_eht;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![8, 1, 1],
-            vec![[0.0, 0.0, 0.117], [0.0, 0.757, -0.469], [0.0, -0.757, -0.469]],
+            vec![
+                [0.0, 0.0, 0.117],
+                [0.0, 0.757, -0.469],
+                [0.0, -0.757, -0.469],
+            ],
         )
     }
 
@@ -131,9 +163,15 @@ mod bench_kpm_vs_eht {
         (
             vec![6, 6, 8, 1, 1, 1, 1, 1, 1],
             vec![
-                [0.0, 0.0, 0.0], [1.52, 0.0, 0.0], [2.13, 1.21, 0.0],
-                [-0.36, 1.03, 0.0], [-0.36, -0.51, 0.89], [-0.36, -0.51, -0.89],
-                [1.88, -0.51, 0.89], [1.88, -0.51, -0.89], [3.09, 1.21, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.52, 0.0, 0.0],
+                [2.13, 1.21, 0.0],
+                [-0.36, 1.03, 0.0],
+                [-0.36, -0.51, 0.89],
+                [-0.36, -0.51, -0.89],
+                [1.88, -0.51, 0.89],
+                [1.88, -0.51, -0.89],
+                [3.09, 1.21, 0.0],
             ],
         )
     }
@@ -149,10 +187,20 @@ mod bench_kpm_vs_eht {
 
         let (kpm_emin, kpm_emax) = estimate_spectral_bounds(&h);
         let eht_emin = eht.energies.iter().cloned().fold(f64::INFINITY, f64::min);
-        let eht_emax = eht.energies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let eht_emax = eht
+            .energies
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
 
-        println!("[B2] EHT spectral range: [{:.2}, {:.2}] eV", eht_emin, eht_emax);
-        println!("[B2] KPM spectral range: [{:.2}, {:.2}] eV", kpm_emin, kpm_emax);
+        println!(
+            "[B2] EHT spectral range: [{:.2}, {:.2}] eV",
+            eht_emin, eht_emax
+        );
+        println!(
+            "[B2] KPM spectral range: [{:.2}, {:.2}] eV",
+            kpm_emin, kpm_emax
+        );
 
         assert!(kpm_emin <= eht_emin + 1.0, "KPM e_min too high");
         assert!(kpm_emax >= eht_emax - 1.0, "KPM e_max too low");
@@ -166,20 +214,31 @@ mod bench_kpm_vs_eht {
         let s = sci_form::eht::overlap::build_overlap_matrix(&basis);
         let h = sci_form::eht::hamiltonian::build_hamiltonian(&basis, &s, None);
 
-        let config = KpmConfig { order: 200, ..Default::default() };
+        let config = KpmConfig {
+            order: 200,
+            ..Default::default()
+        };
         let dos = compute_kpm_dos(&h, &config, -30.0, 10.0, 500);
 
-        let max_dos = dos.total_dos.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_dos = dos
+            .total_dos
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let peak_idx = dos.total_dos.iter().position(|&v| v == max_dos).unwrap();
         let peak_energy = dos.energies[peak_idx];
 
         let eht = solve_eht(&elems, &pos, None).unwrap();
-        let min_dist: f64 = eht.energies.iter()
+        let min_dist: f64 = eht
+            .energies
+            .iter()
             .map(|&e| (e - peak_energy).abs())
             .fold(f64::INFINITY, f64::min);
 
-        println!("[B2] KPM DOS peak at {:.2} eV, nearest eigenvalue {:.2} eV away",
-            peak_energy, min_dist);
+        println!(
+            "[B2] KPM DOS peak at {:.2} eV, nearest eigenvalue {:.2} eV away",
+            peak_energy, min_dist
+        );
         assert!(min_dist < 5.0, "KPM DOS peak too far from any eigenvalue");
     }
 
@@ -193,7 +252,10 @@ mod bench_kpm_vs_eht {
 
         let eht = solve_eht(&elems, &pos, None).unwrap();
         let nuclear_charges: Vec<f64> = elems.iter().map(|&z| z as f64).collect();
-        let config = KpmConfig { order: 200, ..Default::default() };
+        let config = KpmConfig {
+            order: 200,
+            ..Default::default()
+        };
         let kpm_mull = compute_kpm_mulliken(&h, &s, eht.n_electrons, &nuclear_charges, &config);
 
         let pop = sci_form::compute_population(&elems, &pos).unwrap();
@@ -201,8 +263,8 @@ mod bench_kpm_vs_eht {
         println!("[B2] EHT Mulliken: {:?}", pop.mulliken_charges);
         println!("[B2] KPM Mulliken: {:?}", kpm_mull.charges);
 
-        let o_sign_agree = kpm_mull.charges[0] * pop.mulliken_charges[0] >= 0.0
-            || kpm_mull.charges[0].abs() < 0.1;
+        let o_sign_agree =
+            kpm_mull.charges[0] * pop.mulliken_charges[0] >= 0.0 || kpm_mull.charges[0].abs() < 0.1;
         println!("[B2] O charge sign agreement: {}", o_sign_agree);
     }
 
@@ -215,15 +277,25 @@ mod bench_kpm_vs_eht {
         let h = sci_form::eht::hamiltonian::build_hamiltonian(&basis, &s, None);
 
         let t0 = Instant::now();
-        for _ in 0..50 { let _ = solve_eht(&elems, &pos, None); }
+        for _ in 0..50 {
+            let _ = solve_eht(&elems, &pos, None);
+        }
         let eht_us = t0.elapsed().as_micros() as f64 / 50.0;
 
-        let config = KpmConfig { order: 100, ..Default::default() };
+        let config = KpmConfig {
+            order: 100,
+            ..Default::default()
+        };
         let t0 = Instant::now();
-        for _ in 0..50 { let _ = compute_kpm_dos(&h, &config, -30.0, 10.0, 200); }
+        for _ in 0..50 {
+            let _ = compute_kpm_dos(&h, &config, -30.0, 10.0, 200);
+        }
         let kpm_us = t0.elapsed().as_micros() as f64 / 50.0;
 
-        println!("[B2] Timing: EHT exact={:.0} µs, KPM DOS={:.0} µs", eht_us, kpm_us);
+        println!(
+            "[B2] Timing: EHT exact={:.0} µs, KPM DOS={:.0} µs",
+            eht_us, kpm_us
+        );
     }
 }
 
@@ -239,7 +311,11 @@ mod bench_eeq_vs_gasteiger {
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![8, 1, 1],
-            vec![[0.0, 0.0, 0.117], [0.0, 0.757, -0.469], [0.0, -0.757, -0.469]],
+            vec![
+                [0.0, 0.0, 0.117],
+                [0.0, 0.757, -0.469],
+                [0.0, -0.757, -0.469],
+            ],
         )
     }
 
@@ -247,9 +323,14 @@ mod bench_eeq_vs_gasteiger {
         (
             vec![6, 6, 8, 8, 1, 1, 1, 1],
             vec![
-                [0.0, 0.0, 0.0], [1.52, 0.0, 0.0], [2.08, 1.20, 0.0],
-                [2.08, -1.20, 0.0], [-0.36, 1.03, 0.0], [-0.36, -0.51, 0.89],
-                [-0.36, -0.51, -0.89], [3.05, -1.20, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.52, 0.0, 0.0],
+                [2.08, 1.20, 0.0],
+                [2.08, -1.20, 0.0],
+                [-0.36, 1.03, 0.0],
+                [-0.36, -0.51, 0.89],
+                [-0.36, -0.51, -0.89],
+                [3.05, -1.20, 0.0],
             ],
         )
     }
@@ -263,8 +344,14 @@ mod bench_eeq_vs_gasteiger {
         let gasteiger = sci_form::compute_charges("O").unwrap();
         let eeq = compute_eeq_charges(&elems, &pos, &EeqConfig::default());
 
-        println!("[B3] Gasteiger O={:.4}, H={:.4}", gasteiger.charges[0], gasteiger.charges[1]);
-        println!("[B3] EEQ       O={:.4}, H={:.4}", eeq.charges[0], eeq.charges[1]);
+        println!(
+            "[B3] Gasteiger O={:.4}, H={:.4}",
+            gasteiger.charges[0], gasteiger.charges[1]
+        );
+        println!(
+            "[B3] EEQ       O={:.4}, H={:.4}",
+            eeq.charges[0], eeq.charges[1]
+        );
 
         assert!(gasteiger.charges[0] < 0.0, "Gasteiger O should be negative");
         assert!(eeq.charges[0] < 0.0, "EEQ O should be negative");
@@ -279,7 +366,10 @@ mod bench_eeq_vs_gasteiger {
         let eeq_dev_o = (eeq.charges[0] - WATER_REF_O).abs();
         let gas_dev_o = (gasteiger.charges[0] - WATER_REF_O).abs();
 
-        println!("[B3] Deviation from HF ref (O): EEQ={:.4}, Gasteiger={:.4}", eeq_dev_o, gas_dev_o);
+        println!(
+            "[B3] Deviation from HF ref (O): EEQ={:.4}, Gasteiger={:.4}",
+            eeq_dev_o, gas_dev_o
+        );
         assert!(eeq_dev_o < 1.5, "EEQ deviation too large");
         assert!(gas_dev_o < 1.5, "Gasteiger deviation too large");
     }
@@ -291,14 +381,26 @@ mod bench_eeq_vs_gasteiger {
         let total: f64 = eeq.charges.iter().sum();
 
         println!("[B3] EEQ total charge (acetic acid): {:.6}", total);
-        assert!(total.abs() < 0.01, "EEQ should preserve charge neutrality: {:.6}", total);
+        assert!(
+            total.abs() < 0.01,
+            "EEQ should preserve charge neutrality: {:.6}",
+            total
+        );
     }
 
     #[test]
     fn b3_geometry_dependence() {
         let (elems, _) = water();
-        let pos_normal = vec![[0.0, 0.0, 0.117], [0.0, 0.757, -0.469], [0.0, -0.757, -0.469]];
-        let pos_stretched = vec![[0.0, 0.0, 0.117], [0.0, 1.50, -0.469], [0.0, -0.757, -0.469]];
+        let pos_normal = vec![
+            [0.0, 0.0, 0.117],
+            [0.0, 0.757, -0.469],
+            [0.0, -0.757, -0.469],
+        ];
+        let pos_stretched = vec![
+            [0.0, 0.0, 0.117],
+            [0.0, 1.50, -0.469],
+            [0.0, -0.757, -0.469],
+        ];
 
         let eeq_normal = compute_eeq_charges(&elems, &pos_normal, &EeqConfig::default());
         let eeq_stretched = compute_eeq_charges(&elems, &pos_stretched, &EeqConfig::default());
@@ -313,15 +415,22 @@ mod bench_eeq_vs_gasteiger {
         let (elems, pos) = acetic_acid();
 
         let t0 = Instant::now();
-        for _ in 0..200 { let _ = sci_form::compute_charges("CC(=O)O"); }
+        for _ in 0..200 {
+            let _ = sci_form::compute_charges("CC(=O)O");
+        }
         let gas_us = t0.elapsed().as_micros() as f64 / 200.0;
 
         let config = EeqConfig::default();
         let t0 = Instant::now();
-        for _ in 0..200 { let _ = compute_eeq_charges(&elems, &pos, &config); }
+        for _ in 0..200 {
+            let _ = compute_eeq_charges(&elems, &pos, &config);
+        }
         let eeq_us = t0.elapsed().as_micros() as f64 / 200.0;
 
-        println!("[B3] Timing: Gasteiger={:.0} µs, EEQ={:.0} µs", gas_us, eeq_us);
+        println!(
+            "[B3] Timing: Gasteiger={:.0} µs, EEQ={:.0} µs",
+            gas_us, eeq_us
+        );
     }
 }
 
@@ -338,7 +447,11 @@ mod bench_alpb_vs_gb {
     fn water() -> (Vec<u8>, Vec<[f64; 3]>, Vec<f64>) {
         (
             vec![8, 1, 1],
-            vec![[0.0, 0.0, 0.117], [0.0, 0.757, -0.469], [0.0, -0.757, -0.469]],
+            vec![
+                [0.0, 0.0, 0.117],
+                [0.0, 0.757, -0.469],
+                [0.0, -0.757, -0.469],
+            ],
             vec![-0.834, 0.417, 0.417],
         )
     }
@@ -347,9 +460,15 @@ mod bench_alpb_vs_gb {
         (
             vec![6, 6, 8, 1, 1, 1, 1, 1, 1],
             vec![
-                [0.0, 0.0, 0.0], [1.52, 0.0, 0.0], [2.13, 1.21, 0.0],
-                [-0.36, 1.03, 0.0], [-0.36, -0.51, 0.89], [-0.36, -0.51, -0.89],
-                [1.88, -0.51, 0.89], [1.88, -0.51, -0.89], [3.09, 1.21, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.52, 0.0, 0.0],
+                [2.13, 1.21, 0.0],
+                [-0.36, 1.03, 0.0],
+                [-0.36, -0.51, 0.89],
+                [-0.36, -0.51, -0.89],
+                [1.88, -0.51, 0.89],
+                [1.88, -0.51, -0.89],
+                [3.09, 1.21, 0.0],
             ],
             vec![-0.10, 0.15, -0.68, 0.04, 0.04, 0.04, 0.06, 0.06, 0.39],
         )
@@ -363,13 +482,20 @@ mod bench_alpb_vs_gb {
         let gb = compute_gb_solvation(&elems, &pos, &charges, Some(78.5), Some(1.0), Some(1.4));
         let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default());
 
-        println!("[B4] GB-HCT total: {:.3} kcal/mol", gb.total_energy_kcal_mol);
+        println!(
+            "[B4] GB-HCT total: {:.3} kcal/mol",
+            gb.total_energy_kcal_mol
+        );
         println!("[B4] ALPB   total: {:.3} kcal/mol", alpb.total_energy);
 
-        assert!(gb.total_energy_kcal_mol < 0.0 || gb.electrostatic_energy_kcal_mol < 0.0,
-            "GB should give negative solvation");
-        assert!(alpb.total_energy < 0.0 || alpb.electrostatic_energy < 0.0,
-            "ALPB should give negative solvation");
+        assert!(
+            gb.total_energy_kcal_mol < 0.0 || gb.electrostatic_energy_kcal_mol < 0.0,
+            "GB should give negative solvation"
+        );
+        assert!(
+            alpb.total_energy < 0.0 || alpb.electrostatic_energy < 0.0,
+            "ALPB should give negative solvation"
+        );
     }
 
     #[test]
@@ -381,8 +507,10 @@ mod bench_alpb_vs_gb {
         let gb_dev = (gb.total_energy_kcal_mol - WATER_SOLVATION_REF).abs();
         let alpb_dev = (alpb.total_energy - WATER_SOLVATION_REF).abs();
 
-        println!("[B4] Deviation from exp ({:.1} kcal/mol): GB={:.2}, ALPB={:.2}",
-            WATER_SOLVATION_REF, gb_dev, alpb_dev);
+        println!(
+            "[B4] Deviation from exp ({:.1} kcal/mol): GB={:.2}, ALPB={:.2}",
+            WATER_SOLVATION_REF, gb_dev, alpb_dev
+        );
         assert!(gb_dev < 30.0, "GB deviation too large");
         assert!(alpb_dev < 30.0, "ALPB deviation too large");
     }
@@ -411,7 +539,10 @@ mod bench_alpb_vs_gb {
         let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default());
 
         println!("[B4] Legacy non-polar: {:.4} kcal/mol", np.energy_kcal_mol);
-        println!("[B4] ALPB   non-polar: {:.4} kcal/mol", alpb.nonpolar_energy);
+        println!(
+            "[B4] ALPB   non-polar: {:.4} kcal/mol",
+            alpb.nonpolar_energy
+        );
 
         assert!(np.energy_kcal_mol.abs() < 20.0, "Legacy NP too large");
         assert!(alpb.nonpolar_energy.abs() < 20.0, "ALPB NP too large");
@@ -429,10 +560,15 @@ mod bench_alpb_vs_gb {
 
         let config = AlpbConfig::default();
         let t0 = Instant::now();
-        for _ in 0..100 { let _ = compute_alpb_solvation(&elems, &pos, &charges, &config); }
+        for _ in 0..100 {
+            let _ = compute_alpb_solvation(&elems, &pos, &charges, &config);
+        }
         let alpb_us = t0.elapsed().as_micros() as f64 / 100.0;
 
-        println!("[B4] Timing: GB-HCT={:.0} µs, ALPB={:.0} µs", gb_us, alpb_us);
+        println!(
+            "[B4] Timing: GB-HCT={:.0} µs, ALPB={:.0} µs",
+            gb_us, alpb_us
+        );
     }
 }
 
@@ -448,18 +584,33 @@ mod bench_d4_vs_uff {
     fn benzene_dimer() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![
-                6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1,
-                6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1,
+                6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1, 6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1,
             ],
             vec![
-                [1.40, 0.0, 0.0], [0.70, 1.21, 0.0], [-0.70, 1.21, 0.0],
-                [-1.40, 0.0, 0.0], [-0.70, -1.21, 0.0], [0.70, -1.21, 0.0],
-                [2.48, 0.0, 0.0], [1.24, 2.15, 0.0], [-1.24, 2.15, 0.0],
-                [-2.48, 0.0, 0.0], [-1.24, -2.15, 0.0], [1.24, -2.15, 0.0],
-                [1.40, 0.0, 3.5], [0.70, 1.21, 3.5], [-0.70, 1.21, 3.5],
-                [-1.40, 0.0, 3.5], [-0.70, -1.21, 3.5], [0.70, -1.21, 3.5],
-                [2.48, 0.0, 3.5], [1.24, 2.15, 3.5], [-1.24, 2.15, 3.5],
-                [-2.48, 0.0, 3.5], [-1.24, -2.15, 3.5], [1.24, -2.15, 3.5],
+                [1.40, 0.0, 0.0],
+                [0.70, 1.21, 0.0],
+                [-0.70, 1.21, 0.0],
+                [-1.40, 0.0, 0.0],
+                [-0.70, -1.21, 0.0],
+                [0.70, -1.21, 0.0],
+                [2.48, 0.0, 0.0],
+                [1.24, 2.15, 0.0],
+                [-1.24, 2.15, 0.0],
+                [-2.48, 0.0, 0.0],
+                [-1.24, -2.15, 0.0],
+                [1.24, -2.15, 0.0],
+                [1.40, 0.0, 3.5],
+                [0.70, 1.21, 3.5],
+                [-0.70, 1.21, 3.5],
+                [-1.40, 0.0, 3.5],
+                [-0.70, -1.21, 3.5],
+                [0.70, -1.21, 3.5],
+                [2.48, 0.0, 3.5],
+                [1.24, 2.15, 3.5],
+                [-1.24, 2.15, 3.5],
+                [-2.48, 0.0, 3.5],
+                [-1.24, -2.15, 3.5],
+                [1.24, -2.15, 3.5],
             ],
         )
     }
@@ -468,9 +619,15 @@ mod bench_d4_vs_uff {
         (
             vec![6, 6, 8, 1, 1, 1, 1, 1, 1],
             vec![
-                [0.0, 0.0, 0.0], [1.52, 0.0, 0.0], [2.13, 1.21, 0.0],
-                [-0.36, 1.03, 0.0], [-0.36, -0.51, 0.89], [-0.36, -0.51, -0.89],
-                [1.88, -0.51, 0.89], [1.88, -0.51, -0.89], [3.09, 1.21, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.52, 0.0, 0.0],
+                [2.13, 1.21, 0.0],
+                [-0.36, 1.03, 0.0],
+                [-0.36, -0.51, 0.89],
+                [-0.36, -0.51, -0.89],
+                [1.88, -0.51, 0.89],
+                [1.88, -0.51, -0.89],
+                [3.09, 1.21, 0.0],
             ],
         )
     }
@@ -482,8 +639,14 @@ mod bench_d4_vs_uff {
         let (elems, pos) = benzene_dimer();
         let d4 = compute_d4_energy(&elems, &pos, &D4Config::default());
 
-        println!("[B5] D4 total: {:.4} Hartree = {:.2} kcal/mol", d4.total_energy, d4.total_kcal_mol);
-        assert!(d4.total_energy < 0.0, "D4 dispersion should be negative (attractive)");
+        println!(
+            "[B5] D4 total: {:.4} Hartree = {:.2} kcal/mol",
+            d4.total_energy, d4.total_kcal_mol
+        );
+        assert!(
+            d4.total_energy < 0.0,
+            "D4 dispersion should be negative (attractive)"
+        );
     }
 
     #[test]
@@ -491,9 +654,12 @@ mod bench_d4_vs_uff {
         let (elems, pos) = benzene_dimer();
         let d4 = compute_d4_energy(&elems, &pos, &D4Config::default());
 
-        println!("[B5] D4 dimer: {:.2} kcal/mol, ref: {:.2} kcal/mol, Δ={:.2}",
-            d4.total_kcal_mol, BENZENE_DIMER_REF_KCAL,
-            (d4.total_kcal_mol - BENZENE_DIMER_REF_KCAL).abs());
+        println!(
+            "[B5] D4 dimer: {:.2} kcal/mol, ref: {:.2} kcal/mol, Δ={:.2}",
+            d4.total_kcal_mol,
+            BENZENE_DIMER_REF_KCAL,
+            (d4.total_kcal_mol - BENZENE_DIMER_REF_KCAL).abs()
+        );
         assert!(d4.total_kcal_mol < 0.0, "D4 should be attractive");
         assert!(d4.total_kcal_mol.abs() < 50.0, "D4 magnitude reasonable");
     }
@@ -506,8 +672,10 @@ mod bench_d4_vs_uff {
         let d4 = compute_d4_energy(&elems, &pos, &D4Config::default());
 
         let augmented = uff_energy + d4.total_kcal_mol;
-        println!("[B5] UFF: {:.2}, D4: {:.4}, UFF+D4: {:.2} kcal/mol",
-            uff_energy, d4.total_kcal_mol, augmented);
+        println!(
+            "[B5] UFF: {:.2}, D4: {:.4}, UFF+D4: {:.2} kcal/mol",
+            uff_energy, d4.total_kcal_mol, augmented
+        );
         assert!(augmented <= uff_energy + 0.01, "D4 should lower UFF energy");
     }
 
@@ -516,7 +684,10 @@ mod bench_d4_vs_uff {
         let (elems, pos) = ethanol();
         let d4 = compute_d4_energy(&elems, &pos, &D4Config::default());
 
-        println!("[B5] D4 coordination numbers: {:?}", d4.coordination_numbers);
+        println!(
+            "[B5] D4 coordination numbers: {:?}",
+            d4.coordination_numbers
+        );
         assert!(d4.coordination_numbers[0] > 2.0, "C CN too low");
         assert!(d4.coordination_numbers[2] > 0.5, "O CN too low");
     }
@@ -527,15 +698,23 @@ mod bench_d4_vs_uff {
         let conf = sci_form::embed("CCO", 42);
 
         let t0 = Instant::now();
-        for _ in 0..200 { let _ = sci_form::compute_uff_energy("CCO", &conf.coords); }
+        for _ in 0..200 {
+            let _ = sci_form::compute_uff_energy("CCO", &conf.coords);
+        }
         let uff_us = t0.elapsed().as_micros() as f64 / 200.0;
 
         let t0 = Instant::now();
-        for _ in 0..200 { let _ = compute_d4_energy(&elems, &pos, &D4Config::default()); }
+        for _ in 0..200 {
+            let _ = compute_d4_energy(&elems, &pos, &D4Config::default());
+        }
         let d4_us = t0.elapsed().as_micros() as f64 / 200.0;
 
-        println!("[B5] Timing: UFF={:.0} µs, D4={:.0} µs, overhead={:.1}%",
-            uff_us, d4_us, d4_us / uff_us.max(1.0) * 100.0);
+        println!(
+            "[B5] Timing: UFF={:.0} µs, D4={:.0} µs, overhead={:.1}%",
+            uff_us,
+            d4_us,
+            d4_us / uff_us.max(1.0) * 100.0
+        );
     }
 }
 
@@ -545,8 +724,8 @@ mod bench_d4_vs_uff {
 
 #[cfg(feature = "experimental-riemannian")]
 mod bench_riemannian_vs_etkdg {
-    use sci_form::beta::riemannian::*;
     use nalgebra::DMatrix;
+    use sci_form::beta::riemannian::*;
     use std::time::Instant;
 
     fn make_constraints(coords: &[[f64; 3]]) -> Vec<DistanceConstraint> {
@@ -558,7 +737,12 @@ mod bench_riemannian_vs_etkdg {
                 let dy = coords[i][1] - coords[j][1];
                 let dz = coords[i][2] - coords[j][2];
                 let d = (dx * dx + dy * dy + dz * dz).sqrt();
-                constraints.push(DistanceConstraint { i, j, lower: d * 0.95, upper: d * 1.05 });
+                constraints.push(DistanceConstraint {
+                    i,
+                    j,
+                    lower: d * 0.95,
+                    upper: d * 1.05,
+                });
             }
         }
         constraints
@@ -567,8 +751,10 @@ mod bench_riemannian_vs_etkdg {
     #[test]
     fn b6_psd_guarantee() {
         let coords = vec![
-            [0.0, 0.0, 0.0], [1.5, 0.0, 0.0],
-            [0.75, 1.3, 0.0], [0.75, 0.43, 1.22],
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [0.75, 1.3, 0.0],
+            [0.75, 0.43, 1.22],
         ];
         let n = coords.len();
         let constraints = make_constraints(&coords);
@@ -578,13 +764,23 @@ mod bench_riemannian_vs_etkdg {
         let initial = DMatrix::identity(n, n);
         let result = lbfgs.optimize(&initial, &constraints);
 
-        println!("[B6] Riemannian converged: {}, iter: {}, max_violation: {:.6}",
-            result.converged, result.iterations, result.max_violation);
+        println!(
+            "[B6] Riemannian converged: {}, iter: {}, max_violation: {:.6}",
+            result.converged, result.iterations, result.max_violation
+        );
 
         let eig = nalgebra::SymmetricEigen::new(result.metric_matrix.clone());
-        let min_eig = eig.eigenvalues.iter().cloned().fold(f64::INFINITY, f64::min);
+        let min_eig = eig
+            .eigenvalues
+            .iter()
+            .cloned()
+            .fold(f64::INFINITY, f64::min);
         println!("[B6] Min eigenvalue of metric matrix: {:.6e}", min_eig);
-        assert!(min_eig >= -1e-10, "Metric matrix not PSD: min eigenvalue = {}", min_eig);
+        assert!(
+            min_eig >= -1e-10,
+            "Metric matrix not PSD: min eigenvalue = {}",
+            min_eig
+        );
     }
 
     #[test]
@@ -602,24 +798,58 @@ mod bench_riemannian_vs_etkdg {
         let result = lbfgs.optimize(&initial, &constraints);
 
         println!("[B6] ETKDG time: {:.2} ms", conf.time_ms);
-        println!("[B6] Riemannian: converged={}, violation={:.4} Å, iter={}",
-            result.converged, result.max_violation, result.iterations);
+        println!(
+            "[B6] Riemannian: converged={}, violation={:.4} Å, iter={}",
+            result.converged, result.max_violation, result.iterations
+        );
     }
 
     #[test]
     fn b6_timing_comparison() {
         let t0 = Instant::now();
-        for _ in 0..20 { let _ = sci_form::embed("CCO", 42); }
+        for _ in 0..20 {
+            let _ = sci_form::embed("CCO", 42);
+        }
         let etkdg_us = t0.elapsed().as_micros() as f64 / 20.0;
 
         let n = 4;
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 3, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 3, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 2, j: 3, lower: 1.4, upper: 1.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 3,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 3,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 2,
+                j: 3,
+                lower: 1.4,
+                upper: 1.6,
+            },
         ];
         let config = RiemannianConfig::default();
         let t0 = Instant::now();
@@ -630,7 +860,10 @@ mod bench_riemannian_vs_etkdg {
         }
         let riem_us = t0.elapsed().as_micros() as f64 / 20.0;
 
-        println!("[B6] Timing: ETKDG={:.0} µs, Riemannian={:.0} µs", etkdg_us, riem_us);
+        println!(
+            "[B6] Timing: ETKDG={:.0} µs, Riemannian={:.0} µs",
+            etkdg_us, riem_us
+        );
     }
 }
 
@@ -647,14 +880,21 @@ mod bench_sdr_vs_etkdg {
     fn b7_sdr_embedding_basic() {
         let n = 5;
         let d_pairs = vec![
-            (0, 1, 1.5), (1, 2, 1.5), (2, 3, 1.5), (3, 4, 1.5),
-            (0, 2, 2.45), (1, 3, 2.45), (2, 4, 2.45),
+            (0, 1, 1.5),
+            (1, 2, 1.5),
+            (2, 3, 1.5),
+            (3, 4, 1.5),
+            (0, 2, 2.45),
+            (1, 3, 2.45),
+            (2, 4, 2.45),
         ];
 
         let result = sdr_embed(n, &d_pairs, &SdrConfig::default());
 
-        println!("[B7] SDR max_distance_error: {:.4} Å, retries_avoided: {}",
-            result.max_distance_error, result.retries_avoided);
+        println!(
+            "[B7] SDR max_distance_error: {:.4} Å, retries_avoided: {}",
+            result.max_distance_error, result.retries_avoided
+        );
         assert_eq!(result.num_atoms, n);
         assert_eq!(result.coords.len(), n * 3);
     }
@@ -691,25 +931,41 @@ mod bench_sdr_vs_etkdg {
         }
 
         println!("[B7] ETKDG → SDR max distance error: {:.4} Å", max_err);
-        assert!(max_err < 1.0, "SDR distance fidelity too poor: {:.3} Å", max_err);
+        assert!(
+            max_err < 1.0,
+            "SDR distance fidelity too poor: {:.3} Å",
+            max_err
+        );
     }
 
     #[test]
     fn b7_timing_comparison() {
         let t0 = Instant::now();
-        for _ in 0..20 { let _ = sci_form::embed("CCO", 42); }
+        for _ in 0..20 {
+            let _ = sci_form::embed("CCO", 42);
+        }
         let etkdg_us = t0.elapsed().as_micros() as f64 / 20.0;
 
         let n = 5;
         let d_pairs = vec![
-            (0, 1, 1.5), (1, 2, 1.5), (2, 3, 1.5), (3, 4, 1.5),
-            (0, 2, 2.45), (1, 3, 2.45), (2, 4, 2.45),
+            (0, 1, 1.5),
+            (1, 2, 1.5),
+            (2, 3, 1.5),
+            (3, 4, 1.5),
+            (0, 2, 2.45),
+            (1, 3, 2.45),
+            (2, 4, 2.45),
         ];
         let t0 = Instant::now();
-        for _ in 0..20 { let _ = sdr_embed(n, &d_pairs, &SdrConfig::default()); }
+        for _ in 0..20 {
+            let _ = sdr_embed(n, &d_pairs, &SdrConfig::default());
+        }
         let sdr_us = t0.elapsed().as_micros() as f64 / 20.0;
 
-        println!("[B7] Timing: ETKDG={:.0} µs, SDR={:.0} µs", etkdg_us, sdr_us);
+        println!(
+            "[B7] Timing: ETKDG={:.0} µs, SDR={:.0} µs",
+            etkdg_us, sdr_us
+        );
     }
 }
 
@@ -726,9 +982,15 @@ mod bench_mbh_vs_full_hessian {
         (
             vec![6, 6, 8, 1, 1, 1, 1, 1, 1],
             vec![
-                [0.0, 0.0, 0.0], [1.52, 0.0, 0.0], [2.13, 1.21, 0.0],
-                [-0.36, 1.03, 0.0], [-0.36, -0.51, 0.89], [-0.36, -0.51, -0.89],
-                [1.88, -0.51, 0.89], [1.88, -0.51, -0.89], [3.09, 1.21, 0.0],
+                [0.0, 0.0, 0.0],
+                [1.52, 0.0, 0.0],
+                [2.13, 1.21, 0.0],
+                [-0.36, 1.03, 0.0],
+                [-0.36, -0.51, 0.89],
+                [-0.36, -0.51, -0.89],
+                [1.88, -0.51, 0.89],
+                [1.88, -0.51, -0.89],
+                [3.09, 1.21, 0.0],
             ],
         )
     }
@@ -737,18 +999,24 @@ mod bench_mbh_vs_full_hessian {
         (
             vec![6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1],
             vec![
-                [1.40, 0.0, 0.0], [0.70, 1.21, 0.0], [-0.70, 1.21, 0.0],
-                [-1.40, 0.0, 0.0], [-0.70, -1.21, 0.0], [0.70, -1.21, 0.0],
-                [2.48, 0.0, 0.0], [1.24, 2.15, 0.0], [-1.24, 2.15, 0.0],
-                [-2.48, 0.0, 0.0], [-1.24, -2.15, 0.0], [1.24, -2.15, 0.0],
+                [1.40, 0.0, 0.0],
+                [0.70, 1.21, 0.0],
+                [-0.70, 1.21, 0.0],
+                [-1.40, 0.0, 0.0],
+                [-0.70, -1.21, 0.0],
+                [0.70, -1.21, 0.0],
+                [2.48, 0.0, 0.0],
+                [1.24, 2.15, 0.0],
+                [-1.24, 2.15, 0.0],
+                [-2.48, 0.0, 0.0],
+                [-1.24, -2.15, 0.0],
+                [1.24, -2.15, 0.0],
             ],
         )
     }
 
     fn uff_energy_fn(smiles: &'static str) -> impl Fn(&[f64]) -> f64 {
-        move |coords: &[f64]| -> f64 {
-            sci_form::compute_uff_energy(smiles, coords).unwrap_or(0.0)
-        }
+        move |coords: &[f64]| -> f64 { sci_form::compute_uff_energy(smiles, coords).unwrap_or(0.0) }
     }
 
     #[test]
@@ -759,8 +1027,10 @@ mod bench_mbh_vs_full_hessian {
 
         let mbh = compute_mbh_frequencies(&elems, &pos, &rings, &energy_fn, &MbhConfig::default());
 
-        println!("[B8] Full DOF: {}, Reduced DOF: {}, Speedup: {:.1}x",
-            mbh.n_dof_full, mbh.n_dof_reduced, mbh.speedup);
+        println!(
+            "[B8] Full DOF: {}, Reduced DOF: {}, Speedup: {:.1}x",
+            mbh.n_dof_full, mbh.n_dof_reduced, mbh.speedup
+        );
         assert!(mbh.speedup >= 1.0, "Speedup should be >= 1.0");
         assert!(mbh.n_dof_reduced <= mbh.n_dof_full);
     }
@@ -773,10 +1043,17 @@ mod bench_mbh_vs_full_hessian {
 
         let mbh = compute_mbh_frequencies(&elems, &pos, &rings, &energy_fn, &MbhConfig::default());
 
-        println!("[B8] MBH frequencies (N={}): {:?}", mbh.frequencies.len(), mbh.frequencies);
+        println!(
+            "[B8] MBH frequencies (N={}): {:?}",
+            mbh.frequencies.len(),
+            mbh.frequencies
+        );
 
         let positive: Vec<_> = mbh.frequencies.iter().filter(|&&f| f > 10.0).collect();
-        assert!(!positive.is_empty(), "Should have positive vibrational frequencies");
+        assert!(
+            !positive.is_empty(),
+            "Should have positive vibrational frequencies"
+        );
     }
 
     #[test]
@@ -784,7 +1061,10 @@ mod bench_mbh_vs_full_hessian {
         let (elems, pos) = ethanol();
 
         let full = sci_form::ir::vibrations::compute_vibrational_analysis(
-            &elems, &pos, sci_form::ir::hessian::HessianMethod::Pm3, None,
+            &elems,
+            &pos,
+            sci_form::ir::hessian::HessianMethod::Pm3,
+            None,
         );
 
         let rings: Vec<(Vec<usize>, bool)> = vec![];
@@ -792,19 +1072,25 @@ mod bench_mbh_vs_full_hessian {
         let mbh = compute_mbh_frequencies(&elems, &pos, &rings, &energy_fn, &MbhConfig::default());
 
         if let Ok(ref full_result) = full {
-            let full_freqs: Vec<f64> = full_result.modes.iter()
+            let full_freqs: Vec<f64> = full_result
+                .modes
+                .iter()
                 .filter(|m| m.is_real && m.frequency_cm1 > 10.0)
                 .map(|m| m.frequency_cm1)
                 .collect();
-            println!("[B8] Full Hessian (N={}): [{:.0} ... {:.0}]",
+            println!(
+                "[B8] Full Hessian (N={}): [{:.0} ... {:.0}]",
                 full_freqs.len(),
                 full_freqs.first().unwrap_or(&0.0),
-                full_freqs.last().unwrap_or(&0.0));
+                full_freqs.last().unwrap_or(&0.0)
+            );
         }
-        println!("[B8] MBH (N={}): [{:.0} ... {:.0}]",
+        println!(
+            "[B8] MBH (N={}): [{:.0} ... {:.0}]",
             mbh.frequencies.len(),
             mbh.frequencies.first().unwrap_or(&0.0),
-            mbh.frequencies.last().unwrap_or(&0.0));
+            mbh.frequencies.last().unwrap_or(&0.0)
+        );
     }
 
     #[test]
@@ -815,18 +1101,25 @@ mod bench_mbh_vs_full_hessian {
 
         let t0 = Instant::now();
         for _ in 0..3 {
-            let _ = compute_mbh_frequencies(&elems, &pos, &rings, &energy_fn, &MbhConfig::default());
+            let _ =
+                compute_mbh_frequencies(&elems, &pos, &rings, &energy_fn, &MbhConfig::default());
         }
         let mbh_us = t0.elapsed().as_micros() as f64 / 3.0;
 
         // Full Hessian with PM3 is expensive — single iteration only
         let t0 = Instant::now();
         let _ = sci_form::ir::vibrations::compute_vibrational_analysis(
-            &elems, &pos, sci_form::ir::hessian::HessianMethod::Pm3, None,
+            &elems,
+            &pos,
+            sci_form::ir::hessian::HessianMethod::Pm3,
+            None,
         );
         let full_us = t0.elapsed().as_micros() as f64;
 
-        println!("[B8] Timing: Full Hessian={:.0} µs, MBH={:.0} µs", full_us, mbh_us);
+        println!(
+            "[B8] Timing: Full Hessian={:.0} µs, MBH={:.0} µs",
+            full_us, mbh_us
+        );
     }
 }
 
@@ -851,8 +1144,14 @@ mod bench_cga_geometry {
         let dist_orig = ((p[1] * p[1] + p[2] * p[2]) as f64).sqrt();
         let dist_rot = ((p_rot[1] * p_rot[1] + p_rot[2] * p_rot[2]) as f64).sqrt();
 
-        println!("[B9] Original dist from axis: {:.4}, Rotated: {:.4}", dist_orig, dist_rot);
-        assert!((dist_orig - dist_rot).abs() < 0.1, "Motor should preserve distance");
+        println!(
+            "[B9] Original dist from axis: {:.4}, Rotated: {:.4}",
+            dist_orig, dist_rot
+        );
+        assert!(
+            (dist_orig - dist_rot).abs() < 0.1,
+            "Motor should preserve distance"
+        );
     }
 
     #[test]
@@ -876,8 +1175,10 @@ mod bench_cga_geometry {
         let p = [1.0, 0.0, 0.0];
         let result = motor.transform_point(p);
 
-        println!("[B9] Rotated [1,0,0] by 90° about z: [{:.3}, {:.3}, {:.3}]",
-            result[0], result[1], result[2]);
+        println!(
+            "[B9] Rotated [1,0,0] by 90° about z: [{:.3}, {:.3}, {:.3}]",
+            result[0], result[1], result[2]
+        );
         assert!(result[0].abs() < 0.2, "x should be ~0");
         assert!((result[1] - 1.0).abs() < 0.2, "y should be ~1");
         assert!(result[2].abs() < 0.2, "z should be ~0");
@@ -892,8 +1193,10 @@ mod bench_cga_geometry {
         let result = apply_motor_to_subtree(&coords, &[2], &motor);
 
         // Atom 2 at [3,0,0] should rotate about x-axis
-        println!("[B9] After subtree rotation: atom2 = [{:.3}, {:.3}, {:.3}]",
-            result[6], result[7], result[8]);
+        println!(
+            "[B9] After subtree rotation: atom2 = [{:.3}, {:.3}, {:.3}]",
+            result[6], result[7], result[8]
+        );
         // Atom 0 and 1 should be unchanged
         assert!((result[0] - coords[0]).abs() < 1e-10);
         assert!((result[3] - coords[3]).abs() < 1e-10);
@@ -911,7 +1214,11 @@ mod bench_cpm_electrochemistry {
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![8, 1, 1],
-            vec![[0.0, 0.0, 0.117], [0.0, 0.757, -0.469], [0.0, -0.757, -0.469]],
+            vec![
+                [0.0, 0.0, 0.117],
+                [0.0, 0.757, -0.469],
+                [0.0, -0.757, -0.469],
+            ],
         )
     }
 
@@ -921,14 +1228,23 @@ mod bench_cpm_electrochemistry {
 
         let mut charges_at_potentials = Vec::new();
         for mu in [-5.0_f64, -4.5, -4.0, -3.5] {
-            let config = CpmConfig { mu_ev: mu, ..Default::default() };
+            let config = CpmConfig {
+                mu_ev: mu,
+                ..Default::default()
+            };
             let result = compute_cpm_charges(&elems, &pos, &config);
             charges_at_potentials.push((mu, result.total_charge));
             println!("[B10] µ = {:.1} eV → Q = {:.4} e", mu, result.total_charge);
         }
 
-        let q_max = charges_at_potentials.iter().map(|&(_, q)| q).fold(f64::NEG_INFINITY, f64::max);
-        let q_min = charges_at_potentials.iter().map(|&(_, q)| q).fold(f64::INFINITY, f64::min);
+        let q_max = charges_at_potentials
+            .iter()
+            .map(|&(_, q)| q)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let q_min = charges_at_potentials
+            .iter()
+            .map(|&(_, q)| q)
+            .fold(f64::INFINITY, f64::min);
         let q_range = q_max - q_min;
         println!("[B10] Charge range: {:.4} e", q_range);
         assert!(q_range > 1e-6, "Charge should vary with potential");
@@ -950,17 +1266,30 @@ mod bench_cpm_electrochemistry {
         let (elems, pos) = water();
         let surface = compute_cpm_surface(&elems, &pos, -5.5, -3.5, 20, 78.5);
 
-        let finite_energies: Vec<f64> = surface.free_energy.iter()
+        let finite_energies: Vec<f64> = surface
+            .free_energy
+            .iter()
             .filter(|e| e.is_finite())
             .copied()
             .collect();
         if finite_energies.len() >= 2 {
-            println!("[B10] Free energy range: [{:.4}, {:.4}] eV",
-                finite_energies.iter().cloned().fold(f64::INFINITY, f64::min),
-                finite_energies.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+            println!(
+                "[B10] Free energy range: [{:.4}, {:.4}] eV",
+                finite_energies
+                    .iter()
+                    .cloned()
+                    .fold(f64::INFINITY, f64::min),
+                finite_energies
+                    .iter()
+                    .cloned()
+                    .fold(f64::NEG_INFINITY, f64::max)
+            );
         }
 
-        assert!(surface.all_converged, "CPM surface should converge at all points");
+        assert!(
+            surface.all_converged,
+            "CPM surface should converge at all points"
+        );
     }
 
     #[test]
@@ -998,12 +1327,23 @@ mod bench_gsm_reaction_path {
         let reactant = vec![0.0, 0.0, 0.0, 0.74, 0.0, 0.0];
         let product = vec![0.0, 0.0, 0.0, 3.0, 0.0, 0.0];
 
-        let config = GsmConfig { max_nodes: 7, max_iter: 20, ..Default::default() };
+        let config = GsmConfig {
+            max_nodes: 7,
+            max_iter: 20,
+            ..Default::default()
+        };
         let path = grow_string(&reactant, &product, &h2_energy, &config);
 
-        println!("[B11] GSM nodes: {}, joined: {}", path.nodes.len(), path.joined);
+        println!(
+            "[B11] GSM nodes: {}, joined: {}",
+            path.nodes.len(),
+            path.joined
+        );
         println!("[B11] Energies: {:?}", path.energies);
-        assert!(path.nodes.len() >= 2, "Should have at least reactant and product");
+        assert!(
+            path.nodes.len() >= 2,
+            "Should have at least reactant and product"
+        );
     }
 
     #[test]
@@ -1014,8 +1354,10 @@ mod bench_gsm_reaction_path {
         let mut prev_d = 0.0_f64;
         for &t in &[0.0, 0.25, 0.5, 0.75, 1.0] {
             let node = interpolate_node(&reactant, &product, t);
-            let d = ((node[3] - node[0]).powi(2) + (node[4] - node[1]).powi(2)
-                + (node[5] - node[2]).powi(2)).sqrt();
+            let d = ((node[3] - node[0]).powi(2)
+                + (node[4] - node[1]).powi(2)
+                + (node[5] - node[2]).powi(2))
+            .sqrt();
             println!("[B11] t={:.2} → d(H-H) = {:.3} Å", t, d);
             if t > 0.0 {
                 assert!(d >= prev_d - 0.01, "Distance should increase monotonically");
@@ -1029,14 +1371,26 @@ mod bench_gsm_reaction_path {
         let reactant = vec![0.0, 0.0, 0.0, 0.74, 0.0, 0.0];
         let product = vec![0.0, 0.0, 0.0, 3.0, 0.0, 0.0];
 
-        let config = GsmConfig { max_nodes: 7, max_iter: 10, ..Default::default() };
+        let config = GsmConfig {
+            max_nodes: 7,
+            max_iter: 10,
+            ..Default::default()
+        };
         let result = find_transition_state(&reactant, &product, &h2_energy, &config);
 
-        println!("[B11] TS energy: {:.2} kcal/mol, activation: {:.2} kcal/mol",
-            result.ts_energy, result.activation_energy);
-        println!("[B11] TS node index: {}, n_nodes: {}", result.ts_node_index, result.n_nodes);
+        println!(
+            "[B11] TS energy: {:.2} kcal/mol, activation: {:.2} kcal/mol",
+            result.ts_energy, result.activation_energy
+        );
+        println!(
+            "[B11] TS node index: {}, n_nodes: {}",
+            result.ts_node_index, result.n_nodes
+        );
 
-        assert!(result.activation_energy >= 0.0, "Activation energy should be non-negative");
+        assert!(
+            result.activation_energy >= 0.0,
+            "Activation energy should be non-negative"
+        );
     }
 
     #[test]
@@ -1044,17 +1398,30 @@ mod bench_gsm_reaction_path {
         let reactant = vec![0.0, 0.0, 0.0, 0.74, 0.0, 0.0];
         let product = vec![0.0, 0.0, 0.0, 3.0, 0.0, 0.0];
 
-        let config = GsmConfig { max_nodes: 11, max_iter: 20, ..Default::default() };
+        let config = GsmConfig {
+            max_nodes: 11,
+            max_iter: 20,
+            ..Default::default()
+        };
         let result = find_transition_state(&reactant, &product, &h2_energy, &config);
 
         if result.path_energies.len() >= 3 {
             let e_first = result.path_energies[0];
             let e_last = *result.path_energies.last().unwrap();
-            let e_max = result.path_energies.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            let e_max = result
+                .path_energies
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max);
 
-            println!("[B11] E(react)={:.2}, E(max)={:.2}, E(prod)={:.2}",
-                e_first, e_max, e_last);
-            assert!(e_max >= e_first - 0.01, "Maximum should be >= reactant energy");
+            println!(
+                "[B11] E(react)={:.2}, E(max)={:.2}, E(prod)={:.2}",
+                e_first, e_max, e_last
+            );
+            assert!(
+                e_max >= e_first - 0.01,
+                "Maximum should be >= reactant energy"
+            );
         }
     }
 }

@@ -5,8 +5,8 @@
 
 #[cfg(feature = "experimental-riemannian")]
 mod riemannian_tests {
-    use sci_form::beta::riemannian::*;
     use nalgebra::{DMatrix, SymmetricEigen};
+    use sci_form::beta::riemannian::*;
 
     // ---------------------------------------------------------------
     // E3.1 — Riemannian Geometry Infrastructure
@@ -25,7 +25,8 @@ mod riemannian_tests {
             assert!(
                 eigen.eigenvalues[i] >= -1e-10,
                 "Eigenvalue {} = {}, expected ≥ 0",
-                i, eigen.eigenvalues[i]
+                i,
+                eigen.eigenvalues[i]
             );
         }
     }
@@ -41,7 +42,8 @@ mod riemannian_tests {
                 assert!(
                     (p1[(i, j)] - p2[(i, j)]).abs() < 1e-10,
                     "PSD projection not idempotent at ({},{})",
-                    i, j
+                    i,
+                    j
                 );
             }
         }
@@ -51,8 +53,18 @@ mod riemannian_tests {
     fn e3_1b_riemannian_gradient_consistency() {
         // The Riemannian gradient should be in the tangent space (symmetric)
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.0, upper: 2.0 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.0, upper: 2.0 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.0,
+                upper: 2.0,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.0,
+                upper: 2.0,
+            },
         ];
         let x = DMatrix::identity(3, 3) * 2.0;
         let config = RiemannianConfig::default();
@@ -65,7 +77,10 @@ mod riemannian_tests {
                 assert!(
                     (grad[(i, j)] - grad[(j, i)]).abs() < 1e-14,
                     "Gradient not symmetric at ({},{}): {} vs {}",
-                    i, j, grad[(i, j)], grad[(j, i)]
+                    i,
+                    j,
+                    grad[(i, j)],
+                    grad[(j, i)]
                 );
             }
         }
@@ -74,9 +89,24 @@ mod riemannian_tests {
     #[test]
     fn e3_1b_gradient_matches_finite_difference() {
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.3, upper: 1.7 },
-            DistanceConstraint { i: 0, j: 2, lower: 2.0, upper: 2.5 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.3, upper: 1.7 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.3,
+                upper: 1.7,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 2.0,
+                upper: 2.5,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.3,
+                upper: 1.7,
+            },
         ];
         let x = DMatrix::identity(3, 3) * 2.5;
         let config = RiemannianConfig::default();
@@ -99,7 +129,10 @@ mod riemannian_tests {
                 assert!(
                     (grad[(i, j)] - fd).abs() < 1e-3,
                     "Gradient error at ({},{}): analytical={:.6}, fd={:.6}",
-                    i, j, grad[(i, j)], fd
+                    i,
+                    j,
+                    grad[(i, j)],
+                    fd
                 );
             }
         }
@@ -133,9 +166,24 @@ mod riemannian_tests {
     fn e3_2_triangle_convergence() {
         // Equilateral triangle with sides ~1.5 Å
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.4, upper: 1.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
         ];
         let initial = DMatrix::identity(3, 3) * 2.0;
         let config = RiemannianConfig {
@@ -148,7 +196,9 @@ mod riemannian_tests {
         assert!(
             result.converged || result.objective < 1e-4,
             "Triangle should converge: obj={:.6}, grad={:.6}, iter={}",
-            result.objective, result.grad_norm, result.iterations
+            result.objective,
+            result.grad_norm,
+            result.iterations
         );
     }
 
@@ -157,9 +207,24 @@ mod riemannian_tests {
         // Various initial conditions, output must always be PSD
         for scale in [0.5, 1.0, 2.0, 5.0, 10.0] {
             let constraints = vec![
-                DistanceConstraint { i: 0, j: 1, lower: 1.0, upper: 2.0 },
-                DistanceConstraint { i: 1, j: 2, lower: 1.0, upper: 2.0 },
-                DistanceConstraint { i: 2, j: 3, lower: 1.0, upper: 2.0 },
+                DistanceConstraint {
+                    i: 0,
+                    j: 1,
+                    lower: 1.0,
+                    upper: 2.0,
+                },
+                DistanceConstraint {
+                    i: 1,
+                    j: 2,
+                    lower: 1.0,
+                    upper: 2.0,
+                },
+                DistanceConstraint {
+                    i: 2,
+                    j: 3,
+                    lower: 1.0,
+                    upper: 2.0,
+                },
             ];
             let initial = DMatrix::identity(4, 4) * scale;
             let config = RiemannianConfig {
@@ -174,7 +239,9 @@ mod riemannian_tests {
                 assert!(
                     eigen.eigenvalues[i] >= -1e-10,
                     "Output not PSD at scale {}: eigenvalue {} = {}",
-                    scale, i, eigen.eigenvalues[i]
+                    scale,
+                    i,
+                    eigen.eigenvalues[i]
                 );
             }
         }
@@ -185,16 +252,61 @@ mod riemannian_tests {
         // Linear chain of 6 atoms with bond + angle constraints
         let constraints = vec![
             // Bonds
-            DistanceConstraint { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 2, j: 3, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 3, j: 4, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 4, j: 5, lower: 1.4, upper: 1.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 2,
+                j: 3,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 3,
+                j: 4,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 4,
+                j: 5,
+                lower: 1.4,
+                upper: 1.6,
+            },
             // 1-3 distances (angles)
-            DistanceConstraint { i: 0, j: 2, lower: 2.2, upper: 2.6 },
-            DistanceConstraint { i: 1, j: 3, lower: 2.2, upper: 2.6 },
-            DistanceConstraint { i: 2, j: 4, lower: 2.2, upper: 2.6 },
-            DistanceConstraint { i: 3, j: 5, lower: 2.2, upper: 2.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 2.2,
+                upper: 2.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 3,
+                lower: 2.2,
+                upper: 2.6,
+            },
+            DistanceConstraint {
+                i: 2,
+                j: 4,
+                lower: 2.2,
+                upper: 2.6,
+            },
+            DistanceConstraint {
+                i: 3,
+                j: 5,
+                lower: 2.2,
+                upper: 2.6,
+            },
         ];
         let initial = DMatrix::identity(6, 6) * 3.0;
         let config = RiemannianConfig {
@@ -219,9 +331,24 @@ mod riemannian_tests {
     #[test]
     fn e3_3a_objective_decreases() {
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.4, upper: 1.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
         ];
         let initial = DMatrix::identity(3, 3) * 5.0;
         let config = RiemannianConfig {
@@ -236,16 +363,32 @@ mod riemannian_tests {
         assert!(
             result.objective <= obj_before + 1e-10,
             "Objective should decrease: before={:.6}, after={:.6}",
-            obj_before, result.objective
+            obj_before,
+            result.objective
         );
     }
 
     #[test]
     fn e3_3b_distance_violation_bounded() {
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.4, upper: 1.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
         ];
         let initial = DMatrix::identity(3, 3) * 2.0;
         let config = RiemannianConfig {
@@ -267,9 +410,24 @@ mod riemannian_tests {
     fn e3_3c_manifold_point_rank() {
         // Verify that the solution metric matrix has appropriate rank
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.4, upper: 1.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
         ];
         let initial = DMatrix::identity(3, 3) * 2.0;
         let config = RiemannianConfig::default();

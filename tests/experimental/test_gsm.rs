@@ -13,7 +13,7 @@ mod gsm_tests {
     fn morse_1d(coords: &[f64]) -> f64 {
         let x = coords[0];
         let d = 10.0; // well depth kcal/mol
-        let a = 1.5;  // width
+        let a = 1.5; // width
         let r_eq = 1.0;
         d * (1.0 - (-a * (x - r_eq)).exp()).powi(2)
     }
@@ -86,7 +86,11 @@ mod gsm_tests {
     fn test_gsm_energy_evaluations_counted() {
         let r = vec![-1.0, 0.0, 0.0];
         let p = vec![1.0, 0.0, 0.0];
-        let config = GsmConfig { max_nodes: 5, max_iter: 5, ..Default::default() };
+        let config = GsmConfig {
+            max_nodes: 5,
+            max_iter: 5,
+            ..Default::default()
+        };
         let result = find_transition_state(&r, &p, &double_well, &config);
         assert!(result.energy_evaluations > 0, "Should count evaluations");
     }
@@ -107,9 +111,12 @@ mod gsm_tests {
         // For (x²-1)², both minima are at E=0, TS at E=1
         // Barriers should be similar (both ~1.0)
         let diff = (result.activation_energy - result.reverse_barrier).abs();
-        assert!(diff < result.activation_energy.abs() * 0.5 + 0.5,
+        assert!(
+            diff < result.activation_energy.abs() * 0.5 + 0.5,
             "Barriers should be roughly equal for symmetric potential: fwd={}, rev={}",
-            result.activation_energy, result.reverse_barrier);
+            result.activation_energy,
+            result.reverse_barrier
+        );
     }
 
     #[test]
@@ -119,13 +126,14 @@ mod gsm_tests {
         let prev = vec![-0.5, 0.0, 0.0];
         let next = vec![0.5, 0.0, 0.0];
 
-        let (refined, _energy) = refine_saddle(
-            &ts_init, &double_well, (&prev, &next),
-            50, 0.005, 0.001,
-        );
+        let (refined, _energy) =
+            refine_saddle(&ts_init, &double_well, (&prev, &next), 50, 0.005, 0.001);
 
         // Should move closer to x=0
-        assert!(refined[0].abs() < ts_init[0].abs() + 0.5,
-            "Refinement should move toward saddle: {}", refined[0]);
+        assert!(
+            refined[0].abs() < ts_init[0].abs() + 0.5,
+            "Refinement should move toward saddle: {}",
+            refined[0]
+        );
     }
 }

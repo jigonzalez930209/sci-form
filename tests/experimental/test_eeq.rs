@@ -1,6 +1,5 @@
 //! Integration tests for Track E5: Dynamic EEQ Force Field
 
-#[cfg(feature = "experimental-eeq")]
 mod eeq_tests {
     use sci_form::charges_eeq::*;
 
@@ -10,12 +9,12 @@ mod eeq_tests {
             [0.0, 0.0, 0.0],       // C
             [1.54, 0.0, 0.0],      // C
             [2.42, 1.18, 0.0],     // O
-            [-0.63, 0.89, 0.0],   // H
-            [-0.63, -0.45, 0.89], // H
-            [-0.63, -0.45, -0.89],// H
-            [1.95, -0.52, 0.89],  // H
-            [1.95, -0.52, -0.89], // H
-            [3.37, 1.01, 0.0],    // H (OH)
+            [-0.63, 0.89, 0.0],    // H
+            [-0.63, -0.45, 0.89],  // H
+            [-0.63, -0.45, -0.89], // H
+            [1.95, -0.52, 0.89],   // H
+            [1.95, -0.52, -0.89],  // H
+            [3.37, 1.01, 0.0],     // H (OH)
         ];
         (elements, positions)
     }
@@ -29,7 +28,8 @@ mod eeq_tests {
         let result = compute_eeq_charges(&elements, &positions, &config);
         assert!(
             result.total_charge.abs() < 0.01,
-            "Total charge = {:.6}, expected 0", result.total_charge
+            "Total charge = {:.6}, expected 0",
+            result.total_charge
         );
     }
 
@@ -52,8 +52,13 @@ mod eeq_tests {
         assert!(o_charge < 0.0, "O charge = {}", o_charge);
         for (i, &q) in result.charges.iter().enumerate() {
             if i != 2 {
-                assert!(o_charge <= q + 0.01,
-                    "O ({:.3}) should be ≤ atom {} ({:.3})", o_charge, i, q);
+                assert!(
+                    o_charge <= q + 0.01,
+                    "O ({:.3}) should be ≤ atom {} ({:.3})",
+                    o_charge,
+                    i,
+                    q
+                );
             }
         }
     }
@@ -65,8 +70,12 @@ mod eeq_tests {
         let result = compute_eeq_charges(&elements, &positions, &config);
         // All H atoms should be positive
         for i in 3..9 {
-            assert!(result.charges[i] > -0.1,
-                "H{} charge = {}", i, result.charges[i]);
+            assert!(
+                result.charges[i] > -0.1,
+                "H{} charge = {}",
+                i,
+                result.charges[i]
+            );
         }
     }
 
@@ -85,7 +94,11 @@ mod eeq_tests {
         let (elements, positions) = ethanol_atoms();
         let config = EeqConfig::default();
         let grad = compute_eeq_gradient(&elements, &positions, &config);
-        let norm: f64 = grad.iter().map(|g| g[0]*g[0] + g[1]*g[1] + g[2]*g[2]).sum::<f64>().sqrt();
+        let norm: f64 = grad
+            .iter()
+            .map(|g| g[0] * g[0] + g[1] * g[1] + g[2] * g[2])
+            .sum::<f64>()
+            .sqrt();
         assert!(norm > 0.0, "Gradient norm = 0");
     }
 
@@ -95,14 +108,20 @@ mod eeq_tests {
     fn e5_3a_charged_system() {
         let elements = vec![6, 8, 8, 1];
         let positions = vec![
-            [0.0, 0.0, 0.0], [1.25, 0.0, 0.0],
-            [-1.25, 0.0, 0.0], [0.0, 1.09, 0.0],
+            [0.0, 0.0, 0.0],
+            [1.25, 0.0, 0.0],
+            [-1.25, 0.0, 0.0],
+            [0.0, 1.09, 0.0],
         ];
-        let config = EeqConfig { total_charge: -1.0, ..Default::default() };
+        let config = EeqConfig {
+            total_charge: -1.0,
+            ..Default::default()
+        };
         let result = compute_eeq_charges(&elements, &positions, &config);
         assert!(
             (result.total_charge - (-1.0)).abs() < 0.01,
-            "Total charge = {:.4}, expected -1", result.total_charge
+            "Total charge = {:.4}, expected -1",
+            result.total_charge
         );
     }
 
@@ -114,7 +133,10 @@ mod eeq_tests {
         let eeq = compute_eeq_charges(&elements, &positions, &config);
         // Compare with Gasteiger (sci_form::compute_charges)
         // EEQ should give reasonable O charge: -0.2 to -0.8
-        assert!(eeq.charges[0] < -0.05 && eeq.charges[0] > -1.0,
-            "O charge = {:.4}, out of expected range", eeq.charges[0]);
+        assert!(
+            eeq.charges[0] < -0.05 && eeq.charges[0] > -1.0,
+            "O charge = {:.4}, out of expected range",
+            eeq.charges[0]
+        );
     }
 }
