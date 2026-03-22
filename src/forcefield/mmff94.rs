@@ -882,6 +882,19 @@ pub fn validate_gradients(term: &dyn ForceFieldContribution, coords: &[f64], eps
 /// Uses fallback empirical rules when proper MMFF94 parameter tables are not available.
 pub struct Mmff94Builder;
 
+/// MMFF94 variant: original (dynamics) or static (energy minimization).
+///
+/// MMFF94s uses modified out-of-plane bending and torsion parameters
+/// optimized for static structures (crystal geometries), while MMFF94
+/// is optimized for molecular dynamics simulations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mmff94Variant {
+    /// Original MMFF94 (Halgren 1996) — optimized for dynamics.
+    Mmff94,
+    /// MMFF94s — static variant with modified OOP and torsion parameters.
+    Mmff94s,
+}
+
 impl Mmff94Builder {
     /// Estimate MMFF94 bond stretching parameters from elements and bond order.
     fn bond_params(elem_i: u8, elem_j: u8, _bond_order: u8) -> (f64, f64) {
@@ -916,6 +929,15 @@ impl Mmff94Builder {
     pub fn build(
         elements: &[u8],
         bonds: &[(usize, usize, u8)],
+    ) -> Vec<Box<dyn ForceFieldContribution>> {
+        Self::build_variant(elements, bonds, Mmff94Variant::Mmff94)
+    }
+
+    /// Build MMFF94 terms with a specific variant (MMFF94 or MMFF94s).
+    pub fn build_variant(
+        elements: &[u8],
+        bonds: &[(usize, usize, u8)],
+        variant: Mmff94Variant,
     ) -> Vec<Box<dyn ForceFieldContribution>> {
         let n_atoms = elements.len();
         let mut terms: Vec<Box<dyn ForceFieldContribution>> = Vec::new();
@@ -964,14 +986,19 @@ impl Mmff94Builder {
                     if l == j || l == i {
                         continue;
                     }
+                    // MMFF94s uses stiffer torsion barriers for planar groups
+                    let (v1, v2, v3) = match variant {
+                        Mmff94Variant::Mmff94s => (0.0, 1.5, 0.0),
+                        Mmff94Variant::Mmff94 => (0.0, 1.0, 0.0),
+                    };
                     terms.push(Box::new(Mmff94Torsion {
                         atom_i: i,
                         atom_j: j,
                         atom_k: k,
                         atom_l: l,
-                        v1: 0.0,
-                        v2: 1.0,
-                        v3: 0.0, // Generic 2-fold barrier
+                        v1,
+                        v2,
+                        v3,
                     }));
                 }
             }
