@@ -7,10 +7,5 @@
 pub mod blocks;
 pub mod hessian;
 
-pub use blocks::{
-    detect_rigid_blocks, build_projection_matrix,
-    RigidBlock, BlockDecomposition,
-};
-pub use hessian::{
-    compute_mbh_frequencies, MbhConfig, MbhResult,
-};
+pub use blocks::{build_projection_matrix, detect_rigid_blocks, BlockDecomposition, RigidBlock};
+pub use hessian::{compute_mbh_frequencies, MbhConfig, MbhResult};

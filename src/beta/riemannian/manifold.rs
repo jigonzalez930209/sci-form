@@ -88,10 +88,7 @@ impl PsdManifold {
 
     /// Number of positive eigenvalues.
     pub fn rank(&mut self) -> usize {
-        self.eigenvalues()
-            .iter()
-            .filter(|&&v| v > 1e-10)
-            .count()
+        self.eigenvalues().iter().filter(|&&v| v > 1e-10).count()
     }
 
     /// Frobenius norm of the matrix.
@@ -189,7 +186,8 @@ mod tests {
             assert!(
                 eigen.eigenvalues[i] >= -1e-10,
                 "Eigenvalue {} = {}, expected ≥ 0",
-                i, eigen.eigenvalues[i]
+                i,
+                eigen.eigenvalues[i]
             );
         }
     }
@@ -237,7 +235,8 @@ mod tests {
                 assert!(
                     (proj[(i, j)] - proj[(j, i)]).abs() < 1e-14,
                     "Tangent projection not symmetric at ({},{})",
-                    i, j
+                    i,
+                    j
                 );
             }
         }
@@ -268,7 +267,8 @@ mod tests {
         assert!(
             (d_ab - d_ba).abs() < 1e-14,
             "Distance not symmetric: {} vs {}",
-            d_ab, d_ba
+            d_ab,
+            d_ba
         );
     }
 }

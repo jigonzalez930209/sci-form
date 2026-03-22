@@ -65,7 +65,9 @@ pub fn detect_rigid_blocks(
 
     for (ring_atoms, is_aromatic) in rings {
         // Filter: only small rings (≤ 8 atoms) are considered rigid
-        if ring_atoms.len() > 8 { continue; }
+        if ring_atoms.len() > 8 {
+            continue;
+        }
         let overlap = ring_atoms.iter().any(|&a| atom_in_block[a]);
         if overlap {
             // For fused rings, merge into existing block or skip
@@ -145,7 +147,9 @@ pub fn build_projection_matrix(
             // Normalize
             let norm = norm_sq.sqrt();
             if norm > 1e-15 {
-                for v in col.iter_mut() { *v /= norm; }
+                for v in col.iter_mut() {
+                    *v /= norm;
+                }
             }
             l_cols.push(col);
         }
@@ -166,12 +170,12 @@ pub fn build_projection_matrix(
 
                 // Cross product of rotation axis unit vector with r
                 let disp = match rot_axis {
-                    0 => [0.0, -r[2], r[1]],    // x-axis: (0,0,1)×r → (0,-rz,ry) wait, e_x × r = (0*rz - 1*ry, ...) = wrong
+                    0 => [0.0, -r[2], r[1]], // x-axis: (0,0,1)×r → (0,-rz,ry) wait, e_x × r = (0*rz - 1*ry, ...) = wrong
                     // e_x × r = (0, r[2], -r[1]) NO...
                     // Actually: e_x = (1,0,0), r = (rx,ry,rz)
                     // e_x × r = |i  j  k | = (0·rz - 0·ry, 0·rx - 1·rz, 1·ry - 0·rx) = (0, -rz, ry)
-                    1 => [r[2], 0.0, -r[0]],     // e_y × r = (rz, 0, -rx)
-                    2 => [-r[1], r[0], 0.0],     // e_z × r = (-ry, rx, 0)
+                    1 => [r[2], 0.0, -r[0]], // e_y × r = (rz, 0, -rx)
+                    2 => [-r[1], r[0], 0.0], // e_z × r = (-ry, rx, 0)
                     _ => unreachable!(),
                 };
 
@@ -183,7 +187,9 @@ pub fn build_projection_matrix(
 
             let norm = norm_sq.sqrt();
             if norm > 1e-15 {
-                for v in col.iter_mut() { *v /= norm; }
+                for v in col.iter_mut() {
+                    *v /= norm;
+                }
             }
             l_cols.push(col);
         }
@@ -210,15 +216,17 @@ mod tests {
         // 6 ring carbons + 6 hydrogens
         let n = 12;
         let elements: Vec<u8> = vec![6; 6].into_iter().chain(vec![1; 6]).collect();
-        let positions: Vec<[f64; 3]> = (0..12).map(|i| {
-            if i < 6 {
-                let angle = i as f64 * std::f64::consts::PI / 3.0;
-                [1.4 * angle.cos(), 1.4 * angle.sin(), 0.0]
-            } else {
-                let angle = (i - 6) as f64 * std::f64::consts::PI / 3.0;
-                [2.5 * angle.cos(), 2.5 * angle.sin(), 0.0]
-            }
-        }).collect();
+        let positions: Vec<[f64; 3]> = (0..12)
+            .map(|i| {
+                if i < 6 {
+                    let angle = i as f64 * std::f64::consts::PI / 3.0;
+                    [1.4 * angle.cos(), 1.4 * angle.sin(), 0.0]
+                } else {
+                    let angle = (i - 6) as f64 * std::f64::consts::PI / 3.0;
+                    [2.5 * angle.cos(), 2.5 * angle.sin(), 0.0]
+                }
+            })
+            .collect();
 
         let rings = vec![(vec![0, 1, 2, 3, 4, 5], true)]; // benzene ring
         let decomp = detect_rigid_blocks(n, &elements, &positions, &rings);
@@ -248,14 +256,16 @@ mod tests {
     fn test_projection_matrix_dimensions() {
         let n = 9; // 6 ring + 3 flexible
         let elements = vec![6; 9];
-        let positions: Vec<[f64; 3]> = (0..9).map(|i| {
-            if i < 6 {
-                let a = i as f64 * std::f64::consts::PI / 3.0;
-                [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
-            } else {
-                [(i as f64) * 2.0, 0.0, 0.0]
-            }
-        }).collect();
+        let positions: Vec<[f64; 3]> = (0..9)
+            .map(|i| {
+                if i < 6 {
+                    let a = i as f64 * std::f64::consts::PI / 3.0;
+                    [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
+                } else {
+                    [(i as f64) * 2.0, 0.0, 0.0]
+                }
+            })
+            .collect();
 
         let rings = vec![(vec![0, 1, 2, 3, 4, 5], true)];
         let decomp = detect_rigid_blocks(n, &elements, &positions, &rings);
@@ -271,10 +281,12 @@ mod tests {
     fn test_projection_columns_normalized() {
         let n = 6;
         let elements = vec![6; 6];
-        let positions: Vec<[f64; 3]> = (0..6).map(|i| {
-            let a = i as f64 * std::f64::consts::PI / 3.0;
-            [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
-        }).collect();
+        let positions: Vec<[f64; 3]> = (0..6)
+            .map(|i| {
+                let a = i as f64 * std::f64::consts::PI / 3.0;
+                [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
+            })
+            .collect();
 
         let rings = vec![(vec![0, 1, 2, 3, 4, 5], true)];
         let decomp = detect_rigid_blocks(n, &elements, &positions, &rings);
@@ -285,7 +297,8 @@ mod tests {
             assert!(
                 (norm - 1.0).abs() < 0.1 || norm < 1e-10,
                 "Column {} norm should be ~1.0 or 0: {}",
-                i, norm
+                i,
+                norm
             );
         }
     }

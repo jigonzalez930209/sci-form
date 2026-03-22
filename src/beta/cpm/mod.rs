@@ -7,9 +7,5 @@
 pub mod grand_potential;
 pub mod surface;
 
-pub use grand_potential::{
-    compute_cpm_charges, CpmConfig, CpmResult,
-};
-pub use surface::{
-    compute_cpm_surface, CpmSurface,
-};
+pub use grand_potential::{compute_cpm_charges, CpmConfig, CpmResult};
+pub use surface::{compute_cpm_surface, CpmSurface};

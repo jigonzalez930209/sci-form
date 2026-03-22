@@ -20,7 +20,7 @@ pub struct CpmConfig {
 impl Default for CpmConfig {
     fn default() -> Self {
         Self {
-            mu_ev: -4.44, // SHE
+            mu_ev: -4.44,     // SHE
             dielectric: 78.5, // water
             max_iter: 100,
             charge_tol: 1e-6,
@@ -48,27 +48,27 @@ pub struct CpmResult {
 }
 
 /// Per-element electronegativity (Pauling scale, eV).
-fn chi_element(z: u8) -> f64 {
+pub(crate) fn chi_element(z: u8) -> f64 {
     match z {
-        1 => 7.17,   // H
-        6 => 6.27,   // C
-        7 => 7.27,   // N
-        8 => 8.30,   // O
-        9 => 10.41,  // F
-        15 => 5.62,  // P
-        16 => 6.22,  // S
-        17 => 8.30,  // Cl
-        26 => 4.06,  // Fe
-        29 => 4.48,  // Cu
-        30 => 4.45,  // Zn
-        35 => 7.59,  // Br
-        53 => 6.76,  // I
-        _ => 6.27,   // default C
+        1 => 7.17,  // H
+        6 => 6.27,  // C
+        7 => 7.27,  // N
+        8 => 8.30,  // O
+        9 => 10.41, // F
+        15 => 5.62, // P
+        16 => 6.22, // S
+        17 => 8.30, // Cl
+        26 => 4.06, // Fe
+        29 => 4.48, // Cu
+        30 => 4.45, // Zn
+        35 => 7.59, // Br
+        53 => 6.76, // I
+        _ => 6.27,  // default C
     }
 }
 
 /// Per-element hardness (eV).
-fn eta_element(z: u8) -> f64 {
+pub(crate) fn eta_element(z: u8) -> f64 {
     match z {
         1 => 6.43,
         6 => 5.0,
@@ -187,11 +187,7 @@ mod tests {
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (
             vec![8, 1, 1],
-            vec![
-                [0.0, 0.0, 0.0],
-                [0.757, 0.586, 0.0],
-                [-0.757, 0.586, 0.0],
-            ],
+            vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]],
         )
     }
 
@@ -205,12 +201,30 @@ mod tests {
     #[test]
     fn test_cpm_charge_response_to_potential() {
         let (el, pos) = water();
-        let r1 = compute_cpm_charges(&el, &pos, &CpmConfig { mu_ev: -4.0, ..Default::default() });
-        let r2 = compute_cpm_charges(&el, &pos, &CpmConfig { mu_ev: -5.0, ..Default::default() });
+        let r1 = compute_cpm_charges(
+            &el,
+            &pos,
+            &CpmConfig {
+                mu_ev: -4.0,
+                ..Default::default()
+            },
+        );
+        let r2 = compute_cpm_charges(
+            &el,
+            &pos,
+            &CpmConfig {
+                mu_ev: -5.0,
+                ..Default::default()
+            },
+        );
         // Higher (less negative) μ → more electron donation → more negative total charge
         // Lower μ → more positive total charge
-        assert!(r1.total_charge > r2.total_charge,
-            "Q should decrease with lower μ: Q(-4)={}, Q(-5)={}", r1.total_charge, r2.total_charge);
+        assert!(
+            r1.total_charge > r2.total_charge,
+            "Q should decrease with lower μ: Q(-4)={}, Q(-5)={}",
+            r1.total_charge,
+            r2.total_charge
+        );
     }
 
     #[test]
