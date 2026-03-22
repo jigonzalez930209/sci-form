@@ -369,7 +369,7 @@ cargo build --release
 cd crates/python && pip install maturin && maturin develop --release
 
 # WASM bindings
-cd crates/wasm && wasm-pack build --target web --release
+cd crates/wasm && ./build.sh --web-only --web-features "parallel experimental-gpu"
 
 # With parallel feature
 cargo build --release --features parallel
