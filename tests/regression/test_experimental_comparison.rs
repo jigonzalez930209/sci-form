@@ -21,11 +21,7 @@ fn h2_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
 }
 
 fn heh_plus() -> (Vec<u8>, Vec<[f64; 3]>, i32) {
-    (
-        vec![2, 1],
-        vec![[0.0, 0.0, 0.0], [0.7743, 0.0, 0.0]],
-        1,
-    )
+    (vec![2, 1], vec![[0.0, 0.0, 0.0], [0.7743, 0.0, 0.0]], 1)
 }
 
 fn water_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -65,17 +61,11 @@ fn ammonia_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
 }
 
 fn hf_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
-    (
-        vec![9, 1],
-        vec![[0.0, 0.0, 0.0], [0.9168, 0.0, 0.0]],
-    )
+    (vec![9, 1], vec![[0.0, 0.0, 0.0], [0.9168, 0.0, 0.0]])
 }
 
 fn co_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
-    (
-        vec![6, 8],
-        vec![[0.0, 0.0, 0.0], [1.1282, 0.0, 0.0]],
-    )
+    (vec![6, 8], vec![[0.0, 0.0, 0.0], [1.1282, 0.0, 0.0]])
 }
 
 fn formaldehyde_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -106,7 +96,11 @@ fn ethylene_molecule() -> (Vec<u8>, Vec<[f64; 3]>) {
 
 fn embed_smiles(smiles: &str) -> (Vec<u8>, Vec<[f64; 3]>) {
     let conf = sci_form::embed(smiles, 42);
-    assert!(conf.error.is_none(), "embed failed for {smiles}: {:?}", conf.error);
+    assert!(
+        conf.error.is_none(),
+        "embed failed for {smiles}: {:?}",
+        conf.error
+    );
     let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     (conf.elements, pos)
 }
@@ -117,8 +111,8 @@ fn embed_smiles(smiles: &str) -> (Vec<u8>, Vec<[f64; 3]>) {
 
 mod experimental_scf_correctness {
     use super::*;
-    use sci_form::scf::types::MolecularSystem;
     use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -130,14 +124,25 @@ mod experimental_scf_correctness {
         let result = run_scf(&system, &config);
 
         assert!(result.converged, "H2 SCF must converge");
-        assert!(result.scf_iterations < 50, "H2 should converge fast, got {} iters", result.scf_iterations);
+        assert!(
+            result.scf_iterations < 50,
+            "H2 should converge fast, got {} iters",
+            result.scf_iterations
+        );
 
         // STO-3G HF energy for H2: ~-1.1175 Hartree (NIST/CCCBDB)
         // Note: experimental engine uses a simplified STO-3G that gives different absolute energies
         let e_ref = -1.1175;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("H2 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "H2 total energy should be negative");
+        println!(
+            "H2 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "H2 total energy should be negative"
+        );
 
         // 2 basis functions for H2
         assert_eq!(result.n_basis, 2, "H2 STO-3G should have 2 basis functions");
@@ -162,7 +167,11 @@ mod experimental_scf_correctness {
 
         // Gap should be positive and physically reasonable
         assert!(result.gap_ev > 0.0, "HOMO-LUMO gap must be positive");
-        assert!(result.gap_ev < 50.0, "Gap {:.2} eV seems unreasonably large", result.gap_ev);
+        assert!(
+            result.gap_ev < 50.0,
+            "Gap {:.2} eV seems unreasonably large",
+            result.gap_ev
+        );
     }
 
     #[test]
@@ -196,8 +205,15 @@ mod experimental_scf_correctness {
         // STO-3G: ~-2.8606 Hartree (NIST/CCCBDB)
         let e_ref = -2.8606;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("HeH+ SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "HeH+ total energy should be negative");
+        println!(
+            "HeH+ SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "HeH+ total energy should be negative"
+        );
 
         // He should be less positive than H (higher nuclear charge holds electrons)
         assert!(
@@ -215,13 +231,24 @@ mod experimental_scf_correctness {
         let result = run_scf(&system, &ScfConfig::default());
 
         assert!(result.converged, "H2O SCF must converge");
-        assert!(result.scf_iterations < 100, "H2O should converge in <100 iters, got {}", result.scf_iterations);
+        assert!(
+            result.scf_iterations < 100,
+            "H2O should converge in <100 iters, got {}",
+            result.scf_iterations
+        );
 
         // STO-3G HF: ~-74.9659 Hartree (NIST/CCCBDB)
         let e_ref = -74.9659;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("H2O SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "H2O total energy should be negative");
+        println!(
+            "H2O SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "H2O total energy should be negative"
+        );
     }
 
     #[test]
@@ -232,8 +259,10 @@ mod experimental_scf_correctness {
 
         assert!(result.converged);
         // Print charges for comparison (polarity may differ with simplified basis)
-        println!("H2O Mulliken: O={:.4}, H1={:.4}, H2={:.4}",
-            result.mulliken_charges[0], result.mulliken_charges[1], result.mulliken_charges[2]);
+        println!(
+            "H2O Mulliken: O={:.4}, H1={:.4}, H2={:.4}",
+            result.mulliken_charges[0], result.mulliken_charges[1], result.mulliken_charges[2]
+        );
         // Charge conservation
         let total: f64 = result.mulliken_charges.iter().sum();
         assert!(
@@ -254,12 +283,22 @@ mod experimental_scf_correctness {
         // STO-3G: ~-39.7269 Hartree (NIST/CCCBDB)
         let e_ref = -39.7269;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("CH4 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "CH4 total energy should be negative");
+        println!(
+            "CH4 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "CH4 total energy should be negative"
+        );
 
         // Print charges for comparison
-        println!("CH4 Mulliken: C={:.4}, H={:?}",
-            result.mulliken_charges[0], &result.mulliken_charges[1..]);
+        println!(
+            "CH4 Mulliken: C={:.4}, H={:?}",
+            result.mulliken_charges[0],
+            &result.mulliken_charges[1..]
+        );
     }
 
     #[test]
@@ -272,8 +311,15 @@ mod experimental_scf_correctness {
 
         let e_ref = -55.4544;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("NH3 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "NH3 total energy should be negative");
+        println!(
+            "NH3 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "NH3 total energy should be negative"
+        );
     }
 
     #[test]
@@ -286,8 +332,15 @@ mod experimental_scf_correctness {
 
         let e_ref = -98.5708;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("HF SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "HF total energy should be negative");
+        println!(
+            "HF SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "HF total energy should be negative"
+        );
     }
 
     #[test]
@@ -300,8 +353,15 @@ mod experimental_scf_correctness {
 
         let e_ref = -111.2255;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("CO SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "CO total energy should be negative");
+        println!(
+            "CO SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "CO total energy should be negative"
+        );
     }
 
     #[test]
@@ -314,8 +374,15 @@ mod experimental_scf_correctness {
 
         let e_ref = -77.0739;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("C2H4 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "C2H4 total energy should be negative");
+        println!(
+            "C2H4 SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "C2H4 total energy should be negative"
+        );
     }
 
     #[test]
@@ -328,8 +395,15 @@ mod experimental_scf_correctness {
 
         let e_ref = -112.3522;
         let rel_err = (result.total_energy - e_ref).abs() / e_ref.abs();
-        println!("CH2O SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)", result.total_energy, rel_err * 100.0);
-        assert!(result.total_energy < 0.0, "CH2O total energy should be negative");
+        println!(
+            "CH2O SCF: {:.6} Ha (NIST ref: {e_ref}, rel err: {:.1}%)",
+            result.total_energy,
+            rel_err * 100.0
+        );
+        assert!(
+            result.total_energy < 0.0,
+            "CH2O total energy should be negative"
+        );
     }
 
     #[test]
@@ -380,7 +454,10 @@ mod experimental_scf_correctness {
             assert!(
                 diff < 1e-10,
                 "{name}: total ({:.8}) != electronic ({:.8}) + nuclear ({:.8}), diff = {:.2e}",
-                result.total_energy, result.electronic_energy, result.nuclear_repulsion, diff
+                result.total_energy,
+                result.electronic_energy,
+                result.nuclear_repulsion,
+                diff
             );
         }
     }
@@ -433,11 +510,11 @@ mod experimental_scf_correctness {
 mod legacy_vs_experimental_energy {
     use super::*;
     use sci_form::eht::solve_eht;
-    use sci_form::pm3::solve_pm3;
-    use sci_form::xtb::solve_xtb;
     use sci_form::hf::{solve_hf3c, HfConfig};
-    use sci_form::scf::types::MolecularSystem;
+    use sci_form::pm3::solve_pm3;
     use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::xtb::solve_xtb;
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -456,7 +533,10 @@ mod legacy_vs_experimental_energy {
         let xtb_gap = xtb_result.as_ref().map(|r| r.gap).ok();
 
         // Legacy HF-3c
-        let hf_config = HfConfig { n_cis_states: 0, ..HfConfig::default() };
+        let hf_config = HfConfig {
+            n_cis_states: 0,
+            ..HfConfig::default()
+        };
         let hf_result = solve_hf3c(elems, pos, &hf_config);
 
         // Experimental SCF
@@ -470,31 +550,51 @@ mod legacy_vs_experimental_energy {
         println!("╟──────────────────┼───────────┼───────────┼──────────────────╢");
 
         if let Some(gap) = eht_gap {
-            println!("║  EHT (legacy)    │ {:>8.3}  │     —     │       —          ║", gap);
+            println!(
+                "║  EHT (legacy)    │ {:>8.3}  │     —     │       —          ║",
+                gap
+            );
         }
         if let Some(gap) = pm3_gap {
             let r = pm3_result.as_ref().unwrap();
-            println!("║  PM3 (legacy)    │ {:>8.3}  │ {:>9} │ {:>8}         ║", gap, r.converged, r.scf_iterations);
+            println!(
+                "║  PM3 (legacy)    │ {:>8.3}  │ {:>9} │ {:>8}         ║",
+                gap, r.converged, r.scf_iterations
+            );
         }
         if let Some(gap) = xtb_gap {
             let r = xtb_result.as_ref().unwrap();
-            println!("║  xTB (legacy)    │ {:>8.3}  │ {:>9} │ {:>8}         ║", gap, r.converged, r.scc_iterations);
+            println!(
+                "║  xTB (legacy)    │ {:>8.3}  │ {:>9} │ {:>8}         ║",
+                gap, r.converged, r.scc_iterations
+            );
         }
         if let Ok(ref r) = hf_result {
             // HF-3c stores orbital energies in eV already? Need to check
             if r.orbital_energies.len() >= 2 {
-                println!("║  HF-3c (legacy)  │    —      │ {:>9} │ {:>8}         ║", r.converged, r.scf_iterations);
+                println!(
+                    "║  HF-3c (legacy)  │    —      │ {:>9} │ {:>8}         ║",
+                    r.converged, r.scf_iterations
+                );
             }
         }
 
-        println!("║  Exp. HF-SCF     │ {:>8.3}  │ {:>9} │ {:>8}         ║",
-            exp_result.gap_ev, exp_result.converged, exp_result.scf_iterations);
+        println!(
+            "║  Exp. HF-SCF     │ {:>8.3}  │ {:>9} │ {:>8}         ║",
+            exp_result.gap_ev, exp_result.converged, exp_result.scf_iterations
+        );
         println!("╚══════════════════════════════════════════════════════════════╝");
 
         // All gaps should be positive
-        if let Some(g) = eht_gap { assert!(g > 0.0, "{name}: EHT gap negative"); }
-        if let Some(g) = pm3_gap { assert!(g > 0.0, "{name}: PM3 gap negative"); }
-        if let Some(g) = xtb_gap { assert!(g > 0.0, "{name}: xTB gap negative"); }
+        if let Some(g) = eht_gap {
+            assert!(g > 0.0, "{name}: EHT gap negative");
+        }
+        if let Some(g) = pm3_gap {
+            assert!(g > 0.0, "{name}: PM3 gap negative");
+        }
+        if let Some(g) = xtb_gap {
+            assert!(g > 0.0, "{name}: xTB gap negative");
+        }
         assert!(exp_result.gap_ev > 0.0, "{name}: Experimental gap negative");
     }
 
@@ -551,7 +651,11 @@ mod legacy_vs_experimental_energy {
     fn test_hf_vs_experimental_energy_h2() {
         let (elems, pos) = h2_molecule();
 
-        let hf_config = HfConfig { n_cis_states: 0, corrections: false, ..HfConfig::default() };
+        let hf_config = HfConfig {
+            n_cis_states: 0,
+            corrections: false,
+            ..HfConfig::default()
+        };
         let hf_result = solve_hf3c(&elems, &pos, &hf_config).expect("HF-3c should work for H2");
 
         let system = MolecularSystem::from_angstrom(&elems, &pos, 0, 1);
@@ -565,7 +669,8 @@ mod legacy_vs_experimental_energy {
         println!("\nH₂ Energy Comparison:");
         println!("  HF-3c (pure HF):  {:.6} Hartree", hf_energy);
         println!("  Experimental SCF:  {:.6} Hartree", exp_energy);
-        println!("  Difference:        {:.6} Hartree ({:.2} mHa)",
+        println!(
+            "  Difference:        {:.6} Hartree ({:.2} mHa)",
             (hf_energy - exp_energy).abs(),
             (hf_energy - exp_energy).abs() * 1000.0
         );
@@ -575,7 +680,11 @@ mod legacy_vs_experimental_energy {
     fn test_hf_vs_experimental_energy_water() {
         let (elems, pos) = water_molecule();
 
-        let hf_config = HfConfig { n_cis_states: 0, corrections: false, ..HfConfig::default() };
+        let hf_config = HfConfig {
+            n_cis_states: 0,
+            corrections: false,
+            ..HfConfig::default()
+        };
         let hf_result = solve_hf3c(&elems, &pos, &hf_config).expect("HF-3c should work for H2O");
 
         let system = MolecularSystem::from_angstrom(&elems, &pos, 0, 1);
@@ -587,7 +696,8 @@ mod legacy_vs_experimental_energy {
         println!("\nH₂O Energy Comparison:");
         println!("  HF-3c (pure HF):  {:.6} Hartree", hf_energy);
         println!("  Experimental SCF:  {:.6} Hartree", exp_energy);
-        println!("  Difference:        {:.6} Hartree ({:.2} mHa)",
+        println!(
+            "  Difference:        {:.6} Hartree ({:.2} mHa)",
             (hf_energy - exp_energy).abs(),
             (hf_energy - exp_energy).abs() * 1000.0
         );
@@ -601,9 +711,9 @@ mod legacy_vs_experimental_energy {
 mod legacy_vs_experimental_charges {
     use super::*;
     use sci_form::pm3::solve_pm3;
-    use sci_form::xtb::solve_xtb;
-    use sci_form::scf::types::MolecularSystem;
     use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::xtb::solve_xtb;
 
     fn compare_charges(name: &str, elems: &[u8], pos: &[[f64; 3]], element_names: &[&str]) {
         let pm3 = solve_pm3(elems, pos);
@@ -635,7 +745,10 @@ mod legacy_vs_experimental_charges {
         // Total charge
         let exp_total: f64 = exp.mulliken_charges.iter().sum();
         println!("├──────────┼──────────┼──────────┼──────────────────────────┤");
-        println!("│  Total   │          │          │ {:>8.4}                 │", exp_total);
+        println!(
+            "│  Total   │          │          │ {:>8.4}                 │",
+            exp_total
+        );
         println!("└──────────┴──────────┴──────────┴──────────────────────────┘");
 
         // Validation: total charge should be ~0 for neutral molecules
@@ -683,8 +796,8 @@ mod legacy_vs_experimental_charges {
 
 mod experimental_vs_nist {
     use super::*;
-    use sci_form::scf::types::MolecularSystem;
     use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -793,9 +906,7 @@ mod experimental_vs_nist {
 mod quantum_engine_integrals {
     use super::*;
     use sci_form::scf::basis::BasisSet;
-    use sci_form::scf::core_matrices::{
-        build_core_matrices, nuclear_repulsion_energy,
-    };
+    use sci_form::scf::core_matrices::{nuclear_repulsion_energy, CoreMatrices};
     use sci_form::scf::overlap_matrix::build_overlap_matrix;
     use sci_form::scf::two_electron::TwoElectronIntegrals;
 
@@ -933,7 +1044,7 @@ mod quantum_engine_integrals {
         let (elems, pos) = water_molecule();
         let pos_b = to_bohr(&pos);
         let basis = BasisSet::sto3g(&elems, &pos_b);
-        let core_m = build_core_matrices(&basis, &elems, &pos_b);
+        let core_m = CoreMatrices::build(&basis, &elems, &pos_b);
         let h = &core_m.core_hamiltonian;
 
         for i in 0..h.nrows() {
@@ -953,11 +1064,12 @@ mod quantum_engine_integrals {
 
 mod spectroscopy_comparison {
     use super::*;
-    use sci_form::scf::types::MolecularSystem;
-    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
-    use sci_form::spectroscopy::{compute_stda, StdaConfig};
-    use sci_form::spectroscopy::{compute_nmr_shieldings, shieldings_to_result};
     use sci_form::scf::basis::BasisSet;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::spectroscopy::ScfInput;
+    use sci_form::spectroscopy::{compute_nmr_shieldings, shieldings_to_shifts};
+    use sci_form::spectroscopy::{compute_stda, StdaConfig};
 
     const HARTREE_TO_EV: f64 = 27.211386;
     const ANGSTROM_TO_BOHR: f64 = 1.8897259886;
@@ -973,11 +1085,23 @@ mod spectroscopy_comparison {
             return;
         }
 
-        let pos_b: Vec<[f64; 3]> = pos.iter()
-            .map(|p| [p[0] * ANGSTROM_TO_BOHR, p[1] * ANGSTROM_TO_BOHR, p[2] * ANGSTROM_TO_BOHR])
+        let pos_b: Vec<[f64; 3]> = pos
+            .iter()
+            .map(|p| {
+                [
+                    p[0] * ANGSTROM_TO_BOHR,
+                    p[1] * ANGSTROM_TO_BOHR,
+                    p[2] * ANGSTROM_TO_BOHR,
+                ]
+            })
             .collect();
         let basis = BasisSet::sto3g(&elems, &pos_b);
-        let result = compute_stda(&scf, &basis.function_to_atom, &system.positions_bohr, &StdaConfig::default());
+        let result = compute_stda(
+            &ScfInput::from(&scf),
+            &basis.function_to_atom,
+            &system.positions_bohr,
+            &StdaConfig::default(),
+        );
         assert!(
             !result.transitions.is_empty(),
             "sTDA should produce at least one transition for H2O"
@@ -995,7 +1119,7 @@ mod spectroscopy_comparison {
                 "Transition {i}: oscillator strength must be non-negative"
             );
             assert!(
-                t.wavelength_nm > 0.0, 
+                t.wavelength_nm > 0.0,
                 "Transition {i}: wavelength must be positive"
             );
         }
@@ -1007,7 +1131,12 @@ mod spectroscopy_comparison {
 
         // Legacy sTDA UV-Vis
         let legacy_result = sci_form::compute_stda_uvvis(
-            &elems, &pos, 0.3, 1.0, 8.0, 500,
+            &elems,
+            &pos,
+            0.3,
+            1.0,
+            8.0,
+            500,
             sci_form::reactivity::BroadeningType::Gaussian,
         );
 
@@ -1020,11 +1149,23 @@ mod spectroscopy_comparison {
             return;
         }
 
-        let pos_b: Vec<[f64; 3]> = pos.iter()
-            .map(|p| [p[0] * ANGSTROM_TO_BOHR, p[1] * ANGSTROM_TO_BOHR, p[2] * ANGSTROM_TO_BOHR])
+        let pos_b: Vec<[f64; 3]> = pos
+            .iter()
+            .map(|p| {
+                [
+                    p[0] * ANGSTROM_TO_BOHR,
+                    p[1] * ANGSTROM_TO_BOHR,
+                    p[2] * ANGSTROM_TO_BOHR,
+                ]
+            })
             .collect();
         let basis = BasisSet::sto3g(&elems, &pos_b);
-        let exp_result = compute_stda(&scf, &basis.function_to_atom, &system.positions_bohr, &StdaConfig::default());
+        let exp_result = compute_stda(
+            &ScfInput::from(&scf),
+            &basis.function_to_atom,
+            &system.positions_bohr,
+            &StdaConfig::default(),
+        );
 
         println!("\n┌─────────────────────────────────────────────────────────────┐");
         println!("│  UV-Vis Benzene: Legacy sTDA vs Experimental sTDA          │");
@@ -1033,13 +1174,22 @@ mod spectroscopy_comparison {
         if let Ok(ref legacy) = legacy_result {
             println!("│  Legacy:  {} excitations", legacy.excitations.len());
             for (i, exc) in legacy.excitations.iter().take(5).enumerate() {
-                println!("│    [{i}] E={:.3} eV, λ={:.1} nm, f={:.4}", exc.energy_ev, exc.wavelength_nm, exc.oscillator_strength);
+                println!(
+                    "│    [{i}] E={:.3} eV, λ={:.1} nm, f={:.4}",
+                    exc.energy_ev, exc.wavelength_nm, exc.oscillator_strength
+                );
             }
         }
 
-        println!("│  Experimental:  {} transitions", exp_result.transitions.len());
+        println!(
+            "│  Experimental:  {} transitions",
+            exp_result.transitions.len()
+        );
         for (i, t) in exp_result.transitions.iter().take(5).enumerate() {
-            println!("│    [{i}] E={:.3} eV, λ={:.1} nm, f={:.4}", t.energy_ev, t.wavelength_nm, t.oscillator_strength);
+            println!(
+                "│    [{i}] E={:.3} eV, λ={:.1} nm, f={:.4}",
+                t.energy_ev, t.wavelength_nm, t.oscillator_strength
+            );
         }
 
         // Experimental benzene π→π*: ~4.88 eV (254 nm)
@@ -1058,17 +1208,25 @@ mod spectroscopy_comparison {
             return;
         }
 
-        let pos_b: Vec<[f64; 3]> = pos.iter()
-            .map(|p| [p[0] * ANGSTROM_TO_BOHR, p[1] * ANGSTROM_TO_BOHR, p[2] * ANGSTROM_TO_BOHR])
+        let pos_b: Vec<[f64; 3]> = pos
+            .iter()
+            .map(|p| {
+                [
+                    p[0] * ANGSTROM_TO_BOHR,
+                    p[1] * ANGSTROM_TO_BOHR,
+                    p[2] * ANGSTROM_TO_BOHR,
+                ]
+            })
             .collect();
         let basis = BasisSet::sto3g(&elems, &pos_b);
         let basis_to_atom = basis.function_to_atom.clone();
 
-        let shieldings = compute_nmr_shieldings(&system, &scf, &basis_to_atom);
+        let shieldings =
+            compute_nmr_shieldings(&elems, &pos_b, &ScfInput::from(&scf), &basis_to_atom);
 
         assert_eq!(shieldings.len(), 3, "H2O should have 3 shielding tensors");
 
-        let nmr_result = shieldings_to_result(&shieldings, &system);
+        let nmr_result = shieldings_to_shifts(&shieldings, &elems);
 
         println!("\n┌─────────────────────────────────────────────────────────────┐");
         println!("│  Experimental NMR: H₂O Chemical Shifts                     │");
@@ -1076,8 +1234,16 @@ mod spectroscopy_comparison {
         println!("│  Atom    │ δ (ppm)  │ Reference                            │");
         println!("├──────────┼──────────┼──────────────────────────────────────┤");
         for (i, &shift) in nmr_result.chemical_shifts.iter().enumerate() {
-            let elem_name = match elems[i] { 1 => "H", 8 => "O", _ => "?" };
-            let ref_note = if elems[i] == 1 { "exp: 4.70 ppm" } else { "—" };
+            let elem_name = match elems[i] {
+                1 => "H",
+                8 => "O",
+                _ => "?",
+            };
+            let ref_note = if elems[i] == 1 {
+                "exp: 4.70 ppm"
+            } else {
+                "—"
+            };
             println!("│  {:<7} │ {:>8.2} │ {:<36} │", elem_name, shift, ref_note);
         }
         println!("└──────────┴──────────┴──────────────────────────────────────┘");
@@ -1121,16 +1287,32 @@ mod spectroscopy_comparison {
         }
 
         if scf.converged {
-            let pos_b: Vec<[f64; 3]> = pos.iter()
-                .map(|p| [p[0] * ANGSTROM_TO_BOHR, p[1] * ANGSTROM_TO_BOHR, p[2] * ANGSTROM_TO_BOHR])
+            let pos_b: Vec<[f64; 3]> = pos
+                .iter()
+                .map(|p| {
+                    [
+                        p[0] * ANGSTROM_TO_BOHR,
+                        p[1] * ANGSTROM_TO_BOHR,
+                        p[2] * ANGSTROM_TO_BOHR,
+                    ]
+                })
                 .collect();
             let basis = BasisSet::sto3g(&elems, &pos_b);
-            let shieldings = compute_nmr_shieldings(&system, &scf, &basis.function_to_atom);
-            let nmr_result = shieldings_to_result(&shieldings, &system);
+            let shieldings = compute_nmr_shieldings(
+                &elems,
+                &pos_b,
+                &ScfInput::from(&scf),
+                &basis.function_to_atom,
+            );
+            let nmr_result = shieldings_to_shifts(&shieldings, &elems);
 
             println!("│  Experimental shifts:");
             for (i, &shift) in nmr_result.chemical_shifts.iter().enumerate() {
-                let elem = match elems[i] { 1 => "H", 6 => "C", _ => "?" };
+                let elem = match elems[i] {
+                    1 => "H",
+                    6 => "C",
+                    _ => "?",
+                };
                 println!("│    {}{}: {:.2} ppm", elem, i, shift);
             }
         }
@@ -1157,11 +1339,11 @@ mod spectroscopy_comparison {
 mod timing_benchmarks {
     use super::*;
     use sci_form::eht::solve_eht;
-    use sci_form::pm3::solve_pm3;
-    use sci_form::xtb::solve_xtb;
     use sci_form::hf::{solve_hf3c, HfConfig};
-    use sci_form::scf::types::MolecularSystem;
+    use sci_form::pm3::solve_pm3;
     use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::xtb::solve_xtb;
 
     const HARTREE_TO_EV: f64 = 27.211386;
 
@@ -1186,7 +1368,10 @@ mod timing_benchmarks {
         let xtb_ok = xtb_r.is_ok();
 
         // HF-3c
-        let hf_config = HfConfig { n_cis_states: 0, ..HfConfig::default() };
+        let hf_config = HfConfig {
+            n_cis_states: 0,
+            ..HfConfig::default()
+        };
         let (hf_r, hf_ms) = time_fn(|| solve_hf3c(elems, pos, &hf_config));
         let hf_ok = hf_r.is_ok();
 
@@ -1197,19 +1382,42 @@ mod timing_benchmarks {
 
         println!("\n╔══════════════════════════════════════════════════════════════╗");
         println!("║  Timing Benchmark: {:<41}║", name);
-        println!("║  ({} atoms, {} electrons){}║",
+        println!(
+            "║  ({} atoms, {} electrons){}║",
             elems.len(),
             elems.iter().map(|&z| z as u32).sum::<u32>(),
-            " ".repeat(41 - format!("{} atoms, {} electrons", elems.len(), elems.iter().map(|&z| z as u32).sum::<u32>()).len())
+            " ".repeat(
+                41 - format!(
+                    "{} atoms, {} electrons",
+                    elems.len(),
+                    elems.iter().map(|&z| z as u32).sum::<u32>()
+                )
+                .len()
+            )
         );
         println!("╠══════════════════╦═══════════╦══════════╦══════════════════╣");
         println!("║  Method          ║ Time (ms) ║ Success  ║ Details          ║");
         println!("╠══════════════════╬═══════════╬══════════╬══════════════════╣");
-        println!("║  EHT (legacy)    ║ {:>9.3} ║ {:>8} ║ single-diag      ║", eht_ms, eht_ok);
-        println!("║  PM3 (legacy)    ║ {:>9.3} ║ {:>8} ║ NDDO SCF         ║", pm3_ms, pm3_ok);
-        println!("║  xTB (legacy)    ║ {:>9.3} ║ {:>8} ║ GFN0 SCC         ║", xtb_ms, xtb_ok);
-        println!("║  HF-3c (legacy)  ║ {:>9.3} ║ {:>8} ║ HF + D3/gCP/SRB  ║", hf_ms, hf_ok);
-        println!("║  Exp. HF-SCF     ║ {:>9.3} ║ {:>8} ║ Roothaan-Hall    ║", exp_ms, exp_conv);
+        println!(
+            "║  EHT (legacy)    ║ {:>9.3} ║ {:>8} ║ single-diag      ║",
+            eht_ms, eht_ok
+        );
+        println!(
+            "║  PM3 (legacy)    ║ {:>9.3} ║ {:>8} ║ NDDO SCF         ║",
+            pm3_ms, pm3_ok
+        );
+        println!(
+            "║  xTB (legacy)    ║ {:>9.3} ║ {:>8} ║ GFN0 SCC         ║",
+            xtb_ms, xtb_ok
+        );
+        println!(
+            "║  HF-3c (legacy)  ║ {:>9.3} ║ {:>8} ║ HF + D3/gCP/SRB  ║",
+            hf_ms, hf_ok
+        );
+        println!(
+            "║  Exp. HF-SCF     ║ {:>9.3} ║ {:>8} ║ Roothaan-Hall    ║",
+            exp_ms, exp_conv
+        );
         println!("╚══════════════════╩═══════════╩══════════╩══════════════════╝");
 
         // Speedup ratios
@@ -1218,7 +1426,10 @@ mod timing_benchmarks {
             if ratio > 1.0 {
                 println!("  → Experimental SCF is {:.1}× faster than HF-3c", ratio);
             } else {
-                println!("  → HF-3c is {:.1}× faster than Experimental SCF", 1.0 / ratio);
+                println!(
+                    "  → HF-3c is {:.1}× faster than Experimental SCF",
+                    1.0 / ratio
+                );
             }
         }
     }
@@ -1280,23 +1491,48 @@ mod comprehensive_energy_table {
     use super::*;
     use sci_form::eht::solve_eht;
     use sci_form::pm3::solve_pm3;
-    use sci_form::xtb::solve_xtb;
-    use sci_form::scf::types::MolecularSystem;
     use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+    use sci_form::xtb::solve_xtb;
 
     const HARTREE_TO_EV: f64 = 27.211386;
+    type EnergyComparisonCase = (&'static str, Vec<u8>, Vec<[f64; 3]>, f64);
 
     #[test]
     fn test_comprehensive_energy_comparison() {
-        let molecules: Vec<(&str, Vec<u8>, Vec<[f64; 3]>, f64)> = vec![
-            { let (e, p) = h2_molecule(); ("H₂", e, p, -1.1175) },
-            { let (e, p) = water_molecule(); ("H₂O", e, p, -74.9659) },
-            { let (e, p) = methane_molecule(); ("CH₄", e, p, -39.7269) },
-            { let (e, p) = ammonia_molecule(); ("NH₃", e, p, -55.4544) },
-            { let (e, p) = hf_molecule(); ("HF", e, p, -98.5708) },
-            { let (e, p) = co_molecule(); ("CO", e, p, -111.2255) },
-            { let (e, p) = ethylene_molecule(); ("C₂H₄", e, p, -77.0739) },
-            { let (e, p) = formaldehyde_molecule(); ("CH₂O", e, p, -112.3522) },
+        let molecules: Vec<EnergyComparisonCase> = vec![
+            {
+                let (e, p) = h2_molecule();
+                ("H₂", e, p, -1.1175)
+            },
+            {
+                let (e, p) = water_molecule();
+                ("H₂O", e, p, -74.9659)
+            },
+            {
+                let (e, p) = methane_molecule();
+                ("CH₄", e, p, -39.7269)
+            },
+            {
+                let (e, p) = ammonia_molecule();
+                ("NH₃", e, p, -55.4544)
+            },
+            {
+                let (e, p) = hf_molecule();
+                ("HF", e, p, -98.5708)
+            },
+            {
+                let (e, p) = co_molecule();
+                ("CO", e, p, -111.2255)
+            },
+            {
+                let (e, p) = ethylene_molecule();
+                ("C₂H₄", e, p, -77.0739)
+            },
+            {
+                let (e, p) = formaldehyde_molecule();
+                ("CH₂O", e, p, -112.3522)
+            },
         ];
 
         println!("\n╔══════════════════════════════════════════════════════════════════════════════════════════╗");
@@ -1313,9 +1549,18 @@ mod comprehensive_energy_table {
             let system = MolecularSystem::from_angstrom(elems, pos, 0, 1);
             let exp = run_scf(&system, &ScfConfig::default());
 
-            let eht_gap = eht.as_ref().map(|r| format!("{:>10.3}", r.gap)).unwrap_or_else(|| "     —    ".to_string());
-            let pm3_gap = pm3.as_ref().map(|r| format!("{:>10.3}", r.gap)).unwrap_or_else(|| "     —    ".to_string());
-            let xtb_gap = xtb.as_ref().map(|r| format!("{:>10.3}", r.gap)).unwrap_or_else(|| "     —    ".to_string());
+            let eht_gap = eht
+                .as_ref()
+                .map(|r| format!("{:>10.3}", r.gap))
+                .unwrap_or_else(|| "     —    ".to_string());
+            let pm3_gap = pm3
+                .as_ref()
+                .map(|r| format!("{:>10.3}", r.gap))
+                .unwrap_or_else(|| "     —    ".to_string());
+            let xtb_gap = xtb
+                .as_ref()
+                .map(|r| format!("{:>10.3}", r.gap))
+                .unwrap_or_else(|| "     —    ".to_string());
             let cvg = if exp.converged { "  ✓ " } else { "  ✗ " };
 
             println!(
