@@ -5,6 +5,7 @@ on:
     tags: ["v*"]
 
 permissions:
+  actions: read
   contents: write
 
 env:
@@ -12,107 +13,151 @@ env:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Release pipeline:
-#   1. pre-release-tests  — full test suite on all 3 platforms (gate)
-#   2. lint               — clippy -D warnings + fmt --check (gate)
-#   3. build-cli          — cross-compile CLI for 5 targets
-#   4. build-python       — maturin wheels (3 platforms × 3.11)
-#   5. build-wasm         — wasm-pack bundler + nodejs targets
-#   6. verify-python      — install wheel + smoke test
-#   7. verify-node        — install npm pkg + smoke test
-#   8. verify-cli-linux   — run the linux binary + smoke test
-#   9. publish-crate      — cargo publish to crates.io
-#  10. publish-python     — twine upload to PyPI
-#  11. publish-npm        — npm publish
-#  12. release            — GitHub Release with all artifacts
+#   1. wait-for-ci        — block until CI passes for the same SHA
+#   2. build-cli          — cross-compile CLI grouped by OS (3 runners, 5 targets)
+#   3. build-python       — maturin wheels (3 platforms × 3.11)
+#   4. build-wasm         — wasm-pack bundler + Vite example validation
+#   5. verify-python      — install wheel + smoke test
+#   6. verify-node        — install npm pkg + smoke test
+#   7. verify-cli-linux   — run the linux binary + smoke test
+#   8. publish-crate      — cargo publish to crates.io
+#   9. publish-python     — twine upload to PyPI
+#  10. publish-npm        — npm publish
+#  11. release            — GitHub Release with all artifacts
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
-  # ─── Gate 1: Full test suite ───────────────────────────────────────────────
-  pre-release-tests:
-    name: Pre-release Tests (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: true
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+  # ─── Gate 1: Wait for CI on the same SHA ───────────────────────────────────
+  wait-for-ci:
+    name: Wait for CI
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Unit tests (lib)
-        run: cargo test --lib --release
-      - name: Smoke battery
-        run: cargo test --release --test ci -- --nocapture
+      - name: Wait for CI workflow to finish successfully
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflowId = 'ci.yml';
+            const sha = context.sha;
+            const timeoutMs = 60 * 60 * 1000;
+            const intervalMs = 30 * 1000;
+            const deadline = Date.now() + timeoutMs;
 
-  # ─── Gate 2: Lint & format ─────────────────────────────────────────────────
-  lint:
-    name: Lint & Format
+            while (Date.now() < deadline) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                head_sha: sha,
+                per_page: 10,
+              });
+
+              const run = data.workflow_runs.find((item) => item.head_sha === sha);
+
+              if (!run) {
+                core.info(`No CI run found yet for ${sha}; waiting...`);
+              } else if (run.status !== 'completed') {
+                core.info(`CI run ${run.id} is ${run.status}; waiting...`);
+              } else if (run.conclusion === 'success') {
+                core.info(`CI passed for ${sha}: ${run.html_url}`);
+                return;
+              } else {
+                throw new Error(`CI run ${run.id} finished with ${run.conclusion}: ${run.html_url}`);
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, intervalMs));
+            }
+
+            throw new Error(`Timed out waiting for CI to complete successfully for ${sha}`);
+
+  # ─── CLI Binaries (grouped by OS to reduce runner startup overhead) ───────
+  build-cli-linux:
+    name: CLI (ubuntu-latest)
+    needs: [wait-for-ci]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          targets: x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --all-targets -- -D warnings
+      - name: Install cross-compilation tools (aarch64-linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Build Linux x86_64 CLI
+        run: cargo build --release --package sci-form-cli --target x86_64-unknown-linux-gnu
+      - name: Build Linux aarch64 CLI
+        run: cargo build --release --package sci-form-cli --target aarch64-unknown-linux-gnu
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      - name: Stage Linux x86_64 artifact
+        shell: bash
+        run: cp target/x86_64-unknown-linux-gnu/release/sci-form sci-form-linux-x86_64
+      - name: Stage Linux aarch64 artifact
+        shell: bash
+        run: cp target/aarch64-unknown-linux-gnu/release/sci-form sci-form-linux-aarch64
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sci-form-linux-x86_64
+          path: sci-form-linux-x86_64
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sci-form-linux-aarch64
+          path: sci-form-linux-aarch64
 
-  # ─── CLI Binaries (Linux, macOS, Windows) ──────────────────────────────────
-  build-cli:
-    name: CLI (${{ matrix.target }})
-    needs: [pre-release-tests, lint]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact: sci-form-linux-x86_64
-            bin: sci-form
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            artifact: sci-form-linux-aarch64
-            bin: sci-form
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact: sci-form-macos-x86_64
-            bin: sci-form
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact: sci-form-macos-aarch64
-            bin: sci-form
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact: sci-form-windows-x86_64.exe
-            bin: sci-form.exe
+  build-cli-macos:
+    name: CLI (macos-latest)
+    needs: [wait-for-ci]
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
       - uses: Swatinem/rust-cache@v2
-      - name: Install cross-compilation tools (aarch64-linux)
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-      - name: Build CLI
-        run: cargo build --release --package sci-form-cli --target ${{ matrix.target }}
-        env:
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-      - name: Stage artifact
+      - name: Build macOS x86_64 CLI
+        run: cargo build --release --package sci-form-cli --target x86_64-apple-darwin
+      - name: Build macOS aarch64 CLI
+        run: cargo build --release --package sci-form-cli --target aarch64-apple-darwin
+      - name: Stage macOS x86_64 artifact
         shell: bash
-        run: |
-          cp target/${{ matrix.target }}/release/${{ matrix.bin }} ${{ matrix.artifact }}
+        run: cp target/x86_64-apple-darwin/release/sci-form sci-form-macos-x86_64
+      - name: Stage macOS aarch64 artifact
+        shell: bash
+        run: cp target/aarch64-apple-darwin/release/sci-form sci-form-macos-aarch64
       - uses: actions/upload-artifact@v6
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
+          name: sci-form-macos-x86_64
+          path: sci-form-macos-x86_64
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sci-form-macos-aarch64
+          path: sci-form-macos-aarch64
+
+  build-cli-windows:
+    name: CLI (windows-latest)
+    needs: [wait-for-ci]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Build Windows CLI
+        run: cargo build --release --package sci-form-cli --target x86_64-pc-windows-msvc
+      - name: Stage Windows artifact
+        shell: bash
+        run: cp target/x86_64-pc-windows-msvc/release/sci-form.exe sci-form-windows-x86_64.exe
+      - uses: actions/upload-artifact@v6
+        with:
+          name: sci-form-windows-x86_64.exe
+          path: sci-form-windows-x86_64.exe
 
   # ─── Python Wheels ─────────────────────────────────────────────────────────
   build-python:
     name: Python (${{ matrix.os }})
-    needs: [pre-release-tests, lint]
+    needs: [wait-for-ci]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -122,6 +167,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+          cache: pip
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install maturin
@@ -136,18 +182,29 @@ jobs:
   # ─── WASM / npm ────────────────────────────────────────────────────────────
   build-wasm:
     name: WASM / npm
-    needs: [pre-release-tests, lint]
+    needs: [wait-for-ci]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: crates/wasm/examples/vite-webgpu-hybrid/pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+      - name: Enable Corepack
+        run: corepack enable
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build WASM packages (web + nodejs)
         run: cd crates/wasm && bash build.sh
+      - name: Install Vite example dependencies
+        run: pnpm --dir crates/wasm/examples/vite-webgpu-hybrid install --frozen-lockfile --ignore-scripts
+      - name: Build Vite example
+        run: pnpm --dir crates/wasm/examples/vite-webgpu-hybrid exec vite build
       - name: Verify Node.js install
         run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.log('✓ Node.js WASM works');"
       - uses: actions/upload-artifact@v6
@@ -223,7 +280,7 @@ jobs:
   # ─── Verify: CLI binary runs ───────────────────────────────────────────────
   verify-cli:
     name: Verify CLI binary
-    needs: [build-cli]
+    needs: [build-cli-linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
