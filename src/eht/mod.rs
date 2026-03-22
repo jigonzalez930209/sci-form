@@ -7,7 +7,9 @@
 //! - Phase B4: 3D volumetric mapping of molecular orbitals
 //! - Phase B5: Output structures for rendering (raw volumes + Marching Cubes)
 
+pub mod band_structure;
 pub mod basis;
+pub mod gradients;
 pub mod hamiltonian;
 pub mod marching_cubes;
 pub mod overlap;
