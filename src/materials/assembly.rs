@@ -80,6 +80,145 @@ impl Topology {
             edges: vec![(0, 0, [1, 0, 0]), (0, 0, [0, 1, 0])],
         }
     }
+
+    /// Body-centered cubic (bcu) topology: 2 nodes at (0,0,0) and (0.5,0.5,0.5).
+    /// 8-connected, found in UiO-66 and related Zr-MOFs.
+    pub fn bcu() -> Self {
+        Self {
+            name: "bcu".to_string(),
+            nodes: vec![[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]],
+            edges: vec![
+                (0, 1, [0, 0, 0]),
+                (0, 1, [-1, 0, 0]),
+                (0, 1, [0, -1, 0]),
+                (0, 1, [0, 0, -1]),
+            ],
+        }
+    }
+
+    /// Face-centered cubic (fcu) topology: 4 nodes with 12-connectivity.
+    /// Common in UiO-66 type structures.
+    pub fn fcu() -> Self {
+        Self {
+            name: "fcu".to_string(),
+            nodes: vec![
+                [0.0, 0.0, 0.0],
+                [0.5, 0.5, 0.0],
+                [0.5, 0.0, 0.5],
+                [0.0, 0.5, 0.5],
+            ],
+            edges: vec![
+                // Node 0 <-> Node 1
+                (0, 1, [0, 0, 0]),
+                (0, 1, [0, -1, 0]),
+                (0, 1, [-1, 0, 0]),
+                // Node 0 <-> Node 2
+                (0, 2, [0, 0, 0]),
+                (0, 2, [0, 0, -1]),
+                (0, 2, [-1, 0, 0]),
+                // Node 0 <-> Node 3
+                (0, 3, [0, 0, 0]),
+                (0, 3, [0, -1, 0]),
+                (0, 3, [0, 0, -1]),
+                // Node 1 <-> Node 2
+                (1, 2, [0, 0, 0]),
+                (1, 2, [0, 0, -1]),
+                // Node 1 <-> Node 3
+                (1, 3, [0, 0, 0]),
+                (1, 3, [-1, 0, 0]),
+                // Node 2 <-> Node 3
+                (2, 3, [0, 0, 0]),
+                (2, 3, [0, -1, 0]),
+            ],
+        }
+    }
+
+    /// NbO (nbo) topology: 2 nodes with square-planar 4-connectivity.
+    /// Found in MOF-101 and HKUST-1 (partially).
+    pub fn nbo() -> Self {
+        Self {
+            name: "nbo".to_string(),
+            nodes: vec![[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]],
+            edges: vec![
+                (0, 1, [0, 0, 0]),
+                (0, 1, [-1, 0, 0]),
+                (0, 1, [0, -1, 0]),
+                (0, 1, [0, 0, -1]),
+            ],
+        }
+    }
+
+    /// PtS (pts) topology: 2 nodes — one tetrahedral (4-conn) and one square-planar (4-conn).
+    /// Found in MOF-11 and related pillared structures.
+    pub fn pts() -> Self {
+        Self {
+            name: "pts".to_string(),
+            nodes: vec![
+                [0.0, 0.0, 0.0], // tetrahedral node
+                [0.5, 0.5, 0.0], // square-planar node
+            ],
+            edges: vec![
+                (0, 1, [0, 0, 0]),
+                (0, 1, [0, -1, 0]),
+                (0, 1, [0, 0, 1]),
+                (0, 1, [0, -1, 1]),
+            ],
+        }
+    }
+
+    /// Kagomé (kgm) topology: 3 nodes in 2D hexagonal Kagomé lattice.
+    /// 4-connected, found in many layered MOFs.
+    pub fn kgm() -> Self {
+        Self {
+            name: "kgm".to_string(),
+            nodes: vec![[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.5, 0.5, 0.0]],
+            edges: vec![
+                (0, 2, [0, 0, 0]),
+                (1, 2, [0, 0, 0]),
+                (0, 1, [1, 0, 0]),
+                (0, 1, [0, -1, 0]),
+                (1, 2, [-1, 1, 0]),
+                (0, 2, [0, -1, 0]),
+            ],
+        }
+    }
+
+    /// Hexagonal (hxl) topology: single node with 6-connected hexagonal lattice.
+    /// 2D honeycomb-like, found in layered coordination polymers.
+    pub fn hxl() -> Self {
+        Self {
+            name: "hxl".to_string(),
+            nodes: vec![[0.0, 0.0, 0.0]],
+            edges: vec![(0, 0, [1, 0, 0]), (0, 0, [0, 1, 0]), (0, 0, [1, -1, 0])],
+        }
+    }
+
+    /// Simple cubic with pillars (pcu-pillar): pcu with additional vertical pillaring.
+    /// Used for pillared-layer MOFs.
+    pub fn pillared_sql() -> Self {
+        Self {
+            name: "pillared_sql".to_string(),
+            nodes: vec![[0.0, 0.0, 0.0]],
+            edges: vec![(0, 0, [1, 0, 0]), (0, 0, [0, 1, 0]), (0, 0, [0, 0, 1])],
+        }
+    }
+
+    /// Look up a topology by name string.
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "pcu" => Some(Self::pcu()),
+            "dia" => Some(Self::dia()),
+            "sql" => Some(Self::sql()),
+            "bcu" => Some(Self::bcu()),
+            "fcu" => Some(Self::fcu()),
+            "nbo" => Some(Self::nbo()),
+            "pts" => Some(Self::pts()),
+            "kgm" => Some(Self::kgm()),
+            "hxl" => Some(Self::hxl()),
+            "pillared_sql" => Some(Self::pillared_sql()),
+            _ => None,
+        }
+    }
 }
 
 impl CrystalStructure {
@@ -410,5 +549,83 @@ mod tests {
         let coords = structure.cartesian_coords();
         assert!((coords[0][0] - 5.0).abs() < 1e-10);
         assert!((coords[1][1] - 5.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_topology_bcu() {
+        let t = Topology::bcu();
+        assert_eq!(t.nodes.len(), 2);
+        assert_eq!(t.edges.len(), 4);
+        assert_eq!(t.name, "bcu");
+    }
+
+    #[test]
+    fn test_topology_fcu() {
+        let t = Topology::fcu();
+        assert_eq!(t.nodes.len(), 4);
+        assert_eq!(t.edges.len(), 15);
+        assert_eq!(t.name, "fcu");
+    }
+
+    #[test]
+    fn test_topology_nbo() {
+        let t = Topology::nbo();
+        assert_eq!(t.nodes.len(), 2);
+        assert_eq!(t.edges.len(), 4);
+        assert_eq!(t.name, "nbo");
+    }
+
+    #[test]
+    fn test_topology_pts() {
+        let t = Topology::pts();
+        assert_eq!(t.nodes.len(), 2);
+        assert_eq!(t.edges.len(), 4);
+        assert_eq!(t.name, "pts");
+    }
+
+    #[test]
+    fn test_topology_kgm() {
+        let t = Topology::kgm();
+        assert_eq!(t.nodes.len(), 3);
+        assert_eq!(t.edges.len(), 6);
+        assert_eq!(t.name, "kgm");
+    }
+
+    #[test]
+    fn test_topology_from_name() {
+        assert!(Topology::from_name("pcu").is_some());
+        assert!(Topology::from_name("dia").is_some());
+        assert!(Topology::from_name("fcu").is_some());
+        assert!(Topology::from_name("bcu").is_some());
+        assert!(Topology::from_name("nbo").is_some());
+        assert!(Topology::from_name("pts").is_some());
+        assert!(Topology::from_name("kgm").is_some());
+        assert!(Topology::from_name("hxl").is_some());
+        assert!(Topology::from_name("pillared_sql").is_some());
+        assert!(Topology::from_name("unknown").is_none());
+    }
+
+    #[test]
+    fn test_assemble_fcu_framework() {
+        let node = Sbu::metal_node(40, 0.0, CoordinationGeometry::Octahedral); // Zr
+        let linker = Sbu::linear_linker(&[6, 6], 1.4, "bdc");
+        let topo = Topology::fcu();
+        let cell = UnitCell::cubic(20.0);
+
+        let structure = assemble_framework(&node, &linker, &topo, &cell);
+        // 4 nodes × 1 atom + 15 edges × 2 atoms = 34
+        assert_eq!(structure.num_atoms(), 34);
+    }
+
+    #[test]
+    fn test_assemble_bcu_framework() {
+        let node = Sbu::metal_node(40, 0.0, CoordinationGeometry::Octahedral);
+        let linker = Sbu::linear_linker(&[6], 1.0, "bridge");
+        let topo = Topology::bcu();
+        let cell = UnitCell::cubic(15.0);
+
+        let structure = assemble_framework(&node, &linker, &topo, &cell);
+        // 2 nodes × 1 atom + 4 edges × 1 atom = 6
+        assert_eq!(structure.num_atoms(), 6);
     }
 }
