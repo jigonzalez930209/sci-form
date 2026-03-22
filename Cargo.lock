@@ -1453,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "approx",
  "bytemuck",
@@ -1469,7 +1469,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-cli"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "clap",
  "rayon",
@@ -1479,7 +1479,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-python"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "pyo3",
  "rayon",
@@ -1488,7 +1488,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-wasm"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "futures-channel",
  "getrandom",

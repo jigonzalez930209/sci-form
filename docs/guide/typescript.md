@@ -740,7 +740,7 @@ wasm-pack build --target nodejs --release --out-dir pkg-node
 
 ### Vite reference setup
 
-There is a minimal working example in [crates/wasm/examples/vite-webgpu-hybrid](../../crates/wasm/examples/vite-webgpu-hybrid/README.md).
+There is a minimal working example in [crates/wasm/examples/vite-webgpu-hybrid](https://github.com/jigonzalez930209/sci-form/tree/main/crates/wasm/examples/vite-webgpu-hybrid).
 
 Its `vite.config.mjs` sets both development and preview headers:
 

@@ -196,7 +196,7 @@ Con eso queda cerrado el camino híbrido de punta a punta:
 - GPU vía WebGPU
 - modo `hybrid` para repartir trabajo entre ambos en kernels volumétricos y rutas experimentales
 
-Hay un ejemplo mínimo ya preparado en [crates/wasm/examples/vite-webgpu-hybrid](../../crates/wasm/examples/vite-webgpu-hybrid/README.md).
+Hay un ejemplo mínimo ya preparado en [crates/wasm/examples/vite-webgpu-hybrid](https://github.com/jigonzalez930209/sci-form/tree/main/crates/wasm/examples/vite-webgpu-hybrid).
 
 ## Resumen práctico actualizado
 
