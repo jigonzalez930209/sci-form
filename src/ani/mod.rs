@@ -9,6 +9,7 @@
 
 pub mod aev;
 pub mod aev_params;
+pub mod ani_tm;
 pub mod api;
 pub mod cutoff;
 pub mod gradients;
@@ -16,4 +17,5 @@ pub mod neighbor;
 pub mod nn;
 pub mod weights;
 
+pub use ani_tm::{compute_aevs_tm, is_ani_tm_supported, AniTmResult};
 pub use api::{compute_ani, AniConfig, AniResult};

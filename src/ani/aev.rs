@@ -31,33 +31,61 @@ pub fn compute_aevs(
         atom_neighbors[np.j].push((np.i, d));
     }
 
-    let mut aevs = vec![vec![0.0f64; aev_len]; n];
-
-    for i in 0..n {
-        let si = match species_index(elements[i]) {
-            Some(s) => s,
-            None => continue,
-        };
-        let _ = si; // atom i species (used for symmetry)
-        compute_radial_aev(
-            i,
-            elements,
-            positions,
-            &atom_neighbors[i],
-            params,
-            &mut aevs[i],
-        );
-        compute_angular_aev(
-            i,
-            elements,
-            positions,
-            &atom_neighbors[i],
-            params,
-            &mut aevs[i],
-        );
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::*;
+        (0..n)
+            .into_par_iter()
+            .map(|i| {
+                let mut aev = vec![0.0f64; aev_len];
+                if species_index(elements[i]).is_some() {
+                    compute_radial_aev(
+                        i,
+                        elements,
+                        positions,
+                        &atom_neighbors[i],
+                        params,
+                        &mut aev,
+                    );
+                    compute_angular_aev(
+                        i,
+                        elements,
+                        positions,
+                        &atom_neighbors[i],
+                        params,
+                        &mut aev,
+                    );
+                }
+                aev
+            })
+            .collect()
     }
-
-    aevs
+    #[cfg(not(feature = "parallel"))]
+    {
+        let mut aevs = vec![vec![0.0f64; aev_len]; n];
+        for i in 0..n {
+            if species_index(elements[i]).is_none() {
+                continue;
+            }
+            compute_radial_aev(
+                i,
+                elements,
+                positions,
+                &atom_neighbors[i],
+                params,
+                &mut aevs[i],
+            );
+            compute_angular_aev(
+                i,
+                elements,
+                positions,
+                &atom_neighbors[i],
+                params,
+                &mut aevs[i],
+            );
+        }
+        aevs
+    }
 }
 
 fn compute_radial_aev(
