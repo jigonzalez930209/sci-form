@@ -34,15 +34,11 @@ impl DispatchShape {
     /// Compute workgroup count given a workgroup size.
     pub fn workgroup_count(&self, workgroup_size: [u32; 3]) -> [u32; 3] {
         match self {
-            DispatchShape::Linear(n) => [
-                (*n + workgroup_size[0] - 1) / workgroup_size[0],
-                1,
-                1,
-            ],
+            DispatchShape::Linear(n) => [(*n).div_ceil(workgroup_size[0]), 1, 1],
             DispatchShape::Grid3D(dims) => [
-                (dims[0] + workgroup_size[0] - 1) / workgroup_size[0],
-                (dims[1] + workgroup_size[1] - 1) / workgroup_size[1],
-                (dims[2] + workgroup_size[2] - 1) / workgroup_size[2],
+                dims[0].div_ceil(workgroup_size[0]),
+                dims[1].div_ceil(workgroup_size[1]),
+                dims[2].div_ceil(workgroup_size[2]),
             ],
         }
     }
@@ -57,13 +53,9 @@ pub enum StepDecision {
         total_buffer_bytes: u64,
     },
     /// GPU dispatch possible but CPU may be faster for this tier/size.
-    CpuPreferred {
-        reason: String,
-    },
+    CpuPreferred { reason: String },
     /// Must fall back to CPU — exceeds GPU limits.
-    CpuRequired {
-        error: MemoryError,
-    },
+    CpuRequired { error: MemoryError },
 }
 
 /// Coordinates multi-step GPU pipelines.
@@ -75,7 +67,10 @@ pub struct PipelineCoordinator {
 
 impl PipelineCoordinator {
     pub fn new(budget: GpuMemoryBudget, gpu_available: bool) -> Self {
-        Self { budget, gpu_available }
+        Self {
+            budget,
+            gpu_available,
+        }
     }
 
     /// Create a coordinator that always falls back to CPU.
@@ -87,11 +82,7 @@ impl PipelineCoordinator {
     }
 
     /// Evaluate whether a pipeline step should run on GPU or CPU.
-    pub fn evaluate_step(
-        &self,
-        step: &PipelineStep,
-        shader: &ShaderDescriptor,
-    ) -> StepDecision {
+    pub fn evaluate_step(&self, step: &PipelineStep, shader: &ShaderDescriptor) -> StepDecision {
         if !self.gpu_available {
             return StepDecision::CpuPreferred {
                 reason: "No GPU available".to_string(),
@@ -109,9 +100,7 @@ impl PipelineCoordinator {
         let total_bytes: u64 = step.buffer_sizes.iter().sum();
         for (i, &size) in step.buffer_sizes.iter().enumerate() {
             if let Err(e) = self.budget.check_buffer(size) {
-                return StepDecision::CpuRequired {
-                    error: e,
-                };
+                return StepDecision::CpuRequired { error: e };
             }
             // Also check storage binding limit for buffer i
             if i as u32 >= self.budget.limits.max_storage_buffers_per_stage {
@@ -127,9 +116,7 @@ impl PipelineCoordinator {
         // Compute workgroup count and validate
         let wg_count = step.dispatch.workgroup_count(shader.workgroup_size);
         if let Err(e) = self.budget.check_workgroup(shader.workgroup_size, wg_count) {
-            return StepDecision::CpuRequired {
-                error: e,
-            };
+            return StepDecision::CpuRequired { error: e };
         }
 
         StepDecision::GpuDispatch {
@@ -216,10 +203,15 @@ impl PipelinePlan {
         );
         for (label, decision) in &self.decisions {
             let status = match decision {
-                StepDecision::GpuDispatch { workgroup_count, total_buffer_bytes } => {
+                StepDecision::GpuDispatch {
+                    workgroup_count,
+                    total_buffer_bytes,
+                } => {
                     format!(
                         "GPU → wg[{},{},{}], {:.1} KB",
-                        workgroup_count[0], workgroup_count[1], workgroup_count[2],
+                        workgroup_count[0],
+                        workgroup_count[1],
+                        workgroup_count[2],
                         *total_buffer_bytes as f64 / 1024.0
                     )
                 }
@@ -267,43 +259,28 @@ pub fn orbital_visualization_pipeline(
             label: "Marching Cubes (positive lobe)".to_string(),
             shader_name: "marching_cubes",
             buffer_sizes: vec![
-                grid_bytes,        // scalar_field
-                256 * 4,           // edge_table
-                256 * 16 * 4,      // tri_table
-                vertex_bytes,      // vertices output
-                4,                 // tri_count atomic
-                32,                // params
+                grid_bytes,   // scalar_field
+                256 * 4,      // edge_table
+                256 * 16 * 4, // tri_table
+                vertex_bytes, // vertices output
+                4,            // tri_count atomic
+                32,           // params
             ],
-            dispatch: DispatchShape::Grid3D([
-                grid_dims[0] - 1,
-                grid_dims[1] - 1,
-                grid_dims[2] - 1,
-            ]),
+            dispatch: DispatchShape::Grid3D([grid_dims[0] - 1, grid_dims[1] - 1, grid_dims[2] - 1]),
         },
         PipelineStep {
             label: "Marching Cubes (negative lobe)".to_string(),
             shader_name: "marching_cubes",
-            buffer_sizes: vec![
-                grid_bytes,
-                256 * 4,
-                256 * 16 * 4,
-                vertex_bytes,
-                4,
-                32,
-            ],
-            dispatch: DispatchShape::Grid3D([
-                grid_dims[0] - 1,
-                grid_dims[1] - 1,
-                grid_dims[2] - 1,
-            ]),
+            buffer_sizes: vec![grid_bytes, 256 * 4, 256 * 16 * 4, vertex_bytes, 4, 32],
+            dispatch: DispatchShape::Grid3D([grid_dims[0] - 1, grid_dims[1] - 1, grid_dims[2] - 1]),
         },
     ]
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::shader_registry;
+    use super::*;
 
     #[test]
     fn test_dispatch_1d() {
@@ -321,10 +298,7 @@ mod tests {
 
     #[test]
     fn test_gpu_dispatch_feasible() {
-        let coord = PipelineCoordinator::new(
-            GpuMemoryBudget::webgpu_default(),
-            true,
-        );
+        let coord = PipelineCoordinator::new(GpuMemoryBudget::webgpu_default(), true);
         let step = PipelineStep {
             label: "test".to_string(),
             shader_name: "orbital_grid",
@@ -352,10 +326,7 @@ mod tests {
 
     #[test]
     fn test_cpu_preferred_for_tier4() {
-        let coord = PipelineCoordinator::new(
-            GpuMemoryBudget::webgpu_default(),
-            true,
-        );
+        let coord = PipelineCoordinator::new(GpuMemoryBudget::webgpu_default(), true);
         let step = PipelineStep {
             label: "smoke test".to_string(),
             shader_name: "vector_add",
@@ -369,10 +340,7 @@ mod tests {
 
     #[test]
     fn test_buffer_too_large_forces_cpu() {
-        let coord = PipelineCoordinator::new(
-            GpuMemoryBudget::webgpu_default(),
-            true,
-        );
+        let coord = PipelineCoordinator::new(GpuMemoryBudget::webgpu_default(), true);
         let step = PipelineStep {
             label: "huge".to_string(),
             shader_name: "orbital_grid",
@@ -386,10 +354,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_plan() {
-        let coord = PipelineCoordinator::new(
-            GpuMemoryBudget::webgpu_default(),
-            true,
-        );
+        let coord = PipelineCoordinator::new(GpuMemoryBudget::webgpu_default(), true);
         let steps = vec![
             PipelineStep {
                 label: "grid".to_string(),
@@ -416,10 +381,7 @@ mod tests {
 
     #[test]
     fn test_compute_chunks_small() {
-        let coord = PipelineCoordinator::new(
-            GpuMemoryBudget::webgpu_default(),
-            true,
-        );
+        let coord = PipelineCoordinator::new(GpuMemoryBudget::webgpu_default(), true);
         let chunks = coord.compute_chunks(100, 4); // 100 atoms, 4 bytes/pair
         assert_eq!(chunks.len(), 1);
         assert_eq!(chunks[0], (0, 100));
@@ -427,10 +389,7 @@ mod tests {
 
     #[test]
     fn test_compute_chunks_large() {
-        let coord = PipelineCoordinator::new(
-            GpuMemoryBudget::webgpu_default(),
-            true,
-        );
+        let coord = PipelineCoordinator::new(GpuMemoryBudget::webgpu_default(), true);
         // Force chunking: 1 MB per pair with 128 MB limit → max ~11 atoms per chunk
         let chunks = coord.compute_chunks(50, 1_000_000);
         assert!(chunks.len() > 1);
@@ -447,10 +406,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_report() {
-        let coord = PipelineCoordinator::new(
-            GpuMemoryBudget::webgpu_default(),
-            true,
-        );
+        let coord = PipelineCoordinator::new(GpuMemoryBudget::webgpu_default(), true);
         let steps = orbital_visualization_pipeline(7, [30, 30, 30], 3);
         let shaders: Vec<&ShaderDescriptor> = steps
             .iter()

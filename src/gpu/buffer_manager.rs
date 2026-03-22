@@ -99,7 +99,12 @@ impl BufferManager {
     }
 
     /// Allocate a new managed buffer. Returns error if it exceeds WebGPU limits.
-    pub fn allocate(&mut self, role: BufferRole, size_bytes: usize, label: &str) -> Result<usize, String> {
+    pub fn allocate(
+        &mut self,
+        role: BufferRole,
+        size_bytes: usize,
+        label: &str,
+    ) -> Result<usize, String> {
         if !role.is_uniform() && size_bytes > MAX_STORAGE_BUFFER_SIZE {
             return Err(format!(
                 "Buffer '{}' ({} MB) exceeds WebGPU maxStorageBufferBindingSize (128 MB)",
@@ -111,7 +116,9 @@ impl BufferManager {
         if self.total_allocated + size_bytes > self.max_budget {
             return Err(format!(
                 "Buffer '{}' ({} bytes) would exceed GPU memory budget ({} MB)",
-                label, size_bytes, self.max_budget / (1024 * 1024)
+                label,
+                size_bytes,
+                self.max_budget / (1024 * 1024)
             ));
         }
 
@@ -124,13 +131,17 @@ impl BufferManager {
 
     /// Allocate a buffer with initial CPU data.
     pub fn allocate_with_data(
-        &mut self, role: BufferRole, data: Vec<u8>, label: &str,
+        &mut self,
+        role: BufferRole,
+        data: Vec<u8>,
+        label: &str,
     ) -> Result<usize, String> {
         let size = data.len();
         if !role.is_uniform() && size > MAX_STORAGE_BUFFER_SIZE {
             return Err(format!(
                 "Buffer '{}' ({} MB) exceeds WebGPU maxStorageBufferBindingSize",
-                label, size / (1024 * 1024)
+                label,
+                size / (1024 * 1024)
             ));
         }
         if self.total_allocated + size > self.max_budget {
@@ -153,10 +164,16 @@ impl BufferManager {
     }
 
     /// Plan all buffers needed for an SCF calculation.
-    pub fn plan_scf_buffers(&mut self, n_atoms: usize, n_basis: usize, n_primitives: usize) -> Result<ScfBufferPlan, String> {
+    pub fn plan_scf_buffers(
+        &mut self,
+        n_atoms: usize,
+        n_basis: usize,
+        n_primitives: usize,
+    ) -> Result<ScfBufferPlan, String> {
         let atom_size = n_atoms * std::mem::size_of::<super::aligned_types::GpuAtom>();
         let basis_size = n_basis * std::mem::size_of::<super::aligned_types::GpuBasisFunction>();
-        let prim_size = n_primitives * std::mem::size_of::<super::aligned_types::GpuGaussianPrimitive>();
+        let prim_size =
+            n_primitives * std::mem::size_of::<super::aligned_types::GpuGaussianPrimitive>();
         let mat_size = Self::matrix_size(n_basis);
 
         let atoms = self.allocate(BufferRole::Atoms, atom_size, "atoms")?;
@@ -175,8 +192,17 @@ impl BufferManager {
         let scf_params = self.allocate(BufferRole::ScfParams, scf_params_size, "scf_params")?;
 
         Ok(ScfBufferPlan {
-            atoms, basis, prims, overlap, kinetic, nuclear,
-            core_h, density, fock, mat_params, scf_params,
+            atoms,
+            basis,
+            prims,
+            overlap,
+            kinetic,
+            nuclear,
+            core_h,
+            density,
+            fock,
+            mat_params,
+            scf_params,
             total_bytes: self.total_allocated,
         })
     }
@@ -229,7 +255,9 @@ mod tests {
     #[test]
     fn test_buffer_allocation() {
         let mut mgr = BufferManager::new(256);
-        let idx = mgr.allocate(BufferRole::OverlapMatrix, 1024, "test_overlap").unwrap();
+        let idx = mgr
+            .allocate(BufferRole::OverlapMatrix, 1024, "test_overlap")
+            .unwrap();
         assert_eq!(idx, 0);
         assert_eq!(mgr.total_allocated, 1024);
     }
@@ -237,7 +265,11 @@ mod tests {
     #[test]
     fn test_budget_overflow() {
         let mut mgr = BufferManager::new(1); // 1 MB budget
-        let result = mgr.allocate(BufferRole::TwoElectronIntegrals, 2 * 1024 * 1024, "too_large");
+        let result = mgr.allocate(
+            BufferRole::TwoElectronIntegrals,
+            2 * 1024 * 1024,
+            "too_large",
+        );
         assert!(result.is_err());
     }
 
@@ -253,7 +285,8 @@ mod tests {
     fn test_release_all() {
         let mut mgr = BufferManager::new(256);
         mgr.allocate(BufferRole::Atoms, 512, "atoms").unwrap();
-        mgr.allocate(BufferRole::OverlapMatrix, 1024, "overlap").unwrap();
+        mgr.allocate(BufferRole::OverlapMatrix, 1024, "overlap")
+            .unwrap();
         assert_eq!(mgr.buffers.len(), 2);
         mgr.release_all();
         assert_eq!(mgr.buffers.len(), 0);
@@ -264,7 +297,11 @@ mod tests {
     fn test_webgpu_storage_limit() {
         let mut mgr = BufferManager::new(512);
         // 200 MB exceeds the 128 MB per-binding limit
-        let result = mgr.allocate(BufferRole::TwoElectronIntegrals, 200 * 1024 * 1024, "huge_eri");
+        let result = mgr.allocate(
+            BufferRole::TwoElectronIntegrals,
+            200 * 1024 * 1024,
+            "huge_eri",
+        );
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("maxStorageBufferBindingSize"));
     }

@@ -69,9 +69,7 @@ impl ShaderDescriptor {
         if total > budget.limits.max_storage_buffers_per_stage + 4 {
             return Err(format!(
                 "Shader '{}' needs {} bindings, budget allows {}",
-                self.name,
-                total,
-                budget.limits.max_storage_buffers_per_stage
+                self.name, total, budget.limits.max_storage_buffers_per_stage
             ));
         }
         let invocations = self.workgroup_size[0] as u64
@@ -80,9 +78,7 @@ impl ShaderDescriptor {
         if invocations > budget.limits.max_invocations_per_workgroup as u64 {
             return Err(format!(
                 "Shader '{}' workgroup has {} invocations, max {}",
-                self.name,
-                invocations,
-                budget.limits.max_invocations_per_workgroup
+                self.name, invocations, budget.limits.max_invocations_per_workgroup
             ));
         }
         Ok(())
@@ -97,8 +93,8 @@ pub const SHADER_VECTOR_ADD: ShaderDescriptor = ShaderDescriptor {
     tier: GpuTier::Tier4,
     workgroup_size: [64, 1, 1],
     entry_point: "main",
-    storage_bindings: 3,   // lhs, rhs, out
-    uniform_bindings: 1,   // params
+    storage_bindings: 3, // lhs, rhs, out
+    uniform_bindings: 1, // params
     description: "Element-wise vector addition (GPU smoke test)",
 };
 
@@ -108,8 +104,8 @@ pub const SHADER_ORBITAL_GRID: ShaderDescriptor = ShaderDescriptor {
     tier: GpuTier::Tier1,
     workgroup_size: [8, 8, 4],
     entry_point: "main",
-    storage_bindings: 4,   // basis, mo_coeffs, primitives, output
-    uniform_bindings: 1,   // grid_params
+    storage_bindings: 4, // basis, mo_coeffs, primitives, output
+    uniform_bindings: 1, // grid_params
     description: "MO wavefunction on 3D grid (GPU Tier 1: O(grid × N_basis))",
 };
 
@@ -119,8 +115,8 @@ pub const SHADER_MARCHING_CUBES: ShaderDescriptor = ShaderDescriptor {
     tier: GpuTier::Tier2,
     workgroup_size: [4, 4, 4],
     entry_point: "main",
-    storage_bindings: 5,   // scalar_field, edge_table, tri_table, vertices, tri_count
-    uniform_bindings: 1,   // mc_params
+    storage_bindings: 5, // scalar_field, edge_table, tri_table, vertices, tri_count
+    uniform_bindings: 1, // mc_params
     description: "Isosurface extraction via marching cubes (GPU Tier 2: O(voxels))",
 };
 
@@ -130,8 +126,8 @@ pub const SHADER_ESP_GRID: ShaderDescriptor = ShaderDescriptor {
     tier: GpuTier::Tier1,
     workgroup_size: [8, 8, 4],
     entry_point: "main",
-    storage_bindings: 4,   // atoms, density, basis_info, output
-    uniform_bindings: 1,   // grid_params
+    storage_bindings: 4, // atoms, density, basis_info, output
+    uniform_bindings: 1, // grid_params
     description: "Electrostatic potential on 3D grid (GPU Tier 1: O(grid × N²))",
 };
 
@@ -139,10 +135,10 @@ pub const SHADER_ESP_GRID: ShaderDescriptor = ShaderDescriptor {
 pub const SHADER_D4_DISPERSION: ShaderDescriptor = ShaderDescriptor {
     name: "d4_dispersion",
     tier: GpuTier::Tier3,
-    workgroup_size: [64, 1, 1],
+    workgroup_size: [16, 16, 1],
     entry_point: "main",
-    storage_bindings: 3,   // positions, d4_params, output_energies
-    uniform_bindings: 1,   // config
+    storage_bindings: 3, // positions, d4_params, output_energies
+    uniform_bindings: 1, // config
     description: "D4 pairwise dispersion (GPU Tier 3: O(N²))",
 };
 
@@ -150,11 +146,11 @@ pub const SHADER_D4_DISPERSION: ShaderDescriptor = ShaderDescriptor {
 pub const SHADER_EEQ_COULOMB: ShaderDescriptor = ShaderDescriptor {
     name: "eeq_coulomb",
     tier: GpuTier::Tier3,
-    workgroup_size: [64, 1, 1],
+    workgroup_size: [16, 16, 1],
     entry_point: "main",
-    storage_bindings: 3,   // positions, charges, coulomb_matrix
-    uniform_bindings: 1,   // config
-    description: "EEQ Coulomb matrix (GPU Tier 3: O(N²))",
+    storage_bindings: 3, // positions, radii, coulomb_matrix
+    uniform_bindings: 1, // config
+    description: "EEQ damped Coulomb matrix gamma_ij (GPU Tier 3: O(N²))",
 };
 
 /// Electron density grid: ρ(r) = Σ_μν P_μν φ_μ(r) φ_ν(r).
@@ -163,9 +159,75 @@ pub const SHADER_DENSITY_GRID: ShaderDescriptor = ShaderDescriptor {
     tier: GpuTier::Tier1,
     workgroup_size: [8, 8, 4],
     entry_point: "main",
-    storage_bindings: 4,   // basis, density_matrix, primitives, output
-    uniform_bindings: 1,   // grid_params
+    storage_bindings: 4, // basis, density_matrix, primitives, output
+    uniform_bindings: 1, // grid_params
     description: "Electron density on 3D grid (GPU Tier 1: O(grid × N²))",
+};
+
+/// Two-electron repulsion integrals: (μν|λσ).
+pub const SHADER_TWO_ELECTRON: ShaderDescriptor = ShaderDescriptor {
+    name: "two_electron_eri",
+    tier: GpuTier::Tier1,
+    workgroup_size: [64, 1, 1],
+    entry_point: "main",
+    storage_bindings: 4, // basis, primitives, quartets, output
+    uniform_bindings: 1, // params
+    description: "Two-electron repulsion integrals (GPU Tier 1: O(N⁴))",
+};
+
+/// Fock matrix build: F = H + G(P).
+pub const SHADER_FOCK_BUILD: ShaderDescriptor = ShaderDescriptor {
+    name: "fock_build",
+    tier: GpuTier::Tier1,
+    workgroup_size: [16, 16, 1],
+    entry_point: "main",
+    storage_bindings: 4, // h_core, density, eris, output
+    uniform_bindings: 1, // params
+    description: "Fock matrix construction G(P) (GPU Tier 1: O(N⁴))",
+};
+
+/// One-electron matrices: S, T, V.
+pub const SHADER_ONE_ELECTRON: ShaderDescriptor = ShaderDescriptor {
+    name: "one_electron",
+    tier: GpuTier::Tier2,
+    workgroup_size: [16, 16, 1],
+    entry_point: "main",
+    storage_bindings: 4, // basis, primitives, atoms, output
+    uniform_bindings: 1, // params
+    description: "One-electron matrices S,T,V (GPU Tier 2: O(N²))",
+};
+
+/// SCC-DFTB gamma matrix.
+pub const SHADER_GAMMA_MATRIX: ShaderDescriptor = ShaderDescriptor {
+    name: "gamma_matrix",
+    tier: GpuTier::Tier3,
+    workgroup_size: [16, 16, 1],
+    entry_point: "main",
+    storage_bindings: 3, // eta, positions, output
+    uniform_bindings: 1, // params
+    description: "SCC-DFTB gamma matrix (GPU Tier 3: O(N²) pairwise Coulomb)",
+};
+
+/// ALPB Born radii.
+pub const SHADER_ALPB_BORN_RADII: ShaderDescriptor = ShaderDescriptor {
+    name: "alpb_born_radii",
+    tier: GpuTier::Tier3,
+    workgroup_size: [64, 1, 1],
+    entry_point: "main",
+    storage_bindings: 3, // positions, rho, output
+    uniform_bindings: 1, // params
+    description: "ALPB Born radii (GPU Tier 3: O(N²) descreening)",
+};
+
+/// CPM Coulomb matrix.
+pub const SHADER_CPM_COULOMB: ShaderDescriptor = ShaderDescriptor {
+    name: "cpm_coulomb",
+    tier: GpuTier::Tier3,
+    workgroup_size: [16, 16, 1],
+    entry_point: "main",
+    storage_bindings: 2, // positions, output
+    uniform_bindings: 1, // params
+    description: "CPM Coulomb matrix J_ij (GPU Tier 3: O(N²) pairwise electrostatics)",
 };
 
 /// All registered shaders.
@@ -177,6 +239,12 @@ pub const ALL_SHADERS: &[&ShaderDescriptor] = &[
     &SHADER_D4_DISPERSION,
     &SHADER_EEQ_COULOMB,
     &SHADER_DENSITY_GRID,
+    &SHADER_TWO_ELECTRON,
+    &SHADER_FOCK_BUILD,
+    &SHADER_ONE_ELECTRON,
+    &SHADER_GAMMA_MATRIX,
+    &SHADER_ALPB_BORN_RADII,
+    &SHADER_CPM_COULOMB,
 ];
 
 /// Look up a shader by name.
@@ -186,13 +254,22 @@ pub fn find_shader(name: &str) -> Option<&'static ShaderDescriptor> {
 
 /// List all shaders in a given tier.
 pub fn shaders_by_tier(tier: GpuTier) -> Vec<&'static ShaderDescriptor> {
-    ALL_SHADERS.iter().filter(|s| s.tier == tier).copied().collect()
+    ALL_SHADERS
+        .iter()
+        .filter(|s| s.tier == tier)
+        .copied()
+        .collect()
 }
 
 /// Generate a summary report of all registered shaders.
 pub fn shader_catalogue_report() -> String {
     let mut report = String::from("GPU Shader Catalogue\n====================\n\n");
-    for tier in &[GpuTier::Tier1, GpuTier::Tier2, GpuTier::Tier3, GpuTier::Tier4] {
+    for tier in &[
+        GpuTier::Tier1,
+        GpuTier::Tier2,
+        GpuTier::Tier3,
+        GpuTier::Tier4,
+    ] {
         let shaders = shaders_by_tier(*tier);
         if shaders.is_empty() {
             continue;
@@ -202,7 +279,9 @@ pub fn shader_catalogue_report() -> String {
             report.push_str(&format!(
                 "  {} — wg[{},{},{}], {} bindings — {}\n",
                 s.name,
-                s.workgroup_size[0], s.workgroup_size[1], s.workgroup_size[2],
+                s.workgroup_size[0],
+                s.workgroup_size[1],
+                s.workgroup_size[2],
                 s.total_bindings(),
                 s.description,
             ));
@@ -265,6 +344,6 @@ mod tests {
 
     #[test]
     fn test_all_shaders_registered() {
-        assert_eq!(ALL_SHADERS.len(), 7);
+        assert_eq!(ALL_SHADERS.len(), 13);
     }
 }

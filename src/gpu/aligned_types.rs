@@ -28,8 +28,14 @@ pub struct GpuAtom {
 
 impl GpuAtom {
     pub fn new(
-        x: f64, y: f64, z: f64, atomic_number: u8,
-        zeta_s: f64, zeta_p: f64, eta: f64, n_valence: f64,
+        x: f64,
+        y: f64,
+        z: f64,
+        atomic_number: u8,
+        zeta_s: f64,
+        zeta_p: f64,
+        eta: f64,
+        n_valence: f64,
     ) -> Self {
         Self {
             position_z: [x as f32, y as f32, z as f32, atomic_number as f32],
@@ -38,7 +44,11 @@ impl GpuAtom {
     }
 
     pub fn position(&self) -> [f64; 3] {
-        [self.position_z[0] as f64, self.position_z[1] as f64, self.position_z[2] as f64]
+        [
+            self.position_z[0] as f64,
+            self.position_z[1] as f64,
+            self.position_z[2] as f64,
+        ]
     }
 
     pub fn atomic_number(&self) -> u8 {
@@ -146,8 +156,8 @@ mod tests {
     #[test]
     fn test_dense_matrix() {
         let mut mat = GpuDenseMatrix::zeros(3, 3);
-        mat.set(1, 2, 3.14);
-        assert!((mat.get(1, 2) - 3.14).abs() < 1e-5);
+        mat.set(1, 2, std::f32::consts::PI);
+        assert!((mat.get(1, 2) - std::f32::consts::PI).abs() < 1e-5);
         assert_eq!(mat.as_bytes().len(), 36);
     }
 
