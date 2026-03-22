@@ -59,11 +59,7 @@ mod tests {
 
     #[test]
     fn test_density_matrix_symmetric() {
-        let c = DMatrix::from_row_slice(3, 3, &[
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 0.0, 1.0,
-        ]);
+        let c = DMatrix::from_row_slice(3, 3, &[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]);
         let p = build_density_matrix(&c, 1);
 
         for i in 0..3 {

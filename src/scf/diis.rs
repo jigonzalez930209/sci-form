@@ -50,10 +50,7 @@ impl DiisAccelerator {
 
         // Flatten error matrix to vector
         let n = error_matrix.nrows();
-        let error_vec = DVector::from_iterator(
-            n * n,
-            error_matrix.iter().copied(),
-        );
+        let error_vec = DVector::from_iterator(n * n, error_matrix.iter().copied());
 
         // Enforce max subspace size
         if self.fock_history.len() >= self.max_size {
@@ -182,7 +179,8 @@ mod tests {
                     assert!(
                         (f_diis[(i, j)] - f[(i, j)]).abs() < 1e-8,
                         "DIIS result differs at ({},{})",
-                        i, j
+                        i,
+                        j
                     );
                 }
             }

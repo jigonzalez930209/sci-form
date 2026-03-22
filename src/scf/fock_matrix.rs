@@ -112,8 +112,8 @@ pub fn build_gamma_matrix(eta: &[f64], positions_bohr: &[[f64; 3]]) -> DMatrix<f
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::basis::BasisSet;
+    use super::*;
 
     #[test]
     fn test_fock_symmetric() {
@@ -129,7 +129,9 @@ mod tests {
             for j in 0..n {
                 assert!(
                     (f[(i, j)] - f[(j, i)]).abs() < 1e-12,
-                    "Fock not symmetric at ({}, {})", i, j
+                    "Fock not symmetric at ({}, {})",
+                    i,
+                    j
                 );
             }
         }

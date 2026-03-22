@@ -29,11 +29,7 @@ impl CoreMatrices {
     /// Build all one-electron matrices for the molecular system.
     ///
     /// Computes S, T, V, and H⁰ = T + V.
-    pub fn build(
-        basis: &BasisSet,
-        elements: &[u8],
-        positions_bohr: &[[f64; 3]],
-    ) -> Self {
+    pub fn build(basis: &BasisSet, elements: &[u8], positions_bohr: &[[f64; 3]]) -> Self {
         let s = build_overlap_matrix(basis);
         let t = build_kinetic_matrix(basis);
         let v = build_nuclear_matrix(basis, elements, positions_bohr);
@@ -91,7 +87,9 @@ mod tests {
             for j in 0..matrices.n_basis {
                 assert!(
                     (h[(i, j)] - h[(j, i)]).abs() < 1e-12,
-                    "H⁰ not symmetric at ({}, {})", i, j
+                    "H⁰ not symmetric at ({}, {})",
+                    i,
+                    j
                 );
             }
         }
@@ -107,7 +105,9 @@ mod tests {
                 let expected = matrices.kinetic[(i, j)] + matrices.nuclear[(i, j)];
                 assert!(
                     (matrices.core_hamiltonian[(i, j)] - expected).abs() < 1e-14,
-                    "H⁰ ≠ T + V at ({}, {})", i, j
+                    "H⁰ ≠ T + V at ({}, {})",
+                    i,
+                    j
                 );
             }
         }
@@ -115,10 +115,7 @@ mod tests {
 
     #[test]
     fn test_nuclear_repulsion_h2() {
-        let e_nuc = nuclear_repulsion_energy(
-            &[1, 1],
-            &[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]],
-        );
+        let e_nuc = nuclear_repulsion_energy(&[1, 1], &[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]]);
         assert!((e_nuc - 1.0 / 1.4).abs() < 1e-10);
     }
 
@@ -141,11 +138,7 @@ mod tests {
     #[test]
     fn test_core_matrices_water_dimensions() {
         let elements = [8u8, 1, 1];
-        let positions = [
-            [0.0, 0.0, 0.0],
-            [1.43, 1.11, 0.0],
-            [-1.43, 1.11, 0.0],
-        ];
+        let positions = [[0.0, 0.0, 0.0], [1.43, 1.11, 0.0], [-1.43, 1.11, 0.0]];
         let basis = BasisSet::sto3g(&elements, &positions);
         let matrices = CoreMatrices::build(&basis, &elements, &positions);
 

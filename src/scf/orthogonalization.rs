@@ -96,7 +96,10 @@ mod tests {
                 assert!(
                     (identity_check[(i, j)] - expected).abs() < 1e-10,
                     "X†SX[{},{}] = {}, expected {}",
-                    i, j, identity_check[(i, j)], expected
+                    i,
+                    j,
+                    identity_check[(i, j)],
+                    expected
                 );
             }
         }
@@ -126,7 +129,9 @@ mod tests {
             assert!(
                 (check[(i, i)] - 1.0).abs() < 1e-8 || check[(i, i)].abs() < 1e-8,
                 "Diagonal element [{},{}] = {} unexpected",
-                i, i, check[(i, i)]
+                i,
+                i,
+                check[(i, i)]
             );
         }
     }

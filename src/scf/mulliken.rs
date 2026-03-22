@@ -67,7 +67,8 @@ pub fn lowdin_analysis(
         let sqrt_eigenval = eigen.eigenvalues[k].max(0.0).sqrt();
         for i in 0..n_basis {
             for j in 0..n_basis {
-                s_half[(i, j)] += sqrt_eigenval * eigen.eigenvectors[(i, k)] * eigen.eigenvectors[(j, k)];
+                s_half[(i, j)] +=
+                    sqrt_eigenval * eigen.eigenvectors[(i, k)] * eigen.eigenvectors[(j, k)];
             }
         }
     }

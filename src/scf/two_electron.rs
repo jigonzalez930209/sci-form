@@ -149,25 +149,57 @@ fn contracted_eri(
     let mut eri = 0.0;
 
     for pa in &bf_a.primitives {
-        let na = BasisFunction::normalization(pa.alpha, bf_a.angular[0], bf_a.angular[1], bf_a.angular[2]);
+        let na = BasisFunction::normalization(
+            pa.alpha,
+            bf_a.angular[0],
+            bf_a.angular[1],
+            bf_a.angular[2],
+        );
         for pb in &bf_b.primitives {
-            let nb = BasisFunction::normalization(pb.alpha, bf_b.angular[0], bf_b.angular[1], bf_b.angular[2]);
+            let nb = BasisFunction::normalization(
+                pb.alpha,
+                bf_b.angular[0],
+                bf_b.angular[1],
+                bf_b.angular[2],
+            );
             for pc in &bf_c.primitives {
-                let nc = BasisFunction::normalization(pc.alpha, bf_c.angular[0], bf_c.angular[1], bf_c.angular[2]);
+                let nc = BasisFunction::normalization(
+                    pc.alpha,
+                    bf_c.angular[0],
+                    bf_c.angular[1],
+                    bf_c.angular[2],
+                );
                 for pd in &bf_d.primitives {
-                    let nd = BasisFunction::normalization(pd.alpha, bf_d.angular[0], bf_d.angular[1], bf_d.angular[2]);
-
-                    let prim_eri = eri_primitive(
-                        pa.alpha, &bf_a.center, bf_a.angular,
-                        pb.alpha, &bf_b.center, bf_b.angular,
-                        pc.alpha, &bf_c.center, bf_c.angular,
-                        pd.alpha, &bf_d.center, bf_d.angular,
+                    let nd = BasisFunction::normalization(
+                        pd.alpha,
+                        bf_d.angular[0],
+                        bf_d.angular[1],
+                        bf_d.angular[2],
                     );
 
-                    eri += na * pa.coefficient
-                        * nb * pb.coefficient
-                        * nc * pc.coefficient
-                        * nd * pd.coefficient
+                    let prim_eri = eri_primitive(
+                        pa.alpha,
+                        &bf_a.center,
+                        bf_a.angular,
+                        pb.alpha,
+                        &bf_b.center,
+                        bf_b.angular,
+                        pc.alpha,
+                        &bf_c.center,
+                        bf_c.angular,
+                        pd.alpha,
+                        &bf_d.center,
+                        bf_d.angular,
+                    );
+
+                    eri += na
+                        * pa.coefficient
+                        * nb
+                        * pb.coefficient
+                        * nc
+                        * pc.coefficient
+                        * nd
+                        * pd.coefficient
                         * prim_eri;
                 }
             }
@@ -179,10 +211,18 @@ fn contracted_eri(
 
 /// ERI between four primitive Gaussians.
 fn eri_primitive(
-    alpha: f64, center_a: &[f64; 3], la: [u32; 3],
-    beta: f64, center_b: &[f64; 3], lb: [u32; 3],
-    gamma: f64, center_c: &[f64; 3], lc: [u32; 3],
-    delta: f64, center_d: &[f64; 3], ld: [u32; 3],
+    alpha: f64,
+    center_a: &[f64; 3],
+    la: [u32; 3],
+    beta: f64,
+    center_b: &[f64; 3],
+    lb: [u32; 3],
+    gamma: f64,
+    center_c: &[f64; 3],
+    lc: [u32; 3],
+    delta: f64,
+    center_d: &[f64; 3],
+    ld: [u32; 3],
 ) -> f64 {
     let p = alpha + beta;
     let q = gamma + delta;
@@ -204,8 +244,18 @@ fn eri_primitive(
 
     let pq2 = (px - qx).powi(2) + (py - qy).powi(2) + (pz - qz).powi(2);
 
-    let l_total = la[0] + la[1] + la[2] + lb[0] + lb[1] + lb[2]
-        + lc[0] + lc[1] + lc[2] + ld[0] + ld[1] + ld[2];
+    let l_total = la[0]
+        + la[1]
+        + la[2]
+        + lb[0]
+        + lb[1]
+        + lb[2]
+        + lc[0]
+        + lc[1]
+        + lc[2]
+        + ld[0]
+        + ld[1]
+        + ld[2];
 
     if l_total == 0 {
         let prefactor = 2.0 * PI.powf(2.5) / (p * q * (p + q).sqrt());
@@ -216,19 +266,24 @@ fn eri_primitive(
 
     // For higher angular momentum: simplified OS recurrence
     eri_obara_saika(
-        alpha, center_a, la,
-        beta, center_b, lb,
-        gamma, center_c, lc,
-        delta, center_d, ld,
+        alpha, center_a, la, beta, center_b, lb, gamma, center_c, lc, delta, center_d, ld,
     )
 }
 
 /// Obara-Saika ERI recurrence for general angular momentum.
 fn eri_obara_saika(
-    alpha: f64, center_a: &[f64; 3], _la: [u32; 3],
-    beta: f64, center_b: &[f64; 3], _lb: [u32; 3],
-    gamma: f64, center_c: &[f64; 3], _lc: [u32; 3],
-    delta: f64, center_d: &[f64; 3], _ld: [u32; 3],
+    alpha: f64,
+    center_a: &[f64; 3],
+    _la: [u32; 3],
+    beta: f64,
+    center_b: &[f64; 3],
+    _lb: [u32; 3],
+    gamma: f64,
+    center_c: &[f64; 3],
+    _lc: [u32; 3],
+    delta: f64,
+    center_d: &[f64; 3],
+    _ld: [u32; 3],
 ) -> f64 {
     let p = alpha + beta;
     let q = gamma + delta;
