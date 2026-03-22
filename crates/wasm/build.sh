@@ -59,7 +59,7 @@ WEB_RUSTFLAGS="${RUSTFLAGS:-}"
 if [[ " $WEB_FEATURES " == *" parallel "* ]]; then
   WEB_RUSTFLAGS="${WEB_RUSTFLAGS:+$WEB_RUSTFLAGS }-C target-feature=+atomics,+bulk-memory,+mutable-globals"
 fi
-RUSTFLAGS="$WEB_RUSTFLAGS" wasm-pack build --target web "$PROFILE_FLAG" --features "$WEB_FEATURES"
+CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="$WEB_RUSTFLAGS" RUSTFLAGS="$WEB_RUSTFLAGS" wasm-pack build --target web "$PROFILE_FLAG" --features "$WEB_FEATURES"
 
 # ── 2. Patch pkg/package.json ────────────────────────────────────────────────
 # wasm-pack overwrites pkg/package.json each run.  We must re-add:
