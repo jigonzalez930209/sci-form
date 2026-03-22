@@ -14,6 +14,7 @@
 pub mod api;
 pub mod basis;
 pub mod cis;
+pub mod cisd;
 pub mod d3;
 pub mod fock;
 pub mod gcp;
@@ -25,6 +26,7 @@ pub mod scf_trait;
 pub mod srb;
 
 pub use api::{solve_hf3c, Hf3cResult, HfConfig};
+pub use cisd::{compute_cisd, CisdExcitation, CisdResult};
 pub use scf_trait::{
     HfScfSolver, Pm3ScfSolver, ScfConvergenceConfig, ScfOutput, ScfSolver, XtbScfSolver,
 };
