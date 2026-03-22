@@ -21,5 +21,6 @@
 mod born;
 mod solvation;
 
+pub(crate) use born::intrinsic_radius;
 pub use born::{compute_born_radii, gb_kernel, AlpbBornRadii};
 pub use solvation::{compute_alpb_solvation, AlpbConfig, AlpbResult};
