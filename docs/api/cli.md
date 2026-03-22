@@ -140,32 +140,173 @@ Output:
 
 ---
 
-### `energy`
+### `eht`
 
-Evaluate UFF force field energy.
+Run Extended Hückel Theory calculation.
 
 ```
-sci-form energy <SMILES> [OPTIONS]
+sci-form eht <ELEMENTS_JSON> <COORDS_JSON> [OPTIONS]
 ```
 
 **Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--coords <FILE>` | JSON file with flat coordinate array |
-| `--from-smiles` | Generate conformer first, then evaluate energy |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `-k` | `1.75` | Wolfsberg-Helmholtz constant (0 = default 1.75) |
 
 ```bash
-# Auto-generate + evaluate
-sci-form energy "CCO" --from-smiles
-
-# From existing coords
-sci-form energy "CCO" --coords coords.json
+sci-form eht "[6,1,1,1,1]" "[0,0,0,1,0,0,0,1,0,0,0,1]" --k 1.75
 ```
 
-Output:
-```json
-{"energy": 12.345, "unit": "kcal/mol"}
+---
+
+### `population`
+
+Mulliken & Löwdin population analysis.
+
+```
+sci-form population <ELEMENTS_JSON> <COORDS_JSON>
+```
+
+---
+
+### `dipole`
+
+Compute molecular dipole moment (Debye).
+
+```
+sci-form dipole <ELEMENTS_JSON> <COORDS_JSON>
+```
+
+---
+
+### `esp`
+
+Compute electrostatic potential on a 3D grid.
+
+```
+sci-form esp <ELEMENTS_JSON> <COORDS_JSON> [OPTIONS]
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--spacing` | `0.5` | Grid spacing in Å |
+| `--padding` | `3.0` | Padding beyond molecule in Å |
+
+---
+
+### `dos`
+
+Compute density of states.
+
+```
+sci-form dos <ELEMENTS_JSON> <COORDS_JSON> [OPTIONS]
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--sigma` | `0.3` | Broadening width in eV |
+| `--e-min` | `-30.0` | Energy window min in eV |
+| `--e-max` | `5.0` | Energy window max in eV |
+| `-n` | `500` | Grid points |
+
+---
+
+### `rmsd`
+
+Compute RMSD between two coordinate sets (Kabsch alignment).
+
+```
+sci-form rmsd <COORDS_JSON> <REFERENCE_JSON>
+```
+
+---
+
+### `uff`
+
+Compute UFF force field energy.
+
+```
+sci-form uff <SMILES> <COORDS_JSON>
+```
+
+```bash
+sci-form uff "CCO" "[...]"
+```
+
+---
+
+### `sasa`
+
+Compute solvent-accessible surface area.
+
+```
+sci-form sasa <ELEMENTS_JSON> <COORDS_JSON> [OPTIONS]
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--probe-radius` | `1.4` | Probe radius in Å |
+
+---
+
+### `ani`
+
+Run ANI ML potential calculation.
+
+```
+sci-form ani <ELEMENTS_JSON> <COORDS_JSON>
+```
+
+---
+
+### `hf3c`
+
+Run HF-3c quantum calculation.
+
+```
+sci-form hf3c <ELEMENTS_JSON> <COORDS_JSON>
+```
+
+---
+
+### `cell`
+
+Create a unit cell and show parameters.
+
+```
+sci-form cell [OPTIONS]
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--a`, `--b`, `--c` | (required) | Lattice parameters in Å |
+| `--alpha`, `--beta`, `--gamma` | `90.0` | Lattice angles in degrees |
+
+```bash
+sci-form cell --a 5.43 --b 5.43 --c 5.43
+```
+
+---
+
+### `assemble`
+
+Assemble a framework crystal structure.
+
+```
+sci-form assemble [OPTIONS]
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--topology` | `pcu` | Framework topology |
+| `--metal` | `30` | Metal atomic number |
+| `--geometry` | `octahedral` | Coordination geometry |
+| `--a` | `10.0` | Lattice parameter Å |
+| `--supercell` | `1` | Replication factor |
+
+```bash
+sci-form assemble --topology pcu --metal 30 --geometry octahedral --a 10.0
 ```
 
 ---

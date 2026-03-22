@@ -4,9 +4,11 @@
 
 ```toml
 [dependencies]
-sci-form = "0.7"
-# For parallel batch processing and ESP parallel:
-sci-form = { version = "0.7", features = ["parallel"] }
+sci-form = "0.9"
+# For parallel batch processing:
+sci-form = { version = "0.9", features = ["parallel"] }
+# GPU acceleration:
+sci-form = { version = "0.9", features = ["experimental-gpu"] }
 ```
 
 ---
@@ -944,27 +946,49 @@ println!("{} clusters from {} conformers", clusters.n_clusters, results.len());
 | `sci_form::smarts` | SMARTS pattern engine (846 CSD torsion patterns) |
 | `sci_form::conformer` | `generate_3d_conformer()`, adaptive large-mol params |
 | `sci_form::distgeom` | `BoundsMatrix`, `smooth_bounds()`, `compute_initial_coords_rdkit()` |
+| `sci_form::distgeom::parallel` | `compute_bounds_parallel()`, `floyd_warshall_parallel()` (requires `parallel` feature) |
 | `sci_form::etkdg` | Torsion FF, `TorsionPattern`, macrocycle detection |
 | `sci_form::forcefield` | `build_uff_force_field()`, `Mmff94Builder`, UFF param tables |
 | `sci_form::optimization` | L-BFGS minimizer |
 | `sci_form::eht` | `solve_eht()`, `EhtResult`, `evaluate_orbital_on_grid_chunked()`, `marching_cubes()` |
+| `sci_form::eht::band_structure` | `compute_band_structure()`, `BandStructure`, `BandStructureConfig` |
+| `sci_form::eht::gradients` | `compute_eht_gradient()`, `optimize_geometry_eht()`, `EhtGradient`, `EhtOptResult` |
 | `sci_form::esp` | `compute_esp_grid()`, `compute_esp_grid_parallel()`, `esp_color_map()`, `export_cube()`, `read_cube()` |
 | `sci_form::dos` | `compute_dos()`, `compute_pdos()`, `dos_mse()`, `export_dos_json()` |
+| `sci_form::dos::multi_method` | `compute_dos_multimethod()`, `DosMethod`, `MultiMethodDosResult` |
 | `sci_form::alignment` | `align_coordinates()`, `align_quaternion()`, `compute_rmsd()` |
-| `sci_form::charges::gasteiger` | `gasteiger_marsili_charges()`, `ChargeResult` |
+| `sci_form::charges::gasteiger` | `gasteiger_marsili_charges()`, `gasteiger_marsili_charges_configured()`, `ChargeResult`, `GasteigerConfig` |
 | `sci_form::surface::sasa` | `compute_sasa()`, `SasaResult` |
 | `sci_form::population` | `compute_population()`, `PopulationResult` |
+| `sci_form::population::npa` | `compute_npa()`, `compute_nbo()`, `NpaResult`, `NboResult`, `NboBond`, `NboLonePair` |
 | `sci_form::dipole` | `compute_dipole_from_eht()`, `DipoleResult` |
+| `sci_form::pm3` | `compute_pm3()`, `Pm3Result` (PM3 + PM3(tm) transition metals) |
+| `sci_form::xtb` | `compute_xtb()`, `XtbResult` (GFN0) |
+| `sci_form::xtb::gfn1` | `solve_gfn1()`, `Gfn1Result` (shell charges, D3 dispersion) |
+| `sci_form::xtb::gfn2` | `solve_gfn2()`, `Gfn2Result` (multipole, D4 dispersion, halogen bonding) |
+| `sci_form::hf` | `solve_hf3c()`, `HfConfig`, `Hf3cResult` (D3 + gCP + SRB corrections) |
+| `sci_form::hf::cisd` | `compute_cisd()`, `CisdResult`, `CisdExcitation` (excited states) |
+| `sci_form::scf::extended_basis` | `build_basis_set()`, `BasisSetType` (STO-3G, 3-21G, 6-31G) |
+| `sci_form::ani` | `compute_ani()`, `AniConfig`, `AniResult`, `FeedForwardNet` |
+| `sci_form::ani::ani_tm` | `compute_aevs_tm()`, `species_index_tm()` (24 elements incl. transition metals) |
 | `sci_form::materials` | `UnitCell`, `Sbu`, `Topology`, `CrystalStructure`, `assemble_framework()` |
+| `sci_form::materials::space_groups` | `space_group_by_number()`, `space_group_by_symbol()`, `SpaceGroup` (230 ITC groups) |
+| `sci_form::materials::geometry_opt` | `optimize_framework()`, `FrameworkOptConfig`, `FrameworkOptResult`, `OptMethod` |
 | `sci_form::transport` | `pack_batch_arrow()`, `ChunkedIterator`, `WorkerTask`, `split_worker_tasks()` |
 | `sci_form::reactivity` | `StdaUvVisSpectrum`, `StdaExcitation`, `BroadeningType`, `compute_stda_uvvis_spectrum()` |
 | `sci_form::ir` | `VibrationalAnalysis`, `VibrationalMode`, `IrSpectrum`, `IrPeak`, `compute_vibrational_analysis()`, `compute_ir_spectrum()` |
+| `sci_form::ir::peak_assignment` | `assign_peaks()`, `AssignmentResult`, `PeakAssignment` (functional group recognition) |
 | `sci_form::nmr` | `NmrShiftResult`, `ChemicalShift`, `JCoupling`, `NmrSpectrum`, `NmrPeak`, `HoseCode`, `NmrNucleus` |
-| `sci_form::ani` | `compute_ani()`, `compute_ani_batch()`, `AniConfig`, `AniResult`, `CellList` |
-| `sci_form::hf` | `solve_hf3c()`, `solve_hf3c_batch()`, `HfConfig`, `Hf3cResult`, `compute_cis()` |
-| `sci_form::stereo` | `analyze_stereo()`, `StereoAnalysis`, `Stereocenter`, `DoubleBondStereo` |
+| `sci_form::stereo` | `analyze_stereo()`, `StereoAnalysis`, `Stereocenter`, `DoubleBondStereo`, `HelicalChirality` |
 | `sci_form::solvation` | `compute_nonpolar_solvation()`, `compute_gb_solvation()`, `compute_born_radii()`, `NonPolarSolvation`, `GbSolvation` |
 | `sci_form::rings::sssr` | `compute_sssr()`, `SssrResult`, `RingInfo` |
 | `sci_form::rings::ecfp` | `compute_ecfp()`, `compute_tanimoto()`, `ECFPFingerprint` |
 | `sci_form::clustering` | `butina_cluster()`, `compute_rmsd_matrix()`, `filter_diverse_conformers()`, `ClusterResult` |
-| `sci_form::charges::gasteiger` | `gasteiger_marsili_charges()`, `gasteiger_marsili_charges_configured()`, `ChargeResult`, `GasteigerConfig` |
+| `sci_form::ml` | `compute_ml_descriptors()`, `predict_ml_properties()`, `MolecularDescriptors`, `MlPropertyResult` |
+| `sci_form::ml::whim` | `compute_whim()`, `WhimDescriptors`, `WhimWeighting` (5 weighting schemes) |
+| `sci_form::ml::rdf_descriptors` | `compute_rdf()`, `RdfDescriptors` (4 weighting types) |
+| `sci_form::ml::getaway` | `compute_getaway()`, `GetawayDescriptors` |
+| `sci_form::ml::advanced_models` | `train_random_forest()`, `train_gradient_boosting()`, `RandomForest`, `GradientBoosting` |
+| `sci_form::periodic` | `build_periodic_molecule()`, `detect_hapticity()`, `PeriodicMolecule`, `HapticityAnalysis` |
+| `sci_form::smirks` | `parse_smirks()`, `apply_smirks()`, `SmirksTransform`, `SmirksResult` |
+| `sci_form::gpu::mmff94_gpu` | `compute_mmff94_nonbonded_gpu()` (requires `experimental-gpu` feature) |

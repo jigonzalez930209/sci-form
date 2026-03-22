@@ -584,6 +584,161 @@ Generate HOSE code fingerprints for all atoms. Each `HoseCodePy` has `.atom_inde
 
 ---
 
+## Semi-Empirical QM
+
+### `pm3_calculate`
+
+```python
+def pm3_calculate(
+    elements: list[int],  # atomic numbers
+    coords: list[float],  # flat [x0,y0,z0,...]
+) -> Pm3Result
+```
+
+PM3 NDDO semi-empirical SCF. Supports transition metals via PM3(tm): Ti,Cr,Mn,Fe,Co,Ni,Cu,Zn,Al,Si,Ge.
+
+Returns `Pm3Result` with `.orbital_energies`, `.electronic_energy`, `.nuclear_repulsion`, `.total_energy`, `.heat_of_formation`, `.n_basis`, `.n_electrons`, `.homo_energy`, `.lumo_energy`, `.gap`, `.mulliken_charges`, `.scf_iterations`, `.converged`.
+
+```python
+from sci_form import embed, pm3_calculate
+
+conf = embed("CCO", seed=42)
+pm3 = pm3_calculate(conf.elements, conf.coords)
+print(f"HOF: {pm3.heat_of_formation:.2f} kcal/mol, gap: {pm3.gap:.3f} eV")
+```
+
+### `xtb_calculate`
+
+```python
+def xtb_calculate(
+    elements: list[int],
+    coords: list[float],
+) -> XtbResult
+```
+
+GFN0-xTB tight-binding with self-consistent charges. Supports 25 elements including transition metals (Ti,Cr,Mn,Fe,Co,Ni,Cu,Zn,Ru,Pd,Ag,Pt,Au).
+
+Returns `XtbResult` with `.orbital_energies`, `.electronic_energy`, `.repulsive_energy`, `.total_energy`, `.n_basis`, `.n_electrons`, `.homo_energy`, `.lumo_energy`, `.gap`, `.mulliken_charges`, `.scc_iterations`, `.converged`.
+
+```python
+from sci_form import embed, xtb_calculate
+
+conf = embed("CCO", seed=42)
+xtb = xtb_calculate(conf.elements, conf.coords)
+print(f"xTB gap: {xtb.gap:.3f} eV, converged: {xtb.converged}")
+```
+
+---
+
+## Ab-initio / Neural Potentials
+
+### `hf3c_calculate`
+
+```python
+def hf3c_calculate(
+    elements: list[int],
+    coords: list[float],
+    max_scf_iter: int = 100,
+    n_cis_states: int = 5,
+    corrections: bool = True,
+) -> Hf3cResultPy
+```
+
+Minimal-basis Hartree-Fock with D3, gCP, and SRB corrections.
+
+### `ani_calculate`
+
+```python
+def ani_calculate(
+    elements: list[int],
+    coords: list[float],
+) -> AniResultPy
+```
+
+ANI-2x neural network potential for H, C, N, O, F, S, Cl.
+
+---
+
+## Bond Orders & Frontier Analysis
+
+### `bond_orders`
+
+```python
+def bond_orders(
+    elements: list[int],
+    coords: list[float],
+) -> BondOrderResultPy
+```
+
+Wiberg and Mayer bond orders from EHT density matrix. Returns `.atom_pairs`, `.distances`, `.wiberg`, `.mayer`, `.wiberg_valence`, `.mayer_valence`.
+
+### `frontier_descriptors`
+
+```python
+def frontier_descriptors(
+    elements: list[int],
+    coords: list[float],
+) -> FrontierDescriptorsPy
+```
+
+HOMO/LUMO atom contributions and dual descriptor. Returns `.homo_atom_contributions`, `.lumo_atom_contributions`, `.dual_descriptor`, `.homo_energy`, `.lumo_energy`, `.gap`.
+
+---
+
+## Reactivity
+
+### `fukui_descriptors`
+
+```python
+def fukui_descriptors(
+    elements: list[int],
+    coords: list[float],
+) -> FukuiDescriptorsPy
+```
+
+Condensed Fukui functions f⁺, f⁻, f⁰. Returns `.condensed_f_plus`, `.condensed_f_minus`, `.condensed_f_radical`, `.condensed_dual_descriptor`, `.gap`, `.validity_notes`.
+
+### `reactivity_ranking`
+
+```python
+def reactivity_ranking(
+    elements: list[int],
+    coords: list[float],
+) -> ReactivityRankingPy
+```
+
+Ranked atomic sites for nucleophilic, electrophilic, and radical attack.
+
+### `empirical_pka`
+
+```python
+def empirical_pka(smiles: str) -> EmpiricalPkaResultPy
+```
+
+Graph-heuristic pKa estimation. Returns `.acidic_sites`, `.basic_sites`.
+
+---
+
+## ML Properties
+
+### `ml_descriptors`
+
+```python
+def ml_descriptors(smiles: str) -> MolecularDescriptors
+```
+
+Topology-derived descriptors. No 3D required. Returns `.molecular_weight`, `.n_heavy_atoms`, `.n_hbd`, `.n_hba`, `.fsp3`, `.wiener_index`, etc.
+
+### `ml_predict`
+
+```python
+def ml_predict(smiles: str) -> MlPropertyResult
+```
+
+Lipinski/ADME prediction. Returns `.logp`, `.molar_refractivity`, `.log_solubility`, `.druglikeness`, `.lipinski_violations`, `.lipinski_passes`.
+
+---
+
 ## Stereochemistry
 
 ### `stereo_analysis`
