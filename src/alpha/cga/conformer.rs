@@ -68,11 +68,7 @@ pub fn apply_motor_to_subtree(coords: &[f64], indices: &[usize], motor: &Motor) 
 /// `adjacency`: adjacency list (for each atom, list of bonded atom indices).
 ///
 /// Returns the set of atom indices on the `bond_b` side (excluding `bond_a`).
-pub fn find_rotation_subtree(
-    bond_a: usize,
-    bond_b: usize,
-    adjacency: &[Vec<usize>],
-) -> Vec<usize> {
+pub fn find_rotation_subtree(bond_a: usize, bond_b: usize, adjacency: &[Vec<usize>]) -> Vec<usize> {
     let n = adjacency.len();
     let mut visited = vec![false; n];
     visited[bond_a] = true; // block traversal through bond_a
@@ -186,7 +182,8 @@ mod tests {
                 assert!(
                     (ep[i] - p[i]).abs() < 1e-10,
                     "Round-trip error: {:?} → {:?}",
-                    p, ep
+                    p,
+                    ep
                 );
             }
         }
@@ -205,7 +202,8 @@ mod tests {
             assert!(
                 (ta[i] - a[i]).abs() < 1e-10,
                 "Bond atom A moved: {:?} → {:?}",
-                a, ta
+                a,
+                ta
             );
         }
 
@@ -215,7 +213,8 @@ mod tests {
             assert!(
                 (tb[i] - b[i]).abs() < 1e-10,
                 "Bond atom B moved: {:?} → {:?}",
-                b, tb
+                b,
+                tb
             );
         }
     }
@@ -273,13 +272,17 @@ mod tests {
             assert!(
                 (dist_orig - dist_new).abs() < 1e-10,
                 "Distance from axis changed at angle {}: {} → {}",
-                angle, dist_orig, dist_new
+                angle,
+                dist_orig,
+                dist_new
             );
             // Z coordinate preserved
             assert!(
                 (result[2] - p[2]).abs() < 1e-10,
                 "Z changed at angle {}: {} → {}",
-                angle, p[2], result[2]
+                angle,
+                p[2],
+                result[2]
             );
         }
     }
@@ -299,10 +302,10 @@ mod tests {
     fn test_find_rotation_subtree() {
         // Linear chain: 0 - 1 - 2 - 3
         let adj = vec![
-            vec![1],       // atom 0
-            vec![0, 2],    // atom 1
-            vec![1, 3],    // atom 2
-            vec![2],       // atom 3
+            vec![1],    // atom 0
+            vec![0, 2], // atom 1
+            vec![1, 3], // atom 2
+            vec![2],    // atom 3
         ];
         // Rotate about bond 1→2, subtree on side of 2
         let subtree = find_rotation_subtree(1, 2, &adj);

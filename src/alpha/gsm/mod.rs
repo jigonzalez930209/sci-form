@@ -4,14 +4,8 @@
 //! Grows a string of images from reactant and product geometries toward
 //! the transition state without requiring an initial path guess.
 
-pub mod string;
 pub mod saddle;
+pub mod string;
 
-pub use string::{
-    grow_string, interpolate_node,
-    GsmConfig, GsmPath,
-};
-pub use saddle::{
-    find_transition_state, refine_saddle,
-    GsmResult,
-};
+pub use saddle::{find_transition_state, refine_saddle, GsmResult};
+pub use string::{grow_string, interpolate_node, GsmConfig, GsmPath};

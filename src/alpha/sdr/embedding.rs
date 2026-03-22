@@ -3,8 +3,8 @@
 //! Coordinate extraction from SDR-relaxed Gram matrices and
 //! integration with the conformer pipeline.
 
-use nalgebra::DMatrix;
 use super::projections::{alternating_projections, SdrConfig, SdrConvergence};
+use nalgebra::DMatrix;
 
 /// Result from SDR embedding.
 #[derive(Debug, Clone)]
@@ -25,10 +25,7 @@ pub struct SdrResult {
 ///
 /// Given squared distances D, compute the Gram matrix:
 /// X = -0.5 * J * D * J where J = I - (1/n) * 11^T (centering matrix)
-pub fn warm_start_gram(
-    n: usize,
-    distance_pairs: &[(usize, usize, f64)],
-) -> DMatrix<f64> {
+pub fn warm_start_gram(n: usize, distance_pairs: &[(usize, usize, f64)]) -> DMatrix<f64> {
     // Build full distance squared matrix
     let mut d_sq = DMatrix::zeros(n, n);
     for &(i, j, d) in distance_pairs {
@@ -66,10 +63,7 @@ pub fn extract_coordinates(gram: &DMatrix<f64>) -> Vec<f64> {
     let eigen = gram.clone().symmetric_eigen();
 
     // Sort eigenvalues descending
-    let mut indexed: Vec<(usize, f64)> = eigen.eigenvalues.iter()
-        .cloned()
-        .enumerate()
-        .collect();
+    let mut indexed: Vec<(usize, f64)> = eigen.eigenvalues.iter().cloned().enumerate().collect();
     indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
     // Take top 3
@@ -141,8 +135,8 @@ mod tests {
     fn test_warm_start_gram_simple() {
         // 3 points forming a right triangle
         let pairs = vec![
-            (0, 1, 1.0),  // d=1
-            (0, 2, 1.0),  // d=1
+            (0, 1, 1.0),           // d=1
+            (0, 2, 1.0),           // d=1
             (1, 2, 2.0f64.sqrt()), // d=√2
         ];
         let gram = warm_start_gram(3, &pairs);
@@ -153,11 +147,7 @@ mod tests {
     #[test]
     fn test_extract_coordinates_from_known() {
         // Build Gram from known coords
-        let known = vec![
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0],
-        ];
+        let known = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
         let n = 3;
         let mut gram = DMatrix::zeros(n, n);
         for i in 0..n {
@@ -181,11 +171,7 @@ mod tests {
 
     #[test]
     fn test_sdr_embed_triangle() {
-        let pairs = vec![
-            (0, 1, 1.5),
-            (0, 2, 1.5),
-            (1, 2, 1.5),
-        ];
+        let pairs = vec![(0, 1, 1.5), (0, 2, 1.5), (1, 2, 1.5)];
         let config = SdrConfig::default();
         let result = sdr_embed(3, &pairs, &config);
         assert_eq!(result.num_atoms, 3);
@@ -197,8 +183,12 @@ mod tests {
         // Regular tetrahedron: all distances equal
         let d = 2.0;
         let pairs = vec![
-            (0, 1, d), (0, 2, d), (0, 3, d),
-            (1, 2, d), (1, 3, d), (2, 3, d),
+            (0, 1, d),
+            (0, 2, d),
+            (0, 3, d),
+            (1, 2, d),
+            (1, 3, d),
+            (2, 3, d),
         ];
         let result = sdr_embed(4, &pairs, &SdrConfig::default());
         assert_eq!(result.num_atoms, 4);
@@ -212,7 +202,10 @@ mod tests {
             assert!(
                 (d_actual - d_target).abs() < 0.5,
                 "Distance ({},{}) should be ~{}: got {}",
-                i, j, d_target, d_actual
+                i,
+                j,
+                d_target,
+                d_actual
             );
         }
     }

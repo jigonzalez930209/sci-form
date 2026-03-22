@@ -15,10 +15,9 @@ const N_BLADES: usize = 32;
 /// Basis blade labels for reference (bit-encoded: bit0=e1, bit1=e2, bit2=e3,
 /// bit3=e+, bit4=e-).
 const BASIS_LABELS: [&str; 32] = [
-    "1",    "e1",   "e2",   "e12",  "e3",   "e13",  "e23",  "e123",
-    "e+",   "e1+",  "e2+",  "e12+", "e3+",  "e13+", "e23+", "e123+",
-    "e-",   "e1-",  "e2-",  "e12-", "e3-",  "e13-", "e23-", "e123-",
-    "e+-",  "e1+-", "e2+-", "e12+-","e3+-", "e13+-","e23+-","e123+-",
+    "1", "e1", "e2", "e12", "e3", "e13", "e23", "e123", "e+", "e1+", "e2+", "e12+", "e3+", "e13+",
+    "e23+", "e123+", "e-", "e1-", "e2-", "e12-", "e3-", "e13-", "e23-", "e123-", "e+-", "e1+-",
+    "e2+-", "e12+-", "e3+-", "e13+-", "e23+-", "e123+-",
 ];
 
 /// Metric signature: e1²=+1, e2²=+1, e3²=+1, e+²=+1, e-²=-1
@@ -63,7 +62,7 @@ impl Multivector {
     /// The null origin point: e_o = (e- - e+) / 2
     pub fn origin() -> Self {
         let mut m = Self::ZERO;
-        m.data[1 << 4] = 0.5;  // e-
+        m.data[1 << 4] = 0.5; // e-
         m.data[1 << 3] = -0.5; // -e+
         m
     }
@@ -357,7 +356,10 @@ mod tests {
                 assert!(
                     sum.is_zero(1e-14),
                     "e{} e{} + e{} e{} is not zero",
-                    i, j, j, i
+                    i,
+                    j,
+                    j,
+                    i
                 );
             }
         }
@@ -372,7 +374,9 @@ mod tests {
             assert!(
                 (sq.scalar() - METRIC[i]).abs() < 1e-14,
                 "e{}^2 = {}, expected {}",
-                i, sq.scalar(), METRIC[i]
+                i,
+                sq.scalar(),
+                METRIC[i]
             );
         }
     }
@@ -410,8 +414,8 @@ mod tests {
         let half = angle / 2.0;
         // Rotor in e12 plane: R = cos(θ/2) - sin(θ/2) e12
         let mut r = Multivector::ZERO;
-        r.data[0] = half.cos();     // scalar
-        r.data[3] = -half.sin();    // e12 blade (index = 0b0011 = 3)
+        r.data[0] = half.cos(); // scalar
+        r.data[3] = -half.sin(); // e12 blade (index = 0b0011 = 3)
         let product = r * r.reverse();
         assert!(
             (product.scalar() - 1.0).abs() < 1e-12,
@@ -423,7 +427,8 @@ mod tests {
             assert!(
                 product.data[i].abs() < 1e-12,
                 "R ~R blade {} = {}, expected 0",
-                i, product.data[i]
+                i,
+                product.data[i]
             );
         }
     }

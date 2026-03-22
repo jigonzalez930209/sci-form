@@ -4,14 +4,10 @@
 //! positive semidefinite Gram matrices, eliminating retry loops from
 //! negative eigenvalues.
 
-pub mod projections;
 pub mod embedding;
+pub mod projections;
 
+pub use embedding::{extract_coordinates, sdr_embed, warm_start_gram, SdrResult};
 pub use projections::{
-    project_psd, project_distances, alternating_projections,
-    SdrConfig, SdrConvergence,
-};
-pub use embedding::{
-    sdr_embed, warm_start_gram, extract_coordinates,
-    SdrResult,
+    alternating_projections, project_distances, project_psd, SdrConfig, SdrConvergence,
 };

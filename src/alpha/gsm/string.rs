@@ -56,11 +56,7 @@ pub fn interpolate_node(reactant: &[f64], product: &[f64], t: f64) -> Vec<f64> {
 }
 
 /// Compute numerical gradient of energy function.
-fn numerical_gradient(
-    coords: &[f64],
-    energy_fn: &dyn Fn(&[f64]) -> f64,
-    h: f64,
-) -> Vec<f64> {
+fn numerical_gradient(coords: &[f64], energy_fn: &dyn Fn(&[f64]) -> f64, h: f64) -> Vec<f64> {
     let n = coords.len();
     let mut grad = vec![0.0; n];
 
@@ -77,23 +73,27 @@ fn numerical_gradient(
 
 /// Compute string tangent at a given node (central difference).
 fn compute_tangent(nodes: &[Vec<f64>], idx: usize) -> Vec<f64> {
-
     if idx == 0 {
         // Forward difference
-        let mut t: Vec<f64> = nodes[1].iter().zip(&nodes[0])
-            .map(|(a, b)| a - b).collect();
+        let mut t: Vec<f64> = nodes[1].iter().zip(&nodes[0]).map(|(a, b)| a - b).collect();
         normalize(&mut t);
         t
     } else if idx == nodes.len() - 1 {
         // Backward difference
-        let mut t: Vec<f64> = nodes[idx].iter().zip(&nodes[idx - 1])
-            .map(|(a, b)| a - b).collect();
+        let mut t: Vec<f64> = nodes[idx]
+            .iter()
+            .zip(&nodes[idx - 1])
+            .map(|(a, b)| a - b)
+            .collect();
         normalize(&mut t);
         t
     } else {
         // Central difference
-        let mut t: Vec<f64> = nodes[idx + 1].iter().zip(&nodes[idx - 1])
-            .map(|(a, b)| a - b).collect();
+        let mut t: Vec<f64> = nodes[idx + 1]
+            .iter()
+            .zip(&nodes[idx - 1])
+            .map(|(a, b)| a - b)
+            .collect();
         normalize(&mut t);
         t
     }
@@ -123,7 +123,11 @@ fn vec_norm(v: &[f64]) -> f64 {
 }
 
 fn distance(a: &[f64], b: &[f64]) -> f64 {
-    a.iter().zip(b).map(|(x, y)| (x - y).powi(2)).sum::<f64>().sqrt()
+    a.iter()
+        .zip(b)
+        .map(|(x, y)| (x - y).powi(2))
+        .sum::<f64>()
+        .sqrt()
 }
 
 /// Grow a string of images between reactant and product.
