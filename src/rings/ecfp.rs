@@ -164,6 +164,25 @@ pub fn compute_ecfp(mol: &Molecule, radius: usize, n_bits: usize) -> ECFPFingerp
     }
 }
 
+/// Compute ECFP fingerprints for a batch of molecules in parallel.
+///
+/// Uses rayon when the `parallel` feature is enabled.
+pub fn compute_ecfp_batch(mols: &[Molecule], radius: usize, n_bits: usize) -> Vec<ECFPFingerprint> {
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::*;
+        mols.par_iter()
+            .map(|mol| compute_ecfp(mol, radius, n_bits))
+            .collect()
+    }
+    #[cfg(not(feature = "parallel"))]
+    {
+        mols.iter()
+            .map(|mol| compute_ecfp(mol, radius, n_bits))
+            .collect()
+    }
+}
+
 /// Compute the Tanimoto similarity between two ECFP fingerprints.
 ///
 /// $$T(A,B) = \frac{|A \cap B|}{|A \cup B|}$$
