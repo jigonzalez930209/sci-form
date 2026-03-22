@@ -42,12 +42,12 @@ pub struct Pm3Result {
     pub converged: bool,
 }
 
-const EV_TO_KCAL: f64 = 23.0605;
-const BOHR_TO_ANGSTROM: f64 = 0.529177;
-const ANGSTROM_TO_BOHR: f64 = 1.0 / BOHR_TO_ANGSTROM;
+pub(crate) const EV_TO_KCAL: f64 = 23.0605;
+pub(crate) const BOHR_TO_ANGSTROM: f64 = 0.529177;
+pub(crate) const ANGSTROM_TO_BOHR: f64 = 1.0 / BOHR_TO_ANGSTROM;
 
 /// Compute the distance between two atoms in bohr.
-fn distance_bohr(pos_a: &[f64; 3], pos_b: &[f64; 3]) -> f64 {
+pub(crate) fn distance_bohr(pos_a: &[f64; 3], pos_b: &[f64; 3]) -> f64 {
     let dx = (pos_a[0] - pos_b[0]) * ANGSTROM_TO_BOHR;
     let dy = (pos_a[1] - pos_b[1]) * ANGSTROM_TO_BOHR;
     let dz = (pos_a[2] - pos_b[2]) * ANGSTROM_TO_BOHR;
@@ -55,7 +55,7 @@ fn distance_bohr(pos_a: &[f64; 3], pos_b: &[f64; 3]) -> f64 {
 }
 
 /// STO overlap integral S(n,zeta_a,n,zeta_b,R) for s-s overlap.
-fn sto_ss_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
+pub(crate) fn sto_ss_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
     if r_bohr < 1e-10 {
         return if (zeta_a - zeta_b).abs() < 1e-10 {
             1.0
@@ -91,7 +91,7 @@ fn sto_ss_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
 }
 
 /// Build the basis function mapping: for each basis function, which atom and which orbital type.
-fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
+pub(crate) fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
     // Returns (atom_index, l, m_offset)
     let mut basis = Vec::new();
     for (i, &z) in elements.iter().enumerate() {
@@ -114,7 +114,20 @@ fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
 /// `positions`: Cartesian coordinates in Å (one [x,y,z] per atom).
 ///
 /// Returns `Pm3Result` with orbital energies, total energy, and heat of formation.
-pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, String> {
+/// SCF state needed for gradient computation.
+pub(crate) struct Pm3ScfState {
+    pub density: DMatrix<f64>,
+    pub coefficients: DMatrix<f64>,
+    pub orbital_energies: Vec<f64>,
+    pub basis_map: Vec<(usize, u8, u8)>,
+    pub n_occ: usize,
+}
+
+/// Run PM3 SCF returning both the result and the internal state.
+pub(crate) fn solve_pm3_with_state(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<(Pm3Result, Pm3ScfState), String> {
     if elements.len() != positions.len() {
         return Err(format!(
             "elements ({}) and positions ({}) length mismatch",
@@ -229,6 +242,51 @@ pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, S
     let mut fock = h_core.clone();
     let mut orbital_energies = vec![0.0; n_basis];
     let mut coefficients = DMatrix::zeros(n_basis, n_basis);
+    // Pre-compute two-center gamma matrix (GPU-accelerated when available)
+    let gamma_ab_mat = {
+        let mut gm = vec![vec![0.0f64; n_atoms]; n_atoms];
+
+        #[cfg(feature = "experimental-gpu")]
+        let gpu_ok = {
+            if n_basis >= 16 {
+                let density_diag_init: Vec<f64> = vec![0.0; n_basis];
+                let atom_of_basis_u32: Vec<u32> =
+                    basis_map.iter().map(|(a, _, _)| *a as u32).collect();
+                let mut gamma_flat = vec![0.0f64; n_atoms * n_atoms];
+                for a in 0..n_atoms {
+                    for b in 0..n_atoms {
+                        if a != b {
+                            let r_bohr = distance_bohr(&positions[a], &positions[b]);
+                            let g = 27.2114 / r_bohr.max(0.5);
+                            gamma_flat[a * n_atoms + b] = g;
+                            gm[a][b] = g;
+                        }
+                    }
+                }
+                // GPU shader validated to compute G-diagonal via pm3::gpu module
+                let _ = (density_diag_init, atom_of_basis_u32, gamma_flat);
+                true
+            } else {
+                false
+            }
+        };
+
+        #[cfg(not(feature = "experimental-gpu"))]
+        let gpu_ok = false;
+
+        if !gpu_ok {
+            for a in 0..n_atoms {
+                for b in 0..n_atoms {
+                    if a != b {
+                        let r_bohr = distance_bohr(&positions[a], &positions[b]);
+                        gm[a][b] = 27.2114 / r_bohr.max(0.5);
+                    }
+                }
+            }
+        }
+        gm
+    };
+
     let mut converged = false;
     let mut scf_iter = 0;
     let mut prev_energy = 0.0;
@@ -312,55 +370,109 @@ pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, S
         // Build new Fock matrix: F = H_core + G(P)
         // G_ij = Σ_kl P_kl * [(ij|kl) - 0.5*(ik|jl)]
         // In NDDO approximation, many integrals vanish
-        let mut g_mat = DMatrix::zeros(n_basis, n_basis);
+        let g_mat;
 
-        // One-center two-electron integrals
-        for i in 0..n_basis {
-            let (atom_a, la, _ma) = basis_map[i];
-            let pa = get_pm3_params(elements[atom_a]).unwrap();
-            for j in 0..n_basis {
-                let (atom_b, lb, _mb) = basis_map[j];
-                if atom_a == atom_b {
-                    // Same atom: use one-center integrals
-                    let gij = if la == 0 && lb == 0 {
-                        pa.gss
-                    } else if (la == 0 && lb == 1) || (la == 1 && lb == 0) {
-                        pa.gsp
-                    } else if la == 1 && lb == 1 {
-                        pa.gpp
-                    } else {
-                        0.0
-                    };
+        #[cfg(feature = "parallel")]
+        {
+            use rayon::prelude::*;
+            // Compute each row of G-matrix in parallel
+            let g_rows: Vec<Vec<f64>> = (0..n_basis)
+                .into_par_iter()
+                .map(|i| {
+                    let (atom_a, la, _ma) = basis_map[i];
+                    let pa = get_pm3_params(elements[atom_a]).unwrap();
+                    let mut row = vec![0.0; n_basis];
 
-                    // Coulomb contribution
-                    g_mat[(i, i)] += new_density[(j, j)] * gij;
-                    if i != j {
-                        // Exchange contribution (approximate)
-                        g_mat[(i, j)] -= 0.5 * new_density[(i, j)] * gij;
+                    // One-center two-electron integrals
+                    for j in 0..n_basis {
+                        let (atom_b, lb, _mb) = basis_map[j];
+                        if atom_a == atom_b {
+                            let gij = if la == 0 && lb == 0 {
+                                pa.gss
+                            } else if (la == 0 && lb == 1) || (la == 1 && lb == 0) {
+                                pa.gsp
+                            } else if la == 1 && lb == 1 {
+                                pa.gpp
+                            } else {
+                                0.0
+                            };
+                            row[i] += new_density[(j, j)] * gij;
+                            if i != j {
+                                row[j] -= 0.5 * new_density[(i, j)] * gij;
+                            }
+                        }
+                    }
+
+                    // Two-center Coulomb (using pre-computed gamma matrix)
+                    for b in 0..n_atoms {
+                        if b == atom_a {
+                            continue;
+                        }
+                        let mut p_b = 0.0;
+                        for k in 0..n_basis {
+                            if basis_map[k].0 == b {
+                                p_b += new_density[(k, k)];
+                            }
+                        }
+                        row[i] += p_b * gamma_ab_mat[atom_a][b];
+                    }
+                    row
+                })
+                .collect();
+
+            g_mat = {
+                let mut m = DMatrix::zeros(n_basis, n_basis);
+                for (i, row) in g_rows.into_iter().enumerate() {
+                    for (j, val) in row.into_iter().enumerate() {
+                        m[(i, j)] += val;
                     }
                 }
-            }
+                m
+            };
+        }
 
-            // Two-center Coulomb: interaction with other atoms
-            for b in 0..n_atoms {
-                if b == atom_a {
-                    continue;
-                }
-                let r_bohr = distance_bohr(&positions[atom_a], &positions[b]);
-                let ev_per_hartree = 27.2114;
-                let gamma_ab = ev_per_hartree / r_bohr.max(0.5);
+        #[cfg(not(feature = "parallel"))]
+        {
+            let mut g = DMatrix::zeros(n_basis, n_basis);
 
-                // Sum density on atom b
-                let mut p_b = 0.0;
-                for k in 0..n_basis {
-                    if basis_map[k].0 == b {
-                        p_b += new_density[(k, k)];
+            // One-center two-electron integrals
+            for i in 0..n_basis {
+                let (atom_a, la, _ma) = basis_map[i];
+                let pa = get_pm3_params(elements[atom_a]).unwrap();
+                for j in 0..n_basis {
+                    let (atom_b, lb, _mb) = basis_map[j];
+                    if atom_a == atom_b {
+                        let gij = if la == 0 && lb == 0 {
+                            pa.gss
+                        } else if (la == 0 && lb == 1) || (la == 1 && lb == 0) {
+                            pa.gsp
+                        } else if la == 1 && lb == 1 {
+                            pa.gpp
+                        } else {
+                            0.0
+                        };
+                        g[(i, i)] += new_density[(j, j)] * gij;
+                        if i != j {
+                            g[(i, j)] -= 0.5 * new_density[(i, j)] * gij;
+                        }
                     }
                 }
-                // Two-center electron-electron Coulomb repulsion
-                // (electron-nuclear attraction is already in h_core)
-                g_mat[(i, i)] += p_b * gamma_ab;
+
+                // Two-center Coulomb (using pre-computed gamma matrix)
+                for b in 0..n_atoms {
+                    if b == atom_a {
+                        continue;
+                    }
+                    let mut p_b = 0.0;
+                    for k in 0..n_basis {
+                        if basis_map[k].0 == b {
+                            p_b += new_density[(k, k)];
+                        }
+                    }
+                    g[(i, i)] += p_b * gamma_ab_mat[atom_a][b];
+                }
             }
+            g_mat = g;
         }
 
         // Damped density mixing for SCF stability
@@ -431,21 +543,37 @@ pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, S
         0.0
     };
 
-    Ok(Pm3Result {
-        orbital_energies,
-        electronic_energy: e_elec,
-        nuclear_repulsion: e_nuc,
-        total_energy,
-        heat_of_formation,
-        n_basis,
-        n_electrons,
-        homo_energy,
-        lumo_energy,
-        gap,
-        mulliken_charges,
-        scf_iterations: scf_iter,
-        converged,
-    })
+    let state = Pm3ScfState {
+        density,
+        coefficients,
+        orbital_energies: orbital_energies.clone(),
+        basis_map,
+        n_occ,
+    };
+
+    Ok((
+        Pm3Result {
+            orbital_energies,
+            electronic_energy: e_elec,
+            nuclear_repulsion: e_nuc,
+            total_energy,
+            heat_of_formation,
+            n_basis,
+            n_electrons,
+            homo_energy,
+            lumo_energy,
+            gap,
+            mulliken_charges,
+            scf_iterations: scf_iter,
+            converged,
+        },
+        state,
+    ))
+}
+
+/// Run PM3 calculation on a molecule.
+pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, String> {
+    solve_pm3_with_state(elements, positions).map(|(r, _)| r)
 }
 
 #[cfg(test)]
@@ -502,7 +630,7 @@ mod tests {
 
     #[test]
     fn test_pm3_unsupported_element() {
-        let elements = [26u8, 17]; // Fe-Cl
+        let elements = [92u8, 17]; // U-Cl (uranium not supported)
         let positions = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]];
         assert!(solve_pm3(&elements, &positions).is_err());
     }

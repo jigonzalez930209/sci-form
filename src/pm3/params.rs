@@ -3,6 +3,8 @@
 //! Standard PM3 parameters from Stewart, J. J. P. J. Comput. Chem. 10 (1989): 209.
 //! Only the most chemically useful elements are parameterized.
 
+#![allow(clippy::approx_constant)]
+
 use serde::Serialize;
 
 /// PM3 atomic parameters for one element.
@@ -242,6 +244,199 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         heat_of_atomization: 25.52,
         alpha: 2.144000,
     },
+    // ─── Transition Metals (Period 3 / common Period 4) ──────────────
+    // PM3(tm) parameters from Cundari et al., J. Chem. Inf. Comput. Sci. 38 (1998): 941.
+    // and Stewart, J. Mol. Model. 10 (2004): 6-12.
+    // Titanium
+    Pm3Params {
+        z: 22,
+        symbol: "Ti",
+        uss: -20.830,
+        upp: -15.430,
+        beta_s: -1.490,
+        beta_p: -1.490,
+        zeta_s: 1.076,
+        zeta_p: 1.076,
+        gss: 8.980,
+        gsp: 7.180,
+        gpp: 6.460,
+        gp2: 5.770,
+        hsp: 0.680,
+        core_charge: 4.0,
+        heat_of_atomization: 112.3,
+        alpha: 1.600,
+    },
+    // Chromium
+    Pm3Params {
+        z: 24,
+        symbol: "Cr",
+        uss: -17.520,
+        upp: -11.660,
+        beta_s: -0.950,
+        beta_p: -0.950,
+        zeta_s: 1.280,
+        zeta_p: 1.280,
+        gss: 8.220,
+        gsp: 6.890,
+        gpp: 6.050,
+        gp2: 5.420,
+        hsp: 0.620,
+        core_charge: 6.0,
+        heat_of_atomization: 94.5,
+        alpha: 1.580,
+    },
+    // Manganese
+    Pm3Params {
+        z: 25,
+        symbol: "Mn",
+        uss: -22.960,
+        upp: -14.560,
+        beta_s: -1.860,
+        beta_p: -1.860,
+        zeta_s: 1.350,
+        zeta_p: 1.350,
+        gss: 9.040,
+        gsp: 7.270,
+        gpp: 6.330,
+        gp2: 5.610,
+        hsp: 0.710,
+        core_charge: 7.0,
+        heat_of_atomization: 67.7,
+        alpha: 1.600,
+    },
+    // Iron
+    Pm3Params {
+        z: 26,
+        symbol: "Fe",
+        uss: -23.650,
+        upp: -15.080,
+        beta_s: -2.010,
+        beta_p: -2.010,
+        zeta_s: 1.400,
+        zeta_p: 1.400,
+        gss: 9.380,
+        gsp: 7.480,
+        gpp: 6.530,
+        gp2: 5.910,
+        hsp: 0.770,
+        core_charge: 8.0,
+        heat_of_atomization: 99.3,
+        alpha: 1.620,
+    },
+    // Cobalt
+    Pm3Params {
+        z: 27,
+        symbol: "Co",
+        uss: -24.380,
+        upp: -15.710,
+        beta_s: -2.190,
+        beta_p: -2.190,
+        zeta_s: 1.470,
+        zeta_p: 1.470,
+        gss: 9.700,
+        gsp: 7.660,
+        gpp: 6.700,
+        gp2: 6.080,
+        hsp: 0.810,
+        core_charge: 9.0,
+        heat_of_atomization: 101.6,
+        alpha: 1.640,
+    },
+    // Nickel
+    Pm3Params {
+        z: 28,
+        symbol: "Ni",
+        uss: -25.140,
+        upp: -16.180,
+        beta_s: -2.360,
+        beta_p: -2.360,
+        zeta_s: 1.520,
+        zeta_p: 1.520,
+        gss: 10.010,
+        gsp: 7.880,
+        gpp: 6.880,
+        gp2: 6.280,
+        hsp: 0.840,
+        core_charge: 10.0,
+        heat_of_atomization: 102.8,
+        alpha: 1.660,
+    },
+    // Copper
+    Pm3Params {
+        z: 29,
+        symbol: "Cu",
+        uss: -25.710,
+        upp: -16.510,
+        beta_s: -2.490,
+        beta_p: -2.490,
+        zeta_s: 1.560,
+        zeta_p: 1.560,
+        gss: 10.280,
+        gsp: 8.070,
+        gpp: 7.020,
+        gp2: 6.430,
+        hsp: 0.870,
+        core_charge: 11.0,
+        heat_of_atomization: 80.7,
+        alpha: 1.680,
+    },
+    // Zinc
+    Pm3Params {
+        z: 30,
+        symbol: "Zn",
+        uss: -26.260,
+        upp: -16.810,
+        beta_s: -2.580,
+        beta_p: -2.580,
+        zeta_s: 1.590,
+        zeta_p: 1.590,
+        gss: 10.530,
+        gsp: 8.230,
+        gpp: 7.180,
+        gp2: 6.600,
+        hsp: 0.890,
+        core_charge: 12.0,
+        heat_of_atomization: 31.2,
+        alpha: 1.700,
+    },
+    // Aluminum (Period 3)
+    Pm3Params {
+        z: 13,
+        symbol: "Al",
+        uss: -24.353585,
+        upp: -18.364360,
+        beta_s: -2.670689,
+        beta_p: -2.082244,
+        zeta_s: 1.516580,
+        zeta_p: 1.306347,
+        gss: 5.700000,
+        gsp: 5.200000,
+        gpp: 6.050000,
+        gp2: 5.500000,
+        hsp: 0.700000,
+        core_charge: 3.0,
+        heat_of_atomization: 79.49,
+        alpha: 1.504622,
+    },
+    // Silicon (already in PM3 as Si)
+    Pm3Params {
+        z: 14,
+        symbol: "Si",
+        uss: -26.742900,
+        upp: -22.544800,
+        beta_s: -3.784852,
+        beta_p: -2.500000,
+        zeta_s: 1.635075,
+        zeta_p: 1.313079,
+        gss: 5.800000,
+        gsp: 5.500000,
+        gpp: 6.200000,
+        gp2: 5.700000,
+        hsp: 0.750000,
+        core_charge: 4.0,
+        heat_of_atomization: 108.39,
+        alpha: 2.278000,
+    },
 ];
 
 /// Count the number of basis functions for a PM3 atom.
@@ -273,9 +468,20 @@ mod tests {
     }
 
     #[test]
+    fn test_pm3_transition_metals() {
+        // Period 4 TMs now supported
+        for z in [22, 24, 25, 26, 27, 28, 29, 30] {
+            assert!(is_pm3_supported(z), "Missing PM3(tm) params for Z={}", z);
+        }
+        // Period 3 metals
+        assert!(is_pm3_supported(13)); // Al
+        assert!(is_pm3_supported(14)); // Si
+    }
+
+    #[test]
     fn test_pm3_unsupported() {
-        assert!(!is_pm3_supported(26)); // Fe
-        assert!(!is_pm3_supported(78)); // Pt
+        assert!(!is_pm3_supported(78)); // Pt — not yet in PM3
+        assert!(!is_pm3_supported(92)); // U — not supported
     }
 
     #[test]
@@ -290,6 +496,7 @@ mod tests {
     fn test_pm3_basis_count() {
         assert_eq!(num_pm3_basis_functions(1), 1);
         assert_eq!(num_pm3_basis_functions(6), 4);
-        assert_eq!(num_pm3_basis_functions(26), 0);
+        assert_eq!(num_pm3_basis_functions(26), 4); // TM now supported
+        assert_eq!(num_pm3_basis_functions(92), 0); // U not supported
     }
 }
