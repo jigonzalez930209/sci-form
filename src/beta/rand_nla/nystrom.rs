@@ -165,8 +165,8 @@ impl NystromApprox {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
+    use rand::SeedableRng;
 
     fn make_spd_matrix(n: usize) -> DMatrix<f64> {
         // Overlap-like SPD matrix with spectral decay
@@ -206,7 +206,10 @@ mod tests {
             assert!(
                 (gram[(i, i)] - 1.0).abs() < tol,
                 "Diagonal ({},{}) = {}, expected ~1 ± {}",
-                i, i, gram[(i, i)], tol
+                i,
+                i,
+                gram[(i, i)],
+                tol
             );
         }
     }
@@ -241,7 +244,8 @@ mod tests {
             assert!(
                 vals[i] > -0.1,
                 "Eigenvalue {} = {} should be non-negative",
-                i, vals[i]
+                i,
+                vals[i]
             );
         }
     }
@@ -262,7 +266,9 @@ mod tests {
             assert!(
                 (product[(i, i)] - 1.0).abs() < 0.3,
                 "Diagonal ({},{}) = {}, expected ~1",
-                i, i, product[(i, i)]
+                i,
+                i,
+                product[(i, i)]
             );
         }
     }

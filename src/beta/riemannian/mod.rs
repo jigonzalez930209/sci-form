@@ -3,8 +3,8 @@
 //! Replaces Euclidean BFGS with Riemannian L-BFGS over the manifold
 //! of fixed-rank PSD matrices, eliminating negative eigenvalues by design.
 
-mod manifold;
 mod lbfgs;
+mod manifold;
 
-pub use manifold::{PsdManifold, psd_retraction, psd_projection, tangent_projection};
-pub use lbfgs::{RiemannianLbfgs, RiemannianConfig, RiemannianResult, DistanceConstraint};
+pub use lbfgs::{DistanceConstraint, RiemannianConfig, RiemannianLbfgs, RiemannianResult};
+pub use manifold::{psd_projection, psd_retraction, tangent_projection, PsdManifold};

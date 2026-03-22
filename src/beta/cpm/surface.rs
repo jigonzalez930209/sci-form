@@ -84,9 +84,12 @@ mod tests {
     fn test_surface_dimensions() {
         let elements = vec![6u8, 6, 1, 1, 1, 1];
         let pos = vec![
-            [0.0, 0.0, 0.0], [1.5, 0.0, 0.0],
-            [-0.5, 0.9, 0.0], [-0.5, -0.9, 0.0],
-            [2.0, 0.9, 0.0], [2.0, -0.9, 0.0],
+            [0.0, 0.0, 0.0],
+            [1.5, 0.0, 0.0],
+            [-0.5, 0.9, 0.0],
+            [-0.5, -0.9, 0.0],
+            [2.0, 0.9, 0.0],
+            [2.0, -0.9, 0.0],
         ];
 
         let surface = compute_cpm_surface(&elements, &pos, -5.5, -3.5, 10, 78.5);
@@ -99,8 +102,10 @@ mod tests {
     fn test_charge_monotonic() {
         let elements = vec![6u8, 8, 1, 1];
         let pos = vec![
-            [0.0, 0.0, 0.0], [1.2, 0.0, 0.0],
-            [-0.5, 0.9, 0.0], [-0.5, -0.9, 0.0],
+            [0.0, 0.0, 0.0],
+            [1.2, 0.0, 0.0],
+            [-0.5, 0.9, 0.0],
+            [-0.5, -0.9, 0.0],
         ];
 
         let surface = compute_cpm_surface(&elements, &pos, -5.5, -3.5, 20, 78.5);
@@ -108,23 +113,28 @@ mod tests {
         // Q should generally increase with μ (more positive potential → more electron donation)
         let q_first = surface.total_charge.first().unwrap();
         let q_last = surface.total_charge.last().unwrap();
-        assert!(q_last > q_first,
-            "Q should increase with μ: first={}, last={}", q_first, q_last);
+        assert!(
+            q_last > q_first,
+            "Q should increase with μ: first={}, last={}",
+            q_first,
+            q_last
+        );
     }
 
     #[test]
     fn test_capacitance_positive() {
         let elements = vec![6u8, 6, 8];
-        let pos = vec![
-            [0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [3.0, 0.0, 0.0],
-        ];
+        let pos = vec![[0.0, 0.0, 0.0], [1.5, 0.0, 0.0], [3.0, 0.0, 0.0]];
 
         let surface = compute_cpm_surface(&elements, &pos, -5.5, -3.5, 15, 78.5);
 
         // Capacitance should be positive (∂Q/∂μ > 0)
         for &c in &surface.capacitance {
-            assert!(c > 0.0 || c.abs() < 0.1,
-                "Capacitance should be ~positive: {}", c);
+            assert!(
+                c > 0.0 || c.abs() < 0.1,
+                "Capacitance should be ~positive: {}",
+                c
+            );
         }
     }
 }

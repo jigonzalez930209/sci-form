@@ -95,12 +95,7 @@ impl ChebyshevExpansion {
     ///
     /// For efficiency, we only track the diagonal (for trace) using
     /// stochastic trace estimation with `n_vectors` random vectors.
-    pub fn from_matrix(
-        h: &DMatrix<f64>,
-        order: usize,
-        n_vectors: usize,
-        seed: u64,
-    ) -> Self {
+    pub fn from_matrix(h: &DMatrix<f64>, order: usize, n_vectors: usize, seed: u64) -> Self {
         let n = h.nrows();
         let (e_min, e_max) = estimate_spectral_bounds(h);
         let a = (e_max - e_min) / 2.0;
@@ -281,7 +276,10 @@ mod tests {
             assert!(
                 e >= e_min && e <= e_max,
                 "Eigenvalue {} = {:.4} outside [{:.4}, {:.4}]",
-                i, e, e_min, e_max
+                i,
+                e,
+                e_min,
+                e_max
             );
         }
     }
@@ -298,7 +296,8 @@ mod tests {
             assert!(
                 e.abs() < 1.0 + 1e-10,
                 "Rescaled eigenvalue {} = {:.6} > 1",
-                i, e
+                i,
+                e
             );
         }
     }
@@ -309,7 +308,10 @@ mod tests {
         // g_0 should be close to 1
         assert!((gk[0] - 1.0).abs() < 0.05, "g_0 = {}", gk[0]);
         // Coefficients should decrease
-        assert!(gk[49] < gk[0], "Jackson kernel should damp high-order terms");
+        assert!(
+            gk[49] < gk[0],
+            "Jackson kernel should damp high-order terms"
+        );
         // All coefficients should be non-negative for well-behaved kernels
         // (Jackson kernel is not strictly non-negative but g_k > 0 for moderate k)
     }
@@ -325,8 +327,16 @@ mod tests {
         let dos_inside = expansion.dos_at_energy(0.0, &gk);
         let dos_outside = expansion.dos_at_energy(5.0, &gk);
 
-        assert!(dos_inside > 0.1, "DOS at band center should be > 0: {}", dos_inside);
-        assert!(dos_outside < 0.01, "DOS outside band should be ~0: {}", dos_outside);
+        assert!(
+            dos_inside > 0.1,
+            "DOS at band center should be > 0: {}",
+            dos_inside
+        );
+        assert!(
+            dos_outside < 0.01,
+            "DOS outside band should be ~0: {}",
+            dos_outside
+        );
     }
 
     #[test]
@@ -345,7 +355,9 @@ mod tests {
             assert!(
                 rel_err < 0.8,
                 "Moment {} disagrees: exact={:.6}, stoch={:.6}",
-                k, exact.moments[k], stoch.moments[k]
+                k,
+                exact.moments[k],
+                stoch.moments[k]
             );
         }
     }

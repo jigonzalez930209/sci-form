@@ -3,10 +3,10 @@
 //! Compute DOS, Fermi-Dirac occupation, and Mulliken charges
 //! from Chebyshev expansion without diagonalization.
 
-use nalgebra::DMatrix;
 use super::chebyshev::{
-    ChebyshevExpansion, estimate_spectral_bounds, jackson_kernel, rescale_matrix,
+    estimate_spectral_bounds, jackson_kernel, rescale_matrix, ChebyshevExpansion,
 };
+use nalgebra::DMatrix;
 
 /// Configuration for KPM calculations.
 #[derive(Debug, Clone)]
@@ -79,7 +79,13 @@ pub fn fermi_dirac_coefficients(
 
         // Fermi-Dirac distribution
         let f_fd = if temperature < 1e-10 {
-            if energy < mu { 1.0 } else if energy > mu { 0.0 } else { 0.5 }
+            if energy < mu {
+                1.0
+            } else if energy > mu {
+                0.0
+            } else {
+                0.5
+            }
         } else {
             let kt = temperature * 8.617333262e-5; // eV to eV (kB in eV/K)
             1.0 / (1.0 + ((energy - mu) / kt).exp())
@@ -129,7 +135,10 @@ pub fn compute_kpm_dos(
 
     let step = (e_max_out - e_min_out) / (n_points - 1).max(1) as f64;
     let energies: Vec<f64> = (0..n_points).map(|i| e_min_out + i as f64 * step).collect();
-    let total_dos: Vec<f64> = energies.iter().map(|&e| expansion.dos_at_energy(e, &gk)).collect();
+    let total_dos: Vec<f64> = energies
+        .iter()
+        .map(|&e| expansion.dos_at_energy(e, &gk))
+        .collect();
 
     KpmDosResult {
         energies,
@@ -244,13 +253,7 @@ pub fn compute_kpm_mulliken(
 }
 
 /// Count electrons at a given Fermi level using Chebyshev expansion of f_FD.
-fn electron_count_kpm(
-    h_tilde: &DMatrix<f64>,
-    a: f64,
-    b: f64,
-    mu: f64,
-    config: &KpmConfig,
-) -> f64 {
+fn electron_count_kpm(h_tilde: &DMatrix<f64>, a: f64, b: f64, mu: f64, config: &KpmConfig) -> f64 {
     let n = h_tilde.nrows();
     let coeffs = fermi_dirac_coefficients(config.order, a, b, mu, config.temperature);
     let gk = jackson_kernel(config.order);

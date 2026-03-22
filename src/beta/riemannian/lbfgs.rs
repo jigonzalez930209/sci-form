@@ -120,14 +120,12 @@ impl RiemannianLbfgs {
             let direction = tangent_projection(&direction);
 
             // Armijo line search along retraction
-            let (alpha, new_x, new_obj) =
-                self.line_search(&x, &direction, obj, &grad, constraints);
+            let (alpha, new_x, new_obj) = self.line_search(&x, &direction, obj, &grad, constraints);
 
             if alpha < 1e-16 {
                 // Line search failed — try steepest descent
                 let sd = scale_matrix(&grad, -1.0);
-                let (alpha2, new_x2, new_obj2) =
-                    self.line_search(&x, &sd, obj, &grad, constraints);
+                let (alpha2, new_x2, new_obj2) = self.line_search(&x, &sd, obj, &grad, constraints);
                 if alpha2 < 1e-16 {
                     break; // Give up
                 }
@@ -356,9 +354,24 @@ mod tests {
     fn make_simple_constraints() -> Vec<DistanceConstraint> {
         // Triangle with side lengths 1.5, 1.5, 1.5
         vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 2, lower: 1.4, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.4, upper: 1.6 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.4,
+                upper: 1.6,
+            },
         ]
     }
 
@@ -376,7 +389,9 @@ mod tests {
         assert!(
             result.converged || result.objective < 1e-4,
             "Should converge for simple triangle: obj={}, grad_norm={}, iter={}",
-            result.objective, result.grad_norm, result.iterations
+            result.objective,
+            result.grad_norm,
+            result.iterations
         );
     }
 
@@ -390,14 +405,17 @@ mod tests {
 
         // Check that all distances are within bounds
         for c in &constraints {
-            let dij_sq = result.metric_matrix[(c.i, c.i)]
-                + result.metric_matrix[(c.j, c.j)]
+            let dij_sq = result.metric_matrix[(c.i, c.i)] + result.metric_matrix[(c.j, c.j)]
                 - 2.0 * result.metric_matrix[(c.i, c.j)];
             let dij = dij_sq.max(0.0).sqrt();
             assert!(
                 dij >= c.lower - 0.1 && dij <= c.upper + 0.1,
                 "Distance ({},{}) = {:.4}, expected in [{:.2}, {:.2}]",
-                c.i, c.j, dij, c.lower, c.upper
+                c.i,
+                c.j,
+                dij,
+                c.lower,
+                c.upper
             );
         }
     }
@@ -425,11 +443,36 @@ mod tests {
     fn test_larger_system() {
         // 5-atom system with bond constraints
         let constraints = vec![
-            DistanceConstraint { i: 0, j: 1, lower: 1.0, upper: 1.6 },
-            DistanceConstraint { i: 1, j: 2, lower: 1.0, upper: 1.6 },
-            DistanceConstraint { i: 2, j: 3, lower: 1.0, upper: 1.6 },
-            DistanceConstraint { i: 3, j: 4, lower: 1.0, upper: 1.6 },
-            DistanceConstraint { i: 0, j: 4, lower: 2.0, upper: 4.0 },
+            DistanceConstraint {
+                i: 0,
+                j: 1,
+                lower: 1.0,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 1,
+                j: 2,
+                lower: 1.0,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 2,
+                j: 3,
+                lower: 1.0,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 3,
+                j: 4,
+                lower: 1.0,
+                upper: 1.6,
+            },
+            DistanceConstraint {
+                i: 0,
+                j: 4,
+                lower: 2.0,
+                upper: 4.0,
+            },
         ];
         let initial = DMatrix::identity(5, 5) * 3.0;
         let config = RiemannianConfig {
@@ -479,7 +522,10 @@ mod tests {
                 assert!(
                     (grad[(i, j)] - fd).abs() < 1e-4,
                     "Gradient error at ({},{}): analytical={:.6}, fd={:.6}",
-                    i, j, grad[(i, j)], fd
+                    i,
+                    j,
+                    grad[(i, j)],
+                    fd
                 );
             }
         }

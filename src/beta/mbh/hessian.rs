@@ -174,7 +174,8 @@ pub fn compute_mbh_frequencies(
             let val = 1.0 / m_eigen.eigenvalues[i].sqrt();
             for r in 0..n_reduced {
                 for c in 0..n_reduced {
-                    m_inv_sqrt[(r, c)] += val * m_eigen.eigenvectors[(r, i)] * m_eigen.eigenvectors[(c, i)];
+                    m_inv_sqrt[(r, c)] +=
+                        val * m_eigen.eigenvectors[(r, i)] * m_eigen.eigenvectors[(c, i)];
                 }
             }
         }
@@ -189,7 +190,9 @@ pub fn compute_mbh_frequencies(
     // Simplified: ν(cm⁻¹) = 108.59 * sqrt(|λ|) * sign(λ)
     let conversion = 108.59; // sqrt(kcal/mol / (amu * Å²)) → cm⁻¹
 
-    let mut frequencies: Vec<f64> = eigen.eigenvalues.iter()
+    let mut frequencies: Vec<f64> = eigen
+        .eigenvalues
+        .iter()
         .map(|&e| {
             if e >= 0.0 {
                 conversion * e.sqrt()
@@ -233,7 +236,8 @@ mod tests {
                 let dy = coords[i * 3 + 1] - coords[j * 3 + 1];
                 let dz = coords[i * 3 + 2] - coords[j * 3 + 2];
                 let r = (dx * dx + dy * dy + dz * dz).sqrt();
-                if r < 3.0 { // only nearby atoms "bonded"
+                if r < 3.0 {
+                    // only nearby atoms "bonded"
                     e += 0.5 * k * (r - r0).powi(2);
                 }
             }
@@ -248,7 +252,8 @@ mod tests {
         let rings: Vec<(Vec<usize>, bool)> = vec![];
         let config = MbhConfig::default();
 
-        let result = compute_mbh_frequencies(&elements, &positions, &rings, &harmonic_energy, &config);
+        let result =
+            compute_mbh_frequencies(&elements, &positions, &rings, &harmonic_energy, &config);
         assert_eq!(result.n_blocks, 0);
         assert_eq!(result.n_flexible, 3);
         assert_eq!(result.n_dof_reduced, 9);
@@ -259,17 +264,25 @@ mod tests {
     fn test_mbh_with_ring() {
         let _n = 9; // 6 ring + 3 external
         let elements = vec![6u8; 9];
-        let positions: Vec<[f64; 3]> = (0..9).map(|i| {
-            if i < 6 {
-                let a = i as f64 * std::f64::consts::PI / 3.0;
-                [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
-            } else {
-                [4.0 + (i - 6) as f64 * 1.5, 0.0, 0.0]
-            }
-        }).collect();
+        let positions: Vec<[f64; 3]> = (0..9)
+            .map(|i| {
+                if i < 6 {
+                    let a = i as f64 * std::f64::consts::PI / 3.0;
+                    [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
+                } else {
+                    [4.0 + (i - 6) as f64 * 1.5, 0.0, 0.0]
+                }
+            })
+            .collect();
 
         let rings = vec![(vec![0, 1, 2, 3, 4, 5], true)];
-        let result = compute_mbh_frequencies(&elements, &positions, &rings, &harmonic_energy, &MbhConfig::default());
+        let result = compute_mbh_frequencies(
+            &elements,
+            &positions,
+            &rings,
+            &harmonic_energy,
+            &MbhConfig::default(),
+        );
 
         assert_eq!(result.n_blocks, 1);
         assert_eq!(result.n_flexible, 3);
@@ -277,19 +290,31 @@ mod tests {
         assert_eq!(result.n_dof_reduced, 15);
         // Full would be 27
         assert_eq!(result.n_dof_full, 27);
-        assert!(result.speedup > 1.0, "Should show speedup: {}", result.speedup);
+        assert!(
+            result.speedup > 1.0,
+            "Should show speedup: {}",
+            result.speedup
+        );
     }
 
     #[test]
     fn test_mbh_frequencies_finite() {
         let elements = vec![6u8; 6];
-        let positions: Vec<[f64; 3]> = (0..6).map(|i| {
-            let a = i as f64 * std::f64::consts::PI / 3.0;
-            [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
-        }).collect();
+        let positions: Vec<[f64; 3]> = (0..6)
+            .map(|i| {
+                let a = i as f64 * std::f64::consts::PI / 3.0;
+                [1.4 * a.cos(), 1.4 * a.sin(), 0.0]
+            })
+            .collect();
 
         let rings = vec![(vec![0, 1, 2, 3, 4, 5], true)];
-        let result = compute_mbh_frequencies(&elements, &positions, &rings, &harmonic_energy, &MbhConfig::default());
+        let result = compute_mbh_frequencies(
+            &elements,
+            &positions,
+            &rings,
+            &harmonic_energy,
+            &MbhConfig::default(),
+        );
 
         for &f in &result.frequencies {
             assert!(f.is_finite(), "Frequency should be finite: {}", f);

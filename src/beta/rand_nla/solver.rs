@@ -53,7 +53,9 @@ pub fn solve_eht_randnla(
     config: &RandNlaConfig,
 ) -> (DVector<f64>, DMatrix<f64>, RandNlaInfo) {
     let n = h.nrows();
-    let k = config.sketch_size.unwrap_or_else(|| GaussianSketch::default_k(n));
+    let k = config
+        .sketch_size
+        .unwrap_or_else(|| GaussianSketch::default_k(n));
     let k = k.min(n);
 
     let mut rng = StdRng::seed_from_u64(config.seed);
@@ -144,10 +146,7 @@ fn solve_exact_with_info(
 }
 
 /// Sort eigenpairs by eigenvalue (ascending).
-fn sort_eigenpairs(
-    energies: &DVector<f64>,
-    c: &DMatrix<f64>,
-) -> (DVector<f64>, DMatrix<f64>) {
+fn sort_eigenpairs(energies: &DVector<f64>, c: &DMatrix<f64>) -> (DVector<f64>, DMatrix<f64>) {
     let n = energies.len();
     let mut indices: Vec<usize> = (0..n).collect();
     indices.sort_by(|&a, &b| energies[a].partial_cmp(&energies[b]).unwrap());

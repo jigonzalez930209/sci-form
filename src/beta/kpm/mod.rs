@@ -6,9 +6,7 @@
 mod chebyshev;
 mod density;
 
-pub use chebyshev::{
-    estimate_spectral_bounds, jackson_kernel, rescale_matrix, ChebyshevExpansion,
-};
+pub use chebyshev::{estimate_spectral_bounds, jackson_kernel, rescale_matrix, ChebyshevExpansion};
 pub use density::{
     compute_kpm_dos, compute_kpm_mulliken, fermi_dirac_coefficients, KpmConfig, KpmDosResult,
     KpmMullikenResult,
