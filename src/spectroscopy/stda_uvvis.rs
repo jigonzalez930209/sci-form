@@ -140,23 +140,77 @@ pub fn compute_stda(
     let q = transition_charges(scf, basis_to_atom, n_atoms);
 
     // Off-diagonal: Coulomb-type integrals
-    for (idx1, (i_l, a_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
-        let i = active.occ_indices[i_l];
-        let a_abs = active.virt_indices[a_l] - n_occ_total;
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::*;
 
-        for (idx2, (j_l, b_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
-            let j = active.occ_indices[j_l];
-            let b_abs = active.virt_indices[b_l] - n_occ_total;
+        let pairs_1: Vec<(usize, usize, usize)> = iproduct(n_active_occ, n_active_virt)
+            .enumerate()
+            .map(|(idx, (i_l, a_l))| {
+                (
+                    idx,
+                    active.occ_indices[i_l],
+                    active.virt_indices[a_l] - n_occ_total,
+                )
+            })
+            .collect();
 
-            let mut j_integral = 0.0;
-            for atom_a in 0..n_atoms {
-                for atom_b in 0..n_atoms {
-                    j_integral +=
-                        q[i][a_abs][atom_a] * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
+        let pairs_2: Vec<(usize, usize, usize)> = iproduct(n_active_occ, n_active_virt)
+            .enumerate()
+            .map(|(idx, (j_l, b_l))| {
+                (
+                    idx,
+                    active.occ_indices[j_l],
+                    active.virt_indices[b_l] - n_occ_total,
+                )
+            })
+            .collect();
+
+        let row_contribs: Vec<Vec<(usize, f64)>> = pairs_1
+            .par_iter()
+            .map(|&(_idx1, i, a_abs)| {
+                let mut row = Vec::with_capacity(n_singles);
+                for &(idx2, j, b_abs) in &pairs_2 {
+                    let mut j_integral = 0.0;
+                    for atom_a in 0..n_atoms {
+                        for atom_b in 0..n_atoms {
+                            j_integral +=
+                                q[i][a_abs][atom_a] * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
+                        }
+                    }
+                    row.push((idx2, 2.0 * j_integral));
                 }
-            }
+                row
+            })
+            .collect();
 
-            a_matrix[(idx1, idx2)] += 2.0 * j_integral;
+        for (idx1, row) in row_contribs.into_iter().enumerate() {
+            for (idx2, val) in row {
+                a_matrix[(idx1, idx2)] += val;
+            }
+        }
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    {
+        for (idx1, (i_l, a_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
+            let i = active.occ_indices[i_l];
+            let a_abs = active.virt_indices[a_l] - n_occ_total;
+
+            for (idx2, (j_l, b_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
+                let j = active.occ_indices[j_l];
+                let b_abs = active.virt_indices[b_l] - n_occ_total;
+
+                let mut j_integral = 0.0;
+                for atom_a in 0..n_atoms {
+                    for atom_b in 0..n_atoms {
+                        j_integral +=
+                            q[i][a_abs][atom_a] * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
+                    }
+                }
+
+                a_matrix[(idx1, idx2)] += 2.0 * j_integral;
+            }
         }
     }
 

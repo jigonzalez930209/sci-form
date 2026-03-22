@@ -13,9 +13,9 @@
 
 use nalgebra::DMatrix;
 
-use crate::scf::types::MolecularSystem;
 use crate::scf::gradients::numerical_gradient;
 use crate::scf::scf_loop::ScfConfig;
+use crate::scf::types::MolecularSystem;
 
 /// Atomic masses in amu for common elements.
 pub fn atomic_mass(z: u8) -> f64 {
@@ -140,11 +140,105 @@ pub fn compute_hessian(
     }
 }
 
+/// Parallel Hessian computation via rayon.
+///
+/// Each coordinate displacement (atom_j, coord_j) produces an independent
+/// gradient pair, so the 6N gradient evaluations run in parallel.
+#[cfg(feature = "parallel")]
+pub fn compute_hessian_parallel(
+    system: &MolecularSystem,
+    scf_config: &ScfConfig,
+    grad_step: f64,
+    hess_step: f64,
+) -> HessianResult {
+    use rayon::prelude::*;
+
+    let n_atoms = system.n_atoms();
+    let n_coords = n_atoms * 3;
+
+    // Each job: (j-index, gradient_plus, gradient_minus)
+    let jobs: Vec<usize> = (0..n_coords).collect();
+
+    let columns: Vec<(usize, Vec<f64>)> = jobs
+        .into_par_iter()
+        .map(|j| {
+            let atom_j = j / 3;
+            let coord_j = j % 3;
+
+            let mut sys_plus = system.clone();
+            sys_plus.positions_bohr[atom_j][coord_j] += hess_step;
+            let grad_plus = numerical_gradient(&sys_plus, scf_config, grad_step);
+
+            let mut sys_minus = system.clone();
+            sys_minus.positions_bohr[atom_j][coord_j] -= hess_step;
+            let grad_minus = numerical_gradient(&sys_minus, scf_config, grad_step);
+
+            let mut col = Vec::with_capacity(n_coords);
+            for atom_i in 0..n_atoms {
+                for coord_i in 0..3 {
+                    col.push(
+                        (grad_plus.gradients[atom_i][coord_i]
+                            - grad_minus.gradients[atom_i][coord_i])
+                            / (2.0 * hess_step),
+                    );
+                }
+            }
+
+            (j, col)
+        })
+        .collect();
+
+    let mut hessian = DMatrix::zeros(n_coords, n_coords);
+    for (j, col) in columns {
+        for i in 0..n_coords {
+            hessian[(i, j)] = col[i];
+        }
+    }
+
+    let hessian_sym = (&hessian + hessian.transpose()) * 0.5;
+    let (mw_hessian, _masses) = mass_weight_hessian(&hessian_sym, &system.atomic_numbers);
+
+    let eigen = mw_hessian.clone().symmetric_eigen();
+    let hartree_to_cm1: f64 = 219474.63;
+    let amu_to_au: f64 = 1822.888;
+
+    let mut freq_eigenvalue_pairs: Vec<(f64, usize)> = eigen
+        .eigenvalues
+        .iter()
+        .enumerate()
+        .map(|(i, &val)| {
+            let freq = if val >= 0.0 {
+                val.sqrt() * hartree_to_cm1 / (2.0 * std::f64::consts::PI * amu_to_au.sqrt())
+            } else {
+                -((-val).sqrt() * hartree_to_cm1 / (2.0 * std::f64::consts::PI * amu_to_au.sqrt()))
+            };
+            (freq, i)
+        })
+        .collect();
+
+    freq_eigenvalue_pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+    let frequencies: Vec<f64> = freq_eigenvalue_pairs.iter().map(|(f, _)| *f).collect();
+    let n_imaginary = frequencies.iter().filter(|&&f| f < -10.0).count();
+
+    let mut normal_modes = DMatrix::zeros(n_coords, n_coords);
+    for (new_idx, &(_, old_idx)) in freq_eigenvalue_pairs.iter().enumerate() {
+        for i in 0..n_coords {
+            normal_modes[(i, new_idx)] = eigen.eigenvectors[(i, old_idx)];
+        }
+    }
+
+    HessianResult {
+        hessian: hessian_sym,
+        mass_weighted_hessian: mw_hessian,
+        frequencies,
+        normal_modes,
+        n_imaginary,
+    }
+}
+
 /// Mass-weight the Hessian: H'_{ij} = H_{ij} / sqrt(m_i · m_j)
-fn mass_weight_hessian(
-    hessian: &DMatrix<f64>,
-    atomic_numbers: &[u8],
-) -> (DMatrix<f64>, Vec<f64>) {
+fn mass_weight_hessian(hessian: &DMatrix<f64>, atomic_numbers: &[u8]) -> (DMatrix<f64>, Vec<f64>) {
     let n_atoms = atomic_numbers.len();
     let n_coords = n_atoms * 3;
 

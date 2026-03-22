@@ -53,9 +53,7 @@ pub fn compute_dipole_integrals(basis: &BasisSet) -> DipoleIntegrals {
                     let py = (alpha * a[1] + beta * b[1]) / p;
                     let pz = (alpha * a[2] + beta * b[2]) / p;
 
-                    let ab2 = (a[0] - b[0]).powi(2)
-                        + (a[1] - b[1]).powi(2)
-                        + (a[2] - b[2]).powi(2);
+                    let ab2 = (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2);
 
                     let s_prefactor = (std::f64::consts::PI / p).powf(1.5)
                         * (-mu_ab * ab2).exp()
@@ -116,9 +114,8 @@ pub fn transform_to_mo(
 ///
 ///   f = (2/3) · ΔE · (|μ_x|² + |μ_y|² + |μ_z|²)
 pub fn oscillator_strength(transition_dipole: &[f64; 3], energy_hartree: f64) -> f64 {
-    let mu_sq = transition_dipole[0].powi(2)
-        + transition_dipole[1].powi(2)
-        + transition_dipole[2].powi(2);
+    let mu_sq =
+        transition_dipole[0].powi(2) + transition_dipole[1].powi(2) + transition_dipole[2].powi(2);
 
     (2.0 / 3.0) * energy_hartree * mu_sq
 }
