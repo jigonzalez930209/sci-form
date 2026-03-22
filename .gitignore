@@ -19,3 +19,5 @@ GDB20.50000.smi
 nohup.out
 .venv-ci
 vendor
+dist
+build
