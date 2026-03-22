@@ -4,7 +4,7 @@
 //! corrections, and the generalized Born f_GB kernel.
 
 /// Per-atom intrinsic radii (Å) by atomic number (Bondi radii).
-fn intrinsic_radius(z: u8) -> f64 {
+pub(crate) fn intrinsic_radius(z: u8) -> f64 {
     match z {
         1 => 1.20,
         6 => 1.70,
@@ -66,8 +66,7 @@ pub fn compute_born_radii(
                 if u_ij > l_ij {
                     psi += 0.5
                         * (1.0 / l_ij - 1.0 / u_ij
-                            + 0.25 * (1.0 / u_ij - 1.0 / l_ij)
-                                * (r_ij * r_ij - rho_j * rho_j)
+                            + 0.25 * (1.0 / u_ij - 1.0 / l_ij) * (r_ij * r_ij - rho_j * rho_j)
                             + 0.5 * (1.0 / u_ij.powi(2) - 1.0 / l_ij.powi(2)) * r_ij);
                 }
             }
