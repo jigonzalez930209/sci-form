@@ -939,6 +939,8 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "29.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85b4372fed0bd362d646d01b6926df0e837859ccc522fed720c395e0460f29c8"
 dependencies = [
  "arrayvec",
  "bit-set 0.9.1",
@@ -1451,7 +1453,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "approx",
  "bytemuck",
@@ -1467,7 +1469,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-cli"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "clap",
  "rayon",
@@ -1477,7 +1479,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-python"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "pyo3",
  "rayon",
@@ -1486,7 +1488,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-wasm"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "futures-channel",
  "getrandom",
@@ -1878,6 +1880,8 @@ dependencies = [
 [[package]]
 name = "wgpu"
 version = "29.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78f9f386699b1fb8b8a05bfe82169b24d151f05702d2905a0bf93bc454fcc825"
 dependencies = [
  "arrayvec",
  "bitflags 2.11.0",
@@ -1932,6 +1936,8 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "29.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7c34181b0acb8f98168f78f8e57ec66f57df5522b39143dbe5f2f45d7ca927c"
 dependencies = [
  "arrayvec",
  "bit-set 0.9.1",
@@ -2035,6 +2041,8 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "29.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "058b6047337cf323a4f092486443a9337f3d81325347e5d77deed7e563aeaedc"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -2107,6 +2115,8 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "29.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d15ece45db77dd5451f11c0ce898334317ce8502d304a20454b531fdc0652fae"
 dependencies = [
  "bitflags 2.11.0",
  "bytemuck",
