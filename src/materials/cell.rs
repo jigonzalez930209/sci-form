@@ -189,7 +189,7 @@ impl UnitCell {
     }
 
     /// Inverse of the 3×3 matrix whose rows are the lattice vectors.
-    fn inverse_matrix(&self) -> [[f64; 3]; 3] {
+    pub(crate) fn inverse_matrix(&self) -> [[f64; 3]; 3] {
         let m = self.lattice;
         let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
             - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
@@ -236,6 +236,407 @@ fn norm3(v: [f64; 3]) -> f64 {
 fn angle_between(a: [f64; 3], b: [f64; 3]) -> f64 {
     let cos_angle = dot3(a, b) / (norm3(a) * norm3(b));
     cos_angle.clamp(-1.0, 1.0).acos()
+}
+
+/// Result of powder XRD simulation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PowderXrdResult {
+    /// 2θ angles (degrees) for each reflection.
+    pub two_theta: Vec<f64>,
+    /// Relative intensities (0–100).
+    pub intensities: Vec<f64>,
+    /// Miller indices (h, k, l) for each reflection.
+    pub miller_indices: Vec<[i32; 3]>,
+    /// d-spacings (Å) for each reflection.
+    pub d_spacings: Vec<f64>,
+}
+
+/// Simulate powder X-ray diffraction pattern from unit cell and atoms.
+///
+/// Uses Bragg's law: $n\lambda = 2d\sin\theta$ with Cu-Kα radiation (λ=1.5406 Å).
+///
+/// `cell`: unit cell definition.
+/// `elements`: atomic numbers of all atoms.
+/// `frac_coords`: fractional coordinates of all atoms.
+/// `two_theta_max`: maximum 2θ angle in degrees (default 90°).
+pub fn simulate_powder_xrd(
+    cell: &UnitCell,
+    elements: &[u8],
+    frac_coords: &[[f64; 3]],
+    two_theta_max: f64,
+) -> PowderXrdResult {
+    let lambda = 1.5406; // Cu-Kα wavelength in Å
+
+    // Max h, k, l to consider
+    let params = cell.parameters();
+    let d_min = lambda / (2.0 * (two_theta_max.to_radians() / 2.0).sin());
+    let h_max = (params.a / d_min).ceil() as i32 + 1;
+    let k_max = (params.b / d_min).ceil() as i32 + 1;
+    let l_max = (params.c / d_min).ceil() as i32 + 1;
+
+    let mut reflections = Vec::new();
+
+    for h in -h_max..=h_max {
+        for k in -k_max..=k_max {
+            for l in -l_max..=l_max {
+                if h == 0 && k == 0 && l == 0 {
+                    continue;
+                }
+
+                // d-spacing from reciprocal lattice
+                let g = [
+                    h as f64 * cell.inverse_matrix()[0][0]
+                        + k as f64 * cell.inverse_matrix()[1][0]
+                        + l as f64 * cell.inverse_matrix()[2][0],
+                    h as f64 * cell.inverse_matrix()[0][1]
+                        + k as f64 * cell.inverse_matrix()[1][1]
+                        + l as f64 * cell.inverse_matrix()[2][1],
+                    h as f64 * cell.inverse_matrix()[0][2]
+                        + k as f64 * cell.inverse_matrix()[1][2]
+                        + l as f64 * cell.inverse_matrix()[2][2],
+                ];
+                let g_len = norm3(g);
+                let d = 1.0 / g_len;
+
+                // Bragg: 2d sin(θ) = λ → sin(θ) = λ/(2d)
+                let sin_theta = lambda / (2.0 * d);
+                if !(0.0..=1.0).contains(&sin_theta) {
+                    continue;
+                }
+                let two_theta_val = 2.0 * sin_theta.asin().to_degrees();
+                if !(1.0..=two_theta_max).contains(&two_theta_val) {
+                    continue;
+                }
+
+                // Structure factor (simplified — uses atomic number as scattering factor)
+                let mut f_real = 0.0f64;
+                let mut f_imag = 0.0f64;
+                for (i, &elem) in elements.iter().enumerate() {
+                    let f_atom = elem as f64; // Approximation: f ≈ Z for low angles
+                    let phase = 2.0
+                        * std::f64::consts::PI
+                        * (h as f64 * frac_coords[i][0]
+                            + k as f64 * frac_coords[i][1]
+                            + l as f64 * frac_coords[i][2]);
+                    f_real += f_atom * phase.cos();
+                    f_imag += f_atom * phase.sin();
+                }
+                let intensity = f_real * f_real + f_imag * f_imag;
+
+                if intensity > 1e-6 {
+                    reflections.push((two_theta_val, intensity, [h, k, l], d));
+                }
+            }
+        }
+    }
+
+    // Merge equivalent reflections (within 0.01° of 2θ)
+    reflections.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+    let mut merged_theta: Vec<f64> = Vec::new();
+    let mut merged_intensity = Vec::new();
+    let mut merged_hkl = Vec::new();
+    let mut merged_d = Vec::new();
+
+    for (tt, intens, hkl, d) in &reflections {
+        if let Some(last_tt) = merged_theta.last() {
+            if (*tt - *last_tt).abs() < 0.01 {
+                let idx = merged_intensity.len() - 1;
+                merged_intensity[idx] += intens;
+                continue;
+            }
+        }
+        merged_theta.push(*tt);
+        merged_intensity.push(*intens);
+        merged_hkl.push(*hkl);
+        merged_d.push(*d);
+    }
+
+    // Normalize intensities to 0–100
+    let max_i = merged_intensity
+        .iter()
+        .cloned()
+        .fold(0.0f64, f64::max)
+        .max(1e-10);
+    for i in merged_intensity.iter_mut() {
+        *i = *i / max_i * 100.0;
+    }
+
+    PowderXrdResult {
+        two_theta: merged_theta,
+        intensities: merged_intensity,
+        miller_indices: merged_hkl,
+        d_spacings: merged_d,
+    }
+}
+
+/// A symmetry operation (rotation + translation in fractional coords).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SymmetryOperation {
+    /// 3×3 rotation matrix (integer in fractional space).
+    pub rotation: [[i32; 3]; 3],
+    /// Translation vector in fractional coordinates.
+    pub translation: [f64; 3],
+    /// Human-readable label (e.g., "x,y,z" or "-x,-y,z").
+    pub label: String,
+}
+
+/// Space group definition with symmetry operations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpaceGroup {
+    /// International Tables number (1–230).
+    pub number: u16,
+    /// Hermann-Mauguin symbol.
+    pub symbol: String,
+    /// Crystal system.
+    pub crystal_system: String,
+    /// Symmetry operations (general positions).
+    pub operations: Vec<SymmetryOperation>,
+}
+
+/// Get symmetry operations for common space groups.
+pub fn get_space_group(number: u16) -> Option<SpaceGroup> {
+    match number {
+        1 => Some(SpaceGroup {
+            number: 1,
+            symbol: "P1".to_string(),
+            crystal_system: "triclinic".to_string(),
+            operations: vec![SymmetryOperation {
+                rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                translation: [0.0, 0.0, 0.0],
+                label: "x,y,z".to_string(),
+            }],
+        }),
+        2 => Some(SpaceGroup {
+            number: 2,
+            symbol: "P-1".to_string(),
+            crystal_system: "triclinic".to_string(),
+            operations: vec![
+                SymmetryOperation {
+                    rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "x,y,z".to_string(),
+                },
+                SymmetryOperation {
+                    rotation: [[-1, 0, 0], [0, -1, 0], [0, 0, -1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "-x,-y,-z".to_string(),
+                },
+            ],
+        }),
+        14 => Some(SpaceGroup {
+            number: 14,
+            symbol: "P2_1/c".to_string(),
+            crystal_system: "monoclinic".to_string(),
+            operations: vec![
+                SymmetryOperation {
+                    rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "x,y,z".to_string(),
+                },
+                SymmetryOperation {
+                    rotation: [[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
+                    translation: [0.0, 0.5, 0.5],
+                    label: "-x,y+1/2,-z+1/2".to_string(),
+                },
+                SymmetryOperation {
+                    rotation: [[-1, 0, 0], [0, -1, 0], [0, 0, -1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "-x,-y,-z".to_string(),
+                },
+                SymmetryOperation {
+                    rotation: [[1, 0, 0], [0, -1, 0], [0, 0, 1]],
+                    translation: [0.0, 0.5, 0.5],
+                    label: "x,-y+1/2,z+1/2".to_string(),
+                },
+            ],
+        }),
+        225 => Some(SpaceGroup {
+            number: 225,
+            symbol: "Fm-3m".to_string(),
+            crystal_system: "cubic".to_string(),
+            operations: vec![
+                SymmetryOperation {
+                    rotation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "x,y,z".to_string(),
+                },
+                SymmetryOperation {
+                    rotation: [[-1, 0, 0], [0, -1, 0], [0, 0, 1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "-x,-y,z".to_string(),
+                },
+                SymmetryOperation {
+                    rotation: [[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "-x,y,-z".to_string(),
+                },
+                SymmetryOperation {
+                    rotation: [[1, 0, 0], [0, -1, 0], [0, 0, -1]],
+                    translation: [0.0, 0.0, 0.0],
+                    label: "x,-y,-z".to_string(),
+                },
+            ],
+        }),
+        _ => None,
+    }
+}
+
+/// Apply a symmetry operation to a fractional coordinate.
+pub fn apply_symmetry(op: &SymmetryOperation, frac: [f64; 3]) -> [f64; 3] {
+    let r = op.rotation;
+    let t = op.translation;
+    [
+        r[0][0] as f64 * frac[0] + r[0][1] as f64 * frac[1] + r[0][2] as f64 * frac[2] + t[0],
+        r[1][0] as f64 * frac[0] + r[1][1] as f64 * frac[1] + r[1][2] as f64 * frac[2] + t[1],
+        r[2][0] as f64 * frac[0] + r[2][1] as f64 * frac[1] + r[2][2] as f64 * frac[2] + t[2],
+    ]
+}
+
+/// Generate all symmetry-equivalent positions from a set of asymmetric unit atoms.
+pub fn expand_by_symmetry(
+    space_group: &SpaceGroup,
+    frac_coords: &[[f64; 3]],
+    elements: &[u8],
+) -> (Vec<[f64; 3]>, Vec<u8>) {
+    let mut all_coords = Vec::new();
+    let mut all_elements = Vec::new();
+
+    for (i, &fc) in frac_coords.iter().enumerate() {
+        for op in &space_group.operations {
+            let new_fc = apply_symmetry(op, fc);
+            let wrapped = UnitCell::wrap_frac(new_fc);
+
+            // Check for duplicate (within tolerance)
+            let is_dup = all_coords.iter().any(|existing: &[f64; 3]| {
+                let dx = (existing[0] - wrapped[0]).abs();
+                let dy = (existing[1] - wrapped[1]).abs();
+                let dz = (existing[2] - wrapped[2]).abs();
+                // Handle PBC wrap
+                let dx = dx.min(1.0 - dx);
+                let dy = dy.min(1.0 - dy);
+                let dz = dz.min(1.0 - dz);
+                dx < 0.01 && dy < 0.01 && dz < 0.01
+            });
+
+            if !is_dup {
+                all_coords.push(wrapped);
+                all_elements.push(elements[i]);
+            }
+        }
+    }
+
+    (all_coords, all_elements)
+}
+
+/// Result of geometric pore analysis.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PorosityResult {
+    /// Geometric pore volume (Å³).
+    pub pore_volume: f64,
+    /// Porosity fraction (void / total volume).
+    pub porosity: f64,
+    /// Largest cavity diameter (Å) — largest sphere that fits in a pore.
+    pub largest_cavity_diameter: f64,
+    /// Pore-limiting diameter (Å) — largest sphere that can pass through.
+    pub pore_limiting_diameter: f64,
+}
+
+/// Compute geometric porosity using grid-based cavity detection.
+///
+/// Probes the unit cell with a grid and marks points as "void" if they are
+/// farther than any atom's van der Waals radius + probe radius.
+pub fn compute_porosity(
+    cell: &UnitCell,
+    elements: &[u8],
+    frac_coords: &[[f64; 3]],
+    probe_radius: f64,
+    grid_spacing: f64,
+) -> PorosityResult {
+    let params = cell.parameters();
+    let nx = (params.a / grid_spacing).ceil() as usize;
+    let ny = (params.b / grid_spacing).ceil() as usize;
+    let nz = (params.c / grid_spacing).ceil() as usize;
+
+    let total_points = nx * ny * nz;
+    let mut void_count = 0usize;
+    let mut max_void_dist = 0.0f64;
+    let mut min_void_dist = f64::INFINITY;
+
+    // Precompute Cartesian atom positions
+    let atom_positions: Vec<[f64; 3]> = frac_coords
+        .iter()
+        .map(|&fc| cell.frac_to_cart(fc))
+        .collect();
+    let vdw_radii: Vec<f64> = elements.iter().map(|&z| vdw_radius(z)).collect();
+
+    for ix in 0..nx {
+        for iy in 0..ny {
+            for iz in 0..nz {
+                let frac = [
+                    (ix as f64 + 0.5) / nx as f64,
+                    (iy as f64 + 0.5) / ny as f64,
+                    (iz as f64 + 0.5) / nz as f64,
+                ];
+                let cart = cell.frac_to_cart(frac);
+
+                // Find minimum distance to any atom surface
+                let mut min_surface_dist = f64::INFINITY;
+                for (j, &pos) in atom_positions.iter().enumerate() {
+                    let d = cell.minimum_image_distance(cart, pos);
+                    let surface_d = d - vdw_radii[j];
+                    min_surface_dist = min_surface_dist.min(surface_d);
+                }
+
+                if min_surface_dist > probe_radius {
+                    void_count += 1;
+                    max_void_dist = max_void_dist.max(min_surface_dist);
+                    min_void_dist = min_void_dist.min(min_surface_dist);
+                }
+            }
+        }
+    }
+
+    let vol = cell.volume();
+    let voxel_vol = vol / total_points as f64;
+    let pore_volume = void_count as f64 * voxel_vol;
+    let porosity = void_count as f64 / total_points as f64;
+
+    PorosityResult {
+        pore_volume,
+        porosity,
+        largest_cavity_diameter: if max_void_dist > 0.0 {
+            2.0 * max_void_dist
+        } else {
+            0.0
+        },
+        pore_limiting_diameter: if min_void_dist < f64::INFINITY && void_count > 0 {
+            2.0 * min_void_dist
+        } else {
+            0.0
+        },
+    }
+}
+
+/// Van der Waals radius for common elements (Å).
+fn vdw_radius(z: u8) -> f64 {
+    match z {
+        1 => 1.20,
+        6 => 1.70,
+        7 => 1.55,
+        8 => 1.52,
+        9 => 1.47,
+        15 => 1.80,
+        16 => 1.80,
+        17 => 1.75,
+        22 => 2.00, // Ti
+        26 => 2.00, // Fe
+        29 => 1.40, // Cu
+        30 => 1.39, // Zn
+        35 => 1.85,
+        53 => 1.98,
+        _ => 1.80,
+    }
 }
 
 #[cfg(test)]
