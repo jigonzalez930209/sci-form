@@ -73,10 +73,3 @@ approx = "0.5"
 opt-level = 3
 lto = true
 strip = true
-
-[patch.crates-io]
-wgpu = { path = "vendor/wgpu-29.0.0" }
-wgpu-core = { path = "vendor/wgpu-core-29.0.0" }
-wgpu-hal = { path = "vendor/wgpu-hal-29.0.0" }
-wgpu-types = { path = "vendor/wgpu-types-29.0.0" }
-naga = { path = "vendor/naga-29.0.0" }
