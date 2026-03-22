@@ -82,7 +82,9 @@ pub fn project_distances(
         let d_sq = d_ij * d_ij;
         // Current: X_ii + X_jj - 2*X_ij
         let current = result[(i, i)] + result[(j, j)] - 2.0 * result[(i, j)];
-        if current.abs() < 1e-15 && d_sq.abs() < 1e-15 { continue; }
+        if current.abs() < 1e-15 && d_sq.abs() < 1e-15 {
+            continue;
+        }
 
         // Correction: distribute equally among the three entries
         let err = d_sq - current;
@@ -274,7 +276,15 @@ mod tests {
         // eigenvalue 1.0 should be thresholded to 0, eigenvalue 3.0 to 1.5
         let mut evals: Vec<f64> = eigen.eigenvalues.iter().cloned().collect();
         evals.sort_by(|a, b| a.partial_cmp(b).unwrap());
-        assert!((evals[0]).abs() < 1e-10, "Small eigenvalue thresholded: {}", evals[0]);
-        assert!((evals[1] - 1.5).abs() < 1e-10, "Large eigenvalue reduced: {}", evals[1]);
+        assert!(
+            (evals[0]).abs() < 1e-10,
+            "Small eigenvalue thresholded: {}",
+            evals[0]
+        );
+        assert!(
+            (evals[1] - 1.5).abs() < 1e-10,
+            "Large eigenvalue reduced: {}",
+            evals[1]
+        );
     }
 }

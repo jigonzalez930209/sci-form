@@ -60,11 +60,17 @@ pub fn refine_saddle(
 
     for _ in 0..max_steps {
         // Compute tangent from neighbors
-        let mut tangent: Vec<f64> = neighbors.1.iter().zip(neighbors.0)
-            .map(|(a, b)| a - b).collect();
+        let mut tangent: Vec<f64> = neighbors
+            .1
+            .iter()
+            .zip(neighbors.0)
+            .map(|(a, b)| a - b)
+            .collect();
         let norm: f64 = tangent.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-15 {
-            for t in tangent.iter_mut() { *t /= norm; }
+            for t in tangent.iter_mut() {
+                *t /= norm;
+            }
         }
 
         // Numerical gradient
@@ -79,8 +85,11 @@ pub fn refine_saddle(
 
         // Perpendicular component
         let dot: f64 = grad.iter().zip(&tangent).map(|(g, t)| g * t).sum();
-        let perp: Vec<f64> = grad.iter().zip(&tangent)
-            .map(|(g, t)| g - dot * t).collect();
+        let perp: Vec<f64> = grad
+            .iter()
+            .zip(&tangent)
+            .map(|(g, t)| g - dot * t)
+            .collect();
 
         let perp_norm: f64 = perp.iter().map(|x| x * x).sum::<f64>().sqrt();
         if perp_norm < 0.01 {
@@ -117,7 +126,11 @@ pub fn find_transition_state(
     // Step 3: Refine
     let (prev, next) = if path.nodes.len() >= 3 {
         let prev_idx = if ts_idx > 0 { ts_idx - 1 } else { 0 };
-        let next_idx = if ts_idx < path.nodes.len() - 1 { ts_idx + 1 } else { path.nodes.len() - 1 };
+        let next_idx = if ts_idx < path.nodes.len() - 1 {
+            ts_idx + 1
+        } else {
+            path.nodes.len() - 1
+        };
         (&path.nodes[prev_idx][..], &path.nodes[next_idx][..])
     } else {
         (&reactant[..], &product[..])
@@ -178,10 +191,17 @@ mod tests {
         let result = find_transition_state(&reactant, &product, &double_well, &config);
 
         // TS should be near x=0 where V=1
-        assert!(result.ts_energy >= 0.0, "TS energy should be positive: {}", result.ts_energy);
+        assert!(
+            result.ts_energy >= 0.0,
+            "TS energy should be positive: {}",
+            result.ts_energy
+        );
         // Activation barrier should be positive
-        assert!(result.activation_energy > 0.0,
-            "Barrier should be positive: {}", result.activation_energy);
+        assert!(
+            result.activation_energy > 0.0,
+            "Barrier should be positive: {}",
+            result.activation_energy
+        );
     }
 
     #[test]

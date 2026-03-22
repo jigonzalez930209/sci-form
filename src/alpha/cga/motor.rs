@@ -44,7 +44,7 @@ impl Motor {
         // e13 blade index = 0b00101 = 5, but e31 = -e13, so ax component → +s*ax on e23,
         //   ay on e31 = -e13, az on e12
         mv.data[6] = -s * axis[0]; // e23
-        mv.data[5] = s * axis[1];  // e13 (note: e31 = -e13, so negated)
+        mv.data[5] = s * axis[1]; // e13 (note: e31 = -e13, so negated)
         mv.data[3] = -s * axis[2]; // e12
 
         Self { mv }
@@ -72,7 +72,7 @@ impl Motor {
         //   e3∧e- → bitmask 0b10100 = 20
 
         let half = -0.5;
-        mv.data[9] += half * t[0];  // e1 e+
+        mv.data[9] += half * t[0]; // e1 e+
         mv.data[17] += half * t[0]; // e1 e-
         mv.data[10] += half * t[1]; // e2 e+
         mv.data[18] += half * t[1]; // e2 e-
@@ -189,7 +189,9 @@ mod tests {
             assert!(
                 (result[i] - p[i]).abs() < 1e-10,
                 "Identity motor changed coordinate {}: {} → {}",
-                i, p[i], result[i]
+                i,
+                p[i],
+                result[i]
             );
         }
     }
@@ -216,11 +218,7 @@ mod tests {
     #[test]
     fn test_rotation_then_translation() {
         // Rotate (1,0,0) 90° about Z → (0,1,0), then translate by (3,0,0) → (3,1,0)
-        let m = Motor::from_rotation_translation(
-            [0.0, 0.0, 1.0],
-            FRAC_PI_2,
-            [3.0, 0.0, 0.0],
-        );
+        let m = Motor::from_rotation_translation([0.0, 0.0, 1.0], FRAC_PI_2, [3.0, 0.0, 0.0]);
         let result = m.transform_point([1.0, 0.0, 0.0]);
         assert!((result[0] - 3.0).abs() < 1e-10, "x = {}", result[0]);
         assert!((result[1] - 1.0).abs() < 1e-10, "y = {}", result[1]);
@@ -236,7 +234,9 @@ mod tests {
             assert!(
                 (ep[i] - p[i]).abs() < 1e-10,
                 "Round-trip error at {}: {} vs {}",
-                i, ep[i], p[i]
+                i,
+                ep[i],
+                p[i]
             );
         }
     }

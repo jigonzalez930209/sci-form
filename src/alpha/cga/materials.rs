@@ -174,11 +174,7 @@ pub fn assemble_framework_cga(
     let node_frac = [0.0, 0.0, 0.0];
 
     // Linker positions at midpoints of edges
-    let linker_fracs = [
-        [0.5, 0.0, 0.0],
-        [0.0, 0.5, 0.0],
-        [0.0, 0.0, 0.5],
-    ];
+    let linker_fracs = [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0], [0.0, 0.0, 0.5]];
 
     for na in 0..(supercell as i32) {
         for nb in 0..(supercell as i32) {
@@ -246,7 +242,9 @@ mod tests {
             assert!(
                 (frac[i] - frac2[i]).abs() < 1e-10,
                 "Frac round-trip error at {}: {} → {}",
-                i, frac[i], frac2[i]
+                i,
+                frac[i],
+                frac2[i]
             );
         }
     }
@@ -291,10 +289,7 @@ mod tests {
 
     #[test]
     fn test_place_sbu_cga() {
-        let sbu = vec![
-            (30u8, [0.0, 0.0, 0.0]),
-            (8u8, [1.0, 0.0, 0.0]),
-        ];
+        let sbu = vec![(30u8, [0.0, 0.0, 0.0]), (8u8, [1.0, 0.0, 0.0])];
         let motor = Motor::translator([5.0, 5.0, 5.0]);
         let placed = place_sbu_cga(&sbu, &motor, "test_sbu");
         assert_eq!(placed.len(), 2);
