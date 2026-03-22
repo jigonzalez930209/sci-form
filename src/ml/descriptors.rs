@@ -44,6 +44,24 @@ pub struct MolecularDescriptors {
     pub sum_polarizability: f64,
 }
 
+/// 3D molecular shape descriptors computed from atomic coordinates.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Descriptors3D {
+    /// Radius of gyration (Å).
+    pub radius_of_gyration: f64,
+    /// Asphericity (0 = sphere, 1 = rod).
+    pub asphericity: f64,
+    /// Eccentricity (0 = sphere).
+    pub eccentricity: f64,
+    /// Principal moments of inertia ratios (NPR1 = I1/I3, NPR2 = I2/I3).
+    pub npr1: f64,
+    pub npr2: f64,
+    /// Sphericity (0 = asymmetric, 1 = sphere).
+    pub sphericity: f64,
+    /// Molecular span: max distance between any two atoms (Å).
+    pub span: f64,
+}
+
 /// Atomic weight table for common elements.
 fn atomic_weight(z: u8) -> f64 {
     match z {
@@ -260,6 +278,162 @@ pub fn compute_descriptors(
         sum_electronegativity: sum_en,
         sum_polarizability: sum_pol,
     }
+}
+
+/// Compute 3D shape descriptors from atomic coordinates and masses.
+///
+/// `elements`: atomic numbers (used for mass weighting).
+/// `positions`: 3D coordinates as flat [x0,y0,z0,x1,y1,z1,...].
+pub fn compute_3d_descriptors(elements: &[u8], positions: &[f64]) -> Descriptors3D {
+    let n = elements.len();
+    if n == 0 || positions.len() < n * 3 {
+        return Descriptors3D {
+            radius_of_gyration: 0.0,
+            asphericity: 0.0,
+            eccentricity: 0.0,
+            npr1: 0.0,
+            npr2: 0.0,
+            sphericity: 0.0,
+            span: 0.0,
+        };
+    }
+
+    let masses: Vec<f64> = elements.iter().map(|&z| atomic_weight(z)).collect();
+    let total_mass: f64 = masses.iter().sum();
+
+    // Center of mass
+    let mut com = [0.0f64; 3];
+    for i in 0..n {
+        for k in 0..3 {
+            com[k] += masses[i] * positions[i * 3 + k];
+        }
+    }
+    for k in 0..3 {
+        com[k] /= total_mass;
+    }
+
+    // Radius of gyration
+    let mut rg2 = 0.0f64;
+    for i in 0..n {
+        let mut d2 = 0.0;
+        for k in 0..3 {
+            let d = positions[i * 3 + k] - com[k];
+            d2 += d * d;
+        }
+        rg2 += masses[i] * d2;
+    }
+    rg2 /= total_mass;
+    let rg = rg2.sqrt();
+
+    // Gyration tensor (3x3 symmetric)
+    let mut gt = [[0.0f64; 3]; 3];
+    for i in 0..n {
+        let r = [
+            positions[i * 3] - com[0],
+            positions[i * 3 + 1] - com[1],
+            positions[i * 3 + 2] - com[2],
+        ];
+        for a in 0..3 {
+            for b in 0..3 {
+                gt[a][b] += masses[i] * r[a] * r[b];
+            }
+        }
+    }
+    for a in 0..3 {
+        for b in 0..3 {
+            gt[a][b] /= total_mass;
+        }
+    }
+
+    // Eigenvalues of 3x3 symmetric matrix (analytical Cardano's method)
+    let evals = eigenvalues_3x3_symmetric(&gt);
+    let mut sorted = evals;
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let (l1, l2, l3) = (sorted[0].max(0.0), sorted[1].max(0.0), sorted[2].max(0.0));
+    let sum_l = l1 + l2 + l3;
+
+    let asphericity = if sum_l > 1e-14 {
+        ((l1 - l2).powi(2) + (l2 - l3).powi(2) + (l1 - l3).powi(2)) / (2.0 * sum_l * sum_l)
+    } else {
+        0.0
+    };
+
+    let eccentricity = if l3 > 1e-14 {
+        (1.0 - l1 / l3).sqrt().clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+
+    let (npr1, npr2) = if l3 > 1e-14 {
+        (l1 / l3, l2 / l3)
+    } else {
+        (0.0, 0.0)
+    };
+
+    let sphericity = if l3 > 1e-14 {
+        let prod = (l1 * l2 * l3).powf(1.0 / 3.0);
+        (prod / l3).min(1.0)
+    } else {
+        0.0
+    };
+
+    // Molecular span: max pairwise distance
+    let mut span = 0.0f64;
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let mut d2 = 0.0;
+            for k in 0..3 {
+                let d = positions[i * 3 + k] - positions[j * 3 + k];
+                d2 += d * d;
+            }
+            span = span.max(d2.sqrt());
+        }
+    }
+
+    Descriptors3D {
+        radius_of_gyration: rg,
+        asphericity,
+        eccentricity,
+        npr1,
+        npr2,
+        sphericity,
+        span,
+    }
+}
+
+/// Eigenvalues of a 3x3 symmetric matrix using Cardano's formula.
+fn eigenvalues_3x3_symmetric(m: &[[f64; 3]; 3]) -> [f64; 3] {
+    let p1 = m[0][1] * m[0][1] + m[0][2] * m[0][2] + m[1][2] * m[1][2];
+
+    if p1.abs() < 1e-30 {
+        // Already diagonal
+        return [m[0][0], m[1][1], m[2][2]];
+    }
+
+    let q = (m[0][0] + m[1][1] + m[2][2]) / 3.0;
+    let p2 = (m[0][0] - q).powi(2) + (m[1][1] - q).powi(2) + (m[2][2] - q).powi(2) + 2.0 * p1;
+    let p = (p2 / 6.0).sqrt();
+
+    // B = (1/p) * (A - q*I)
+    let b = [
+        [(m[0][0] - q) / p, m[0][1] / p, m[0][2] / p],
+        [m[1][0] / p, (m[1][1] - q) / p, m[1][2] / p],
+        [m[2][0] / p, m[2][1] / p, (m[2][2] - q) / p],
+    ];
+
+    let det_b = b[0][0] * (b[1][1] * b[2][2] - b[1][2] * b[2][1])
+        - b[0][1] * (b[1][0] * b[2][2] - b[1][2] * b[2][0])
+        + b[0][2] * (b[1][0] * b[2][1] - b[1][1] * b[2][0]);
+
+    let r = det_b / 2.0;
+    let r_clamped = r.clamp(-1.0, 1.0);
+    let phi = r_clamped.acos() / 3.0;
+
+    let eig1 = q + 2.0 * p * phi.cos();
+    let eig3 = q + 2.0 * p * (phi + 2.0 * std::f64::consts::FRAC_PI_3).cos();
+    let eig2 = 3.0 * q - eig1 - eig3;
+
+    [eig1, eig2, eig3]
 }
 
 #[cfg(test)]
