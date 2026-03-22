@@ -36,11 +36,11 @@ pub struct XtbResult {
     pub converged: bool,
 }
 
-const ANGSTROM_TO_BOHR: f64 = 1.0 / 0.529177;
-const EV_PER_HARTREE: f64 = 27.2114;
+pub(crate) const ANGSTROM_TO_BOHR: f64 = 1.0 / 0.529177;
+pub(crate) const EV_PER_HARTREE: f64 = 27.2114;
 
 /// Compute distance in bohr between two atoms.
-fn distance_bohr(a: &[f64; 3], b: &[f64; 3]) -> f64 {
+pub(crate) fn distance_bohr(a: &[f64; 3], b: &[f64; 3]) -> f64 {
     let dx = (a[0] - b[0]) * ANGSTROM_TO_BOHR;
     let dy = (a[1] - b[1]) * ANGSTROM_TO_BOHR;
     let dz = (a[2] - b[2]) * ANGSTROM_TO_BOHR;
@@ -48,7 +48,7 @@ fn distance_bohr(a: &[f64; 3], b: &[f64; 3]) -> f64 {
 }
 
 /// Compute damped STO overlap integral (s-s approximation).
-fn sto_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
+pub(crate) fn sto_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
     if r_bohr < 1e-10 {
         return if (zeta_a - zeta_b).abs() < 1e-10 {
             1.0
@@ -61,7 +61,7 @@ fn sto_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
 }
 
 /// Build basis map: (atom_index, l_quantum, m_offset).
-fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
+pub(crate) fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
     let mut basis = Vec::new();
     for (i, &z) in elements.iter().enumerate() {
         let n = num_xtb_basis_functions(z);
@@ -86,7 +86,22 @@ fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
 ///
 /// `elements`: atomic numbers.
 /// `positions`: Cartesian coordinates in Å.
-pub fn solve_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<XtbResult, String> {
+/// SCF state for xTB gradient computation.
+pub(crate) struct XtbScfState {
+    pub density: DMatrix<f64>,
+    pub coefficients: DMatrix<f64>,
+    pub orbital_energies: Vec<f64>,
+    pub basis_map: Vec<(usize, u8, u8)>,
+    pub n_occ: usize,
+    pub charges: Vec<f64>,
+    pub h_diag: Vec<f64>,
+}
+
+/// Run xTB calculation returning both result and internal SCF state.
+pub(crate) fn solve_xtb_with_state(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<(XtbResult, XtbScfState), String> {
     if elements.len() != positions.len() {
         return Err(format!(
             "elements ({}) and positions ({}) length mismatch",
@@ -226,28 +241,110 @@ pub fn solve_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<XtbResult, S
         }
     }
 
+    // Pre-compute atom-pair gamma matrix (GPU-accelerated when available)
+    let gamma_atoms = {
+        let mut gm = vec![vec![0.0f64; n_atoms]; n_atoms];
+
+        #[cfg(feature = "experimental-gpu")]
+        let gpu_ok = {
+            let eta_vec: Vec<f64> = (0..n_atoms)
+                .map(|a| get_xtb_params(elements[a]).unwrap().eta)
+                .collect();
+            let pos_bohr: Vec<[f64; 3]> = positions
+                .iter()
+                .map(|p| {
+                    [
+                        p[0] * 1.8897259886,
+                        p[1] * 1.8897259886,
+                        p[2] * 1.8897259886,
+                    ]
+                })
+                .collect();
+            if n_atoms >= 8 {
+                if let Ok(ctx) = crate::gpu::context::GpuContext::try_create() {
+                    if let Ok(gpu_gamma) =
+                        super::gpu::build_xtb_gamma_gpu(&ctx, &eta_vec, &pos_bohr)
+                    {
+                        for a in 0..n_atoms {
+                            for b in 0..n_atoms {
+                                gm[a][b] = gpu_gamma[(a, b)];
+                            }
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
+        #[cfg(not(feature = "experimental-gpu"))]
+        let gpu_ok = false;
+
+        if !gpu_ok {
+            for a in 0..n_atoms {
+                let pa = get_xtb_params(elements[a]).unwrap();
+                gm[a][a] = pa.eta; // self-interaction
+                for b in (a + 1)..n_atoms {
+                    let pb = get_xtb_params(elements[b]).unwrap();
+                    let r_bohr = distance_bohr(&positions[a], &positions[b]);
+                    let gamma =
+                        1.0 / ((1.0 / pa.eta + 1.0 / pb.eta).powi(2) + r_bohr.powi(2)).sqrt();
+                    gm[a][b] = gamma;
+                    gm[b][a] = gamma;
+                }
+            }
+        }
+        gm
+    };
+
     for iter in 0..max_iter {
         scc_iter = iter + 1;
 
-        // Build charge-shifted Hamiltonian
+        // Build charge-shifted Hamiltonian using pre-computed gamma matrix
         let mut h_scc = h_mat.clone();
-        for i in 0..n_basis {
-            let (atom_a, _, _) = basis_map[i];
-            let pa = get_xtb_params(elements[atom_a]).unwrap();
-            // Charge-dependent shift: γ_AB * q_B
-            let mut shift = 0.0;
-            for b in 0..n_atoms {
-                if b == atom_a {
-                    continue;
-                }
-                let pb = get_xtb_params(elements[b]).unwrap();
-                let r_bohr = distance_bohr(&positions[atom_a], &positions[b]);
-                let gamma = 1.0 / ((1.0 / pa.eta + 1.0 / pb.eta).powi(2) + r_bohr.powi(2)).sqrt();
-                shift += gamma * charges[b];
+
+        #[cfg(feature = "parallel")]
+        {
+            use rayon::prelude::*;
+            let shifts: Vec<f64> = (0..n_basis)
+                .into_par_iter()
+                .map(|i| {
+                    let (atom_a, _, _) = basis_map[i];
+                    let mut shift = 0.0;
+                    for b in 0..n_atoms {
+                        if b == atom_a {
+                            continue;
+                        }
+                        shift += gamma_atoms[atom_a][b] * charges[b];
+                    }
+                    shift += gamma_atoms[atom_a][atom_a] * charges[atom_a];
+                    shift
+                })
+                .collect();
+            for (i, s) in shifts.into_iter().enumerate() {
+                h_scc[(i, i)] += s;
             }
-            // Self-charge term
-            shift += pa.eta * charges[atom_a];
-            h_scc[(i, i)] += shift;
+        }
+
+        #[cfg(not(feature = "parallel"))]
+        {
+            for i in 0..n_basis {
+                let (atom_a, _, _) = basis_map[i];
+                let mut shift = 0.0;
+                for b in 0..n_atoms {
+                    if b == atom_a {
+                        continue;
+                    }
+                    shift += gamma_atoms[atom_a][b] * charges[b];
+                }
+                shift += gamma_atoms[atom_a][atom_a] * charges[atom_a];
+                h_scc[(i, i)] += shift;
+            }
         }
 
         // Solve HC = SCε via Löwdin
@@ -340,20 +437,54 @@ pub fn solve_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<XtbResult, S
         0.0
     };
 
-    Ok(XtbResult {
-        orbital_energies,
-        electronic_energy: e_elec,
-        repulsive_energy: e_rep,
-        total_energy,
-        n_basis,
-        n_electrons,
-        homo_energy,
-        lumo_energy,
-        gap,
-        mulliken_charges: charges,
-        scc_iterations: scc_iter,
-        converged,
-    })
+    // Save diagonal Hamiltonian for gradient
+    let h_diag: Vec<f64> = (0..n_basis).map(|i| h_mat[(i, i)]).collect();
+
+    let state = XtbScfState {
+        density: {
+            // Rebuild final density from coefficients
+            let mut d = DMatrix::zeros(n_basis, n_basis);
+            for i in 0..n_basis {
+                for j in 0..n_basis {
+                    let mut val = 0.0;
+                    for k in 0..n_occ.min(n_basis) {
+                        val += coefficients[(i, k)] * coefficients[(j, k)];
+                    }
+                    d[(i, j)] = 2.0 * val;
+                }
+            }
+            d
+        },
+        coefficients: coefficients.clone(),
+        orbital_energies: orbital_energies.clone(),
+        basis_map,
+        n_occ,
+        charges: charges.clone(),
+        h_diag,
+    };
+
+    Ok((
+        XtbResult {
+            orbital_energies,
+            electronic_energy: e_elec,
+            repulsive_energy: e_rep,
+            total_energy,
+            n_basis,
+            n_electrons,
+            homo_energy,
+            lumo_energy,
+            gap,
+            mulliken_charges: charges,
+            scc_iterations: scc_iter,
+            converged,
+        },
+        state,
+    ))
+}
+
+/// Run an xTB tight-binding calculation.
+pub fn solve_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<XtbResult, String> {
+    solve_xtb_with_state(elements, positions).map(|(r, _)| r)
 }
 
 #[cfg(test)]

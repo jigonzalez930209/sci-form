@@ -8,8 +8,16 @@
 //! Frequencies, and Noncovalent Interactions of Large Molecular Systems
 //! Parametrized for All spd-Block Elements (Z = 1–86)." *JCTC* 13 (2017): 1989.
 
+pub mod gfn1;
+pub mod gfn2;
+#[cfg(feature = "experimental-gpu")]
+pub mod gpu;
+pub mod gradients;
 pub mod params;
 pub mod solver;
 
+pub use gfn1::{solve_gfn1, Gfn1Result};
+pub use gfn2::{solve_gfn2, Gfn2Result};
+pub use gradients::{compute_xtb_gradient, XtbGradientResult};
 pub use params::{get_xtb_params, is_xtb_supported, XtbParams};
 pub use solver::{solve_xtb, XtbResult};
