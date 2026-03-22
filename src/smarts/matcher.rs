@@ -533,3 +533,46 @@ fn bond_query_needs_ring(q: &BondQuery) -> bool {
         _ => false,
     }
 }
+
+/// Batch substructure matching: match a single pattern against many molecules.
+/// Returns one Vec<Vec<usize>> per molecule (empty if no match).
+pub fn substruct_match_batch(
+    molecules: &[&Molecule],
+    pattern: &SmartsPattern,
+) -> Vec<Vec<Vec<usize>>> {
+    molecules
+        .iter()
+        .map(|mol| substruct_match(mol, pattern))
+        .collect()
+}
+
+/// Batch substructure matching with rayon parallelism.
+#[cfg(feature = "parallel")]
+pub fn substruct_match_batch_parallel(
+    molecules: &[&Molecule],
+    pattern: &SmartsPattern,
+) -> Vec<Vec<Vec<usize>>> {
+    use rayon::prelude::*;
+    molecules
+        .par_iter()
+        .map(|mol| substruct_match(mol, pattern))
+        .collect()
+}
+
+/// Check if a molecule contains a substructure (boolean, faster than full match).
+pub fn has_substruct_match(mol: &Molecule, pattern: &SmartsPattern) -> bool {
+    !substruct_match(mol, pattern).is_empty()
+}
+
+/// Batch boolean substructure check with rayon parallelism.
+#[cfg(feature = "parallel")]
+pub fn has_substruct_match_batch_parallel(
+    molecules: &[&Molecule],
+    pattern: &SmartsPattern,
+) -> Vec<bool> {
+    use rayon::prelude::*;
+    molecules
+        .par_iter()
+        .map(|mol| has_substruct_match(mol, pattern))
+        .collect()
+}
