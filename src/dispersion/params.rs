@@ -18,23 +18,108 @@ pub struct D4Params {
 /// Get D4 reference parameters by atomic number.
 pub fn get_d4_params(z: u8) -> D4Params {
     match z {
-        1 => D4Params { c6_ref: 6.50, c8_ref: 94.6, alpha0: 4.50, r_cov: 0.60 },
-        5 => D4Params { c6_ref: 99.5, c8_ref: 3430.0, alpha0: 21.0, r_cov: 1.61 },
-        6 => D4Params { c6_ref: 46.6, c8_ref: 1315.0, alpha0: 12.0, r_cov: 1.46 },
-        7 => D4Params { c6_ref: 24.2, c8_ref: 560.0, alpha0: 7.40, r_cov: 1.42 },
-        8 => D4Params { c6_ref: 15.6, c8_ref: 300.0, alpha0: 5.40, r_cov: 1.38 },
-        9 => D4Params { c6_ref: 9.52, c8_ref: 160.0, alpha0: 3.80, r_cov: 1.34 },
-        14 => D4Params { c6_ref: 305.0, c8_ref: 15700.0, alpha0: 37.0, r_cov: 2.21 },
-        15 => D4Params { c6_ref: 185.0, c8_ref: 8200.0, alpha0: 25.0, r_cov: 2.08 },
-        16 => D4Params { c6_ref: 134.0, c8_ref: 5470.0, alpha0: 19.6, r_cov: 1.96 },
-        17 => D4Params { c6_ref: 94.6, c8_ref: 3430.0, alpha0: 15.0, r_cov: 1.88 },
-        35 => D4Params { c6_ref: 162.0, c8_ref: 6800.0, alpha0: 21.0, r_cov: 2.16 },
-        53 => D4Params { c6_ref: 385.0, c8_ref: 20500.0, alpha0: 35.0, r_cov: 2.51 },
-        22 => D4Params { c6_ref: 379.0, c8_ref: 17100.0, alpha0: 45.0, r_cov: 2.61 },
-        26 => D4Params { c6_ref: 202.0, c8_ref: 7900.0, alpha0: 30.0, r_cov: 2.45 },
-        29 => D4Params { c6_ref: 171.0, c8_ref: 6100.0, alpha0: 24.0, r_cov: 2.49 },
-        30 => D4Params { c6_ref: 207.0, c8_ref: 8000.0, alpha0: 28.0, r_cov: 2.45 },
-        _ => D4Params { c6_ref: 50.0, c8_ref: 1500.0, alpha0: 12.0, r_cov: 1.80 },
+        1 => D4Params {
+            c6_ref: 6.50,
+            c8_ref: 94.6,
+            alpha0: 4.50,
+            r_cov: 0.60,
+        },
+        5 => D4Params {
+            c6_ref: 99.5,
+            c8_ref: 3430.0,
+            alpha0: 21.0,
+            r_cov: 1.61,
+        },
+        6 => D4Params {
+            c6_ref: 46.6,
+            c8_ref: 1315.0,
+            alpha0: 12.0,
+            r_cov: 1.46,
+        },
+        7 => D4Params {
+            c6_ref: 24.2,
+            c8_ref: 560.0,
+            alpha0: 7.40,
+            r_cov: 1.42,
+        },
+        8 => D4Params {
+            c6_ref: 15.6,
+            c8_ref: 300.0,
+            alpha0: 5.40,
+            r_cov: 1.38,
+        },
+        9 => D4Params {
+            c6_ref: 9.52,
+            c8_ref: 160.0,
+            alpha0: 3.80,
+            r_cov: 1.34,
+        },
+        14 => D4Params {
+            c6_ref: 305.0,
+            c8_ref: 15700.0,
+            alpha0: 37.0,
+            r_cov: 2.21,
+        },
+        15 => D4Params {
+            c6_ref: 185.0,
+            c8_ref: 8200.0,
+            alpha0: 25.0,
+            r_cov: 2.08,
+        },
+        16 => D4Params {
+            c6_ref: 134.0,
+            c8_ref: 5470.0,
+            alpha0: 19.6,
+            r_cov: 1.96,
+        },
+        17 => D4Params {
+            c6_ref: 94.6,
+            c8_ref: 3430.0,
+            alpha0: 15.0,
+            r_cov: 1.88,
+        },
+        35 => D4Params {
+            c6_ref: 162.0,
+            c8_ref: 6800.0,
+            alpha0: 21.0,
+            r_cov: 2.16,
+        },
+        53 => D4Params {
+            c6_ref: 385.0,
+            c8_ref: 20500.0,
+            alpha0: 35.0,
+            r_cov: 2.51,
+        },
+        22 => D4Params {
+            c6_ref: 379.0,
+            c8_ref: 17100.0,
+            alpha0: 45.0,
+            r_cov: 2.61,
+        },
+        26 => D4Params {
+            c6_ref: 202.0,
+            c8_ref: 7900.0,
+            alpha0: 30.0,
+            r_cov: 2.45,
+        },
+        29 => D4Params {
+            c6_ref: 171.0,
+            c8_ref: 6100.0,
+            alpha0: 24.0,
+            r_cov: 2.49,
+        },
+        30 => D4Params {
+            c6_ref: 207.0,
+            c8_ref: 8000.0,
+            alpha0: 28.0,
+            r_cov: 2.45,
+        },
+        _ => D4Params {
+            c6_ref: 50.0,
+            c8_ref: 1500.0,
+            alpha0: 12.0,
+            r_cov: 1.80,
+        },
     }
 }
 
@@ -93,10 +178,22 @@ pub fn dynamic_c6(z_a: u8, z_b: u8, cn_a: f64, cn_b: f64) -> f64 {
 
 fn expected_cn(z: u8) -> f64 {
     match z {
-        1 => 1.0, 6 => 4.0, 7 => 3.0, 8 => 2.0, 9 => 1.0,
-        15 => 3.0, 16 => 2.0, 17 => 1.0, 35 => 1.0, 53 => 1.0,
-        14 => 4.0, 5 => 3.0,
-        22 => 6.0, 26 => 6.0, 29 => 4.0, 30 => 4.0,
+        1 => 1.0,
+        6 => 4.0,
+        7 => 3.0,
+        8 => 2.0,
+        9 => 1.0,
+        15 => 3.0,
+        16 => 2.0,
+        17 => 1.0,
+        35 => 1.0,
+        53 => 1.0,
+        14 => 4.0,
+        5 => 3.0,
+        22 => 6.0,
+        26 => 6.0,
+        29 => 4.0,
+        30 => 4.0,
         _ => 4.0,
     }
 }
@@ -105,8 +202,16 @@ fn expected_cn(z: u8) -> f64 {
 pub fn c8_from_c6(c6: f64, z_a: u8, z_b: u8) -> f64 {
     let pa = get_d4_params(z_a);
     let pb = get_d4_params(z_b);
-    let qa = if pa.c6_ref > 1e-10 { (pa.c8_ref / pa.c6_ref).sqrt() } else { 5.0 };
-    let qb = if pb.c6_ref > 1e-10 { (pb.c8_ref / pb.c6_ref).sqrt() } else { 5.0 };
+    let qa = if pa.c6_ref > 1e-10 {
+        (pa.c8_ref / pa.c6_ref).sqrt()
+    } else {
+        5.0
+    };
+    let qb = if pb.c6_ref > 1e-10 {
+        (pb.c8_ref / pb.c6_ref).sqrt()
+    } else {
+        5.0
+    };
     3.0 * c6 * (qa * qb).sqrt()
 }
 
