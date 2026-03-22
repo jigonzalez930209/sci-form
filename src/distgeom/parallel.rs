@@ -185,7 +185,10 @@ pub fn floyd_warshall_parallel(matrix: &mut [f64], n: usize, is_upper: bool) {
 fn try_gpu_floyd_warshall(bounds: &[f64], n: usize, _is_upper: bool) -> Option<Vec<f64>> {
     use crate::gpu::context::GpuContext;
 
-    let ctx = GpuContext::try_create()?;
+    let ctx = match GpuContext::try_create() {
+        Ok(ctx) => ctx,
+        Err(_) => return None,
+    };
 
     // For very large matrices, GPU memory may be insufficient
     let matrix_bytes = n * n * std::mem::size_of::<f32>();
