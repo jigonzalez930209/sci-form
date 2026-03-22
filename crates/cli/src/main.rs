@@ -93,16 +93,30 @@ fn main() {
 
         // Experimental commands
         #[cfg(feature = "experimental-eeq")]
-        Commands::Eeq { elements, coords, total_charge } =>
-            experimental_cmds::cmd_eeq(&elements, &coords, total_charge),
+        Commands::Eeq {
+            elements,
+            coords,
+            total_charge,
+        } => experimental_cmds::cmd_eeq(&elements, &coords, total_charge),
         #[cfg(feature = "experimental-alpb")]
-        Commands::Alpb { elements, coords, charges, dielectric } =>
-            experimental_cmds::cmd_alpb(&elements, &coords, &charges, dielectric),
+        Commands::Alpb {
+            elements,
+            coords,
+            charges,
+            dielectric,
+        } => experimental_cmds::cmd_alpb(&elements, &coords, &charges, dielectric),
         #[cfg(feature = "experimental-d4")]
-        Commands::D4 { elements, coords, three_body } =>
-            experimental_cmds::cmd_d4(&elements, &coords, three_body),
+        Commands::D4 {
+            elements,
+            coords,
+            three_body,
+        } => experimental_cmds::cmd_d4(&elements, &coords, three_body),
         #[cfg(feature = "experimental-cpm")]
-        Commands::Cpm { elements, coords, mu_ev, dielectric } =>
-            experimental_cmds::cmd_cpm(&elements, &coords, mu_ev, dielectric),
+        Commands::Cpm {
+            elements,
+            coords,
+            mu_ev,
+            dielectric,
+        } => experimental_cmds::cmd_cpm(&elements, &coords, mu_ev, dielectric),
     }
 }

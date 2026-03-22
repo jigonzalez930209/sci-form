@@ -149,9 +149,8 @@ mod alpb_py {
         probe_radius: f64,
     ) -> PyResult<AlpbBornRadiiPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let r = sci_form_core::experimental::alpb::compute_born_radii(
-            &elements, &pos, probe_radius,
-        );
+        let r =
+            sci_form_core::experimental::alpb::compute_born_radii(&elements, &pos, probe_radius);
         Ok(AlpbBornRadiiPy {
             radii: r.radii,
             intrinsic: r.intrinsic,
@@ -200,7 +199,12 @@ mod d4_py {
     ) -> PyResult<D4ResultPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let config = sci_form_core::experimental::d4::D4Config {
-            s6, s8, a1, a2, three_body, s9: 1.0,
+            s6,
+            s8,
+            a1,
+            a2,
+            three_body,
+            s9: 1.0,
         };
         let r = sci_form_core::experimental::d4::compute_d4_energy(&elements, &pos, &config);
         Ok(D4ResultPy {

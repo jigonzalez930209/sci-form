@@ -7,6 +7,9 @@ pub use wasm_bindgen_rayon::init_thread_pool;
 
 mod helpers;
 
+#[cfg(all(feature = "experimental-gpu", target_arch = "wasm32"))]
+pub mod webgpu;
+
 pub mod dynamics;
 pub mod eht;
 pub mod electronic;

@@ -20,20 +20,46 @@ cd "$SCRIPT_DIR"
 
 PROFILE="release"
 WEB_ONLY=false
+WEB_FEATURES="parallel"
 
-for arg in "$@"; do
-  case $arg in
-    --web-only)  WEB_ONLY=true ;;
-    --profile)   shift; PROFILE="$1" ;;
-    --profile=*) PROFILE="${arg#*=}" ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --web-only)
+      WEB_ONLY=true
+      shift
+      ;;
+    --web-features)
+      WEB_FEATURES="$2"
+      shift 2
+      ;;
+    --web-features=*)
+      WEB_FEATURES="${1#*=}"
+      shift
+      ;;
+    --profile)
+      PROFILE="$2"
+      shift 2
+      ;;
+    --profile=*)
+      PROFILE="${1#*=}"
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
   esac
 done
 
 PROFILE_FLAG="--$PROFILE"
 
 # ── 1. Web target (browser / Vite) with Rayon parallelisation ────────────────
-echo "→ Building WASM — web target (parallel enabled, profile: $PROFILE)..."
-wasm-pack build --target web "$PROFILE_FLAG" --features parallel
+echo "→ Building WASM — web target (features: $WEB_FEATURES, profile: $PROFILE)..."
+WEB_RUSTFLAGS="${RUSTFLAGS:-}"
+if [[ " $WEB_FEATURES " == *" parallel "* ]]; then
+  WEB_RUSTFLAGS="${WEB_RUSTFLAGS:+$WEB_RUSTFLAGS }-C target-feature=+atomics,+bulk-memory,+mutable-globals"
+fi
+RUSTFLAGS="$WEB_RUSTFLAGS" wasm-pack build --target web "$PROFILE_FLAG" --features "$WEB_FEATURES"
 
 # ── 2. Patch pkg/package.json ────────────────────────────────────────────────
 # wasm-pack overwrites pkg/package.json each run.  We must re-add:
