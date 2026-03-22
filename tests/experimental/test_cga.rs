@@ -24,7 +24,11 @@ mod cga_tests {
                 assert!(
                     sum.norm_squared().abs() < 1e-20,
                     "e_{} e_{} + e_{} e_{} should be 0, got norm² {}",
-                    i, j, j, i, sum.norm_squared()
+                    i,
+                    j,
+                    j,
+                    i,
+                    sum.norm_squared()
                 );
             }
         }
@@ -37,11 +41,7 @@ mod cga_tests {
             let ei = Multivector::basis(i);
             let sq = ei.geo(&ei);
             let s = sq.scalar();
-            assert!(
-                (s - 1.0).abs() < 1e-14,
-                "e_{}² should be 1, got {}",
-                i, s
-            );
+            assert!((s - 1.0).abs() < 1e-14, "e_{}² should be 1, got {}", i, s);
         }
         let em = Multivector::basis(4);
         let sq = em.geo(&em);
@@ -82,11 +82,7 @@ mod cga_tests {
         let rev = mv.reverse();
         let product = mv.geo(&rev);
         let s = product.scalar();
-        assert!(
-            (s - 1.0).abs() < 1e-10,
-            "M * ~M should be 1, got {}",
-            s
-        );
+        assert!((s - 1.0).abs() < 1e-10, "M * ~M should be 1, got {}", s);
     }
 
     #[test]
@@ -107,9 +103,21 @@ mod cga_tests {
         let m = Motor::rotor([0.0, 0.0, 1.0], std::f64::consts::FRAC_PI_2);
         let p = [1.0, 0.0, 0.0];
         let result = m.transform_point(p);
-        assert!((result[0]).abs() < 1e-10, "x should be ~0, got {}", result[0]);
-        assert!((result[1] - 1.0).abs() < 1e-10, "y should be ~1, got {}", result[1]);
-        assert!((result[2]).abs() < 1e-10, "z should be ~0, got {}", result[2]);
+        assert!(
+            (result[0]).abs() < 1e-10,
+            "x should be ~0, got {}",
+            result[0]
+        );
+        assert!(
+            (result[1] - 1.0).abs() < 1e-10,
+            "y should be ~1, got {}",
+            result[1]
+        );
+        assert!(
+            (result[2]).abs() < 1e-10,
+            "z should be ~0, got {}",
+            result[2]
+        );
     }
 
     #[test]
@@ -141,11 +149,7 @@ mod cga_tests {
 
     #[test]
     fn e1_2a_round_trip_embed_extract() {
-        let points = [
-            [1.234, -5.678, 9.012],
-            [0.0, 0.0, 0.0],
-            [-3.14, 2.72, 1.41],
-        ];
+        let points = [[1.234, -5.678, 9.012], [0.0, 0.0, 0.0], [-3.14, 2.72, 1.41]];
         for &p in &points {
             let embedded = embed_point(p);
             let extracted = extract_point(&embedded);
@@ -153,7 +157,9 @@ mod cga_tests {
                 assert!(
                     (p[i] - extracted[i]).abs() < 1e-10,
                     "Round-trip error at dim {}: {} vs {}",
-                    i, p[i], extracted[i]
+                    i,
+                    p[i],
+                    extracted[i]
                 );
             }
         }
@@ -173,12 +179,16 @@ mod cga_tests {
             assert!(
                 (axis_a[i] - a2[i]).abs() < 0.01,
                 "Axis atom A moved at dim {}: {} → {}",
-                i, axis_a[i], a2[i]
+                i,
+                axis_a[i],
+                a2[i]
             );
             assert!(
                 (axis_b[i] - b2[i]).abs() < 0.01,
                 "Axis atom B moved at dim {}: {} → {}",
-                i, axis_b[i], b2[i]
+                i,
+                axis_b[i],
+                b2[i]
             );
         }
     }
@@ -189,15 +199,15 @@ mod cga_tests {
         // Rotate subtree [2, 3] about bond 1—2 by 90°
         // Atom 3 is placed off the bond axis so rotation has a visible effect.
         let coords = vec![
-            0.0, 0.0, 0.0,   // atom 0
-            1.5, 0.0, 0.0,   // atom 1
-            3.0, 0.0, 0.0,   // atom 2
-            3.0, 1.5, 0.0,   // atom 3 — off-axis
+            0.0, 0.0, 0.0, // atom 0
+            1.5, 0.0, 0.0, // atom 1
+            3.0, 0.0, 0.0, // atom 2
+            3.0, 1.5, 0.0, // atom 3 — off-axis
         ];
 
         let motor = dihedral_motor(
-            [coords[3], coords[4], coords[5]],   // atom 1
-            [coords[6], coords[7], coords[8]],   // atom 2
+            [coords[3], coords[4], coords[5]], // atom 1
+            [coords[6], coords[7], coords[8]], // atom 2
             std::f64::consts::FRAC_PI_2,
         );
         let coords = apply_motor_to_subtree(&coords, &[2, 3], &motor);
@@ -245,19 +255,16 @@ mod cga_tests {
             assert!(
                 (dist_before - dist_after).abs() < 0.01,
                 "Distance not preserved at angle {:.3}: {:.6} vs {:.6}",
-                angle, dist_before, dist_after
+                angle,
+                dist_before,
+                dist_after
             );
         }
     }
 
     #[test]
     fn e1_2c_torsion_scan_produces_snapshots() {
-        let mut coords = vec![
-            0.0, 0.0, 0.0,
-            1.5, 0.0, 0.0,
-            3.0, 0.0, 0.0,
-            4.5, 0.0, 0.0,
-        ];
+        let mut coords = vec![0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 3.0, 0.0, 0.0, 4.5, 0.0, 0.0];
         let subtree = vec![2, 3];
         let snapshots = refine_torsion_cga(&mut coords, 1, 2, &subtree, 12);
         assert_eq!(snapshots.len(), 12, "Should produce 12 torsion snapshots");
@@ -286,7 +293,9 @@ mod cga_tests {
             assert!(
                 (frac[i] - frac2[i]).abs() < 1e-8,
                 "Frac round-trip dim {}: {} → {}",
-                i, frac[i], frac2[i]
+                i,
+                frac[i],
+                frac2[i]
             );
         }
     }
