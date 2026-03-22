@@ -57,8 +57,12 @@ pub fn cmd_alpb(elements: &str, coords: &str, charges_str: &str, dielectric: f64
 pub fn cmd_d4(elements: &str, coords: &str, three_body: bool) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let config = sci_form::dispersion::D4Config {
-        s6: 1.0, s8: 0.95, a1: 0.45, a2: 4.0,
-        three_body, s9: 1.0,
+        s6: 1.0,
+        s8: 0.95,
+        a1: 0.45,
+        a2: 4.0,
+        three_body,
+        s9: 1.0,
     };
     let r = sci_form::dispersion::compute_d4_energy(&elems, &positions, &config);
     println!(
