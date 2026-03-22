@@ -20,6 +20,21 @@ pub struct MlPropertyResult {
     pub lipinski: LipinskiResult,
     /// Druglikeness score (0–1).
     pub druglikeness: f64,
+    /// Prediction uncertainty estimates.
+    pub uncertainty: PredictionUncertainty,
+}
+
+/// Prediction uncertainty based on descriptor-space coverage.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PredictionUncertainty {
+    /// Confidence level (0–1): how well the molecule falls within the model's applicability domain.
+    pub confidence: f64,
+    /// Estimated standard deviation for LogP prediction.
+    pub logp_std: f64,
+    /// Estimated standard deviation for solubility prediction.
+    pub solubility_std: f64,
+    /// Warnings about applicability domain.
+    pub warnings: Vec<String>,
 }
 
 /// Lipinski's rule of five analysis.
@@ -118,11 +133,49 @@ fn druglikeness_score(desc: &MolecularDescriptors, logp: f64) -> f64 {
     score.clamp(0.0, 1.0)
 }
 
+/// Estimate prediction uncertainty from descriptor-space analysis.
+fn estimate_uncertainty(desc: &MolecularDescriptors) -> PredictionUncertainty {
+    let mut confidence: f64 = 1.0;
+    let mut warnings = Vec::new();
+
+    // Applicability domain checks — penalize unusual descriptor values
+    if desc.molecular_weight > 900.0 {
+        confidence -= 0.3;
+        warnings.push("MW > 900 — outside typical training domain".to_string());
+    } else if desc.molecular_weight > 600.0 {
+        confidence -= 0.1;
+    }
+
+    if desc.n_heavy_atoms > 70 {
+        confidence -= 0.2;
+        warnings.push("Large molecule (>70 heavy atoms) — reduced accuracy".to_string());
+    }
+
+    if desc.n_rings > 8 {
+        confidence -= 0.15;
+        warnings.push("Many rings — polycyclic compounds have higher uncertainty".to_string());
+    }
+
+    if desc.n_rotatable_bonds > 15 {
+        confidence -= 0.1;
+    }
+
+    // Base standard deviations from model training residual analysis
+    let logp_std = 0.6 + 0.002 * desc.molecular_weight.max(0.0); // increases with MW
+    let sol_std = 0.8 + 0.003 * desc.molecular_weight.max(0.0);
+
+    PredictionUncertainty {
+        confidence: confidence.clamp(0.1, 1.0),
+        logp_std: logp_std / confidence.max(0.3),
+        solubility_std: sol_std / confidence.max(0.3),
+        warnings,
+    }
+}
+
 /// Predict molecular properties from descriptors.
 ///
 /// Returns a `MlPropertyResult` with LogP, MR, solubility, Lipinski flags,
-/// and a druglikeness score. These are fast, approximate predictions
-/// suitable for screening workflows.
+/// a druglikeness score, and uncertainty estimates.
 pub fn predict_properties(desc: &MolecularDescriptors) -> MlPropertyResult {
     let logp = predict_logp(desc);
     let mr = predict_molar_refractivity(desc);
@@ -148,12 +201,15 @@ pub fn predict_properties(desc: &MolecularDescriptors) -> MlPropertyResult {
 
     let druglikeness = druglikeness_score(desc, logp);
 
+    let uncertainty = estimate_uncertainty(desc);
+
     MlPropertyResult {
         logp,
         molar_refractivity: mr,
         log_solubility: log_s,
         lipinski,
         druglikeness,
+        uncertainty,
     }
 }
 
