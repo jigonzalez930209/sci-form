@@ -18,15 +18,15 @@
 //! (HOSE code) NMR but requires 3D coordinates and a SCF calculation.
 //! The user can choose fast topological NMR or slower quantum NMR.
 
-mod types;
-mod stda_uvvis;
 mod giao_nmr;
-pub mod transition_dipoles;
 pub mod hessian;
 pub mod ir_intensities;
+mod stda_uvvis;
+pub mod transition_dipoles;
+mod types;
 
-pub use types::{
-    ScfInput, TransitionInfo, SpectroscopyResult, ShieldingTensor, NmrShieldingResult,
-};
-pub use stda_uvvis::{compute_stda, StdaConfig};
 pub use giao_nmr::{compute_nmr_shieldings, shieldings_to_shifts};
+pub use stda_uvvis::{compute_stda, StdaConfig};
+pub use types::{
+    NmrShieldingResult, ScfInput, ShieldingTensor, SpectroscopyResult, TransitionInfo,
+};

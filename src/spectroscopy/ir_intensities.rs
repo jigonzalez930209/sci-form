@@ -6,8 +6,8 @@
 //!
 //! where μ is the molecular dipole moment and Q_k is the normal coordinate.
 
-use crate::scf::types::{IrResult, MolecularSystem, ScfResult};
 use crate::scf::scf_loop::{run_scf, ScfConfig};
+use crate::scf::types::{IrResult, MolecularSystem, ScfResult};
 
 use super::hessian::{atomic_mass, HessianResult};
 

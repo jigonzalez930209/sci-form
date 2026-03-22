@@ -56,16 +56,10 @@ pub fn compute_nmr_shieldings(
 ) -> Vec<ShieldingTensor> {
     let n_atoms = atomic_numbers.len();
 
-    let mut shieldings = Vec::with_capacity(n_atoms);
-
-    for atom_n in 0..n_atoms {
+    let compute_one = |atom_n: usize| -> ShieldingTensor {
         let z_n = atomic_numbers[atom_n];
 
-        let sigma_dia = compute_diamagnetic_shielding(
-            atom_n,
-            positions_bohr,
-            atomic_numbers,
-        );
+        let sigma_dia = compute_diamagnetic_shielding(atom_n, positions_bohr, atomic_numbers);
 
         let sigma_para = compute_paramagnetic_shielding(atom_n, scf, basis_to_atom);
 
@@ -78,17 +72,26 @@ pub fn compute_nmr_shieldings(
             [0.0, 0.0, sigma_total],
         ];
 
-        shieldings.push(ShieldingTensor {
+        ShieldingTensor {
             atom_index: atom_n,
             element: z_n,
             tensor,
             isotropic: sigma_total,
             anisotropy: 0.0,
             chemical_shift: delta,
-        });
+        }
+    };
+
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::*;
+        (0..n_atoms).into_par_iter().map(compute_one).collect()
     }
 
-    shieldings
+    #[cfg(not(feature = "parallel"))]
+    {
+        (0..n_atoms).map(compute_one).collect()
+    }
 }
 
 /// Convert shielding tensors to a summary result.
@@ -131,11 +134,7 @@ fn compute_diamagnetic_shielding(
     sigma_atom - neighbor_correction
 }
 
-fn compute_paramagnetic_shielding(
-    atom_n: usize,
-    scf: &ScfInput,
-    basis_to_atom: &[usize],
-) -> f64 {
+fn compute_paramagnetic_shielding(atom_n: usize, scf: &ScfInput, basis_to_atom: &[usize]) -> f64 {
     let n_basis = scf.n_basis;
     let n_occ = scf.n_electrons / 2;
 

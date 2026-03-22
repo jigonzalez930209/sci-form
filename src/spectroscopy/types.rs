@@ -24,6 +24,32 @@ pub struct ScfInput {
     pub n_electrons: usize,
 }
 
+impl From<crate::scf::types::ScfResult> for ScfInput {
+    fn from(scf: crate::scf::types::ScfResult) -> Self {
+        Self {
+            orbital_energies: scf.orbital_energies,
+            mo_coefficients: scf.mo_coefficients,
+            density_matrix: scf.density_matrix,
+            overlap_matrix: scf.overlap_matrix,
+            n_basis: scf.n_basis,
+            n_electrons: scf.n_electrons,
+        }
+    }
+}
+
+impl<'a> From<&'a crate::scf::types::ScfResult> for ScfInput {
+    fn from(scf: &'a crate::scf::types::ScfResult) -> Self {
+        Self {
+            orbital_energies: scf.orbital_energies.clone(),
+            mo_coefficients: scf.mo_coefficients.clone(),
+            density_matrix: scf.density_matrix.clone(),
+            overlap_matrix: scf.overlap_matrix.clone(),
+            n_basis: scf.n_basis,
+            n_electrons: scf.n_electrons,
+        }
+    }
+}
+
 /// Information about a single electronic transition (UV-Vis).
 #[derive(Debug, Clone)]
 pub struct TransitionInfo {
