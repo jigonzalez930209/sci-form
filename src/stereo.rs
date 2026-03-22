@@ -5,6 +5,7 @@
 
 use crate::graph::{BondOrder, Molecule};
 use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
 
 /// CIP priority tree node for depth-first traversal.
@@ -56,6 +57,50 @@ pub struct StereoAnalysis {
     pub n_stereocenters: usize,
     /// Total number of E/Z-assignable double bonds.
     pub n_double_bonds: usize,
+    /// Detected atropisomeric axes (biaryl axial chirality).
+    pub atropisomeric_axes: Vec<AtropisomericAxis>,
+    /// Detected pro-chiral centers.
+    pub prochiral_centers: Vec<ProchiralCenter>,
+    /// Detected helical chirality (M/P in helicenes, metallocenes).
+    pub helical_chirality: Vec<HelicalChirality>,
+}
+
+/// An atropisomeric axis (restricted rotation around a single bond).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AtropisomericAxis {
+    /// Index of atom on one end of the axis bond.
+    pub atom1: usize,
+    /// Index of atom on the other end.
+    pub atom2: usize,
+    /// Number of ortho substituents (indicates steric barrier degree).
+    pub ortho_substituent_count: usize,
+    /// Configuration: aR or aS (if 3D coords available).
+    pub configuration: Option<String>,
+}
+
+/// A pro-chiral center (sp3 with two identical substituents).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProchiralCenter {
+    /// Atom index.
+    pub atom_index: usize,
+    /// Element at the center.
+    pub element: u8,
+    /// Indices of the two enantiotopic substituents (identical pair).
+    pub enantiotopic_pair: [usize; 2],
+}
+
+/// Helical chirality (M/P) detected in helicenes, allenes with extended
+/// conjugation, or metallocenes with non-coplanar rings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HelicalChirality {
+    /// Atom indices that form the helical backbone.
+    pub backbone_atoms: Vec<usize>,
+    /// Configuration: "M" (minus, left-handed) or "P" (plus, right-handed).
+    pub configuration: Option<String>,
+    /// Type: "helicene", "allene", "metallocene".
+    pub helix_type: String,
+    /// Dihedral angle of the helix (degrees).
+    pub dihedral_angle: Option<f64>,
 }
 
 /// Approximate atomic mass for CIP tie-breaking.
@@ -441,8 +486,8 @@ fn dot(a: &[f64; 3], b: &[f64; 3]) -> f64 {
 
 /// Perform complete stereochemistry analysis on a molecule.
 ///
-/// Detects chiral centers (R/S) and E/Z double bonds from SMILES topology
-/// and optional 3D coordinates.
+/// Detects chiral centers (R/S), E/Z double bonds, atropisomeric axes,
+/// and pro-chiral centers from SMILES topology and optional 3D coordinates.
 pub fn analyze_stereo(mol: &Molecule, positions: &[[f64; 3]]) -> StereoAnalysis {
     // Find and assign stereocenters
     let center_indices = find_stereocenters(mol);
@@ -476,6 +521,12 @@ pub fn analyze_stereo(mol: &Molecule, positions: &[[f64; 3]]) -> StereoAnalysis 
         .map(|&(a, b)| assign_ez(mol, positions, a, b))
         .collect();
 
+    // Find atropisomeric axes
+    let atropisomeric_axes = find_atropisomeric_axes(mol, positions);
+
+    // Find pro-chiral centers
+    let prochiral_centers = find_prochiral_centers(mol);
+
     let n_stereocenters = stereocenters.len();
     let n_double_bonds = double_bonds.len();
 
@@ -484,7 +535,414 @@ pub fn analyze_stereo(mol: &Molecule, positions: &[[f64; 3]]) -> StereoAnalysis 
         double_bonds,
         n_stereocenters,
         n_double_bonds,
+        atropisomeric_axes,
+        prochiral_centers,
+        helical_chirality: find_helical_chirality(mol, positions),
     }
+}
+
+/// Detect helical chirality (M/P) in helicenes and metallocenes.
+///
+/// Helical chirality arises when a molecule forms a non-planar spiral.
+/// M (minus) = left-handed helix, P (plus) = right-handed helix.
+fn find_helical_chirality(mol: &Molecule, positions: &[[f64; 3]]) -> Vec<HelicalChirality> {
+    let mut helices = Vec::new();
+
+    if positions.is_empty() {
+        return helices;
+    }
+
+    // Detect allenic systems: C=C=C with helical potential
+    for node in mol.graph.node_indices() {
+        let atom = &mol.graph[node];
+        if atom.element != 6 {
+            continue;
+        }
+
+        // Check for cumulated double bonds: =C=
+        let double_neighbors: Vec<usize> = mol
+            .graph
+            .edges(node)
+            .filter(|e| mol.graph[e.id()].order == BondOrder::Double)
+            .map(|e| {
+                let (a, b) = mol.graph.edge_endpoints(e.id()).unwrap();
+                if a == node {
+                    b.index()
+                } else {
+                    a.index()
+                }
+            })
+            .collect();
+
+        if double_neighbors.len() == 2 {
+            // Allenic system: C=C=C
+            let a = double_neighbors[0];
+            let center = node.index();
+            let b = double_neighbors[1];
+
+            // Get terminal substituents for M/P assignment
+            let a_subs: Vec<usize> = mol
+                .graph
+                .neighbors(NodeIndex::new(a))
+                .filter(|&n| n.index() != center)
+                .map(|n| n.index())
+                .collect();
+            let b_subs: Vec<usize> = mol
+                .graph
+                .neighbors(NodeIndex::new(b))
+                .filter(|&n| n.index() != center)
+                .map(|n| n.index())
+                .collect();
+
+            if a_subs.len() >= 2 && b_subs.len() >= 2 {
+                let dihedral = if positions.len() > a_subs[0] && positions.len() > b_subs[0] {
+                    Some(compute_dihedral(
+                        &positions[a_subs[0]],
+                        &positions[a],
+                        &positions[b],
+                        &positions[b_subs[0]],
+                    ))
+                } else {
+                    None
+                };
+
+                let config = dihedral.map(|d| {
+                    if d > 0.0 {
+                        "P".to_string()
+                    } else {
+                        "M".to_string()
+                    }
+                });
+
+                helices.push(HelicalChirality {
+                    backbone_atoms: vec![a, center, b],
+                    configuration: config,
+                    helix_type: "allene".to_string(),
+                    dihedral_angle: dihedral,
+                });
+            }
+        }
+    }
+
+    // Detect helicene-like fused aromatic rings with non-planarity
+    // Look for sequences of 4+ fused aromatic rings that curve
+    let aromatic_atoms: Vec<usize> = mol
+        .graph
+        .node_indices()
+        .filter(|&n| {
+            mol.graph
+                .edges(n)
+                .any(|e| mol.graph[e.id()].order == BondOrder::Aromatic)
+        })
+        .map(|n| n.index())
+        .collect();
+
+    if aromatic_atoms.len() >= 10 {
+        // Check if the aromatic system is non-planar
+        if let Some(planarity_dev) = measure_planarity(&aromatic_atoms, positions) {
+            if planarity_dev > 0.3 {
+                // Non-planar aromatic system → potential helicene
+                // Determine M/P from the sign of the average torsion
+                let avg_torsion = compute_average_torsion(&aromatic_atoms, positions);
+                let config = avg_torsion.map(|t| {
+                    if t > 0.0 {
+                        "P".to_string()
+                    } else {
+                        "M".to_string()
+                    }
+                });
+
+                helices.push(HelicalChirality {
+                    backbone_atoms: aromatic_atoms.clone(),
+                    configuration: config,
+                    helix_type: "helicene".to_string(),
+                    dihedral_angle: avg_torsion,
+                });
+            }
+        }
+    }
+
+    // Detect metallocene helical chirality (tilted Cp rings)
+    for node in mol.graph.node_indices() {
+        let atom = &mol.graph[node];
+        // Check if this is a transition metal
+        if !is_transition_metal(atom.element) {
+            continue;
+        }
+
+        let metal_idx = node.index();
+        let neighbors: Vec<usize> = mol.graph.neighbors(node).map(|n| n.index()).collect();
+
+        // Find groups of aromatic ring atoms bonded to the metal
+        let ring_neighbors: Vec<usize> = neighbors
+            .iter()
+            .filter(|&&n| {
+                mol.graph
+                    .edges(NodeIndex::new(n))
+                    .any(|e| mol.graph[e.id()].order == BondOrder::Aromatic)
+            })
+            .copied()
+            .collect();
+
+        if ring_neighbors.len() >= 4 {
+            // Potential metallocene with tilted rings
+            let ring_torsion = compute_ring_tilt(&ring_neighbors, &positions[metal_idx], positions);
+            let config = ring_torsion.map(|t| {
+                if t > 0.0 {
+                    "P".to_string()
+                } else {
+                    "M".to_string()
+                }
+            });
+
+            let mut backbone = vec![metal_idx];
+            backbone.extend_from_slice(&ring_neighbors);
+
+            helices.push(HelicalChirality {
+                backbone_atoms: backbone,
+                configuration: config,
+                helix_type: "metallocene".to_string(),
+                dihedral_angle: ring_torsion,
+            });
+        }
+    }
+
+    helices
+}
+
+fn is_transition_metal(z: u8) -> bool {
+    matches!(z, 21..=30 | 39..=48 | 72..=80)
+}
+
+/// Measure planarity deviation (RMSD from best-fit plane) in ångströms.
+fn measure_planarity(atom_indices: &[usize], positions: &[[f64; 3]]) -> Option<f64> {
+    if atom_indices.len() < 3 || positions.is_empty() {
+        return None;
+    }
+
+    // Compute centroid
+    let n = atom_indices.len() as f64;
+    let mut cz = 0.0;
+    for &idx in atom_indices {
+        if idx >= positions.len() {
+            return None;
+        }
+        cz += positions[idx][2];
+    }
+    cz /= n;
+
+    // Simple planarity check: average |z - z_mean| after centering
+    let dev: f64 = atom_indices
+        .iter()
+        .map(|&idx| {
+            let dz = positions[idx][2] - cz;
+            dz * dz
+        })
+        .sum::<f64>()
+        / n;
+
+    Some(dev.sqrt())
+}
+
+/// Compute average torsion along a set of atoms (for helicene sign).
+fn compute_average_torsion(atoms: &[usize], positions: &[[f64; 3]]) -> Option<f64> {
+    if atoms.len() < 4 {
+        return None;
+    }
+
+    let mut total_torsion = 0.0;
+    let mut count = 0;
+    for i in 0..atoms.len().saturating_sub(3) {
+        let a = atoms[i];
+        let b = atoms[i + 1];
+        let c = atoms[i + 2];
+        let d = atoms[i + 3];
+        if a < positions.len() && b < positions.len() && c < positions.len() && d < positions.len()
+        {
+            total_torsion +=
+                compute_dihedral(&positions[a], &positions[b], &positions[c], &positions[d]);
+            count += 1;
+        }
+    }
+
+    if count > 0 {
+        Some(total_torsion / count as f64)
+    } else {
+        None
+    }
+}
+
+/// Compute ring tilt angle for metallocene helical chirality.
+fn compute_ring_tilt(
+    ring_atoms: &[usize],
+    _metal_pos: &[f64; 3],
+    positions: &[[f64; 3]],
+) -> Option<f64> {
+    if ring_atoms.len() < 4 {
+        return None;
+    }
+
+    // Use first 4 ring atoms to compute a torsion that indicates tilt
+    let a = ring_atoms[0];
+    let b = ring_atoms[1];
+    let c = ring_atoms[2];
+    let d = ring_atoms[3];
+
+    if a < positions.len() && b < positions.len() && c < positions.len() && d < positions.len() {
+        Some(compute_dihedral(
+            &positions[a],
+            &positions[b],
+            &positions[c],
+            &positions[d],
+        ))
+    } else {
+        None
+    }
+}
+
+/// Detect atropisomeric axes: biaryl single bonds with ortho substituents
+/// that create a steric barrier to rotation.
+fn find_atropisomeric_axes(mol: &Molecule, positions: &[[f64; 3]]) -> Vec<AtropisomericAxis> {
+    let mut axes = Vec::new();
+
+    for edge in mol.graph.edge_indices() {
+        let bond = &mol.graph[edge];
+        // Atropisomerism occurs at single bonds between aromatic rings
+        if bond.order != BondOrder::Single {
+            continue;
+        }
+
+        let (a, b) = mol.graph.edge_endpoints(edge).unwrap();
+        let a_idx = a.index();
+        let b_idx = b.index();
+
+        // Both atoms must be in aromatic rings (biaryl)
+        let a_aromatic = mol
+            .graph
+            .edges(a)
+            .any(|e| mol.graph[e.id()].order == BondOrder::Aromatic);
+        let b_aromatic = mol
+            .graph
+            .edges(b)
+            .any(|e| mol.graph[e.id()].order == BondOrder::Aromatic);
+
+        if !a_aromatic || !b_aromatic {
+            continue;
+        }
+
+        // Count ortho substituents (neighbors of each atom that are not on the
+        // aromatic ring between a and b, and are not H)
+        let a_neighbors: Vec<usize> = mol
+            .graph
+            .neighbors(a)
+            .map(|n| n.index())
+            .filter(|&n| n != b_idx && mol.graph[NodeIndex::new(n)].element != 1)
+            .collect();
+        let b_neighbors: Vec<usize> = mol
+            .graph
+            .neighbors(b)
+            .map(|n| n.index())
+            .filter(|&n| n != a_idx && mol.graph[NodeIndex::new(n)].element != 1)
+            .collect();
+
+        // Need at least 2 ortho substituents on each side (total ≥ 3 for restricted rotation)
+        let ortho_count = a_neighbors.len() + b_neighbors.len();
+        if ortho_count < 3 {
+            continue;
+        }
+
+        // Check if substituents are large enough (non-H neighbors of ortho atoms)
+        let has_bulky = a_neighbors.iter().chain(b_neighbors.iter()).any(|&n| {
+            let n_idx = NodeIndex::new(n);
+            mol.graph
+                .neighbors(n_idx)
+                .any(|nb| mol.graph[nb].element != 1 && nb.index() != a_idx && nb.index() != b_idx)
+        });
+
+        if !has_bulky {
+            continue;
+        }
+
+        let configuration =
+            if !positions.is_empty() && a_idx < positions.len() && b_idx < positions.len() {
+                // Use dihedral of highest-priority ortho subs to determine aR/aS
+                if let (Some(&sub_a), Some(&sub_b)) = (a_neighbors.first(), b_neighbors.first()) {
+                    if sub_a < positions.len() && sub_b < positions.len() {
+                        let dihedral = compute_dihedral(
+                            &positions[sub_a],
+                            &positions[a_idx],
+                            &positions[b_idx],
+                            &positions[sub_b],
+                        );
+                        Some(if dihedral > 0.0 { "aR" } else { "aS" }.to_string())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+        axes.push(AtropisomericAxis {
+            atom1: a_idx,
+            atom2: b_idx,
+            ortho_substituent_count: ortho_count,
+            configuration,
+        });
+    }
+
+    axes
+}
+
+/// Detect pro-chiral centers: sp3 atoms with exactly two identical substituents.
+fn find_prochiral_centers(mol: &Molecule) -> Vec<ProchiralCenter> {
+    let mut centers = Vec::new();
+
+    for node in mol.graph.node_indices() {
+        let atom = &mol.graph[node];
+        if atom.element == 1 {
+            continue;
+        }
+
+        let neighbors: Vec<usize> = mol.graph.neighbors(node).map(|n| n.index()).collect();
+
+        // Need exactly 4 substituents (sp3)
+        if neighbors.len() != 4 {
+            continue;
+        }
+
+        // Build CIP trees
+        let trees: Vec<CipNode> = neighbors
+            .iter()
+            .map(|&n| build_cip_tree(mol, n, node.index(), 6))
+            .collect();
+
+        // Find pairs with identical CIP priority
+        for i in 0..4 {
+            for j in (i + 1)..4 {
+                if cip_compare(&trees[i], &trees[j]) == std::cmp::Ordering::Equal {
+                    // Check that the other two are different from each other and from the pair
+                    let others: Vec<usize> = (0..4).filter(|&k| k != i && k != j).collect();
+                    let other_different = cip_compare(&trees[others[0]], &trees[others[1]])
+                        != std::cmp::Ordering::Equal
+                        && cip_compare(&trees[i], &trees[others[0]]) != std::cmp::Ordering::Equal;
+
+                    if other_different {
+                        centers.push(ProchiralCenter {
+                            atom_index: node.index(),
+                            element: atom.element,
+                            enantiotopic_pair: [neighbors[i], neighbors[j]],
+                        });
+                    }
+                    break; // Only one pair per center
+                }
+            }
+        }
+    }
+
+    centers
 }
 
 /// Generate SMILES-style stereo descriptors from a stereochemistry analysis.

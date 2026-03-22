@@ -4,17 +4,22 @@
 
 pub mod alignment;
 pub mod ani;
+pub mod canonical_smiles;
 pub mod charges;
+pub mod charges_eeq;
 pub mod clustering;
 pub mod conformer;
 pub mod dipole;
+pub mod dispersion;
 pub mod distgeom;
 pub mod dos;
 pub mod dynamics;
 pub mod eht;
 pub mod esp;
 pub mod etkdg;
+pub mod experimental_status;
 pub mod forcefield;
+pub mod gpu;
 pub mod graph;
 pub mod hf;
 pub mod ir;
@@ -23,31 +28,25 @@ pub mod mesh;
 pub mod ml;
 pub mod nmr;
 pub mod optimization;
+pub mod periodic;
 pub mod pm3;
 pub mod population;
 pub mod reactivity;
 pub mod rings;
+pub mod scf;
 pub mod smarts;
 pub mod smiles;
+pub mod smirks;
 pub mod solvation;
+pub mod solvation_alpb;
+pub mod spectroscopy;
 pub mod stereo;
 pub mod surface;
 pub mod topology;
 pub mod transport;
-pub mod scf;
-pub mod gpu;
 pub mod xtb;
-pub mod charges_eeq;
-pub mod dispersion;
-pub mod solvation_alpb;
-pub mod spectroscopy;
-pub mod experimental_status;
 
-#[cfg(any(
-    feature = "alpha-cga",
-    feature = "alpha-gsm",
-    feature = "alpha-sdr"
-))]
+#[cfg(any(feature = "alpha-cga", feature = "alpha-gsm", feature = "alpha-sdr"))]
 pub mod alpha;
 
 #[cfg(any(
@@ -1182,27 +1181,14 @@ pub fn compute_esp(
     padding: f64,
 ) -> Result<esp::EspGrid, String> {
     let pop = compute_population(elements, positions)?;
-    #[cfg(feature = "parallel")]
-    {
-        Ok(esp::compute_esp_grid_parallel(
-            elements,
-            positions,
-            &pop.mulliken_charges,
-            spacing,
-            padding,
-        ))
-    }
-
-    #[cfg(not(feature = "parallel"))]
-    {
-        Ok(esp::compute_esp_grid(
-            elements,
-            positions,
-            &pop.mulliken_charges,
-            spacing,
-            padding,
-        ))
-    }
+    let (grid, _report) = gpu::esp_grid_gpu::compute_esp_grid_with_report(
+        elements,
+        positions,
+        &pop.mulliken_charges,
+        spacing,
+        padding,
+    );
+    Ok(grid)
 }
 
 /// Compute DOS/PDOS from EHT orbital energies.
@@ -1311,6 +1297,17 @@ pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Re
     pm3::solve_pm3(elements, positions)
 }
 
+/// Compute PM3 analytical energy gradients.
+///
+/// Returns dE/dR in eV/Å for each atom, computed from the converged
+/// SCF density matrix using Hellmann-Feynman + Pulay corrections.
+pub fn compute_pm3_gradient(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<pm3::Pm3GradientResult, String> {
+    pm3::compute_pm3_gradient(elements, positions)
+}
+
 /// Run an xTB tight-binding calculation.
 ///
 /// `elements`: atomic numbers.
@@ -1319,6 +1316,17 @@ pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Re
 /// Returns orbital energies, total energy, gap, and Mulliken charges.
 pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
     xtb::solve_xtb(elements, positions)
+}
+
+/// Compute xTB analytical energy gradients.
+///
+/// Returns dE/dR in eV/Å for each atom, computed from the converged
+/// SCC density using Hellmann-Feynman + Pulay + repulsive corrections.
+pub fn compute_xtb_gradient(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<xtb::XtbGradientResult, String> {
+    xtb::compute_xtb_gradient(elements, positions)
 }
 
 // ─── Spectroscopy API (Track D) ─────────────────────────────────────────────
@@ -1515,6 +1523,25 @@ pub fn compute_ml_descriptors(
 /// and druglikeness score from molecular descriptors.
 pub fn predict_ml_properties(desc: &ml::MolecularDescriptors) -> ml::MlPropertyResult {
     ml::predict_properties(desc)
+}
+
+/// Predict molecular properties using ensemble ML models.
+///
+/// Returns consensus LogP (with uncertainty), TPSA, pKa estimates,
+/// Veber bioavailability rules, BBB permeability, and confidence score.
+pub fn predict_ensemble(
+    elements: &[u8],
+    bonds: &[(usize, usize, u8)],
+    charges: &[f64],
+    aromatic_atoms: &[bool],
+) -> ml::EnsembleResult {
+    let desc = ml::compute_descriptors(elements, bonds, charges, aromatic_atoms);
+    ml::predict_ensemble(&desc, elements, bonds)
+}
+
+/// Compute Topological Polar Surface Area (TPSA) in Å².
+pub fn compute_tpsa(elements: &[u8], bonds: &[(usize, usize, u8)]) -> f64 {
+    ml::compute_tpsa(elements, bonds)
 }
 
 /// Run short exploratory molecular dynamics with Velocity Verlet (NVE-like).
@@ -1816,6 +1843,17 @@ pub fn compute_esp_grid(
     compute_esp(elements, positions, spacing, padding)
 }
 
+// ─── Canonical SMILES API ─────────────────────────────────────────────────────
+
+/// Generate a canonical SMILES string from an input SMILES.
+///
+/// Produces a deterministic SMILES representation regardless of
+/// input atom ordering (e.g., "CCO" and "OCC" produce the same output).
+pub fn to_canonical_smiles(smiles: &str) -> Result<String, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    Ok(canonical_smiles::to_canonical_smiles(&mol))
+}
+
 // ─── Stereochemistry API ─────────────────────────────────────────────────────
 
 /// Analyze stereochemistry: detect chiral centers (R/S) and E/Z double bonds.
@@ -1883,6 +1921,20 @@ pub fn compute_ecfp(
 ) -> Result<rings::ecfp::ECFPFingerprint, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(rings::ecfp::compute_ecfp(&mol, radius, n_bits))
+}
+
+/// Compute ECFP fingerprints for a batch of SMILES (parallelized with rayon when enabled).
+pub fn compute_ecfp_batch(
+    smiles_list: &[&str],
+    radius: usize,
+    n_bits: usize,
+) -> Result<Vec<rings::ecfp::ECFPFingerprint>, String> {
+    let mols: Result<Vec<_>, _> = smiles_list
+        .iter()
+        .map(|s| graph::Molecule::from_smiles(s))
+        .collect();
+    let mols = mols?;
+    Ok(rings::ecfp::compute_ecfp_batch(&mols, radius, n_bits))
 }
 
 /// Compute Tanimoto similarity between two ECFP fingerprints.

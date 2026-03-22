@@ -123,9 +123,8 @@ pub fn compute_nonpolar_solvation(
 /// R_i^eff = 1 / (1/ρ_i - I_i) where I_i is the descreening integral.
 pub fn compute_born_radii(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
     let n = elements.len();
-    let mut born_radii = Vec::with_capacity(n);
 
-    for i in 0..n {
+    let compute_one = |i: usize| -> f64 {
         let rho_i = intrinsic_born_radius(elements[i]);
         let mut integral = 0.0;
 
@@ -144,13 +143,6 @@ pub fn compute_born_radii(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
             let rij = (dx * dx + dy * dy + dz * dz).sqrt();
 
             if rij > rho_i + scaled_rj {
-                // Atom j is completely outside atom i's sphere
-                let term = 0.5
-                    * (1.0 / (rij - scaled_rj) - 1.0 / (rij + scaled_rj)
-                        + scaled_rj / (rij * rij - scaled_rj * scaled_rj)
-                            * (rij / (2.0 * (rij * rij - scaled_rj * scaled_rj).abs().max(1e-10))
-                                + 0.5 * (1.0 / rij).ln().exp() * 0.0));
-                // Simplified HCT integral: I_ij ≈ ½(1/(r-s) - 1/(r+s)) + s/(r²-s²)·ln(r/s)/(2r)
                 let ljr = if rij > scaled_rj && scaled_rj > 1e-10 {
                     (rij / scaled_rj).ln()
                 } else {
@@ -159,23 +151,28 @@ pub fn compute_born_radii(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
                 let denom1 = (rij - scaled_rj).max(1e-10);
                 let denom2 = rij + scaled_rj;
                 let denom3 = (rij * rij - scaled_rj * scaled_rj).abs().max(1e-10);
-                let _ = term;
                 integral += 0.5 * (1.0 / denom1 - 1.0 / denom2)
                     + scaled_rj * ljr / (2.0 * rij * denom3.max(1e-10));
             } else if rij + rho_i > scaled_rj {
-                // Partial overlap
                 let denom = (rij - scaled_rj).abs().max(1e-10);
                 integral += 0.5 * (1.0 / denom - 1.0 / (rij + scaled_rj));
             }
-            // If fully enclosed, skip (integral contribution is handled differently)
         }
 
         let inv_r = 1.0 / rho_i - integral;
-        let born_r = if inv_r > 1e-10 { 1.0 / inv_r } else { 50.0 }; // cap at 50 Å
-        born_radii.push(born_r.max(rho_i)); // Born radius should not be smaller than intrinsic
-    }
+        let born_r = if inv_r > 1e-10 { 1.0 / inv_r } else { 50.0 };
+        born_r.max(rho_i)
+    };
 
-    born_radii
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::*;
+        (0..n).into_par_iter().map(compute_one).collect()
+    }
+    #[cfg(not(feature = "parallel"))]
+    {
+        (0..n).map(compute_one).collect()
+    }
 }
 
 /// Compute Generalized Born electrostatic solvation energy using the Still equation.
@@ -197,18 +194,17 @@ pub fn compute_gb_solvation(
 
     let born_radii = compute_born_radii(elements, positions);
 
-    // Electrostatic GB energy
-    let prefactor = -332.05 * 0.5 * (1.0 / eps_in - 1.0 / eps_out); // 332.05 = e²/(4πε₀) in kcal·Å/mol
-    let mut elec_energy = 0.0;
+    // Electrostatic GB energy (parallelize over rows)
+    let prefactor = -332.05 * 0.5 * (1.0 / eps_in - 1.0 / eps_out);
 
-    for i in 0..n {
+    let compute_row = |i: usize| -> f64 {
+        let mut row_energy = 0.0;
+        let qi = charges[i];
         for j in i..n {
-            let qi = charges[i];
             let qj = charges[j];
             if qi.abs() < 1e-12 && qj.abs() < 1e-12 {
                 continue;
             }
-
             let rij_sq = if i == j {
                 0.0
             } else {
@@ -217,14 +213,21 @@ pub fn compute_gb_solvation(
                 let dz = positions[i][2] - positions[j][2];
                 dx * dx + dy * dy + dz * dz
             };
-
             let ri_rj = born_radii[i] * born_radii[j];
             let f_gb = (rij_sq + ri_rj * (-rij_sq / (4.0 * ri_rj).max(1e-10)).exp()).sqrt();
-
-            let factor = if i == j { 1.0 } else { 2.0 }; // count (i,j) and (j,i)
-            elec_energy += factor * prefactor * qi * qj / f_gb;
+            let factor = if i == j { 1.0 } else { 2.0 };
+            row_energy += factor * prefactor * qi * qj / f_gb;
         }
-    }
+        row_energy
+    };
+
+    #[cfg(feature = "parallel")]
+    let elec_energy: f64 = {
+        use rayon::prelude::*;
+        (0..n).into_par_iter().map(compute_row).sum()
+    };
+    #[cfg(not(feature = "parallel"))]
+    let elec_energy: f64 = (0..n).map(compute_row).sum();
 
     // Non-polar contribution
     let nonpolar = compute_nonpolar_solvation(elements, positions, probe_radius);

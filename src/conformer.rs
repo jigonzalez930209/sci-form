@@ -29,6 +29,240 @@ const FORCE_TOL: f32 = 1e-3;
 const PLANARITY_TOLERANCE: f32 = 1.0;
 const ERROR_TOL: f64 = 1e-5; // RDKit's ERROR_TOL for energy pre-check
 
+/// A distance restraint applied during conformer generation.
+#[derive(Debug, Clone)]
+pub struct DistanceRestraint {
+    /// Index of first atom.
+    pub atom_i: usize,
+    /// Index of second atom.
+    pub atom_j: usize,
+    /// Target distance (Å).
+    pub target_distance: f64,
+    /// Force constant (kcal/mol/Å²).
+    pub force_constant: f64,
+}
+
+/// Apply distance restraints into a bounds matrix by tightening the upper/lower bounds.
+fn apply_restraints_to_bounds(bounds: &mut DMatrix<f64>, restraints: &[DistanceRestraint]) {
+    for r in restraints {
+        let i = r.atom_i;
+        let j = r.atom_j;
+        let (lo, hi) = if i > j { (i, j) } else { (j, i) };
+        // Tighten bounds around the target distance (±0.1 Å window)
+        let window = (0.1 / r.force_constant.sqrt()).max(0.05);
+        let new_lb = (r.target_distance - window).max(0.0);
+        let new_ub = r.target_distance + window;
+        // Only tighten, never loosen
+        if new_lb > bounds[(lo, hi)] {
+            bounds[(lo, hi)] = new_lb;
+        }
+        if new_ub < bounds[(hi, lo)] || bounds[(hi, lo)] == 0.0 {
+            bounds[(hi, lo)] = new_ub;
+        }
+    }
+}
+
+/// Generate a 3D conformer with distance restraints applied to the bounds matrix.
+///
+/// Restraints tighten the upper/lower distance bounds around target distances
+/// before conformer generation, biasing the sampling toward the restrained geometry.
+pub fn generate_3d_conformer_restrained(
+    mol: &Molecule,
+    seed: u64,
+    restraints: &[DistanceRestraint],
+) -> Result<DMatrix<f32>, String> {
+    let n = mol.graph.node_count();
+    if n == 0 {
+        return Err("Empty molecule".to_string());
+    }
+
+    let csd_torsions = crate::smarts::match_experimental_torsions(mol);
+
+    // Build bounds matrix and apply restraints before smoothing
+    let bounds = {
+        let raw = calculate_bounds_matrix_opts(mol, true);
+        let mut b = raw;
+        apply_restraints_to_bounds(&mut b, restraints);
+        if triangle_smooth_tol(&mut b, 0.0) {
+            b
+        } else {
+            let raw2 = calculate_bounds_matrix_opts(mol, false);
+            let mut b2 = raw2.clone();
+            apply_restraints_to_bounds(&mut b2, restraints);
+            if triangle_smooth_tol(&mut b2, 0.0) {
+                b2
+            } else {
+                let mut b3 = raw2;
+                apply_restraints_to_bounds(&mut b3, restraints);
+                triangle_smooth_tol(&mut b3, 0.05);
+                b3
+            }
+        }
+    };
+
+    // Use the standard pipeline with the restrained bounds
+    let chiral_sets = identify_chiral_sets(mol);
+    let tetrahedral_centers = identify_tetrahedral_centers(mol);
+    let use_4d = !chiral_sets.is_empty();
+    let embed_dim = if use_4d { 4 } else { 3 };
+    let max_iterations = 10 * n;
+    let mut rng = MinstdRand::new(seed as u32);
+    let mut consecutive_embed_fails = 0u32;
+    let embed_fail_threshold = if n > 100 {
+        (n as u32 / 8).max(10)
+    } else {
+        (n as u32 / 4).max(20)
+    };
+    let mut random_coord_attempts = 0u32;
+    let max_random_coord_attempts = if n > 100 { 80u32 } else { 150u32 };
+    let bfgs_restart_limit = if n > 100 { 20 } else { 50 };
+    let mut energy_check_failures = 0u32;
+    let energy_relax_threshold = (max_iterations as f64 * 0.3) as u32;
+
+    for _iter in 0..max_iterations {
+        let use_random_coords = consecutive_embed_fails >= embed_fail_threshold
+            && random_coord_attempts < max_random_coord_attempts;
+        let (mut coords, basin_thresh) = if use_random_coords {
+            random_coord_attempts += 1;
+            let box_size = 2.0 * (n as f64).cbrt().max(2.5);
+            let mut c = DMatrix::from_element(n, embed_dim, 0.0f64);
+            for i in 0..n {
+                for d in 0..embed_dim {
+                    c[(i, d)] = box_size * (rng.next_double() - 0.5);
+                }
+            }
+            (c, 1e8f64)
+        } else {
+            let dists = pick_rdkit_distances(&mut rng, &bounds);
+            match compute_initial_coords_rdkit(&mut rng, &dists, embed_dim) {
+                Some(c) => {
+                    consecutive_embed_fails = 0;
+                    (c, BASIN_THRESH as f64)
+                }
+                None => {
+                    consecutive_embed_fails += 1;
+                    continue;
+                }
+            }
+        };
+
+        // Minimization + checks — same pipeline as generate_3d_conformer_with_torsions
+        {
+            let bt = basin_thresh as f32;
+            let initial_energy =
+                compute_total_bounds_energy_f64(&coords, &bounds, &chiral_sets, bt, 0.1, 1.0);
+            if initial_energy > ERROR_TOL {
+                let mut need_more = 1;
+                let mut restarts = 0;
+                while need_more != 0 && restarts < bfgs_restart_limit {
+                    need_more = minimize_bfgs_rdkit(
+                        &mut coords,
+                        &bounds,
+                        &chiral_sets,
+                        400,
+                        FORCE_TOL as f64,
+                        bt,
+                        0.1,
+                        1.0,
+                    );
+                    restarts += 1;
+                }
+            }
+        }
+
+        let bt = basin_thresh as f32;
+        let energy = compute_total_bounds_energy_f64(&coords, &bounds, &chiral_sets, bt, 0.1, 1.0);
+        let effective_e_thresh = if energy_check_failures >= energy_relax_threshold {
+            MAX_MINIMIZED_E_PER_ATOM as f64 * 2.5
+        } else {
+            MAX_MINIMIZED_E_PER_ATOM as f64
+        };
+        if energy / n as f64 >= effective_e_thresh {
+            energy_check_failures += 1;
+            continue;
+        }
+        if !check_tetrahedral_centers(&coords, &tetrahedral_centers) {
+            continue;
+        }
+        if !chiral_sets.is_empty() && !check_chiral_centers(&coords, &chiral_sets) {
+            continue;
+        }
+
+        if use_4d {
+            let energy2 =
+                compute_total_bounds_energy_f64(&coords, &bounds, &chiral_sets, bt, 1.0, 0.2);
+            if energy2 > ERROR_TOL {
+                let mut need_more = 1;
+                let mut restarts = 0;
+                while need_more != 0 && restarts < bfgs_restart_limit {
+                    need_more = minimize_bfgs_rdkit(
+                        &mut coords,
+                        &bounds,
+                        &chiral_sets,
+                        200,
+                        FORCE_TOL as f64,
+                        bt,
+                        1.0,
+                        0.2,
+                    );
+                    restarts += 1;
+                }
+            }
+        }
+
+        let coords3d = coords.columns(0, 3).into_owned();
+        let ff = build_etkdg_3d_ff_with_torsions(mol, &coords3d, &bounds, &csd_torsions);
+        let e3d = crate::forcefield::etkdg_3d::etkdg_3d_energy_f64(
+            &{
+                let mut flat = vec![0.0f64; n * 3];
+                for a in 0..n {
+                    flat[a * 3] = coords3d[(a, 0)];
+                    flat[a * 3 + 1] = coords3d[(a, 1)];
+                    flat[a * 3 + 2] = coords3d[(a, 2)];
+                }
+                flat
+            },
+            n,
+            mol,
+            &ff,
+        );
+        let refined = if e3d > ERROR_TOL {
+            minimize_etkdg_3d_bfgs(mol, &coords3d, &ff, 300, FORCE_TOL)
+        } else {
+            coords3d
+        };
+
+        {
+            let n_improper_atoms = ff.inversion_contribs.len() / 3;
+            let flat_f64: Vec<f64> = {
+                let nr = refined.nrows();
+                let mut flat = vec![0.0f64; nr * 3];
+                for a in 0..nr {
+                    flat[a * 3] = refined[(a, 0)];
+                    flat[a * 3 + 1] = refined[(a, 1)];
+                    flat[a * 3 + 2] = refined[(a, 2)];
+                }
+                flat
+            };
+            let planarity_energy =
+                crate::forcefield::etkdg_3d::planarity_check_energy_f64(&flat_f64, n, &ff);
+            if planarity_energy > n_improper_atoms as f64 * PLANARITY_TOLERANCE as f64 {
+                continue;
+            }
+        }
+
+        if !check_double_bond_geometry(mol, &refined) {
+            continue;
+        }
+        return Ok(refined.map(|v| v as f32));
+    }
+
+    Err(format!(
+        "Failed to generate restrained conformer after {} iterations",
+        max_iterations
+    ))
+}
+
 /// Generate a 3D conformer from a SMILES string.
 pub fn generate_3d_conformer_from_smiles(smiles: &str, seed: u64) -> Result<DMatrix<f32>, String> {
     let mol = Molecule::from_smiles(smiles)?;

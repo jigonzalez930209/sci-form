@@ -308,14 +308,42 @@ pub fn compute_simplified_neb_path(
 
     for _ in 0..n_iter {
         let prev = images.clone();
-        for i in 1..(n_images - 1) {
-            let mut grad = vec![0.0f64; n_xyz];
-            let _ = ff.compute_system_energy_and_gradients(&prev[i], &mut grad);
 
-            for k in 0..n_xyz {
-                let spring_force = spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
-                let total_force = -grad[k] + spring_force;
-                images[i][k] = prev[i][k] + step_size * total_force;
+        #[cfg(feature = "parallel")]
+        {
+            use rayon::prelude::*;
+            let updated: Vec<(usize, Vec<f64>)> = (1..(n_images - 1))
+                .into_par_iter()
+                .map(|i| {
+                    let ff_local = crate::forcefield::builder::build_uff_force_field(&mol);
+                    let mut grad = vec![0.0f64; n_xyz];
+                    let _ = ff_local.compute_system_energy_and_gradients(&prev[i], &mut grad);
+                    let mut new_img = prev[i].clone();
+                    for k in 0..n_xyz {
+                        let spring_force =
+                            spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
+                        let total_force = -grad[k] + spring_force;
+                        new_img[k] = prev[i][k] + step_size * total_force;
+                    }
+                    (i, new_img)
+                })
+                .collect();
+            for (i, img) in updated {
+                images[i] = img;
+            }
+        }
+
+        #[cfg(not(feature = "parallel"))]
+        {
+            for i in 1..(n_images - 1) {
+                let mut grad = vec![0.0f64; n_xyz];
+                let _ = ff.compute_system_energy_and_gradients(&prev[i], &mut grad);
+                for k in 0..n_xyz {
+                    let spring_force =
+                        spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
+                    let total_force = -grad[k] + spring_force;
+                    images[i][k] = prev[i][k] + step_size * total_force;
+                }
             }
         }
     }
@@ -360,42 +388,25 @@ fn compute_backend_energy_and_gradients(
             Ok(e)
         }
         MdBackend::Pm3 => {
-            let n = elements.len();
             let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-            let result = crate::pm3::solver::solve_pm3(elements, &positions)?;
-            // PM3 gives energy in eV; convert to kcal/mol
-            let energy_kcal = result.total_energy * 23.0605;
-            // Numerical gradients via finite differences
-            let step = 1e-4;
-            for i in 0..(n * 3) {
-                let mut x_plus = coords.to_vec();
-                let mut x_minus = coords.to_vec();
-                x_plus[i] += step;
-                x_minus[i] -= step;
-                let pos_p: Vec<[f64; 3]> = x_plus.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-                let pos_m: Vec<[f64; 3]> = x_minus.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-                let e_p = crate::pm3::solver::solve_pm3(elements, &pos_p)?.total_energy * 23.0605;
-                let e_m = crate::pm3::solver::solve_pm3(elements, &pos_m)?.total_energy * 23.0605;
-                grad[i] = (e_p - e_m) / (2.0 * step);
+            let grad_result = crate::pm3::gradients::compute_pm3_gradient(elements, &positions)?;
+            // PM3 gradient returns eV/Å; convert to kcal/mol/Å
+            let energy_kcal = grad_result.energy * 23.0605;
+            for (a, g) in grad_result.gradients.iter().enumerate() {
+                for d in 0..3 {
+                    grad[a * 3 + d] = g[d] * 23.0605;
+                }
             }
             Ok(energy_kcal)
         }
         MdBackend::Xtb => {
-            let n = elements.len();
             let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-            let result = crate::xtb::solver::solve_xtb(elements, &positions)?;
-            let energy_kcal = result.total_energy * 23.0605;
-            let step = 1e-4;
-            for i in 0..(n * 3) {
-                let mut x_plus = coords.to_vec();
-                let mut x_minus = coords.to_vec();
-                x_plus[i] += step;
-                x_minus[i] -= step;
-                let pos_p: Vec<[f64; 3]> = x_plus.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-                let pos_m: Vec<[f64; 3]> = x_minus.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-                let e_p = crate::xtb::solver::solve_xtb(elements, &pos_p)?.total_energy * 23.0605;
-                let e_m = crate::xtb::solver::solve_xtb(elements, &pos_m)?.total_energy * 23.0605;
-                grad[i] = (e_p - e_m) / (2.0 * step);
+            let grad_result = crate::xtb::gradients::compute_xtb_gradient(elements, &positions)?;
+            let energy_kcal = grad_result.energy * 23.0605;
+            for (a, g) in grad_result.gradients.iter().enumerate() {
+                for d in 0..3 {
+                    grad[a * 3 + d] = g[d] * 23.0605;
+                }
             }
             Ok(energy_kcal)
         }

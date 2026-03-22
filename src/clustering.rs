@@ -39,6 +39,37 @@ pub fn compute_rmsd_matrix(conformers: &[Vec<f64>]) -> Vec<Vec<f64>> {
     matrix
 }
 
+/// Parallel all-pairs RMSD matrix using rayon.
+///
+/// The O(N²) pairs are computed in parallel since each Kabsch RMSD
+/// is independent. Results are collected and assembled into the
+/// symmetric matrix.
+#[cfg(feature = "parallel")]
+pub fn compute_rmsd_matrix_parallel(conformers: &[Vec<f64>]) -> Vec<Vec<f64>> {
+    use rayon::prelude::*;
+
+    let n = conformers.len();
+    let pairs: Vec<(usize, usize)> = (0..n)
+        .flat_map(|i| ((i + 1)..n).map(move |j| (i, j)))
+        .collect();
+
+    let results: Vec<(usize, usize, f64)> = pairs
+        .into_par_iter()
+        .map(|(i, j)| {
+            let rmsd = kabsch::compute_rmsd(&conformers[i], &conformers[j]);
+            (i, j, rmsd)
+        })
+        .collect();
+
+    let mut matrix = vec![vec![0.0f64; n]; n];
+    for (i, j, rmsd) in results {
+        matrix[i][j] = rmsd;
+        matrix[j][i] = rmsd;
+    }
+
+    matrix
+}
+
 /// Perform Butina (Taylor-Butina) clustering on a set of conformers.
 ///
 /// Algorithm:
@@ -76,7 +107,10 @@ pub fn butina_cluster(conformers: &[Vec<f64>], rmsd_cutoff: f64) -> ClusterResul
         };
     }
 
-    // 1. Compute RMSD matrix
+    // 1. Compute RMSD matrix (auto-dispatch to parallel when available)
+    #[cfg(feature = "parallel")]
+    let rmsd_matrix = compute_rmsd_matrix_parallel(conformers);
+    #[cfg(not(feature = "parallel"))]
     let rmsd_matrix = compute_rmsd_matrix(conformers);
 
     // 2. Build neighbor lists
