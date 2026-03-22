@@ -1,6 +1,8 @@
 pub mod bounds;
 pub mod chirality;
 pub mod embedding;
+#[cfg(feature = "parallel")]
+pub mod parallel;
 pub mod validation;
 
 pub use bounds::{
