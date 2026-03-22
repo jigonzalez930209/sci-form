@@ -7,16 +7,18 @@ use std::f64::consts::PI;
 use nalgebra::DMatrix;
 
 use super::basis::{BasisFunction, BasisSet};
-use super::gaussian_integrals::{
-    boys_function, distance_squared, gaussian_product_center,
-};
+use super::gaussian_integrals::{boys_function, distance_squared, gaussian_product_center};
 
 /// Build the nuclear attraction matrix V for all nuclei.
-pub fn build_nuclear_matrix(basis: &BasisSet, elements: &[u8], positions_bohr: &[[f64; 3]]) -> DMatrix<f64> {
+pub fn build_nuclear_matrix(
+    basis: &BasisSet,
+    elements: &[u8],
+    positions_bohr: &[[f64; 3]],
+) -> DMatrix<f64> {
     let n = basis.n_basis;
     let mut v = DMatrix::zeros(n, n);
 
-    for (_atom_idx, (&z, &rc)) in elements.iter().zip(positions_bohr.iter()).enumerate() {
+    for (&z, &rc) in elements.iter().zip(positions_bohr.iter()) {
         let z_eff = z as f64;
 
         for i in 0..n {
@@ -49,18 +51,29 @@ fn contracted_nuclear_attraction(
 
     for prim_a in &bf_a.primitives {
         let norm_a = BasisFunction::normalization(
-            prim_a.alpha, bf_a.angular[0], bf_a.angular[1], bf_a.angular[2],
+            prim_a.alpha,
+            bf_a.angular[0],
+            bf_a.angular[1],
+            bf_a.angular[2],
         );
 
         for prim_b in &bf_b.primitives {
             let norm_b = BasisFunction::normalization(
-                prim_b.alpha, bf_b.angular[0], bf_b.angular[1], bf_b.angular[2],
+                prim_b.alpha,
+                bf_b.angular[0],
+                bf_b.angular[1],
+                bf_b.angular[2],
             );
 
             let v_prim = nuclear_attraction_primitive(
-                prim_a.alpha, &bf_a.center, bf_a.angular,
-                prim_b.alpha, &bf_b.center, bf_b.angular,
-                z, rc,
+                prim_a.alpha,
+                &bf_a.center,
+                bf_a.angular,
+                prim_b.alpha,
+                &bf_b.center,
+                bf_b.angular,
+                z,
+                rc,
             );
 
             v += norm_a * prim_a.coefficient * norm_b * prim_b.coefficient * v_prim;
@@ -207,7 +220,9 @@ mod tests {
             for j in 0..basis.n_basis {
                 assert!(
                     (v[(i, j)] - v[(j, i)]).abs() < 1e-12,
-                    "V not symmetric at ({}, {})", i, j
+                    "V not symmetric at ({}, {})",
+                    i,
+                    j
                 );
             }
         }

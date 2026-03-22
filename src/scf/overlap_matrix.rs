@@ -31,17 +31,27 @@ fn contracted_overlap(bf_a: &BasisFunction, bf_b: &BasisFunction) -> f64 {
 
     for prim_a in &bf_a.primitives {
         let norm_a = BasisFunction::normalization(
-            prim_a.alpha, bf_a.angular[0], bf_a.angular[1], bf_a.angular[2],
+            prim_a.alpha,
+            bf_a.angular[0],
+            bf_a.angular[1],
+            bf_a.angular[2],
         );
 
         for prim_b in &bf_b.primitives {
             let norm_b = BasisFunction::normalization(
-                prim_b.alpha, bf_b.angular[0], bf_b.angular[1], bf_b.angular[2],
+                prim_b.alpha,
+                bf_b.angular[0],
+                bf_b.angular[1],
+                bf_b.angular[2],
             );
 
             let s_prim = overlap_primitive(
-                prim_a.alpha, &bf_a.center, bf_a.angular,
-                prim_b.alpha, &bf_b.center, bf_b.angular,
+                prim_a.alpha,
+                &bf_a.center,
+                bf_a.angular,
+                prim_b.alpha,
+                &bf_b.center,
+                bf_b.angular,
             );
 
             s += norm_a * prim_a.coefficient * norm_b * prim_b.coefficient * s_prim;
@@ -61,7 +71,12 @@ mod tests {
         let s = build_overlap_matrix(&basis);
 
         for i in 0..basis.n_basis {
-            assert!(s[(i, i)] > 0.0, "S[{0},{0}] = {1} should be > 0", i, s[(i, i)]);
+            assert!(
+                s[(i, i)] > 0.0,
+                "S[{0},{0}] = {1} should be > 0",
+                i,
+                s[(i, i)]
+            );
         }
     }
 
@@ -77,7 +92,9 @@ mod tests {
             for j in 0..basis.n_basis {
                 assert!(
                     (s[(i, j)] - s[(j, i)]).abs() < 1e-14,
-                    "S not symmetric at ({}, {})", i, j
+                    "S not symmetric at ({}, {})",
+                    i,
+                    j
                 );
             }
         }

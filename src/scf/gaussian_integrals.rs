@@ -62,8 +62,7 @@ pub fn overlap_1d(la: u32, lb: u32, pa_x: f64, pb_x: f64, p: f64, prefactor: f64
         table[1][0] = pa_x * table[0][0];
     }
     for a in 2..max_a {
-        table[a][0] = pa_x * table[a - 1][0]
-            + (a - 1) as f64 / (2.0 * p) * table[a - 2][0];
+        table[a][0] = pa_x * table[a - 1][0] + (a - 1) as f64 / (2.0 * p) * table[a - 2][0];
     }
 
     for b in 1..max_b {
@@ -135,7 +134,11 @@ pub fn boys_function(n: u32, x: f64) -> f64 {
 
     if x > 30.0 + n as f64 {
         // Asymptotic: F_n(x) ≈ (2n-1)!! / 2^(n+1) · √π / x^(n+1/2)
-        let df = if n == 0 { 1.0 } else { double_factorial_f64(2 * n - 1) };
+        let df = if n == 0 {
+            1.0
+        } else {
+            double_factorial_f64(2 * n - 1)
+        };
         return df * PI.sqrt() / (2.0f64.powi(n as i32 + 1) * x.powi(n as i32) * x.sqrt());
     }
 
@@ -192,8 +195,12 @@ mod tests {
     #[test]
     fn test_overlap_primitive_ss() {
         let s = overlap_primitive(
-            1.0, &[0.0, 0.0, 0.0], [0, 0, 0],
-            1.0, &[0.0, 0.0, 0.0], [0, 0, 0],
+            1.0,
+            &[0.0, 0.0, 0.0],
+            [0, 0, 0],
+            1.0,
+            &[0.0, 0.0, 0.0],
+            [0, 0, 0],
         );
         let expected = (PI / 2.0).powf(1.5);
         assert!((s - expected).abs() < 1e-10);

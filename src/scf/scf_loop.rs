@@ -10,15 +10,17 @@
 
 use nalgebra::DMatrix;
 
-use super::constants::{DIIS_SUBSPACE_SIZE, HARTREE_TO_EV, SCF_DENSITY_THRESHOLD, SCF_ENERGY_THRESHOLD, SCF_MAX_ITER};
+use super::basis::BasisSet;
+use super::constants::{
+    DIIS_SUBSPACE_SIZE, HARTREE_TO_EV, SCF_DENSITY_THRESHOLD, SCF_ENERGY_THRESHOLD, SCF_MAX_ITER,
+};
+use super::core_matrices::{nuclear_repulsion_energy, CoreMatrices};
 use super::density_matrix::{build_density_matrix, density_rms_change};
 use super::diis::DiisAccelerator;
 use super::energy;
 use super::fock_matrix::build_fock_matrix;
 use super::mulliken::mulliken_analysis;
 use super::orthogonalization::{back_transform, lowdin_orthogonalization, transform_to_orthogonal};
-use super::basis::BasisSet;
-use super::core_matrices::{CoreMatrices, nuclear_repulsion_energy};
 use super::two_electron::TwoElectronIntegrals;
 use super::types::{MolecularSystem, ScfResult};
 
@@ -86,7 +88,14 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     // Two-electron integrals
     let use_parallel = config.use_parallel_eri && basis.n_basis >= config.parallel_threshold;
     let eris = if use_parallel {
-        TwoElectronIntegrals::compute_parallel(&basis)
+        #[cfg(feature = "parallel")]
+        {
+            TwoElectronIntegrals::compute_parallel(&basis)
+        }
+        #[cfg(not(feature = "parallel"))]
+        {
+            TwoElectronIntegrals::compute(&basis)
+        }
     } else {
         TwoElectronIntegrals::compute(&basis)
     };
@@ -180,7 +189,8 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
         let delta_e = (e_new - e_total).abs();
         let delta_p = density_rms_change(&p, &p_old);
 
-        if delta_e < config.energy_threshold && delta_p < config.density_threshold && iteration > 0 {
+        if delta_e < config.energy_threshold && delta_p < config.density_threshold && iteration > 0
+        {
             converged = true;
             e_total = e_new;
             break;
@@ -230,17 +240,14 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::constants::ANGSTROM_TO_BOHR;
+    use super::*;
 
     #[test]
     fn test_scf_h2() {
         let system = MolecularSystem {
             atomic_numbers: vec![1, 1],
-            positions_bohr: vec![
-                [0.0, 0.0, 0.0],
-                [0.74 * ANGSTROM_TO_BOHR, 0.0, 0.0],
-            ],
+            positions_bohr: vec![[0.0, 0.0, 0.0], [0.74 * ANGSTROM_TO_BOHR, 0.0, 0.0]],
             charge: 0,
             multiplicity: 1,
         };
@@ -257,10 +264,7 @@ mod tests {
     fn test_scf_converges() {
         let system = MolecularSystem {
             atomic_numbers: vec![1, 1],
-            positions_bohr: vec![
-                [0.0, 0.0, 0.0],
-                [1.4, 0.0, 0.0],
-            ],
+            positions_bohr: vec![[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]],
             charge: 0,
             multiplicity: 1,
         };

@@ -23,6 +23,7 @@ pub mod core_matrices;
 pub mod density_matrix;
 pub mod diis;
 pub mod energy;
+pub mod extended_basis;
 pub mod fock_matrix;
 pub mod gaussian_integrals;
 pub mod gradients;

@@ -33,17 +33,27 @@ fn contracted_kinetic(bf_a: &BasisFunction, bf_b: &BasisFunction) -> f64 {
 
     for prim_a in &bf_a.primitives {
         let norm_a = BasisFunction::normalization(
-            prim_a.alpha, bf_a.angular[0], bf_a.angular[1], bf_a.angular[2],
+            prim_a.alpha,
+            bf_a.angular[0],
+            bf_a.angular[1],
+            bf_a.angular[2],
         );
 
         for prim_b in &bf_b.primitives {
             let norm_b = BasisFunction::normalization(
-                prim_b.alpha, bf_b.angular[0], bf_b.angular[1], bf_b.angular[2],
+                prim_b.alpha,
+                bf_b.angular[0],
+                bf_b.angular[1],
+                bf_b.angular[2],
             );
 
             let t_prim = kinetic_integral_primitive(
-                prim_a.alpha, &bf_a.center, bf_a.angular,
-                prim_b.alpha, &bf_b.center, bf_b.angular,
+                prim_a.alpha,
+                &bf_a.center,
+                bf_a.angular,
+                prim_b.alpha,
+                &bf_b.center,
+                bf_b.angular,
             );
 
             t += norm_a * prim_a.coefficient * norm_b * prim_b.coefficient * t_prim;
@@ -83,7 +93,8 @@ fn kinetic_integral_primitive(
         if lb[d] >= 2 {
             let mut lb_minus = lb;
             lb_minus[d] -= 2;
-            term3 += lb[d] as f64 * (lb[d] - 1) as f64
+            term3 += lb[d] as f64
+                * (lb[d] - 1) as f64
                 * overlap_primitive(alpha, center_a, la, beta, center_b, lb_minus);
         }
     }
@@ -115,7 +126,9 @@ mod tests {
             for j in 0..basis.n_basis {
                 assert!(
                     (t[(i, j)] - t[(j, i)]).abs() < 1e-12,
-                    "T not symmetric at ({}, {})", i, j
+                    "T not symmetric at ({}, {})",
+                    i,
+                    j
                 );
             }
         }
