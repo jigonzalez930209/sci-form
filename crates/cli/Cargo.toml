@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-cli"
-version = "0.10.2"
+version = "0.10.3"
 edition = "2021"
 description = "CLI tool for high-performance 3D molecular conformer generation"
 license = "MIT"
@@ -29,7 +29,7 @@ experimental-cpm = ["sci-form/experimental-cpm"]
 experimental-gsm = ["sci-form/experimental-gsm"]
 
 [dependencies]
-sci-form = { path = "../..", version = "0.10.2", default-features = false }
+sci-form = { path = "../..", version = "0.10.3", default-features = false }
 clap = { version = "4", features = ["derive"] }
 rayon = "1.10"
 serde_json = "1.0"
