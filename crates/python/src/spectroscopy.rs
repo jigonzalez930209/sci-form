@@ -143,12 +143,13 @@ fn stda_uvvis(
 }
 
 #[pyfunction]
-#[pyo3(signature = (elements, coords, method="eht", step_size=None))]
+#[pyo3(signature = (elements, coords, method="eht", step_size=None, smiles=None))]
 fn vibrational_analysis(
     elements: Vec<u8>,
     coords: Vec<f64>,
     method: &str,
     step_size: Option<f64>,
+    smiles: Option<&str>,
 ) -> PyResult<VibrationalAnalysisPy> {
     if coords.len() != elements.len() * 3 {
         return Err(pyo3::exceptions::PyValueError::new_err(format!(
@@ -158,7 +159,17 @@ fn vibrational_analysis(
         )));
     }
     let positions = coords_to_positions(&coords);
-    sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
+    let analysis = if method.eq_ignore_ascii_case("uff") {
+        let smiles = smiles.ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err(
+                "UFF vibrational analysis requires smiles=...",
+            )
+        })?;
+        sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
+    } else {
+        sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
+    };
+    analysis
         .map(|r| VibrationalAnalysisPy {
             n_atoms: r.n_atoms,
             modes: r
@@ -180,7 +191,7 @@ fn vibrational_analysis(
 }
 
 #[pyfunction]
-#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, step_size=None))]
+#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, step_size=None, smiles=None))]
 fn ir_spectrum(
     elements: Vec<u8>,
     coords: Vec<f64>,
@@ -190,6 +201,7 @@ fn ir_spectrum(
     wn_max: f64,
     n_points: usize,
     step_size: Option<f64>,
+    smiles: Option<&str>,
 ) -> PyResult<IrSpectrumPy> {
     if coords.len() != elements.len() * 3 {
         return Err(pyo3::exceptions::PyValueError::new_err(format!(
@@ -199,9 +211,15 @@ fn ir_spectrum(
         )));
     }
     let positions = coords_to_positions(&coords);
-    let analysis =
+    let analysis = if method.eq_ignore_ascii_case("uff") {
+        let smiles = smiles.ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("UFF IR spectrum requires smiles=...")
+        })?;
+        sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
+    } else {
         sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    }
+    .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
     let spectrum = sci_form_core::compute_ir_spectrum(&analysis, gamma, wn_min, wn_max, n_points);
     Ok(IrSpectrumPy {
         wavenumbers: spectrum.wavenumbers,
