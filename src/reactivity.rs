@@ -437,29 +437,14 @@ pub fn compute_stda_uvvis_spectrum(
     n_points: usize,
     broadening: BroadeningType,
 ) -> Result<StdaUvVisSpectrum, String> {
-    // Use xTB if available, fall back to EHT
-    let (orbital_energies, coefficients, n_electrons, n_basis) =
-        if crate::xtb::is_xtb_supported(elements[0])
-            && elements.iter().all(|&z| crate::xtb::is_xtb_supported(z))
-        {
-            let _xtb = crate::xtb::solve_xtb(elements, positions)?;
-            // xTB doesn't expose coefficients directly, so we use EHT for MO coefficients
-            let eht = crate::eht::solve_eht(elements, positions, None)?;
-            (
-                eht.energies.clone(),
-                eht.coefficients.clone(),
-                eht.n_electrons,
-                eht.energies.len(),
-            )
-        } else {
-            let eht = crate::eht::solve_eht(elements, positions, None)?;
-            (
-                eht.energies.clone(),
-                eht.coefficients.clone(),
-                eht.n_electrons,
-                eht.energies.len(),
-            )
-        };
+    // Keep energies and coefficients on the same electronic-structure model.
+    // Mixing xTB orbital energies with EHT MO coefficients produces inconsistent transition energies.
+    let eht = crate::eht::solve_eht(elements, positions, None)?;
+    let basis = crate::eht::basis::build_basis(elements, positions);
+    let orbital_energies = eht.energies.clone();
+    let coefficients = eht.coefficients.clone();
+    let n_electrons = eht.n_electrons;
+    let n_basis = orbital_energies.len();
 
     let n_occ = n_electrons / 2;
     let n_virt = n_basis.saturating_sub(n_occ);
@@ -492,7 +477,7 @@ pub fn compute_stda_uvvis_spectrum(
             }
 
             // Transition dipole moment: μ_if = Σ_μ c_μi * c_μf * <μ|r|μ>
-            // Simplified: sum over AO products weighted by AO position
+            // One-center approximation: weight each AO pair by its AO center.
             let mut tdm = [0.0f64; 3];
             for mu in 0..n_ao {
                 let c_occ = coefficients[mu][occ];
@@ -501,13 +486,11 @@ pub fn compute_stda_uvvis_spectrum(
                 if product.abs() < 1e-12 {
                     continue;
                 }
-                // Use atom center as position for this AO
-                // This is the one-center approximation for μ
-                // For multi-center we'd need the AO position, approximate with atom index
-                // We'll use a simplified approach: coefficient overlap as proxy
-                tdm[0] += product;
-                tdm[1] += product;
-                tdm[2] += product;
+                if let Some(ao) = basis.get(mu) {
+                    tdm[0] += product * ao.center[0];
+                    tdm[1] += product * ao.center[1];
+                    tdm[2] += product * ao.center[2];
+                }
             }
 
             let tdm_mag = (tdm[0] * tdm[0] + tdm[1] * tdm[1] + tdm[2] * tdm[2]).sqrt();
@@ -565,8 +548,8 @@ pub fn compute_stda_uvvis_spectrum(
         sigma,
         broadening,
         notes: vec![
-            format!("sTDA UV-Vis spectrum using EHT MO transitions with {} broadening (σ = {} eV).", broadening_name, sigma),
-            "Oscillator strengths derived from transition dipole moments in the one-center approximation.".to_string(),
+            format!("sTDA UV-Vis spectrum using internally consistent EHT MO transitions with {} broadening (σ = {} eV).", broadening_name, sigma),
+            "Oscillator strengths derive from AO-center transition dipoles in a one-center approximation; deep-UV bands are more reliable than visible-edge intensities.".to_string(),
             "Molar absorptivity (ε) values are semi-quantitative; use for trend analysis and peak identification.".to_string(),
         ],
     })

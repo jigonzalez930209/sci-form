@@ -1421,6 +1421,25 @@ pub fn predict_nmr_couplings(
     Ok(nmr::predict_j_couplings(&mol, positions))
 }
 
+fn parse_nmr_nucleus(nucleus: &str) -> Result<nmr::NmrNucleus, String> {
+    match nucleus {
+        "1H" | "H1" | "h1" | "1h" | "proton" => Ok(nmr::NmrNucleus::H1),
+        "13C" | "C13" | "c13" | "13c" | "carbon" => Ok(nmr::NmrNucleus::C13),
+        "19F" | "F19" | "f19" | "19f" | "fluorine" => Ok(nmr::NmrNucleus::F19),
+        "31P" | "P31" | "p31" | "31p" | "phosphorus" => Ok(nmr::NmrNucleus::P31),
+        "15N" | "N15" | "n15" | "15n" | "nitrogen" => Ok(nmr::NmrNucleus::N15),
+        "11B" | "B11" | "b11" | "11b" | "boron" => Ok(nmr::NmrNucleus::B11),
+        "29Si" | "Si29" | "si29" | "29si" | "silicon" => Ok(nmr::NmrNucleus::Si29),
+        "77Se" | "Se77" | "se77" | "77se" | "selenium" => Ok(nmr::NmrNucleus::Se77),
+        "17O" | "O17" | "o17" | "17o" | "oxygen" => Ok(nmr::NmrNucleus::O17),
+        "33S" | "S33" | "s33" | "33s" | "sulfur" => Ok(nmr::NmrNucleus::S33),
+        _ => Err(format!(
+            "Unknown nucleus '{}'. Supported: 1H, 13C, 19F, 31P, 15N, 11B, 29Si, 77Se, 17O, 33S",
+            nucleus
+        )),
+    }
+}
+
 /// Generate a complete NMR spectrum from SMILES.
 ///
 /// `nucleus`: "1H" or "13C"
@@ -1435,27 +1454,24 @@ pub fn compute_nmr_spectrum(
     ppm_max: f64,
     n_points: usize,
 ) -> Result<nmr::NmrSpectrum, String> {
+    compute_nmr_spectrum_with_coords(smiles, &[], nucleus, gamma, ppm_min, ppm_max, n_points)
+}
+
+/// Generate a complete NMR spectrum from SMILES and optional 3D coordinates.
+/// When coordinates are provided, vicinal ³J couplings use the Karplus equation.
+pub fn compute_nmr_spectrum_with_coords(
+    smiles: &str,
+    positions: &[[f64; 3]],
+    nucleus: &str,
+    gamma: f64,
+    ppm_min: f64,
+    ppm_max: f64,
+    n_points: usize,
+) -> Result<nmr::NmrSpectrum, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let shifts = nmr::predict_chemical_shifts(&mol);
-    let couplings = nmr::predict_j_couplings(&mol, &[]);
-    let nuc = match nucleus {
-        "1H" | "H1" | "h1" | "1h" | "proton" => nmr::NmrNucleus::H1,
-        "13C" | "C13" | "c13" | "13c" | "carbon" => nmr::NmrNucleus::C13,
-        "19F" | "F19" | "f19" | "19f" | "fluorine" => nmr::NmrNucleus::F19,
-        "31P" | "P31" | "p31" | "31p" | "phosphorus" => nmr::NmrNucleus::P31,
-        "15N" | "N15" | "n15" | "15n" | "nitrogen" => nmr::NmrNucleus::N15,
-        "11B" | "B11" | "b11" | "11b" | "boron" => nmr::NmrNucleus::B11,
-        "29Si" | "Si29" | "si29" | "29si" | "silicon" => nmr::NmrNucleus::Si29,
-        "77Se" | "Se77" | "se77" | "77se" | "selenium" => nmr::NmrNucleus::Se77,
-        "17O" | "O17" | "o17" | "17o" | "oxygen" => nmr::NmrNucleus::O17,
-        "33S" | "S33" | "s33" | "33s" | "sulfur" => nmr::NmrNucleus::S33,
-        _ => {
-            return Err(format!(
-            "Unknown nucleus '{}'. Supported: 1H, 13C, 19F, 31P, 15N, 11B, 29Si, 77Se, 17O, 33S",
-            nucleus
-        ))
-        }
-    };
+    let couplings = nmr::predict_j_couplings(&mol, positions);
+    let nuc = parse_nmr_nucleus(nucleus)?;
     Ok(nmr::compute_nmr_spectrum(
         &shifts, &couplings, nuc, gamma, ppm_min, ppm_max, n_points,
     ))
