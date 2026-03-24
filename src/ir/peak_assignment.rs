@@ -237,6 +237,13 @@ const GROUP_FREQUENCIES: &[GroupFrequency] = &[
         intensity: "medium",
         vibration_type: "bend",
     },
+    GroupFrequency {
+        group: "H-O-H bend",
+        freq_min: 1590.0,
+        freq_max: 1665.0,
+        intensity: "strong",
+        vibration_type: "bend",
+    },
     // Single bond stretches
     GroupFrequency {
         group: "C-O (alcohol)",
@@ -316,6 +323,91 @@ const GROUP_FREQUENCIES: &[GroupFrequency] = &[
         intensity: "strong",
         vibration_type: "stretch",
     },
+    // Metal-ligand and coordination bands
+    GroupFrequency {
+        group: "M-H",
+        freq_min: 1600.0,
+        freq_max: 2100.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-CO (bridging carbonyl)",
+        freq_min: 1750.0,
+        freq_max: 1850.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-CO (terminal carbonyl)",
+        freq_min: 1850.0,
+        freq_max: 2120.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M=O (terminal oxo)",
+        freq_min: 850.0,
+        freq_max: 1030.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-C",
+        freq_min: 400.0,
+        freq_max: 650.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-N",
+        freq_min: 400.0,
+        freq_max: 650.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-O",
+        freq_min: 350.0,
+        freq_max: 700.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-P",
+        freq_min: 350.0,
+        freq_max: 500.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-S",
+        freq_min: 250.0,
+        freq_max: 500.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-Cl",
+        freq_min: 250.0,
+        freq_max: 400.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-Br",
+        freq_min: 180.0,
+        freq_max: 320.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "M-I",
+        freq_min: 150.0,
+        freq_max: 260.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
 ];
 
 /// Assign peaks from vibrational analysis to functional groups.
@@ -323,14 +415,14 @@ pub fn assign_peaks(
     frequencies: &[f64],
     intensities: &[f64],
     elements: &[u8],
-    _mode_displacements: Option<&[Vec<[f64; 3]>]>,
+    mode_displacements: Option<&[Vec<[f64; 3]>]>,
 ) -> AssignmentResult {
     let mut assignments = Vec::new();
     let mut found_groups = std::collections::BTreeSet::new();
 
     for (i, &freq) in frequencies.iter().enumerate() {
-        if freq < 400.0 {
-            continue; // Skip very low frequencies
+        if freq < 150.0 {
+            continue; // Skip lattice-like modes below the useful far-IR window
         }
 
         let intensity = if i < intensities.len() {
@@ -344,7 +436,12 @@ pub fn assign_peaks(
         for gf in GROUP_FREQUENCIES {
             if freq >= gf.freq_min && freq <= gf.freq_max {
                 // Check if the molecule contains elements consistent with this group
-                if group_is_possible(gf.group, elements) {
+                let mode_matches = mode_displacements
+                    .and_then(|all_modes| all_modes.get(i))
+                    .map(|mode| group_matches_mode(gf.group, elements, mode))
+                    .unwrap_or(true);
+
+                if group_is_possible(gf.group, elements) && mode_matches {
                     let center = (gf.freq_min + gf.freq_max) / 2.0;
                     let range = gf.freq_max - gf.freq_min;
                     let match_quality = 1.0 - (freq - center).abs() / (range / 2.0 + 1.0);
@@ -380,9 +477,161 @@ pub fn assign_peaks(
     }
 }
 
+fn dominant_mode_elements(elements: &[u8], mode_displacement: &[[f64; 3]]) -> std::collections::BTreeSet<u8> {
+    let amplitudes: Vec<f64> = mode_displacement
+        .iter()
+        .map(|vector| (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt())
+        .collect();
+    let max_amplitude = amplitudes.iter().copied().fold(0.0_f64, f64::max);
+    if max_amplitude <= 1e-8 {
+        return std::collections::BTreeSet::new();
+    }
+
+    amplitudes
+        .iter()
+        .enumerate()
+        .filter(|(_, amplitude)| **amplitude >= max_amplitude * 0.35)
+        .filter_map(|(index, _)| elements.get(index).copied())
+        .collect()
+}
+
+fn group_matches_mode(group: &str, elements: &[u8], mode_displacement: &[[f64; 3]]) -> bool {
+    let dominant = dominant_mode_elements(elements, mode_displacement);
+    if dominant.is_empty() {
+        return true;
+    }
+
+    let has = |z: u8| dominant.contains(&z);
+    let has_metal = dominant.iter().copied().any(is_metal_atomic_number);
+
+    if group.starts_with("M-") || group.starts_with("M=") {
+        if !has_metal {
+            return false;
+        }
+        if group.contains("-H") {
+            return has(1);
+        }
+        if group.contains("-CO") {
+            return has(6) && has(8);
+        }
+        if group.contains("=O") || group.contains("-O") {
+            return has(8);
+        }
+        if group.contains("-N") {
+            return has(7);
+        }
+        if group.contains("-S") {
+            return has(16);
+        }
+        if group.contains("-P") {
+            return has(15);
+        }
+        if group.contains("-Cl") {
+            return has(17);
+        }
+        if group.contains("-Br") {
+            return has(35);
+        }
+        if group.contains("-I") {
+            return has(53);
+        }
+        if group == "M-C" {
+            return has(6);
+        }
+        return true;
+    }
+
+    if group.contains("O-H") || group == "H-O-H bend" {
+        return has(8) && has(1);
+    }
+    if group.contains("N-H") {
+        return has(7) && has(1);
+    }
+    if group.contains("C-H") {
+        return has(6) && has(1);
+    }
+    if group.contains("C=O") {
+        return has(6) && has(8);
+    }
+    if group.contains("C-O") {
+        return has(6) && has(8);
+    }
+    if group.contains("C-N") || group.contains("C=N") {
+        return has(6) && has(7);
+    }
+    if group.contains("C≡N") {
+        return has(6) && has(7);
+    }
+    if group.contains("C≡C") || group.contains("C=C") {
+        return has(6);
+    }
+    if group.contains("S=O") {
+        return has(16) && has(8);
+    }
+    if group.contains("P=O") {
+        return has(15) && has(8);
+    }
+    if group.contains("P-O-C") {
+        return has(15) && has(8) && has(6);
+    }
+    if group.contains("C-F") {
+        return has(6) && has(9);
+    }
+    if group.contains("C-Cl") {
+        return has(6) && has(17);
+    }
+    if group.contains("C-Br") {
+        return has(6) && has(35);
+    }
+    if group.contains("C-I") {
+        return has(6) && has(53);
+    }
+
+    true
+}
+
 /// Check if a functional group is possible given the elements present.
 fn group_is_possible(group: &str, elements: &[u8]) -> bool {
     let has = |z: u8| elements.contains(&z);
+    let has_metal = elements.iter().copied().any(is_metal_atomic_number);
+
+    if group.starts_with("M-") || group.starts_with("M=") {
+        if !has_metal {
+            return false;
+        }
+        if group.contains("-H") {
+            return has(1);
+        }
+        if group.contains("-CO") {
+            return has(6) && has(8);
+        }
+        if group.contains("=O") || group.contains("-O") {
+            return has(8);
+        }
+        if group.contains("-N") {
+            return has(7);
+        }
+        if group.contains("-S") {
+            return has(16);
+        }
+        if group.contains("-P") {
+            return has(15);
+        }
+        if group.contains("-Cl") {
+            return has(17);
+        }
+        if group.contains("-Br") {
+            return has(35);
+        }
+        if group.contains("-I") {
+            return has(53);
+        }
+        if group == "M-C" {
+            return has(6);
+        }
+
+        return true;
+    }
 
     if group.contains("O-H") || group.contains("C-O") || group.contains("C=O") {
         return has(8); // Oxygen
@@ -420,6 +669,10 @@ fn group_is_possible(group: &str, elements: &[u8]) -> bool {
     true // Default: possible
 }
 
+fn is_metal_atomic_number(z: u8) -> bool {
+    matches!(z, 3 | 4 | 11 | 12 | 13 | 19 | 20 | 21..=31 | 37..=50 | 55..=84 | 87..=103)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -443,5 +696,27 @@ mod tests {
         assert!(group_is_possible("O-H (free)", &[6, 8, 1]));
         assert!(!group_is_possible("C-Cl", &[6, 8, 1]));
         assert!(group_is_possible("C-H (sp3)", &[6, 1]));
+    }
+
+    #[test]
+    fn test_peak_assignment_metal_ligand_bands() {
+        let freqs = vec![295.0, 520.0, 1985.0];
+        let intensities = vec![0.4, 0.7, 1.0];
+        let elements = vec![26u8, 17, 8, 6];
+
+        let result = assign_peaks(&freqs, &intensities, &elements, None);
+
+        assert!(result.assignments[0]
+            .assignments
+            .iter()
+            .any(|a| a.group == "M-Cl"));
+        assert!(result.assignments[1]
+            .assignments
+            .iter()
+            .any(|a| a.group == "M-O"));
+        assert!(result.assignments[2]
+            .assignments
+            .iter()
+            .any(|a| a.group == "M-CO (terminal carbonyl)"));
     }
 }

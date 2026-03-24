@@ -60,6 +60,9 @@ pub struct VibrationalMode {
 pub struct VibrationalAnalysis {
     /// Number of atoms.
     pub n_atoms: usize,
+    /// Atomic numbers carried through to improve downstream peak assignment.
+    #[serde(default)]
+    pub elements: Vec<u8>,
     /// All vibrational modes sorted by frequency.
     pub modes: Vec<VibrationalMode>,
     /// Number of real vibrational modes (excluding translation/rotation).
@@ -122,6 +125,7 @@ pub struct IrSpectrum {
 // Constants for unit conversion
 // 1 eV = 8065.544 cm⁻¹
 const EV_TO_CM1: f64 = 8065.544;
+const KCAL_MOL_PER_EV: f64 = 23.0605;
 // 1 amu = 1.66054e-27 kg, 1 eV = 1.60218e-19 J, 1 Å = 1e-10 m
 // Hessian in eV/Å², mass in amu → frequency in cm⁻¹:
 // ω² = H/(m) in eV/(amu·Å²) → convert to s⁻²:
@@ -130,11 +134,265 @@ const EV_TO_CM1: f64 = 8065.544;
 const HESSIAN_TO_FREQUENCY_FACTOR: f64 = 9.6485e27; // eV/(amu·Å²) → s⁻²
 const INV_2PI_C: f64 = 1.0 / (2.0 * std::f64::consts::PI * 2.99792458e10); // 1/(2πc) in s/cm
 
+fn hessian_frequency_factor(method: HessianMethod) -> f64 {
+    match method {
+        HessianMethod::Uff => HESSIAN_TO_FREQUENCY_FACTOR / KCAL_MOL_PER_EV,
+        _ => HESSIAN_TO_FREQUENCY_FACTOR,
+    }
+}
+
+fn push_orthonormal_basis_vector(basis: &mut Vec<Vec<f64>>, mut candidate: Vec<f64>) {
+    for existing in basis.iter() {
+        let dot = candidate
+            .iter()
+            .zip(existing.iter())
+            .map(|(left, right)| left * right)
+            .sum::<f64>();
+
+        for (value, existing_value) in candidate.iter_mut().zip(existing.iter()) {
+            *value -= dot * existing_value;
+        }
+    }
+
+    let norm = candidate.iter().map(|value| value * value).sum::<f64>().sqrt();
+    if norm <= 1e-8 {
+        return;
+    }
+
+    for value in &mut candidate {
+        *value /= norm;
+    }
+
+    basis.push(candidate);
+}
+
+fn build_rigid_body_basis(masses: &[f64], positions: &[[f64; 3]]) -> DMatrix<f64> {
+    let n_atoms = positions.len();
+    let n3 = 3 * n_atoms;
+
+    let total_mass = masses.iter().sum::<f64>().max(1e-12);
+    let mut center_of_mass = [0.0; 3];
+    for (mass, position) in masses.iter().zip(positions.iter()) {
+        for axis in 0..3 {
+            center_of_mass[axis] += mass * position[axis];
+        }
+    }
+    for axis in 0..3 {
+        center_of_mass[axis] /= total_mass;
+    }
+
+    let centered_positions: Vec<[f64; 3]> = positions
+        .iter()
+        .map(|position| {
+            [
+                position[0] - center_of_mass[0],
+                position[1] - center_of_mass[1],
+                position[2] - center_of_mass[2],
+            ]
+        })
+        .collect();
+
+    let mut basis_vectors = Vec::with_capacity(6);
+
+    for axis in 0..3 {
+        let mut translation = vec![0.0; n3];
+        for (atom_index, mass) in masses.iter().enumerate() {
+            translation[3 * atom_index + axis] = mass.sqrt();
+        }
+        push_orthonormal_basis_vector(&mut basis_vectors, translation);
+    }
+
+    for axis in 0..3 {
+        let mut rotation = vec![0.0; n3];
+        for (atom_index, (mass, position)) in masses.iter().zip(centered_positions.iter()).enumerate() {
+            let scaled = mass.sqrt();
+            let components = match axis {
+                0 => [0.0, -position[2], position[1]],
+                1 => [position[2], 0.0, -position[0]],
+                _ => [-position[1], position[0], 0.0],
+            };
+
+            for component in 0..3 {
+                rotation[3 * atom_index + component] = scaled * components[component];
+            }
+        }
+        push_orthonormal_basis_vector(&mut basis_vectors, rotation);
+    }
+
+    let mut basis = DMatrix::zeros(n3, basis_vectors.len());
+    for (column, vector) in basis_vectors.iter().enumerate() {
+        for (row, value) in vector.iter().enumerate() {
+            basis[(row, column)] = *value;
+        }
+    }
+
+    basis
+}
+
+fn project_rigid_body_modes(mw_hessian: &DMatrix<f64>, rigid_basis: &DMatrix<f64>) -> DMatrix<f64> {
+    if rigid_basis.ncols() == 0 {
+        return mw_hessian.clone();
+    }
+
+    let n = mw_hessian.nrows();
+    let projector = DMatrix::<f64>::identity(n, n) - rigid_basis * rigid_basis.transpose();
+    let mut projected = &projector * mw_hessian * &projector;
+
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let average = 0.5 * (projected[(i, j)] + projected[(j, i)]);
+            projected[(i, j)] = average;
+            projected[(j, i)] = average;
+        }
+    }
+
+    projected
+}
+
+fn rigid_body_overlap(displacement: &[f64], rigid_basis: &DMatrix<f64>) -> f64 {
+    if rigid_basis.ncols() == 0 {
+        return 0.0;
+    }
+
+    let mut overlap = 0.0;
+    for column in 0..rigid_basis.ncols() {
+        let mut dot = 0.0;
+        for row in 0..displacement.len() {
+            dot += displacement[row] * rigid_basis[(row, column)];
+        }
+        overlap += dot * dot;
+    }
+
+    overlap.clamp(0.0, 1.0)
+}
+
+fn relax_uff_geometry(smiles: &str, positions: &[[f64; 3]]) -> Result<Vec<[f64; 3]>, String> {
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    if mol.graph.node_count() != positions.len() {
+        return Err("SMILES atom count does not match coordinates for UFF relaxation".to_string());
+    }
+
+    let ff = crate::forcefield::builder::build_uff_force_field(&mol);
+    let mut coords: Vec<f64> = positions.iter().flat_map(|position| position.iter().copied()).collect();
+    let mut gradient = vec![0.0; coords.len()];
+    let mut energy = ff.compute_system_energy_and_gradients(&coords, &mut gradient);
+
+    for _ in 0..64 {
+        let grad_norm = gradient.iter().map(|value| value * value).sum::<f64>().sqrt();
+        if grad_norm < 1e-4 {
+            break;
+        }
+
+        let max_component = gradient.iter().map(|value| value.abs()).fold(0.0_f64, f64::max);
+        let gradient_scale = if max_component > 10.0 {
+            10.0 / max_component
+        } else {
+            1.0
+        };
+
+        let mut step = 0.02;
+        let mut improved = false;
+
+        while step >= 1e-6 {
+            let trial_coords: Vec<f64> = coords
+                .iter()
+                .zip(gradient.iter())
+                .map(|(coord, grad)| coord - step * gradient_scale * grad)
+                .collect();
+            let mut trial_gradient = vec![0.0; coords.len()];
+            let trial_energy = ff.compute_system_energy_and_gradients(&trial_coords, &mut trial_gradient);
+
+            if trial_energy < energy {
+                coords = trial_coords;
+                gradient = trial_gradient;
+                energy = trial_energy;
+                improved = true;
+                break;
+            }
+
+            step *= 0.5;
+        }
+
+        if !improved {
+            break;
+        }
+    }
+
+    Ok(coords.chunks(3).map(|chunk| [chunk[0], chunk[1], chunk[2]]).collect())
+}
+
+fn compute_uff_numerical_hessian(
+    smiles: &str,
+    coords_flat: &[f64],
+    delta: f64,
+) -> Result<DMatrix<f64>, String> {
+    let n3 = coords_flat.len();
+    let e0 = crate::compute_uff_energy(smiles, coords_flat)?;
+    let delta_sq = delta * delta;
+    let mut hessian = DMatrix::zeros(n3, n3);
+
+    for i in 0..n3 {
+        let mut coords_plus = coords_flat.to_vec();
+        let mut coords_minus = coords_flat.to_vec();
+        coords_plus[i] += delta;
+        coords_minus[i] -= delta;
+
+        let e_plus = crate::compute_uff_energy(smiles, &coords_plus)?;
+        let e_minus = crate::compute_uff_energy(smiles, &coords_minus)?;
+        hessian[(i, i)] = (e_plus - 2.0 * e0 + e_minus) / delta_sq;
+    }
+
+    for i in 0..n3 {
+        for j in (i + 1)..n3 {
+            let mut coords_pp = coords_flat.to_vec();
+            let mut coords_pm = coords_flat.to_vec();
+            let mut coords_mp = coords_flat.to_vec();
+            let mut coords_mm = coords_flat.to_vec();
+
+            coords_pp[i] += delta;
+            coords_pp[j] += delta;
+            coords_pm[i] += delta;
+            coords_pm[j] -= delta;
+            coords_mp[i] -= delta;
+            coords_mp[j] += delta;
+            coords_mm[i] -= delta;
+            coords_mm[j] -= delta;
+
+            let e_pp = crate::compute_uff_energy(smiles, &coords_pp)?;
+            let e_pm = crate::compute_uff_energy(smiles, &coords_pm)?;
+            let e_mp = crate::compute_uff_energy(smiles, &coords_mp)?;
+            let e_mm = crate::compute_uff_energy(smiles, &coords_mm)?;
+
+            let value = (e_pp - e_pm - e_mp + e_mm) / (4.0 * delta_sq);
+            hessian[(i, j)] = value;
+            hessian[(j, i)] = value;
+        }
+    }
+
+    for i in 0..n3 {
+        for j in (i + 1)..n3 {
+            let average = 0.5 * (hessian[(i, j)] + hessian[(j, i)]);
+            hessian[(i, j)] = average;
+            hessian[(j, i)] = average;
+        }
+    }
+
+    Ok(hessian)
+}
+
+fn has_significant_imaginary_vibrational_mode(analysis: &VibrationalAnalysis) -> bool {
+    analysis
+        .modes
+        .iter()
+        .any(|mode| mode.is_real && mode.frequency_cm1 < -100.0)
+}
+
 /// Compute the molecular dipole for use in IR intensity calculation.
 fn compute_dipole_vector(
     elements: &[u8],
     positions: &[[f64; 3]],
     method: HessianMethod,
+    uff_charges: Option<&[f64]>,
 ) -> Result<[f64; 3], String> {
     match method {
         HessianMethod::Eht => {
@@ -160,8 +418,9 @@ fn compute_dipole_vector(
         }
         HessianMethod::Uff => {
             // UFF has no electronic structure; use Gasteiger charges as approximation
-            let n = elements.len();
-            let charges = vec![0.0; n]; // neutral approximation
+            let charges = uff_charges
+                .map(|values| values.to_vec())
+                .unwrap_or_else(|| vec![0.0; elements.len()]);
             let dipole = crate::dipole::compute_dipole(&charges, positions);
             Ok(dipole.vector)
         }
@@ -177,14 +436,15 @@ fn compute_ir_intensities(
     normal_modes: &DMatrix<f64>,
     method: HessianMethod,
     delta: f64,
+    uff_charges: Option<&[f64]>,
 ) -> Result<Vec<f64>, String> {
     #[cfg(feature = "parallel")]
     {
-        compute_ir_intensities_parallel(elements, positions, normal_modes, method, delta)
+        compute_ir_intensities_parallel(elements, positions, normal_modes, method, delta, uff_charges)
     }
     #[cfg(not(feature = "parallel"))]
     {
-        compute_ir_intensities_sequential(elements, positions, normal_modes, method, delta)
+        compute_ir_intensities_sequential(elements, positions, normal_modes, method, delta, uff_charges)
     }
 }
 
@@ -195,6 +455,7 @@ fn compute_ir_intensities_sequential(
     normal_modes: &DMatrix<f64>,
     method: HessianMethod,
     delta: f64,
+    uff_charges: Option<&[f64]>,
 ) -> Result<Vec<f64>, String> {
     let n_atoms = elements.len();
     let n_modes = normal_modes.ncols();
@@ -215,8 +476,8 @@ fn compute_ir_intensities_sequential(
             }
         }
 
-        let mu_plus = compute_dipole_vector(elements, &pos_plus, method)?;
-        let mu_minus = compute_dipole_vector(elements, &pos_minus, method)?;
+        let mu_plus = compute_dipole_vector(elements, &pos_plus, method, uff_charges)?;
+        let mu_minus = compute_dipole_vector(elements, &pos_minus, method, uff_charges)?;
 
         let dmu_dq: Vec<f64> = (0..3)
             .map(|c| (mu_plus[c] - mu_minus[c]) / (2.0 * delta))
@@ -238,6 +499,7 @@ fn compute_ir_intensities_parallel(
     normal_modes: &DMatrix<f64>,
     method: HessianMethod,
     delta: f64,
+    uff_charges: Option<&[f64]>,
 ) -> Result<Vec<f64>, String> {
     use rayon::prelude::*;
 
@@ -260,8 +522,8 @@ fn compute_ir_intensities_parallel(
                 }
             }
 
-            let mu_plus = compute_dipole_vector(elements, &pos_plus, method)?;
-            let mu_minus = compute_dipole_vector(elements, &pos_minus, method)?;
+            let mu_plus = compute_dipole_vector(elements, &pos_plus, method, uff_charges)?;
+            let mu_minus = compute_dipole_vector(elements, &pos_minus, method, uff_charges)?;
 
             let dmu_dq: Vec<f64> = (0..3)
                 .map(|c| (mu_plus[c] - mu_minus[c]) / (2.0 * delta))
@@ -303,6 +565,8 @@ fn assign_ir_peak(frequency_cm1: f64) -> String {
         "C≡N or C≡C stretch".to_string()
     } else if frequency_cm1 > 1680.0 && frequency_cm1 < 1800.0 {
         "C=O stretch".to_string()
+    } else if frequency_cm1 > 1550.0 && frequency_cm1 < 1680.0 {
+        "H-O-H bend / N-H bend".to_string()
     } else if frequency_cm1 > 1600.0 && frequency_cm1 < 1680.0 {
         "C=C stretch".to_string()
     } else if frequency_cm1 > 1400.0 && frequency_cm1 < 1600.0 {
@@ -411,7 +675,7 @@ pub fn compute_vibrational_analysis(
     }
 
     let hessian = compute_numerical_hessian(elements, positions, method, Some(delta))?;
-    build_vibrational_analysis_from_hessian(elements, positions, &hessian, method, delta)
+    build_vibrational_analysis_from_hessian(elements, positions, &hessian, method, delta, None)
 }
 
 /// Perform vibrational analysis using UFF analytical Hessian (gradient-difference method).
@@ -431,16 +695,42 @@ pub fn compute_vibrational_analysis_uff(
         return Err("Need at least 2 atoms for vibrational analysis".to_string());
     }
 
-    let coords_flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
+    let relaxed_positions = relax_uff_geometry(smiles, positions)?;
+    let coords_flat: Vec<f64> = relaxed_positions
+        .iter()
+        .flat_map(|position| position.iter().copied())
+        .collect();
     let hessian =
         super::hessian::compute_uff_analytical_hessian(smiles, &coords_flat, Some(delta))?;
-    build_vibrational_analysis_from_hessian(
+    let uff_charges = crate::compute_charges(smiles).ok().map(|result| result.charges);
+    let mut analysis = build_vibrational_analysis_from_hessian(
         elements,
-        positions,
+        &relaxed_positions,
         &hessian,
         HessianMethod::Uff,
         delta,
-    )
+        uff_charges.as_deref(),
+    )?;
+
+    if has_significant_imaginary_vibrational_mode(&analysis) {
+        let numerical_hessian = compute_uff_numerical_hessian(smiles, &coords_flat, delta)?;
+        analysis = build_vibrational_analysis_from_hessian(
+            elements,
+            &relaxed_positions,
+            &numerical_hessian,
+            HessianMethod::Uff,
+            delta,
+            uff_charges.as_deref(),
+        )?;
+        analysis.notes.push(
+            "UFF analytical Hessian retained significant imaginary vibrational modes, so the analysis fell back to a numerical energy Hessian for stability.".to_string(),
+        );
+    }
+
+    analysis
+        .notes
+        .push("UFF coordinates were pre-relaxed with an internal gradient descent before the Hessian was built.".to_string());
+    Ok(analysis)
 }
 
 /// Build vibrational analysis from a pre-computed Hessian matrix.
@@ -450,6 +740,7 @@ fn build_vibrational_analysis_from_hessian(
     hessian: &DMatrix<f64>,
     method: HessianMethod,
     delta: f64,
+    uff_charges: Option<&[f64]>,
 ) -> Result<VibrationalAnalysis, String> {
     let n_atoms = elements.len();
     let n3 = 3 * n_atoms;
@@ -465,8 +756,11 @@ fn build_vibrational_analysis_from_hessian(
         }
     }
 
+    let rigid_basis = build_rigid_body_basis(&masses, positions);
+    let projected_hessian = project_rigid_body_modes(&mw_hessian, &rigid_basis);
+
     // 3. Diagonalize mass-weighted Hessian
-    let eigen = mw_hessian.symmetric_eigen();
+    let eigen = projected_hessian.symmetric_eigen();
 
     // 4. Sort eigenvalues and eigenvectors by eigenvalue
     let mut indices: Vec<usize> = (0..n3).collect();
@@ -477,10 +771,7 @@ fn build_vibrational_analysis_from_hessian(
     });
 
     // 5. Convert eigenvalues to frequencies (cm⁻¹)
-    // For linear molecules: 5 zero modes, for nonlinear: 6
-    let is_linear = n_atoms == 2; // simplified check
-    let _n_tr = if is_linear { 5 } else { 6 };
-    let freq_threshold = 50.0; // cm⁻¹ threshold for "real" modes
+    let frequency_factor = hessian_frequency_factor(method);
 
     let mut sorted_eigenvalues = Vec::with_capacity(n3);
     let mut sorted_modes = DMatrix::zeros(n3, n3);
@@ -497,10 +788,10 @@ fn build_vibrational_analysis_from_hessian(
         .map(|&ev| {
             if ev >= 0.0 {
                 // ν = (1/2πc) * sqrt(eigenvalue * factor)
-                (ev * HESSIAN_TO_FREQUENCY_FACTOR).sqrt() * INV_2PI_C
+                (ev * frequency_factor).sqrt() * INV_2PI_C
             } else {
                 // Imaginary frequency (negative eigenvalue)
-                -((-ev) * HESSIAN_TO_FREQUENCY_FACTOR).sqrt() * INV_2PI_C
+                -((-ev) * frequency_factor).sqrt() * INV_2PI_C
             }
         })
         .collect();
@@ -512,6 +803,7 @@ fn build_vibrational_analysis_from_hessian(
         &sorted_modes,
         method,
         delta * 2.0, // slightly larger step for dipole derivatives
+        uff_charges,
     )?;
 
     // 7. Build mode list
@@ -521,14 +813,16 @@ fn build_vibrational_analysis_from_hessian(
 
     for k in 0..n3 {
         let freq = frequencies[k];
-        let is_real = freq.abs() > freq_threshold;
-        if is_real && freq > 0.0 {
-            n_real += 1;
-            // ZPVE contribution: (1/2)hν in eV
-            zpve += 0.5 * freq / EV_TO_CM1;
-        }
-
         let displacement: Vec<f64> = (0..n3).map(|i| sorted_modes[(i, k)]).collect();
+        let is_real = rigid_body_overlap(&displacement, &rigid_basis) < 0.5;
+
+        if is_real {
+            n_real += 1;
+            if freq > 0.0 {
+                // ZPVE contribution: (1/2)hν in eV
+                zpve += 0.5 * freq / EV_TO_CM1;
+            }
+        }
 
         modes.push(VibrationalMode {
             frequency_cm1: freq,
@@ -550,6 +844,7 @@ fn build_vibrational_analysis_from_hessian(
 
     Ok(VibrationalAnalysis {
         n_atoms,
+        elements: elements.to_vec(),
         modes,
         n_real_modes: n_real,
         zpve_ev: zpve,
@@ -560,9 +855,25 @@ fn build_vibrational_analysis_from_hessian(
                 "Numerical Hessian computed with {} using central finite differences (δ = {} Å).",
                 method_name, delta
             ),
-            "IR intensities derived from numerical dipole derivatives along normal coordinates."
-                .to_string(),
-            "Frequencies below 50 cm⁻¹ are classified as translation/rotation modes.".to_string(),
+            match method {
+                HessianMethod::Uff if uff_charges.is_some() => {
+                    "IR intensities derived from numerical dipole derivatives using a Gasteiger-charge dipole approximation.".to_string()
+                }
+                HessianMethod::Uff => {
+                    "IR intensities derived from a neutral-charge dipole approximation because Gasteiger charges were unavailable.".to_string()
+                }
+                _ => "IR intensities derived from numerical dipole derivatives along normal coordinates.".to_string(),
+            },
+            format!(
+                "Rigid-body translation/rotation modes were projected out before diagonalization ({} basis vectors removed).",
+                rigid_basis.ncols()
+            ),
+            match method {
+                HessianMethod::Uff => {
+                    "UFF Hessian values were converted from kcal/mol·Å⁻² to the shared frequency scale before computing cm⁻¹ bands.".to_string()
+                }
+                _ => "Semiempirical Hessian values were interpreted on the shared eV·Å⁻² frequency scale.".to_string(),
+            },
         ],
     })
 }
@@ -612,18 +923,76 @@ pub fn compute_ir_spectrum_with_broadening(
     let wavenumbers: Vec<f64> = (0..n_points).map(|i| wn_min + step * i as f64).collect();
     let mut intensities = vec![0.0; n_points];
 
+    let active_modes: Vec<(usize, &VibrationalMode)> = analysis
+        .modes
+        .iter()
+        .enumerate()
+        .filter(|(_, mode)| mode.is_real && mode.frequency_cm1 > 0.0)
+        .collect();
+    let active_frequencies: Vec<f64> = active_modes
+        .iter()
+        .map(|(_, mode)| mode.frequency_cm1)
+        .collect();
+    let active_mode_intensities: Vec<f64> = active_modes
+        .iter()
+        .map(|(_, mode)| mode.ir_intensity)
+        .collect();
+    let active_mode_displacements: Vec<Vec<[f64; 3]>> = active_modes
+        .iter()
+        .map(|(_, mode)| {
+            mode.displacement
+                .chunks(3)
+                .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+                .collect()
+        })
+        .collect();
+    let assigned_labels = if analysis.elements.is_empty() {
+        vec![None; active_modes.len()]
+    } else {
+        let assignment_result = super::peak_assignment::assign_peaks(
+            &active_frequencies,
+            &active_mode_intensities,
+            &analysis.elements,
+            Some(&active_mode_displacements),
+        );
+        let mut labels = vec![None; active_modes.len()];
+        let mut assigned_idx = 0usize;
+
+        for (mode_idx, frequency) in active_frequencies.iter().enumerate() {
+            if *frequency < 400.0 {
+                continue;
+            }
+            if let Some(assignment) = assignment_result.assignments.get(assigned_idx) {
+                if let Some(best) = assignment.assignments.iter().max_by(|left, right| {
+                    left.match_quality
+                        .partial_cmp(&right.match_quality)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }) {
+                    labels[mode_idx] = Some(if best.group.contains(&best.vibration_type) {
+                        best.group.clone()
+                    } else {
+                        format!("{} {}", best.group, best.vibration_type)
+                    });
+                }
+            }
+            assigned_idx += 1;
+        }
+
+        labels
+    };
+
     let mut peaks = Vec::new();
 
-    for (mode_idx, mode) in analysis.modes.iter().enumerate() {
-        if !mode.is_real || mode.frequency_cm1 <= 0.0 {
-            continue;
-        }
+    for (active_idx, (mode_idx, mode)) in active_modes.iter().enumerate() {
 
         peaks.push(IrPeak {
             frequency_cm1: mode.frequency_cm1,
             ir_intensity: mode.ir_intensity,
-            mode_index: mode_idx,
-            assignment: assign_ir_peak(mode.frequency_cm1),
+            mode_index: *mode_idx,
+            assignment: assigned_labels
+                .get(active_idx)
+                .and_then(|label| label.clone())
+                .unwrap_or_else(|| assign_ir_peak(mode.frequency_cm1)),
         });
 
         for (idx, &wn) in wavenumbers.iter().enumerate() {
