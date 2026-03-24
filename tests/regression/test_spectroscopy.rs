@@ -339,7 +339,10 @@ fn test_ir_vibrational_analysis_uff_water() {
 
     assert_eq!(analysis.method, "UFF");
     assert_eq!(analysis.elements, elems);
-    assert_eq!(analysis.n_real_modes, 3, "water should expose 3 vibrational modes after rigid-body projection");
+    assert_eq!(
+        analysis.n_real_modes, 3,
+        "water should expose 3 vibrational modes after rigid-body projection"
+    );
 
     let positive_modes: Vec<f64> = analysis
         .modes
@@ -348,9 +351,15 @@ fn test_ir_vibrational_analysis_uff_water() {
         .map(|mode| mode.frequency_cm1)
         .collect();
 
-    assert_eq!(positive_modes.len(), 3, "water should retain 3 positive vibrational bands with UFF");
+    assert_eq!(
+        positive_modes.len(),
+        3,
+        "water should retain 3 positive vibrational bands with UFF"
+    );
     assert!(
-        positive_modes.iter().any(|&frequency| (1200.0..1900.0).contains(&frequency)),
+        positive_modes
+            .iter()
+            .any(|&frequency| (1200.0..1900.0).contains(&frequency)),
         "water should show a qualitative bending mode in the mid-IR, got {:?}",
         positive_modes
     );
@@ -384,7 +393,10 @@ fn test_ir_peak_assignment_identifies_water_bend() {
     let result = sci_form::ir::assign_peaks(&[1640.0, 3600.0], &[12.0, 25.0], &[8, 1, 1], None);
 
     assert!(
-        result.functional_groups.iter().any(|group| group == "H-O-H bend"),
+        result
+            .functional_groups
+            .iter()
+            .any(|group| group == "H-O-H bend"),
         "water bending band should be identified explicitly"
     );
     assert!(
@@ -540,7 +552,9 @@ fn test_nmr_spectrum_h1_ethanol() {
 #[test]
 fn test_nmr_spectrum_with_coords_uses_public_geometry_path() {
     let (_, pos) = embed_smiles("CCO");
+
     let couplings_2d = sci_form::predict_nmr_couplings("CCO", &[]).unwrap();
+
     let couplings_3d = sci_form::predict_nmr_couplings("CCO", &pos).unwrap();
 
     assert!(
@@ -551,8 +565,9 @@ fn test_nmr_spectrum_with_coords_uses_public_geometry_path() {
         "embedded 3D geometry should change at least one vicinal coupling"
     );
 
-    let spectrum = sci_form::compute_nmr_spectrum_with_coords("CCO", &pos, "1H", 0.02, 0.0, 12.0, 1000)
-        .expect("coordinate-aware ¹H NMR spectrum should succeed for ethanol");
+    let spectrum =
+        sci_form::compute_nmr_spectrum_with_coords("CCO", &pos, "1H", 0.02, 0.0, 12.0, 1000)
+            .expect("coordinate-aware ¹H NMR spectrum should succeed for ethanol");
     assert_eq!(spectrum.ppm_axis.len(), 1000);
     assert!(!spectrum.peaks.is_empty());
 }

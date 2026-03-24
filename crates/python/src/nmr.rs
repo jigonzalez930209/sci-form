@@ -156,33 +156,27 @@ fn nmr_spectrum(
 ) -> PyResult<NmrSpectrumPy> {
     let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     sci_form_core::compute_nmr_spectrum_with_coords(
-        smiles,
-        &positions,
-        nucleus,
-        gamma,
-        ppm_min,
-        ppm_max,
-        n_points,
+        smiles, &positions, nucleus, gamma, ppm_min, ppm_max, n_points,
     )
-        .map(|r| NmrSpectrumPy {
-            ppm_axis: r.ppm_axis,
-            intensities: r.intensities,
-            peaks: r
-                .peaks
-                .iter()
-                .map(|p| NmrPeakPy {
-                    shift_ppm: p.shift_ppm,
-                    intensity: p.intensity,
-                    atom_index: p.atom_index,
-                    multiplicity: p.multiplicity.clone(),
-                    environment: p.environment.clone(),
-                })
-                .collect(),
-            nucleus: format!("{:?}", r.nucleus),
-            gamma: r.gamma,
-            notes: r.notes,
-        })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    .map(|r| NmrSpectrumPy {
+        ppm_axis: r.ppm_axis,
+        intensities: r.intensities,
+        peaks: r
+            .peaks
+            .iter()
+            .map(|p| NmrPeakPy {
+                shift_ppm: p.shift_ppm,
+                intensity: p.intensity,
+                atom_index: p.atom_index,
+                multiplicity: p.multiplicity.clone(),
+                environment: p.environment.clone(),
+            })
+            .collect(),
+        nucleus: format!("{:?}", r.nucleus),
+        gamma: r.gamma,
+        notes: r.notes,
+    })
+    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 #[pyfunction]

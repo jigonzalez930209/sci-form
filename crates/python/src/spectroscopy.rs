@@ -159,11 +159,10 @@ fn vibrational_analysis(
         )));
     }
     let positions = coords_to_positions(&coords);
+
     let analysis = if method.eq_ignore_ascii_case("uff") {
         let smiles = smiles.ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err(
-                "UFF vibrational analysis requires smiles=...",
-            )
+            pyo3::exceptions::PyValueError::new_err("UFF vibrational analysis requires smiles=...")
         })?;
         sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
     } else {

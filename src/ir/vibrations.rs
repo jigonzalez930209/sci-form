@@ -154,7 +154,11 @@ fn push_orthonormal_basis_vector(basis: &mut Vec<Vec<f64>>, mut candidate: Vec<f
         }
     }
 
-    let norm = candidate.iter().map(|value| value * value).sum::<f64>().sqrt();
+    let norm = candidate
+        .iter()
+        .map(|value| value * value)
+        .sum::<f64>()
+        .sqrt();
     if norm <= 1e-8 {
         return;
     }
@@ -204,7 +208,9 @@ fn build_rigid_body_basis(masses: &[f64], positions: &[[f64; 3]]) -> DMatrix<f64
 
     for axis in 0..3 {
         let mut rotation = vec![0.0; n3];
-        for (atom_index, (mass, position)) in masses.iter().zip(centered_positions.iter()).enumerate() {
+        for (atom_index, (mass, position)) in
+            masses.iter().zip(centered_positions.iter()).enumerate()
+        {
             let scaled = mass.sqrt();
             let components = match axis {
                 0 => [0.0, -position[2], position[1]],
@@ -273,17 +279,27 @@ fn relax_uff_geometry(smiles: &str, positions: &[[f64; 3]]) -> Result<Vec<[f64; 
     }
 
     let ff = crate::forcefield::builder::build_uff_force_field(&mol);
-    let mut coords: Vec<f64> = positions.iter().flat_map(|position| position.iter().copied()).collect();
+    let mut coords: Vec<f64> = positions
+        .iter()
+        .flat_map(|position| position.iter().copied())
+        .collect();
     let mut gradient = vec![0.0; coords.len()];
     let mut energy = ff.compute_system_energy_and_gradients(&coords, &mut gradient);
 
     for _ in 0..64 {
-        let grad_norm = gradient.iter().map(|value| value * value).sum::<f64>().sqrt();
+        let grad_norm = gradient
+            .iter()
+            .map(|value| value * value)
+            .sum::<f64>()
+            .sqrt();
         if grad_norm < 1e-4 {
             break;
         }
 
-        let max_component = gradient.iter().map(|value| value.abs()).fold(0.0_f64, f64::max);
+        let max_component = gradient
+            .iter()
+            .map(|value| value.abs())
+            .fold(0.0_f64, f64::max);
         let gradient_scale = if max_component > 10.0 {
             10.0 / max_component
         } else {
@@ -300,7 +316,8 @@ fn relax_uff_geometry(smiles: &str, positions: &[[f64; 3]]) -> Result<Vec<[f64; 
                 .map(|(coord, grad)| coord - step * gradient_scale * grad)
                 .collect();
             let mut trial_gradient = vec![0.0; coords.len()];
-            let trial_energy = ff.compute_system_energy_and_gradients(&trial_coords, &mut trial_gradient);
+            let trial_energy =
+                ff.compute_system_energy_and_gradients(&trial_coords, &mut trial_gradient);
 
             if trial_energy < energy {
                 coords = trial_coords;
@@ -318,7 +335,10 @@ fn relax_uff_geometry(smiles: &str, positions: &[[f64; 3]]) -> Result<Vec<[f64; 
         }
     }
 
-    Ok(coords.chunks(3).map(|chunk| [chunk[0], chunk[1], chunk[2]]).collect())
+    Ok(coords
+        .chunks(3)
+        .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+        .collect())
 }
 
 fn compute_uff_numerical_hessian(
@@ -440,11 +460,25 @@ fn compute_ir_intensities(
 ) -> Result<Vec<f64>, String> {
     #[cfg(feature = "parallel")]
     {
-        compute_ir_intensities_parallel(elements, positions, normal_modes, method, delta, uff_charges)
+        compute_ir_intensities_parallel(
+            elements,
+            positions,
+            normal_modes,
+            method,
+            delta,
+            uff_charges,
+        )
     }
     #[cfg(not(feature = "parallel"))]
     {
-        compute_ir_intensities_sequential(elements, positions, normal_modes, method, delta, uff_charges)
+        compute_ir_intensities_sequential(
+            elements,
+            positions,
+            normal_modes,
+            method,
+            delta,
+            uff_charges,
+        )
     }
 }
 
@@ -702,7 +736,9 @@ pub fn compute_vibrational_analysis_uff(
         .collect();
     let hessian =
         super::hessian::compute_uff_analytical_hessian(smiles, &coords_flat, Some(delta))?;
-    let uff_charges = crate::compute_charges(smiles).ok().map(|result| result.charges);
+    let uff_charges = crate::compute_charges(smiles)
+        .ok()
+        .map(|result| result.charges);
     let mut analysis = build_vibrational_analysis_from_hessian(
         elements,
         &relaxed_positions,
@@ -984,7 +1020,6 @@ pub fn compute_ir_spectrum_with_broadening(
     let mut peaks = Vec::new();
 
     for (active_idx, (mode_idx, mode)) in active_modes.iter().enumerate() {
-
         peaks.push(IrPeak {
             frequency_cm1: mode.frequency_cm1,
             ir_intensity: mode.ir_intensity,
