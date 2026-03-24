@@ -8,6 +8,21 @@ use serde::{Deserialize, Serialize};
 use super::coupling::JCoupling;
 use super::shifts::{ChemicalShift, NmrShiftResult};
 
+#[derive(Debug, Clone)]
+struct ShiftGroup {
+    shift_ppm: f64,
+    environment: String,
+    atom_indices: Vec<usize>,
+    confidence: f64,
+    exchangeable: bool,
+}
+
+#[derive(Debug, Clone)]
+struct CouplingGroup {
+    n_equivalent_neighbors: usize,
+    average_j_hz: f64,
+}
+
 /// Target NMR nucleus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NmrNucleus {
@@ -42,6 +57,8 @@ pub struct NmrPeak {
     pub intensity: f64,
     /// Atom index.
     pub atom_index: usize,
+    /// All equivalent atom indices contributing to this signal.
+    pub atom_indices: Vec<usize>,
     /// Multiplicity label (s, d, t, q, m).
     pub multiplicity: String,
     /// Environment description.
@@ -122,6 +139,7 @@ fn lorentzian(x: f64, x0: f64, gamma: f64) -> f64 {
 }
 
 /// Determine multiplicity from J-coupling count.
+#[cfg(test)]
 fn multiplicity_label(n_couplings: usize) -> &'static str {
     match n_couplings {
         0 => "s", // singlet
@@ -130,6 +148,207 @@ fn multiplicity_label(n_couplings: usize) -> &'static str {
         3 => "q", // quartet
         _ => "m", // multiplet
     }
+}
+
+fn shift_group_tolerance(nucleus: NmrNucleus) -> f64 {
+    match nucleus {
+        NmrNucleus::H1 => 1e-3,
+        NmrNucleus::C13 => 1e-2,
+        _ => 5e-3,
+    }
+}
+
+fn is_exchangeable_environment(environment: &str) -> bool {
+    environment.contains("O-H") || environment.contains("N-H") || environment.contains("S-H")
+}
+
+fn build_shift_groups(active_shifts: &[ChemicalShift], nucleus: NmrNucleus) -> Vec<ShiftGroup> {
+    let tolerance = shift_group_tolerance(nucleus);
+    let mut groups: Vec<ShiftGroup> = Vec::new();
+
+    for shift in active_shifts {
+        if let Some(group) = groups.iter_mut().find(|group| {
+            group.environment == shift.environment
+                && (group.shift_ppm - shift.shift_ppm).abs() <= tolerance
+        }) {
+            let count = group.atom_indices.len() as f64;
+            group.shift_ppm = (group.shift_ppm * count + shift.shift_ppm) / (count + 1.0);
+            group.confidence = group.confidence.min(shift.confidence);
+            group.atom_indices.push(shift.atom_index);
+        } else {
+            groups.push(ShiftGroup {
+                shift_ppm: shift.shift_ppm,
+                environment: shift.environment.clone(),
+                atom_indices: vec![shift.atom_index],
+                confidence: shift.confidence,
+                exchangeable: is_exchangeable_environment(&shift.environment),
+            });
+        }
+    }
+
+    groups.sort_by(|left, right| {
+        left.shift_ppm
+            .partial_cmp(&right.shift_ppm)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    groups
+}
+
+fn build_coupling_groups(
+    source_group: &ShiftGroup,
+    all_groups: &[ShiftGroup],
+    couplings: &[JCoupling],
+) -> Vec<CouplingGroup> {
+    if source_group.exchangeable {
+        return Vec::new();
+    }
+
+    let representative = match source_group.atom_indices.first() {
+        Some(index) => *index,
+        None => return Vec::new(),
+    };
+
+    let mut groups = Vec::new();
+
+    for target_group in all_groups {
+        if std::ptr::eq(source_group, target_group) || target_group.exchangeable {
+            continue;
+        }
+
+        let target_couplings: Vec<f64> = couplings
+            .iter()
+            .filter(|coupling| coupling.n_bonds == 3)
+            .filter_map(|coupling| {
+                if coupling.h1_index == representative
+                    && target_group.atom_indices.contains(&coupling.h2_index)
+                {
+                    Some(coupling.j_hz.abs())
+                } else if coupling.h2_index == representative
+                    && target_group.atom_indices.contains(&coupling.h1_index)
+                {
+                    Some(coupling.j_hz.abs())
+                } else {
+                    None
+                }
+            })
+            .filter(|j_hz| *j_hz >= 0.5)
+            .collect();
+
+        if target_couplings.is_empty() {
+            continue;
+        }
+
+        let average_j_hz =
+            target_couplings.iter().sum::<f64>() / target_couplings.len() as f64;
+        groups.push(CouplingGroup {
+            n_equivalent_neighbors: target_couplings.len(),
+            average_j_hz,
+        });
+    }
+
+    groups.sort_by(|left, right| {
+        right
+            .average_j_hz
+            .partial_cmp(&left.average_j_hz)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    groups
+}
+
+fn merge_nearby_lines(lines: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
+    if lines.is_empty() {
+        return lines;
+    }
+
+    let mut sorted = lines;
+    sorted.sort_by(|left, right| {
+        left.0
+            .partial_cmp(&right.0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let mut merged: Vec<(f64, f64)> = Vec::new();
+    for (position, intensity) in sorted {
+        if let Some((prev_position, prev_intensity)) = merged.last_mut() {
+            if (position - *prev_position).abs() <= 1e-6 {
+                let total = *prev_intensity + intensity;
+                *prev_position = (*prev_position * *prev_intensity + position * intensity) / total;
+                *prev_intensity = total;
+                continue;
+            }
+        }
+        merged.push((position, intensity));
+    }
+
+    merged
+}
+
+fn split_lines(
+    center_ppm: f64,
+    total_intensity: f64,
+    coupling_groups: &[CouplingGroup],
+    spectrometer_frequency_mhz: f64,
+) -> Vec<(f64, f64)> {
+    let mut lines = vec![(center_ppm, total_intensity)];
+
+    for group in coupling_groups {
+        let j_ppm = group.average_j_hz / spectrometer_frequency_mhz.max(1e-6);
+        let coeffs = pascal_row(group.n_equivalent_neighbors);
+        let coeff_sum = coeffs.iter().sum::<f64>().max(1e-12);
+        let mut split = Vec::with_capacity(lines.len() * coeffs.len());
+
+        for (line_center, line_intensity) in &lines {
+            for (index, coeff) in coeffs.iter().enumerate() {
+                let offset =
+                    (index as f64 - group.n_equivalent_neighbors as f64 / 2.0) * j_ppm;
+                split.push((
+                    line_center + offset,
+                    line_intensity * coeff / coeff_sum,
+                ));
+            }
+        }
+
+        lines = merge_nearby_lines(split);
+    }
+
+    lines
+}
+
+fn multiplicity_code(n_equivalent_neighbors: usize) -> &'static str {
+    match n_equivalent_neighbors {
+        0 => "s",
+        1 => "d",
+        2 => "t",
+        3 => "q",
+        4 => "quint",
+        _ => "m",
+    }
+}
+
+fn format_multiplicity(coupling_groups: &[CouplingGroup]) -> String {
+    if coupling_groups.is_empty() {
+        return "s".to_string();
+    }
+
+    let mut codes: Vec<&str> = coupling_groups
+        .iter()
+        .map(|group| multiplicity_code(group.n_equivalent_neighbors))
+        .collect();
+    let base = if codes.len() == 1 {
+        codes.remove(0).to_string()
+    } else if codes.len() == 2 && codes.iter().all(|code| *code != "m" && *code != "quint") {
+        codes.join("")
+    } else {
+        "m".to_string()
+    };
+
+    let j_values = coupling_groups
+        .iter()
+        .map(|group| format!("{:.1}", group.average_j_hz))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    format!("{} (J≈{} Hz)", base, j_values)
 }
 
 /// Generate an NMR spectrum from shift predictions and J-couplings.
@@ -175,69 +394,41 @@ pub fn compute_nmr_spectrum(
         NmrNucleus::S33 => &shifts.s_shifts,
     };
 
-    let mut peaks = Vec::with_capacity(active_shifts.len());
+    let shift_groups = build_shift_groups(active_shifts, nucleus);
+    let spectrometer_frequency_mhz = default_frequency_mhz(nucleus);
+    let mut peaks = Vec::with_capacity(shift_groups.len());
 
-    for shift in active_shifts {
-        // Count J-couplings involving this atom
-        let n_j = if matches!(nucleus, NmrNucleus::H1) {
-            couplings
-                .iter()
-                .filter(|c| c.h1_index == shift.atom_index || c.h2_index == shift.atom_index)
-                .filter(|c| c.n_bonds == 3) // only vicinal for splitting
-                .count()
+    for group in &shift_groups {
+        let peak_intensity = group.atom_indices.len() as f64;
+        let coupling_groups = if matches!(nucleus, NmrNucleus::H1) {
+            build_coupling_groups(group, &shift_groups, couplings)
         } else {
-            0 // Non-¹H nuclei typically shown as singlets in decoupled spectra
+            Vec::new()
         };
 
-        let mult = multiplicity_label(n_j);
-        let intensity = 1.0; // Each H contributes equally
-
         peaks.push(NmrPeak {
-            shift_ppm: shift.shift_ppm,
-            intensity,
-            atom_index: shift.atom_index,
-            multiplicity: mult.to_string(),
-            environment: shift.environment.clone(),
+            shift_ppm: group.shift_ppm,
+            intensity: peak_intensity,
+            atom_index: group.atom_indices[0],
+            atom_indices: group.atom_indices.clone(),
+            multiplicity: format_multiplicity(&coupling_groups),
+            environment: group.environment.clone(),
         });
 
-        // Simple splitting pattern (first-order only)
-        if n_j == 0 || !matches!(nucleus, NmrNucleus::H1) {
-            // Singlet or non-¹H: single Lorentzian
-            for (idx, &ppm) in ppm_axis.iter().enumerate() {
-                intensities[idx] += intensity * lorentzian(ppm, shift.shift_ppm, effective_gamma);
-            }
+        let lines = if matches!(nucleus, NmrNucleus::H1) {
+            split_lines(
+                group.shift_ppm,
+                peak_intensity,
+                &coupling_groups,
+                spectrometer_frequency_mhz,
+            )
         } else {
-            // For ¹H with coupling: generate split pattern
-            // Average J-coupling for this atom
-            let avg_j: f64 = couplings
-                .iter()
-                .filter(|c| c.h1_index == shift.atom_index || c.h2_index == shift.atom_index)
-                .filter(|c| c.n_bonds == 3)
-                .map(|c| c.j_hz)
-                .sum::<f64>()
-                / n_j.max(1) as f64;
+            vec![(group.shift_ppm, peak_intensity)]
+        };
 
-            // Convert J from Hz to ppm (assume 400 MHz spectrometer)
-            let j_ppm = avg_j / 400.0;
-
-            // Generate Pascal's triangle splitting
-            let n_lines = n_j + 1;
-            let coeffs = pascal_row(n_j);
-            let total: f64 = coeffs.iter().sum::<f64>();
-
-            for (k, &coeff) in coeffs.iter().enumerate() {
-                let offset = (k as f64 - n_j as f64 / 2.0) * j_ppm;
-                let line_ppm = shift.shift_ppm + offset;
-                let line_intensity = intensity * coeff / total;
-
-                for (idx, &ppm) in ppm_axis.iter().enumerate() {
-                    intensities[idx] += line_intensity * lorentzian(ppm, line_ppm, effective_gamma);
-                }
-            }
-
-            // Update peak multiplicity
-            if let Some(p) = peaks.last_mut() {
-                p.multiplicity = format!("{} (n+1={}, J≈{:.1} Hz)", mult, n_lines, avg_j);
+        for (line_ppm, line_intensity) in lines {
+            for (idx, &ppm) in ppm_axis.iter().enumerate() {
+                intensities[idx] += line_intensity * lorentzian(ppm, line_ppm, effective_gamma);
             }
         }
     }
@@ -273,8 +464,9 @@ pub fn compute_nmr_spectrum(
                 nucleus_label, effective_gamma,
                 effective_gamma * default_frequency_mhz(nucleus)
             ),
-            "Chemical shifts from empirical additivity rules; J-couplings from Karplus equation.".to_string(),
-            "First-order splitting only; higher-order effects (roofing, strong coupling) not modeled.".to_string(),
+            "Chemical shifts from empirical additivity rules; vicinal J-couplings from Karplus/topological estimates.".to_string(),
+            "Equivalent nuclei are grouped before rendering, and exchangeable O-H/N-H/S-H couplings are suppressed in the default 1H spectrum.".to_string(),
+            "First-order splitting uses explicit coupling groups; higher-order effects (roofing, strong coupling) are not modeled.".to_string(),
         ],
     }
 }
@@ -309,20 +501,24 @@ fn compute_integrations(
                 bounds: (low, high),
                 raw_area,
                 relative_area: 0.0,
-                n_atoms: 1,
+                n_atoms: peak.intensity.round().max(1.0) as usize,
             }
         })
         .collect();
 
-    // Normalize relative areas
+    // Normalize relative areas using the equivalent-atom count to keep areas chemically meaningful.
+    let max_atoms = integrations.iter().map(|integration| integration.n_atoms).max().unwrap_or(1);
     let max_area = integrations
         .iter()
         .map(|i| i.raw_area)
         .fold(0.0f64, f64::max);
 
-    if max_area > 1e-30 {
+    if max_atoms > 0 {
         for int in &mut integrations {
-            int.relative_area = int.raw_area / max_area;
+            int.relative_area = int.n_atoms as f64 / max_atoms as f64;
+            if max_area <= 1e-30 {
+                int.raw_area = int.n_atoms as f64;
+            }
         }
     }
 
@@ -415,5 +611,32 @@ mod tests {
         assert_eq!(multiplicity_label(2), "t");
         assert_eq!(multiplicity_label(3), "q");
         assert_eq!(multiplicity_label(4), "m");
+    }
+
+    #[test]
+    fn test_shift_grouping_and_integrations_for_ethanol() {
+        let spectrum = crate::compute_nmr_spectrum("CCO", "1H", 0.02, 0.0, 12.0, 1000).unwrap();
+
+        assert_eq!(spectrum.peaks.len(), 3, "ethanol should collapse to CH3, CH2, and OH groups");
+
+        let mut atom_counts: Vec<usize> = spectrum.integrations.iter().map(|integration| integration.n_atoms).collect();
+        atom_counts.sort_unstable();
+        assert_eq!(atom_counts, vec![1, 2, 3]);
+
+        assert!(
+            spectrum.peaks.iter().any(|peak| peak.environment.contains("methyl") && peak.multiplicity.starts_with('t')),
+            "methyl group should appear as a triplet-like signal: {:?}",
+            spectrum.peaks.iter().map(|peak| (&peak.environment, &peak.multiplicity)).collect::<Vec<_>>()
+        );
+        assert!(
+            spectrum.peaks.iter().any(|peak| peak.environment.contains("methylene") && peak.multiplicity.starts_with('q')),
+            "methylene group should appear as a quartet-like signal: {:?}",
+            spectrum.peaks.iter().map(|peak| (&peak.environment, &peak.multiplicity)).collect::<Vec<_>>()
+        );
+        assert!(
+            spectrum.peaks.iter().any(|peak| peak.environment.contains("O-H") && peak.multiplicity == "s"),
+            "exchangeable alcohol proton should default to a singlet: {:?}",
+            spectrum.peaks.iter().map(|peak| (&peak.environment, &peak.multiplicity)).collect::<Vec<_>>()
+        );
     }
 }
