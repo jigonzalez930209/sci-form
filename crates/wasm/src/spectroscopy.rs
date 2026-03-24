@@ -149,13 +149,7 @@ pub fn compute_nmr_spectrum_with_coords(
     };
     let positions: Vec<[f64; 3]> = flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::compute_nmr_spectrum_with_coords(
-        smiles,
-        &positions,
-        nucleus,
-        gamma,
-        ppm_min,
-        ppm_max,
-        n_points,
+        smiles, &positions, nucleus, gamma, ppm_min, ppm_max, n_points,
     ) {
         Ok(result) => serialize_or_error(&result),
         Err(e) => json_error(&e),

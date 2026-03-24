@@ -477,10 +477,15 @@ pub fn assign_peaks(
     }
 }
 
-fn dominant_mode_elements(elements: &[u8], mode_displacement: &[[f64; 3]]) -> std::collections::BTreeSet<u8> {
+fn dominant_mode_elements(
+    elements: &[u8],
+    mode_displacement: &[[f64; 3]],
+) -> std::collections::BTreeSet<u8> {
     let amplitudes: Vec<f64> = mode_displacement
         .iter()
-        .map(|vector| (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt())
+        .map(|vector| {
+            (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt()
+        })
         .collect();
     let max_amplitude = amplitudes.iter().copied().fold(0.0_f64, f64::max);
     if max_amplitude <= 1e-8 {

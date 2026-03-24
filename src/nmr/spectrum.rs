@@ -219,12 +219,10 @@ fn build_coupling_groups(
             .iter()
             .filter(|coupling| coupling.n_bonds == 3)
             .filter_map(|coupling| {
-                if coupling.h1_index == representative
-                    && target_group.atom_indices.contains(&coupling.h2_index)
-                {
-                    Some(coupling.j_hz.abs())
-                } else if coupling.h2_index == representative
-                    && target_group.atom_indices.contains(&coupling.h1_index)
+                if (coupling.h1_index == representative
+                    && target_group.atom_indices.contains(&coupling.h2_index))
+                    || (coupling.h2_index == representative
+                        && target_group.atom_indices.contains(&coupling.h1_index))
                 {
                     Some(coupling.j_hz.abs())
                 } else {
@@ -238,8 +236,7 @@ fn build_coupling_groups(
             continue;
         }
 
-        let average_j_hz =
-            target_couplings.iter().sum::<f64>() / target_couplings.len() as f64;
+        let average_j_hz = target_couplings.iter().sum::<f64>() / target_couplings.len() as f64;
         groups.push(CouplingGroup {
             n_equivalent_neighbors: target_couplings.len(),
             average_j_hz,
@@ -299,12 +296,8 @@ fn split_lines(
 
         for (line_center, line_intensity) in &lines {
             for (index, coeff) in coeffs.iter().enumerate() {
-                let offset =
-                    (index as f64 - group.n_equivalent_neighbors as f64 / 2.0) * j_ppm;
-                split.push((
-                    line_center + offset,
-                    line_intensity * coeff / coeff_sum,
-                ));
+                let offset = (index as f64 - group.n_equivalent_neighbors as f64 / 2.0) * j_ppm;
+                split.push((line_center + offset, line_intensity * coeff / coeff_sum));
             }
         }
 
@@ -507,7 +500,11 @@ fn compute_integrations(
         .collect();
 
     // Normalize relative areas using the equivalent-atom count to keep areas chemically meaningful.
-    let max_atoms = integrations.iter().map(|integration| integration.n_atoms).max().unwrap_or(1);
+    let max_atoms = integrations
+        .iter()
+        .map(|integration| integration.n_atoms)
+        .max()
+        .unwrap_or(1);
     let max_area = integrations
         .iter()
         .map(|i| i.raw_area)
@@ -617,26 +614,57 @@ mod tests {
     fn test_shift_grouping_and_integrations_for_ethanol() {
         let spectrum = crate::compute_nmr_spectrum("CCO", "1H", 0.02, 0.0, 12.0, 1000).unwrap();
 
-        assert_eq!(spectrum.peaks.len(), 3, "ethanol should collapse to CH3, CH2, and OH groups");
+        assert_eq!(
+            spectrum.peaks.len(),
+            3,
+            "ethanol should collapse to CH3, CH2, and OH groups"
+        );
 
-        let mut atom_counts: Vec<usize> = spectrum.integrations.iter().map(|integration| integration.n_atoms).collect();
+        let mut atom_counts: Vec<usize> = spectrum
+            .integrations
+            .iter()
+            .map(|integration| integration.n_atoms)
+            .collect();
         atom_counts.sort_unstable();
         assert_eq!(atom_counts, vec![1, 2, 3]);
 
         assert!(
-            spectrum.peaks.iter().any(|peak| peak.environment.contains("methyl") && peak.multiplicity.starts_with('t')),
+            spectrum
+                .peaks
+                .iter()
+                .any(|peak| peak.environment.contains("methyl")
+                    && peak.multiplicity.starts_with('t')),
             "methyl group should appear as a triplet-like signal: {:?}",
-            spectrum.peaks.iter().map(|peak| (&peak.environment, &peak.multiplicity)).collect::<Vec<_>>()
+            spectrum
+                .peaks
+                .iter()
+                .map(|peak| (&peak.environment, &peak.multiplicity))
+                .collect::<Vec<_>>()
         );
         assert!(
-            spectrum.peaks.iter().any(|peak| peak.environment.contains("methylene") && peak.multiplicity.starts_with('q')),
+            spectrum
+                .peaks
+                .iter()
+                .any(|peak| peak.environment.contains("methylene")
+                    && peak.multiplicity.starts_with('q')),
             "methylene group should appear as a quartet-like signal: {:?}",
-            spectrum.peaks.iter().map(|peak| (&peak.environment, &peak.multiplicity)).collect::<Vec<_>>()
+            spectrum
+                .peaks
+                .iter()
+                .map(|peak| (&peak.environment, &peak.multiplicity))
+                .collect::<Vec<_>>()
         );
         assert!(
-            spectrum.peaks.iter().any(|peak| peak.environment.contains("O-H") && peak.multiplicity == "s"),
+            spectrum
+                .peaks
+                .iter()
+                .any(|peak| peak.environment.contains("O-H") && peak.multiplicity == "s"),
             "exchangeable alcohol proton should default to a singlet: {:?}",
-            spectrum.peaks.iter().map(|peak| (&peak.environment, &peak.multiplicity)).collect::<Vec<_>>()
+            spectrum
+                .peaks
+                .iter()
+                .map(|peak| (&peak.environment, &peak.multiplicity))
+                .collect::<Vec<_>>()
         );
     }
 }
