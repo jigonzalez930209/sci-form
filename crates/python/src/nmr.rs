@@ -144,16 +144,26 @@ fn nmr_couplings(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<JCouplingPy>> {
 }
 
 #[pyfunction]
-#[pyo3(signature = (smiles, nucleus="1H", gamma=0.02, ppm_min=0.0, ppm_max=12.0, n_points=1000))]
+#[pyo3(signature = (smiles, coords=vec![], nucleus="1H", gamma=0.02, ppm_min=0.0, ppm_max=12.0, n_points=1000))]
 fn nmr_spectrum(
     smiles: &str,
+    coords: Vec<f64>,
     nucleus: &str,
     gamma: f64,
     ppm_min: f64,
     ppm_max: f64,
     n_points: usize,
 ) -> PyResult<NmrSpectrumPy> {
-    sci_form_core::compute_nmr_spectrum(smiles, nucleus, gamma, ppm_min, ppm_max, n_points)
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    sci_form_core::compute_nmr_spectrum_with_coords(
+        smiles,
+        &positions,
+        nucleus,
+        gamma,
+        ppm_min,
+        ppm_max,
+        n_points,
+    )
         .map(|r| NmrSpectrumPy {
             ppm_axis: r.ppm_axis,
             intensities: r.intensities,

@@ -51,6 +51,29 @@ pub fn compute_vibrational_analysis(
     }
 }
 
+/// Perform vibrational analysis using the fast UFF analytical Hessian path.
+#[wasm_bindgen]
+pub fn compute_vibrational_analysis_uff(
+    smiles: &str,
+    elements_json: &str,
+    coords_flat_json: &str,
+    step_size: f64,
+) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    let step = if step_size > 0.0 {
+        Some(step_size)
+    } else {
+        None
+    };
+    match sci_form::compute_vibrational_analysis_uff(smiles, &elems, &positions, step) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
 /// Generate a Lorentzian-broadened IR spectrum from vibrational analysis JSON.
 #[wasm_bindgen]
 pub fn compute_ir_spectrum(
@@ -104,6 +127,36 @@ pub fn compute_nmr_spectrum(
     n_points: usize,
 ) -> String {
     match sci_form::compute_nmr_spectrum(smiles, nucleus, gamma, ppm_min, ppm_max, n_points) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Generate a complete NMR spectrum using optional 3D coordinates for ³J couplings.
+#[wasm_bindgen]
+pub fn compute_nmr_spectrum_with_coords(
+    smiles: &str,
+    coords_flat_json: &str,
+    nucleus: &str,
+    gamma: f64,
+    ppm_min: f64,
+    ppm_max: f64,
+    n_points: usize,
+) -> String {
+    let flat: Vec<f64> = match serde_json::from_str(coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad coords: {}", e)),
+    };
+    let positions: Vec<[f64; 3]> = flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match sci_form::compute_nmr_spectrum_with_coords(
+        smiles,
+        &positions,
+        nucleus,
+        gamma,
+        ppm_min,
+        ppm_max,
+        n_points,
+    ) {
         Ok(result) => serialize_or_error(&result),
         Err(e) => json_error(&e),
     }
