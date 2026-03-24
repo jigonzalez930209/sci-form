@@ -470,6 +470,24 @@ console.log(`ZPVE: ${vib.zpve_ev.toFixed(4)} eV, ${vib.n_real_modes} real modes`
 console.log(`Gibbs correction: ${vib.thermochemistry.gibbs_correction_kcal.toFixed(3)} kcal/mol`);
 ```
 
+### `compute_vibrational_analysis_uff`
+
+```typescript
+function compute_vibrational_analysis_uff(
+  smiles: string,
+  elements: string,
+  coords_flat: string,
+  step_size: number
+): string
+```
+
+Fast vibrational-analysis path backed by the UFF analytical Hessian. This is useful for interactive IR previews where the numerical PM3/xTB Hessian would be too slow.
+
+```typescript
+const vibFast = JSON.parse(compute_vibrational_analysis_uff('CCO', el, co, 0.005));
+console.log(vibFast.method); // "UFF"
+```
+
 ---
 
 ### `compute_ir_spectrum`
@@ -599,6 +617,29 @@ Full NMR spectrum pipeline. Returns JSON `NmrSpectrum { ppm_axis, intensities, p
 const spec = JSON.parse(compute_nmr_spectrum('CCO', '1H', 0.01, -2.0, 12.0, 2000));
 const maxIdx = spec.intensities.indexOf(Math.max(...spec.intensities));
 console.log(`Most intense peak: δ ${spec.ppm_axis[maxIdx].toFixed(2)} ppm`);
+```
+
+### `compute_nmr_spectrum_with_coords`
+
+```typescript
+function compute_nmr_spectrum_with_coords(
+  smiles: string,
+  coords_flat: string,
+  nucleus: string,
+  gamma: number,
+  ppm_min: number,
+  ppm_max: number,
+  n_points: number
+): string
+```
+
+Coordinate-aware variant of the NMR spectrum API. When 3D coordinates are provided, vicinal ³J couplings use the Karplus equation instead of the topology-only fallback.
+
+```typescript
+const spec3d = JSON.parse(
+  compute_nmr_spectrum_with_coords('CCO', co, '1H', 0.01, -2.0, 12.0, 2000)
+);
+console.log(`${spec3d.peaks.length} resolved peaks from the 3D coupling model`);
 ```
 
 ---
