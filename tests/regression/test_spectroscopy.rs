@@ -151,6 +151,45 @@ fn test_stda_uvvis_excitation_properties() {
     }
 }
 
+#[test]
+fn test_stda_uvvis_water_is_deep_uv_only() {
+    let (elems, pos) = water_molecule();
+    let spectrum = sci_form::compute_stda_uvvis(
+        &elems,
+        &pos,
+        0.3,
+        1.0,
+        10.0,
+        500,
+        sci_form::reactivity::BroadeningType::Gaussian,
+    )
+    .expect("sTDA UV-Vis should succeed for water");
+
+    let strongest_long_wavelength_excitation = spectrum
+        .excitations
+        .iter()
+        .filter(|excitation| excitation.wavelength_nm >= 220.0)
+        .map(|excitation| excitation.oscillator_strength)
+        .fold(0.0_f64, f64::max);
+
+    assert!(
+        strongest_long_wavelength_excitation < 1e-3,
+        "water should be effectively transparent above ~220 nm in this low-cost model, got f_max={}",
+        strongest_long_wavelength_excitation
+    );
+
+    let strongest_excitation = spectrum
+        .excitations
+        .iter()
+        .map(|excitation| excitation.wavelength_nm)
+        .fold(0.0_f64, f64::max);
+    assert!(
+        strongest_excitation < 220.0,
+        "water UV-Vis bands should remain in the deep UV, got strongest wavelength {} nm",
+        strongest_excitation
+    );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // IR Spectroscopy tests
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -292,6 +331,72 @@ fn test_ir_custom_step_size() {
     assert!(small_step.n_real_modes > 0);
 }
 
+#[test]
+fn test_ir_vibrational_analysis_uff_water() {
+    let (elems, pos) = water_molecule();
+    let analysis = sci_form::compute_vibrational_analysis_uff("O", &elems, &pos, None)
+        .expect("UFF vibrational analysis should succeed for water");
+
+    assert_eq!(analysis.method, "UFF");
+    assert_eq!(analysis.elements, elems);
+    assert_eq!(analysis.n_real_modes, 3, "water should expose 3 vibrational modes after rigid-body projection");
+
+    let positive_modes: Vec<f64> = analysis
+        .modes
+        .iter()
+        .filter(|mode| mode.is_real && mode.frequency_cm1 > 0.0)
+        .map(|mode| mode.frequency_cm1)
+        .collect();
+
+    assert_eq!(positive_modes.len(), 3, "water should retain 3 positive vibrational bands with UFF");
+    assert!(
+        positive_modes.iter().any(|&frequency| (1200.0..1900.0).contains(&frequency)),
+        "water should show a qualitative bending mode in the mid-IR, got {:?}",
+        positive_modes
+    );
+    assert!(
+        positive_modes
+            .iter()
+            .filter(|&&frequency| (3000.0..4200.0).contains(&frequency))
+            .count()
+            >= 2,
+        "water should show two O-H stretching modes near 3600 cm^-1, got {:?}",
+        positive_modes
+    );
+    assert!(
+        analysis
+            .notes
+            .iter()
+            .any(|note| note.contains("Gasteiger") || note.contains("neutral-charge")),
+        "UFF analysis should explain the IR-intensity approximation"
+    );
+    assert!(
+        analysis
+            .notes
+            .iter()
+            .any(|note| note.contains("projected out before diagonalization")),
+        "UFF analysis should mention rigid-body projection"
+    );
+}
+
+#[test]
+fn test_ir_peak_assignment_identifies_water_bend() {
+    let result = sci_form::ir::assign_peaks(&[1640.0, 3600.0], &[12.0, 25.0], &[8, 1, 1], None);
+
+    assert!(
+        result.functional_groups.iter().any(|group| group == "H-O-H bend"),
+        "water bending band should be identified explicitly"
+    );
+    assert!(
+        result
+            .assignments
+            .iter()
+            .flat_map(|assignment| assignment.assignments.iter())
+            .any(|group| group.group.contains("O-H")),
+        "water stretching region should still match an O-H assignment"
+    );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // NMR Spectroscopy tests
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -430,6 +535,26 @@ fn test_nmr_spectrum_h1_ethanol() {
             peak.shift_ppm
         );
     }
+}
+
+#[test]
+fn test_nmr_spectrum_with_coords_uses_public_geometry_path() {
+    let (_, pos) = embed_smiles("CCO");
+    let couplings_2d = sci_form::predict_nmr_couplings("CCO", &[]).unwrap();
+    let couplings_3d = sci_form::predict_nmr_couplings("CCO", &pos).unwrap();
+
+    assert!(
+        couplings_2d
+            .iter()
+            .zip(couplings_3d.iter())
+            .any(|(topo, geom)| (topo.j_hz - geom.j_hz).abs() > 0.05),
+        "embedded 3D geometry should change at least one vicinal coupling"
+    );
+
+    let spectrum = sci_form::compute_nmr_spectrum_with_coords("CCO", &pos, "1H", 0.02, 0.0, 12.0, 1000)
+        .expect("coordinate-aware ¹H NMR spectrum should succeed for ethanol");
+    assert_eq!(spectrum.ppm_axis.len(), 1000);
+    assert!(!spectrum.peaks.is_empty());
 }
 
 #[test]
