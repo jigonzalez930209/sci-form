@@ -51,6 +51,9 @@ pub fn compute_esp_grid(
 ) -> EspGrid {
     let n_atoms = elements.len();
 
+    let spacing = if spacing <= 0.0 { 0.5 } else { spacing };
+    let padding = padding.max(0.0);
+
     // Compute bounding box
     let mut min = [f64::MAX; 3];
     let mut max = [f64::MIN; 3];
@@ -100,15 +103,14 @@ pub fn compute_esp_grid(
                     let dz = rz - positions[a][2];
                     let dist = (dx * dx + dy * dy + dz * dz).sqrt();
 
-                    if dist < 0.01 {
-                        // Skip singularity at nucleus
-                        continue;
-                    }
+                    // Clamp distance to avoid singularity at nucleus.
+                    // Using 0.1 Å minimum prevents discontinuities while
+                    // keeping the ESP smooth near nuclei.
+                    let dist_clamped = dist.max(0.1);
 
-                    // Nuclear contribution (full Z)
                     // ESP contribution: Φ(r) = Σ_A q_mulliken(A) / |r - R_A|
                     // (in atomic units: distance converted to bohr)
-                    phi += mulliken_charges[a] / (dist * ANG_TO_BOHR);
+                    phi += mulliken_charges[a] / (dist_clamped * ANG_TO_BOHR);
                 }
 
                 let idx = ix * dims[1] * dims[2] + iy * dims[2] + iz;
@@ -139,6 +141,8 @@ pub fn compute_esp_grid_parallel(
     use rayon::prelude::*;
 
     let _n_atoms = elements.len();
+    let spacing = if spacing <= 0.0 { 0.5 } else { spacing };
+    let padding = padding.max(0.0);
 
     let mut min = [f64::MAX; 3];
     let mut max = [f64::MIN; 3];
@@ -179,10 +183,8 @@ pub fn compute_esp_grid_parallel(
                 let dy = ry - pos[1];
                 let dz = rz - pos[2];
                 let dist = (dx * dx + dy * dy + dz * dz).sqrt();
-                if dist < 0.01 {
-                    continue;
-                }
-                phi += charges_clone[a] / (dist * ANG_TO_BOHR);
+                let dist_clamped = dist.max(0.1);
+                phi += charges_clone[a] / (dist_clamped * ANG_TO_BOHR);
             }
             phi
         })
@@ -305,7 +307,7 @@ pub fn export_cube<W: Write>(
     // Volume data (6 values per line, x varies slowest, z fastest)
     let mut count = 0;
     for val in &grid.values {
-        write!(writer, " {:12.5E}", val)?;
+        write!(writer, " {:13.8E}", val)?;
         count += 1;
         if count % 6 == 0 {
             writeln!(writer)?;
