@@ -1,3 +1,18 @@
+//! Molecular force fields: UFF, MMFF94, ETKDG refinement, and minimization.
+//!
+//! # Submodules
+//!
+//! - [`atom_typer`] — Element + topology → UFF atom type assignment.
+//! - [`params`] — UFF parameter tables (bond radii, angles, torsions).
+//! - [`uff`] / [`mmff94`] — Energy term implementations per force field.
+//! - [`energy`] — Unified total-energy evaluation.
+//! - [`gradients`] — Analytical gradient computation.
+//! - [`minimizer`] — L-BFGS energy minimizer.
+//! - [`bounds_ff`] — Bounds-matrix force field for distance geometry.
+//! - [`etkdg_3d`] — ETKDG 3D refinement with torsion terms.
+//! - [`dg_terms`] — Distance-geometry specific energy contributions.
+//! - [`torsion_scan`] — Systematic torsion angle scanning.
+
 pub mod atom_typer;
 pub mod bounds_ff;
 pub mod builder;

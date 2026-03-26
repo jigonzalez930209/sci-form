@@ -588,12 +588,14 @@ pub fn get_uff_bond_length(
 
 /// UFF bond stretching force constant K_ij (Rappé eq. 6).
 /// E_bond = ½ K_ij (r - r₀)²    →   K_ij = 664.12 · Z*_i · Z*_j / r₀³
+/// 664.12 = 2 × 332.06 where 332.06 ≈ e²Nₐ/(4πε₀) in kcal·Å/e² (Coulomb constant)
 pub fn get_uff_bond_force_constant(pi: &UffAtomParams, pj: &UffAtomParams, r0: f64) -> f64 {
     664.12 * pi.z_star * pj.z_star / r0.powi(3)
 }
 
 /// UFF angle bending force constant K_ijk (Rappé eq. 13, simplified).
 /// K_ijk = 332.06 · Z*_i · Z*_k / (r_ij · r_jk · r_ik²)
+/// 332.06 ≈ e²Nₐ/(4πε₀) in kcal·Å/e² (Coulomb constant for UFF energy units)
 /// where r_ik² = r_ij² + r_jk² - 2·r_ij·r_jk·cos(θ₀)
 pub fn get_uff_angle_force_constant(
     pi: &UffAtomParams,

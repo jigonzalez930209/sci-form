@@ -1,11 +1,16 @@
+//! Universal Force Field (UFF) energy terms: bond stretch, angle bend,
+//! torsion, inversion, and van der Waals contributions.
+//!
+//! Reference: Rappé et al., J. Am. Chem. Soc. 1992, 114, 10024–10035.
+
 use super::traits::ForceFieldContribution;
 
-/// Oscilador armónico clásico evaluando la tracción mecánica de enlaces covalentes bajo métricas UFF
+/// Classical harmonic bond-stretch term in UFF.
 pub struct UffHarmonicBondStretch {
     pub atom_i_idx: usize,
     pub atom_j_idx: usize,
-    pub force_constant_kb: f64, // Escalar rigidez (k_b)
-    pub equilibrium_r0: f64,    // Distancia ideal de reposo (r_0)
+    pub force_constant_kb: f64, // Bond stiffness constant k_b
+    pub equilibrium_r0: f64,    // Equilibrium bond length r_0
 }
 
 impl ForceFieldContribution for UffHarmonicBondStretch {
@@ -44,7 +49,7 @@ impl ForceFieldContribution for UffHarmonicBondStretch {
     }
 }
 
-/// Potential de Fourier de 3 términos para la flexión de ángulos (Angle Bending) en UFF
+/// Three-term Fourier angle-bending term used in UFF.
 pub struct UffAngleBend {
     pub atom_i_idx: usize,
     pub atom_j_idx: usize, // Central
@@ -84,8 +89,8 @@ impl ForceFieldContribution for UffAngleBend {
 
         let (energy, d_e_dtheta) = match self.coordination_n {
             0 => {
-                // Lineal (n=1,2, or specialized n=0 in RDKit)
-                // Usando Formula MMFF para lineales como proxy si n=0 en UFF indica linealidad
+                // Linear center (RDKit uses n=0 as a dedicated linear sentinel).
+                // Reuse the MMFF-style linear form here as a stable proxy.
                 let e = self.force_constant_ka * (1.0 + cos_theta);
                 let de = -self.force_constant_ka * sin_theta;
                 (e, de)
@@ -109,7 +114,7 @@ impl ForceFieldContribution for UffAngleBend {
             }
         };
 
-        // Gradiente geométrico (Derivado de Wilson-Decius-Cross)
+        // Cartesian gradient derived from the Wilson-Decius-Cross form.
         let pre_i = d_e_dtheta / (d_ji * sin_theta);
         let pre_k = d_e_dtheta / (d_jk * sin_theta);
 
@@ -126,7 +131,7 @@ impl ForceFieldContribution for UffAngleBend {
     }
 }
 
-/// Potencial de torsión UFF: E = 0.5 * V * [1 - cos(n * phi)] (si phi0 = 180, cos(n * phi - 180) = -cos(n*phi))
+/// UFF torsion term: E = 0.5 * V * [1 - cos(phi0) * cos(n * phi)].
 pub struct UffTorsion {
     pub atom_i_idx: usize,
     pub atom_j_idx: usize,
@@ -134,7 +139,7 @@ pub struct UffTorsion {
     pub atom_l_idx: usize,
     pub force_constant_v: f64,
     pub periodicity_n: f64,
-    pub cos_phi0: f64, // Generalmente 1.0 o -1.0
+    pub cos_phi0: f64, // Usually 1.0 or -1.0
 }
 
 impl ForceFieldContribution for UffTorsion {
@@ -181,7 +186,7 @@ impl ForceFieldContribution for UffTorsion {
         let cos_phi = cos_phi.clamp(-1.0, 1.0);
         let phi = cos_phi.acos();
 
-        // Determinar signo de phi usando producto escalar con b2
+        // Recover the sign of phi from the orientation relative to b2.
         let cross_n1_n2 = [
             n1[1] * n2[2] - n1[2] * n2[1],
             n1[2] * n2[0] - n1[0] * n2[2],
@@ -224,7 +229,7 @@ impl ForceFieldContribution for UffTorsion {
     }
 }
 
-/// Inversión Wilson-Decius-Cross para átomos planos (UFF)
+/// Wilson-Decius-Cross inversion term for near-planar UFF centers.
 pub struct UffInversion {
     pub idx_i: usize,
     pub idx_j: usize, // Central
