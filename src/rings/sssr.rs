@@ -9,7 +9,7 @@ use crate::graph::Molecule;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 /// Information about a single ring in the SSSR.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,10 +53,6 @@ pub fn compute_sssr(mol: &Molecule) -> SssrResult {
         };
     }
 
-    // Expected number of independent cycles: m - n + c (connected components)
-    // For a single connected molecule: m - n + 1
-    let n_expected = m.saturating_sub(n) + 1;
-
     // Build adjacency list
     let mut adj: Vec<BTreeSet<usize>> = vec![BTreeSet::new(); n];
     let mut edges: Vec<(usize, usize)> = Vec::with_capacity(m);
@@ -73,6 +69,10 @@ pub fn compute_sssr(mol: &Molecule) -> SssrResult {
     }
     edges.sort();
     edges.dedup();
+
+    // Expected size of a cycle basis: m - n + c, where c is the number of
+    // connected components in the graph.
+    let n_expected = m.saturating_sub(n) + connected_components(&adj);
 
     let mut ring_candidates: Vec<Vec<usize>> = Vec::new();
 
@@ -103,22 +103,23 @@ pub fn compute_sssr(mol: &Molecule) -> SssrResult {
     // Sort by ring size (prefer smallest rings)
     unique_rings.sort_by_key(|r| r.len());
 
-    // Take only linearly independent rings (up to n_expected)
-    // Use a greedy approach: include a ring if it contains at least one edge
-    // not covered by previously included rings
+    // Take only linearly independent rings (up to n_expected) using a GF(2)
+    // cycle-basis elimination on the ring-edge incidence vectors.
     let mut selected_rings: Vec<Vec<usize>> = Vec::new();
-    let mut covered_edges: BTreeSet<(usize, usize)> = BTreeSet::new();
+    let edge_to_bit: BTreeMap<(usize, usize), usize> = edges
+        .iter()
+        .enumerate()
+        .map(|(idx, &edge)| (edge, idx))
+        .collect();
+    let n_words = edges.len().div_ceil(64);
+    let mut basis_rows: Vec<(usize, Vec<u64>)> = Vec::new();
 
     for ring in &unique_rings {
         if selected_rings.len() >= n_expected {
             break;
         }
-        let ring_edges = ring_to_edges(ring);
-        let has_new_edge = ring_edges.iter().any(|e| !covered_edges.contains(e));
-        if has_new_edge {
-            for e in &ring_edges {
-                covered_edges.insert(*e);
-            }
+        let ring_bits = ring_bitset(ring, &edge_to_bit, n_words);
+        if insert_basis_row(&mut basis_rows, ring_bits) {
             selected_rings.push(ring.clone());
         }
     }
@@ -204,6 +205,85 @@ fn bfs_shortest_path_excluding_edge(
         }
     }
 
+    None
+}
+
+fn connected_components(adj: &[BTreeSet<usize>]) -> usize {
+    let mut visited = vec![false; adj.len()];
+    let mut components = 0;
+
+    for start in 0..adj.len() {
+        if visited[start] {
+            continue;
+        }
+        components += 1;
+        let mut queue = VecDeque::from([start]);
+        visited[start] = true;
+
+        while let Some(node) = queue.pop_front() {
+            for &next in &adj[node] {
+                if !visited[next] {
+                    visited[next] = true;
+                    queue.push_back(next);
+                }
+            }
+        }
+    }
+
+    components.max(1)
+}
+
+fn ring_bitset(
+    ring: &[usize],
+    edge_to_bit: &BTreeMap<(usize, usize), usize>,
+    n_words: usize,
+) -> Vec<u64> {
+    let mut bits = vec![0u64; n_words];
+    for edge in ring_to_edges(ring) {
+        if let Some(&bit_index) = edge_to_bit.get(&edge) {
+            bits[bit_index / 64] |= 1u64 << (bit_index % 64);
+        }
+    }
+    bits
+}
+
+fn insert_basis_row(basis_rows: &mut Vec<(usize, Vec<u64>)>, mut row: Vec<u64>) -> bool {
+    for (_, basis_row) in basis_rows.iter() {
+        if let Some(pivot) = highest_set_bit(basis_row) {
+            if ((row[pivot / 64] >> (pivot % 64)) & 1) == 1 {
+                xor_bitsets(&mut row, basis_row);
+            }
+        }
+    }
+
+    let Some(pivot) = highest_set_bit(&row) else {
+        return false;
+    };
+
+    for (_, basis_row) in basis_rows.iter_mut() {
+        if ((basis_row[pivot / 64] >> (pivot % 64)) & 1) == 1 {
+            xor_bitsets(basis_row, &row);
+        }
+    }
+
+    basis_rows.push((pivot, row));
+    basis_rows.sort_by(|a, b| b.0.cmp(&a.0));
+    true
+}
+
+fn xor_bitsets(target: &mut [u64], other: &[u64]) {
+    for (lhs, rhs) in target.iter_mut().zip(other.iter()) {
+        *lhs ^= *rhs;
+    }
+}
+
+fn highest_set_bit(bits: &[u64]) -> Option<usize> {
+    for (word_index, &word) in bits.iter().enumerate().rev() {
+        if word != 0 {
+            let bit = 63usize - word.leading_zeros() as usize;
+            return Some(word_index * 64 + bit);
+        }
+    }
     None
 }
 
@@ -385,5 +465,18 @@ mod tests {
                 idx
             );
         }
+    }
+
+    #[test]
+    fn test_connected_components_helper() {
+        let adj = vec![
+            BTreeSet::from([1]),
+            BTreeSet::from([0, 2]),
+            BTreeSet::from([1]),
+            BTreeSet::from([4]),
+            BTreeSet::from([3]),
+        ];
+
+        assert_eq!(connected_components(&adj), 2);
     }
 }
