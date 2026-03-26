@@ -80,12 +80,27 @@ pub fn default_ani_tm_params() -> AevParams {
 }
 
 /// Compute AEVs for the extended ANI-TM element set.
+///
+/// Returns empty AEVs for atoms with unsupported elements, but logs
+/// unsupported species. Callers should validate elements beforehand
+/// using [`is_ani_tm_supported`].
 pub fn compute_aevs_tm(
     elements: &[u8],
     positions: &[[f64; 3]],
     params: &AevParams,
 ) -> Vec<Vec<f64>> {
     let n_atoms = elements.len();
+
+    // Check for unsupported elements upfront
+    let mut has_unsupported = false;
+    for (i, &z) in elements.iter().enumerate() {
+        if !is_ani_tm_supported(z) {
+            eprintln!("WARNING: ANI-TM unsupported element Z={z} at atom {i}, will be skipped in AEV");
+            has_unsupported = true;
+        }
+    }
+    let _ = has_unsupported; // available for caller inspection if needed
+
     let cell_list = CellList::new(positions, params.radial_cutoff);
     let neighbors = cell_list.find_neighbors(positions);
 
