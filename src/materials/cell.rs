@@ -43,6 +43,8 @@ impl UnitCell {
     }
 
     /// Create a cell from crystallographic parameters (a, b, c, α, β, γ in degrees).
+    ///
+    /// Returns a degenerate cell if angles do not produce positive volume.
     pub fn from_parameters(params: &CellParameters) -> Self {
         let alpha = params.alpha.to_radians();
         let beta = params.beta.to_radians();
@@ -53,13 +55,35 @@ impl UnitCell {
         let cos_gamma = gamma.cos();
         let sin_gamma = gamma.sin();
 
+        // Validate: angles must produce positive volume.
+        // The volume factor is: 1 - cos²α - cos²β - cos²γ + 2·cosα·cosβ·cosγ > 0
+        let vol_factor =
+            1.0 - cos_alpha * cos_alpha - cos_beta * cos_beta - cos_gamma * cos_gamma
+                + 2.0 * cos_alpha * cos_beta * cos_gamma;
+        if vol_factor <= 0.0 {
+            eprintln!(
+                "Warning: cell angles α={:.1}° β={:.1}° γ={:.1}° produce non-positive volume",
+                params.alpha, params.beta, params.gamma
+            );
+        }
+
+        // γ must be in (0°, 180°) for a valid cell
+        if sin_gamma.abs() < 1e-12 {
+            return Self {
+                lattice: [[params.a, 0.0, 0.0], [0.0, params.b, 0.0], [0.0, 0.0, params.c]],
+            };
+        }
+
         // Standard crystallographic convention: a along x, b in xy-plane
         let ax = params.a;
         let bx = params.b * cos_gamma;
         let by = params.b * sin_gamma;
         let cx = params.c * cos_beta;
         let cy = params.c * (cos_alpha - cos_beta * cos_gamma) / sin_gamma;
-        let cz = (params.c * params.c - cx * cx - cy * cy).sqrt();
+        let cz_sq = params.c * params.c - cx * cx - cy * cy;
+
+        // Negative cz² means angles are incompatible — clamp to avoid NaN
+        let cz = if cz_sq > 0.0 { cz_sq.sqrt() } else { 0.0 };
 
         Self {
             lattice: [[ax, 0.0, 0.0], [bx, by, 0.0], [cx, cy, cz]],

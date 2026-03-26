@@ -257,22 +257,40 @@ fn optimize_bfgs(
             }
         }
 
-        // Take step
-        let mut new_positions = positions.clone();
-        for i in 0..n {
-            if config.fixed_atoms.contains(&i) {
-                continue;
+        // Take step with Armijo backtracking line search
+        let directional_deriv: f64 = p.iter().zip(grad.iter()).map(|(a, b)| a * b).sum();
+        let c_armijo = 1e-4;
+        let mut alpha = 1.0;
+        let mut new_positions;
+        let mut new_energy;
+        let mut new_forces;
+
+        loop {
+            new_positions = positions.clone();
+            for i in 0..n {
+                if config.fixed_atoms.contains(&i) {
+                    continue;
+                }
+                for d in 0..3 {
+                    new_positions[i][d] += alpha * p[i * 3 + d];
+                }
             }
-            for d in 0..3 {
-                new_positions[i][d] += p[i * 3 + d];
+
+            if let Some(ref lattice) = config.lattice {
+                apply_pbc(&mut new_positions, lattice);
             }
+
+            let result = energy_force_fn(elements, &new_positions)?;
+            new_energy = result.0;
+            new_forces = result.1;
+
+            // Armijo condition: f(x + α*p) <= f(x) + c * α * ∇f·p
+            if new_energy <= energy + c_armijo * alpha * directional_deriv || alpha < 0.1 {
+                break;
+            }
+            alpha *= 0.5;
         }
 
-        if let Some(ref lattice) = config.lattice {
-            apply_pbc(&mut new_positions, lattice);
-        }
-
-        let (new_energy, mut new_forces) = energy_force_fn(elements, &new_positions)?;
         zero_fixed_forces(&mut new_forces, &config.fixed_atoms);
 
         let new_grad = flatten_neg_forces(&new_forces);
@@ -299,6 +317,16 @@ fn optimize_bfgs(
                 for j in 0..ndim {
                     h_inv[i][j] +=
                         rho * ((1.0 + yhy * rho) * s[i] * s[j] - hy[i] * s[j] - s[i] * hy[j]);
+                }
+            }
+
+            // Positive-definite check: if any diagonal becomes negative, reset to identity
+            let has_negative_diag = (0..ndim).any(|i| h_inv[i][i] <= 0.0);
+            if has_negative_diag {
+                for i in 0..ndim {
+                    for j in 0..ndim {
+                        h_inv[i][j] = if i == j { 1.0 } else { 0.0 };
+                    }
                 }
             }
         }

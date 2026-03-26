@@ -431,20 +431,32 @@ fn space_group_data(
             vec![id, c2z.clone(), mx.clone(), my.clone()],
         ),
         26..=46 => {
-            let symbols = [
-                "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
-                "P m c 21", "P c c 2", "P m a 2", "P c a 21", "P n c 2", "P m n 21", "P b a 2",
-                "P n a 21", "P n n 2", "A m m 2", "A b m 2", "A m a 2", "A b a 2", "F m m 2",
-                "F d d 2", "I m m 2", "I b a 2", "I m a 2", "P m m m", "P n n n", "P c c m",
-            ];
-            let idx = (number - 26) as usize;
-            let sym = if idx < symbols.len() {
-                symbols[idx]
-            } else {
-                "?"
+            let (sym, lt) = match number {
+                26 => ("P m c 21", P),
+                27 => ("P c c 2", P),
+                28 => ("P m a 2", P),
+                29 => ("P c a 21", P),
+                30 => ("P n c 2", P),
+                31 => ("P m n 21", P),
+                32 => ("P b a 2", P),
+                33 => ("P n a 21", P),
+                34 => ("P n n 2", P),
+                35 => ("C m m 2", C),
+                36 => ("C m c 21", C),
+                37 => ("C c c 2", C),
+                38 => ("A m m 2", A),
+                39 => ("A b m 2", A),
+                40 => ("A m a 2", A),
+                41 => ("A b a 2", A),
+                42 => ("F m m 2", F),
+                43 => ("F d d 2", F),
+                44 => ("I m m 2", I),
+                45 => ("I b a 2", I),
+                46 => ("I m a 2", I),
+                _ => unreachable!(),
             };
-            let pg = if number >= 47 { "mmm" } else { "mm2" };
-            (sym, pg, P, vec![id, c2z.clone(), c2y.clone(), c2x.clone()])
+            // Point group mm2: identity, C2z, mirror_x, mirror_y
+            (sym, "mm2", lt, vec![id, c2z.clone(), mx.clone(), my.clone()])
         }
         47..=74 => {
             let ops = vec![
