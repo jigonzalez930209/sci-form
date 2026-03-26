@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: sci-form
-  text: Computational Chemistry in Rust
-  tagline: Conformer generation, EHT, PM3, GFN-xTB, UV-Vis sTDA, IR, NMR, ML properties, force fields — Rust, Python, TypeScript, CLI (v0.5.0)
+  text: Computational Chemistry Toolkit in Rust
+  tagline: ETKDG conformers, PM3 and GFN-xTB, HF-3c, ANI, spectroscopy, descriptors, and materials workflows across Rust, Python, TypeScript, and CLI
   image:
     src: /logo.svg
     alt: sci-form
@@ -27,11 +27,11 @@ features:
     title: RDKit-Quality Accuracy
     details: "0.064 Å avg RMSD vs RDKit. 846 CSD torsion patterns. 100% stereo validation."
   - icon: 🔬
-    title: Four QM Methods
-    details: "**NEW v0.6** — HF-3c Engine, EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast)."
+    title: Multi-method Quantum Stack
+    details: "EHT, PM3/PM3(tm), GFN0/GFN1/GFN2-xTB, HF-3c, and CISD cover fast screening through corrected ab-initio workflows."
   - icon: 🌈
     title: Spectroscopy (Track D)
-    details: "**NEW v0.5** — UV-Vis sTDA with oscillator strengths (Gaussian/Lorentzian broadening), IR via numerical Hessian (3N modes, ZPVE, km/mol intensities), ¹H/¹³C NMR with HOSE codes + Karplus ³J-couplings."
+    details: "UV-Vis sTDA, vibrational analysis + broadened IR, and NMR shifts/couplings are available from the same molecular pipeline."
   - icon: ⚛️
     title: Extended Hückel Theory
     details: "Wolfsberg-Helmholtz Hamiltonian, Löwdin orthogonalization, HOMO/LUMO gaps, population analysis, dipole moments."
@@ -40,7 +40,7 @@ features:
     details: "Coulomb ESP grids (red/white/blue mapping), total/per-atom DOS with Gaussian smearing, volumetric orbital grids, Marching Cubes isosurfaces."
   - icon: 🧬
     title: ML Potentials & Descriptors
-    details: "**NEW v0.6** — ANI Neural Network exact replication for energies/forces. Plus 17 descriptors, LogP, solubility, Lipinski Ro5."
+    details: "ANI-2x and ANI-TM potentials, topological descriptors, WHIM/RDF/GETAWAY, and built-in ML property models support fast screening."
   - icon: 🧲
     title: Force Fields
     details: "UFF (50+ elements + TM) and MMFF94 (Halgren 14-7 vdW, quartic/cubic bends, Fourier torsions)."
@@ -55,5 +55,5 @@ features:
     details: "Native Rust, PyO3 (Python), WASM (TypeScript/JS, browser/Node.js/Deno/Bun), and CLI."
   - icon: 📖
     title: Documented Algorithms
-    details: "Complete theoretical foundations with mathematical derivations, SVG diagrams, and step-by-step pipeline explanations for every module."
+    details: "Algorithm notes, API references, benchmark writeups, and WebGPU validation docs track the current repository surface."
 ---
