@@ -3,6 +3,7 @@
 //! Self-contained types that avoid dependency on experimental_2::types.
 
 use nalgebra::DMatrix;
+use serde::{Deserialize, Serialize};
 
 /// Converged SCF data needed by spectroscopy methods.
 ///
@@ -51,7 +52,7 @@ impl<'a> From<&'a crate::scf::types::ScfResult> for ScfInput {
 }
 
 /// Information about a single electronic transition (UV-Vis).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionInfo {
     /// Excitation energy (eV).
     pub energy_ev: f64,
@@ -64,7 +65,7 @@ pub struct TransitionInfo {
 }
 
 /// Result of sTDA UV-Vis calculation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpectroscopyResult {
     /// Electronic transitions with energies and oscillator strengths.
     pub transitions: Vec<TransitionInfo>,
@@ -73,7 +74,7 @@ pub struct SpectroscopyResult {
 }
 
 /// NMR shielding tensor for a single nucleus.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShieldingTensor {
     /// Atom index.
     pub atom_index: usize,
@@ -90,7 +91,7 @@ pub struct ShieldingTensor {
 }
 
 /// Result of GIAO NMR calculation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NmrShieldingResult {
     /// Chemical shifts (ppm) per atom.
     pub chemical_shifts: Vec<f64>,
