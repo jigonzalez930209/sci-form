@@ -6,10 +6,12 @@
 //! - Ring current effects for aromatic systems
 //! - Functional group corrections
 
+use super::nucleus::NmrNucleus;
 use crate::graph::{BondOrder, Hybridization, Molecule};
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// Chemical shift prediction for a single atom.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,6 +26,14 @@ pub struct ChemicalShift {
     pub environment: String,
     /// Confidence level (0.0–1.0).
     pub confidence: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NucleusShiftSeries {
+    /// Representative nucleus for this shift list.
+    pub nucleus: NmrNucleus,
+    /// Per-atom relative shifts for that nucleus.
+    pub shifts: Vec<ChemicalShift>,
 }
 
 /// Complete NMR shift prediction result.
@@ -49,27 +59,253 @@ pub struct NmrShiftResult {
     pub o_shifts: Vec<ChemicalShift>,
     /// Predicted shifts for sulfur atoms (³³S).
     pub s_shifts: Vec<ChemicalShift>,
+    /// Representative shifts for additional nuclei outside the legacy fixed fields.
+    pub other_shifts: Vec<NucleusShiftSeries>,
     /// Notes and caveats.
     pub notes: Vec<String>,
+}
+
+impl NmrShiftResult {
+    pub fn shifts_for_nucleus(&self, nucleus: NmrNucleus) -> &[ChemicalShift] {
+        match nucleus {
+            NmrNucleus::H1 => &self.h_shifts,
+            NmrNucleus::C13 => &self.c_shifts,
+            NmrNucleus::F19 => &self.f_shifts,
+            NmrNucleus::P31 => &self.p_shifts,
+            NmrNucleus::N15 => &self.n_shifts,
+            NmrNucleus::B11 => &self.b_shifts,
+            NmrNucleus::Si29 => &self.si_shifts,
+            NmrNucleus::Se77 => &self.se_shifts,
+            NmrNucleus::O17 => &self.o_shifts,
+            NmrNucleus::S33 => &self.s_shifts,
+            _ => self
+                .other_shifts
+                .iter()
+                .find(|series| series.nucleus == nucleus)
+                .map(|series| series.shifts.as_slice())
+                .unwrap_or(&[]),
+        }
+    }
 }
 
 // ─── Electronegativity table (Pauling scale) ────────────────────────────────
 
 fn electronegativity(z: u8) -> f64 {
     match z {
-        1 => 2.20,
-        5 => 2.04,
-        6 => 2.55,
-        7 => 3.04,
-        8 => 3.44,
-        9 => 3.98,
-        14 => 1.90,
-        15 => 2.19,
-        16 => 2.58,
-        17 => 3.16,
-        35 => 2.96,
-        53 => 2.66,
+        1 => 2.20,  // H
+        5 => 2.04,  // B
+        6 => 2.55,  // C
+        7 => 3.04,  // N
+        8 => 3.44,  // O
+        9 => 3.98,  // F
+        13 => 1.61, // Al
+        14 => 1.90, // Si
+        15 => 2.19, // P
+        16 => 2.58, // S
+        17 => 3.16, // Cl
+        22 => 1.54, // Ti
+        24 => 1.66, // Cr
+        25 => 1.55, // Mn
+        26 => 1.83, // Fe
+        27 => 1.88, // Co
+        28 => 1.91, // Ni
+        29 => 1.90, // Cu
+        30 => 1.65, // Zn
+        32 => 2.01, // Ge
+        33 => 2.18, // As
+        34 => 2.55, // Se
+        35 => 2.96, // Br
+        44 => 2.20, // Ru
+        46 => 2.20, // Pd
+        47 => 1.93, // Ag
+        53 => 2.66, // I
+        78 => 2.28, // Pt
+        79 => 2.54, // Au
         _ => 2.00,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LocalShiftEnvironment {
+    heavy_neighbors: usize,
+    hydrogen_neighbors: usize,
+    hetero_neighbors: usize,
+    pi_bonds: usize,
+    aromatic: bool,
+    formal_charge: i8,
+    mean_neighbor_atomic_number: f64,
+    electronegativity_delta: f64,
+}
+
+fn local_shift_environment(mol: &Molecule, idx: NodeIndex) -> LocalShiftEnvironment {
+    let mut heavy_neighbors = 0usize;
+    let mut hydrogen_neighbors = 0usize;
+    let mut hetero_neighbors = 0usize;
+    let mut neighbor_atomic_number_sum = 0.0;
+    let mut electronegativity_delta = 0.0;
+
+    for neighbor in mol.graph.neighbors(idx) {
+        let element = mol.graph[neighbor].element;
+        neighbor_atomic_number_sum += element as f64;
+        electronegativity_delta +=
+            electronegativity(element) - electronegativity(mol.graph[idx].element);
+
+        if element == 1 {
+            hydrogen_neighbors += 1;
+        } else {
+            heavy_neighbors += 1;
+            if !matches!(element, 1 | 6) {
+                hetero_neighbors += 1;
+            }
+        }
+    }
+
+    let pi_bonds = mol
+        .graph
+        .edges(idx)
+        .filter(|edge| matches!(edge.weight().order, BondOrder::Double | BondOrder::Triple))
+        .count();
+    let aromatic = mol
+        .graph
+        .edges(idx)
+        .any(|edge| matches!(edge.weight().order, BondOrder::Aromatic));
+    let neighbor_count = mol.graph.neighbors(idx).count().max(1) as f64;
+
+    LocalShiftEnvironment {
+        heavy_neighbors,
+        hydrogen_neighbors,
+        hetero_neighbors,
+        pi_bonds,
+        aromatic,
+        formal_charge: mol.graph[idx].formal_charge,
+        mean_neighbor_atomic_number: neighbor_atomic_number_sum / neighbor_count,
+        electronegativity_delta,
+    }
+}
+
+fn apply_isotope_offset(shift_ppm: f64, nucleus: NmrNucleus) -> f64 {
+    match nucleus {
+        NmrNucleus::H2 => shift_ppm + 0.05,
+        NmrNucleus::H3 => shift_ppm + 0.10,
+        NmrNucleus::B10 => shift_ppm - 2.0,
+        NmrNucleus::N14 => shift_ppm + 12.0,
+        NmrNucleus::Cl37 => shift_ppm + 1.0,
+        NmrNucleus::Br81 => shift_ppm + 1.5,
+        NmrNucleus::Li6 => shift_ppm - 0.5,
+        NmrNucleus::K40 => shift_ppm + 1.5,
+        NmrNucleus::K41 => shift_ppm + 0.6,
+        NmrNucleus::Ti47 => shift_ppm - 2.0,
+        NmrNucleus::Ti49 => shift_ppm + 2.0,
+        NmrNucleus::V50 => shift_ppm - 4.0,
+        NmrNucleus::Mo97 => shift_ppm + 2.0,
+        NmrNucleus::Ru99 => shift_ppm - 3.0,
+        NmrNucleus::Ag109 => shift_ppm + 1.0,
+        NmrNucleus::Cd113 => shift_ppm + 1.0,
+        NmrNucleus::In113 => shift_ppm - 2.0,
+        NmrNucleus::Sn115 => shift_ppm - 3.0,
+        NmrNucleus::Sn117 => shift_ppm - 1.0,
+        NmrNucleus::Sb123 => shift_ppm + 3.0,
+        NmrNucleus::Te123 => shift_ppm - 5.0,
+        NmrNucleus::Xe131 => shift_ppm + 8.0,
+        NmrNucleus::Ba135 => shift_ppm - 4.0,
+        NmrNucleus::Hg201 => shift_ppm + 2.0,
+        NmrNucleus::Tl203 => shift_ppm - 2.0,
+        _ => shift_ppm,
+    }
+}
+
+fn generic_relative_shift(
+    mol: &Molecule,
+    idx: NodeIndex,
+    nucleus: NmrNucleus,
+) -> (f64, String, f64) {
+    let env = local_shift_environment(mol, idx);
+    let (min_ppm, max_ppm) = nucleus.empirical_range();
+    let span = max_ppm - min_ppm;
+    let sensitivity = if nucleus.is_primary_target() {
+        0.08 * span
+    } else if nucleus.is_quadrupolar() {
+        0.03 * span
+    } else {
+        0.05 * span
+    };
+
+    let mut shift_ppm = nucleus.empirical_center();
+    shift_ppm += env.electronegativity_delta * sensitivity * 0.35;
+    shift_ppm += env.hetero_neighbors as f64 * sensitivity * 0.22;
+    shift_ppm += env.pi_bonds as f64 * sensitivity * 0.20;
+    shift_ppm += env.heavy_neighbors as f64 * sensitivity * 0.08;
+    shift_ppm += env.hydrogen_neighbors as f64 * sensitivity * 0.03;
+    shift_ppm += env.formal_charge as f64 * sensitivity * 0.45;
+    if env.aromatic {
+        shift_ppm += sensitivity * 0.25;
+    }
+
+    shift_ppm += (env.mean_neighbor_atomic_number - nucleus.atomic_number() as f64)
+        * 0.02
+        * sensitivity;
+    shift_ppm = apply_isotope_offset(shift_ppm, nucleus).clamp(min_ppm, max_ppm);
+
+    let environment = format!(
+        "relative_{}_coord{}_hetero{}_pi{}_q{}",
+        nucleus.element_symbol(),
+        env.heavy_neighbors,
+        env.hetero_neighbors,
+        env.pi_bonds,
+        env.formal_charge,
+    );
+    let confidence = if nucleus.is_primary_target() {
+        0.70
+    } else if nucleus.is_quadrupolar() {
+        0.28
+    } else {
+        0.38
+    };
+
+    (shift_ppm, environment, confidence)
+}
+
+fn predict_shift_for_nucleus(
+    mol: &Molecule,
+    idx: NodeIndex,
+    nucleus: NmrNucleus,
+) -> (f64, String, f64) {
+    match nucleus {
+        NmrNucleus::H1 => predict_h_shift(mol, idx),
+        NmrNucleus::H2 | NmrNucleus::H3 => {
+            let (shift_ppm, environment, confidence) = predict_h_shift(mol, idx);
+            (
+                apply_isotope_offset(shift_ppm, nucleus),
+                format!("{}_relative", environment),
+                confidence * 0.92,
+            )
+        }
+        NmrNucleus::C13 => predict_c_shift(mol, idx),
+        NmrNucleus::F19 => predict_f_shift(mol, idx),
+        NmrNucleus::P31 => predict_p_shift(mol, idx),
+        NmrNucleus::N15 => predict_n_shift(mol, idx),
+        NmrNucleus::N14 => {
+            let (shift_ppm, environment, confidence) = predict_n_shift(mol, idx);
+            (
+                apply_isotope_offset(shift_ppm, nucleus),
+                format!("{}_relative", environment),
+                confidence * 0.85,
+            )
+        }
+        NmrNucleus::B11 => predict_b_shift(mol, idx),
+        NmrNucleus::B10 => {
+            let (shift_ppm, environment, confidence) = predict_b_shift(mol, idx);
+            (
+                apply_isotope_offset(shift_ppm, nucleus),
+                format!("{}_relative", environment),
+                confidence * 0.85,
+            )
+        }
+        NmrNucleus::Si29 => predict_si_shift(mol, idx),
+        NmrNucleus::Se77 => predict_se_shift(mol, idx),
+        NmrNucleus::O17 => predict_o_shift(mol, idx),
+        NmrNucleus::S33 => predict_s_shift(mol, idx),
+        _ => generic_relative_shift(mol, idx, nucleus),
     }
 }
 
@@ -712,7 +948,34 @@ fn predict_s_shift(mol: &Molecule, s_idx: NodeIndex) -> (f64, String, f64) {
     }
 }
 
-/// Predict chemical shifts for all NMR-active nuclei in a molecule.
+pub fn predict_chemical_shifts_for_nucleus(
+    mol: &Molecule,
+    nucleus: NmrNucleus,
+) -> Vec<ChemicalShift> {
+    let n = mol.graph.node_count();
+    let mut shifts = Vec::new();
+
+    for atom_idx in 0..n {
+        let idx = NodeIndex::new(atom_idx);
+        let element = mol.graph[idx].element;
+        if element != nucleus.atomic_number() {
+            continue;
+        }
+
+        let (shift_ppm, environment, confidence) = predict_shift_for_nucleus(mol, idx, nucleus);
+        shifts.push(ChemicalShift {
+            atom_index: atom_idx,
+            element,
+            shift_ppm,
+            environment,
+            confidence,
+        });
+    }
+
+    shifts
+}
+
+/// Predict chemical shifts for all representative NMR-active nuclei in a molecule.
 pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
     let n = mol.graph.node_count();
     let mut h_shifts = Vec::new();
@@ -725,24 +988,17 @@ pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
     let mut se_shifts = Vec::new();
     let mut o_shifts = Vec::new();
     let mut s_shifts = Vec::new();
+    let mut other_shifts: BTreeMap<NmrNucleus, Vec<ChemicalShift>> = BTreeMap::new();
 
     for atom_idx in 0..n {
         let idx = NodeIndex::new(atom_idx);
         let elem = mol.graph[idx].element;
 
-        let (shift, env, conf) = match elem {
-            1 => predict_h_shift(mol, idx),
-            6 => predict_c_shift(mol, idx),
-            7 => predict_n_shift(mol, idx),
-            8 => predict_o_shift(mol, idx),
-            9 => predict_f_shift(mol, idx),
-            5 => predict_b_shift(mol, idx),
-            14 => predict_si_shift(mol, idx),
-            15 => predict_p_shift(mol, idx),
-            16 => predict_s_shift(mol, idx),
-            34 => predict_se_shift(mol, idx),
-            _ => continue,
+        let Some(nucleus) = NmrNucleus::default_for_element(elem) else {
+            continue;
         };
+
+        let (shift, env, conf) = predict_shift_for_nucleus(mol, idx, nucleus);
 
         let cs = ChemicalShift {
             atom_index: atom_idx,
@@ -752,20 +1008,27 @@ pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
             confidence: conf,
         };
 
-        match elem {
-            1 => h_shifts.push(cs),
-            6 => c_shifts.push(cs),
-            7 => n_shifts.push(cs),
-            8 => o_shifts.push(cs),
-            9 => f_shifts.push(cs),
-            5 => b_shifts.push(cs),
-            14 => si_shifts.push(cs),
-            15 => p_shifts.push(cs),
-            16 => s_shifts.push(cs),
-            34 => se_shifts.push(cs),
-            _ => {}
+        match nucleus {
+            NmrNucleus::H1 => h_shifts.push(cs),
+            NmrNucleus::C13 => c_shifts.push(cs),
+            NmrNucleus::F19 => f_shifts.push(cs),
+            NmrNucleus::P31 => p_shifts.push(cs),
+            NmrNucleus::N15 => n_shifts.push(cs),
+            NmrNucleus::B11 => b_shifts.push(cs),
+            NmrNucleus::Si29 => si_shifts.push(cs),
+            NmrNucleus::Se77 => se_shifts.push(cs),
+            NmrNucleus::O17 => o_shifts.push(cs),
+            NmrNucleus::S33 => s_shifts.push(cs),
+            _ => {
+                other_shifts.entry(nucleus).or_default().push(cs);
+            }
         }
     }
+
+    let other_shifts = other_shifts
+        .into_iter()
+        .map(|(nucleus, shifts)| NucleusShiftSeries { nucleus, shifts })
+        .collect();
 
     NmrShiftResult {
         h_shifts,
@@ -778,10 +1041,15 @@ pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
         se_shifts,
         o_shifts,
         s_shifts,
+        other_shifts,
         notes: vec![
             "Chemical shifts predicted using empirical additivity rules based on local atomic environment.".to_string(),
-            "¹H and ¹³C: MAE target < 0.5 / 3.0 ppm. Other nuclei: screening-level approximations.".to_string(),
-            "Supported nuclei: ¹H, ¹³C, ¹⁹F, ³¹P, ¹⁵N, ¹¹B, ²⁹Si, ⁷⁷Se, ¹⁷O, ³³S.".to_string(),
+            "¹H and ¹³C remain the main accuracy targets. Other nuclei use fast relative inference intended for screening and trend inspection.".to_string(),
+            format!(
+                "Representative nuclei are exported through legacy fields plus other_shifts. Full per-nucleus access is available for {} nuclei.",
+                NmrNucleus::ALL.len()
+            ),
+            "Quadrupolar nuclei are treated as quick relative estimates only; relative intensities and isotope abundances are not modeled in this path.".to_string(),
         ],
     }
 }
