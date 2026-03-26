@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage:
-#   ./scripts/bump_version.sh          # auto-increment patch (0.1.4 → 0.1.5)
+#   ./scripts/bump_version.sh          # auto-increment patch (current → next patch)
 #   ./scripts/bump_version.sh 0.2.0    # set explicit version
 
 set -euo pipefail
@@ -50,6 +50,11 @@ if [[ -f "$PYPROJECT" ]]; then
 fi
 
 # package.json files — update "version": "X.Y.Z"
+if [[ -f "package.json" ]]; then
+  sed -i "s/\"version\": \"[0-9]*\.[0-9]*\.[0-9]*\"/\"version\": \"$NEW_VERSION\"/" package.json
+  echo "  updated package.json"
+fi
+
 for pkg in \
     crates/wasm/pkg/package.json \
     pkg/package.json \
@@ -60,8 +65,15 @@ for pkg in \
   fi
 done
 
+if [[ -f "package-lock.json" ]]; then
+  npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+  echo "  updated package-lock.json"
+fi
+
 # ── Git commit + tag + push ───────────────────────────────────────────────────
 git add \
+  package.json \
+  package-lock.json \
   Cargo.toml \
   crates/cli/Cargo.toml \
   crates/wasm/Cargo.toml \
