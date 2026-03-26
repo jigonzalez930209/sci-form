@@ -18,6 +18,11 @@ use serde::{Deserialize, Serialize};
 const EANG_TO_DEBYE: f64 = 4.80321;
 
 /// Result of a dipole moment calculation.
+///
+/// The total dipole μ = μ_nuclear + μ_electronic.
+/// `nuclear_dipole` and `electronic_dipole` are `Some` when computed from
+/// an electronic-structure method (EHT); they are `None` when computed
+/// directly from pre-built Mulliken charges.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DipoleResult {
     /// Dipole vector components (Debye).
@@ -26,6 +31,10 @@ pub struct DipoleResult {
     pub magnitude: f64,
     /// Unit: always "Debye".
     pub unit: String,
+    /// Nuclear contribution to the dipole (Debye), if decomposition is available.
+    pub nuclear_dipole: Option<[f64; 3]>,
+    /// Electronic contribution to the dipole (Debye), if decomposition is available.
+    pub electronic_dipole: Option<[f64; 3]>,
 }
 
 /// Compute the molecular dipole moment from Mulliken charges and positions.
@@ -58,6 +67,8 @@ pub fn compute_dipole(mulliken_charges: &[f64], positions: &[[f64; 3]]) -> Dipol
         vector: mu,
         magnitude,
         unit: "Debye".to_string(),
+        nuclear_dipole: None,
+        electronic_dipole: None,
     }
 }
 
@@ -74,7 +85,29 @@ pub fn compute_dipole_from_eht(
     let overlap = crate::eht::build_overlap_matrix(&basis);
     let charges =
         crate::population::mulliken_charges(elements, &basis, &overlap, coefficients, n_electrons);
-    compute_dipole(&charges, positions)
+
+    // Decompose into nuclear and electronic contributions.
+    // Nuclear: μ_nuc = Σ_A Z_A * R_A  (valence Z — nuclear charges from EHT basis).
+    // Electronic: μ_el = -Σ_A pop_A * R_A  (Mulliken populations).
+    let mut mu_nuc = [0.0; 3];
+    let mut mu_el = [0.0; 3];
+    for (i, &z) in elements.iter().enumerate() {
+        let z_val = crate::population::population::valence_electrons(z) as f64;
+        let pop = z_val - charges[i]; // population = Z_val - q
+        for k in 0..3 {
+            mu_nuc[k] += z_val * positions[i][k];
+            mu_el[k] -= pop * positions[i][k];
+        }
+    }
+    for k in 0..3 {
+        mu_nuc[k] *= EANG_TO_DEBYE;
+        mu_el[k] *= EANG_TO_DEBYE;
+    }
+
+    let mut result = compute_dipole(&charges, positions);
+    result.nuclear_dipole = Some(mu_nuc);
+    result.electronic_dipole = Some(mu_el);
+    result
 }
 
 #[cfg(test)]
