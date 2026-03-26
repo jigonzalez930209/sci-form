@@ -1,3 +1,7 @@
+//! Debug: parse a molecule and print the graph topology (atoms, bonds, properties).
+//!
+//! Category: debug
+
 use petgraph::visit::EdgeRef;
 use sci_form::graph::Molecule;
 

@@ -1,3 +1,7 @@
+//! Debug: exercise SSSR ring perception on assorted ring systems.
+//!
+//! Category: debug
+
 use sci_form::graph::Molecule;
 
 fn main() {

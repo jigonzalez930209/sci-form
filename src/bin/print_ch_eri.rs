@@ -1,3 +1,7 @@
+//! Debug: print ERIs and overlap for a CH system in STO-3G.
+//!
+//! Category: debug
+
 use sci_form::hf::basis::build_sto3g_basis;
 use sci_form::hf::integrals::{compute_eris, get_eri};
 use sci_form::hf::overlap_kin::compute_overlap_matrix;

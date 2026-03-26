@@ -1,3 +1,8 @@
+//! Debug: dump bounds matrix for multiple molecules to compare distance
+//! constraints across different topologies.
+//!
+//! Category: debug
+
 use sci_form::distgeom::bounds::calculate_bounds_matrix;
 use sci_form::graph::Molecule;
 use sci_form::smiles::SmilesParser;

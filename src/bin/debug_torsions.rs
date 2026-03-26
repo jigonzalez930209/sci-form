@@ -1,3 +1,8 @@
+//! Debug: trace torsion angles through the distance geometry pipeline
+//! and dump intermediate coordinates.
+//!
+//! Category: debug
+
 use petgraph::visit::EdgeRef;
 use sci_form::distgeom::{
     calculate_bounds_matrix_opts, compute_initial_coords_rdkit, identify_chiral_sets,
