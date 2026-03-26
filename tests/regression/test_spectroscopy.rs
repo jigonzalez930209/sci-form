@@ -607,9 +607,173 @@ fn test_nmr_spectrum_nucleus_aliases() {
         let res = sci_form::compute_nmr_spectrum("FC", alias, 0.5, -250.0, 0.0, 100);
         assert!(res.is_ok(), "nucleus alias '{}' should work", alias);
     }
+    // Expanded nuclei should also work
+    for (smiles, alias, ppm_min, ppm_max) in [
+        ("[H]", "2H", -2.0, 14.0),
+        ("[Cl]", "35Cl", -400.0, 1600.0),
+        ("[Br]", "79Br", -600.0, 2200.0),
+        ("[Pt]", "195Pt", -3000.0, 3000.0),
+    ] {
+        let res = sci_form::compute_nmr_spectrum(smiles, alias, 0.0, ppm_min, ppm_max, 100);
+        assert!(res.is_ok(), "expanded nucleus alias '{}' should work", alias);
+    }
     // Unknown nucleus should fail
-    let res = sci_form::compute_nmr_spectrum("C", "2H", 0.02, 0.0, 12.0, 100);
+    let res = sci_form::compute_nmr_spectrum("C", "999X", 0.02, 0.0, 12.0, 100);
     assert!(res.is_err());
+}
+
+#[test]
+fn test_nmr_shifts_for_expanded_nuclei() {
+    let cases = [
+        ("1H", "[H]"),
+        ("2H", "[H]"),
+        ("3H", "[H]"),
+        ("3He", "[He]"),
+        ("6Li", "[Li]"),
+        ("7Li", "[Li]"),
+        ("9Be", "[Be]"),
+        ("10B", "[B]"),
+        ("11B", "[B]"),
+        ("13C", "[C]"),
+        ("14N", "[N]"),
+        ("15N", "[N]"),
+        ("17O", "[O]"),
+        ("19F", "[F]"),
+        ("23Na", "[Na]"),
+        ("25Mg", "[Mg]"),
+        ("27Al", "[Al]"),
+        ("29Si", "[Si]"),
+        ("31P", "[P]"),
+        ("33S", "[S]"),
+        ("35Cl", "[Cl]"),
+        ("37Cl", "[Cl]"),
+        ("39K", "[K]"),
+        ("40K", "[K]"),
+        ("41K", "[K]"),
+        ("43Ca", "[Ca]"),
+        ("45Sc", "[Sc]"),
+        ("47Ti", "[Ti]"),
+        ("49Ti", "[Ti]"),
+        ("50V", "[V]"),
+        ("51V", "[V]"),
+        ("53Cr", "[Cr]"),
+        ("55Mn", "[Mn]"),
+        ("57Fe", "[Fe]"),
+        ("59Co", "[Co]"),
+        ("61Ni", "[Ni]"),
+        ("63Cu", "[Cu]"),
+        ("65Cu", "[Cu]"),
+        ("67Zn", "[Zn]"),
+        ("69Ga", "[Ga]"),
+        ("71Ga", "[Ga]"),
+        ("73Ge", "[Ge]"),
+        ("75As", "[As]"),
+        ("77Se", "[Se]"),
+        ("79Br", "[Br]"),
+        ("81Br", "[Br]"),
+        ("85Rb", "[Rb]"),
+        ("87Rb", "[Rb]"),
+        ("87Sr", "[Sr]"),
+        ("91Zr", "[Zr]"),
+        ("93Nb", "[Nb]"),
+        ("95Mo", "[Mo]"),
+        ("97Mo", "[Mo]"),
+        ("99Ru", "[Ru]"),
+        ("101Ru", "[Ru]"),
+        ("103Rh", "[Rh]"),
+        ("105Pd", "[Pd]"),
+        ("107Ag", "[Ag]"),
+        ("109Ag", "[Ag]"),
+        ("111Cd", "[Cd]"),
+        ("113Cd", "[Cd]"),
+        ("113In", "[In]"),
+        ("115In", "[In]"),
+        ("115Sn", "[Sn]"),
+        ("117Sn", "[Sn]"),
+        ("119Sn", "[Sn]"),
+        ("121Sb", "[Sb]"),
+        ("123Sb", "[Sb]"),
+        ("123Te", "[Te]"),
+        ("125Te", "[Te]"),
+        ("127I", "[I]"),
+        ("129Xe", "[Xe]"),
+        ("131Xe", "[Xe]"),
+        ("133Cs", "[Cs]"),
+        ("135Ba", "[Ba]"),
+        ("137Ba", "[Ba]"),
+        ("183W", "[W]"),
+        ("195Pt", "[Pt]"),
+        ("197Au", "[Au]"),
+        ("199Hg", "[Hg]"),
+        ("201Hg", "[Hg]"),
+        ("203Tl", "[Tl]"),
+        ("205Tl", "[Tl]"),
+        ("207Pb", "[Pb]"),
+        ("209Bi", "[Bi]"),
+    ];
+
+    for (nucleus, smiles) in cases {
+        let result = sci_form::predict_nmr_shifts_for_nucleus(smiles, nucleus)
+            .unwrap_or_else(|err| panic!("{} on {} failed: {}", nucleus, smiles, err));
+        assert!(
+            !result.is_empty(),
+            "{} on {} should yield at least one shift",
+            nucleus,
+            smiles
+        );
+        assert!(
+            result.iter().all(|shift| shift.shift_ppm.is_finite() && shift.confidence.is_finite()),
+            "{} should produce finite relative shifts",
+            nucleus
+        );
+    }
+}
+
+#[test]
+fn test_public_giao_nmr_water_h1() {
+    let (elements, positions) = water_molecule();
+    let result = sci_form::compute_giao_nmr(&elements, &positions, "1H")
+        .expect("public GIAO NMR should succeed for water proton shifts");
+
+    assert_eq!(result.nucleus, "1H");
+    assert_eq!(result.target_atomic_number, 1);
+    assert_eq!(result.n_target_atoms, 2);
+    assert_eq!(result.shieldings.len(), 2);
+    assert_eq!(result.chemical_shifts.len(), 2);
+    assert!(result.scf_iterations > 0);
+    assert!(result
+        .chemical_shifts
+        .iter()
+        .all(|shift| shift.is_finite()));
+    assert!(result
+        .notes
+        .iter()
+        .any(|note| note.contains("RHF/STO-3G")));
+}
+
+#[test]
+fn test_public_giao_nmr_rejects_fallback_basis_by_default() {
+    let error = sci_form::compute_giao_nmr(&[78], &[[0.0, 0.0, 0.0]], "195Pt")
+        .expect_err("unsupported heavy elements should fail before SCF by default");
+
+    assert!(error.contains("fallback-only elements"), "{error}");
+}
+
+#[test]
+fn test_public_giao_nmr_reports_inadequate_forced_fallback_basis() {
+    let config = sci_form::GiaoNmrConfig {
+        allow_basis_fallback: true,
+        ..Default::default()
+    };
+    let error = sci_form::compute_giao_nmr_configured(
+        &[78],
+        &[[0.0, 0.0, 0.0]],
+        "195Pt",
+        &config,
+    )
+    .expect_err("forcing fallback should still fail when the basis cannot host the electrons");
+
+    assert!(error.contains("basis functions"), "{error}");
 }
 
 #[test]
