@@ -46,6 +46,21 @@ pub fn compute_rdf(
     n_points: usize,
 ) -> RdfDescriptors {
     let n = elements.len().min(positions.len());
+    let beta = if beta <= 0.0 { 100.0 } else { beta };
+    let r_max = if r_max <= 0.0 { 12.0 } else { r_max };
+
+    if n < 2 || n_points == 0 {
+        return RdfDescriptors {
+            radii: vec![],
+            rdf_unweighted: vec![],
+            rdf_mass: vec![],
+            rdf_electronegativity: vec![],
+            rdf_charge: vec![],
+            beta,
+            n_pairs: 0,
+        };
+    }
+
     let dr = r_max / n_points as f64;
     let radii: Vec<f64> = (0..n_points).map(|k| (k as f64 + 0.5) * dr).collect();
 
