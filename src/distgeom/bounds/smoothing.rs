@@ -1,3 +1,11 @@
+//! Triangle inequality smoothing for distance bounds matrices.
+//!
+//! Enforces the triangle inequality on all (i, j, k) triples:
+//!   upper(i,j) ≤ upper(i,k) + upper(k,j)
+//!   lower(i,j) ≥ lower(i,k) − upper(k,j)
+//!
+//! Returns `false` if the bounds are infeasible (lower > upper after tightening).
+
 use nalgebra::DMatrix;
 
 pub fn triangle_smooth(b: &mut DMatrix<f64>) -> bool {
@@ -6,7 +14,6 @@ pub fn triangle_smooth(b: &mut DMatrix<f64>) -> bool {
 
 pub fn triangle_smooth_tol(b: &mut DMatrix<f64>, tol: f64) -> bool {
     let n = b.nrows();
-    let feasible = true;
     for k in 0..n {
         for i in 0..n {
             if i == k {
@@ -30,12 +37,8 @@ pub fn triangle_smooth_tol(b: &mut DMatrix<f64>, tol: f64) -> bool {
                 if b[(i, j)] > su {
                     b[(i, j)] = su;
                 }
-                let mut li = b[(j, i)];
-                if li < d1 {
-                    li = d1;
-                } else if li < d2 {
-                    li = d2;
-                }
+                // Lower bound must satisfy BOTH triangle constraints
+                let li = b[(j, i)].max(d1).max(d2);
                 b[(j, i)] = li;
                 let lower = b[(j, i)];
                 let upper = b[(i, j)];
@@ -49,7 +52,7 @@ pub fn triangle_smooth_tol(b: &mut DMatrix<f64>, tol: f64) -> bool {
             }
         }
     }
-    feasible
+    true
 }
 
 pub fn smooth_bounds_matrix(mut b: DMatrix<f64>) -> DMatrix<f64> {
