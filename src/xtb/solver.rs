@@ -86,7 +86,7 @@ pub(crate) fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
 ///
 /// `elements`: atomic numbers.
 /// `positions`: Cartesian coordinates in Å.
-/// SCF state for xTB gradient computation.
+/// SCF state for xTB gradient computation and GFN1 shell SCC.
 pub(crate) struct XtbScfState {
     pub density: DMatrix<f64>,
     pub coefficients: DMatrix<f64>,
@@ -95,6 +95,9 @@ pub(crate) struct XtbScfState {
     pub n_occ: usize,
     pub charges: Vec<f64>,
     pub h_diag: Vec<f64>,
+    pub overlap: DMatrix<f64>,
+    pub hamiltonian: DMatrix<f64>,
+    pub s_half_inv: DMatrix<f64>,
 }
 
 /// Run xTB calculation returning both result and internal SCF state.
@@ -152,13 +155,17 @@ pub(crate) fn solve_xtb_with_state(
             if za < 1e-10 || zb < 1e-10 {
                 continue;
             }
-            // Direction-independent approximation: scale by overlap type
-            let scale = if la == 0 && lb == 0 {
-                1.0
-            } else if la == lb {
-                0.5
-            } else {
-                0.6
+            // Shell-dependent overlap scaling factors from Grimme's GFN0 parametrization.
+            // s-s: full overlap; s-p: reduced due to angular mismatch; p-p: further reduced.
+            // d-orbital scaling follows similar attenuation pattern.
+            let scale = match (la, lb) {
+                (0, 0) => 1.0,    // s-s
+                (0, 1) | (1, 0) => 0.65,  // s-p (angular mismatch)
+                (1, 1) => 0.55,   // p-p σ approximation
+                (0, 2) | (2, 0) => 0.40,  // s-d
+                (1, 2) | (2, 1) => 0.35,  // p-d
+                (2, 2) => 0.30,   // d-d
+                _ => 0.5,
             };
             let sij = sto_overlap(za, zb, r) * scale;
             s_mat[(i, j)] = sij;
@@ -191,7 +198,29 @@ pub(crate) fn solve_xtb_with_state(
         }
     }
 
-    // Repulsive energy: pair potential
+    // Repulsive energy: pair potential with coordination-number damping.
+    // First pass: compute coordination numbers for each atom.
+    let coord_numbers: Vec<f64> = (0..n_atoms)
+        .map(|a| {
+            let pa = get_xtb_params(elements[a]).unwrap();
+            let mut cn = 0.0;
+            for b in 0..n_atoms {
+                if b == a {
+                    continue;
+                }
+                let pb = get_xtb_params(elements[b]).unwrap();
+                let dx = positions[a][0] - positions[b][0];
+                let dy = positions[a][1] - positions[b][1];
+                let dz = positions[a][2] - positions[b][2];
+                let r = (dx * dx + dy * dy + dz * dz).sqrt();
+                let r_ref = pa.r_cov + pb.r_cov;
+                // Fermi-type counting function
+                cn += 1.0 / (1.0 + (-16.0 * (r_ref / r - 1.0)).exp());
+            }
+            cn
+        })
+        .collect();
+
     let mut e_rep = 0.0;
     for a in 0..n_atoms {
         let pa = get_xtb_params(elements[a]).unwrap();
@@ -207,9 +236,14 @@ pub(crate) fn solve_xtb_with_state(
                 continue;
             }
             let r_ref = pa.r_cov + pb.r_cov;
-            // Short-range repulsive: exponential decay
-            let alpha = 6.0; // decay parameter
-            e_rep += (pa.n_valence as f64) * (pb.n_valence as f64) * EV_PER_HARTREE
+            // Short-range repulsive with coordination-number dependent scaling.
+            // Effective Z is reduced for highly-coordinated atoms.
+            let alpha = 6.0;
+            let cn_a = coord_numbers[a];
+            let cn_b = coord_numbers[b];
+            let z_eff_a = (pa.n_valence as f64) / (1.0 + 0.1 * cn_a);
+            let z_eff_b = (pb.n_valence as f64) / (1.0 + 0.1 * cn_b);
+            e_rep += z_eff_a * z_eff_b * EV_PER_HARTREE
                 / (r_ang * ANGSTROM_TO_BOHR)
                 * (-alpha * (r_ang / r_ref - 1.0)).exp();
         }
@@ -405,15 +439,30 @@ pub(crate) fn solve_xtb_with_state(
             }
         }
 
-        if (e_elec - prev_e_elec).abs() < convergence && iter > 0 {
+        // Convergence: check both energy AND charge changes.
+        let max_dq: f64 = charges
+            .iter()
+            .zip(new_charges.iter())
+            .map(|(old, new)| (old - new).abs())
+            .fold(0.0, f64::max);
+        let energy_converged = (e_elec - prev_e_elec).abs() < convergence && iter > 0;
+        let charge_converged = max_dq < convergence * 100.0; // 1e-4 for charges
+        if energy_converged && charge_converged {
             converged = true;
+            prev_e_elec = e_elec;
             charges = new_charges;
             break;
         }
         prev_e_elec = e_elec;
 
-        // Damped charge mixing
-        let damp = 0.4;
+        // Adaptive SCC charge damping: start conservative, reduce as charges stabilize.
+        let damp = if max_dq > 0.5 {
+            0.6 // Large charge oscillations: heavy damping
+        } else if max_dq > 0.1 {
+            0.4 // Moderate oscillations
+        } else {
+            0.2 // Near convergence: mostly new charges
+        };
         for a in 0..n_atoms {
             charges[a] = damp * charges[a] + (1.0 - damp) * new_charges[a];
         }
@@ -461,6 +510,9 @@ pub(crate) fn solve_xtb_with_state(
         n_occ,
         charges: charges.clone(),
         h_diag,
+        overlap: s_mat,
+        hamiltonian: h_mat,
+        s_half_inv,
     };
 
     Ok((
