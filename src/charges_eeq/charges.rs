@@ -5,9 +5,10 @@
 //! to yield charge-neutral partial charges.
 
 use nalgebra::DMatrix;
+use serde::{Deserialize, Serialize};
 
 /// EEQ per-element parameters.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EeqParams {
     /// Electronegativity chi (eV).
     pub chi: f64,
@@ -20,7 +21,7 @@ pub struct EeqParams {
 }
 
 /// Configuration for EEQ calculations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EeqConfig {
     /// Total molecular charge.
     pub total_charge: f64,
@@ -38,7 +39,7 @@ impl Default for EeqConfig {
 }
 
 /// Result of EEQ charge calculation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EeqChargeResult {
     /// Partial charges per atom.
     pub charges: Vec<f64>,
@@ -141,6 +142,24 @@ pub fn get_eeq_params(z: u8) -> EeqParams {
             r_eeq: 1.65,
             r_cov: 1.22,
         },
+        // Extended TM coverage
+        22 => EeqParams { chi: 1.54, eta: 6.83, r_eeq: 1.80, r_cov: 1.47 }, // Ti
+        24 => EeqParams { chi: 1.66, eta: 6.77, r_eeq: 1.75, r_cov: 1.39 }, // Cr
+        25 => EeqParams { chi: 1.55, eta: 7.43, r_eeq: 1.73, r_cov: 1.39 }, // Mn
+        27 => EeqParams { chi: 1.88, eta: 7.86, r_eeq: 1.67, r_cov: 1.26 }, // Co
+        28 => EeqParams { chi: 1.91, eta: 7.64, r_eeq: 1.65, r_cov: 1.21 }, // Ni
+        44 => EeqParams { chi: 2.20, eta: 7.36, r_eeq: 1.75, r_cov: 1.46 }, // Ru
+        46 => EeqParams { chi: 2.20, eta: 8.34, r_eeq: 1.70, r_cov: 1.39 }, // Pd
+        47 => EeqParams { chi: 1.93, eta: 7.58, r_eeq: 1.72, r_cov: 1.45 }, // Ag
+        78 => EeqParams { chi: 2.28, eta: 8.96, r_eeq: 1.72, r_cov: 1.36 }, // Pt
+        79 => EeqParams { chi: 2.54, eta: 9.23, r_eeq: 1.70, r_cov: 1.36 }, // Au
+        // Main group additions
+        3 => EeqParams { chi: 0.98, eta: 5.39, r_eeq: 2.10, r_cov: 1.28 }, // Li
+        11 => EeqParams { chi: 0.93, eta: 5.14, r_eeq: 2.40, r_cov: 1.66 }, // Na
+        12 => EeqParams { chi: 1.31, eta: 7.65, r_eeq: 2.00, r_cov: 1.41 }, // Mg
+        13 => EeqParams { chi: 1.61, eta: 5.99, r_eeq: 1.90, r_cov: 1.21 }, // Al
+        19 => EeqParams { chi: 0.82, eta: 4.34, r_eeq: 2.75, r_cov: 2.03 }, // K
+        20 => EeqParams { chi: 1.00, eta: 6.11, r_eeq: 2.31, r_cov: 1.76 }, // Ca
         _ => EeqParams {
             chi: 2.20,
             eta: 10.0,
@@ -217,6 +236,23 @@ pub fn compute_eeq_charges(
     config: &EeqConfig,
 ) -> EeqChargeResult {
     let n = elements.len();
+
+    if n == 0 {
+        return EeqChargeResult {
+            charges: vec![],
+            coordination_numbers: vec![],
+            total_charge: config.total_charge,
+        };
+    }
+
+    if n == 1 {
+        return EeqChargeResult {
+            charges: vec![config.total_charge],
+            coordination_numbers: vec![0.0],
+            total_charge: config.total_charge,
+        };
+    }
+
     let cn = fractional_coordination(elements, positions);
 
     let dim = n + 1;
