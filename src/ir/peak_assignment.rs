@@ -208,6 +208,48 @@ const GROUP_FREQUENCIES: &[GroupFrequency] = &[
         intensity: "strong",
         vibration_type: "asymm. stretch",
     },
+    GroupFrequency {
+        group: "N=O (nitro)",
+        freq_min: 1340.0,
+        freq_max: 1385.0,
+        intensity: "strong",
+        vibration_type: "symm. stretch",
+    },
+    GroupFrequency {
+        group: "C=O (acid chloride)",
+        freq_min: 1780.0,
+        freq_max: 1815.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "C=O (anhydride)",
+        freq_min: 1760.0,
+        freq_max: 1810.0,
+        intensity: "strong",
+        vibration_type: "asymm. stretch",
+    },
+    GroupFrequency {
+        group: "C=O (anhydride)",
+        freq_min: 1740.0,
+        freq_max: 1780.0,
+        intensity: "strong",
+        vibration_type: "symm. stretch",
+    },
+    GroupFrequency {
+        group: "N=C=O (isocyanate)",
+        freq_min: 2250.0,
+        freq_max: 2275.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        group: "C=C=O (ketene)",
+        freq_min: 2100.0,
+        freq_max: 2140.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
     // Bending
     GroupFrequency {
         group: "C-H (methyl)",
