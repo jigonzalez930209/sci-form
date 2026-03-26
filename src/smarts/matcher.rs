@@ -1,7 +1,7 @@
 //! Substructure matching: match a SmartsPattern against a Molecule graph.
 
 use super::parser::*;
-use crate::graph::{BondOrder, Hybridization, Molecule};
+use crate::graph::{BondOrder, ChiralType, Hybridization, Molecule};
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 
@@ -290,6 +290,11 @@ fn atom_matches(
             (n, &a.hybridization),
             (1, Hybridization::SP) | (2, Hybridization::SP2) | (3, Hybridization::SP3)
         ),
+        AtomQuery::Chiral(chiral) => matches!(
+            (chiral, &a.chiral_tag),
+            (ChiralType::TetrahedralCW, ChiralType::TetrahedralCW)
+                | (ChiralType::TetrahedralCCW, ChiralType::TetrahedralCCW)
+        ),
         AtomQuery::Recursive(inner) => {
             // The atom must match as atom 0 of the inner pattern
             let matches = substruct_match_from(mol, inner, atom, ring_info);
@@ -575,4 +580,20 @@ pub fn has_substruct_match_batch_parallel(
         .par_iter()
         .map(|mol| has_substruct_match(mol, pattern))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::graph::Molecule;
+
+    #[test]
+    fn test_tetrahedral_chirality_matches_explicit_query() {
+        let mol = Molecule::from_smiles("C[C@H](F)Cl").unwrap();
+        let pattern = parse_smarts("[C@H]").unwrap();
+        let inverse = parse_smarts("[C@@H]").unwrap();
+
+        assert!(has_substruct_match(&mol, &pattern));
+        assert!(!has_substruct_match(&mol, &inverse));
+    }
 }
