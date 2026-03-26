@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-python"
-version = "0.11.1"
+version = "0.11.2"
 edition = "2021"
 description = "Python bindings for sci-form 3D conformer generation"
 
@@ -24,6 +24,6 @@ experimental-cpm = ["sci-form-core/experimental-cpm"]
 experimental-gsm = ["sci-form-core/experimental-gsm"]
 
 [dependencies]
-sci-form-core = { path = "../..", package = "sci-form", version = "0.11.1", default-features = false }
+sci-form-core = { path = "../..", package = "sci-form", version = "0.11.2", default-features = false }
 pyo3 = { version = "0.22", features = ["extension-module"] }
 rayon = "1.10"
