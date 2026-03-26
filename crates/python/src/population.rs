@@ -16,13 +16,15 @@ pub(crate) struct PopulationResultPy {
     total_charge_mulliken: f64,
     #[pyo3(get)]
     total_charge_lowdin: f64,
+    #[pyo3(get)]
+    charge_conservation_error: f64,
 }
 #[pymethods]
 impl PopulationResultPy {
     fn __repr__(&self) -> String {
         format!(
-            "PopulationResult(n_atoms={}, total_mulliken={:.4})",
-            self.num_atoms, self.total_charge_mulliken
+            "PopulationResult(n_atoms={}, total_mulliken={:.4}, conservation_err={:.1e})",
+            self.num_atoms, self.total_charge_mulliken, self.charge_conservation_error
         )
     }
 }
@@ -94,6 +96,7 @@ fn population(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<PopulationResultP
             num_atoms: r.num_atoms,
             total_charge_mulliken: r.total_charge_mulliken,
             total_charge_lowdin: r.total_charge_lowdin,
+            charge_conservation_error: r.charge_conservation_error,
         })
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }

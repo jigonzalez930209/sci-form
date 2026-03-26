@@ -1,4 +1,4 @@
-//! EHT, SASA, population, dipole, ESP, DOS, cell, assemble, ANI, HF-3c command handlers.
+//! EHT, SASA, population, dipole, ESP, DOS, cell, assemble, ANI, PM3, xTB, GFN, HF-3c command handlers.
 
 use crate::format::parse_elems_coords;
 
@@ -152,6 +152,50 @@ pub fn cmd_ani(elements: &str, coords: &str) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
         Err(e) => {
             eprintln!("ANI error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_pm3(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    match sci_form::compute_pm3(&elems, &positions) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("PM3 error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_xtb(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    match sci_form::compute_xtb(&elems, &positions) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("xTB error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_gfn1(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    match sci_form::xtb::solve_gfn1(&elems, &positions) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("GFN1-xTB error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_gfn2(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    match sci_form::xtb::solve_gfn2(&elems, &positions) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("GFN2-xTB error: {}", e);
             std::process::exit(1);
         }
     }
