@@ -25,7 +25,11 @@ mod stda_uvvis;
 pub mod transition_dipoles;
 mod types;
 
-pub use giao_nmr::{compute_nmr_shieldings, shieldings_to_shifts};
+pub use giao_nmr::{
+    compute_nmr_shieldings,
+    compute_nmr_shieldings_for_nucleus,
+    shieldings_to_shifts,
+};
 pub use stda_uvvis::{compute_stda, StdaConfig};
 pub use types::{
     NmrShieldingResult, ScfInput, ShieldingTensor, SpectroscopyResult, TransitionInfo,
