@@ -1,0 +1,17 @@
+{
+  "status": {
+    "requirePassIfBaselinePassed": true,
+    "failOnMissingComparison": true
+  },
+  "accuracy": {
+    "maxAbsMultiplier": 2.0,
+    "rmsMultiplier": 2.0,
+    "maxAbsFloor": 1e-8,
+    "rmsFloor": 1e-8
+  },
+  "performance": {
+    "minSpeedupRetention": 0.75,
+    "enforceModeTiming": false,
+    "maxModeSlowdownRatio": 1.35
+  }
+}
