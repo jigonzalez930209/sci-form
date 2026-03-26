@@ -1,5 +1,15 @@
+//! BFGS quasi-Newton minimizer with backtracking Armijo line search.
+//!
+//! The optimizer maintains an inverse-Hessian approximation (dense, full-rank)
+//! and applies gradient scaling borrowed from RDKit's embedding pipeline when
+//! the initial gradient norm exceeds 1.0.
+
 use nalgebra::{DMatrix, DVector};
 
+/// BFGS minimizer with configurable iteration limit, gradient tolerance,
+/// and line-search depth.
+///
+/// Returns `(final_energy, converged)` from [`execute_minimization`](Self::execute_minimization).
 pub struct RustBfgsEngine {
     pub iter_limit_max: usize,
     pub strict_grad_tolerance: f64,
@@ -50,7 +60,15 @@ impl RustBfgsEngine {
         let mut state_gradient_g = DVector::from_row_slice(&local_gradient);
 
         for _iter_counter in 0..self.iter_limit_max {
-            let direction_p = -&hessian_inv_approx * &state_gradient_g;
+            let mut direction_p = -&hessian_inv_approx * &state_gradient_g;
+
+            // Clamp step magnitude to prevent unphysical displacements.
+            // Max step = 0.3 Bohr ≈ 0.16 Å per coordinate.
+            let step_norm = direction_p.norm();
+            const MAX_STEP: f64 = 0.3;
+            if step_norm > MAX_STEP {
+                direction_p *= MAX_STEP / step_norm;
+            }
 
             let mut step_size_alpha = 1.0;
             let armijo_constant_c1 = 1e-4;
