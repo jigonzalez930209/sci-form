@@ -167,7 +167,9 @@ fn map_shifts(shifts: &[sci_form_core::nmr::ChemicalShift]) -> Vec<ChemicalShift
         .collect()
 }
 
-fn map_shift_series(series: &[sci_form_core::nmr::NucleusShiftSeries]) -> Vec<NucleusShiftSeriesPy> {
+fn map_shift_series(
+    series: &[sci_form_core::nmr::NucleusShiftSeries],
+) -> Vec<NucleusShiftSeriesPy> {
     series
         .iter()
         .map(|entry| NucleusShiftSeriesPy {

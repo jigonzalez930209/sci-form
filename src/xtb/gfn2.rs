@@ -200,8 +200,10 @@ fn build_multipole_gamma(
             let r3 = r_bohr.powi(3).max(1e-10);
             let r_vec = [dx / 0.529177, dy / 0.529177, dz / 0.529177];
             let qd_ij = if r_bohr > 1.0 {
-                let dot_j = r_vec[0] * dipoles[j][0] + r_vec[1] * dipoles[j][1] + r_vec[2] * dipoles[j][2];
-                let dot_i = r_vec[0] * dipoles[i][0] + r_vec[1] * dipoles[i][1] + r_vec[2] * dipoles[i][2];
+                let dot_j =
+                    r_vec[0] * dipoles[j][0] + r_vec[1] * dipoles[j][1] + r_vec[2] * dipoles[j][2];
+                let dot_i =
+                    r_vec[0] * dipoles[i][0] + r_vec[1] * dipoles[i][1] + r_vec[2] * dipoles[i][2];
                 (charges[i] * dot_j - charges[j] * dot_i) / r3
             } else {
                 0.0
@@ -325,13 +327,11 @@ fn compute_halogen_bond_correction(elements: &[u8], positions: &[[f64; 3]]) -> f
         }
 
         // Find the atom bonded to the halogen (nearest neighbor, typically C)
-        let bonded_atom = (0..n)
-            .filter(|&k| k != i)
-            .min_by(|&a, &b| {
-                let da = dist(&positions[i], &positions[a]);
-                let db = dist(&positions[i], &positions[b]);
-                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-            });
+        let bonded_atom = (0..n).filter(|&k| k != i).min_by(|&a, &b| {
+            let da = dist(&positions[i], &positions[a]);
+            let db = dist(&positions[i], &positions[b]);
+            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for j in 0..n {
             if i == j || !bases.contains(&elements[j]) {

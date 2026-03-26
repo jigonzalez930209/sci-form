@@ -18,10 +18,7 @@ pub use coupling::{ensemble_averaged_j_couplings, predict_j_couplings, JCoupling
 pub use hose::{HoseCode, HoseShiftLookup};
 pub use nucleus::NmrNucleus;
 pub use shifts::{
-	predict_chemical_shifts,
-	predict_chemical_shifts_for_nucleus,
-	ChemicalShift,
-	NmrShiftResult,
-	NucleusShiftSeries,
+    predict_chemical_shifts, predict_chemical_shifts_for_nucleus, ChemicalShift, NmrShiftResult,
+    NucleusShiftSeries,
 };
 pub use spectrum::{compute_nmr_spectrum, NmrPeak, NmrSpectrum, PeakIntegration};

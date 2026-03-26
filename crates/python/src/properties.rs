@@ -69,7 +69,12 @@ pub(crate) struct DipoleResultPy {
 #[pymethods]
 impl DipoleResultPy {
     fn __repr__(&self) -> String {
-        format!("DipoleResult({:.3} {}, decomposed={})", self.magnitude, self.unit, self.nuclear_dipole.is_some())
+        format!(
+            "DipoleResult({:.3} {}, decomposed={})",
+            self.magnitude,
+            self.unit,
+            self.nuclear_dipole.is_some()
+        )
     }
 }
 

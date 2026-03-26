@@ -184,7 +184,8 @@ pub fn solve_hf3c(
     let gpu_eris_full = if n_basis >= 4 {
         // Memory check: full N⁴ tensor requires n_basis⁴ × 8 bytes.
         // Cap at ~512 MB to prevent OOM.
-        let n4 = (n_basis as u64).saturating_mul(n_basis as u64)
+        let n4 = (n_basis as u64)
+            .saturating_mul(n_basis as u64)
             .saturating_mul(n_basis as u64)
             .saturating_mul(n_basis as u64);
         let mem_bytes = n4.saturating_mul(8);

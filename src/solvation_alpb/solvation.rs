@@ -113,7 +113,8 @@ pub fn compute_alpb_solvation(
     let e_electrostatic = e_alpb * coulomb_kcal_ang;
 
     // Non-polar SASA term — use the full Shrake-Rupley implementation
-    let sasa_result = crate::surface::sasa::compute_sasa(elements, positions, Some(config.probe_radius), None);
+    let sasa_result =
+        crate::surface::sasa::compute_sasa(elements, positions, Some(config.probe_radius), None);
     let sasa_total = sasa_result.total_sasa;
 
     let e_nonpolar = config.surface_tension * sasa_total;

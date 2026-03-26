@@ -733,9 +733,17 @@ mod tests {
     fn embed_handles_hydrogen_halides() {
         for smiles in ["F", "Cl"] {
             let result = crate::embed(smiles, 42);
-            assert!(result.error.is_none(), "{smiles} embed failed: {:?}", result.error);
+            assert!(
+                result.error.is_none(),
+                "{smiles} embed failed: {:?}",
+                result.error
+            );
             assert_eq!(result.num_atoms, 2, "{smiles} should expand to a diatomic");
-            assert_eq!(result.coords.len(), 6, "{smiles} should return 2 x 3 coordinates");
+            assert_eq!(
+                result.coords.len(),
+                6,
+                "{smiles} should return 2 x 3 coordinates"
+            );
 
             let dx = result.coords[3] - result.coords[0];
             let dy = result.coords[4] - result.coords[1];

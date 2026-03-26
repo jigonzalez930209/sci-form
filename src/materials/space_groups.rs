@@ -456,7 +456,12 @@ fn space_group_data(
                 _ => unreachable!(),
             };
             // Point group mm2: identity, C2z, mirror_x, mirror_y
-            (sym, "mm2", lt, vec![id, c2z.clone(), mx.clone(), my.clone()])
+            (
+                sym,
+                "mm2",
+                lt,
+                vec![id, c2z.clone(), mx.clone(), my.clone()],
+            )
         }
         47..=74 => {
             let ops = vec![

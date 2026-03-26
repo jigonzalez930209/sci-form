@@ -642,7 +642,9 @@ mod tests {
         assert_eq!(p.atoms.len(), 1);
         assert_eq!(p.atoms[0].map_idx, Some(1));
         if let AtomQuery::And(ref parts) = p.atoms[0].query {
-            assert!(parts.iter().any(|q| matches!(q, AtomQuery::Chiral(ChiralType::TetrahedralCW))));
+            assert!(parts
+                .iter()
+                .any(|q| matches!(q, AtomQuery::Chiral(ChiralType::TetrahedralCW))));
             assert!(parts.iter().any(|q| matches!(q, AtomQuery::TotalH(1))));
         } else {
             panic!("expected AND query for chiral atom");

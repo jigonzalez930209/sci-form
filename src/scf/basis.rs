@@ -112,6 +112,7 @@ impl BasisFunction {
 
 /// Double factorial: n!! = n · (n-2) · ... · 1
 /// Convention: 0!! = 1, (-1)!! = 1
+#[cfg(test)]
 fn double_factorial(n: u32) -> u64 {
     if n <= 1 {
         return 1;

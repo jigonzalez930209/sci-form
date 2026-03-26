@@ -186,7 +186,10 @@ fn extract_atom_maps(pattern: &str) -> Result<HashMap<usize, usize>, String> {
                 let map_str = &bracket_content[colon_pos + 1..bracket_content.len() - 1];
                 if let Ok(map_num) = map_str.parse::<usize>() {
                     if maps.insert(map_num, atom_idx).is_some() {
-                        return Err(format!("duplicate atom map :{} in pattern '{}'", map_num, pattern));
+                        return Err(format!(
+                            "duplicate atom map :{} in pattern '{}'",
+                            map_num, pattern
+                        ));
                     }
                 }
             }
@@ -243,7 +246,10 @@ fn detect_bond_changes(
 
 /// Substructure matching for SMARTS patterns.
 /// Returns list of atom-map-number → molecule-index mappings.
-fn match_smarts_pattern(mol: &Molecule, pattern: &str) -> Result<Vec<HashMap<usize, usize>>, String> {
+fn match_smarts_pattern(
+    mol: &Molecule,
+    pattern: &str,
+) -> Result<Vec<HashMap<usize, usize>>, String> {
     let parsed = parse_smarts(pattern)?;
     let mapped_atoms: Vec<(usize, usize)> = parsed
         .atoms

@@ -92,7 +92,7 @@ pub fn compute_dipole_from_eht(
     let mut mu_nuc = [0.0; 3];
     let mut mu_el = [0.0; 3];
     for (i, &z) in elements.iter().enumerate() {
-        let z_val = crate::population::population::valence_electrons(z) as f64;
+        let z_val = crate::population::population::valence_electrons(z);
         let pop = z_val - charges[i]; // population = Z_val - q
         for k in 0..3 {
             mu_nuc[k] += z_val * positions[i][k];

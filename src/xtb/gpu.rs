@@ -117,7 +117,10 @@ fn build_xtb_family_gamma_gpu(
     };
 
     let mut result = ctx.run_compute(&descriptor)?;
-    let bytes = result.outputs.pop().ok_or("No output from xTB gamma kernel")?;
+    let bytes = result
+        .outputs
+        .pop()
+        .ok_or("No output from xTB gamma kernel")?;
     if bytes.len() != n * n * 4 {
         return Err(format!(
             "Gamma output size mismatch: expected {}, got {}",

@@ -95,7 +95,9 @@ pub fn compute_aevs_tm(
     let mut has_unsupported = false;
     for (i, &z) in elements.iter().enumerate() {
         if !is_ani_tm_supported(z) {
-            eprintln!("WARNING: ANI-TM unsupported element Z={z} at atom {i}, will be skipped in AEV");
+            eprintln!(
+                "WARNING: ANI-TM unsupported element Z={z} at atom {i}, will be skipped in AEV"
+            );
             has_unsupported = true;
         }
     }

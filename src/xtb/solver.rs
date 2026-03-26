@@ -159,12 +159,12 @@ pub(crate) fn solve_xtb_with_state(
             // s-s: full overlap; s-p: reduced due to angular mismatch; p-p: further reduced.
             // d-orbital scaling follows similar attenuation pattern.
             let scale = match (la, lb) {
-                (0, 0) => 1.0,    // s-s
-                (0, 1) | (1, 0) => 0.65,  // s-p (angular mismatch)
-                (1, 1) => 0.55,   // p-p σ approximation
-                (0, 2) | (2, 0) => 0.40,  // s-d
-                (1, 2) | (2, 1) => 0.35,  // p-d
-                (2, 2) => 0.30,   // d-d
+                (0, 0) => 1.0,           // s-s
+                (0, 1) | (1, 0) => 0.65, // s-p (angular mismatch)
+                (1, 1) => 0.55,          // p-p σ approximation
+                (0, 2) | (2, 0) => 0.40, // s-d
+                (1, 2) | (2, 1) => 0.35, // p-d
+                (2, 2) => 0.30,          // d-d
                 _ => 0.5,
             };
             let sij = sto_overlap(za, zb, r) * scale;
@@ -243,8 +243,7 @@ pub(crate) fn solve_xtb_with_state(
             let cn_b = coord_numbers[b];
             let z_eff_a = (pa.n_valence as f64) / (1.0 + 0.1 * cn_a);
             let z_eff_b = (pb.n_valence as f64) / (1.0 + 0.1 * cn_b);
-            e_rep += z_eff_a * z_eff_b * EV_PER_HARTREE
-                / (r_ang * ANGSTROM_TO_BOHR)
+            e_rep += z_eff_a * z_eff_b * EV_PER_HARTREE / (r_ang * ANGSTROM_TO_BOHR)
                 * (-alpha * (r_ang / r_ref - 1.0)).exp();
         }
     }

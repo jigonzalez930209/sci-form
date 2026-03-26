@@ -615,7 +615,11 @@ fn test_nmr_spectrum_nucleus_aliases() {
         ("[Pt]", "195Pt", -3000.0, 3000.0),
     ] {
         let res = sci_form::compute_nmr_spectrum(smiles, alias, 0.0, ppm_min, ppm_max, 100);
-        assert!(res.is_ok(), "expanded nucleus alias '{}' should work", alias);
+        assert!(
+            res.is_ok(),
+            "expanded nucleus alias '{}' should work",
+            alias
+        );
     }
     // Unknown nucleus should fail
     let res = sci_form::compute_nmr_spectrum("C", "999X", 0.02, 0.0, 12.0, 100);
@@ -722,7 +726,9 @@ fn test_nmr_shifts_for_expanded_nuclei() {
             smiles
         );
         assert!(
-            result.iter().all(|shift| shift.shift_ppm.is_finite() && shift.confidence.is_finite()),
+            result
+                .iter()
+                .all(|shift| shift.shift_ppm.is_finite() && shift.confidence.is_finite()),
             "{} should produce finite relative shifts",
             nucleus
         );
@@ -741,14 +747,8 @@ fn test_public_giao_nmr_water_h1() {
     assert_eq!(result.shieldings.len(), 2);
     assert_eq!(result.chemical_shifts.len(), 2);
     assert!(result.scf_iterations > 0);
-    assert!(result
-        .chemical_shifts
-        .iter()
-        .all(|shift| shift.is_finite()));
-    assert!(result
-        .notes
-        .iter()
-        .any(|note| note.contains("RHF/STO-3G")));
+    assert!(result.chemical_shifts.iter().all(|shift| shift.is_finite()));
+    assert!(result.notes.iter().any(|note| note.contains("RHF/STO-3G")));
 }
 
 #[test]
@@ -765,13 +765,8 @@ fn test_public_giao_nmr_reports_inadequate_forced_fallback_basis() {
         allow_basis_fallback: true,
         ..Default::default()
     };
-    let error = sci_form::compute_giao_nmr_configured(
-        &[78],
-        &[[0.0, 0.0, 0.0]],
-        "195Pt",
-        &config,
-    )
-    .expect_err("forcing fallback should still fail when the basis cannot host the electrons");
+    let error = sci_form::compute_giao_nmr_configured(&[78], &[[0.0, 0.0, 0.0]], "195Pt", &config)
+        .expect_err("forcing fallback should still fail when the basis cannot host the electrons");
 
     assert!(error.contains("basis functions"), "{error}");
 }

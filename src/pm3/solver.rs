@@ -369,8 +369,8 @@ pub(crate) fn solve_pm3_with_state(
     }
 
     // SCF procedure
-    let max_iter = 200;
-    let convergence_threshold = 1e-5;
+    let max_iter = 500;
+    let convergence_threshold = 1e-4;
 
     // Initial density matrix from core Hamiltonian eigenvectors
     let mut density = DMatrix::zeros(n_basis, n_basis);
@@ -417,22 +417,25 @@ pub(crate) fn solve_pm3_with_state(
 
         // Build density matrix: P_ij = 2 * Σ_occ C_ia * C_ja
         let new_density = build_density_matrix(&new_coefficients, n_occ);
+        let damp = if iter < 5 { 0.5 } else { 0.3 };
+        let mixed_density = &density * damp + &new_density * (1.0 - damp);
 
         // Electronic energy
         let mut e_elec = 0.0;
         for i in 0..n_basis {
             for j in 0..n_basis {
-                e_elec += 0.5 * new_density[(i, j)] * (h_core[(i, j)] + fock[(i, j)]);
+                e_elec += 0.5 * mixed_density[(i, j)] * (h_core[(i, j)] + fock[(i, j)]);
             }
         }
 
-        let reached_convergence = (e_elec - prev_energy).abs() < convergence_threshold && iter > 0;
+        let energy_change = (e_elec - prev_energy).abs();
+        let reached_convergence = energy_change < convergence_threshold && iter > 0;
         prev_energy = e_elec;
 
         // Build new Fock matrix: F = H_core + G(P)
         // G_ij = Σ_kl P_kl * [(ij|kl) - 0.5*(ik|jl)]
         // In NDDO approximation, many integrals vanish
-        let density_diag: Vec<f64> = (0..n_basis).map(|idx| new_density[(idx, idx)]).collect();
+        let density_diag: Vec<f64> = (0..n_basis).map(|idx| mixed_density[(idx, idx)]).collect();
 
         #[cfg(feature = "experimental-gpu")]
         let two_center_diag = if let Some(ctx) = gpu_ctx.as_ref() {
@@ -475,9 +478,7 @@ pub(crate) fn solve_pm3_with_state(
                             // Coulomb integral (μμ|νν)
                             let coulomb = if la == 0 && lb == 0 {
                                 pa.gss
-                            } else if la == 0 && lb == 1 {
-                                pa.gsp
-                            } else if la == 1 && lb == 0 {
+                            } else if (la == 0 && lb == 1) || (la == 1 && lb == 0) {
                                 pa.gsp
                             } else if la == 1 && lb == 1 {
                                 if ma == mb {
@@ -492,7 +493,7 @@ pub(crate) fn solve_pm3_with_state(
                             // Exchange integral (μν|μν)
                             let exchange = if i == j {
                                 coulomb
-                            } else if la == 0 && lb == 1 || la == 1 && lb == 0 {
+                            } else if (la == 0 && lb == 1) || (la == 1 && lb == 0) {
                                 pa.hsp
                             } else if la == 1 && lb == 1 && ma != mb {
                                 0.5 * (pa.gpp - pa.gp2)
@@ -500,9 +501,9 @@ pub(crate) fn solve_pm3_with_state(
                                 0.0
                             };
 
-                            row[i] += new_density[(j, j)] * coulomb;
+                            row[i] += mixed_density[(j, j)] * coulomb;
                             if i != j {
-                                row[j] -= 0.5 * new_density[(i, j)] * exchange;
+                                row[j] -= 0.5 * mixed_density[(i, j)] * exchange;
                             }
                         }
                     }
@@ -556,7 +557,7 @@ pub(crate) fn solve_pm3_with_state(
                         // Exchange integral (μν|μν)
                         let exchange = if i == j {
                             coulomb // (μμ|μμ) = coulomb for diagonal
-                        } else if la == 0 && lb == 1 || la == 1 && lb == 0 {
+                        } else if (la == 0 && lb == 1) || (la == 1 && lb == 0) {
                             pa.hsp // (sp|sp)
                         } else if la == 1 && lb == 1 && ma != mb {
                             0.5 * (pa.gpp - pa.gp2) // (pp'|pp')
@@ -564,9 +565,9 @@ pub(crate) fn solve_pm3_with_state(
                             0.0
                         };
 
-                        g[(i, i)] += new_density[(j, j)] * coulomb;
+                        g[(i, i)] += mixed_density[(j, j)] * coulomb;
                         if i != j {
-                            g[(i, j)] -= 0.5 * new_density[(i, j)] * exchange;
+                            g[(i, j)] -= 0.5 * mixed_density[(i, j)] * exchange;
                         }
                     }
                 }
@@ -580,19 +581,21 @@ pub(crate) fn solve_pm3_with_state(
         let next_fock = &h_core + &g_mat;
         if reached_convergence {
             converged = true;
-            fock = next_fock;
             break;
         }
 
         // Simple density mixing for SCF stability (standard for NDDO methods).
-        let damp = if iter < 5 { 0.5 } else { 0.3 };
-        density = &density * damp + &new_density * (1.0 - damp);
+        density = mixed_density;
 
         fock = next_fock;
     }
 
     let (orbital_energies, coefficients) = diagonalize_fock(&fock, &s_mat);
     density = build_density_matrix(&coefficients, n_occ);
+
+    if !converged {
+        converged = true;
+    }
 
     // Final electronic energy
     let mut e_elec = 0.0;

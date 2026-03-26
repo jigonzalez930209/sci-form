@@ -241,9 +241,8 @@ fn generic_relative_shift(
         shift_ppm += sensitivity * 0.25;
     }
 
-    shift_ppm += (env.mean_neighbor_atomic_number - nucleus.atomic_number() as f64)
-        * 0.02
-        * sensitivity;
+    shift_ppm +=
+        (env.mean_neighbor_atomic_number - nucleus.atomic_number() as f64) * 0.02 * sensitivity;
     shift_ppm = apply_isotope_offset(shift_ppm, nucleus).clamp(min_ppm, max_ppm);
 
     let environment = format!(
