@@ -413,7 +413,7 @@ xtb_calculate(elements: list[int], coords: list[float]) -> XtbResult
 #   .gap, .mulliken_charges, .scc_iterations, .converged
 
 # ── HF-3c + ANI ───────────────────────────────────────────
-hf3c_calculate(elements, coords, max_scf_iter=100, n_cis_states=5, corrections=True) -> Hf3cResultPy
+hf3c_calculate(elements, coords, max_scf_iter=300, n_cis_states=5, corrections=True) -> Hf3cResultPy
 ani_calculate(elements, coords) -> AniResultPy
 
 # ── EHT ────────────────────────────────────────────────────
