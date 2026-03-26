@@ -79,7 +79,7 @@ pub fn compute_eht_gradient(
 
     // Reference energy
     let eht_ref = crate::eht::solve_eht(elements, positions, None)?;
-    let n_occ = (eht_ref.n_electrons + 1) / 2; // ceil: include SOMO for odd electrons
+    let n_occ = eht_ref.n_electrons.div_ceil(2); // include SOMO for odd electrons
     let is_odd = eht_ref.n_electrons % 2 == 1;
     let e0: f64 = eht_ref
         .energies

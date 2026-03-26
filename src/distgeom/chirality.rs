@@ -88,13 +88,30 @@ pub fn identify_chiral_sets(mol: &Molecule) -> Vec<crate::forcefield::bounds_ff:
     sets
 }
 
-fn canonicalize_chiral_neighbors(mol: &Molecule, center: NodeIndex, neighbors: &[usize]) -> Vec<usize> {
+fn canonicalize_chiral_neighbors(
+    mol: &Molecule,
+    center: NodeIndex,
+    neighbors: &[usize],
+) -> Vec<usize> {
     let mut ordered = neighbors.to_vec();
-    ordered.sort_by(|&left, &right| neighbor_priority(mol, center, left).cmp(&neighbor_priority(mol, center, right)));
+    ordered.sort_by(|&left, &right| {
+        neighbor_priority(mol, center, left).cmp(&neighbor_priority(mol, center, right))
+    });
     ordered
 }
 
-fn neighbor_priority(mol: &Molecule, center: NodeIndex, neighbor: usize) -> (u8, u8, usize, i8, u8, std::cmp::Reverse<usize>) {
+fn neighbor_priority(
+    mol: &Molecule,
+    center: NodeIndex,
+    neighbor: usize,
+) -> (
+    std::cmp::Reverse<u8>,
+    u8,
+    usize,
+    i8,
+    u8,
+    std::cmp::Reverse<usize>,
+) {
     let node = NodeIndex::new(neighbor);
     let atom = &mol.graph[node];
     let degree = mol.graph.neighbors(node).count();
@@ -106,7 +123,7 @@ fn neighbor_priority(mol: &Molecule, center: NodeIndex, neighbor: usize) -> (u8,
         .unwrap_or(0);
 
     (
-        atom.element,
+        std::cmp::Reverse(atom.element),
         bond_rank,
         degree,
         atom.formal_charge,

@@ -162,8 +162,7 @@ pub fn compute_cis_with_dipole(
                         let atom = b2a[mu];
                         let mut s_contrib = 0.0;
                         for nu in 0..n_basis {
-                            s_contrib += coefficients[(nu, a_s)]
-                                * if mu == nu { 1.0 } else { 0.0 };
+                            s_contrib += coefficients[(nu, a_s)] * if mu == nu { 1.0 } else { 0.0 };
                         }
                         q_atom[atom] += coefficients[(mu, i_s)] * s_contrib;
                     }
@@ -182,9 +181,7 @@ pub fn compute_cis_with_dipole(
             }
             _ => {
                 // Fallback: rough estimate using CI vector norm (always ~2/3 * E)
-                2.0 / 3.0
-                    * energy
-                    * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual)
+                2.0 / 3.0 * energy * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual)
             }
         };
 

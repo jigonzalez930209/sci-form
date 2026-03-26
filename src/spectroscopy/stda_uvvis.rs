@@ -198,8 +198,7 @@ pub fn compute_stda(
                             continue;
                         }
                         for atom_b in 0..n_atoms {
-                            j_integral +=
-                                q_ia * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
+                            j_integral += q_ia * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
                         }
                     }
                     row.push((idx2, 2.0 * j_integral));
@@ -238,8 +237,7 @@ pub fn compute_stda(
                         continue;
                     }
                     for atom_b in 0..n_atoms {
-                        j_integral +=
-                            q_ia * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
+                        j_integral += q_ia * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
                     }
                 }
 
@@ -271,8 +269,14 @@ pub fn compute_stda(
         }
 
         let ci_vector = eigen.eigenvectors.column(idx);
-        let (tdm, osc_strength) =
-            transition_dipole_from_ci(&ci_vector, &active, &q, positions_bohr, n_occ_total, energy_hartree);
+        let (tdm, osc_strength) = transition_dipole_from_ci(
+            &ci_vector,
+            &active,
+            &q,
+            positions_bohr,
+            n_occ_total,
+            energy_hartree,
+        );
 
         transitions.push(TransitionInfo {
             energy_ev,

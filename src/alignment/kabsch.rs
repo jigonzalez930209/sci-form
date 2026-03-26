@@ -28,7 +28,7 @@ pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
 ///
 /// `coords`, `reference`: flat [x0,y0,z0, x1,y1,z1,...] in Å.
 pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
-    if coords.len() != reference.len() || coords.len() % 3 != 0 {
+    if coords.len() != reference.len() || !coords.len().is_multiple_of(3) {
         return AlignmentResult {
             rmsd: f64::NAN,
             rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
@@ -158,7 +158,7 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
 /// than SVD for near-degenerate cases.  Produces the same result as Kabsch
 /// but avoids explicit SVD decomposition.
 pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
-    if coords.len() != reference.len() || coords.len() % 3 != 0 {
+    if coords.len() != reference.len() || !coords.len().is_multiple_of(3) {
         return AlignmentResult {
             rmsd: f64::NAN,
             rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],

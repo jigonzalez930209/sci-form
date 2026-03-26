@@ -155,7 +155,7 @@ pub fn solve_eht(
     let n_orbitals = basis.len();
 
     // HOMO is the last occupied orbital (include SOMO for odd electrons)
-    let n_occupied = (n_electrons + 1) / 2; // ceil division for odd-electron systems
+    let n_occupied = n_electrons.div_ceil(2); // ceil division for odd-electron systems
     let homo_idx = if n_occupied > 0 && n_occupied <= n_orbitals {
         n_occupied - 1
     } else if n_orbitals > 0 {

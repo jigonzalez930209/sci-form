@@ -14,8 +14,8 @@
 //!
 //! Reference: Wolinski, Hinton, Pulay, JACS 112, 8251 (1990).
 
-use crate::nmr::NmrNucleus;
 use super::types::{NmrShieldingResult, ScfInput, ShieldingTensor};
+use crate::nmr::NmrNucleus;
 
 fn reference_shielding(nucleus: NmrNucleus) -> f64 {
     nucleus.reference_shielding()
@@ -299,6 +299,8 @@ mod tests {
         );
 
         assert_eq!(shieldings.len(), 2);
-        assert!(shieldings.iter().all(|entry| entry.chemical_shift.is_finite()));
+        assert!(shieldings
+            .iter()
+            .all(|entry| entry.chemical_shift.is_finite()));
     }
 }

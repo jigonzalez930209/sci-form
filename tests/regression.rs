@@ -1,5 +1,7 @@
 #[path = "regression/test_algorithm_validation.rs"]
 mod test_algorithm_validation;
+#[path = "regression/test_benchmark_100.rs"]
+mod test_benchmark_100;
 #[path = "regression/test_bounds_compare.rs"]
 mod test_bounds_compare;
 #[path = "regression/test_charges.rs"]
@@ -54,8 +56,6 @@ mod test_spectroscopy;
 mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
-#[path = "regression/test_benchmark_100.rs"]
-mod test_benchmark_100;
 
 #[cfg(feature = "alpha-cga")]
 #[path = "experimental/test_cga.rs"]

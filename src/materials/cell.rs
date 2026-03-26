@@ -57,9 +57,8 @@ impl UnitCell {
 
         // Validate: angles must produce positive volume.
         // The volume factor is: 1 - cos²α - cos²β - cos²γ + 2·cosα·cosβ·cosγ > 0
-        let vol_factor =
-            1.0 - cos_alpha * cos_alpha - cos_beta * cos_beta - cos_gamma * cos_gamma
-                + 2.0 * cos_alpha * cos_beta * cos_gamma;
+        let vol_factor = 1.0 - cos_alpha * cos_alpha - cos_beta * cos_beta - cos_gamma * cos_gamma
+            + 2.0 * cos_alpha * cos_beta * cos_gamma;
         if vol_factor <= 0.0 {
             eprintln!(
                 "Warning: cell angles α={:.1}° β={:.1}° γ={:.1}° produce non-positive volume",
@@ -70,7 +69,11 @@ impl UnitCell {
         // γ must be in (0°, 180°) for a valid cell
         if sin_gamma.abs() < 1e-12 {
             return Self {
-                lattice: [[params.a, 0.0, 0.0], [0.0, params.b, 0.0], [0.0, 0.0, params.c]],
+                lattice: [
+                    [params.a, 0.0, 0.0],
+                    [0.0, params.b, 0.0],
+                    [0.0, 0.0, params.c],
+                ],
             };
         }
 

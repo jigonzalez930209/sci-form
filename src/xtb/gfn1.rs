@@ -105,7 +105,9 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
     let shell_eta: Vec<f64> = shell_list
         .iter()
         .map(|&(atom, l)| {
-            let eta = crate::xtb::params::get_xtb_params(elements[atom]).unwrap().eta;
+            let eta = crate::xtb::params::get_xtb_params(elements[atom])
+                .unwrap()
+                .eta;
             match l {
                 0 => eta,
                 1 => eta * 0.85,
@@ -286,11 +288,11 @@ fn compute_reference_populations(elements: &[u8], shell_list: &[(usize, u8)]) ->
         let n_val = params.n_valence as f64;
         let has_p = params.zeta_p > 0.0;
         ref_pop[idx] = match l {
-            0 => n_val.min(2.0),
-            1 => (n_val - 2.0).max(0.0).min(6.0),
+            0 => n_val.clamp(0.0, 2.0),
+            1 => (n_val - 2.0).clamp(0.0, 6.0),
             _ => {
                 let used = 2.0 + if has_p { 6.0 } else { 0.0 };
-                (n_val - used).max(0.0).min(10.0)
+                (n_val - used).clamp(0.0, 10.0)
             }
         };
     }

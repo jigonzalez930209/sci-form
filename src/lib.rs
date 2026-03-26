@@ -1529,7 +1529,8 @@ struct GiaoNmrPreflight {
     fallback_elements: Vec<u8>,
 }
 
-const EXPLICIT_GIAO_STO3G_ELEMENTS: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 35, 53];
+const EXPLICIT_GIAO_STO3G_ELEMENTS: &[u8] =
+    &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 35, 53];
 
 fn has_explicit_giao_sto3g_support(z: u8) -> bool {
     EXPLICIT_GIAO_STO3G_ELEMENTS.contains(&z)
@@ -1579,7 +1580,10 @@ fn preflight_giao_nmr(
     }
 
     let parsed_nucleus = parse_nmr_nucleus(nucleus)?;
-    if !elements.iter().any(|&z| z == parsed_nucleus.atomic_number()) {
+    if !elements
+        .iter()
+        .any(|&z| z == parsed_nucleus.atomic_number())
+    {
         return Err(format!(
             "Requested nucleus {} is not present in the provided element list.",
             parsed_nucleus.canonical()
@@ -1592,7 +1596,7 @@ fn preflight_giao_nmr(
         config.charge,
         config.multiplicity,
     );
-    if system.n_electrons() % 2 != 0 {
+    if !system.n_electrons().is_multiple_of(2) {
         return Err(format!(
             "The public GIAO NMR API currently supports even-electron closed-shell systems only; got {} electrons.",
             system.n_electrons()
@@ -1650,12 +1654,12 @@ pub fn compute_giao_nmr_configured(
 ) -> Result<GiaoNmrResult, String> {
     let request = preflight_giao_nmr(elements, positions, nucleus, config)?;
 
-    let mut scf_config = scf::scf_loop::ScfConfig::default();
-    scf_config.max_iterations = config.max_scf_iterations;
-    scf_config.use_parallel_eri = config.use_parallel_eri;
-    if config.use_parallel_eri {
-        scf_config.parallel_threshold = 0;
-    }
+    let scf_config = scf::scf_loop::ScfConfig {
+        max_iterations: config.max_scf_iterations,
+        use_parallel_eri: config.use_parallel_eri,
+        parallel_threshold: if config.use_parallel_eri { 0 } else { 20 },
+        ..scf::scf_loop::ScfConfig::default()
+    };
 
     let scf = scf::scf_loop::run_scf(&request.system, &scf_config);
     let shieldings = spectroscopy::compute_nmr_shieldings_for_nucleus(
@@ -1700,7 +1704,10 @@ pub fn compute_giao_nmr_configured(
         ));
     }
     if request.fallback_elements.is_empty() {
-        notes.push("All elements in this system use explicit STO-3G basis data in the current SCF path.".to_string());
+        notes.push(
+            "All elements in this system use explicit STO-3G basis data in the current SCF path."
+                .to_string(),
+        );
     } else {
         notes.push(format!(
             "Fallback basis enabled for {}. Heavy-element shieldings are qualitative in this mode.",
@@ -1770,13 +1777,7 @@ pub fn compute_nmr_spectrum_with_coords(
     let nuc = parse_nmr_nucleus(nucleus)?;
     let shifts = nmr::predict_chemical_shifts_for_nucleus(&mol, nuc);
     Ok(nmr::spectrum::compute_nmr_spectrum_for_shifts(
-        &shifts,
-        &couplings,
-        nuc,
-        gamma,
-        ppm_min,
-        ppm_max,
-        n_points,
+        &shifts, &couplings, nuc, gamma, ppm_min, ppm_max, n_points,
     ))
 }
 

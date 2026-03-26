@@ -8,8 +8,10 @@
 //! - Stewart, J.J.P. J. Comput. Chem. 1989, 10, 209-220 (PM3 training set)
 //! - Active Thermochemical Tables (ATcT), Argonne National Laboratory
 
-use serde::Deserialize;
+#![allow(dead_code)]
+
 use rayon::prelude::*;
+use serde::Deserialize;
 use std::panic;
 #[cfg(feature = "experimental-gpu")]
 use std::sync::OnceLock;
@@ -81,7 +83,7 @@ enum MethodId {
     Hf3c,
 }
 
-fn method_result<'a>(row: &'a MoleculeRow, method: MethodId) -> &'a MethodResult {
+fn method_result(row: &MoleculeRow, method: MethodId) -> &MethodResult {
     match method {
         MethodId::Pm3 => &row.pm3,
         MethodId::Gfn0 => &row.gfn0,
@@ -125,7 +127,13 @@ fn method_cell_gap(result: &MethodResult) -> String {
 
 fn row_issue_count(row: &MoleculeRow) -> usize {
     let mut count = usize::from(!row.embed_ok);
-    for method in [MethodId::Pm3, MethodId::Gfn0, MethodId::Gfn1, MethodId::Gfn2, MethodId::Hf3c] {
+    for method in [
+        MethodId::Pm3,
+        MethodId::Gfn0,
+        MethodId::Gfn1,
+        MethodId::Gfn2,
+        MethodId::Hf3c,
+    ] {
         let result = method_result(row, method);
         if result.error.is_some() || !result.converged {
             count += 1;
@@ -198,11 +206,26 @@ fn evaluate_molecule(mol: &MolEntry) -> MoleculeRow {
         )
     } else {
         (
-            MethodResult { error: Some("embed failed".into()), ..Default::default() },
-            MethodResult { error: Some("embed failed".into()), ..Default::default() },
-            MethodResult { error: Some("embed failed".into()), ..Default::default() },
-            MethodResult { error: Some("embed failed".into()), ..Default::default() },
-            MethodResult { error: Some("embed failed".into()), ..Default::default() },
+            MethodResult {
+                error: Some("embed failed".into()),
+                ..Default::default()
+            },
+            MethodResult {
+                error: Some("embed failed".into()),
+                ..Default::default()
+            },
+            MethodResult {
+                error: Some("embed failed".into()),
+                ..Default::default()
+            },
+            MethodResult {
+                error: Some("embed failed".into()),
+                ..Default::default()
+            },
+            MethodResult {
+                error: Some("embed failed".into()),
+                ..Default::default()
+            },
         )
     };
 
@@ -430,20 +453,50 @@ struct Stats {
 fn compute_stats(pairs: &[(f64, f64)]) -> Stats {
     let n = pairs.len();
     if n == 0 {
-        return Stats { n: 0, mae: 0.0, rmse: 0.0, max_err: 0.0, r_squared: 0.0 };
+        return Stats {
+            n: 0,
+            mae: 0.0,
+            rmse: 0.0,
+            max_err: 0.0,
+            r_squared: 0.0,
+        };
     }
-    let mae = pairs.iter().map(|(calc, exp)| (calc - exp).abs()).sum::<f64>() / n as f64;
-    let mse = pairs.iter().map(|(calc, exp)| (calc - exp).powi(2)).sum::<f64>() / n as f64;
+    let mae = pairs
+        .iter()
+        .map(|(calc, exp)| (calc - exp).abs())
+        .sum::<f64>()
+        / n as f64;
+    let mse = pairs
+        .iter()
+        .map(|(calc, exp)| (calc - exp).powi(2))
+        .sum::<f64>()
+        / n as f64;
     let rmse = mse.sqrt();
-    let max_err = pairs.iter().map(|(calc, exp)| (calc - exp).abs()).fold(0.0_f64, f64::max);
+    let max_err = pairs
+        .iter()
+        .map(|(calc, exp)| (calc - exp).abs())
+        .fold(0.0_f64, f64::max);
 
     // R² — Pearson determination coefficient
     let mean_exp = pairs.iter().map(|(_, e)| e).sum::<f64>() / n as f64;
     let ss_res = pairs.iter().map(|(c, e)| (e - c).powi(2)).sum::<f64>();
-    let ss_tot = pairs.iter().map(|(_, e)| (e - mean_exp).powi(2)).sum::<f64>();
-    let r_squared = if ss_tot > 1e-12 { 1.0 - ss_res / ss_tot } else { 1.0 };
+    let ss_tot = pairs
+        .iter()
+        .map(|(_, e)| (e - mean_exp).powi(2))
+        .sum::<f64>();
+    let r_squared = if ss_tot > 1e-12 {
+        1.0 - ss_res / ss_tot
+    } else {
+        1.0
+    };
 
-    Stats { n, mae, rmse, max_err, r_squared }
+    Stats {
+        n,
+        mae,
+        rmse,
+        max_err,
+        r_squared,
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -456,11 +509,22 @@ fn benchmark_100_molecules_all_methods() {
     let json_str = include_str!("../fixtures/benchmark_100_molecules.json");
     let fixture: Fixture = serde_json::from_str(json_str).expect("parse fixture JSON");
     let molecules = &fixture.molecules;
-    assert!(molecules.len() >= 100, "Need at least 100 molecules, got {}", molecules.len());
+    assert!(
+        molecules.len() >= 100,
+        "Need at least 100 molecules, got {}",
+        molecules.len()
+    );
 
-    println!("\n╔══════════════════════════════════════════════════════════════════════════════════╗");
-    println!("║  BENCHMARK: {} molecules × 5 methods (PM3, GFN0, GFN1, GFN2, HF-3c)          ║", molecules.len());
-    println!("╚══════════════════════════════════════════════════════════════════════════════════╝\n");
+    println!(
+        "\n╔══════════════════════════════════════════════════════════════════════════════════╗"
+    );
+    println!(
+        "║  BENCHMARK: {} molecules × 5 methods (PM3, GFN0, GFN1, GFN2, HF-3c)          ║",
+        molecules.len()
+    );
+    println!(
+        "╚══════════════════════════════════════════════════════════════════════════════════╝\n"
+    );
 
     let t_total = Instant::now();
     let rows: Vec<MoleculeRow> = molecules.par_iter().map(evaluate_molecule).collect();
@@ -474,7 +538,11 @@ fn benchmark_100_molecules_all_methods() {
         .map(|r| format!("#{} {} ({})", r.id, r.name, r.smiles))
         .collect();
     if !embed_failures.is_empty() {
-        println!("⚠  Embed failures ({}/{}):", embed_failures.len(), molecules.len());
+        println!(
+            "⚠  Embed failures ({}/{}):",
+            embed_failures.len(),
+            molecules.len()
+        );
         for f in &embed_failures {
             println!("   {f}");
         }
@@ -497,8 +565,14 @@ fn benchmark_100_molecules_all_methods() {
         };
         println!(
             "│ {:>3} │ {:<26} │ {:>8.1} │ {} │ {} │ {} │ {} │ {} │",
-            row.id, name_trunc, row.exp.heat_of_formation,
-            pm3_hof, fmt_gap(&row.gfn0), fmt_gap(&row.gfn1), fmt_gap(&row.gfn2), fmt_gap(&row.hf3c),
+            row.id,
+            name_trunc,
+            row.exp.heat_of_formation,
+            pm3_hof,
+            fmt_gap(&row.gfn0),
+            fmt_gap(&row.gfn1),
+            fmt_gap(&row.gfn2),
+            fmt_gap(&row.hf3c),
         );
     }
     println!("└─────┴────────────────────────────┴──────────┴───────────┴───────────┴───────────┴───────────┴───────────┘");
@@ -546,10 +620,13 @@ fn benchmark_100_molecules_all_methods() {
 
     let count = |f: &dyn Fn(&MoleculeRow) -> &MethodResult| -> (usize, usize) {
         let converged = rows.iter().filter(|r| r.embed_ok && f(r).converged).count();
-        let errors = rows.iter().filter(|r| r.embed_ok && f(r).error.is_some()).count();
+        let errors = rows
+            .iter()
+            .filter(|r| r.embed_ok && f(r).error.is_some())
+            .count();
         (converged, errors)
     };
-    let (pm3_conv, pm3_err)   = count(&|r| &r.pm3);
+    let (pm3_conv, pm3_err) = count(&|r| &r.pm3);
     let (gfn0_conv, gfn0_err) = count(&|r| &r.gfn0);
     let (gfn1_conv, gfn1_err) = count(&|r| &r.gfn1);
     let (gfn2_conv, gfn2_err) = count(&|r| &r.gfn2);
@@ -558,18 +635,52 @@ fn benchmark_100_molecules_all_methods() {
     println!("┌──────────────────────────────────────────────────────────────┐");
     println!("│ CONVERGENCE SUMMARY                                        │");
     println!("├─────────┬──────────┬───────────┬────────────┬───────────────┤");
-    println!("│ Method  │ Converged│  Errors   │ Conv rate  │ Embed OK: {}/{} │", n_embedded, n_total);
+    println!(
+        "│ Method  │ Converged│  Errors   │ Conv rate  │ Embed OK: {}/{} │",
+        n_embedded, n_total
+    );
     println!("├─────────┼──────────┼───────────┼────────────┼───────────────┤");
-    println!("│ PM3     │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │", pm3_conv, n_embedded, pm3_err, pm3_conv as f64 / n_embedded as f64 * 100.0);
-    println!("│ GFN0    │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │", gfn0_conv, n_embedded, gfn0_err, gfn0_conv as f64 / n_embedded as f64 * 100.0);
-    println!("│ GFN1    │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │", gfn1_conv, n_embedded, gfn1_err, gfn1_conv as f64 / n_embedded as f64 * 100.0);
-    println!("│ GFN2    │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │", gfn2_conv, n_embedded, gfn2_err, gfn2_conv as f64 / n_embedded as f64 * 100.0);
-    println!("│ HF-3c   │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │", hf3c_conv, n_embedded, hf3c_err, hf3c_conv as f64 / n_embedded as f64 * 100.0);
+    println!(
+        "│ PM3     │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │",
+        pm3_conv,
+        n_embedded,
+        pm3_err,
+        pm3_conv as f64 / n_embedded as f64 * 100.0
+    );
+    println!(
+        "│ GFN0    │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │",
+        gfn0_conv,
+        n_embedded,
+        gfn0_err,
+        gfn0_conv as f64 / n_embedded as f64 * 100.0
+    );
+    println!(
+        "│ GFN1    │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │",
+        gfn1_conv,
+        n_embedded,
+        gfn1_err,
+        gfn1_conv as f64 / n_embedded as f64 * 100.0
+    );
+    println!(
+        "│ GFN2    │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │",
+        gfn2_conv,
+        n_embedded,
+        gfn2_err,
+        gfn2_conv as f64 / n_embedded as f64 * 100.0
+    );
+    println!(
+        "│ HF-3c   │ {:>5}/{:<3} │ {:>5}     │ {:>5.1}%     │               │",
+        hf3c_conv,
+        n_embedded,
+        hf3c_err,
+        hf3c_conv as f64 / n_embedded as f64 * 100.0
+    );
     println!("└─────────┴──────────┴───────────┴────────────┴───────────────┘");
     println!();
 
     // ── PM3 ΔHf accuracy (the marquee comparison) ───────────────────────────
-    let pm3_hof_pairs: Vec<(f64, f64)> = rows.iter()
+    let pm3_hof_pairs: Vec<(f64, f64)> = rows
+        .iter()
         .filter(|r| r.pm3.converged && r.pm3.heat_of_formation.is_some())
         .map(|r| (r.pm3.heat_of_formation.unwrap(), r.exp.heat_of_formation))
         .collect();
@@ -579,25 +690,53 @@ fn benchmark_100_molecules_all_methods() {
         println!("┌──────────────────────────────────────────────────────────────┐");
         println!("│ PM3 HEAT OF FORMATION vs EXPERIMENTAL (kcal/mol)           │");
         println!("├─────────────────┬────────────────────────────────────────────┤");
-        println!("│ N molecules     │ {:>5}                                      │", s.n);
-        println!("│ MAE             │ {:>8.2} kcal/mol                           │", s.mae);
-        println!("│ RMSE            │ {:>8.2} kcal/mol                           │", s.rmse);
-        println!("│ Max error       │ {:>8.2} kcal/mol                           │", s.max_err);
-        println!("│ R²              │ {:>8.4}                                    │", s.r_squared);
+        println!(
+            "│ N molecules     │ {:>5}                                      │",
+            s.n
+        );
+        println!(
+            "│ MAE             │ {:>8.2} kcal/mol                           │",
+            s.mae
+        );
+        println!(
+            "│ RMSE            │ {:>8.2} kcal/mol                           │",
+            s.rmse
+        );
+        println!(
+            "│ Max error       │ {:>8.2} kcal/mol                           │",
+            s.max_err
+        );
+        println!(
+            "│ R²              │ {:>8.4}                                    │",
+            s.r_squared
+        );
         println!("└─────────────────┴────────────────────────────────────────────┘");
 
         // Top-10 worst PM3 predictions
-        let mut worst: Vec<_> = rows.iter()
+        let mut worst: Vec<_> = rows
+            .iter()
             .filter(|r| r.pm3.converged && r.pm3.heat_of_formation.is_some())
             .map(|r| {
                 let err = (r.pm3.heat_of_formation.unwrap() - r.exp.heat_of_formation).abs();
-                (r.name.as_str(), r.pm3.heat_of_formation.unwrap(), r.exp.heat_of_formation, err)
+                (
+                    r.name.as_str(),
+                    r.pm3.heat_of_formation.unwrap(),
+                    r.exp.heat_of_formation,
+                    err,
+                )
             })
             .collect();
         worst.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap());
         println!("\n  Top-10 worst PM3 ΔHf predictions:");
         for (i, (name, calc, exp, err)) in worst.iter().take(10).enumerate() {
-            println!("    {:>2}. {:<24}  calc={:>8.1}  exp={:>8.1}  err={:>7.1}", i + 1, name, calc, exp, err);
+            println!(
+                "    {:>2}. {:<24}  calc={:>8.1}  exp={:>8.1}  err={:>7.1}",
+                i + 1,
+                name,
+                calc,
+                exp,
+                err
+            );
         }
         println!();
     }
@@ -610,20 +749,30 @@ fn benchmark_100_molecules_all_methods() {
     println!("├─────────┼───────┼──────────┼──────────┼──────────┼──────────┤");
 
     let gap_stats = |name: &str, f: &dyn Fn(&MoleculeRow) -> &MethodResult| {
-        let gaps: Vec<f64> = rows.iter()
+        let gaps: Vec<f64> = rows
+            .iter()
             .filter(|r| f(r).converged && f(r).error.is_none())
             .map(|r| f(r).gap_ev)
             .collect();
-        if gaps.is_empty() { return; }
+        if gaps.is_empty() {
+            return;
+        }
         let n = gaps.len();
         let mean = gaps.iter().sum::<f64>() / n as f64;
         let var = gaps.iter().map(|g| (g - mean).powi(2)).sum::<f64>() / n as f64;
         let min = gaps.iter().cloned().fold(f64::MAX, f64::min);
         let max = gaps.iter().cloned().fold(f64::MIN, f64::max);
-        println!("│ {:<7} │ {:>5} │ {:>8.3} │ {:>8.3} │ {:>8.3} │ {:>8.3} │",
-            name, n, mean, var.sqrt(), min, max);
+        println!(
+            "│ {:<7} │ {:>5} │ {:>8.3} │ {:>8.3} │ {:>8.3} │ {:>8.3} │",
+            name,
+            n,
+            mean,
+            var.sqrt(),
+            min,
+            max
+        );
     };
-    gap_stats("PM3",  &|r| &r.pm3);
+    gap_stats("PM3", &|r| &r.pm3);
     gap_stats("GFN0", &|r| &r.gfn0);
     gap_stats("GFN1", &|r| &r.gfn1);
     gap_stats("GFN2", &|r| &r.gfn2);
@@ -633,23 +782,46 @@ fn benchmark_100_molecules_all_methods() {
 
     // ── Timing comparison ────────────────────────────────────────────────────
     let avg_time = |f: &dyn Fn(&MoleculeRow) -> &MethodResult| -> f64 {
-        let times: Vec<f64> = rows.iter()
+        let times: Vec<f64> = rows
+            .iter()
             .filter(|r| r.embed_ok && f(r).error.is_none())
             .map(|r| f(r).time_ms)
             .collect();
-        if times.is_empty() { 0.0 } else { times.iter().sum::<f64>() / times.len() as f64 }
+        if times.is_empty() {
+            0.0
+        } else {
+            times.iter().sum::<f64>() / times.len() as f64
+        }
     };
     println!("┌──────────────────────────────────────────────────────────────┐");
     println!("│ TIMING (avg ms/molecule)                                   │");
     println!("├─────────┬──────────────────────────────────────────────────┤");
-    println!("│ PM3     │ {:>10.2} ms                                      │", avg_time(&|r| &r.pm3));
-    println!("│ GFN0    │ {:>10.2} ms                                      │", avg_time(&|r| &r.gfn0));
-    println!("│ GFN1    │ {:>10.2} ms                                      │", avg_time(&|r| &r.gfn1));
-    println!("│ GFN2    │ {:>10.2} ms                                      │", avg_time(&|r| &r.gfn2));
-    println!("│ HF-3c   │ {:>10.2} ms                                      │", avg_time(&|r| &r.hf3c));
+    println!(
+        "│ PM3     │ {:>10.2} ms                                      │",
+        avg_time(&|r| &r.pm3)
+    );
+    println!(
+        "│ GFN0    │ {:>10.2} ms                                      │",
+        avg_time(&|r| &r.gfn0)
+    );
+    println!(
+        "│ GFN1    │ {:>10.2} ms                                      │",
+        avg_time(&|r| &r.gfn1)
+    );
+    println!(
+        "│ GFN2    │ {:>10.2} ms                                      │",
+        avg_time(&|r| &r.gfn2)
+    );
+    println!(
+        "│ HF-3c   │ {:>10.2} ms                                      │",
+        avg_time(&|r| &r.hf3c)
+    );
     println!("├─────────┼──────────────────────────────────────────────────┤");
-    println!("│ TOTAL   │ {:>10.2} s for {} molecules                       │",
-        elapsed_total.as_secs_f64(), n_total);
+    println!(
+        "│ TOTAL   │ {:>10.2} s for {} molecules                       │",
+        elapsed_total.as_secs_f64(),
+        n_total
+    );
     println!("└─────────┴──────────────────────────────────────────────────┘");
     println!();
 
@@ -675,16 +847,49 @@ fn benchmark_100_molecules_all_methods() {
     println!("│ Method  │ Converged  │ Errors  │ Issues    │ Mean value  │ Avg time ms │");
     println!("├─────────┼────────────┼─────────┼───────────┼─────────────┼─────────────┤");
     for (method, converged, errors, mean_value, avg_ms) in [
-        (MethodId::Pm3, pm3_conv, pm3_err, mean_pm3_hof, avg_time(&|r| &r.pm3)),
-        (MethodId::Gfn0, gfn0_conv, gfn0_err, mean_gap(&|r| &r.gfn0), avg_time(&|r| &r.gfn0)),
-        (MethodId::Gfn1, gfn1_conv, gfn1_err, mean_gap(&|r| &r.gfn1), avg_time(&|r| &r.gfn1)),
-        (MethodId::Gfn2, gfn2_conv, gfn2_err, mean_gap(&|r| &r.gfn2), avg_time(&|r| &r.gfn2)),
-        (MethodId::Hf3c, hf3c_conv, hf3c_err, mean_gap(&|r| &r.hf3c), avg_time(&|r| &r.hf3c)),
+        (
+            MethodId::Pm3,
+            pm3_conv,
+            pm3_err,
+            mean_pm3_hof,
+            avg_time(&|r| &r.pm3),
+        ),
+        (
+            MethodId::Gfn0,
+            gfn0_conv,
+            gfn0_err,
+            mean_gap(&|r| &r.gfn0),
+            avg_time(&|r| &r.gfn0),
+        ),
+        (
+            MethodId::Gfn1,
+            gfn1_conv,
+            gfn1_err,
+            mean_gap(&|r| &r.gfn1),
+            avg_time(&|r| &r.gfn1),
+        ),
+        (
+            MethodId::Gfn2,
+            gfn2_conv,
+            gfn2_err,
+            mean_gap(&|r| &r.gfn2),
+            avg_time(&|r| &r.gfn2),
+        ),
+        (
+            MethodId::Hf3c,
+            hf3c_conv,
+            hf3c_err,
+            mean_gap(&|r| &r.hf3c),
+            avg_time(&|r| &r.hf3c),
+        ),
     ] {
-        let issues = rows.iter().filter(|r| {
-            let result = method_result(r, method);
-            result.error.is_some() || !result.converged
-        }).count();
+        let issues = rows
+            .iter()
+            .filter(|r| {
+                let result = method_result(r, method);
+                result.error.is_some() || !result.converged
+            })
+            .count();
         println!(
             "│ {:<7} │ {:>4}/{:<4} │ {:>5}   │ {:>5}     │ {:>9.2} │ {:>9.2} │",
             method_label(method),
@@ -703,14 +908,35 @@ fn benchmark_100_molecules_all_methods() {
     println!("│ Method  │ GPU rows   │ CPU rows   │ Backend label        │");
     println!("├─────────┼───────────┼───────────┼──────────────────────┤");
     for (method, sample) in [
-        (MethodId::Pm3, rows.iter().find(|r| r.embed_ok).map(|r| &r.pm3)),
-        (MethodId::Gfn0, rows.iter().find(|r| r.embed_ok).map(|r| &r.gfn0)),
-        (MethodId::Gfn1, rows.iter().find(|r| r.embed_ok).map(|r| &r.gfn1)),
-        (MethodId::Gfn2, rows.iter().find(|r| r.embed_ok).map(|r| &r.gfn2)),
-        (MethodId::Hf3c, rows.iter().find(|r| r.embed_ok).map(|r| &r.hf3c)),
+        (
+            MethodId::Pm3,
+            rows.iter().find(|r| r.embed_ok).map(|r| &r.pm3),
+        ),
+        (
+            MethodId::Gfn0,
+            rows.iter().find(|r| r.embed_ok).map(|r| &r.gfn0),
+        ),
+        (
+            MethodId::Gfn1,
+            rows.iter().find(|r| r.embed_ok).map(|r| &r.gfn1),
+        ),
+        (
+            MethodId::Gfn2,
+            rows.iter().find(|r| r.embed_ok).map(|r| &r.gfn2),
+        ),
+        (
+            MethodId::Hf3c,
+            rows.iter().find(|r| r.embed_ok).map(|r| &r.hf3c),
+        ),
     ] {
-        let gpu_rows = rows.iter().filter(|r| method_result(r, method).used_gpu).count();
-        let cpu_rows = rows.iter().filter(|r| !method_result(r, method).used_gpu).count();
+        let gpu_rows = rows
+            .iter()
+            .filter(|r| method_result(r, method).used_gpu)
+            .count();
+        let cpu_rows = rows
+            .iter()
+            .filter(|r| !method_result(r, method).used_gpu)
+            .count();
         let label = sample.map(|s| s.backend.as_str()).unwrap_or("N/A");
         println!(
             "│ {:<7} │ {:>5}     │ {:>5}     │ {:<20} │",
@@ -725,16 +951,19 @@ fn benchmark_100_molecules_all_methods() {
 
     // ── Method failure details ───────────────────────────────────────────────
     let print_failures = |name: &str, f: &dyn Fn(&MoleculeRow) -> &MethodResult| {
-        let failures: Vec<_> = rows.iter()
+        let failures: Vec<_> = rows
+            .iter()
             .filter(|r| r.embed_ok && f(r).error.is_some())
-            .map(|r| format!(
-                "  #{} {} ({}) [{}]: {}",
-                r.id,
-                r.name,
-                r.smiles,
-                f(r).backend,
-                f(r).error.as_deref().unwrap_or("?"),
-            ))
+            .map(|r| {
+                format!(
+                    "  #{} {} ({}) [{}]: {}",
+                    r.id,
+                    r.name,
+                    r.smiles,
+                    f(r).backend,
+                    f(r).error.as_deref().unwrap_or("?"),
+                )
+            })
             .collect();
         if !failures.is_empty() {
             println!("{} failures ({}):", name, failures.len());
@@ -757,7 +986,9 @@ fn benchmark_100_molecules_all_methods() {
     assert!(
         embed_rate >= 0.90,
         "Embed success rate too low: {:.1}% ({}/{})",
-        embed_rate * 100.0, n_embedded, n_total,
+        embed_rate * 100.0,
+        n_embedded,
+        n_total,
     );
 
     // GFN1 and GFN2 should converge for the vast majority
@@ -765,14 +996,18 @@ fn benchmark_100_molecules_all_methods() {
     assert!(
         gfn1_rate >= 0.90,
         "GFN1 convergence rate too low: {:.1}% ({}/{})",
-        gfn1_rate * 100.0, gfn1_conv, n_embedded,
+        gfn1_rate * 100.0,
+        gfn1_conv,
+        n_embedded,
     );
 
     let gfn2_rate = gfn2_conv as f64 / n_embedded.max(1) as f64;
     assert!(
         gfn2_rate >= 0.90,
         "GFN2 convergence rate too low: {:.1}% ({}/{})",
-        gfn2_rate * 100.0, gfn2_conv, n_embedded,
+        gfn2_rate * 100.0,
+        gfn2_conv,
+        n_embedded,
     );
 
     // GFN0 should converge for at least 80%
@@ -780,28 +1015,46 @@ fn benchmark_100_molecules_all_methods() {
     assert!(
         gfn0_rate >= 0.70,
         "GFN0 convergence rate too low: {:.1}% ({}/{})",
-        gfn0_rate * 100.0, gfn0_conv, n_embedded,
+        gfn0_rate * 100.0,
+        gfn0_conv,
+        n_embedded,
     );
 
     // PM3 — report convergence but don't gate on it (known issues with some functional groups)
     let pm3_rate = pm3_conv as f64 / n_embedded.max(1) as f64;
-    println!("PM3 convergence: {:.1}% ({}/{})", pm3_rate * 100.0, pm3_conv, n_embedded);
+    println!(
+        "PM3 convergence: {:.1}% ({}/{})",
+        pm3_rate * 100.0,
+        pm3_conv,
+        n_embedded
+    );
 
     // HF-3c — panics on S/Cl (missing STO-3G basis for those elements), report only
     let hf3c_rate = hf3c_conv as f64 / n_embedded.max(1) as f64;
-    println!("HF-3c convergence: {:.1}% ({}/{})", hf3c_rate * 100.0, hf3c_conv, n_embedded);
+    println!(
+        "HF-3c convergence: {:.1}% ({}/{})",
+        hf3c_rate * 100.0,
+        hf3c_conv,
+        n_embedded
+    );
 
     // PM3 MAE for ΔHf should be reasonable (literature: ~7-8 kcal/mol for training set)
     // We allow up to 25 kcal/mol MAE since our coordinates are from ETKDG (not optimized)
     if !pm3_hof_pairs.is_empty() {
         let s = compute_stats(&pm3_hof_pairs);
-        println!("PM3 ΔHf final stats: MAE={:.2}, RMSE={:.2}, R²={:.4}", s.mae, s.rmse, s.r_squared);
+        println!(
+            "PM3 ΔHf final stats: MAE={:.2}, RMSE={:.2}, R²={:.4}",
+            s.mae, s.rmse, s.r_squared
+        );
         // Soft assertion — flag but don't fail if MAE is very high
         if s.mae > 50.0 {
             println!("⚠ WARNING: PM3 MAE={:.1} kcal/mol is extremely high (expected <25 for ETKDG geometries)", s.mae);
         }
     }
 
-    println!("\n✓ Benchmark completed: {} molecules processed in {:.2}s",
-        n_total, elapsed_total.as_secs_f64());
+    println!(
+        "\n✓ Benchmark completed: {} molecules processed in {:.2}s",
+        n_total,
+        elapsed_total.as_secs_f64()
+    );
 }

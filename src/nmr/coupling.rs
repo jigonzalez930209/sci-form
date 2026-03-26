@@ -218,9 +218,12 @@ pub fn predict_j_couplings(mol: &crate::graph::Molecule, positions: &[[f64; 3]])
                     if mol.graph.find_edge(mid, p2).is_some() {
                         // Found 4-bond path: H1-p1-mid-p2-H2
                         let mid_elem = mol.graph[mid].element;
-                        let is_sp2_mid = mol.graph[mid].hybridization == crate::graph::Hybridization::SP2;
-                        let is_sp2_p1 = mol.graph[p1].hybridization == crate::graph::Hybridization::SP2;
-                        let is_sp2_p2 = mol.graph[p2].hybridization == crate::graph::Hybridization::SP2;
+                        let is_sp2_mid =
+                            mol.graph[mid].hybridization == crate::graph::Hybridization::SP2;
+                        let is_sp2_p1 =
+                            mol.graph[p1].hybridization == crate::graph::Hybridization::SP2;
+                        let is_sp2_p2 =
+                            mol.graph[p2].hybridization == crate::graph::Hybridization::SP2;
 
                         // Allylic ⁴J: sp3-sp2=sp2-sp3 pattern, typically 1-3 Hz
                         // W-coupling: rigid W-shaped path, typically 1-3 Hz

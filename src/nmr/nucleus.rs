@@ -284,7 +284,10 @@ impl NmrNucleus {
     }
 
     pub fn supported_labels() -> Vec<&'static str> {
-        Self::ALL.iter().map(|nucleus| nucleus.canonical()).collect()
+        Self::ALL
+            .iter()
+            .map(|nucleus| nucleus.canonical())
+            .collect()
     }
 
     pub fn atomic_number(self) -> u8 {
@@ -926,24 +929,14 @@ impl NmrNucleus {
             Self::I127 => (-4000.0, 9000.0),
             Self::Te123 | Self::Te125 => (-2000.0, 3000.0),
             Self::Xe129 | Self::Xe131 => (-500.0, 500.0),
-            Self::Li6 | Self::Li7 | Self::Na23 => {
-                (-80.0, 80.0)
-            }
-            Self::K39 | Self::K40 | Self::K41 => {
-                (-200.0, 200.0)
-            }
-            Self::Be9 | Self::Mg25 | Self::Ca43 | Self::Sr87 => {
-                (-100.0, 200.0)
-            }
-            Self::Rb85 | Self::Rb87 | Self::Cs133 | Self::Ba135 | Self::Ba137 => {
-                (-150.0, 250.0)
-            }
+            Self::Li6 | Self::Li7 | Self::Na23 => (-80.0, 80.0),
+            Self::K39 | Self::K40 | Self::K41 => (-200.0, 200.0),
+            Self::Be9 | Self::Mg25 | Self::Ca43 | Self::Sr87 => (-100.0, 200.0),
+            Self::Rb85 | Self::Rb87 | Self::Cs133 | Self::Ba135 | Self::Ba137 => (-150.0, 250.0),
             Self::He3 => (-50.0, 50.0),
             Self::Al27 => (-50.0, 120.0),
             Self::Sc45 | Self::Ti47 | Self::Ti49 | Self::V50 | Self::V51 => (-2500.0, 2500.0),
-            Self::Cr53 | Self::Mn55 | Self::Fe57 | Self::Co59 | Self::Ni61 => {
-                (-5000.0, 10000.0)
-            }
+            Self::Cr53 | Self::Mn55 | Self::Fe57 | Self::Co59 | Self::Ni61 => (-5000.0, 10000.0),
             Self::Cu63 | Self::Cu65 | Self::Zn67 | Self::Ga69 | Self::Ga71 => (-1500.0, 1500.0),
             Self::Ge73 | Self::As75 => (-1500.0, 1500.0),
             Self::Zr91 | Self::Nb93 | Self::Mo95 | Self::Mo97 => (-4000.0, 4000.0),

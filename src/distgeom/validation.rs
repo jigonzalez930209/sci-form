@@ -538,8 +538,12 @@ pub fn perturb_if_planar(coords: &mut DMatrix<f64>, rng: &mut crate::distgeom::M
     let mut z_max = f64::NEG_INFINITY;
     for i in 0..n {
         let z = coords[(i, 2)];
-        if z < z_min { z_min = z; }
-        if z > z_max { z_max = z; }
+        if z < z_min {
+            z_min = z;
+        }
+        if z > z_max {
+            z_max = z;
+        }
     }
     let z_spread = z_max - z_min;
     // If z-spread is tiny compared to x/y spread, coordinates are quasi-planar
@@ -549,8 +553,12 @@ pub fn perturb_if_planar(coords: &mut DMatrix<f64>, rng: &mut crate::distgeom::M
         let mut hi = f64::NEG_INFINITY;
         for i in 0..n {
             let v = coords[(i, d)];
-            if v < lo { lo = v; }
-            if v > hi { hi = v; }
+            if v < lo {
+                lo = v;
+            }
+            if v > hi {
+                hi = v;
+            }
         }
         xy_max_spread = xy_max_spread.max(hi - lo);
     }
