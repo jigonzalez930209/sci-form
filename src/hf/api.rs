@@ -4,7 +4,7 @@
 //! plus optional CIS excited-state calculation for UV-Vis spectroscopy.
 
 use super::basis::{build_sto3g_basis, ANG_TO_BOHR};
-use super::cis::{compute_cis, CisResult};
+use super::cis::{compute_cis_with_dipole, CisResult};
 use super::d3::compute_d3_energy;
 use super::fock::nuclear_repulsion;
 use super::gcp::compute_gcp;
@@ -31,7 +31,7 @@ pub struct HfConfig {
 impl Default for HfConfig {
     fn default() -> Self {
         HfConfig {
-            max_scf_iter: 100,
+            max_scf_iter: 300,
             diis_size: 6,
             n_cis_states: 5,
             corrections: true,
@@ -40,6 +40,9 @@ impl Default for HfConfig {
 }
 
 /// Result of an HF-3c calculation.
+///
+/// Energy breakdown: `energy = hf_energy + d3_energy + gcp_energy + srb_energy`
+/// where `hf_energy = electronic + nuclear_repulsion`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Hf3cResult {
     /// Total HF-3c energy (Hartree).
@@ -54,7 +57,7 @@ pub struct Hf3cResult {
     pub gcp_energy: f64,
     /// SRB short-range correction energy.
     pub srb_energy: f64,
-    /// Orbital energies (sorted).
+    /// Orbital energies (sorted, eV).
     pub orbital_energies: Vec<f64>,
     /// Number of SCF iterations.
     pub scf_iterations: usize,
@@ -62,6 +65,84 @@ pub struct Hf3cResult {
     pub converged: bool,
     /// CIS excitation results (if requested).
     pub cis: Option<CisResult>,
+    /// Number of basis functions.
+    pub n_basis: usize,
+    /// Number of electrons.
+    pub n_electrons: usize,
+    /// HOMO energy (eV).
+    pub homo_energy: f64,
+    /// LUMO energy (eV), if available.
+    pub lumo_energy: Option<f64>,
+    /// HOMO–LUMO gap (eV).
+    pub gap: f64,
+    /// Mulliken charges per atom.
+    pub mulliken_charges: Vec<f64>,
+}
+
+#[cfg(feature = "experimental-gpu")]
+fn hf_basis_to_gpu_basis(basis: &super::basis::BasisSet) -> crate::scf::basis::BasisSet {
+    use crate::scf::basis::{
+        BasisFunction as GpuBasisFunction, BasisSet as GpuBasisSet,
+        ContractedShell as GpuContractedShell, GaussianPrimitive,
+    };
+
+    let mut functions = Vec::new();
+    let mut shells = Vec::new();
+    let mut function_to_atom = Vec::new();
+
+    for shell in &basis.shells {
+        let primitives: Vec<GaussianPrimitive> = shell
+            .exponents
+            .iter()
+            .zip(shell.coefficients.iter())
+            .map(|(&alpha, &coefficient)| GaussianPrimitive { alpha, coefficient })
+            .collect();
+
+        let l = match shell.shell_type {
+            super::basis::ShellType::S => 0,
+            super::basis::ShellType::P => 1,
+        };
+
+        shells.push(GpuContractedShell {
+            atom_index: shell.center_idx,
+            center: shell.center,
+            l,
+            primitives: primitives.clone(),
+        });
+
+        match shell.shell_type {
+            super::basis::ShellType::S => {
+                functions.push(GpuBasisFunction {
+                    atom_index: shell.center_idx,
+                    center: shell.center,
+                    angular: [0, 0, 0],
+                    l_total: 0,
+                    primitives: primitives.clone(),
+                });
+                function_to_atom.push(shell.center_idx);
+            }
+            super::basis::ShellType::P => {
+                for angular in [[1, 0, 0], [0, 1, 0], [0, 0, 1]] {
+                    functions.push(GpuBasisFunction {
+                        atom_index: shell.center_idx,
+                        center: shell.center,
+                        angular,
+                        l_total: 1,
+                        primitives: primitives.clone(),
+                    });
+                    function_to_atom.push(shell.center_idx);
+                }
+            }
+        }
+    }
+
+    let n_basis = functions.len();
+    GpuBasisSet {
+        functions,
+        shells,
+        n_basis,
+        function_to_atom,
+    }
 }
 
 /// Run a complete HF-3c calculation.
@@ -99,13 +180,60 @@ pub fn solve_hf3c(
     // Two-electron integrals
     let eris = compute_eris(&basis);
 
+    #[cfg(feature = "experimental-gpu")]
+    let gpu_eris_full = if n_basis >= 4 {
+        // Memory check: full N⁴ tensor requires n_basis⁴ × 8 bytes.
+        // Cap at ~512 MB to prevent OOM.
+        let n4 = (n_basis as u64).saturating_mul(n_basis as u64)
+            .saturating_mul(n_basis as u64)
+            .saturating_mul(n_basis as u64);
+        let mem_bytes = n4.saturating_mul(8);
+        let max_mem: u64 = 512 * 1024 * 1024; // 512 MB
+
+        if mem_bytes > max_mem {
+            None // Too large for dense tensor; fall back to CPU packed ERIs
+        } else if let Ok(ctx) = crate::gpu::context::GpuContext::try_create() {
+            let gpu_basis = hf_basis_to_gpu_basis(&basis);
+            crate::gpu::two_electron_gpu::compute_eris_gpu(&ctx, &gpu_basis)
+                .ok()
+                .map(|gpu_eris| {
+                    let cap = n_basis * n_basis * n_basis * n_basis;
+                    let mut full = Vec::with_capacity(cap);
+                    for mu in 0..n_basis {
+                        for nu in 0..n_basis {
+                            for lam in 0..n_basis {
+                                for sig in 0..n_basis {
+                                    full.push(gpu_eris.get(mu, nu, lam, sig));
+                                }
+                            }
+                        }
+                    }
+                    full
+                })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    #[cfg(not(feature = "experimental-gpu"))]
+    let gpu_eris_full: Option<Vec<f64>> = None;
+
     // SCF
     let scf_config = ScfConfig {
         max_iter: config.max_scf_iter,
         diis_size: config.diis_size,
         ..ScfConfig::default()
     };
-    let scf_result = solve_scf(&h_core, &s_mat, &eris, n_electrons, &scf_config);
+    let scf_result = solve_scf(
+        &h_core,
+        &s_mat,
+        &eris,
+        gpu_eris_full.as_deref(),
+        n_electrons,
+        &scf_config,
+    );
 
     // Nuclear repulsion
     let e_nuc = nuclear_repulsion(elements, &pos_bohr);
@@ -126,16 +254,50 @@ pub fn solve_hf3c(
     // CIS excited states
     let cis = if config.n_cis_states > 0 && scf_result.converged {
         let n_occ = n_electrons / 2;
-        Some(compute_cis(
+        let ao_map = super::basis::ao_to_atom_map(&basis);
+        Some(compute_cis_with_dipole(
             &scf_result.orbital_energies,
             &scf_result.coefficients,
             &eris,
             n_basis,
             n_occ,
             config.n_cis_states,
+            Some(&pos_bohr),
+            Some(&ao_map),
         ))
     } else {
         None
+    };
+
+    // Extract HOMO/LUMO from orbital energies
+    let n_occ = n_electrons / 2;
+    let homo_energy = if n_occ > 0 && n_occ <= scf_result.orbital_energies.len() {
+        scf_result.orbital_energies[n_occ - 1]
+    } else {
+        0.0
+    };
+    let lumo_energy = if n_occ < scf_result.orbital_energies.len() {
+        Some(scf_result.orbital_energies[n_occ])
+    } else {
+        None
+    };
+    let gap = lumo_energy.map_or(0.0, |l| l - homo_energy);
+
+    // Mulliken charges from converged density
+    let mulliken_charges = if scf_result.converged {
+        let ps = &scf_result.density * &s_mat;
+        let ao_to_atom = super::basis::ao_to_atom_map(&basis);
+        let mut charges = vec![0.0_f64; elements.len()];
+        for mu in 0..n_basis {
+            charges[ao_to_atom[mu]] += ps[(mu, mu)];
+        }
+        charges
+            .iter()
+            .enumerate()
+            .map(|(i, &pop)| elements[i] as f64 - pop)
+            .collect()
+    } else {
+        vec![0.0; elements.len()]
     };
 
     Ok(Hf3cResult {
@@ -149,6 +311,12 @@ pub fn solve_hf3c(
         scf_iterations: scf_result.iterations,
         converged: scf_result.converged,
         cis,
+        n_basis,
+        n_electrons,
+        homo_energy,
+        lumo_energy,
+        gap,
+        mulliken_charges,
     })
 }
 
@@ -180,6 +348,11 @@ pub fn solve_hf3c_batch(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_default_hf3c_iteration_budget() {
+        assert_eq!(HfConfig::default().max_scf_iter, 300);
+    }
 
     #[test]
     fn test_h2_hf3c() {

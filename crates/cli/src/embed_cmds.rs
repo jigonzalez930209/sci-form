@@ -25,12 +25,13 @@ pub fn cmd_batch(
 ) {
     let lines: Vec<String> = match input {
         Some(path) => {
-            let content = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+            let file = std::fs::File::open(&path).unwrap_or_else(|e| {
                 eprintln!("Error reading {}: {}", path, e);
                 std::process::exit(1);
             });
-            content
+            io::BufReader::new(file)
                 .lines()
+                .filter_map(|l| l.ok())
                 .filter(|l| !l.trim().is_empty())
                 .map(|l| l.trim().to_string())
                 .collect()
@@ -48,6 +49,16 @@ pub fn cmd_batch(
     };
     let total = lines.len();
     let start = Instant::now();
+
+    #[cfg(not(feature = "parallel"))]
+    if threads > 1 {
+        eprintln!(
+            "Warning: --threads {} requested but binary was compiled without 'parallel' feature. \
+             Running single-threaded.",
+            threads
+        );
+    }
+
     eprintln!(
         "Processing {} molecules ({} threads)...",
         total,

@@ -10,39 +10,20 @@
 //! | Speed | Very fast | Slower (needs SCF) |
 //! | Input | SMILES only | 3D coords + SCF |
 //! | Accuracy | Empirical (~2 ppm ¹H) | Semi-empirical (~1 ppm ¹H) |
-//! | Coverage | ¹H, ¹³C | ¹H, ¹³C, ¹⁵N, ¹⁷O, ¹⁹F, ³¹P |
+//! | Coverage | Broad nucleus registry with fast relative inference | Broad nucleus registry with nucleus-specific references |
 //!
 //! Reference: Wolinski, Hinton, Pulay, JACS 112, 8251 (1990).
 
+use crate::nmr::NmrNucleus;
 use super::types::{NmrShieldingResult, ScfInput, ShieldingTensor};
 
-/// Reference shieldings for chemical shift calculation (ppm).
-fn reference_shielding(z: u8) -> f64 {
-    match z {
-        1 => 31.7,   // ¹H: TMS
-        6 => 188.0,  // ¹³C: TMS
-        7 => 244.0,  // ¹⁵N: liquid NH₃
-        8 => 324.0,  // ¹⁷O: liquid H₂O
-        9 => 328.0,  // ¹⁹F: CFCl₃
-        15 => 328.0, // ³¹P: H₃PO₄
-        _ => 0.0,
-    }
+fn reference_shielding(nucleus: NmrNucleus) -> f64 {
+    nucleus.reference_shielding()
 }
 
 /// Free-atom diamagnetic shielding constants (ppm).
-fn free_atom_diamagnetic(z: u8) -> f64 {
-    match z {
-        1 => 17.75,
-        2 => 59.93,
-        6 => 260.7,
-        7 => 325.5,
-        8 => 398.0,
-        9 => 479.0,
-        15 => 993.0,
-        16 => 1118.0,
-        17 => 1253.0,
-        _ => z as f64 * 17.0,
-    }
+fn free_atom_diamagnetic(nucleus: NmrNucleus) -> f64 {
+    nucleus.free_atom_diamagnetic()
 }
 
 /// Compute NMR shielding tensors using the GIAO method.
@@ -58,13 +39,15 @@ pub fn compute_nmr_shieldings(
 
     let compute_one = |atom_n: usize| -> ShieldingTensor {
         let z_n = atomic_numbers[atom_n];
+        let nucleus = NmrNucleus::default_for_element(z_n)
+            .unwrap_or_else(|| NmrNucleus::default_for_element(1).unwrap());
 
         let sigma_dia = compute_diamagnetic_shielding(atom_n, positions_bohr, atomic_numbers);
 
         let sigma_para = compute_paramagnetic_shielding(atom_n, scf, basis_to_atom);
 
         let sigma_total = sigma_dia + sigma_para;
-        let delta = reference_shielding(z_n) - sigma_total;
+        let delta = reference_shielding(nucleus) - sigma_total;
 
         let tensor = [
             [sigma_total, 0.0, 0.0],
@@ -94,6 +77,43 @@ pub fn compute_nmr_shieldings(
     }
 }
 
+/// Compute GIAO shieldings for a specific target nucleus.
+pub fn compute_nmr_shieldings_for_nucleus(
+    nucleus: NmrNucleus,
+    atomic_numbers: &[u8],
+    positions_bohr: &[[f64; 3]],
+    scf: &ScfInput,
+    basis_to_atom: &[usize],
+) -> Vec<ShieldingTensor> {
+    let target_atomic_number = nucleus.atomic_number();
+    let mut shieldings = Vec::new();
+
+    for atom_n in 0..atomic_numbers.len() {
+        if atomic_numbers[atom_n] != target_atomic_number {
+            continue;
+        }
+
+        let sigma_dia = compute_diamagnetic_shielding(atom_n, positions_bohr, atomic_numbers);
+        let sigma_para = compute_paramagnetic_shielding(atom_n, scf, basis_to_atom);
+        let sigma_total = sigma_dia + sigma_para;
+
+        shieldings.push(ShieldingTensor {
+            atom_index: atom_n,
+            element: target_atomic_number,
+            tensor: [
+                [sigma_total, 0.0, 0.0],
+                [0.0, sigma_total, 0.0],
+                [0.0, 0.0, sigma_total],
+            ],
+            isotropic: sigma_total,
+            anisotropy: 0.0,
+            chemical_shift: reference_shielding(nucleus) - sigma_total,
+        });
+    }
+
+    shieldings
+}
+
 /// Convert shielding tensors to a summary result.
 pub fn shieldings_to_shifts(
     shieldings: &[ShieldingTensor],
@@ -113,8 +133,10 @@ fn compute_diamagnetic_shielding(
 ) -> f64 {
     let z_n = atomic_numbers[atom_n];
     let r_n = positions[atom_n];
+    let nucleus = NmrNucleus::default_for_element(z_n)
+        .unwrap_or_else(|| NmrNucleus::default_for_element(1).unwrap());
 
-    let sigma_atom = free_atom_diamagnetic(z_n);
+    let sigma_atom = free_atom_diamagnetic(nucleus);
 
     let mut neighbor_correction = 0.0;
     for (a, &z_a) in atomic_numbers.iter().enumerate() {
@@ -173,15 +195,15 @@ mod tests {
 
     #[test]
     fn test_reference_shieldings() {
-        assert!(reference_shielding(1) > 0.0);
-        assert!(reference_shielding(6) > reference_shielding(1));
+        assert!(reference_shielding(NmrNucleus::H1) > 0.0);
+        assert!(reference_shielding(NmrNucleus::C13) > reference_shielding(NmrNucleus::H1));
     }
 
     #[test]
     fn test_free_atom_diamagnetic_trend() {
-        let sigma_h = free_atom_diamagnetic(1);
-        let sigma_c = free_atom_diamagnetic(6);
-        let sigma_o = free_atom_diamagnetic(8);
+        let sigma_h = free_atom_diamagnetic(NmrNucleus::H1);
+        let sigma_c = free_atom_diamagnetic(NmrNucleus::C13);
+        let sigma_o = free_atom_diamagnetic(NmrNucleus::O17);
 
         assert!(sigma_h < sigma_c);
         assert!(sigma_c < sigma_o);
@@ -250,5 +272,33 @@ mod tests {
         let result = shieldings_to_shifts(&shieldings, &elements);
         assert_eq!(result.n_atoms, 2);
         assert_eq!(result.chemical_shifts.len(), 2);
+    }
+
+    #[test]
+    fn test_compute_shieldings_for_specific_nucleus() {
+        let elements = [17u8, 17u8];
+        let positions = [[0.0, 0.0, 0.0], [0.0, 0.0, 4.0]];
+        let n_basis = 2;
+
+        let scf = ScfInput {
+            orbital_energies: vec![-0.6, 0.7],
+            mo_coefficients: DMatrix::identity(n_basis, n_basis),
+            density_matrix: DMatrix::zeros(n_basis, n_basis),
+            overlap_matrix: DMatrix::identity(n_basis, n_basis),
+            n_basis,
+            n_electrons: 2,
+        };
+
+        let basis_to_atom = [0, 1];
+        let shieldings = compute_nmr_shieldings_for_nucleus(
+            NmrNucleus::Cl35,
+            &elements,
+            &positions,
+            &scf,
+            &basis_to_atom,
+        );
+
+        assert_eq!(shieldings.len(), 2);
+        assert!(shieldings.iter().all(|entry| entry.chemical_shift.is_finite()));
     }
 }

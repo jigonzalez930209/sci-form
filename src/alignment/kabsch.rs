@@ -28,8 +28,14 @@ pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
 ///
 /// `coords`, `reference`: flat [x0,y0,z0, x1,y1,z1,...] in Å.
 pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
-    assert_eq!(coords.len(), reference.len(), "coordinate length mismatch");
-    assert_eq!(coords.len() % 3, 0, "coordinates must be xyz triples");
+    if coords.len() != reference.len() || coords.len() % 3 != 0 {
+        return AlignmentResult {
+            rmsd: f64::NAN,
+            rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            translation: [0.0; 3],
+            aligned_coords: coords.to_vec(),
+        };
+    }
     let n = coords.len() / 3;
 
     if n == 0 {
@@ -80,11 +86,29 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
         h[0][0], h[0][1], h[0][2], h[1][0], h[1][1], h[1][2], h[2][0], h[2][1], h[2][2],
     );
     let svd = h_mat.svd(true, true);
-    let u = svd.u.unwrap();
-    let v_t = svd.v_t.unwrap();
+    let (u, v_t) = match (svd.u, svd.v_t) {
+        (Some(u), Some(v_t)) => (u, v_t),
+        _ => {
+            // SVD failed — return identity alignment with raw RMSD
+            let mut sum_sq = 0.0;
+            for i in 0..coords.len() {
+                let diff = coords[i] - reference[i];
+                sum_sq += diff * diff;
+            }
+            return AlignmentResult {
+                rmsd: (sum_sq / n as f64).sqrt(),
+                rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                translation: [0.0; 3],
+                aligned_coords: coords.to_vec(),
+            };
+        }
+    };
     let v = v_t.transpose();
 
-    // Handle reflection
+    // Handle reflection: correct the sign of the smallest singular value
+    // to ensure a proper rotation (det(R) = +1).
+    // For coplanar molecules (one singular value ≈ 0), this prevents
+    // an improper rotation (reflection) from being selected.
     let mut d = nalgebra::Matrix3::<f64>::identity();
     if (v * u.transpose()).determinant() < 0.0 {
         d[(2, 2)] = -1.0;
@@ -134,8 +158,14 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
 /// than SVD for near-degenerate cases.  Produces the same result as Kabsch
 /// but avoids explicit SVD decomposition.
 pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
-    assert_eq!(coords.len(), reference.len(), "coordinate length mismatch");
-    assert_eq!(coords.len() % 3, 0, "coordinates must be xyz triples");
+    if coords.len() != reference.len() || coords.len() % 3 != 0 {
+        return AlignmentResult {
+            rmsd: f64::NAN,
+            rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            translation: [0.0; 3],
+            aligned_coords: coords.to_vec(),
+        };
+    }
     let n = coords.len() / 3;
 
     if n == 0 {

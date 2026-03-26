@@ -3,9 +3,10 @@
 //! Electrostatic energy from EEQ charges and numerical gradients.
 
 use super::charges::{compute_eeq_charges, erf_approx, get_eeq_params, EeqConfig};
+use serde::{Deserialize, Serialize};
 
 /// Result of EEQ energy calculation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EeqEnergyResult {
     /// Total electrostatic energy (kcal/mol).
     pub electrostatic_energy: f64,

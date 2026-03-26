@@ -1,6 +1,10 @@
 # NMR Spectroscopy — HOSE Codes & Karplus Equation
 
-sci-form predicts ¹H and ¹³C NMR chemical shifts from the molecular graph using HOSE codes (Hierarchical Organization of Spherical Environments), and estimates vicinal J-coupling constants via the Karplus equation.
+sci-form predicts representative NMR chemical shifts from the molecular graph using HOSE-style local environments plus empirical heuristics, and estimates vicinal J-coupling constants via the Karplus equation for the ¹H path.
+
+The highest-confidence targets remain ¹H and ¹³C. A broader nucleus registry is also available for fast relative inference, including halogens, alkali metals, alkaline-earth metals, selected main-group nuclei, and transition-metal isotopes.
+
+For quantum-mechanical shielding, sci-form also exposes a high-level public GIAO route that runs the crate's RHF SCF implementation and then evaluates isotope-specific shieldings for a requested nucleus. That route is currently restricted to singlet closed-shell systems and defaults to rejecting elements that only have the hydrogen-like fallback basis in the public STO-3G path.
 
 ## Pipeline
 
@@ -131,11 +135,21 @@ where $w_k$ are Pascal's triangle weights and $\gamma$ is the half-width (defaul
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `smiles` | `&str` | — | SMILES string |
-| `nucleus` | `&str` | — | `"1H"` or `"13C"` |
+| `nucleus` | `&str` | — | Any supported nucleus alias such as `"1H"`, `"13C"`, `"35Cl"`, `"79Br"`, or `"195Pt"` |
 | `gamma` | `f64` | `0.01` | Lorentzian HWHM in ppm |
 | `ppm_min` | `f64` | `-2.0` (`"1H"`) | Spectral window start |
 | `ppm_max` | `f64` | `14.0` (`"1H"`) | Spectral window end |
 | `n_points` | `usize` | `2000` | Grid resolution |
+
+### `compute_giao_nmr`
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `elements` | `&[u8]` | — | Atomic numbers |
+| `positions` | `&[[f64;3]]` | — | 3D coordinates in Å |
+| `nucleus` | `&str` | — | Requested isotope label such as `"1H"`, `"13C"`, `"35Cl"`, or `"195Pt"` |
+
+The configured variant additionally accepts `GiaoNmrConfig { charge, multiplicity, max_scf_iterations, use_parallel_eri, allow_basis_fallback }`.
 
 ## Output Types
 
@@ -145,6 +159,7 @@ where $w_k$ are Pascal's triangle weights and $\gamma$ is the half-width (defaul
 |-------|------|-------------|
 | `h_shifts` | `Vec<ChemicalShift>` | Predicted ¹H shifts |
 | `c_shifts` | `Vec<ChemicalShift>` | Predicted ¹³C shifts |
+| `other_shifts` | `Vec<NucleusShiftSeries>` | Representative shifts for expanded nuclei |
 | `notes` | `Vec<String>` | Caveats |
 
 ### `ChemicalShift`
@@ -152,7 +167,7 @@ where $w_k$ are Pascal's triangle weights and $\gamma$ is the half-width (defaul
 | Field | Type | Description |
 |-------|------|-------------|
 | `atom_index` | `usize` | Atom index in molecule |
-| `element` | `u8` | Atomic number (1 or 6) |
+| `element` | `u8` | Atomic number |
 | `shift_ppm` | `f64` | Predicted chemical shift (ppm) |
 | `environment` | `String` | Environment classification |
 | `confidence` | `f64` | Confidence 0.0–1.0 |
@@ -174,7 +189,7 @@ where $w_k$ are Pascal's triangle weights and $\gamma$ is the half-width (defaul
 | `ppm_axis` | `Vec<f64>` | Chemical shift grid (ppm) |
 | `intensities` | `Vec<f64>` | Broadened spectrum intensities |
 | `peaks` | `Vec<NmrPeak>` | Discrete multiplet lines |
-| `nucleus` | `String` | `"1H"` or `"13C"` |
+| `nucleus` | `String` | Requested nucleus label |
 | `gamma` | `f64` | Broadening HWHM (ppm) |
 
 ### `NmrPeak`
@@ -186,12 +201,31 @@ where $w_k$ are Pascal's triangle weights and $\gamma$ is the half-width (defaul
 | `atom_index` | `usize` | Source atom index |
 | `multiplicity` | `String` | e.g., `"s"`, `"d"`, `"t"`, `"q"`, `"m"` |
 
+### `GiaoNmrResult`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `nucleus` | `String` | Requested isotope label |
+| `chemical_shifts` | `Vec<f64>` | Isotope-specific chemical shifts for matching atoms |
+| `shieldings` | `Vec<GiaoNmrEntry>` | Full tensor/isotropic entries for matching atoms |
+| `scf_converged` | `bool` | Whether the public SCF route converged |
+| `scf_iterations` | `usize` | Number of SCF iterations |
+| `fallback_elements` | `Vec<u8>` | Elements that used the hydrogen-like fallback basis, if explicitly allowed |
+| `notes` | `Vec<String>` | Support and calibration caveats |
+
 ## API
 
 ### Rust
 
 ```rust
-use sci_form::{embed, predict_nmr_shifts, predict_nmr_couplings, compute_nmr_spectrum};
+use sci_form::{
+    embed,
+    compute_giao_nmr,
+    predict_nmr_shifts,
+    predict_nmr_shifts_for_nucleus,
+    predict_nmr_couplings,
+    compute_nmr_spectrum,
+};
 
 // Shifts only (no 3D needed)
 let shifts = predict_nmr_shifts("CCO").unwrap();
@@ -211,6 +245,20 @@ for j in &couplings {
 // Full ¹H spectrum
 let spec = compute_nmr_spectrum("CCO", "1H", 0.01, -2.0, 12.0, 2000).unwrap();
 println!("{} ¹H peaks", spec.peaks.len());
+
+// Fast relative halogen screening
+let cl = predict_nmr_shifts_for_nucleus("[Cl]", "35Cl").unwrap();
+println!("{} 35Cl shift(s)", cl.len());
+
+// Public SCF-backed GIAO route
+let water = [8, 1, 1];
+let positions = [
+    [0.0, 0.0, 0.1173],
+    [0.0, 0.7572, -0.4692],
+    [0.0, -0.7572, -0.4692],
+];
+let giao = compute_giao_nmr(&water, &positions, "1H").unwrap();
+println!("{} proton GIAO shifts", giao.chemical_shifts.len());
 ```
 
 ### Python
@@ -259,8 +307,8 @@ console.log(`Most intense peak at δ ${ppm.toFixed(2)} ppm`);
 
 ## Limitations and Caveats
 
-- Predictions are empirical; typical accuracy is ±0.3 ppm for ¹H and ±5 ppm for ¹³C.
+- Predictions are empirical; the strongest calibration target remains ¹H/¹³C.
 - Stereochemical effects (axial/equatorial, diastereotopic protons) are partially handled through 3D Karplus.
 - Solvent and temperature effects are not modeled.
-- ¹⁵N, ³¹P, ¹⁹F, and other heteronuclear shifts are not supported.
+- Expanded heteronuclear support is screening-level relative inference; quadrupolar linewidths and isotope abundances are not modeled quantitatively.
 - For HOSE code matching, rare environments with no database match fall back to hybridization-based defaults.

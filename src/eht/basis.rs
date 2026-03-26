@@ -209,11 +209,20 @@ pub fn sto3g_expansion(n: u8, l: u8, zeta: f64) -> Vec<GaussianPrimitive> {
         _ => return vec![],
     };
 
+    // For 4d/5d orbitals, scale exponents by (3/n)² to account for the
+    // more diffuse nature of higher principal quantum number d shells.
+    let d_scale = if l == 2 && n > 3 {
+        let ratio = 3.0 / n as f64;
+        ratio * ratio
+    } else {
+        1.0
+    };
+
     table
         .iter()
         .map(|&(coeff, alpha)| GaussianPrimitive {
             coeff,
-            alpha: alpha * zeta_sq,
+            alpha: alpha * zeta_sq * d_scale,
         })
         .collect()
 }

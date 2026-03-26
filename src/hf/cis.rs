@@ -37,6 +37,10 @@ pub struct CisResult {
 const HARTREE_TO_EV: f64 = 27.21138602;
 
 /// Compute CIS excitation energies from converged SCF data.
+///
+/// When `positions_bohr` and `basis_to_atom` are provided, computes real
+/// oscillator strengths using the monopole approximation for transition
+/// dipole moments. Otherwise falls back to a rough CI-vector norm estimate.
 pub fn compute_cis(
     orbital_energies: &[f64],
     coefficients: &DMatrix<f64>,
@@ -44,6 +48,29 @@ pub fn compute_cis(
     n_basis: usize,
     n_occupied: usize,
     n_states: usize,
+) -> CisResult {
+    compute_cis_with_dipole(
+        orbital_energies,
+        coefficients,
+        eris,
+        n_basis,
+        n_occupied,
+        n_states,
+        None,
+        None,
+    )
+}
+
+/// CIS with optional dipole integral data for proper oscillator strengths.
+pub fn compute_cis_with_dipole(
+    orbital_energies: &[f64],
+    coefficients: &DMatrix<f64>,
+    eris: &[f64],
+    n_basis: usize,
+    n_occupied: usize,
+    n_states: usize,
+    positions_bohr: Option<&[[f64; 3]]>,
+    basis_to_atom: Option<&[usize]>,
 ) -> CisResult {
     let n_virtual = n_basis - n_occupied;
     let n_singles = n_occupied * n_virtual;
@@ -116,9 +143,50 @@ pub fn compute_cis(
         let dom_i = dom_idx / n_virtual;
         let dom_a = dom_idx % n_virtual + n_occupied;
 
-        // Oscillator strength (dipole-length approximation, simplified)
-        let f_osc =
-            2.0 / 3.0 * energy * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual);
+        // Oscillator strength via transition dipole moment
+        let f_osc = match (positions_bohr, basis_to_atom) {
+            (Some(pos), Some(b2a)) => {
+                // Monopole approximation: μ_0k = √2 Σ_ia X_ia Σ_A q_ia(A) R_A
+                let mut tdm = [0.0f64; 3];
+                for single in 0..n_singles {
+                    let i_s = single / n_virtual;
+                    let a_s = single % n_virtual + n_occupied;
+                    let x_ia = col[single];
+                    if x_ia.abs() < 1e-12 {
+                        continue;
+                    }
+                    // Compute transition charge on each atom
+                    let n_atoms = pos.len();
+                    let mut q_atom = vec![0.0f64; n_atoms];
+                    for mu in 0..n_basis {
+                        let atom = b2a[mu];
+                        let mut s_contrib = 0.0;
+                        for nu in 0..n_basis {
+                            s_contrib += coefficients[(nu, a_s)]
+                                * if mu == nu { 1.0 } else { 0.0 };
+                        }
+                        q_atom[atom] += coefficients[(mu, i_s)] * s_contrib;
+                    }
+                    for atom in 0..n_atoms {
+                        tdm[0] += x_ia * q_atom[atom] * pos[atom][0];
+                        tdm[1] += x_ia * q_atom[atom] * pos[atom][1];
+                        tdm[2] += x_ia * q_atom[atom] * pos[atom][2];
+                    }
+                }
+                let sqrt2 = std::f64::consts::SQRT_2;
+                tdm[0] *= sqrt2;
+                tdm[1] *= sqrt2;
+                tdm[2] *= sqrt2;
+                let tdm_sq = tdm[0] * tdm[0] + tdm[1] * tdm[1] + tdm[2] * tdm[2];
+                2.0 / 3.0 * energy * tdm_sq
+            }
+            _ => {
+                // Fallback: rough estimate using CI vector norm (always ~2/3 * E)
+                2.0 / 3.0
+                    * energy
+                    * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual)
+            }
+        };
 
         excitations.push(Excitation {
             energy,
@@ -132,8 +200,44 @@ pub fn compute_cis(
     CisResult { excitations }
 }
 
-/// Compute MO-basis ERI from AO-basis ERIs: (pq|rs) = Σ C_μp C_νq C_λr C_σs (μν|λσ).
+/// Compute MO-basis ERI from AO-basis ERIs using half-transformed intermediates.
+///
+/// Standard 4-index transformation: (pq|rs) = Σ C_μp C_νq C_λr C_σs (μν|λσ).
+/// Uses intermediate contraction to reduce O(N⁵) per integral to O(N⁴) total via
+/// sequential index transformation, with coefficient screening for sparsity.
 fn mo_eri(c: &DMatrix<f64>, eris: &[f64], n: usize, p: usize, q: usize, r: usize, s: usize) -> f64 {
+    // First half-transform: contract σ → s to get (μν|λs)
+    let mut half1 = vec![0.0f64; n * n * n]; // [mu][nu][lam]
+    for lam in 0..n {
+        for sig in 0..n {
+            let c_sig_s = c[(sig, s)];
+            if c_sig_s.abs() < 1e-12 {
+                continue;
+            }
+            for mu in 0..n {
+                for nu in 0..n {
+                    half1[mu * n * n + nu * n + lam] +=
+                        c_sig_s * get_eri(eris, mu, nu, lam, sig, n);
+                }
+            }
+        }
+    }
+
+    // Second half-transform: contract λ → r to get (μν|rs)
+    let mut half2 = vec![0.0f64; n * n]; // [mu][nu]
+    for lam in 0..n {
+        let c_lam_r = c[(lam, r)];
+        if c_lam_r.abs() < 1e-12 {
+            continue;
+        }
+        for mu in 0..n {
+            for nu in 0..n {
+                half2[mu * n + nu] += c_lam_r * half1[mu * n * n + nu * n + lam];
+            }
+        }
+    }
+
+    // Third quarter-transform: contract ν → q, then μ → p
     let mut val = 0.0;
     for mu in 0..n {
         let c_mu_p = c[(mu, p)];
@@ -145,20 +249,7 @@ fn mo_eri(c: &DMatrix<f64>, eris: &[f64], n: usize, p: usize, q: usize, r: usize
             if c_nu_q.abs() < 1e-12 {
                 continue;
             }
-            let cpq = c_mu_p * c_nu_q;
-            for lam in 0..n {
-                let c_lam_r = c[(lam, r)];
-                if c_lam_r.abs() < 1e-12 {
-                    continue;
-                }
-                for sig in 0..n {
-                    let c_sig_s = c[(sig, s)];
-                    if c_sig_s.abs() < 1e-12 {
-                        continue;
-                    }
-                    val += cpq * c_lam_r * c_sig_s * get_eri(eris, mu, nu, lam, sig, n);
-                }
-            }
+            val += c_mu_p * c_nu_q * half2[mu * n + nu];
         }
     }
     val

@@ -1,3 +1,8 @@
+//! Debug: exercise the full distance geometry + bounds FF pipeline and
+//! dump intermediate embedding attempts.
+//!
+//! Category: debug
+
 use sci_form::distgeom::*;
 use sci_form::forcefield::bounds_ff::*;
 use sci_form::graph::Molecule;

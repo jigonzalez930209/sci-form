@@ -40,7 +40,7 @@ pub struct BandStructure {
 }
 
 /// Configuration for band structure calculation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BandStructureConfig {
     /// Number of k-points between high-symmetry points.
     pub n_kpoints_per_segment: usize,
@@ -327,6 +327,9 @@ fn estimate_fermi_energy(bands: &[Vec<f64>], n_occupied: usize) -> f64 {
         .collect();
 
     all_occupied.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    if all_occupied.is_empty() {
+        return 0.0;
+    }
     all_occupied[all_occupied.len() / 2]
 }
 

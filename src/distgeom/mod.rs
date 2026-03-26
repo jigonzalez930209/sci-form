@@ -18,5 +18,6 @@ pub use embedding::{
 };
 pub use validation::{
     check_chiral_centers, check_double_bond_geometry, check_planarity, check_tetrahedral_centers,
-    find_sssr_pub, identify_tetrahedral_centers, TetrahedralCenter, MAX_MINIMIZED_E_PER_ATOM,
+    find_sssr_pub, identify_tetrahedral_centers, perturb_if_planar, TetrahedralCenter,
+    MAX_MINIMIZED_E_PER_ATOM,
 };

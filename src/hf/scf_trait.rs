@@ -92,6 +92,7 @@ impl ScfSolver for HfScfSolver {
             &self.h_core,
             &self.s_mat,
             &self.eris,
+            None,
             self.n_elec,
             &hf_config,
         );

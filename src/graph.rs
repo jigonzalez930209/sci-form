@@ -1,3 +1,9 @@
+//! Molecular graph representation backed by `petgraph`.
+//!
+//! Defines [`Atom`], [`Bond`], and [`Molecule`] — the core data model consumed by
+//! conformer generation, force fields, electronic methods, and all property modules.
+//! Atoms carry hybridization, chirality, and aromaticity; bonds carry order and stereo.
+
 use nalgebra::Vector3;
 pub use petgraph::graph::NodeIndex;
 use petgraph::graph::UnGraph;

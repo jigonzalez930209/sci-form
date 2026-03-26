@@ -1,4 +1,4 @@
-//! Electronic structure method WASM bindings: PM3, xTB, HF-3c, ANI.
+//! Electronic structure method WASM bindings: PM3, xTB, GFN1, GFN2, HF-3c, ANI.
 
 use crate::helpers::*;
 use wasm_bindgen::prelude::*;
@@ -26,6 +26,34 @@ pub fn compute_xtb(elements_json: &str, coords_flat_json: &str) -> String {
         Err(e) => return json_error(&e),
     };
     match sci_form::compute_xtb(&elements, &positions) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Run a GFN1-xTB tight-binding calculation.
+#[wasm_bindgen]
+pub fn compute_gfn1(elements_json: &str, coords_flat_json: &str) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::xtb::solve_gfn1(&elements, &positions) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Run a GFN2-xTB tight-binding calculation.
+#[wasm_bindgen]
+pub fn compute_gfn2(elements_json: &str, coords_flat_json: &str) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::xtb::solve_gfn2(&elements, &positions) {
         Ok(result) => serialize_or_error(&result),
         Err(e) => json_error(&e),
     }

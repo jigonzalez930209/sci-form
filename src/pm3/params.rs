@@ -42,6 +42,43 @@ pub struct Pm3Params {
     pub alpha: f64,
 }
 
+impl Pm3Params {
+    /// Reference distance for PM3 Gaussian core-core correction (Å).
+    /// Uses covalent radius sum as a reasonable default for R₀.
+    pub fn alpha_r0(&self) -> f64 {
+        covalent_radius_angstrom(self.z)
+    }
+}
+
+/// Approximate covalent radius in Å for PM3-supported elements.
+fn covalent_radius_angstrom(z: u8) -> f64 {
+    match z {
+        1 => 0.31,   // H
+        5 => 0.84,   // B
+        6 => 0.76,   // C
+        7 => 0.71,   // N
+        8 => 0.66,   // O
+        9 => 0.57,   // F
+        13 => 1.21,  // Al
+        14 => 1.11,  // Si
+        15 => 1.07,  // P
+        16 => 1.05,  // S
+        17 => 1.02,  // Cl
+        32 => 1.20,  // Ge
+        35 => 1.20,  // Br
+        53 => 1.39,  // I
+        22 => 1.60,  // Ti
+        24 => 1.39,  // Cr
+        25 => 1.39,  // Mn
+        26 => 1.32,  // Fe
+        27 => 1.26,  // Co
+        28 => 1.24,  // Ni
+        29 => 1.32,  // Cu
+        30 => 1.22,  // Zn
+        _ => 1.50, // fallback
+    }
+}
+
 /// Check if an element has PM3 parameters.
 pub fn is_pm3_supported(z: u8) -> bool {
     get_pm3_params(z).is_some()

@@ -1,3 +1,8 @@
+//! Debug: compute and print overlap and kinetic integrals for a single
+//! carbon atom in STO-3G basis for manual verification.
+//!
+//! Category: debug
+
 use sci_form::hf::basis::build_sto3g_basis;
 use sci_form::hf::overlap_kin::{compute_kinetic_matrix, compute_overlap_matrix};
 

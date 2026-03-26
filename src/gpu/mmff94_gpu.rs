@@ -62,6 +62,22 @@ pub fn compute_mmff94_nonbonded_gpu(
         ));
     }
 
+    // Guard against excessive memory usage for exclusion bitmap (N²/8 bytes)
+    let excl_bitmap_bytes = (n_atoms * n_atoms + 7) / 8;
+    let atom_buffer_bytes = n_atoms * 32;
+    let total_gpu_memory = excl_bitmap_bytes + atom_buffer_bytes;
+    const MAX_GPU_BUFFER: usize = 512 * 1024 * 1024; // 512 MB
+    if total_gpu_memory > MAX_GPU_BUFFER {
+        return Ok(compute_mmff94_nonbonded_cpu(
+            coords,
+            charges,
+            vdw_radii,
+            vdw_epsilon,
+            exclusions_14,
+            "System too large for GPU buffers",
+        ));
+    }
+
     // Pack atom data: [x, y, z, charge, r_vdw, eps_vdw, pad, pad] per atom (32 bytes)
     let mut atom_bytes = Vec::with_capacity(n_atoms * 32);
     for i in 0..n_atoms {

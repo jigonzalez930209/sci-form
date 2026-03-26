@@ -1,3 +1,8 @@
+//! Debug: verify the Mersenne Twister (MT19937) PRNG implementation
+//! against known reference output values.
+//!
+//! Category: debug
+
 use sci_form::distgeom::Mt19937;
 
 fn main() {

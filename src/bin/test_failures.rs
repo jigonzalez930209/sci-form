@@ -1,3 +1,8 @@
+//! Debug: exercise a single molecule embedding with LOG_ATTEMPTS enabled
+//! to diagnose failures in the conformer pipeline.
+//!
+//! Category: debug
+
 use std::time::Instant;
 
 fn main() {

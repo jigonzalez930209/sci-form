@@ -9,7 +9,44 @@
 use super::fock::{build_fock, electronic_energy};
 use nalgebra::{DMatrix, DVector, SymmetricEigen};
 
+#[cfg(feature = "experimental-gpu")]
+fn matrix_to_row_major(matrix: &DMatrix<f64>) -> Vec<f64> {
+    let nrows = matrix.nrows();
+    let ncols = matrix.ncols();
+    let mut data = Vec::with_capacity(nrows * ncols);
+    for row in 0..nrows {
+        for col in 0..ncols {
+            data.push(matrix[(row, col)]);
+        }
+    }
+    data
+}
+
+#[cfg(feature = "experimental-gpu")]
+fn expand_packed_eris(eris: &[f64], n_basis: usize) -> Vec<f64> {
+    let mut full = vec![0.0; n_basis * n_basis * n_basis * n_basis];
+    for mu in 0..n_basis {
+        for nu in 0..n_basis {
+            for lam in 0..n_basis {
+                for sig in 0..n_basis {
+                    let packed = super::integrals::get_eri(eris, mu, nu, lam, sig, n_basis);
+                    let idx = mu * n_basis * n_basis * n_basis
+                        + nu * n_basis * n_basis
+                        + lam * n_basis
+                        + sig;
+                    full[idx] = packed;
+                }
+            }
+        }
+    }
+    full
+}
+
 /// SCF convergence result.
+///
+/// Contains converged matrices (density, MO coefficients) and derived
+/// scalars. The `DMatrix<f64>` fields prevent `Serialize`/`Deserialize`;
+/// use `Hf3cResult` for the serializable public API.
 #[derive(Debug, Clone)]
 pub struct ScfResult {
     /// Converged electronic energy (Hartree).
@@ -54,11 +91,27 @@ pub fn solve_scf(
     h_core: &DMatrix<f64>,
     s_mat: &DMatrix<f64>,
     eris: &[f64],
+    _gpu_eris_full: Option<&[f64]>,
     n_electrons: usize,
     config: &ScfConfig,
 ) -> ScfResult {
     let n = h_core.nrows();
     let n_occ = n_electrons / 2;
+
+    #[cfg(feature = "experimental-gpu")]
+    let gpu_ctx = if n >= 4 {
+        crate::gpu::context::GpuContext::try_create().ok()
+    } else {
+        None
+    };
+
+    #[cfg(feature = "experimental-gpu")]
+    let h_core_row_major = matrix_to_row_major(h_core);
+
+    #[cfg(feature = "experimental-gpu")]
+    let eris_full = _gpu_eris_full
+        .map(|tensor| tensor.to_vec())
+        .or_else(|| gpu_ctx.as_ref().map(|_| expand_packed_eris(eris, n)));
 
     // Löwdin orthogonalization: S^{-1/2}
     let s_half_inv = lowdin_orthogonalization(s_mat);
@@ -75,25 +128,59 @@ pub fn solve_scf(
     let mut diis_focks: Vec<DMatrix<f64>> = Vec::new();
     let mut diis_errors: Vec<DMatrix<f64>> = Vec::new();
 
-    let mut prev_error_norm = f64::MAX;
+    let mut min_error_norm = f64::MAX;
+    let mut consecutive_increases = 0u32;
 
     for iter in 0..config.max_iter {
         iterations = iter + 1;
 
-        let fock = build_fock(h_core, &density, eris, n);
+        let fock = {
+            #[cfg(feature = "experimental-gpu")]
+            {
+                if let (Some(ctx), Some(eri_tensor)) = (gpu_ctx.as_ref(), eris_full.as_ref()) {
+                    let density_row_major = matrix_to_row_major(&density);
+                    if let Ok(fock_flat) = crate::gpu::fock_build_gpu::build_fock_gpu(
+                        ctx,
+                        &h_core_row_major,
+                        &density_row_major,
+                        eri_tensor,
+                        n,
+                    ) {
+                        DMatrix::from_row_slice(n, n, &fock_flat)
+                    } else {
+                        build_fock(h_core, &density, eris, n)
+                    }
+                } else {
+                    build_fock(h_core, &density, eris, n)
+                }
+            }
+
+            #[cfg(not(feature = "experimental-gpu"))]
+            {
+                build_fock(h_core, &density, eris, n)
+            }
+        };
         let energy = electronic_energy(&density, h_core, &fock);
 
         // DIIS error: FPS - SPF
         let error = &fock * &density * s_mat - s_mat * &density * &fock;
         let error_norm = error.iter().map(|v| v * v).sum::<f64>().sqrt();
 
-        // H8.2c: Automatic DIIS reset on instability
-        // If error norm increases by >10x, reset DIIS history
-        if error_norm > prev_error_norm * 10.0 && diis_focks.len() > 2 {
+        // Robust DIIS reset: require 3 consecutive error increases before resetting,
+        // rather than a single large jump (which can occur during normal oscillations).
+        if error_norm > min_error_norm * 1.5 {
+            consecutive_increases += 1;
+        } else {
+            consecutive_increases = 0;
+        }
+        if consecutive_increases >= 3 && diis_focks.len() > 2 {
             diis_focks.clear();
             diis_errors.clear();
+            consecutive_increases = 0;
         }
-        prev_error_norm = error_norm;
+        if error_norm < min_error_norm {
+            min_error_norm = error_norm;
+        }
 
         // DIIS extrapolation
         diis_focks.push(fock.clone());
@@ -167,9 +254,16 @@ fn lowdin_orthogonalization(s: &DMatrix<f64>) -> DMatrix<f64> {
     let n = s.nrows();
     let mut s_inv_half = DMatrix::zeros(n, n);
 
+    let max_val = eigen
+        .eigenvalues
+        .iter()
+        .copied()
+        .fold(0.0f64, |a, b| a.max(b));
+    let threshold = max_val * 1e-10;
+
     for i in 0..n {
         let val = eigen.eigenvalues[i];
-        if val > 1e-10 {
+        if val > threshold {
             let factor = 1.0 / val.sqrt();
             let col = eigen.eigenvectors.column(i);
             s_inv_half += factor * col * col.transpose();
@@ -244,6 +338,13 @@ fn diis_extrapolate(focks: &[DMatrix<f64>], errors: &[DMatrix<f64>]) -> DMatrix<
             return focks.last().unwrap().clone();
         }
     };
+
+    // Guard against ill-conditioned DIIS: if any coefficient is too large,
+    // the extrapolation is unreliable (undershoot/overshoot). Fall back.
+    let max_coeff = c.iter().take(m).map(|v| v.abs()).fold(0.0f64, f64::max);
+    if max_coeff > 10.0 {
+        return focks.last().unwrap().clone();
+    }
 
     let mut f_diis = DMatrix::zeros(focks[0].nrows(), focks[0].ncols());
     for i in 0..m {

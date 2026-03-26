@@ -206,8 +206,46 @@ pub fn predict_j_couplings(mol: &crate::graph::Molecule, positions: &[[f64; 3]])
                         element_symbol(y_elem)
                     ),
                 });
+            } else {
+                // ⁴J long-range coupling: check for H-X-Y-Z-H (4-bond path)
+                // Includes W-coupling and allylic coupling patterns
+                let p1_neighbors: Vec<petgraph::graph::NodeIndex> = mol
+                    .graph
+                    .neighbors(p1)
+                    .filter(|&nb| nb != h1_idx && mol.graph[nb].element != 1)
+                    .collect();
+                for &mid in &p1_neighbors {
+                    if mol.graph.find_edge(mid, p2).is_some() {
+                        // Found 4-bond path: H1-p1-mid-p2-H2
+                        let mid_elem = mol.graph[mid].element;
+                        let is_sp2_mid = mol.graph[mid].hybridization == crate::graph::Hybridization::SP2;
+                        let is_sp2_p1 = mol.graph[p1].hybridization == crate::graph::Hybridization::SP2;
+                        let is_sp2_p2 = mol.graph[p2].hybridization == crate::graph::Hybridization::SP2;
+
+                        // Allylic ⁴J: sp3-sp2=sp2-sp3 pattern, typically 1-3 Hz
+                        // W-coupling: rigid W-shaped path, typically 1-3 Hz
+                        let j_hz = if is_sp2_mid && (is_sp2_p1 || is_sp2_p2) {
+                            2.0 // allylic coupling
+                        } else {
+                            1.0 // generic long-range
+                        };
+
+                        couplings.push(JCoupling {
+                            h1_index: h1,
+                            h2_index: h2,
+                            j_hz,
+                            n_bonds: 4,
+                            coupling_type: format!(
+                                "long_range_4J_H-{}-{}-{}-H",
+                                element_symbol(mol.graph[p1].element),
+                                element_symbol(mid_elem),
+                                element_symbol(mol.graph[p2].element)
+                            ),
+                        });
+                        break; // only report one 4-bond path per pair
+                    }
+                }
             }
-            // We skip longer-range couplings (⁴J, ⁵J) as they are typically < 3 Hz
         }
     }
 

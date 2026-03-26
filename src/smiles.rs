@@ -334,6 +334,7 @@ impl<'a> SmilesParser<'a> {
             "SR" | "Sr" => 38,
             "Y" => 39,
             "ZR" | "Zr" => 40,
+            "NB" | "Nb" => 41,
             "MO" | "Mo" => 42,
             "RU" | "Ru" => 44,
             "RH" | "Rh" => 45,

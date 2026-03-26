@@ -4,7 +4,13 @@
 //! transferred to JavaScript TypedArrays (Float64Array, Int32Array, etc.)
 //! without serialization overhead.
 //!
-//! Memory layout matches Apache Arrow IPC format for interoperability:
+//! **Endianness**: All buffers use **native byte order** (little-endian on x86/ARM,
+//! the dominant platforms for WASM and server targets). This is consistent with
+//! the Arrow IPC specification which requires little-endian. Big-endian hosts
+//! would need byte-swapping before interop with Arrow consumers.
+//!
+//! Column organization is Arrow-like for interoperability at the schema level,
+//! but this module does not emit raw Arrow IPC byte streams.
 //! - Values buffer: contiguous typed array
 //! - Offsets buffer: for variable-length data (strings, nested arrays)
 //! - Null bitmap: optional validity buffer
@@ -161,6 +167,12 @@ impl RecordBatch {
 ///
 /// Columns: elements (u8), coords_x/y/z (f64), success (i32), time_ms (f64)
 pub fn pack_conformers(results: &[crate::ConformerResult]) -> RecordBatch {
+    // Validate shape consistency: coords.len() == num_atoms * 3, elements.len() == num_atoms
+    let results: Vec<&crate::ConformerResult> = results
+        .iter()
+        .filter(|r| r.coords.len() == r.num_atoms * 3 && r.elements.len() == r.num_atoms)
+        .collect();
+
     let n = results.len();
     let mut batch = RecordBatch::new();
 

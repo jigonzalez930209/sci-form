@@ -17,6 +17,11 @@ pub const DEFAULT_PROBE_RADIUS: f64 = 1.4;
 pub const DEFAULT_NUM_POINTS: usize = 960;
 
 /// Van der Waals radii (Å) by atomic number (Bondi radii).
+///
+/// Explicit radii: H(1), B(5), C(6), N(7), O(8), F(9), Si(14), P(15),
+/// S(16), Cl(17), Se(34), Br(35), I(53).
+/// All other elements (including transition metals, lanthanides, etc.)
+/// use a fallback radius of 1.70 Å.
 pub fn vdw_radius(z: u8) -> f64 {
     match z {
         1 => 1.20,

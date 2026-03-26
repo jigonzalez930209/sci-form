@@ -576,7 +576,9 @@ pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String>
 
 Predict ¹H and ¹³C chemical shifts from SMILES using HOSE code environment matching.
 
-**Returns** `NmrShiftResult { h_shifts, c_shifts, notes }`. Each `ChemicalShift` has `atom_index`, `element`, `shift_ppm`, `environment`, `confidence`.
+Returns representative shifts for the default nucleus of each element found in the molecule. Legacy fields such as `h_shifts`, `c_shifts`, `f_shifts`, and `p_shifts` are preserved, and additional nuclei are available under `other_shifts`.
+
+**Returns** `NmrShiftResult { h_shifts, c_shifts, ..., other_shifts, notes }`. Each `ChemicalShift` has `atom_index`, `element`, `shift_ppm`, `environment`, `confidence`.
 
 ```rust
 let shifts = sci_form::predict_nmr_shifts("CCO").unwrap();
@@ -584,6 +586,74 @@ for h in &shifts.h_shifts {
     println!("H#{}: {:.2} ppm ({})", h.atom_index, h.shift_ppm, h.environment);
 }
 ```
+
+---
+
+### `predict_nmr_shifts_for_nucleus`
+
+```rust
+pub fn predict_nmr_shifts_for_nucleus(
+    smiles: &str,
+    nucleus: &str,
+) -> Result<Vec<nmr::ChemicalShift>, String>
+```
+
+Predict shifts for one specific nucleus. This is the direct entry point for the expanded registry, including nuclei such as `2H`, `35Cl`, `79Br`, `195Pt`, and `207Pb`.
+
+The fast path remains most accurate for ¹H and ¹³C. Other nuclei are screening-level relative estimates intended to show rough trend and neighborhood sensitivity.
+
+```rust
+let cl35 = sci_form::predict_nmr_shifts_for_nucleus("[Cl]", "35Cl").unwrap();
+for peak in &cl35 {
+    println!("Cl#{}: {:.1} ppm ({})", peak.atom_index, peak.shift_ppm, peak.environment);
+}
+```
+
+---
+
+### `compute_giao_nmr`
+
+```rust
+pub fn compute_giao_nmr(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    nucleus: &str,
+) -> Result<GiaoNmrResult, String>
+```
+
+Run the high-level public GIAO route for one requested nucleus. This path builds a `MolecularSystem`, runs the public RHF SCF loop, constructs the STO-3G basis mapping, and returns isotope-specific shieldings and chemical shifts.
+
+Current public constraints: singlet closed-shell systems only. By default the API rejects elements that only have the hydrogen-like fallback basis in the SCF stack.
+
+```rust
+let elements = [8, 1, 1];
+let positions = [
+    [0.0, 0.0, 0.1173],
+    [0.0, 0.7572, -0.4692],
+    [0.0, -0.7572, -0.4692],
+];
+let result = sci_form::compute_giao_nmr(&elements, &positions, "1H").unwrap();
+println!("{} target atoms, converged={}", result.n_target_atoms, result.scf_converged);
+```
+
+---
+
+### `compute_giao_nmr_configured`
+
+```rust
+pub fn compute_giao_nmr_configured(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    nucleus: &str,
+    config: &GiaoNmrConfig,
+) -> Result<GiaoNmrResult, String>
+```
+
+Configured variant of the high-level GIAO API.
+
+`GiaoNmrConfig { charge, multiplicity, max_scf_iterations, use_parallel_eri, allow_basis_fallback }`
+
+Set `allow_basis_fallback=true` only for screening-level experiments on elements that do not yet have explicit STO-3G coverage in the public SCF path.
 
 ---
 
@@ -639,7 +709,7 @@ for jc in &couplings {
 ```rust
 pub fn compute_nmr_spectrum(
     smiles: &str,
-    nucleus: &str,     // "1H" or "13C"
+    nucleus: &str,     // e.g. "1H", "13C", "35Cl", "79Br", "195Pt"
     gamma: f64,
     ppm_min: f64,
     ppm_max: f64,
@@ -647,7 +717,9 @@ pub fn compute_nmr_spectrum(
 ) -> Result<nmr::NmrSpectrum, String>
 ```
 
-Full NMR spectrum pipeline: SMILES → shifts → couplings → multiplet splitting → Lorentzian broadening.
+Full NMR spectrum pipeline: SMILES → nucleus-specific shifts → couplings → multiplet splitting → Lorentzian broadening.
+
+Only ¹H currently gets explicit vicinal J splitting by default. Other nuclei are rendered as fast screening spectra using the inferred shifts and nucleus-specific linewidth defaults.
 
 **Returns** `NmrSpectrum { ppm_axis, intensities, peaks, nucleus, gamma }`.
 

@@ -120,9 +120,11 @@ Practical note:
 
 | Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
 |------|--------|------|-----|---------|-------------------|
-| `compute_pm3` | `pm3_calculate` | `compute_pm3` | - | PM3 semiempirical SCF | NDDO PM3 |
+| `compute_pm3` | `pm3_calculate` | `compute_pm3` | `pm3` | PM3 semiempirical SCF | NDDO PM3 |
 | `compute_pm3_gradient` | - | - | - | Analytical PM3 gradients | Hellmann-Feynman + Pulay corrections |
-| `compute_xtb` | `xtb_calculate` | `compute_xtb` | - | GFN0-xTB style tight-binding workflow | SCC tight-binding |
+| `compute_xtb` | `xtb_calculate` | `compute_xtb` | `xtb` | GFN0-xTB style tight-binding workflow | SCC tight-binding |
+| `xtb::solve_gfn1` | `gfn1_calculate` | `compute_gfn1` | `gfn1` | GFN1-xTB workflow with shell charges and D3-style dispersion | Shell-resolved SCC tight-binding |
+| `xtb::solve_gfn2` | `gfn2_calculate` | `compute_gfn2` | `gfn2` | GFN2-xTB workflow with multipoles, D4-style dispersion, and XB correction | Multipole SCC tight-binding |
 | `compute_xtb_gradient` | - | - | - | Analytical xTB gradients | SCC gradient formalism |
 | `compute_hf3c` | `hf3c_calculate` | `compute_hf3c` / `compute_hf3c_custom` | `hf3c` | HF-3c quantum workflow | HF + D3 + gCP + SRB |
 | `compute_ani` | `ani_calculate` | `compute_ani` | `ani` | ANI neural potential using available test/default models | Atomic environment vectors + feed-forward NN |
@@ -433,9 +435,10 @@ Core idea:
 
 Main API entries:
 
-- Rust: `compute_pm3`, `compute_pm3_gradient`, `compute_xtb`, `compute_xtb_gradient`
-- Python: `pm3_calculate`, `xtb_calculate`
-- WASM: `compute_pm3`, `compute_xtb`
+- Rust: `compute_pm3`, `compute_pm3_gradient`, `compute_xtb`, `xtb::solve_gfn1`, `xtb::solve_gfn2`, `compute_xtb_gradient`
+- Python: `pm3_calculate`, `xtb_calculate`, `gfn1_calculate`, `gfn2_calculate`
+- WASM: `compute_pm3`, `compute_xtb`, `compute_gfn1`, `compute_gfn2`
+- CLI: `pm3`, `xtb`, `gfn1`, `gfn2`, `hf3c`
 
 Related theory docs:
 
@@ -807,7 +810,7 @@ This inventory is intended to support the “SVG by SVG” documentation pass. E
 | Generate 3D coordinates | `embed`, `embed_batch`, `embed_diverse` |
 | Get partial charges fast | `compute_charges` |
 | Obtain quantum-like orbital descriptors cheaply | `compute_population`, `compute_dipole`, `compute_dos`, `compute_esp` |
-| Estimate higher-fidelity electronic energies | `compute_pm3`, `compute_xtb`, `compute_hf3c` |
+| Estimate higher-fidelity electronic energies | `compute_pm3`, `compute_xtb`, `xtb::solve_gfn1`, `xtb::solve_gfn2`, `compute_hf3c` |
 | Visualize orbitals | `compute_orbital_mesh`, `eht_orbital_mesh`, `eht_orbital_grid_typed` |
 | Score conformers or geometry strain | `compute_uff_energy`, `compute_mmff94_energy` |
 | Analyze stereochemistry | `analyze_stereo` / `stereo_analysis` / `stereo` |

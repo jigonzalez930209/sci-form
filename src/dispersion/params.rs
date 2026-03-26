@@ -3,7 +3,7 @@
 //! Atomic reference data, coordination numbers, and dynamic C6/C8.
 
 /// Per-element D4 parameters.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct D4Params {
     /// Reference C6 coefficient (Hartree·Bohr^6).
     pub c6_ref: f64,
@@ -114,6 +114,50 @@ pub fn get_d4_params(z: u8) -> D4Params {
             alpha0: 28.0,
             r_cov: 2.45,
         },
+        // --- Additional main-group elements ---
+        2 => D4Params { c6_ref: 1.46, c8_ref: 14.1, alpha0: 1.38, r_cov: 0.46 },   // He
+        3 => D4Params { c6_ref: 1387.0, c8_ref: 127800.0, alpha0: 164.0, r_cov: 2.49 }, // Li
+        4 => D4Params { c6_ref: 214.0, c8_ref: 12100.0, alpha0: 38.0, r_cov: 1.89 }, // Be
+        10 => D4Params { c6_ref: 6.38, c8_ref: 76.0, alpha0: 2.67, r_cov: 1.10 },   // Ne
+        11 => D4Params { c6_ref: 1556.0, c8_ref: 165500.0, alpha0: 163.0, r_cov: 2.99 }, // Na
+        12 => D4Params { c6_ref: 626.0, c8_ref: 46400.0, alpha0: 71.0, r_cov: 2.74 }, // Mg
+        13 => D4Params { c6_ref: 528.0, c8_ref: 35300.0, alpha0: 60.0, r_cov: 2.38 }, // Al
+        18 => D4Params { c6_ref: 64.3, c8_ref: 2450.0, alpha0: 11.1, r_cov: 1.74 },  // Ar
+        19 => D4Params { c6_ref: 3897.0, c8_ref: 536300.0, alpha0: 290.0, r_cov: 3.59 }, // K
+        20 => D4Params { c6_ref: 2190.0, c8_ref: 246200.0, alpha0: 160.0, r_cov: 3.31 }, // Ca
+        // --- 3d transition metals (remaining) ---
+        21 => D4Params { c6_ref: 571.0, c8_ref: 30500.0, alpha0: 55.0, r_cov: 2.76 }, // Sc
+        23 => D4Params { c6_ref: 335.0, c8_ref: 14800.0, alpha0: 40.0, r_cov: 2.53 }, // V
+        24 => D4Params { c6_ref: 276.0, c8_ref: 11400.0, alpha0: 35.0, r_cov: 2.49 }, // Cr
+        25 => D4Params { c6_ref: 245.0, c8_ref: 9700.0, alpha0: 33.0, r_cov: 2.49 },  // Mn
+        27 => D4Params { c6_ref: 175.0, c8_ref: 6500.0, alpha0: 27.0, r_cov: 2.38 },  // Co
+        28 => D4Params { c6_ref: 155.0, c8_ref: 5500.0, alpha0: 24.0, r_cov: 2.34 },  // Ni
+        // --- 4d transition metals ---
+        39 => D4Params { c6_ref: 700.0, c8_ref: 42000.0, alpha0: 65.0, r_cov: 2.95 }, // Y
+        40 => D4Params { c6_ref: 540.0, c8_ref: 29000.0, alpha0: 55.0, r_cov: 2.80 }, // Zr
+        42 => D4Params { c6_ref: 340.0, c8_ref: 15000.0, alpha0: 40.0, r_cov: 2.61 }, // Mo
+        44 => D4Params { c6_ref: 252.0, c8_ref: 10200.0, alpha0: 33.0, r_cov: 2.53 }, // Ru
+        45 => D4Params { c6_ref: 220.0, c8_ref: 8500.0, alpha0: 29.0, r_cov: 2.49 },  // Rh
+        46 => D4Params { c6_ref: 205.0, c8_ref: 7600.0, alpha0: 26.0, r_cov: 2.49 },  // Pd
+        47 => D4Params { c6_ref: 253.0, c8_ref: 10200.0, alpha0: 33.0, r_cov: 2.72 }, // Ag
+        48 => D4Params { c6_ref: 323.0, c8_ref: 14500.0, alpha0: 46.0, r_cov: 2.76 }, // Cd
+        // --- 5d transition metals ---
+        72 => D4Params { c6_ref: 485.0, c8_ref: 24000.0, alpha0: 50.0, r_cov: 2.80 }, // Hf
+        74 => D4Params { c6_ref: 375.0, c8_ref: 16500.0, alpha0: 42.0, r_cov: 2.68 }, // W
+        76 => D4Params { c6_ref: 280.0, c8_ref: 11500.0, alpha0: 34.0, r_cov: 2.53 }, // Os
+        77 => D4Params { c6_ref: 245.0, c8_ref: 9500.0, alpha0: 30.0, r_cov: 2.53 },  // Ir
+        78 => D4Params { c6_ref: 225.0, c8_ref: 8500.0, alpha0: 28.0, r_cov: 2.53 },  // Pt
+        79 => D4Params { c6_ref: 255.0, c8_ref: 10500.0, alpha0: 36.0, r_cov: 2.57 }, // Au
+        80 => D4Params { c6_ref: 305.0, c8_ref: 13400.0, alpha0: 34.0, r_cov: 2.53 }, // Hg
+        // --- Period 4-5 main group ---
+        31 => D4Params { c6_ref: 498.0, c8_ref: 30600.0, alpha0: 50.0, r_cov: 2.34 }, // Ga
+        32 => D4Params { c6_ref: 354.0, c8_ref: 18600.0, alpha0: 40.0, r_cov: 2.30 }, // Ge
+        33 => D4Params { c6_ref: 246.0, c8_ref: 11400.0, alpha0: 30.0, r_cov: 2.23 }, // As
+        34 => D4Params { c6_ref: 210.0, c8_ref: 9100.0, alpha0: 26.0, r_cov: 2.19 },  // Se
+        49 => D4Params { c6_ref: 700.0, c8_ref: 47000.0, alpha0: 65.0, r_cov: 2.53 }, // In
+        50 => D4Params { c6_ref: 530.0, c8_ref: 32000.0, alpha0: 53.0, r_cov: 2.53 }, // Sn
+        51 => D4Params { c6_ref: 405.0, c8_ref: 21000.0, alpha0: 43.0, r_cov: 2.49 }, // Sb
+        52 => D4Params { c6_ref: 345.0, c8_ref: 16500.0, alpha0: 38.0, r_cov: 2.49 }, // Te
         _ => D4Params {
             c6_ref: 50.0,
             c8_ref: 1500.0,
@@ -179,21 +223,35 @@ pub fn dynamic_c6(z_a: u8, z_b: u8, cn_a: f64, cn_b: f64) -> f64 {
 fn expected_cn(z: u8) -> f64 {
     match z {
         1 => 1.0,
-        6 => 4.0,
-        7 => 3.0,
-        8 => 2.0,
-        9 => 1.0,
-        15 => 3.0,
-        16 => 2.0,
-        17 => 1.0,
-        35 => 1.0,
-        53 => 1.0,
-        14 => 4.0,
-        5 => 3.0,
-        22 => 6.0,
-        26 => 6.0,
-        29 => 4.0,
-        30 => 4.0,
+        2 => 0.0,        // He
+        3 | 11 | 19 => 1.0, // Li, Na, K
+        4 | 12 | 20 => 2.0, // Be, Mg, Ca
+        5 | 13 => 3.0,   // B, Al
+        6 | 14 | 32 => 4.0, // C, Si, Ge
+        7 | 15 | 33 => 3.0, // N, P, As
+        8 | 16 | 34 | 52 => 2.0, // O, S, Se, Te
+        9 | 17 | 35 | 53 => 1.0, // F, Cl, Br, I
+        10 | 18 => 0.0,  // Ne, Ar
+        // 3d TMs
+        21 => 6.0, // Sc
+        22 => 6.0, // Ti
+        23 => 6.0, // V
+        24 => 6.0, // Cr
+        25 => 6.0, // Mn
+        26 => 6.0, // Fe
+        27 => 6.0, // Co
+        28 => 4.0, // Ni
+        29 => 4.0, // Cu
+        30 => 4.0, // Zn
+        // 4d TMs
+        39 => 6.0, 40 => 6.0, 42 => 6.0, 44 => 6.0,
+        45 => 6.0, 46 => 4.0, 47 => 4.0, 48 => 4.0,
+        // 5d TMs
+        72 => 6.0, 74 => 6.0, 76 => 6.0, 77 => 6.0,
+        78 => 4.0, 79 => 4.0, 80 => 4.0,
+        // Main group 4-5
+        31 | 49 => 3.0, // Ga, In
+        50 | 51 => 4.0, // Sn, Sb
         _ => 4.0,
     }
 }
