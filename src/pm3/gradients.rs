@@ -13,7 +13,10 @@ use nalgebra::DMatrix;
 use serde::{Deserialize, Serialize};
 
 use super::params::get_pm3_params;
-use super::solver::{solve_pm3_with_state, sto_ss_overlap, ANGSTROM_TO_BOHR};
+use super::solver::{
+    screened_coulomb_gamma_derivative_ev_per_angstrom, screened_coulomb_gamma_ev,
+    solve_pm3_with_state, sto_ss_overlap, ANGSTROM_TO_BOHR,
+};
 
 /// Result of PM3 gradient computation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +44,6 @@ pub fn compute_pm3_gradient(
     let n_atoms = elements.len();
     let n_basis = state.basis_map.len();
     let n_occ = state.n_occ;
-    let ev_per_hartree = 27.2114;
 
     // Build energy-weighted density matrix: W_μν = 2·Σ_{k∈occ} ε_k·C_μk·C_νk
     let mut w_mat = DMatrix::zeros(n_basis, n_basis);
@@ -84,12 +86,8 @@ pub fn compute_pm3_gradient(
         let mut grad_a = [0.0f64; 3];
 
         // ── 1. Nuclear repulsion gradient (fully analytical) ──
-        let gamma = ev_per_hartree / r_bohr.max(0.5);
-        let dgamma_dr_ang = if r_bohr > 0.5 {
-            -ev_per_hartree * ANGSTROM_TO_BOHR / (r_bohr * r_bohr)
-        } else {
-            0.0
-        };
+        let gamma = screened_coulomb_gamma_ev(r_bohr);
+        let dgamma_dr_ang = screened_coulomb_gamma_derivative_ev_per_angstrom(r_bohr);
 
         let alpha_a_term = (-pa.alpha * r_ang).exp();
         let alpha_b_term = (-pb.alpha * r_ang).exp();
