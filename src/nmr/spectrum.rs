@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::coupling::JCoupling;
+use super::nucleus::NmrNucleus;
 use super::shifts::{ChemicalShift, NmrShiftResult};
 
 #[derive(Debug, Clone)]
@@ -21,31 +22,6 @@ struct ShiftGroup {
 struct CouplingGroup {
     n_equivalent_neighbors: usize,
     average_j_hz: f64,
-}
-
-/// Target NMR nucleus.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum NmrNucleus {
-    /// ¹H NMR
-    H1,
-    /// ¹³C NMR
-    C13,
-    /// ¹⁹F NMR
-    F19,
-    /// ³¹P NMR
-    P31,
-    /// ¹⁵N NMR
-    N15,
-    /// ¹¹B NMR
-    B11,
-    /// ²⁹Si NMR
-    Si29,
-    /// ⁷⁷Se NMR
-    Se77,
-    /// ¹⁷O NMR
-    O17,
-    /// ³³S NMR
-    S33,
 }
 
 /// A single peak in the NMR spectrum.
@@ -101,34 +77,12 @@ pub struct PeakIntegration {
 
 /// Default FWHM (full-width at half-maximum) for each nucleus type, in Hz.
 fn default_fwhm_hz(nucleus: NmrNucleus) -> f64 {
-    match nucleus {
-        NmrNucleus::H1 => 1.0,  // Narrow lines for ¹H
-        NmrNucleus::C13 => 5.0, // Broader for ¹³C
-        NmrNucleus::F19 => 5.0,
-        NmrNucleus::P31 => 10.0,
-        NmrNucleus::N15 => 10.0,
-        NmrNucleus::B11 => 50.0, // Quadrupolar broadening
-        NmrNucleus::Si29 => 5.0,
-        NmrNucleus::Se77 => 20.0,
-        NmrNucleus::O17 => 100.0, // Quadrupolar
-        NmrNucleus::S33 => 100.0, // Quadrupolar
-    }
+    nucleus.default_fwhm_hz()
 }
 
 /// Default spectrometer frequency for each nucleus (MHz).
 fn default_frequency_mhz(nucleus: NmrNucleus) -> f64 {
-    match nucleus {
-        NmrNucleus::H1 => 400.0,
-        NmrNucleus::C13 => 100.6,
-        NmrNucleus::F19 => 376.5,
-        NmrNucleus::P31 => 162.0,
-        NmrNucleus::N15 => 40.6,
-        NmrNucleus::B11 => 128.4,
-        NmrNucleus::Si29 => 79.5,
-        NmrNucleus::Se77 => 76.3,
-        NmrNucleus::O17 => 54.2,
-        NmrNucleus::S33 => 30.7,
-    }
+    nucleus.default_frequency_mhz()
 }
 
 /// Lorentzian line shape: L(x) = (1/π) · γ / [(x - x₀)² + γ²]
@@ -152,7 +106,7 @@ fn multiplicity_label(n_couplings: usize) -> &'static str {
 
 fn shift_group_tolerance(nucleus: NmrNucleus) -> f64 {
     match nucleus {
-        NmrNucleus::H1 => 1e-3,
+        NmrNucleus::H1 | NmrNucleus::H2 | NmrNucleus::H3 => 1e-3,
         NmrNucleus::C13 => 1e-2,
         _ => 5e-3,
     }
@@ -361,6 +315,26 @@ pub fn compute_nmr_spectrum(
     ppm_max: f64,
     n_points: usize,
 ) -> NmrSpectrum {
+    compute_nmr_spectrum_for_shifts(
+        shifts.shifts_for_nucleus(nucleus),
+        couplings,
+        nucleus,
+        gamma,
+        ppm_min,
+        ppm_max,
+        n_points,
+    )
+}
+
+pub fn compute_nmr_spectrum_for_shifts(
+    active_shifts: &[ChemicalShift],
+    couplings: &[JCoupling],
+    nucleus: NmrNucleus,
+    gamma: f64,
+    ppm_min: f64,
+    ppm_max: f64,
+    n_points: usize,
+) -> NmrSpectrum {
     let n_points = n_points.max(2);
     let step = (ppm_max - ppm_min) / (n_points as f64 - 1.0);
     // NMR convention: ppm axis runs from high to low
@@ -372,19 +346,6 @@ pub fn compute_nmr_spectrum(
         gamma
     } else {
         default_fwhm_hz(nucleus) / default_frequency_mhz(nucleus)
-    };
-
-    let active_shifts: &[ChemicalShift] = match nucleus {
-        NmrNucleus::H1 => &shifts.h_shifts,
-        NmrNucleus::C13 => &shifts.c_shifts,
-        NmrNucleus::F19 => &shifts.f_shifts,
-        NmrNucleus::P31 => &shifts.p_shifts,
-        NmrNucleus::N15 => &shifts.n_shifts,
-        NmrNucleus::B11 => &shifts.b_shifts,
-        NmrNucleus::Si29 => &shifts.si_shifts,
-        NmrNucleus::Se77 => &shifts.se_shifts,
-        NmrNucleus::O17 => &shifts.o_shifts,
-        NmrNucleus::S33 => &shifts.s_shifts,
     };
 
     let shift_groups = build_shift_groups(active_shifts, nucleus);
@@ -426,23 +387,27 @@ pub fn compute_nmr_spectrum(
         }
     }
 
-    let nucleus_label = match nucleus {
-        NmrNucleus::H1 => "¹H",
-        NmrNucleus::C13 => "¹³C",
-        NmrNucleus::F19 => "¹⁹F",
-        NmrNucleus::P31 => "³¹P",
-        NmrNucleus::N15 => "¹⁵N",
-        NmrNucleus::B11 => "¹¹B",
-        NmrNucleus::Si29 => "²⁹Si",
-        NmrNucleus::Se77 => "⁷⁷Se",
-        NmrNucleus::O17 => "¹⁷O",
-        NmrNucleus::S33 => "³³S",
-    };
-
     // Compute integrations for each peak group
     let integration_width = effective_gamma * 10.0; // integrate ±10γ around each peak
     let integrations =
         compute_integrations(&peaks, &ppm_axis, &intensities, step, integration_width);
+
+    let mut notes = vec![
+        format!(
+            "{} NMR spectrum with Lorentzian broadening (γ = {:.4} ppm, FWHM = {:.1} Hz).",
+            nucleus.unicode_label(),
+            effective_gamma,
+            effective_gamma * default_frequency_mhz(nucleus)
+        ),
+        "Chemical shifts come from the fast empirical inference layer. ¹H uses explicit vicinal J-coupling splitting; other nuclei are rendered as screening-level singlets unless a dedicated model is available.".to_string(),
+        "Equivalent nuclei are grouped before rendering, and exchangeable O-H/N-H/S-H couplings are suppressed in the default 1H spectrum.".to_string(),
+        "First-order splitting uses explicit coupling groups; higher-order effects (roofing, strong coupling) are not modeled.".to_string(),
+    ];
+    if nucleus.is_quadrupolar() {
+        notes.push(
+            "Quadrupolar nucleus selected: linewidths and positions are approximate relative indicators, not quantitative simulations of relaxation or isotope abundance.".to_string(),
+        );
+    }
 
     NmrSpectrum {
         ppm_axis,
@@ -451,16 +416,7 @@ pub fn compute_nmr_spectrum(
         nucleus,
         gamma: effective_gamma,
         integrations,
-        notes: vec![
-            format!(
-                "{} NMR spectrum with Lorentzian broadening (γ = {:.4} ppm, FWHM = {:.1} Hz).",
-                nucleus_label, effective_gamma,
-                effective_gamma * default_frequency_mhz(nucleus)
-            ),
-            "Chemical shifts from empirical additivity rules; vicinal J-couplings from Karplus/topological estimates.".to_string(),
-            "Equivalent nuclei are grouped before rendering, and exchangeable O-H/N-H/S-H couplings are suppressed in the default 1H spectrum.".to_string(),
-            "First-order splitting uses explicit coupling groups; higher-order effects (roofing, strong coupling) are not modeled.".to_string(),
-        ],
+        notes,
     }
 }
 
