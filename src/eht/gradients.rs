@@ -40,7 +40,7 @@ pub struct EhtOptResult {
 }
 
 /// Configuration for EHT geometry optimization.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EhtOptConfig {
     /// Maximum number of optimization steps.
     pub max_steps: usize,
@@ -79,8 +79,21 @@ pub fn compute_eht_gradient(
 
     // Reference energy
     let eht_ref = crate::eht::solve_eht(elements, positions, None)?;
-    let n_occ = eht_ref.n_electrons / 2;
-    let e0: f64 = eht_ref.energies.iter().take(n_occ).sum::<f64>() * 2.0;
+    let n_occ = (eht_ref.n_electrons + 1) / 2; // ceil: include SOMO for odd electrons
+    let is_odd = eht_ref.n_electrons % 2 == 1;
+    let e0: f64 = eht_ref
+        .energies
+        .iter()
+        .take(n_occ)
+        .enumerate()
+        .map(|(i, &e)| {
+            if is_odd && i == n_occ - 1 {
+                e // SOMO: single occupation
+            } else {
+                2.0 * e
+            }
+        })
+        .sum();
 
     let mut gradients = vec![[0.0f64; 3]; n_atoms];
 
@@ -94,8 +107,20 @@ pub fn compute_eht_gradient(
             let eht_plus = crate::eht::solve_eht(elements, &pos_plus, None)?;
             let eht_minus = crate::eht::solve_eht(elements, &pos_minus, None)?;
 
-            let e_plus: f64 = eht_plus.energies.iter().take(n_occ).sum::<f64>() * 2.0;
-            let e_minus: f64 = eht_minus.energies.iter().take(n_occ).sum::<f64>() * 2.0;
+            let e_plus: f64 = eht_plus
+                .energies
+                .iter()
+                .take(n_occ)
+                .enumerate()
+                .map(|(i, &e)| if is_odd && i == n_occ - 1 { e } else { 2.0 * e })
+                .sum();
+            let e_minus: f64 = eht_minus
+                .energies
+                .iter()
+                .take(n_occ)
+                .enumerate()
+                .map(|(i, &e)| if is_odd && i == n_occ - 1 { e } else { 2.0 * e })
+                .sum();
 
             gradients[atom][coord] = (e_plus - e_minus) / (2.0 * delta);
         }
@@ -136,10 +161,12 @@ pub fn optimize_geometry_eht(
     let mut step_size = cfg.step_size;
 
     let mut prev_energy = f64::MAX;
+    let mut last_rms = f64::MAX;
 
     for step in 0..cfg.max_steps {
         let grad = compute_eht_gradient(elements, &positions)?;
         energies.push(grad.energy);
+        last_rms = grad.rms_gradient;
 
         // Check convergence
         if grad.rms_gradient < cfg.grad_threshold {
@@ -192,7 +219,7 @@ pub fn optimize_geometry_eht(
         energy: prev_energy,
         n_steps: cfg.max_steps,
         converged,
-        rms_gradient: 0.0,
+        rms_gradient: last_rms,
         energies,
     })
 }
