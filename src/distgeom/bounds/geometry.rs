@@ -1,7 +1,15 @@
+//! Geometric bounds helpers: amide/ester 1-4 preferences and special-case
+//! distance constraints following the RDKit ETKDG algorithm.
+
 use crate::graph::Molecule;
 use petgraph::graph::NodeIndex;
 use petgraph::visit::EdgeRef;
 
+/// Amide/ester cis-trans preference for 1-4 distance bounds.
+///
+/// When a 1-4 path crosses an amide or ester bond the preferred geometry
+/// (cis or trans to the carbonyl oxygen) tightens the distance bounds.
+/// See RDKit `_checkAmideEster14` for the reference implementation.
 #[derive(PartialEq)]
 pub(super) enum AmidePref {
     Cis,
