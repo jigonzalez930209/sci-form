@@ -1,3 +1,32 @@
+//! **sci-form** — computational chemistry library for conformer generation, quantum methods,
+//! spectroscopy, molecular properties, and materials science.
+//!
+//! # Architecture
+//!
+//! The crate is organized in layers from molecular construction up to derived properties:
+//!
+//! - **Parsing & topology** — [`smiles`], [`graph`], [`smarts`], [`smirks`], [`rings`], [`topology`]
+//! - **Geometry** — [`distgeom`], [`etkdg`], [`conformer`], [`alignment`], [`forcefield`], [`optimization`]
+//! - **Charges & surface** — [`charges`], [`charges_eeq`], [`dipole`], [`surface`], [`esp`], [`population`]
+//! - **Solvation** — [`solvation`], [`solvation_alpb`]
+//! - **Electronic structure** — [`scf`], [`eht`], [`pm3`], [`xtb`], [`hf`], [`dos`]
+//! - **Spectroscopy** — [`spectroscopy`], [`ir`], [`nmr`]
+//! - **Neural potentials** — [`ani`]
+//! - **ML & descriptors** — [`ml`], [`reactivity`]
+//! - **Materials** — [`materials`], [`periodic`]
+//! - **Transport & infra** — [`transport`], [`gpu`], [`mesh`]
+//!
+//! # Coordinate convention
+//!
+//! All coordinate arrays are **flat** `[x0, y0, z0, x1, y1, z1, ...]` in ångströms.
+//! Element arrays are atomic numbers (`u8`): 1 = H, 6 = C, 7 = N, 8 = O, etc.
+//!
+//! # Targets
+//!
+//! The public surface is mirrored across four targets: Rust (this crate), Python (`crates/python/`),
+//! WASM/TypeScript (`crates/wasm/`), and CLI (`crates/cli/`). Changes to public types or functions
+//! must be propagated to all targets.
+
 // Scientific/numerical code patterns that are idiomatic in this domain
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
@@ -294,11 +323,69 @@ pub struct GraphFeatureAnalysis {
     pub stereocenters: StereocenterAnalysis,
 }
 
+/// Configuration for the high-level GIAO NMR route.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GiaoNmrConfig {
+    /// Total molecular charge.
+    pub charge: i32,
+    /// Spin multiplicity. The current public SCF route supports singlet closed-shell systems only.
+    pub multiplicity: u32,
+    /// Maximum number of SCF iterations.
+    pub max_scf_iterations: usize,
+    /// Enable rayon-parallel ERI evaluation when the feature is available.
+    pub use_parallel_eri: bool,
+    /// Allow the internal hydrogen-like fallback basis for unsupported elements.
+    pub allow_basis_fallback: bool,
+}
+
+/// One isotope-specific shielding entry returned by the high-level GIAO API.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GiaoNmrEntry {
+    pub atom_index: usize,
+    pub element: u8,
+    pub tensor: [[f64; 3]; 3],
+    pub isotropic: f64,
+    pub anisotropy: f64,
+    pub chemical_shift: f64,
+}
+
+/// Result of a high-level SCF-backed GIAO NMR calculation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GiaoNmrResult {
+    pub nucleus: String,
+    pub target_atomic_number: u8,
+    pub method: String,
+    pub basis_set: String,
+    pub charge: i32,
+    pub multiplicity: u32,
+    pub scf_converged: bool,
+    pub scf_iterations: usize,
+    pub total_energy_hartree: f64,
+    pub n_basis: usize,
+    pub n_target_atoms: usize,
+    pub chemical_shifts: Vec<f64>,
+    pub shieldings: Vec<GiaoNmrEntry>,
+    pub fallback_elements: Vec<u8>,
+    pub notes: Vec<String>,
+}
+
 impl Default for ConformerConfig {
     fn default() -> Self {
         Self {
             seed: 42,
             num_threads: 0,
+        }
+    }
+}
+
+impl Default for GiaoNmrConfig {
+    fn default() -> Self {
+        Self {
+            charge: 0,
+            multiplicity: 1,
+            max_scf_iterations: 100,
+            use_parallel_eri: false,
+            allow_basis_fallback: false,
         }
     }
 }
@@ -1403,10 +1490,20 @@ pub fn compute_ir_spectrum(
     ir::compute_ir_spectrum(analysis, gamma, wn_min, wn_max, n_points)
 }
 
-/// Predict NMR chemical shifts (¹H and ¹³C) from SMILES.
+/// Predict representative NMR chemical shifts from SMILES.
 pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(nmr::predict_chemical_shifts(&mol))
+}
+
+/// Predict chemical shifts for a specific NMR nucleus from SMILES.
+pub fn predict_nmr_shifts_for_nucleus(
+    smiles: &str,
+    nucleus: &str,
+) -> Result<Vec<nmr::ChemicalShift>, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let nucleus = parse_nmr_nucleus(nucleus)?;
+    Ok(nmr::predict_chemical_shifts_for_nucleus(&mol, nucleus))
 }
 
 /// Predict J-coupling constants for a molecule.
@@ -1422,27 +1519,227 @@ pub fn predict_nmr_couplings(
 }
 
 fn parse_nmr_nucleus(nucleus: &str) -> Result<nmr::NmrNucleus, String> {
-    match nucleus {
-        "1H" | "H1" | "h1" | "1h" | "proton" => Ok(nmr::NmrNucleus::H1),
-        "13C" | "C13" | "c13" | "13c" | "carbon" => Ok(nmr::NmrNucleus::C13),
-        "19F" | "F19" | "f19" | "19f" | "fluorine" => Ok(nmr::NmrNucleus::F19),
-        "31P" | "P31" | "p31" | "31p" | "phosphorus" => Ok(nmr::NmrNucleus::P31),
-        "15N" | "N15" | "n15" | "15n" | "nitrogen" => Ok(nmr::NmrNucleus::N15),
-        "11B" | "B11" | "b11" | "11b" | "boron" => Ok(nmr::NmrNucleus::B11),
-        "29Si" | "Si29" | "si29" | "29si" | "silicon" => Ok(nmr::NmrNucleus::Si29),
-        "77Se" | "Se77" | "se77" | "77se" | "selenium" => Ok(nmr::NmrNucleus::Se77),
-        "17O" | "O17" | "o17" | "17o" | "oxygen" => Ok(nmr::NmrNucleus::O17),
-        "33S" | "S33" | "s33" | "33s" | "sulfur" => Ok(nmr::NmrNucleus::S33),
-        _ => Err(format!(
-            "Unknown nucleus '{}'. Supported: 1H, 13C, 19F, 31P, 15N, 11B, 29Si, 77Se, 17O, 33S",
-            nucleus
-        )),
+    nmr::NmrNucleus::parse(nucleus)
+}
+
+struct GiaoNmrPreflight {
+    nucleus: nmr::NmrNucleus,
+    system: scf::types::MolecularSystem,
+    basis: scf::basis::BasisSet,
+    fallback_elements: Vec<u8>,
+}
+
+const EXPLICIT_GIAO_STO3G_ELEMENTS: &[u8] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 15, 16, 17, 35, 53];
+
+fn has_explicit_giao_sto3g_support(z: u8) -> bool {
+    EXPLICIT_GIAO_STO3G_ELEMENTS.contains(&z)
+}
+
+fn format_element_label(z: u8) -> String {
+    nmr::NmrNucleus::default_for_element(z)
+        .map(|nucleus| format!("{}({})", nucleus.element_symbol(), z))
+        .unwrap_or_else(|| format!("Z{}", z))
+}
+
+fn format_element_set(elements: &[u8]) -> String {
+    let mut unique = elements.to_vec();
+    unique.sort_unstable();
+    unique.dedup();
+    unique
+        .into_iter()
+        .map(format_element_label)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn preflight_giao_nmr(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    nucleus: &str,
+    config: &GiaoNmrConfig,
+) -> Result<GiaoNmrPreflight, String> {
+    if elements.is_empty() {
+        return Err("GIAO NMR requires at least one atom.".to_string());
     }
+    if elements.len() != positions.len() {
+        return Err(format!(
+            "GIAO NMR requires one 3D coordinate per atom; got {} elements and {} positions.",
+            elements.len(),
+            positions.len()
+        ));
+    }
+    if config.max_scf_iterations == 0 {
+        return Err("GIAO NMR requires max_scf_iterations > 0.".to_string());
+    }
+    if config.multiplicity != 1 {
+        return Err(format!(
+            "The public GIAO NMR API currently supports singlet closed-shell systems only; got multiplicity {}.",
+            config.multiplicity
+        ));
+    }
+
+    let parsed_nucleus = parse_nmr_nucleus(nucleus)?;
+    if !elements.iter().any(|&z| z == parsed_nucleus.atomic_number()) {
+        return Err(format!(
+            "Requested nucleus {} is not present in the provided element list.",
+            parsed_nucleus.canonical()
+        ));
+    }
+
+    let system = scf::types::MolecularSystem::from_angstrom(
+        elements,
+        positions,
+        config.charge,
+        config.multiplicity,
+    );
+    if system.n_electrons() % 2 != 0 {
+        return Err(format!(
+            "The public GIAO NMR API currently supports even-electron closed-shell systems only; got {} electrons.",
+            system.n_electrons()
+        ));
+    }
+
+    let fallback_elements: Vec<u8> = elements
+        .iter()
+        .copied()
+        .filter(|&z| !has_explicit_giao_sto3g_support(z))
+        .collect();
+
+    if !config.allow_basis_fallback && !fallback_elements.is_empty() {
+        return Err(format!(
+            "The public GIAO NMR SCF route only has explicit STO-3G basis data for {}. This system includes fallback-only elements: {}. Re-run with GiaoNmrConfig.allow_basis_fallback=true for a screening-only attempt.",
+            format_element_set(EXPLICIT_GIAO_STO3G_ELEMENTS),
+            format_element_set(&fallback_elements)
+        ));
+    }
+
+    let basis = scf::basis::BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
+    let n_occupied = system.n_electrons() / 2;
+    if n_occupied > basis.n_basis {
+        return Err(format!(
+            "GIAO NMR preflight failed for {}: STO-3G supplies {} basis functions for {} occupied orbitals. This usually means one or more elements only have the hydrogen-like fallback basis in the current SCF path.",
+            parsed_nucleus.canonical(),
+            basis.n_basis,
+            n_occupied
+        ));
+    }
+
+    Ok(GiaoNmrPreflight {
+        nucleus: parsed_nucleus,
+        system,
+        basis,
+        fallback_elements,
+    })
+}
+
+/// Compute isotope-specific GIAO NMR shieldings using the public SCF route.
+pub fn compute_giao_nmr(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    nucleus: &str,
+) -> Result<GiaoNmrResult, String> {
+    compute_giao_nmr_configured(elements, positions, nucleus, &GiaoNmrConfig::default())
+}
+
+/// Compute isotope-specific GIAO NMR shieldings using the public SCF route and explicit settings.
+pub fn compute_giao_nmr_configured(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    nucleus: &str,
+    config: &GiaoNmrConfig,
+) -> Result<GiaoNmrResult, String> {
+    let request = preflight_giao_nmr(elements, positions, nucleus, config)?;
+
+    let mut scf_config = scf::scf_loop::ScfConfig::default();
+    scf_config.max_iterations = config.max_scf_iterations;
+    scf_config.use_parallel_eri = config.use_parallel_eri;
+    if config.use_parallel_eri {
+        scf_config.parallel_threshold = 0;
+    }
+
+    let scf = scf::scf_loop::run_scf(&request.system, &scf_config);
+    let shieldings = spectroscopy::compute_nmr_shieldings_for_nucleus(
+        request.nucleus,
+        &request.system.atomic_numbers,
+        &request.system.positions_bohr,
+        &spectroscopy::ScfInput::from(&scf),
+        &request.basis.function_to_atom,
+    );
+    if shieldings.is_empty() {
+        return Err(format!(
+            "Requested nucleus {} is not present in the provided element list.",
+            request.nucleus.canonical()
+        ));
+    }
+
+    let entries: Vec<GiaoNmrEntry> = shieldings
+        .iter()
+        .map(|entry| GiaoNmrEntry {
+            atom_index: entry.atom_index,
+            element: entry.element,
+            tensor: entry.tensor,
+            isotropic: entry.isotropic,
+            anisotropy: entry.anisotropy,
+            chemical_shift: entry.chemical_shift,
+        })
+        .collect();
+
+    let mut notes = vec![format!(
+        "GIAO NMR for {} via the public SCF route (RHF/STO-3G).",
+        request.nucleus.unicode_label()
+    )];
+    if scf.converged {
+        notes.push(format!(
+            "SCF converged in {} iterations with total energy {:.6} Hartree.",
+            scf.scf_iterations, scf.total_energy
+        ));
+    } else {
+        notes.push(format!(
+            "SCF did not reach the requested threshold after {} iterations; treat the returned shieldings as screening-level only.",
+            scf.scf_iterations
+        ));
+    }
+    if request.fallback_elements.is_empty() {
+        notes.push("All elements in this system use explicit STO-3G basis data in the current SCF path.".to_string());
+    } else {
+        notes.push(format!(
+            "Fallback basis enabled for {}. Heavy-element shieldings are qualitative in this mode.",
+            format_element_set(&request.fallback_elements)
+        ));
+    }
+    if request.nucleus.is_quadrupolar() {
+        notes.push(
+            "Quadrupolar nucleus selected: this API returns isotropic shieldings and chemical shifts only; relaxation-driven broadening still needs experimental lineshape modeling.".to_string(),
+        );
+    }
+    if !request.nucleus.is_primary_target() {
+        notes.push(
+            "Non-1H/13C nuclei remain sensitive to the reference shielding and basis choice; benchmark the target family before quantitative use.".to_string(),
+        );
+    }
+
+    Ok(GiaoNmrResult {
+        nucleus: request.nucleus.canonical().to_string(),
+        target_atomic_number: request.nucleus.atomic_number(),
+        method: "RHF/GIAO".to_string(),
+        basis_set: "STO-3G".to_string(),
+        charge: config.charge,
+        multiplicity: config.multiplicity,
+        scf_converged: scf.converged,
+        scf_iterations: scf.scf_iterations,
+        total_energy_hartree: scf.total_energy,
+        n_basis: scf.n_basis,
+        n_target_atoms: entries.len(),
+        chemical_shifts: entries.iter().map(|entry| entry.chemical_shift).collect(),
+        shieldings: entries,
+        fallback_elements: request.fallback_elements,
+        notes,
+    })
 }
 
 /// Generate a complete NMR spectrum from SMILES.
 ///
-/// `nucleus`: "1H" or "13C"
+/// `nucleus`: any supported nucleus alias, for example "1H", "13C", "35Cl", or "195Pt"
 /// `gamma`: Lorentzian line width in ppm
 /// `ppm_min`, `ppm_max`: spectral window
 /// `n_points`: grid resolution
@@ -1469,11 +1766,17 @@ pub fn compute_nmr_spectrum_with_coords(
     n_points: usize,
 ) -> Result<nmr::NmrSpectrum, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
-    let shifts = nmr::predict_chemical_shifts(&mol);
     let couplings = nmr::predict_j_couplings(&mol, positions);
     let nuc = parse_nmr_nucleus(nucleus)?;
-    Ok(nmr::compute_nmr_spectrum(
-        &shifts, &couplings, nuc, gamma, ppm_min, ppm_max, n_points,
+    let shifts = nmr::predict_chemical_shifts_for_nucleus(&mol, nuc);
+    Ok(nmr::spectrum::compute_nmr_spectrum_for_shifts(
+        &shifts,
+        &couplings,
+        nuc,
+        gamma,
+        ppm_min,
+        ppm_max,
+        n_points,
     ))
 }
 
