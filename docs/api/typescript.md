@@ -548,6 +548,7 @@ Returns JSON `NmrShiftResult`:
 interface NmrShiftResult {
   h_shifts: { atom_index: number; element: number; shift_ppm: number; environment: string; confidence: number }[];
   c_shifts: { atom_index: number; element: number; shift_ppm: number; environment: string; confidence: number }[];
+  other_shifts: { nucleus: string; shifts: { atom_index: number; element: number; shift_ppm: number; environment: string; confidence: number }[] }[];
   notes: string[];
 }
 ```
@@ -556,6 +557,53 @@ interface NmrShiftResult {
 const shifts = JSON.parse(predict_nmr_shifts('CCO'));
 shifts.h_shifts.forEach((h: any) =>
   console.log(`H#${h.atom_index}: ${h.shift_ppm.toFixed(2)} ppm [${h.environment}]`));
+```
+
+---
+
+### `predict_nmr_shifts_for_nucleus`
+
+```typescript
+function predict_nmr_shifts_for_nucleus(smiles: string, nucleus: string): string
+```
+
+Returns JSON `ChemicalShift[]` for the requested nucleus. Use this for the expanded registry such as `2H`, `35Cl`, `79Br`, `195Pt`, or `207Pb`.
+
+```typescript
+const cl35 = JSON.parse(predict_nmr_shifts_for_nucleus('[Cl]', '35Cl'));
+console.log(cl35.map((peak: any) => peak.shift_ppm.toFixed(1)).join(', '));
+```
+
+---
+
+### `compute_giao_nmr`
+
+```typescript
+function compute_giao_nmr(
+  elements_json: string,
+  coords_flat_json: string,
+  nucleus: string,
+  charge: number,
+  multiplicity: number,
+  max_scf_iter: number,
+  allow_basis_fallback: boolean,
+  use_parallel_eri: boolean
+): string
+```
+
+Runs the public SCF-backed GIAO route for one requested nucleus and returns JSON `GiaoNmrResult { chemical_shifts, shieldings, scf_converged, scf_iterations, fallback_elements, notes, ... }`.
+
+The current public path is singlet closed-shell only. By default it rejects elements that only have the hydrogen-like fallback basis in the SCF stack.
+
+```typescript
+const waterElements = JSON.stringify([8, 1, 1]);
+const waterCoords = JSON.stringify([
+  0.0, 0.0, 0.1173,
+  0.0, 0.7572, -0.4692,
+  0.0, -0.7572, -0.4692,
+]);
+const giao = JSON.parse(compute_giao_nmr(waterElements, waterCoords, '1H', 0, 1, 100, false, false));
+console.log(giao.chemical_shifts);
 ```
 
 ---
@@ -603,7 +651,7 @@ couplings.forEach((jc: any) =>
 ```typescript
 function compute_nmr_spectrum(
   smiles: string,
-  nucleus: string,    // "1H" | "13C"
+  nucleus: string,    // e.g. "1H" | "13C" | "35Cl" | "79Br" | "195Pt"
   gamma: number,
   ppm_min: number,
   ppm_max: number,
@@ -612,6 +660,8 @@ function compute_nmr_spectrum(
 ```
 
 Full NMR spectrum pipeline. Returns JSON `NmrSpectrum { ppm_axis, intensities, peaks, nucleus, gamma }`.
+
+The ¹H path still has the richest splitting model. Other nuclei use fast relative inference with nucleus-specific linewidth defaults and are intended for quick qualitative inspection.
 
 ```typescript
 const spec = JSON.parse(compute_nmr_spectrum('CCO', '1H', 0.01, -2.0, 12.0, 2000));
@@ -746,6 +796,26 @@ function compute_xtb(elements: string, coords_flat: string): string
 GFN0-xTB tight-binding with SCC. Supports 25 elements.
 
 **Returns JSON:** `{orbital_energies, electronic_energy, repulsive_energy, total_energy, n_basis, n_electrons, homo_energy, lumo_energy, gap, mulliken_charges, scc_iterations, converged}`
+
+### `compute_gfn1`
+
+```typescript
+function compute_gfn1(elements: string, coords_flat: string): string
+```
+
+GFN1-xTB tight-binding with shell-resolved charges and D3-style dispersion.
+
+**Returns JSON:** `{orbital_energies, electronic_energy, repulsive_energy, dispersion_energy, total_energy, n_basis, n_electrons, homo_energy, lumo_energy, gap, mulliken_charges, shell_charges, scc_iterations, converged}`
+
+### `compute_gfn2`
+
+```typescript
+function compute_gfn2(elements: string, coords_flat: string): string
+```
+
+GFN2-xTB tight-binding with multipole electrostatics, D4-style dispersion, and halogen-bond corrections.
+
+**Returns JSON:** `{orbital_energies, electronic_energy, repulsive_energy, dispersion_energy, halogen_bond_energy, total_energy, n_basis, n_electrons, homo_energy, lumo_energy, gap, mulliken_charges, atomic_dipoles, atomic_quadrupoles, scc_iterations, converged}`
 
 ---
 

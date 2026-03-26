@@ -107,6 +107,7 @@ export default defineConfig({
           items: [
             { text: 'Materials Assembly', link: '/algorithm/materials-assembly' },
             { text: 'Web Transport', link: '/algorithm/web-transport' },
+            { text: 'WebGPU Validation', link: '/algorithm/webgpu-validation' },
           ],
         },
       ],

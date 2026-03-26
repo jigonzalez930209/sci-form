@@ -34,7 +34,7 @@ HF-3c scales horizontally over conformer pools by dispatching entire SCF evaluat
 use sci_form::hf::api::{solve_hf3c_batch, HfConfig};
 
 let config = HfConfig {
-    max_scf_iter: 100,
+    max_scf_iter: 300,
     corrections: true, // D3 + gCP + SRB
     ..Default::default()
 };
