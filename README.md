@@ -31,7 +31,7 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 
 ### Neural Network Potentials
 - **ANI-2x** — neural network potential for H, C, N, O, F, S, Cl (energies + forces)
-- **ANI-TM** — ANI extended to 24 elements including Ti, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ru, Pd, Ag, Pt, Au
+- **ANI-TM** — ANI extended to 24 elements: H, C, N, O, F, Si, P, S, Cl, Ti, Cr, Mn, Fe, Co, Ni, Cu, Zn, Br, Ru, Pd, Ag, I, Pt, Au
 
 ### Spectroscopy
 - **UV-Vis (sTDA)** — oscillator strengths, Gaussian/Lorentzian broadening, multi-peak output

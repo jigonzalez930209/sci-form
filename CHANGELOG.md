@@ -20,7 +20,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **D4 dispersion** — Caldeweyher D4 energy and analytic gradients
 
 #### Neural Network Potentials
-- **ANI-TM** — ANI neural network potential extended to 24 elements including Ti, Cr, Mn, Fe, Co, Ni, Cu, Zn, Ru, Pd, Ag, Pt, Au
+- **ANI-TM** — ANI neural network potential extended to 24 elements: H, C, N, O, F, Si, P, S, Cl, Ti, Cr, Mn, Fe, Co, Ni, Cu, Zn, Br, Ru, Pd, Ag, I, Pt, Au
 
 #### Spectroscopy
 - **Multi-method DOS** — unified `compute_dos_multimethod` supporting EHT, PM3, xTB, GFN1, GFN2, and HF-3c methods

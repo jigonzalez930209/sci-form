@@ -31,7 +31,7 @@ features:
     details: "EHT (all elements + band structure + gradients), PM3 + PM3(tm) (transition metals), GFN0/GFN1/GFN2-xTB (25 elements, D3/D4), HF-3c (D3+gCP+SRB), CISD excited states."
   - icon: 🧠
     title: Neural Network Potentials
-    details: "ANI-2x for H/C/N/O/F/S/Cl energies and forces. ANI-TM extended to 24 elements including Ti, Fe, Co, Ni, Cu, Zn, Pd, Pt, Au."
+    details: "ANI-2x for H/C/N/O/F/S/Cl energies and forces. ANI-TM for 24 elements: H,C,N,O,F,Si,P,S,Cl,Ti,Cr,Mn,Fe,Co,Ni,Cu,Zn,Br,Ru,Pd,Ag,I,Pt,Au."
   - icon: 🌈
     title: Spectroscopy
     details: "UV-Vis sTDA with oscillator strengths. IR via numerical Hessian (3N modes, ZPVE, peak assignment, functional groups). ¹H/¹³C/¹⁹F/³¹P NMR shifts (HOSE codes), J-coupling (Karplus), ensemble averaging."
