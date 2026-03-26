@@ -62,6 +62,32 @@ fn apply_restraints_to_bounds(bounds: &mut DMatrix<f64>, restraints: &[DistanceR
     }
 }
 
+fn build_trivial_conformer(bounds: &DMatrix<f64>) -> DMatrix<f32> {
+    let n = bounds.nrows();
+    let mut coords = DMatrix::from_element(n, 3, 0.0f32);
+
+    if n == 2 {
+        let lower = bounds[(1, 0)].max(0.0);
+        let upper = bounds[(0, 1)].max(lower);
+        let distance = if upper > 0.0 {
+            if lower > 0.0 {
+                0.5 * (lower + upper)
+            } else {
+                upper
+            }
+        } else if lower > 0.0 {
+            lower
+        } else {
+            1.0
+        } as f32;
+        let half_distance = 0.5 * distance;
+        coords[(0, 0)] = -half_distance;
+        coords[(1, 0)] = half_distance;
+    }
+
+    coords
+}
+
 /// Generate a 3D conformer with distance restraints applied to the bounds matrix.
 ///
 /// Restraints tighten the upper/lower distance bounds around target distances
@@ -99,6 +125,10 @@ pub fn generate_3d_conformer_restrained(
             }
         }
     };
+
+    if n <= 2 {
+        return Ok(build_trivial_conformer(&bounds));
+    }
 
     // Use the standard pipeline with the restrained bounds
     let chiral_sets = identify_chiral_sets(mol);
@@ -383,6 +413,11 @@ pub fn generate_3d_conformer_with_torsions(
             }
         }
     };
+
+    if n <= 2 {
+        return Ok(build_trivial_conformer(&bounds));
+    }
+
     let chiral_sets = identify_chiral_sets(mol);
     let tetrahedral_centers = identify_tetrahedral_centers(mol);
 
@@ -690,4 +725,23 @@ pub fn compute_total_bounds_energy_f64(
         }
     }
     energy
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn embed_handles_hydrogen_halides() {
+        for smiles in ["F", "Cl"] {
+            let result = crate::embed(smiles, 42);
+            assert!(result.error.is_none(), "{smiles} embed failed: {:?}", result.error);
+            assert_eq!(result.num_atoms, 2, "{smiles} should expand to a diatomic");
+            assert_eq!(result.coords.len(), 6, "{smiles} should return 2 x 3 coordinates");
+
+            let dx = result.coords[3] - result.coords[0];
+            let dy = result.coords[4] - result.coords[1];
+            let dz = result.coords[5] - result.coords[2];
+            let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+            assert!(distance > 0.5, "{smiles} distance should be positive");
+        }
+    }
 }

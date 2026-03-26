@@ -5,6 +5,7 @@
 //! SMIRKS patterns and applies them to molecular graphs.
 
 use crate::graph::Molecule;
+use crate::smarts::{parse_smarts, substruct_match};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -78,8 +79,8 @@ pub fn parse_smirks(smirks: &str) -> Result<SmirksTransform, String> {
     let product_smarts: Vec<String> = product_part.split('.').map(|s| s.to_string()).collect();
 
     // Extract atom maps from both sides
-    let reactant_maps = extract_atom_maps(reactant_part);
-    let product_maps = extract_atom_maps(product_part);
+    let reactant_maps = extract_atom_maps(reactant_part)?;
+    let product_maps = extract_atom_maps(product_part)?;
 
     // Build the atom map (reactant map num → product map num)
     let mut atom_map = HashMap::new();
@@ -87,6 +88,17 @@ pub fn parse_smirks(smirks: &str) -> Result<SmirksTransform, String> {
         if product_maps.contains_key(map_num) {
             atom_map.insert(*map_num, *map_num);
         }
+    }
+
+    // Validate atom map bijectivity: each mapped atom in reactant must appear
+    // exactly once in product and vice versa
+    let mapped_in_reactant: std::collections::HashSet<usize> = atom_map.keys().copied().collect();
+    let mapped_in_product: std::collections::HashSet<usize> = atom_map.values().copied().collect();
+    if mapped_in_reactant != mapped_in_product {
+        return Err(format!(
+            "SMIRKS atom maps are not bijective: reactant maps {:?} vs product maps {:?}",
+            mapped_in_reactant, mapped_in_product
+        ));
     }
 
     // Detect bond changes
@@ -109,10 +121,22 @@ pub fn apply_smirks(smirks: &str, smiles: &str) -> Result<SmirksResult, String> 
     let transform = parse_smirks(smirks)?;
 
     // Parse the input molecule
+    if transform.reactant_smarts.len() > 1 || transform.product_smarts.len() > 1 {
+        return Ok(SmirksResult {
+            products: vec![],
+            atom_mapping: HashMap::new(),
+            n_transforms: 0,
+            success: false,
+            messages: vec![
+                "Multi-component SMIRKS are not supported by apply_smirks because Molecule::from_smiles retains only the largest fragment".to_string(),
+            ],
+        });
+    }
+
     let mol = Molecule::from_smiles(smiles)?;
 
     // Try to match the reactant pattern using substructure matching
-    let matches = match_smarts_pattern(&mol, &transform.reactant_smarts[0]);
+    let matches = match_smarts_pattern(&mol, &transform.reactant_smarts[0])?;
 
     if matches.is_empty() {
         return Ok(SmirksResult {
@@ -141,8 +165,8 @@ pub fn apply_smirks(smirks: &str, smiles: &str) -> Result<SmirksResult, String> 
 }
 
 /// Extract atom map numbers from a SMARTS/SMIRKS string.
-/// Returns map_number → position_in_string.
-fn extract_atom_maps(pattern: &str) -> HashMap<usize, usize> {
+/// Returns map_number → pattern_atom_index.
+fn extract_atom_maps(pattern: &str) -> Result<HashMap<usize, usize>, String> {
     let mut maps = HashMap::new();
     let bytes = pattern.as_bytes();
     let mut pos = 0;
@@ -161,7 +185,9 @@ fn extract_atom_maps(pattern: &str) -> HashMap<usize, usize> {
             if let Some(colon_pos) = bracket_content.rfind(':') {
                 let map_str = &bracket_content[colon_pos + 1..bracket_content.len() - 1];
                 if let Ok(map_num) = map_str.parse::<usize>() {
-                    maps.insert(map_num, atom_idx);
+                    if maps.insert(map_num, atom_idx).is_some() {
+                        return Err(format!("duplicate atom map :{} in pattern '{}'", map_num, pattern));
+                    }
                 }
             }
             atom_idx += 1;
@@ -176,7 +202,7 @@ fn extract_atom_maps(pattern: &str) -> HashMap<usize, usize> {
         pos += 1;
     }
 
-    maps
+    Ok(maps)
 }
 
 /// Detect bond changes between reactant and product patterns.
@@ -215,20 +241,26 @@ fn detect_bond_changes(
     changes
 }
 
-/// Simple substructure matching for SMARTS patterns.
-/// Returns list of atom mappings (reactant_index → molecule_index).
-fn match_smarts_pattern(mol: &Molecule, _pattern: &str) -> Vec<HashMap<usize, usize>> {
-    // Simplified: return a trivial mapping for small molecules
-    let n = mol.graph.node_count();
-    if n == 0 {
-        return vec![];
-    }
+/// Substructure matching for SMARTS patterns.
+/// Returns list of atom-map-number → molecule-index mappings.
+fn match_smarts_pattern(mol: &Molecule, pattern: &str) -> Result<Vec<HashMap<usize, usize>>, String> {
+    let parsed = parse_smarts(pattern)?;
+    let mapped_atoms: Vec<(usize, usize)> = parsed
+        .atoms
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, atom)| atom.map_idx.map(|map_idx| (idx, map_idx as usize)))
+        .collect();
 
-    let mut mapping = HashMap::new();
-    for i in 0..n.min(10) {
-        mapping.insert(i, i);
-    }
-    vec![mapping]
+    Ok(substruct_match(mol, &parsed)
+        .into_iter()
+        .map(|matched_atoms| {
+            mapped_atoms
+                .iter()
+                .map(|(pattern_idx, map_num)| (*map_num, matched_atoms[*pattern_idx]))
+                .collect()
+        })
+        .collect())
 }
 
 #[cfg(test)]
@@ -253,14 +285,37 @@ mod tests {
 
     #[test]
     fn test_extract_atom_maps() {
-        let maps = extract_atom_maps("[C:1](=O)[OH:2]");
+        let maps = extract_atom_maps("[C:1](=O)[OH:2]").unwrap();
         assert!(maps.contains_key(&1));
         assert!(maps.contains_key(&2));
     }
 
     #[test]
+    fn test_extract_atom_maps_rejects_duplicates() {
+        let err = extract_atom_maps("[C:1][O:1]").unwrap_err();
+        assert!(err.contains("duplicate atom map"));
+    }
+
+    #[test]
     fn test_apply_smirks() {
         let result = apply_smirks("[C:1](=O)[OH:2]>>[C:1](=O)[O-:2]", "CC(=O)O");
-        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(result.success);
+        assert_eq!(result.n_transforms, 1);
+        assert_eq!(result.atom_mapping.len(), 2);
+    }
+
+    #[test]
+    fn test_apply_smirks_requires_real_match() {
+        let result = apply_smirks("[N:1]>>[N:1]", "CCO").unwrap();
+        assert!(!result.success);
+        assert_eq!(result.n_transforms, 0);
+    }
+
+    #[test]
+    fn test_apply_smirks_rejects_multicomponent_transform() {
+        let result = apply_smirks("[O:1].[Na+:2]>>[O:1][Na+:2]", "CC(=O)O").unwrap();
+        assert!(!result.success);
+        assert!(result.messages[0].contains("Multi-component SMIRKS"));
     }
 }
