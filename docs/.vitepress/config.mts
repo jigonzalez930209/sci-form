@@ -14,7 +14,7 @@ const customElements = [
 export default defineConfig({
   base: '/sci-form/',
   title: 'sci-form',
-  description: 'High-performance 3D molecular conformer generation from SMILES',
+  description: 'Computational chemistry toolkit for conformers, quantum methods, spectroscopy, and materials workflows',
   
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/sci-form/logo.svg' }],

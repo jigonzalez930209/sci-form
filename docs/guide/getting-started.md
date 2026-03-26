@@ -39,6 +39,9 @@ pip install sciforma
 import sci_form
 
 result = sci_form.embed("c1ccccc1")  # benzene, seed=42 default
+if not result.is_ok():
+    raise RuntimeError(result.error)
+
 print(f"Atoms: {result.num_atoms}, Time: {result.time_ms:.1f}ms")
 
 for i, (x, y, z) in enumerate(result.get_positions()):
@@ -59,6 +62,7 @@ npm install sci-form-wasm
 ```javascript
 const sci = require('sci-form-wasm');
 const result = JSON.parse(sci.embed('CC(=O)O', 42));  // acetic acid
+if (result.error) throw new Error(result.error);
 console.log(`Atoms: ${result.num_atoms}`);
 ```
 
@@ -89,10 +93,10 @@ sci-form batch -i molecules.smi -o output.sdf --format sdf --threads 8
 
 # Parse SMILES (no 3D generation)
 sci-form parse "c1ccccc1"
+
+# Semi-empirical properties from known coordinates
+# (here: water, with elements = atomic numbers [O,H,H] and coords = flat [x0,y0,z0,...] Å array)
+sci-form pm3 "[8,1,1]" "[0,0,0,0.96,0,0,-0.24,0.93,0]"
 ```
 
 → See the [CLI guide](/guide/cli) for all commands and options.
-
-```
-
-→ See the [CLI guide](/guide/cli) for all subcommands.

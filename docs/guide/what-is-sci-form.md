@@ -109,7 +109,7 @@ If any check fails, retry up to $10N$ times (default) before falling back to ran
 
 ## Quantum Chemistry Methods
 
-sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, each optimized for different use cases:
+The current sci-form release ships **five complementary electronic-structure and potential families**, each optimized for different use cases:
 
 ### 1️⃣ Extended Hückel Theory (EHT)
 
@@ -167,6 +167,28 @@ sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, eac
 **Typical convergence:** 5–15 SCC cycles, **~100 ms on large molecules**
 
 **Use case:** Rapid screening of large sets, organometallics, cluster models, kinetic barriers
+
+### 4️⃣ HF-3c + CISD
+
+**Corrected minimal-basis ab-initio workflow** for users who need a more explicit SCF treatment than semi-empirical methods.
+
+**Capabilities:**
+- HF-3c with D3, gCP, and SRB corrections
+- Orbital energies, corrected total energies, and SCF convergence diagnostics
+- CISD excited-state analysis on top of the HF reference
+
+**Use case:** Small-system validation, corrected orbital energetics, and excited-state prototyping
+
+### 5️⃣ ANI Neural Potentials
+
+**Data-driven atomistic potentials** for fast energy and force evaluation on supported element sets.
+
+**Capabilities:**
+- ANI-2x and ANI-TM atomic-environment-vector models
+- Per-atom energies, total energies, and force prediction
+- Coverage for main-group systems and a transition-metal extension
+
+**Use case:** ML-driven geometry scoring, rapid force estimation, and screening workflows
 
 ### Comparison: EHT vs PM3 vs xTB
 

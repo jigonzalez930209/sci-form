@@ -1,10 +1,10 @@
 # sci-form
 
-**High-performance 3D molecular conformer generation and quantum-chemistry-inspired property computation**, written in pure Rust.
+**High-performance computational chemistry in pure Rust**, spanning 3D conformer generation, semi-empirical quantum methods, spectroscopy, descriptors, and materials workflows.
 
-Generates chemically valid 3D coordinates from SMILES strings with RDKit-quality accuracy (ETKDGv2), and provides a full suite of computational chemistry tools: Extended Hückel Theory, electrostatic potentials, density of states, population analysis, molecular alignment, force field energy evaluation (UFF + MMFF94), partial charges, SASA, and materials framework assembly.
+Starting from SMILES, sci-form generates chemically valid 3D coordinates with ETKDGv2-quality distance geometry and exposes a broad scientific toolkit around them: EHT, PM3/PM3(tm), GFN0/GFN1/GFN2-xTB, HF-3c, ANI potentials, electrostatic potential grids, density of states, dipoles, population analysis, solvation, stereochemistry, fingerprints, clustering, spectroscopy, and periodic/materials utilities.
 
-Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and a **cross-platform CLI**.
+The same project ships native surfaces for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and a **cross-platform CLI**.
 
 [![crates.io](https://img.shields.io/crates/v/sci-form)](https://crates.io/crates/sci-form)
 [![PyPI](https://img.shields.io/pypi/v/sciforma)](https://pypi.org/project/sciforma)
@@ -19,51 +19,30 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 - **Fast** — 60+ molecules/second in Rust, parallel batch processing via rayon
 - **Full chemical coverage** — organics, stereocenters, macrocycles, fused rings, metals, halogens (He→Bi)
 
-### Quantum Chemistry (EHT)
-- **Extended Hückel Theory** — Wolfsberg-Helmholtz Hamiltonian, Löwdin orthogonalization, HOMO/LUMO gaps
-- **Mulliken & Löwdin population analysis** — atomic orbital contributions per atom
-- **Molecular dipole moment** — bond dipoles + lone-pair contributions in Debye
-- **Volumetric orbital grids** — STO-3G basis, chunked evaluation for large molecules, marching cubes isosurfaces
-- **Density of States** — total DOS + per-atom PDOS with Gaussian smearing, JSON export, MSE metric
+### Electronic Structure & Spectroscopy
+- **Extended Hückel Theory (EHT)** — orbital energies, population analysis, dipoles, ESP, DOS/PDOS, orbital grids, and meshes
+- **PM3 / PM3(tm)** — NDDO SCF, heat of formation, HOMO/LUMO gaps, Mulliken charges, transition-metal support
+- **GFN0 / GFN1 / GFN2-xTB** — SCC tight-binding with shell charges, multipoles, dispersion, and halogen-bond terms
+- **HF-3c + CISD** — minimal-basis Hartree-Fock with D3/gCP/SRB corrections and excited-state workflows
+- **UV-Vis, IR, and NMR** — sTDA spectra, vibrational analysis, broadened IR, HOSE-code shifts, and J-couplings
 
-### Experimental RHF Engine
-- **Isolated `experimental_2` namespace** — next-generation Roothaan-Hall RHF engine without affecting stable APIs
-- **Analytical Gaussian integrals** — overlap, kinetic, nuclear attraction, core Hamiltonian, and two-electron ERIs
-- **SCF with DIIS + parallel ERI** — deterministic RHF/STO-3G workflow with rayon acceleration for the expensive $O(N^4)$ step
-- **Experimental spectroscopy stack** — prototype sTDA UV-Vis, GIAO-like NMR shielding, and semi-numerical IR/Hessian workflows
-- **GPU-oriented architecture** — WGSL shader stubs, orbital grid evaluation, and marching-cubes rendering pipeline prepared for future `wgpu` enablement
+### Molecular Modeling & Screening
+- **Charges, SASA, solvation, and reactivity** — Gasteiger, EEQ/ALPB/D4 experimental modules, GB/non-polar solvation, Fukui descriptors, pKa heuristics
+- **Force fields** — UFF and MMFF94 energies, gradients, and geometry optimization helpers
+- **Descriptors & ML** — WHIM, RDF, GETAWAY, topological descriptors, LogP/ESOL/druglikeness, Random Forest, Gradient Boosting
+- **Fingerprints & clustering** — SSSR, ECFP/Morgan, Tanimoto similarity, RMSD matrices, and Butina clustering
+- **Stereochemistry** — CIP priorities, R/S, E/Z, helical chirality, atropisomeric axes, and prochiral analysis
 
-### Electrostatics & Surface
-- **Electrostatic Potential (ESP)** — Coulomb grid from Mulliken charges, color mapping (red/white/blue), `.cube` export
-- **Parallel ESP** — rayon-accelerated grid computation (`parallel` feature)
-- **Solvent-Accessible Surface Area (SASA)** — Shrake-Rupley algorithm, Fibonacci sphere, Bondi radii, parallelized per-atom evaluation
-- **Gasteiger-Marsili partial charges** — 6-iteration electronegativity equalization
+### Materials, Periodic Systems, and Transport
+- **Crystallography & frameworks** — unit cells, 230 space groups, framework assembly, and periodic geometry optimization
+- **Periodic graph analysis** — periodic bonding, hapticity detection, and metallocene-aware workflows
+- **Transport helpers** — Arrow-style conformer packing, worker-task splitting, and batch-oriented browser workflows
 
-### Parallel Computation
-- **Automatic rayon thread pool** — all compute functions (DOS, ESP SASA, population, dipole, etc.) parallelized with work-stealing queue
-- **Zero-configuration** — no API changes needed; parallelization enabled by default via `parallel` feature
-- **Intra-library parallelism** — grid point loops, per-atom evaluation, force field term accumulation all use `par_iter()`
-- **CPU-aware workload balancing** — handles small molecules (sequential) and large molecules (parallel) automatically
-
-### Force Fields
-- **UFF** — Universal Force Field for 50+ element types (including transition metals Ti–Zn, Pd, Pt, Au)
-- **MMFF94** — Merck force field (stretch, bend, torsion, van der Waals, electrostatics via 14-7 potential)
-- **BFGS / L-BFGS minimizers** — dense BFGS for small molecules, L-BFGS for large systems
-
-### Molecular Alignment
-- **Kabsch alignment** — SVD-based optimal rotation, minimizes RMSD
-- **Quaternion alignment** — Coutsias 2004 4×4 eigenproblem (faster for large molecules)
-- **RMSD computation** — after optimal superposition
-
-### Materials
-- **Periodic unit cells** — lattice parameters (a, b, c, α, β, γ) to Cartesian tensor
-- **Secondary Building Units (SBUs)** — node/linker topology with coordination sites
-- **Framework assembly** — MOF-type crystal structure generation from SBUs + topology
-
-### Platform
+### Platform & Performance
 - **Multi-platform** — Rust lib, Python (PyO3), TypeScript/JS (WASM), CLI (Linux/macOS/Windows)
-- **Zero runtime dependencies** — pure Rust, no C++ toolchain needed
-- **SMILES + SMARTS** — full parser and substructure matcher; 60+ bracket elements
+- **Parallel by default** — rayon-backed batch and property kernels with CPU-aware work scheduling
+- **WebGPU validation tooling** — browser validation harness and benchmark flows for accelerated WASM volumetric workloads
+- **Pure Rust** — no C++ runtime dependency for the library, bindings, or CLI
 
 ---
 
@@ -73,35 +52,32 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 
 ```toml
 [dependencies]
-sci-form = "0.2"
+sci-form = "0.10"
 # For parallel batch + ESP:
-sci-form = { version = "0.2", features = ["parallel"] }
+sci-form = { version = "0.10", features = ["parallel"] }
 ```
 
 ```rust
-use sci_form::{embed, compute_charges, compute_esp, compute_dos, compute_population};
+use sci_form::{compute_dipole, compute_pm3, compute_population, embed};
 
 // 3D conformer
-let result = sci_form::embed("CCO", 42);
-println!("Atoms: {}, Time: {:.1}ms", result.num_atoms, result.time_ms);
+let result = embed("CCO", 42);
+assert!(result.error.is_none(), "embedding failed: {:?}", result.error);
 
-// Gasteiger–Marsili charges
-let charges = sci_form::compute_charges("CCO").unwrap();
-println!("Charges: {:?}", charges.charges);
+let positions: Vec<[f64; 3]> = result
+    .coords
+    .chunks_exact(3)
+    .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+    .collect();
 
-// EHT → population analysis
-let mol = sci_form::parse("CCO").unwrap();
-let elements: Vec<u8> = /* ... */ vec![8, 6, 6, 1, 1, 1, 1, 1, 1];
-let positions: Vec<[f64; 3]> = /* ... from result.coords */ vec![];
-let pop = sci_form::compute_population(&elements, &positions).unwrap();
+let pop = compute_population(&result.elements, &positions).unwrap();
 println!("HOMO: {:.3} eV", pop.homo_energy);
 
-// ESP grid
-let esp = sci_form::compute_esp(&elements, &positions, 0.5, 3.0).unwrap();
+let dipole = compute_dipole(&result.elements, &positions).unwrap();
+println!("Dipole: {:.3} D", dipole.magnitude);
 
-// DOS / PDOS
-let dos = sci_form::compute_dos(&elements, &positions, 0.2, -20.0, 5.0, 200).unwrap();
-println!("HOMO–LUMO gap: {:.3} eV", dos.homo_lumo_gap.unwrap_or(0.0));
+let pm3 = compute_pm3(&result.elements, &positions).unwrap();
+println!("PM3 gap: {:.3} eV (converged: {})", pm3.gap, pm3.converged);
 ```
 
 → [Full Rust API reference](https://jigonzalez930209.github.io/sci-form/api/rust) · [Guide](https://jigonzalez930209.github.io/sci-form/guide/rust)
@@ -118,25 +94,26 @@ pip install sciforma
 import sci_form
 
 # 3D conformer
-result = sci_form.embed("CCO")
+result = sci_form.embed("CCO", seed=42)
+if not result.is_ok():
+    raise RuntimeError(result.error)
+
 print(f"Atoms: {result.num_atoms}, Time: {result.time_ms:.1f}ms")
 
 # Batch
 results = sci_form.embed_batch(["CCO", "c1ccccc1", "CC(=O)O"])
 
-# Gasteiger charges
-charges = sci_form.compute_charges("CCO")
-print(charges["charges"])  # per-atom charges
+# Population + dipole from the embedded geometry
+pop_result = sci_form.population(result.elements, result.coords)
+print(f"HOMO: {pop_result.homo_energy:.3f} eV")
 
-# EHT + population analysis
-elements = [8, 6, 6, 1, 1, 1, 1, 1, 1]
-positions = [[0.0, 0.0, 0.0], ...]   # from result.coords
-pop = sci_form.compute_population(elements, positions)
-print(f"HOMO: {pop['homo_energy']:.3f} eV")
+dipole = sci_form.dipole(result.elements, result.coords)
+print(f"Dipole: {dipole.magnitude:.3f} {dipole.unit}")
 
-# DOS / PDOS
-dos = sci_form.compute_dos(elements, positions, sigma=0.2, e_min=-20.0, e_max=5.0, n_points=200)
-print(f"Gap: {dos['homo_lumo_gap']:.3f} eV")
+# Semi-empirical screening
+pm3 = sci_form.pm3_calculate(result.elements, result.coords)
+xtb = sci_form.xtb_calculate(result.elements, result.coords)
+print(f"PM3 gap: {pm3.gap:.3f} eV | xTB gap: {xtb.gap:.3f} eV")
 ```
 
 → [Full Python API reference](https://jigonzalez930209.github.io/sci-form/api/python) · [Guide](https://jigonzalez930209.github.io/sci-form/guide/python)
@@ -151,36 +128,31 @@ npm install sci-form-wasm
 
 ```typescript
 import init, {
-  embed, embed_coords_typed,
-  compute_esp_grid_typed, compute_esp_grid_info,
-  eht_calculate, eht_orbital_mesh, eht_orbital_grid_typed,
-  compute_charges, compute_dos
+  analyze_stereo,
+  compute_pm3,
+  compute_population,
+  compute_xtb,
+  embed,
 } from 'sci-form-wasm';
 
 await init();
 
-// Conformer as JSON
 const result = JSON.parse(embed('CCO', 42));
-console.log(result.num_atoms);
+if (result.error) throw new Error(result.error);
 
-// Typed-array conformer (faster, no JSON overhead)
-const coords: Float64Array = embed_coords_typed('CCO', 42);
+const elements = JSON.stringify(result.elements);
+const coords = JSON.stringify(result.coords);
 
-// EHT calculation
-const eht = JSON.parse(eht_calculate('[6,8,6,1,1,1,1,1,1]', coords.toString(), 1.75));
-console.log(`HOMO: ${eht.homo_energy} eV, LUMO: ${eht.lumo_energy} eV`);
+const population = JSON.parse(compute_population(elements, coords));
+console.log(`HOMO: ${population.homo_energy.toFixed(3)} eV`);
 
-// Orbital isosurface mesh
-const mesh = JSON.parse(eht_orbital_mesh('[6,8,6,1,1,1,1,1,1]', coords.toString(), 1.75, 0, 0.02));
-// mesh.vertices, mesh.normals, mesh.indices
+const pm3 = JSON.parse(compute_pm3(elements, coords));
+const xtb = JSON.parse(compute_xtb(elements, coords));
+console.log(`PM3 gap: ${pm3.gap.toFixed(3)} eV | xTB gap: ${xtb.gap.toFixed(3)} eV`);
 
-// ESP grid (typed array)
-const espData: Float64Array = compute_esp_grid_typed('CCO', 42, 0.5, 3.0);
-const espInfo = JSON.parse(compute_esp_grid_info('CCO', 42, 0.5, 3.0));
-console.log(`Grid: ${espInfo.nx}×${espInfo.ny}×${espInfo.nz}`);
-
-// DOS
-const dos = JSON.parse(compute_dos('[6,8,6,1,1,1,1,1,1]', coords.toString(), 0.2, -20.0, 5.0, 200));
+const chiral = JSON.parse(embed('C(F)(Cl)(Br)I', 42));
+const stereo = JSON.parse(analyze_stereo('C(F)(Cl)(Br)I', JSON.stringify(chiral.coords)));
+console.log(`Stereocenters: ${stereo.n_stereocenters}`);
 ```
 
 → [Full TypeScript API reference](https://jigonzalez930209.github.io/sci-form/api/typescript) · [Guide](https://jigonzalez930209.github.io/sci-form/guide/typescript)
@@ -203,11 +175,10 @@ sci-form batch -i molecules.smi -o output.sdf --format sdf --threads 8
 # Parse only (no 3D)
 sci-form parse "c1ccccc1"
 
-# Gasteiger charges
-sci-form charges "CCO"
-
-# UFF energy
-sci-form energy "CCO" --coords coords.json
+# Run property workflows on known coordinates
+sci-form population "[8,1,1]" "[0,0,0,0.96,0,0,-0.24,0.93,0]"
+sci-form pm3 "[8,1,1]" "[0,0,0,0.96,0,0,-0.24,0.93,0]"
+sci-form xtb "[8,1,1]" "[0,0,0,0.96,0,0,-0.24,0.93,0]"
 
 # Version / features
 sci-form info

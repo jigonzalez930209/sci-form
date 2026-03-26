@@ -4,14 +4,14 @@ This note collects the current validation surface for PM3, GFN0/xTB, GFN1, GFN2,
 
 ## Current state in the repo
 
-- PM3 lives in [src/pm3/solver.rs](../../src/pm3/solver.rs) and already exposes SCF results, gradients, and heat-of-formation estimates.
-- GFN0/xTB lives in [src/xtb/solver.rs](../../src/xtb/solver.rs) and is the current tight-binding base.
-- GFN1 and GFN2 are currently layered on top of GFN0 in [src/xtb/gfn1.rs](../../src/xtb/gfn1.rs) and [src/xtb/gfn2.rs](../../src/xtb/gfn2.rs); they are not yet independent, literature-faithful parameterizations.
-- HF-3c lives in [src/hf/api.rs](../../src/hf/api.rs) and is already integrated into the public API.
+- PM3 lives in [src/pm3/solver.rs](https://github.com/jigonzalez930209/sci-form/blob/main/src/pm3/solver.rs) and already exposes SCF results, gradients, and heat-of-formation estimates.
+- GFN0/xTB lives in [src/xtb/solver.rs](https://github.com/jigonzalez930209/sci-form/blob/main/src/xtb/solver.rs) and is the current tight-binding base.
+- GFN1 and GFN2 are currently layered on top of GFN0 in [src/xtb/gfn1.rs](https://github.com/jigonzalez930209/sci-form/blob/main/src/xtb/gfn1.rs) and [src/xtb/gfn2.rs](https://github.com/jigonzalez930209/sci-form/blob/main/src/xtb/gfn2.rs); they are not yet independent, literature-faithful parameterizations.
+- HF-3c lives in [src/hf/api.rs](https://github.com/jigonzalez930209/sci-form/blob/main/src/hf/api.rs) and is already integrated into the public API.
 
 ## What the repo already validates
 
-- [tests/regression/test_experimental_comparison.rs](../../tests/regression/test_experimental_comparison.rs) already contains NIST/CCCBDB reference energies for H2, H2O, CH4, NH3, HF, CO, C2H4, and CH2O.
+- [tests/regression/test_experimental_comparison.rs](https://github.com/jigonzalez930209/sci-form/blob/main/tests/regression/test_experimental_comparison.rs) already contains NIST/CCCBDB reference energies for H2, H2O, CH4, NH3, HF, CO, C2H4, and CH2O.
 - The same test file also stores NIST ionization potentials for H2, H2O, CH4, NH3, and HF.
 - [tests/fixtures/experimental_reference.json](../../tests/fixtures/experimental_reference.json) contains experimental bond lengths, dipoles, ionization energies, IR frequencies, and NMR shifts for a compact set of light molecules.
 - [tests/fixtures/gdb20_reference.json](../../tests/fixtures/gdb20_reference.json) is the current geometry reference source for conformer validation.
@@ -22,7 +22,7 @@ The following values were recovered from the existing regression suite on 2026-0
 
 ### Current gap table from the regression suite
 
-Source: existing comprehensive table in [tests/regression/test_experimental_comparison.rs](../../tests/regression/test_experimental_comparison.rs).
+Source: existing comprehensive table in [tests/regression/test_experimental_comparison.rs](https://github.com/jigonzalez930209/sci-form/blob/main/tests/regression/test_experimental_comparison.rs).
 
 | Molecule | PM3 gap (eV) | xTB gap (eV, current `solve_xtb` = GFN0 SCC) | STO-3G HF reference energy (Ha) |
 |----------|--------------|----------------------------------------------|----------------------------------|
@@ -43,7 +43,7 @@ What this table tells us:
 
 ### Current HF-3c energy comparison snapshot
 
-Source: existing focused tests in [tests/regression/test_experimental_comparison.rs](../../tests/regression/test_experimental_comparison.rs).
+Source: existing focused tests in [tests/regression/test_experimental_comparison.rs](https://github.com/jigonzalez930209/sci-form/blob/main/tests/regression/test_experimental_comparison.rs).
 
 | Molecule | HF-3c pure HF energy (Ha) | Experimental SCF energy reported by current test (Ha) | Difference (mHa) |
 |----------|----------------------------|--------------------------------------------------------|------------------|
