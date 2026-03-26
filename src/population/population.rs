@@ -37,6 +37,11 @@ pub struct BondOrderResult {
 }
 
 /// Result of a population analysis.
+///
+/// Contains Mulliken and Löwdin charges plus a charge-conservation check.
+/// `charge_conservation_error` gives the absolute deviation of the
+/// Mulliken total charge from the expected net charge. A value above
+/// ~0.01 e suggests a basis-set or occupancy issue.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PopulationResult {
     /// Mulliken partial charges per atom.
@@ -51,6 +56,9 @@ pub struct PopulationResult {
     pub total_charge_mulliken: f64,
     /// Total charge from Löwdin.
     pub total_charge_lowdin: f64,
+    /// Absolute deviation of Mulliken total charge from integer expectation.
+    /// Small values (~0) indicate proper charge conservation.
+    pub charge_conservation_error: f64,
 }
 
 /// Build the density matrix P from MO coefficients and occupations.
@@ -86,20 +94,84 @@ pub(crate) fn build_density_matrix(coefficients: &[Vec<f64>], n_electrons: usize
 }
 
 /// Count valence electrons for an element.
-fn valence_electrons(z: u8) -> f64 {
+/// Effective valence electron count for EHT-based population analysis.
+pub(crate) fn valence_electrons(z: u8) -> f64 {
     match z {
-        1 => 1.0,
-        5 => 3.0,
-        6 => 4.0,
-        7 => 5.0,
-        8 => 6.0,
-        9 => 7.0,
-        14 => 4.0,
-        15 => 5.0,
-        16 => 6.0,
-        17 => 7.0,
-        35 => 7.0,
-        53 => 7.0,
+        // Period 1
+        1 => 1.0,   // H
+        2 => 2.0,   // He
+        // Period 2
+        3 => 1.0,   // Li
+        4 => 2.0,   // Be
+        5 => 3.0,   // B
+        6 => 4.0,   // C
+        7 => 5.0,   // N
+        8 => 6.0,   // O
+        9 => 7.0,   // F
+        10 => 8.0,  // Ne
+        // Period 3
+        11 => 1.0,  // Na
+        12 => 2.0,  // Mg
+        13 => 3.0,  // Al
+        14 => 4.0,  // Si
+        15 => 5.0,  // P
+        16 => 6.0,  // S
+        17 => 7.0,  // Cl
+        18 => 8.0,  // Ar
+        // Period 4 main-group
+        19 => 1.0,  // K
+        20 => 2.0,  // Ca
+        31 => 3.0,  // Ga
+        32 => 4.0,  // Ge
+        33 => 5.0,  // As
+        34 => 6.0,  // Se
+        35 => 7.0,  // Br
+        36 => 8.0,  // Kr
+        // Period 5 main-group
+        37 => 1.0,  // Rb
+        38 => 2.0,  // Sr
+        49 => 3.0,  // In
+        50 => 4.0,  // Sn
+        51 => 5.0,  // Sb
+        52 => 6.0,  // Te
+        53 => 7.0,  // I
+        54 => 8.0,  // Xe
+        // 3d transition metals (valence = 4s + 3d electrons)
+        21 => 3.0,  // Sc
+        22 => 4.0,  // Ti
+        23 => 5.0,  // V
+        24 => 6.0,  // Cr
+        25 => 7.0,  // Mn
+        26 => 8.0,  // Fe
+        27 => 9.0,  // Co
+        28 => 10.0, // Ni
+        29 => 11.0, // Cu
+        30 => 12.0, // Zn
+        // 4d transition metals
+        39 => 3.0,  // Y
+        40 => 4.0,  // Zr
+        41 => 5.0,  // Nb
+        42 => 6.0,  // Mo
+        43 => 7.0,  // Tc
+        44 => 8.0,  // Ru
+        45 => 9.0,  // Rh
+        46 => 10.0, // Pd
+        47 => 11.0, // Ag
+        48 => 12.0, // Cd
+        // 5d transition metals
+        72 => 4.0,  // Hf
+        73 => 5.0,  // Ta
+        74 => 6.0,  // W
+        75 => 7.0,  // Re
+        76 => 8.0,  // Os
+        77 => 9.0,  // Ir
+        78 => 10.0, // Pt
+        79 => 11.0, // Au
+        80 => 12.0, // Hg
+        // Period 6 main-group
+        81 => 3.0,  // Tl
+        82 => 4.0,  // Pb
+        83 => 5.0,  // Bi
         _ => 0.0,
     }
 }
@@ -228,6 +300,7 @@ pub fn compute_population(
         num_atoms: n_atoms,
         total_charge_mulliken: total_mulliken,
         total_charge_lowdin: total_lowdin,
+        charge_conservation_error: (total_mulliken - total_mulliken.round()).abs(),
     }
 }
 
