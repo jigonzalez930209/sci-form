@@ -104,8 +104,8 @@ print(f"Atoms: {result.num_atoms}, Time: {result.time_ms:.1f}ms")
 results = sci_form.embed_batch(["CCO", "c1ccccc1", "CC(=O)O"])
 
 # Population + dipole from the embedded geometry
-population = sci_form.population(result.elements, result.coords)
-print(f"HOMO: {population.homo_energy:.3f} eV")
+pop_result = sci_form.population(result.elements, result.coords)
+print(f"HOMO: {pop_result.homo_energy:.3f} eV")
 
 dipole = sci_form.dipole(result.elements, result.coords)
 print(f"Dipole: {dipole.magnitude:.3f} {dipole.unit}")

@@ -190,8 +190,6 @@ The current sci-form release ships **five complementary electronic-structure and
 
 **Use case:** ML-driven geometry scoring, rapid force estimation, and screening workflows
 
-Beyond the three fast semi-empirical routes compared below, sci-form also includes HF-3c/CISD for corrected ab-initio workflows and ANI models for neural-potential energy/force prediction.
-
 ### Comparison: EHT vs PM3 vs xTB
 
 | **Property** | **EHT** | **PM3** | **GFN-xTB** |

@@ -95,6 +95,7 @@ sci-form batch -i molecules.smi -o output.sdf --format sdf --threads 8
 sci-form parse "c1ccccc1"
 
 # Semi-empirical properties from known coordinates
+# (here: water, with elements = atomic numbers [O,H,H] and coords = flat [x0,y0,z0,...] Å array)
 sci-form pm3 "[8,1,1]" "[0,0,0,0.96,0,0,-0.24,0.93,0]"
 ```
 
