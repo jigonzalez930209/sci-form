@@ -24,6 +24,18 @@ pub(crate) struct Hf3cResultPy {
     scf_iterations: usize,
     #[pyo3(get)]
     converged: bool,
+    #[pyo3(get)]
+    n_basis: usize,
+    #[pyo3(get)]
+    n_electrons: usize,
+    #[pyo3(get)]
+    homo_energy: f64,
+    #[pyo3(get)]
+    lumo_energy: Option<f64>,
+    #[pyo3(get)]
+    gap: f64,
+    #[pyo3(get)]
+    mulliken_charges: Vec<f64>,
 }
 
 #[pyclass]
@@ -53,7 +65,7 @@ pub(crate) struct EspGridPy {
 }
 
 #[pyfunction]
-#[pyo3(signature = (elements, coords, max_scf_iter=100, n_cis_states=5, corrections=true))]
+#[pyo3(signature = (elements, coords, max_scf_iter=300, n_cis_states=5, corrections=true))]
 fn hf3c_calculate(
     elements: Vec<u8>,
     coords: Vec<f64>,
@@ -86,6 +98,12 @@ fn hf3c_calculate(
             orbital_energies: r.orbital_energies,
             scf_iterations: r.scf_iterations,
             converged: r.converged,
+            n_basis: r.n_basis,
+            n_electrons: r.n_electrons,
+            homo_energy: r.homo_energy,
+            lumo_energy: r.lumo_energy,
+            gap: r.gap,
+            mulliken_charges: r.mulliken_charges,
         })
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }

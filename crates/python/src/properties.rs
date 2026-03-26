@@ -12,15 +12,18 @@ pub(crate) struct ChargeResultPy {
     iterations: usize,
     #[pyo3(get)]
     total_charge: f64,
+    #[pyo3(get)]
+    converged: bool,
 }
 #[pymethods]
 impl ChargeResultPy {
     fn __repr__(&self) -> String {
         format!(
-            "ChargeResult(n_atoms={}, total_charge={:.4}, iterations={})",
+            "ChargeResult(n_atoms={}, total_charge={:.4}, iterations={}, converged={})",
             self.charges.len(),
             self.total_charge,
-            self.iterations
+            self.iterations,
+            self.converged
         )
     }
 }
@@ -58,11 +61,15 @@ pub(crate) struct DipoleResultPy {
     magnitude: f64,
     #[pyo3(get)]
     unit: String,
+    #[pyo3(get)]
+    nuclear_dipole: Option<[f64; 3]>,
+    #[pyo3(get)]
+    electronic_dipole: Option<[f64; 3]>,
 }
 #[pymethods]
 impl DipoleResultPy {
     fn __repr__(&self) -> String {
-        format!("DipoleResult({:.3} {})", self.magnitude, self.unit)
+        format!("DipoleResult({:.3} {}, decomposed={})", self.magnitude, self.unit, self.nuclear_dipole.is_some())
     }
 }
 
@@ -109,6 +116,7 @@ fn charges(smiles: &str) -> PyResult<ChargeResultPy> {
             charges: r.charges,
             iterations: r.iterations,
             total_charge: r.total_charge,
+            converged: r.converged,
         })
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
@@ -139,6 +147,8 @@ fn dipole(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<DipoleResultPy> {
             vector: r.vector,
             magnitude: r.magnitude,
             unit: r.unit,
+            nuclear_dipole: r.nuclear_dipole,
+            electronic_dipole: r.electronic_dipole,
         })
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
