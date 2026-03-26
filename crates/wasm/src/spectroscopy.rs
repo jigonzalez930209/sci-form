@@ -100,6 +100,46 @@ pub fn predict_nmr_shifts(smiles: &str) -> String {
     }
 }
 
+/// Predict NMR chemical shifts for a specific nucleus.
+#[wasm_bindgen]
+pub fn predict_nmr_shifts_for_nucleus(smiles: &str, nucleus: &str) -> String {
+    match sci_form::predict_nmr_shifts_for_nucleus(smiles, nucleus) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Run the public SCF-backed GIAO NMR route for a specific nucleus.
+#[wasm_bindgen]
+pub fn compute_giao_nmr(
+    elements_json: &str,
+    coords_flat_json: &str,
+    nucleus: &str,
+    charge: i32,
+    multiplicity: u32,
+    max_scf_iter: usize,
+    allow_basis_fallback: bool,
+    use_parallel_eri: bool,
+) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+
+    let config = sci_form::GiaoNmrConfig {
+        charge,
+        multiplicity,
+        max_scf_iterations: max_scf_iter,
+        use_parallel_eri,
+        allow_basis_fallback,
+    };
+
+    match sci_form::compute_giao_nmr_configured(&elems, &positions, nucleus, &config) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
 /// Predict J-coupling constants.
 #[wasm_bindgen]
 pub fn predict_nmr_couplings(smiles: &str, coords_flat_json: &str) -> String {
@@ -116,7 +156,7 @@ pub fn predict_nmr_couplings(smiles: &str, coords_flat_json: &str) -> String {
 
 /// Generate a complete NMR spectrum.
 ///
-/// `nucleus`: "1H", "13C", "19F", "31P", "15N", "11B", "29Si", "77Se", "17O", or "33S".
+/// `nucleus`: any supported nucleus alias, such as "1H", "13C", "35Cl", "79Br", or "195Pt".
 #[wasm_bindgen]
 pub fn compute_nmr_spectrum(
     smiles: &str,
