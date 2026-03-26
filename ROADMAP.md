@@ -296,7 +296,7 @@ Specific deep-dive for NMR: [docs/nmr_detailed_roadmap.md](file:///home/lestad/g
 
 - [x] **UV-Vis Spectroscopy:** Vertical excitations via sTDA-xTB and spectral broadening (Phase D1)
 - [x] **IR Spectroscopy:** Numerical Hessian, vibrational frequencies, and dipole intensities (Phase D2)
-- [x] **NMR Spectroscopy:** Topological/ML-based prediction for 1H and 13C chemical shifts (Phase D3)
+- [x] **NMR Spectroscopy:** Topological/ML-based 1H/13C prediction plus fast relative heteronuclear inference and expanded nucleus registry (Phase D3)
 
 ---
 

@@ -54,6 +54,8 @@ mod test_spectroscopy;
 mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
+#[path = "regression/test_benchmark_100.rs"]
+mod test_benchmark_100;
 
 #[cfg(feature = "alpha-cga")]
 #[path = "experimental/test_cga.rs"]
