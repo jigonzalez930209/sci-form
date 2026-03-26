@@ -2,11 +2,22 @@
 //!
 //! Generalized Born electrostatic solvation with ALPB correction
 //! and non-polar SASA contribution.
+//!
+//! ## Units
+//! - Positions and Born radii: Ångström (Å)
+//! - Charges: elementary charges (e)
+//! - Energies (result): kcal/mol
+//! - Surface tension: kcal/(mol·Å²)
+//! - Coulomb constant: 332.063 kcal·Å/e² = e²·Nₐ/(4πε₀)
 
 use super::born::{compute_born_radii, gb_kernel};
+use serde::{Deserialize, Serialize};
 
 /// Configuration for ALPB solvation.
-#[derive(Debug, Clone)]
+///
+/// Default: water (`ε = 78.5`), standard probe radius (1.4 Å),
+/// surface tension 0.005 kcal/(mol·Å²).
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlpbConfig {
     /// Solvent dielectric constant.
     pub solvent_dielectric: f64,
@@ -27,7 +38,9 @@ impl Default for AlpbConfig {
 }
 
 /// Result of ALPB solvation calculation.
-#[derive(Debug, Clone)]
+///
+/// Energies are in kcal/mol. Born radii are in Å.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlpbResult {
     /// Electrostatic solvation energy (kcal/mol).
     pub electrostatic_energy: f64,
@@ -80,57 +93,28 @@ pub fn compute_alpb_solvation(
 
     e_gb *= prefactor;
 
-    // ALPB correction
+    // ALPB correction (Klamt scheme)
     let klamt_a = 0.571412;
-    let e_alpb = if (eps - 1.0).abs() < 1e-12 {
-        0.0
+    let (alpb_factor, e_alpb) = if (eps - 1.0).abs() < 1e-12 {
+        (0.0, 0.0)
     } else {
         let x = if e_coulomb.abs() > 1e-15 {
             e_gb / (prefactor * e_coulomb)
         } else {
             1.0
         };
-        let alpb_factor_local = (eps - 1.0) / (eps + klamt_a * x.abs().max(0.01));
-        e_gb * alpb_factor_local / ((eps - 1.0) / eps)
-    };
-    let alpb_factor = if (eps - 1.0).abs() < 1e-12 {
-        0.0
-    } else {
-        let x = if e_coulomb.abs() > 1e-15 {
-            e_gb / (prefactor * e_coulomb)
-        } else {
-            1.0
-        };
-        (eps - 1.0) / (eps + klamt_a * x.abs().max(0.01))
+        let af = (eps - 1.0) / (eps + klamt_a * x.abs().max(0.01));
+        let e = e_gb * af / ((eps - 1.0) / eps);
+        (af, e)
     };
 
-    let hartree_to_kcal = 627.509;
-    let bohr_to_angstrom = 0.529177;
-    let conversion = hartree_to_kcal * bohr_to_angstrom;
+    // Coulomb constant in kcal·Å/e²: e²·Nₐ / (4π ε₀) ≈ 332.06
+    let coulomb_kcal_ang = 332.063;
+    let e_electrostatic = e_alpb * coulomb_kcal_ang;
 
-    let e_electrostatic = e_alpb * conversion;
-
-    // Non-polar SASA term
-    let mut sasa_total = 0.0;
-    for i in 0..n {
-        let r_eff = born.radii[i] + config.probe_radius;
-        let mut exposed = 4.0 * std::f64::consts::PI * r_eff * r_eff;
-        for j in 0..n {
-            if i == j {
-                continue;
-            }
-            let dx = positions[i][0] - positions[j][0];
-            let dy = positions[i][1] - positions[j][1];
-            let dz = positions[i][2] - positions[j][2];
-            let r_ij = (dx * dx + dy * dy + dz * dz).sqrt();
-            let r_j_eff = born.radii[j] + config.probe_radius;
-            if r_ij < r_eff + r_j_eff {
-                let overlap = std::f64::consts::PI * r_eff * (r_eff + r_j_eff - r_ij);
-                exposed -= overlap.min(exposed * 0.5);
-            }
-        }
-        sasa_total += exposed.max(0.0);
-    }
+    // Non-polar SASA term — use the full Shrake-Rupley implementation
+    let sasa_result = crate::surface::sasa::compute_sasa(elements, positions, Some(config.probe_radius), None);
+    let sasa_total = sasa_result.total_sasa;
 
     let e_nonpolar = config.surface_tension * sasa_total;
 
