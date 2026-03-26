@@ -47,7 +47,7 @@ impl TreeNode {
 }
 
 /// Configuration for tree building.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TreeConfig {
     /// Maximum depth of the tree.
     pub max_depth: usize,
@@ -83,7 +83,8 @@ pub fn build_tree(
         (n_features as f64).sqrt().ceil() as usize
     } else {
         config.max_features.min(n_features)
-    };
+    }
+    .max(1);
     build_tree_recursive(features, targets, &indices, config, max_feat, 0, rng_seed)
 }
 
@@ -233,7 +234,7 @@ pub struct RandomForest {
 }
 
 /// Configuration for Random Forest.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RandomForestConfig {
     pub n_trees: usize,
     pub tree_config: TreeConfig,
@@ -321,7 +322,7 @@ pub struct GradientBoosting {
 }
 
 /// Configuration for Gradient Boosting.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GradientBoostingConfig {
     pub n_estimators: usize,
     pub learning_rate: f64,

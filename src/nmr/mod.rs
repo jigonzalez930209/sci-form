@@ -8,6 +8,7 @@
 
 pub mod coupling;
 pub mod hose;
+pub mod nucleus;
 pub mod shifts;
 pub mod spectrum;
 
@@ -15,5 +16,12 @@ pub mod spectrum;
 pub use coupling::ensemble_averaged_j_couplings_parallel;
 pub use coupling::{ensemble_averaged_j_couplings, predict_j_couplings, JCoupling, KarplusParams};
 pub use hose::{HoseCode, HoseShiftLookup};
-pub use shifts::{predict_chemical_shifts, ChemicalShift, NmrShiftResult};
-pub use spectrum::{compute_nmr_spectrum, NmrNucleus, NmrPeak, NmrSpectrum, PeakIntegration};
+pub use nucleus::NmrNucleus;
+pub use shifts::{
+	predict_chemical_shifts,
+	predict_chemical_shifts_for_nucleus,
+	ChemicalShift,
+	NmrShiftResult,
+	NucleusShiftSeries,
+};
+pub use spectrum::{compute_nmr_spectrum, NmrPeak, NmrSpectrum, PeakIntegration};

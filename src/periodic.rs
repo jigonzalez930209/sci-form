@@ -109,7 +109,16 @@ pub fn build_periodic_molecule(
                         let r_sum = crate::graph::get_covalent_radius(elements[i])
                             + crate::graph::get_covalent_radius(elements[j]);
 
-                        if dist < r_sum + tol && dist > 0.4 {
+                        // Tighter tolerance for TM-TM pairs to avoid spurious bonds
+                        let pair_tol = if is_transition_metal(elements[i])
+                            && is_transition_metal(elements[j])
+                        {
+                            tol * 0.3
+                        } else {
+                            tol
+                        };
+
+                        if dist < r_sum + pair_tol && dist > 0.4 {
                             let order = if dist < r_sum * 0.85 {
                                 "DOUBLE"
                             } else if dist < r_sum * 0.75 {

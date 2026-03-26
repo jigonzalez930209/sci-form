@@ -12,7 +12,7 @@ use super::types::{ScfInput, SpectroscopyResult, TransitionInfo};
 const HARTREE_TO_EV: f64 = 27.211386245988;
 
 /// Configuration for sTDA calculation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StdaConfig {
     /// Energy window for occupied orbitals below HOMO (eV).
     pub occ_window_ev: f64,
@@ -58,8 +58,14 @@ fn select_active_space(scf: &ScfInput, config: &StdaConfig) -> ActiveSpace {
     let occ_cutoff = homo_e - config.occ_window_ev / HARTREE_TO_EV;
     let virt_cutoff = lumo_e + config.virt_window_ev / HARTREE_TO_EV;
 
+    // Hard floor to exclude deep-core orbitals (1s, 2s of heavy atoms).
+    // Orbitals below -20 eV (≈ -0.735 Hartree) are always excluded as core,
+    // consistent with sTDA convention for energy window filtering.
+    let core_floor_hartree = -20.0 / HARTREE_TO_EV;
+    let effective_occ_cutoff = occ_cutoff.max(core_floor_hartree);
+
     let occ_indices: Vec<usize> = (0..n_occ)
-        .filter(|&i| scf.orbital_energies[i] >= occ_cutoff)
+        .filter(|&i| scf.orbital_energies[i] >= effective_occ_cutoff)
         .collect();
 
     let virt_indices: Vec<usize> = (n_occ..scf.n_basis)
@@ -139,7 +145,16 @@ pub fn compute_stda(
     let n_occ_total = scf.n_electrons / 2;
     let q = transition_charges(scf, basis_to_atom, n_atoms);
 
-    // Off-diagonal: Coulomb-type integrals
+    // Off-diagonal: Coulomb-type integrals with screening
+    // Precompute transition charge norms for Cauchy-Schwarz-like prescreening
+    let q_norms: Vec<f64> = iproduct(n_active_occ, n_active_virt)
+        .map(|(i_l, a_l)| {
+            let i = active.occ_indices[i_l];
+            let a_abs = active.virt_indices[a_l] - n_occ_total;
+            q[i][a_abs].iter().map(|x| x * x).sum::<f64>().sqrt()
+        })
+        .collect();
+
     #[cfg(feature = "parallel")]
     {
         use rayon::prelude::*;
@@ -168,14 +183,23 @@ pub fn compute_stda(
 
         let row_contribs: Vec<Vec<(usize, f64)>> = pairs_1
             .par_iter()
-            .map(|&(_idx1, i, a_abs)| {
+            .map(|&(idx1, i, a_abs)| {
                 let mut row = Vec::with_capacity(n_singles);
+                let norm1 = q_norms[idx1];
                 for &(idx2, j, b_abs) in &pairs_2 {
+                    // Cauchy-Schwarz prescreening: skip if product of norms is below threshold
+                    if norm1 * q_norms[idx2] < config.threshold {
+                        continue;
+                    }
                     let mut j_integral = 0.0;
                     for atom_a in 0..n_atoms {
+                        let q_ia = q[i][a_abs][atom_a];
+                        if q_ia.abs() < config.threshold {
+                            continue;
+                        }
                         for atom_b in 0..n_atoms {
                             j_integral +=
-                                q[i][a_abs][atom_a] * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
+                                q_ia * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
                         }
                     }
                     row.push((idx2, 2.0 * j_integral));
@@ -196,16 +220,26 @@ pub fn compute_stda(
         for (idx1, (i_l, a_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
             let i = active.occ_indices[i_l];
             let a_abs = active.virt_indices[a_l] - n_occ_total;
+            let norm1 = q_norms[idx1];
 
             for (idx2, (j_l, b_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
                 let j = active.occ_indices[j_l];
                 let b_abs = active.virt_indices[b_l] - n_occ_total;
 
+                // Cauchy-Schwarz prescreening
+                if norm1 * q_norms[idx2] < config.threshold {
+                    continue;
+                }
+
                 let mut j_integral = 0.0;
                 for atom_a in 0..n_atoms {
+                    let q_ia = q[i][a_abs][atom_a];
+                    if q_ia.abs() < config.threshold {
+                        continue;
+                    }
                     for atom_b in 0..n_atoms {
                         j_integral +=
-                            q[i][a_abs][atom_a] * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
+                            q_ia * gamma[(atom_a, atom_b)] * q[j][b_abs][atom_b];
                     }
                 }
 
@@ -238,7 +272,7 @@ pub fn compute_stda(
 
         let ci_vector = eigen.eigenvectors.column(idx);
         let (tdm, osc_strength) =
-            transition_dipole_from_ci(&ci_vector, &active, scf, energy_hartree);
+            transition_dipole_from_ci(&ci_vector, &active, &q, positions_bohr, n_occ_total, energy_hartree);
 
         transitions.push(TransitionInfo {
             energy_ev,
@@ -261,31 +295,38 @@ pub fn compute_stda(
 fn transition_dipole_from_ci(
     ci: &nalgebra::DVectorView<f64>,
     active: &ActiveSpace,
-    scf: &ScfInput,
+    q: &[Vec<Vec<f64>>],
+    positions_bohr: &[[f64; 3]],
+    n_occ_total: usize,
     energy_hartree: f64,
 ) -> ([f64; 3], f64) {
-    let n_basis = scf.n_basis;
-    let tdm = [0.0f64; 3];
+    let n_atoms = positions_bohr.len();
+    let mut tdm = [0.0f64; 3];
 
+    // sTDA monopole approximation:
+    // μ_0k = √2 Σ_ia X_ia^k Σ_A q_ia(A) · R_A
     for (idx, (i_l, a_l)) in iproduct(active.n_occ, active.n_virt).enumerate() {
         let i = active.occ_indices[i_l];
-        let a = active.virt_indices[a_l];
+        let a_abs = active.virt_indices[a_l] - n_occ_total;
         let x_ia = ci[idx];
 
         if x_ia.abs() < 1e-10 {
             continue;
         }
 
-        for mu in 0..n_basis {
-            for nu in 0..n_basis {
-                let s_mn = scf.overlap_matrix[(mu, nu)];
-                let c_mi = scf.mo_coefficients[(mu, i)];
-                let c_na = scf.mo_coefficients[(nu, a)];
-                let contrib = x_ia * c_mi * s_mn * c_na;
-                let _ = contrib;
-            }
+        for atom in 0..n_atoms {
+            let charge = q[i][a_abs][atom];
+            tdm[0] += x_ia * charge * positions_bohr[atom][0];
+            tdm[1] += x_ia * charge * positions_bohr[atom][1];
+            tdm[2] += x_ia * charge * positions_bohr[atom][2];
         }
     }
+
+    // Factor √2 for singlet excitations
+    let sqrt2 = std::f64::consts::SQRT_2;
+    tdm[0] *= sqrt2;
+    tdm[1] *= sqrt2;
+    tdm[2] *= sqrt2;
 
     let tdm_sq = tdm[0] * tdm[0] + tdm[1] * tdm[1] + tdm[2] * tdm[2];
     let osc = (2.0 / 3.0) * energy_hartree * tdm_sq;

@@ -78,9 +78,11 @@ impl BasisFunction {
     /// N = (2α/π)^{3/4} · (4α)^{l/2} · sqrt(1 / ((2lx-1)!! (2ly-1)!! (2lz-1)!!))
     pub fn normalization(alpha: f64, lx: u32, ly: u32, lz: u32) -> f64 {
         let l = lx + ly + lz;
-        let prefactor = (2.0 * alpha / PI).powf(0.75) * (4.0 * alpha).powi(l as i32 / 2);
-        let denom = double_factorial(2 * lx) * double_factorial(2 * ly) * double_factorial(2 * lz);
-        prefactor / (denom as f64).sqrt()
+        let prefactor = (2.0 * alpha / PI).powf(0.75) * (4.0 * alpha).powf(l as f64 / 2.0);
+        let denom = odd_double_factorial(2 * lx as i32 - 1)
+            * odd_double_factorial(2 * ly as i32 - 1)
+            * odd_double_factorial(2 * lz as i32 - 1);
+        prefactor / denom.sqrt()
     }
 
     /// Evaluate this basis function at a point (x, y, z) in Bohr.
@@ -121,6 +123,21 @@ fn double_factorial(n: u32) -> u64 {
         k -= 2;
     }
     result
+}
+
+/// Odd double factorial: (2n-1)!! for normalization.
+/// Accepts negative inputs: (-1)!! = 1, (-3)!! = 1.
+fn odd_double_factorial(n: i32) -> f64 {
+    if n <= 0 {
+        return 1.0;
+    }
+    let mut acc = 1.0;
+    let mut k = n;
+    while k > 0 {
+        acc *= k as f64;
+        k -= 2;
+    }
+    acc
 }
 
 /// Complete basis set for a molecular system.

@@ -1,7 +1,10 @@
+//! Debug: find which embedding attempt number the pipeline selects for
+//! specific molecules.
+//!
+//! Category: debug
+
 use sci_form::distgeom::bounds::{calculate_bounds_matrix_opts, triangle_smooth_tol};
 use sci_form::distgeom::chirality::identify_chiral_sets;
-/// Quick tool to dump which attempt our code uses for specific molecules.
-/// Run: cargo run --release --bin find_attempt -- 0 1 10
 use sci_form::distgeom::embedding::MinstdRand;
 use sci_form::distgeom::embedding::{compute_initial_coords_rdkit, pick_rdkit_distances};
 use sci_form::distgeom::validation::{

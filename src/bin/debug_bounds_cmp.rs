@@ -1,3 +1,7 @@
+//! Debug: dump bounds matrix for a molecule and compare distance bounds.
+//!
+//! Category: debug
+
 use sci_form::graph::Molecule;
 
 fn main() {

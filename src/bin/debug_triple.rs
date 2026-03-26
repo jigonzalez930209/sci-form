@@ -1,3 +1,8 @@
+//! Debug: inspect torsion contributions during 3D conformer generation
+//! for molecules with triple bonds.
+//!
+//! Category: debug
+
 use sci_form::conformer::generate_3d_conformer_with_torsions;
 use sci_form::forcefield::etkdg_3d::M6TorsionContrib;
 use sci_form::graph::Molecule;

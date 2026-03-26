@@ -552,10 +552,12 @@ fn find_helical_chirality(mol: &Molecule, positions: &[[f64; 3]]) -> Vec<Helical
         return helices;
     }
 
-    // Detect allenic systems: C=C=C with helical potential
+    // Detect allenic/cumulenic systems: X=Y=Z with helical potential
+    // Supports carbon allenes (C=C=C) and heteroatom cumulenes (C=C=N, etc.)
     for node in mol.graph.node_indices() {
         let atom = &mol.graph[node];
-        if atom.element != 6 {
+        // Allow C, N, S as cumulated double bond centers (allenes, ketenimines, etc.)
+        if !matches!(atom.element, 6 | 7 | 16) {
             continue;
         }
 
@@ -575,7 +577,7 @@ fn find_helical_chirality(mol: &Molecule, positions: &[[f64; 3]]) -> Vec<Helical
             .collect();
 
         if double_neighbors.len() == 2 {
-            // Allenic system: C=C=C
+            // Cumulenic system: X=Y=Z (allene, ketenimine, etc.)
             let a = double_neighbors[0];
             let center = node.index();
             let b = double_neighbors[1];
@@ -617,7 +619,12 @@ fn find_helical_chirality(mol: &Molecule, positions: &[[f64; 3]]) -> Vec<Helical
                 helices.push(HelicalChirality {
                     backbone_atoms: vec![a, center, b],
                     configuration: config,
-                    helix_type: "allene".to_string(),
+                    helix_type: if atom.element == 6 {
+                        "allene"
+                    } else {
+                        "cumulene"
+                    }
+                    .to_string(),
                     dihedral_angle: dihedral,
                 });
             }

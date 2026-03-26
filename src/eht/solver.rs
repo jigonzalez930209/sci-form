@@ -154,11 +154,17 @@ pub fn solve_eht(
     let n_electrons = count_valence_electrons(elements);
     let n_orbitals = basis.len();
 
-    // HOMO is the last occupied orbital (electrons fill in pairs)
-    let n_occupied = n_electrons / 2;
-    let homo_idx = if n_occupied > 0 { n_occupied - 1 } else { 0 };
-    let lumo_idx = if homo_idx + 1 < n_orbitals {
-        homo_idx + 1
+    // HOMO is the last occupied orbital (include SOMO for odd electrons)
+    let n_occupied = (n_electrons + 1) / 2; // ceil division for odd-electron systems
+    let homo_idx = if n_occupied > 0 && n_occupied <= n_orbitals {
+        n_occupied - 1
+    } else if n_orbitals > 0 {
+        0
+    } else {
+        return Err("No orbitals in EHT basis".to_string());
+    };
+    let lumo_idx = if n_occupied < n_orbitals {
+        n_occupied
     } else {
         homo_idx
     };

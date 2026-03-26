@@ -1,7 +1,6 @@
-/// Interfaz conductiva fundamental para cualquier operador matemático empírico molecular
+/// Core interface for a molecular force-field contribution.
 pub trait ForceFieldContribution: Send + Sync {
-    /// Computa algebraicamente el escalar de energía asumiendo posición local
-    /// e injerta los gradientes geométricos acumulativamente a lo largo del array
+    /// Evaluate the energy term and accumulate its Cartesian gradient contribution.
     fn evaluate_energy_and_inject_gradient(&self, coords: &[f64], grad: &mut [f64]) -> f64;
 }
 
@@ -26,7 +25,7 @@ impl MolecularForceField {
         self.iter_terms.push(term);
     }
 
-    /// Método de evaluación crítica masiva invocado exhaustivamente iteración por iteración.
+    /// Evaluate all registered terms for the current geometry.
     pub fn compute_system_energy_and_gradients(&self, coords: &[f64], grad: &mut [f64]) -> f64 {
         grad.fill(0.0);
 

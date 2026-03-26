@@ -174,6 +174,8 @@ pub struct ChargeResult {
     pub iterations: usize,
     /// Total charge (should be close to the formal charge sum).
     pub total_charge: f64,
+    /// Whether the iterative process converged within the tolerance.
+    pub converged: bool,
 }
 
 /// Configuration for Gasteiger-Marsili charge calculation.
@@ -252,6 +254,7 @@ pub fn gasteiger_marsili_charges_configured(
     let mut damping = config.initial_damping;
 
     let mut actual_iters = 0;
+    let mut did_converge = false;
     for _iter in 0..config.max_iter {
         actual_iters += 1;
 
@@ -262,17 +265,30 @@ pub fn gasteiger_marsili_charges_configured(
         let mut delta_q = vec![0.0f64; n];
         for &(i, j) in bonds {
             if i >= n || j >= n {
-                continue;
+                return Err(format!(
+                    "Bond ({}, {}) references atom outside range 0..{}",
+                    i, j, n
+                ));
             }
             let chi_diff = chi[j] - chi[i];
             // Transfer is proportional to electronegativity difference
             // Normalize by the "hardness" of the receiving atom
             let dq = if chi_diff > 0.0 {
                 // Charge flows from i to j (j is more electronegative)
-                damping * chi_diff / params[j].chi(1.0)
+                let divisor = params[j].chi(1.0);
+                if divisor.abs() < 1e-6 {
+                    0.0
+                } else {
+                    damping * chi_diff / divisor.abs()
+                }
             } else {
                 // Charge flows from j to i
-                damping * chi_diff / params[i].chi(1.0)
+                let divisor = params[i].chi(1.0);
+                if divisor.abs() < 1e-6 {
+                    0.0
+                } else {
+                    damping * chi_diff / divisor.abs()
+                }
             };
             delta_q[i] += dq;
             delta_q[j] -= dq;
@@ -289,6 +305,7 @@ pub fn gasteiger_marsili_charges_configured(
 
         // Convergence check
         if max_delta < config.convergence_threshold {
+            did_converge = true;
             break;
         }
     }
@@ -299,6 +316,7 @@ pub fn gasteiger_marsili_charges_configured(
         charges,
         iterations: actual_iters,
         total_charge,
+        converged: did_converge,
     })
 }
 

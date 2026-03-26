@@ -1,3 +1,8 @@
+//! Benchmark: run EHT on transition metal reference systems and report
+//! energies and gaps for regression tracking.
+//!
+//! Category: benchmark
+
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

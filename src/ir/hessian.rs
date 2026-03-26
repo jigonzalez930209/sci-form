@@ -153,7 +153,7 @@ fn enforce_symmetry(hessian: &mut DMatrix<f64>) {
 /// Automatic step-size selection based on the lightest element.
 ///
 /// Lighter atoms (H) need smaller steps; heavier atoms allow larger steps.
-/// Uses δ = 0.005 × sqrt(min_mass / 1.008) as a heuristic.
+/// Uses δ = 0.005 × sqrt(min_mass / 1.008) with a floor of 0.005 Å.
 fn auto_step_size(elements: &[u8]) -> f64 {
     let min_mass = elements
         .iter()
@@ -167,8 +167,8 @@ fn auto_step_size(elements: &[u8]) -> f64 {
         })
         .fold(f64::INFINITY, f64::min);
 
-    // Base step of 0.005 Å scaled by sqrt(mass_ratio)
-    (0.005 * (min_mass / 1.008).sqrt()).clamp(0.003, 0.01)
+    // Base step of 0.005 Å scaled by sqrt(mass_ratio), floor at 0.005 for H
+    (0.005 * (min_mass / 1.008).sqrt()).clamp(0.005, 0.01)
 }
 
 fn flat_to_positions(coords: &[f64]) -> Vec<[f64; 3]> {

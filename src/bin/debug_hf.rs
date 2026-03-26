@@ -1,3 +1,8 @@
+//! Debug: run a minimal HF calculation on CH₄ and print basis, ERI, and Fock
+//! matrix details for manual inspection.
+//!
+//! Category: debug
+
 use sci_form::hf::basis::build_sto3g_basis;
 use sci_form::hf::integrals::{compute_eris, get_eri};
 

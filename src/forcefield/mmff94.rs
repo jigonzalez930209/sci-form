@@ -1,3 +1,8 @@
+//! Merck Molecular Force Field 94 (MMFF94) atom typing and energy terms.
+//!
+//! Implements the 75-type classification and energy evaluation described in
+//! Halgren, J. Comput. Chem. 1996, 17, 490–519.
+
 use super::traits::ForceFieldContribution;
 use petgraph::visit::EdgeRef;
 
@@ -785,12 +790,12 @@ impl ForceFieldContribution for Mmff94Torsion {
 
 // ─── MMFF94 Buffered 14-7 Van der Waals ──────────────────────────────────────
 
-/// Dispersión estérica repulsiva/atractiva regida por el Potencial Amortiguado 14-7 (Buffered 14-7) de Halgren.
+/// Repulsive/attractive steric interaction using Halgren's buffered 14-7 form.
 pub struct Mmff94BufferedVanDerWaals {
     pub atom_i_idx: usize,
     pub atom_j_idx: usize,
-    pub radius_star: f64,   // Parámetro dimensional empírico cruzado R*ij
-    pub epsilon_depth: f64, // Factor de profundidad termodinámica eps_ij
+    pub radius_star: f64,   // Cross interaction radius parameter R*ij
+    pub epsilon_depth: f64, // Well depth parameter eps_ij
 }
 
 impl ForceFieldContribution for Mmff94BufferedVanDerWaals {
@@ -805,12 +810,13 @@ impl ForceFieldContribution for Mmff94BufferedVanDerWaals {
         let dist_squared = delta_x * delta_x + delta_y * delta_y + delta_z * delta_z;
         let mut dist_r = dist_squared.sqrt();
 
-        // Tope asintótico absoluto inferior para colisiones
+        // Hard lower bound to avoid singular behavior during close contacts.
         if dist_r < 1e-8 {
             dist_r = 1e-8;
         }
 
-        // Algebra fraccionaria amortiguadora: E_vdW = eps * (1.07 R* / (R + 0.07 R*))^7 * ((1.12 R*^7 / (R^7 + 0.12 R*^7)) - 2)
+        // Buffered 14-7 form:
+        // E_vdW = eps * (1.07 R* / (R + 0.07 R*))^7 * ((1.12 R*^7 / (R^7 + 0.12 R*^7)) - 2)
         let r_star_powered_7 = self.radius_star.powi(7);
         let dist_r_powered_7 = dist_r.powi(7);
 
@@ -822,7 +828,7 @@ impl ForceFieldContribution for Mmff94BufferedVanDerWaals {
 
         let vdw_total_energy = self.epsilon_depth * repulsive_term * attractive_term;
 
-        // Derivación espacial analítica
+        // Analytical radial derivative.
         let gradient_rep_term = -7.0 * repulsive_term / repulsive_denominator;
         let gradient_attr_term = -7.0 * dist_r.powi(6) * (1.12 * r_star_powered_7)
             / (attractive_denominator * attractive_denominator);
@@ -830,7 +836,7 @@ impl ForceFieldContribution for Mmff94BufferedVanDerWaals {
         let force_scalar_magnitude = self.epsilon_depth
             * (gradient_rep_term * attractive_term + repulsive_term * gradient_attr_term);
 
-        // Factorización cartesiana
+        // Convert the radial derivative into Cartesian components.
         let vector_prefactor = force_scalar_magnitude / dist_r;
         let grad_x = vector_prefactor * delta_x;
         let grad_y = vector_prefactor * delta_y;

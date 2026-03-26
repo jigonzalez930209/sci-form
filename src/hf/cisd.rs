@@ -39,6 +39,8 @@ pub struct CisdResult {
     pub correlation_energy: f64,
     /// Total number of CSFs in the CI space.
     pub n_csfs: usize,
+    /// Approximation used: "full" for exact CISD, "perturbative" for CIS+MP2.
+    pub approximation: String,
 }
 
 const HARTREE_TO_EV: f64 = 27.21138602;
@@ -69,6 +71,7 @@ pub fn compute_cisd(
             excitations: Vec::new(),
             correlation_energy: 0.0,
             n_csfs: 0,
+            approximation: "full".to_string(),
         };
     }
 
@@ -162,54 +165,43 @@ pub fn compute_cisd(
         }
     }
 
-    // Singles-Doubles coupling
+    // Singles-Doubles coupling: <Φ_i^a|H|Φ_{ij}^{ab}>
+    // Full coupling includes all permutations of occupied/virtual index matching.
     for ia in 0..n_singles {
         let i_s = ia / n_virtual;
         let a_s = ia % n_virtual + n_occupied;
 
         for (idx_d, &(i_d, j_d, a_d, b_d)) in doubles_map.iter().enumerate() {
             let col = n_singles + idx_d;
+            let a_d_abs = a_d + n_occupied;
+            let b_d_abs = b_d + n_occupied;
 
-            // <S|H|D> coupling through two-electron integrals
-            let val = if i_s == i_d {
-                mo_eri_cisd(
-                    coefficients,
-                    eris,
-                    n_basis,
-                    a_s,
-                    j_d,
-                    a_d + n_occupied,
-                    b_d + n_occupied,
-                ) - mo_eri_cisd(
-                    coefficients,
-                    eris,
-                    n_basis,
-                    a_s,
-                    b_d + n_occupied,
-                    a_d + n_occupied,
-                    j_d,
-                )
-            } else if i_s == j_d {
-                -(mo_eri_cisd(
-                    coefficients,
-                    eris,
-                    n_basis,
-                    a_s,
-                    i_d,
-                    a_d + n_occupied,
-                    b_d + n_occupied,
-                ) - mo_eri_cisd(
-                    coefficients,
-                    eris,
-                    n_basis,
-                    a_s,
-                    b_d + n_occupied,
-                    a_d + n_occupied,
-                    i_d,
-                ))
-            } else {
-                0.0
-            };
+            // <S|H|D> coupling via Slater-Condon rules for one-electron difference
+            // between single and double excitations.
+            // The coupling is nonzero when the single shares one occupied and one
+            // virtual index with the double. Four cases arise from antisymmetry:
+            let mut val = 0.0;
+
+            if i_s == i_d {
+                // Shared occupied index i_s == i_d; differs in j_d and virtual pair
+                val += mo_eri_cisd(coefficients, eris, n_basis, a_s, j_d, a_d_abs, b_d_abs)
+                    - mo_eri_cisd(coefficients, eris, n_basis, a_s, b_d_abs, a_d_abs, j_d);
+            }
+            if i_s == j_d {
+                // Shared occupied index i_s == j_d; antisymmetric permutation
+                val -= mo_eri_cisd(coefficients, eris, n_basis, a_s, i_d, a_d_abs, b_d_abs)
+                    - mo_eri_cisd(coefficients, eris, n_basis, a_s, b_d_abs, a_d_abs, i_d);
+            }
+            if a_s == a_d_abs {
+                // Shared virtual index a_s == a_d; differs in occupied pair and b_d
+                val += mo_eri_cisd(coefficients, eris, n_basis, i_s, j_d, i_d, b_d_abs)
+                    - mo_eri_cisd(coefficients, eris, n_basis, i_s, b_d_abs, i_d, j_d);
+            }
+            if a_s == b_d_abs {
+                // Shared virtual index a_s == b_d; antisymmetric permutation
+                val -= mo_eri_cisd(coefficients, eris, n_basis, i_s, j_d, i_d, a_d_abs)
+                    - mo_eri_cisd(coefficients, eris, n_basis, i_s, a_d_abs, i_d, j_d);
+            }
 
             h[(ia, col)] = val;
             h[(col, ia)] = val;
@@ -309,6 +301,7 @@ pub fn compute_cisd(
         excitations,
         correlation_energy,
         n_csfs,
+        approximation: "full".to_string(),
     }
 }
 
@@ -351,6 +344,7 @@ fn compute_cisd_perturbative(
     );
 
     // MP2 correlation energy from doubles
+    // Denominator is always negative: ε_i + ε_j - ε_a - ε_b < 0 (occ < virt)
     let mut e_corr = 0.0;
     for i in 0..n_occupied {
         for j in (i + 1)..n_occupied {
@@ -362,7 +356,8 @@ fn compute_cisd_perturbative(
                     let denom = orbital_energies[i] + orbital_energies[j]
                         - orbital_energies[a]
                         - orbital_energies[b];
-                    if denom.abs() > 1e-10 {
+                    // Only include if denominator is negative (physical)
+                    if denom < -1e-10 {
                         e_corr += antisym * antisym / denom;
                     }
                 }
@@ -389,6 +384,7 @@ fn compute_cisd_perturbative(
         correlation_energy: e_corr,
         n_csfs: n_occupied * n_virtual
             + n_occupied * (n_occupied - 1) / 2 * n_virtual * (n_virtual - 1) / 2,
+        approximation: "perturbative".to_string(),
     }
 }
 

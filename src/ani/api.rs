@@ -91,6 +91,15 @@ pub fn compute_ani(
     let mut atomic_energies = Vec::with_capacity(elements.len());
     for (i, &z) in elements.iter().enumerate() {
         let net = &models[&z];
+        if aevs[i].len() != net.input_dim() {
+            return Err(format!(
+                "AEV dimension {} for atom {} (Z={}) does not match model input dimension {}",
+                aevs[i].len(),
+                i,
+                z,
+                net.input_dim()
+            ));
+        }
         let input = DVector::from_vec(aevs[i].clone());
         let e_atom = net.forward(&input);
         atomic_energies.push(e_atom);

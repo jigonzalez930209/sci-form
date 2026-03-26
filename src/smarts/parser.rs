@@ -1,5 +1,7 @@
 //! SMARTS parser: converts a SMARTS string into a pattern graph.
 
+use crate::graph::ChiralType;
+
 /// A parsed SMARTS pattern as a small graph of atom/bond queries.
 #[derive(Debug, Clone)]
 pub struct SmartsPattern {
@@ -40,6 +42,7 @@ pub enum AtomQuery {
     FormalCharge(i8),      // +N or -N
     Hybridization(u8),     // ^N
     RingCount(u8),         // RN (number of SSSR rings containing this atom)
+    Chiral(ChiralType),
     Recursive(Box<SmartsPattern>),
     And(Vec<AtomQuery>),
     Or(Vec<AtomQuery>),
@@ -375,6 +378,16 @@ impl<'a> SmartsParser<'a> {
                 let n = self.parse_number()? as u8;
                 Ok(AtomQuery::AtomicNum(n))
             }
+            b'@' => {
+                self.advance();
+                let chiral = if self.peek() == Some(b'@') {
+                    self.advance();
+                    ChiralType::TetrahedralCW
+                } else {
+                    ChiralType::TetrahedralCCW
+                };
+                Ok(AtomQuery::Chiral(chiral))
+            }
             b'$' => {
                 // Recursive SMARTS: $(smarts)
                 self.advance();
@@ -621,6 +634,19 @@ mod tests {
         let p = parse_smarts("[a:1][c:2]([a])!@;-[O:3][C:4]").unwrap();
         assert_eq!(p.atoms.len(), 5); // a, c, a_branch, O, C
         assert_eq!(p.bonds.len(), 4);
+    }
+
+    #[test]
+    fn test_chiral_atom_query() {
+        let p = parse_smarts("[C@@H:1]").unwrap();
+        assert_eq!(p.atoms.len(), 1);
+        assert_eq!(p.atoms[0].map_idx, Some(1));
+        if let AtomQuery::And(ref parts) = p.atoms[0].query {
+            assert!(parts.iter().any(|q| matches!(q, AtomQuery::Chiral(ChiralType::TetrahedralCW))));
+            assert!(parts.iter().any(|q| matches!(q, AtomQuery::TotalH(1))));
+        } else {
+            panic!("expected AND query for chiral atom");
+        }
     }
 
     #[test]

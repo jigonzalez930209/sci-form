@@ -1,3 +1,7 @@
+//! Debug: print nuclear attraction integrals for a CH system in STO-3G.
+//!
+//! Category: debug
+
 use sci_form::hf::basis::{build_sto3g_basis, ANG_TO_BOHR};
 use sci_form::hf::nuclear::compute_nuclear_matrix;
 

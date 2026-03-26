@@ -70,6 +70,10 @@ fn main() {
             supercell,
         } => calc_cmds::cmd_assemble(&topology, a, metal, &geometry, supercell),
         Commands::Ani { elements, coords } => calc_cmds::cmd_ani(&elements, &coords),
+        Commands::Pm3 { elements, coords } => calc_cmds::cmd_pm3(&elements, &coords),
+        Commands::Xtb { elements, coords } => calc_cmds::cmd_xtb(&elements, &coords),
+        Commands::Gfn1 { elements, coords } => calc_cmds::cmd_gfn1(&elements, &coords),
+        Commands::Gfn2 { elements, coords } => calc_cmds::cmd_gfn2(&elements, &coords),
         Commands::Hf3c { elements, coords } => calc_cmds::cmd_hf3c(&elements, &coords),
         Commands::Stereo { smiles, coords } => calc_cmds::cmd_stereo(&smiles, &coords),
         Commands::Solvation {

@@ -130,6 +130,14 @@ pub enum Commands {
     },
     /// Run ANI ML Potential calculation
     Ani { elements: String, coords: String },
+    /// Run PM3 semi-empirical quantum calculation
+    Pm3 { elements: String, coords: String },
+    /// Run GFN0-xTB tight-binding quantum calculation
+    Xtb { elements: String, coords: String },
+    /// Run GFN1-xTB tight-binding quantum calculation
+    Gfn1 { elements: String, coords: String },
+    /// Run GFN2-xTB tight-binding quantum calculation
+    Gfn2 { elements: String, coords: String },
     /// Run HF-3c quantum calculation
     Hf3c { elements: String, coords: String },
     /// Analyze stereochemistry (R/S stereocenters, E/Z double bonds)

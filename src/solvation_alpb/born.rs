@@ -22,7 +22,7 @@ pub(crate) fn intrinsic_radius(z: u8) -> f64 {
 }
 
 /// Result of Born radii calculation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AlpbBornRadii {
     /// Effective Born radii per atom (Å).
     pub radii: Vec<f64>,
@@ -45,6 +45,23 @@ pub fn compute_born_radii(
     let alpha = 1.0;
     let beta = 0.8;
     let gamma = 4.85;
+
+    // Adaptive Born radius cap: largest intrinsic radius + 2× max pairwise
+    // distance, with a floor of 50 Å. This prevents non-physical clamping
+    // for large molecular systems.
+    let mut max_dist: f64 = 0.0;
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let dx = positions[i][0] - positions[j][0];
+            let dy = positions[i][1] - positions[j][1];
+            let dz = positions[i][2] - positions[j][2];
+            let d = (dx * dx + dy * dy + dz * dz).sqrt();
+            if d > max_dist {
+                max_dist = d;
+            }
+        }
+    }
+    let born_cap = (max_dist + 10.0).max(50.0);
 
     let mut born_radii = vec![0.0; n];
 
@@ -78,9 +95,9 @@ pub fn compute_born_radii(
 
         let inv_r_eff = 1.0 / rho[i] - tanh_val / rho[i];
         born_radii[i] = if inv_r_eff > 1e-10 {
-            1.0 / inv_r_eff
+            (1.0 / inv_r_eff).min(born_cap)
         } else {
-            100.0
+            born_cap
         };
     }
 

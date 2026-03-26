@@ -1,3 +1,8 @@
+//! Benchmark: embed up to 10 000 molecules and collect per-molecule timing and
+//! energy statistics.
+//!
+//! Category: benchmark
+
 use sci_form::forcefield::FFParams;
 use sci_form::graph::Molecule;
 use serde::Deserialize;

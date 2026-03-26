@@ -155,10 +155,28 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
 fn build_multipole_gamma(
     elements: &[u8],
     positions: &[[f64; 3]],
-    _charges: &[f64],
-    _dipoles: &[[f64; 3]],
+    charges: &[f64],
+    dipoles: &[[f64; 3]],
 ) -> DMatrix<f64> {
     let n = elements.len();
+
+    #[cfg(feature = "experimental-gpu")]
+    if n >= 8 {
+        let eta: Vec<f64> = elements
+            .iter()
+            .map(|&z| crate::xtb::params::get_xtb_params(z).unwrap().eta)
+            .collect();
+        let positions_bohr: Vec<[f64; 3]> = positions
+            .iter()
+            .map(|p| [p[0] / 0.529177, p[1] / 0.529177, p[2] / 0.529177])
+            .collect();
+        if let Ok(ctx) = crate::gpu::context::GpuContext::try_create() {
+            if let Ok(gamma) = crate::xtb::gpu::build_gfn2_gamma_gpu(&ctx, &eta, &positions_bohr) {
+                return gamma;
+            }
+        }
+    }
+
     let mut gamma = DMatrix::zeros(n, n);
 
     for i in 0..n {
@@ -175,11 +193,23 @@ fn build_multipole_gamma(
             let avg_eta = (pi.eta + pj.eta) / 2.0;
             let r_bohr = r / 0.529177;
 
-            // Klopman-Ohno damped Coulomb with GFN2 exponent
+            // Klopman-Ohno damped Coulomb (monopole term)
             let gamma_ij = 1.0 / (r_bohr.powi(2) + (1.0 / avg_eta).powi(2)).sqrt();
 
-            gamma[(i, j)] = gamma_ij * 27.2114;
-            gamma[(j, i)] = gamma[(i, j)];
+            // Charge-dipole correction: V_qd = Σ_k q_i × μ_j,k × R_k / R³
+            let r3 = r_bohr.powi(3).max(1e-10);
+            let r_vec = [dx / 0.529177, dy / 0.529177, dz / 0.529177];
+            let qd_ij = if r_bohr > 1.0 {
+                let dot_j = r_vec[0] * dipoles[j][0] + r_vec[1] * dipoles[j][1] + r_vec[2] * dipoles[j][2];
+                let dot_i = r_vec[0] * dipoles[i][0] + r_vec[1] * dipoles[i][1] + r_vec[2] * dipoles[i][2];
+                (charges[i] * dot_j - charges[j] * dot_i) / r3
+            } else {
+                0.0
+            };
+
+            let total = (gamma_ij + 0.1 * qd_ij) * 27.2114;
+            gamma[(i, j)] = total;
+            gamma[(j, i)] = total;
         }
     }
 
@@ -259,13 +289,16 @@ fn compute_d4_dispersion(elements: &[u8], positions: &[[f64; 3]], charges: &[f64
                 continue;
             }
 
-            // Charge-dependent C6 (simplified D4 model)
-            let q_scale_i = 1.0 - 0.5 * charges[i].abs().min(1.0);
-            let q_scale_j = 1.0 - 0.5 * charges[j].abs().min(1.0);
+            // Charge-dependent C6 (D4-like model with Gaussian damping).
+            // The scaling uses a smooth exponential form rather than linear truncation
+            // to better represent charge-transfer effects on polarizability.
+            let q_scale_i = (-0.08 * charges[i].powi(2)).exp();
+            let q_scale_j = (-0.08 * charges[j].powi(2)).exp();
 
             let c6_base = get_c6_d4(elements[i], elements[j]);
             let c6 = c6_base * q_scale_i * q_scale_j;
-            let c8 = 3.0 * c6 * get_r2r4_d4(elements[i]) * get_r2r4_d4(elements[j]);
+            let q_ij = get_r2r4_d4(elements[i]) * get_r2r4_d4(elements[j]);
+            let c8 = 3.0 * c6 * q_ij * q_ij;
 
             let r0 = (c8 / (c6 + 1e-30)).sqrt();
             let f6 = 1.0 / (r.powi(6) + (a1 * r0 + a2).powi(6));
@@ -290,6 +323,16 @@ fn compute_halogen_bond_correction(elements: &[u8], positions: &[[f64; 3]]) -> f
         if !halogens.contains(&elements[i]) {
             continue;
         }
+
+        // Find the atom bonded to the halogen (nearest neighbor, typically C)
+        let bonded_atom = (0..n)
+            .filter(|&k| k != i)
+            .min_by(|&a, &b| {
+                let da = dist(&positions[i], &positions[a]);
+                let db = dist(&positions[i], &positions[b]);
+                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+            });
+
         for j in 0..n {
             if i == j || !bases.contains(&elements[j]) {
                 continue;
@@ -308,14 +351,39 @@ fn compute_halogen_bond_correction(elements: &[u8], positions: &[[f64; 3]]) -> f
             let r0 = get_xb_r0(elements[i], elements[j]);
             let strength = get_xb_strength(elements[i]);
 
-            // Damped correction
+            // Angular dependence: cos²(θ_R-X···B) where R is the bonded atom.
+            // Halogen bonding is strongest when R-X···B is collinear (θ ≈ 180°).
+            let cos2_theta = if let Some(r_atom) = bonded_atom {
+                let rx = positions[i][0] - positions[r_atom][0];
+                let ry = positions[i][1] - positions[r_atom][1];
+                let rz = positions[i][2] - positions[r_atom][2];
+                let r_ri = (rx * rx + ry * ry + rz * rz).sqrt();
+                if r_ri > 0.01 && r > 0.01 {
+                    // cos(θ) of R-X···B angle (using X→B and X→R vectors)
+                    let cos_theta = -(rx * dx + ry * dy + rz * dz) / (r_ri * r);
+                    cos_theta.powi(2)
+                } else {
+                    1.0
+                }
+            } else {
+                1.0 // No bonded atom found; use isotropic fallback
+            };
+
+            // Damped correction with angular dependency
             let x = r / r0;
             let damp = 1.0 / (1.0 + (-20.0 * (x - 1.0)).exp());
-            e_xb -= strength * damp * (-2.0 * (r - r0).powi(2)).exp();
+            e_xb -= strength * damp * cos2_theta * (-2.0 * (r - r0).powi(2)).exp();
         }
     }
 
     e_xb * 27.2114 // Hartree to eV
+}
+
+fn dist(a: &[f64; 3], b: &[f64; 3]) -> f64 {
+    let dx = a[0] - b[0];
+    let dy = a[1] - b[1];
+    let dz = a[2] - b[2];
+    (dx * dx + dy * dy + dz * dz).sqrt()
 }
 
 fn get_xb_r0(z_hal: u8, z_base: u8) -> f64 {

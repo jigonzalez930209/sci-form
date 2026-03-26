@@ -45,6 +45,10 @@ fn intrinsic_born_radius(z: u8) -> f64 {
 }
 
 /// HCT descreening parameter by element.
+///
+/// Values from Hawkins, Cramer & Truhlar, J. Phys. Chem. 1996, 100, 19824–19839.
+/// These scale factors adjust the pairwise descreening integral to account for
+/// atomic density overlap differences among elements.
 fn hct_descreening_scale(z: u8) -> f64 {
     match z {
         1 => 0.85,

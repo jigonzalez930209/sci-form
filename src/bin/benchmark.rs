@@ -1,3 +1,8 @@
+//! Benchmark: embed a set of molecules from a JSON oracle file and compare
+//! generated coordinates against reference (RDKit) output.
+//!
+//! Category: benchmark
+
 use serde::Deserialize;
 use std::fs;
 use std::time::Instant;

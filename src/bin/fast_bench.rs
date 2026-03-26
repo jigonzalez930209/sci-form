@@ -1,3 +1,8 @@
+//! Benchmark: fast conformer generation benchmark with alignment against
+//! reference coordinates.
+//!
+//! Category: benchmark
+
 use nalgebra::{DMatrix, Matrix3};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;

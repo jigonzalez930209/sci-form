@@ -1,3 +1,8 @@
+//! Debug: test the eigenvalue solver path used during distance geometry
+//! embedding.
+//!
+//! Category: debug
+
 use sci_form::distgeom::{
     calculate_bounds_matrix_opts, identify_chiral_sets, pick_rdkit_distances, power_eigen_solver,
     triangle_smooth_tol, MinstdRand,
