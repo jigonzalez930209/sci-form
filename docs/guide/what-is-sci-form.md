@@ -109,7 +109,7 @@ If any check fails, retry up to $10N$ times (default) before falling back to ran
 
 ## Quantum Chemistry Methods
 
-sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, each optimized for different use cases:
+sci-form v0.10.6 offers **seven quantum chemistry approaches**, each optimized for different use cases:
 
 ### 1️⃣ Extended Hückel Theory (EHT)
 

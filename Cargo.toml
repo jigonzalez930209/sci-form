@@ -6,13 +6,13 @@ name = "sci-form"
 version = "0.10.6"
 edition = "2021"
 authors = ["Sci-Form Team"]
-description = "High-performance 3D molecular conformer generation using ETKDG distance geometry"
+description = "Computational chemistry: conformer generation, quantum methods (EHT/PM3/GFN-xTB/HF-3c), ANI potentials, spectroscopy, ML, cheminformatics, and materials"
 license = "MIT"
 repository = "https://github.com/jigonzalez930209/sci-form"
 homepage = "https://sci-form.dev"
 documentation = "https://docs.rs/sci-form"
 readme = "README.md"
-keywords = ["chemistry", "conformer", "3d", "molecule", "etkdg"]
+keywords = ["chemistry", "conformer", "quantum-chemistry", "cheminformatics", "spectroscopy"]
 categories = ["science", "algorithms"]
 exclude = [
     "rdkit-master/",

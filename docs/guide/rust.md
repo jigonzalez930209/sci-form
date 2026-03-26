@@ -6,21 +6,21 @@ Add sci-form to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sci-form = "0.9"
+sci-form = "0.10"
 ```
 
 For parallel batch processing, enable the `parallel` feature:
 
 ```toml
 [dependencies]
-sci-form = { version = "0.9", features = ["parallel"] }
+sci-form = { version = "0.10", features = ["parallel"] }
 ```
 
 For GPU acceleration (experimental):
 
 ```toml
 [dependencies]
-sci-form = { version = "0.9", features = ["experimental-gpu"] }
+sci-form = { version = "0.10", features = ["experimental-gpu"] }
 ```
 
 ## Core Types
@@ -105,7 +105,7 @@ println!("Atoms: {}, Bonds: {}", mol.graph.node_count(), mol.graph.edge_count())
 ### `version() → String`
 
 ```rust
-println!("{}", sci_form::version()); // "sci-form 0.9.1"
+println!("{}", sci_form::version()); // "sci-form 0.10.6"
 ```
 
 ## Working with Coordinates
