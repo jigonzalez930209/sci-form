@@ -60,10 +60,16 @@ pub struct WorkerResult {
 /// `n_workers`: number of workers to distribute across
 /// `seed`: RNG seed
 ///
+/// Each chunk is capped at 10 000 SMILES to prevent unbounded memory
+/// allocation when few workers are requested for very large inputs.
+///
 /// Returns a vector of tasks, one per worker.
 pub fn split_batch(smiles: &[String], n_workers: usize, seed: u64) -> Vec<WorkerTask> {
     let n = smiles.len();
-    let workers = n_workers.max(1).min(n);
+    const MAX_CHUNK: usize = 10_000;
+    // Ensure enough workers so no single chunk exceeds MAX_CHUNK
+    let min_workers_for_cap = n.div_ceil(MAX_CHUNK);
+    let workers = n_workers.max(1).max(min_workers_for_cap).min(n);
     let chunk_size = n.div_ceil(workers);
 
     smiles
