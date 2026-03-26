@@ -488,7 +488,7 @@ print(f"{len(spec.peaks)} labelled peaks")
 def nmr_shifts(smiles: str) -> NmrShiftResultPy
 ```
 
-Predict ¹H and ¹³C chemical shifts using HOSE code environment matching. Returns `NmrShiftResultPy` with `.h_shifts` and `.c_shifts` (lists of `ChemicalShiftPy`). No 3D geometry needed.
+Predict representative shifts for the default nucleus of each element in the molecule. Returns `NmrShiftResultPy` with legacy fields such as `.h_shifts`, `.c_shifts`, and `.other_shifts` for the expanded registry. No 3D geometry needed.
 
 Each `ChemicalShiftPy` has `.atom_index`, `.element`, `.shift_ppm`, `.environment`, `.confidence`.
 
@@ -500,6 +500,55 @@ for h in shifts.h_shifts:
     print(f"H#{h.atom_index}: {h.shift_ppm:.2f} ppm  [{h.environment}]  conf={h.confidence:.2f}")
 for c in shifts.c_shifts:
     print(f"C#{c.atom_index}: {c.shift_ppm:.1f} ppm  [{c.environment}]")
+```
+
+### `nmr_shifts_for_nucleus`
+
+```python
+def nmr_shifts_for_nucleus(smiles: str, nucleus: str) -> list[ChemicalShiftPy]
+```
+
+Predict shifts for one requested nucleus, including the expanded fast-inference nuclei such as `2H`, `35Cl`, `79Br`, `195Pt`, and `207Pb`.
+
+```python
+from sci_form import nmr_shifts_for_nucleus
+
+pt = nmr_shifts_for_nucleus("[Pt]", "195Pt")
+for peak in pt:
+    print(f"Pt#{peak.atom_index}: {peak.shift_ppm:.1f} ppm  [{peak.environment}]")
+```
+
+### `giao_nmr`
+
+```python
+def giao_nmr(
+    elements: list[int],
+    coords: list[float],
+    nucleus: str = "1H",
+    charge: int = 0,
+    multiplicity: int = 1,
+    max_scf_iter: int = 100,
+    allow_basis_fallback: bool = False,
+    use_parallel_eri: bool = False,
+) -> GiaoNmrResultPy
+```
+
+Run the public SCF-backed GIAO route for one requested nucleus. Returns `GiaoNmrResultPy` with `.chemical_shifts`, `.shieldings`, `.scf_converged`, `.scf_iterations`, `.fallback_elements`, and `.notes`.
+
+The current public path is restricted to singlet closed-shell systems. By default it rejects elements that only have the hydrogen-like fallback basis in the SCF stack.
+
+```python
+from sci_form import giao_nmr
+
+water = [8, 1, 1]
+coords = [
+    0.0, 0.0, 0.1173,
+    0.0, 0.7572, -0.4692,
+    0.0, -0.7572, -0.4692,
+]
+result = giao_nmr(water, coords, nucleus="1H")
+print(result.chemical_shifts)
+print(result.notes[0])
 ```
 
 ### `nmr_couplings`
@@ -553,7 +602,7 @@ for jc in couplings:
 ```python
 def nmr_spectrum(
     smiles: str,
-    nucleus: str = "1H",   # "1H" or "13C"
+    nucleus: str = "1H",   # e.g. "1H", "13C", "35Cl", "79Br", "195Pt"
     gamma: float = 0.01,
     ppm_min: float = -2.0,
     ppm_max: float = 14.0,
@@ -562,6 +611,8 @@ def nmr_spectrum(
 ```
 
 Full NMR spectrum pipeline. Returns `NmrSpectrumPy` with `.ppm_axis`, `.intensities`, `.peaks` (list of `NmrPeakPy`), `.nucleus`, `.gamma`.
+
+The ¹H path still models vicinal splitting explicitly. Other nuclei are rendered as fast relative spectra with nucleus-specific linewidth defaults.
 
 ```python
 from sci_form import nmr_spectrum
@@ -628,6 +679,48 @@ xtb = xtb_calculate(conf.elements, conf.coords)
 print(f"xTB gap: {xtb.gap:.3f} eV, converged: {xtb.converged}")
 ```
 
+### `gfn1_calculate`
+
+```python
+def gfn1_calculate(
+    elements: list[int],
+    coords: list[float],
+) -> Gfn1ResultPy
+```
+
+GFN1-xTB tight-binding with shell-resolved charges and D3-style dispersion.
+
+Returns `Gfn1ResultPy` with `.orbital_energies`, `.electronic_energy`, `.repulsive_energy`, `.dispersion_energy`, `.total_energy`, `.n_basis`, `.n_electrons`, `.homo_energy`, `.lumo_energy`, `.gap`, `.mulliken_charges`, `.shell_charges`, `.scc_iterations`, `.converged`.
+
+```python
+from sci_form import embed, gfn1_calculate
+
+conf = embed("CCO", seed=42)
+gfn1 = gfn1_calculate(conf.elements, conf.coords)
+print(f"GFN1 total energy: {gfn1.total_energy:.3f} eV")
+```
+
+### `gfn2_calculate`
+
+```python
+def gfn2_calculate(
+    elements: list[int],
+    coords: list[float],
+) -> Gfn2ResultPy
+```
+
+GFN2-xTB tight-binding with multipole electrostatics, D4-style dispersion, and halogen-bond correction terms.
+
+Returns `Gfn2ResultPy` with `.orbital_energies`, `.electronic_energy`, `.repulsive_energy`, `.dispersion_energy`, `.halogen_bond_energy`, `.total_energy`, `.n_basis`, `.n_electrons`, `.homo_energy`, `.lumo_energy`, `.gap`, `.mulliken_charges`, `.atomic_dipoles`, `.atomic_quadrupoles`, `.scc_iterations`, `.converged`.
+
+```python
+from sci_form import embed, gfn2_calculate
+
+conf = embed("CCO", seed=42)
+gfn2 = gfn2_calculate(conf.elements, conf.coords)
+print(f"GFN2 total energy: {gfn2.total_energy:.3f} eV")
+```
+
 ---
 
 ## Ab-initio / Neural Potentials
@@ -638,7 +731,7 @@ print(f"xTB gap: {xtb.gap:.3f} eV, converged: {xtb.converged}")
 def hf3c_calculate(
     elements: list[int],
     coords: list[float],
-    max_scf_iter: int = 100,
+    max_scf_iter: int = 300,
     n_cis_states: int = 5,
     corrections: bool = True,
 ) -> Hf3cResultPy
