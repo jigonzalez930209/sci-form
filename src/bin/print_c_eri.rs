@@ -1,3 +1,8 @@
+//! Debug: print electron repulsion integrals (ERIs) for a single carbon
+//! atom in STO-3G.
+//!
+//! Category: debug
+
 use sci_form::hf::basis::build_sto3g_basis;
 use sci_form::hf::integrals::{compute_eris, get_eri};
 

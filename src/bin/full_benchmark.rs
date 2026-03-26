@@ -1,3 +1,8 @@
+//! Benchmark: full LBFGS minimization benchmark on a molecule set including
+//! energy evaluation timing.
+//!
+//! Category: benchmark
+
 use sci_form::forcefield::minimizer::minimize_energy_lbfgs;
 use sci_form::forcefield::FFParams;
 use serde::Deserialize;

@@ -1,3 +1,7 @@
+//! Debug: embed a molecule and dump final coordinates to stdout.
+//!
+//! Category: debug
+
 use sci_form::conformer::generate_3d_conformer;
 use sci_form::graph::Molecule;
 

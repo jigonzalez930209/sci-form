@@ -1,3 +1,10 @@
+//! Debug: find the actual attempt number used by the torsion-aware
+//! conformer pipeline.
+//!
+//! Usage: `LOG_ATTEMPTS=1 cargo run --release --bin find_real_attempt -- 1 17`
+//!
+//! Category: debug
+
 /// Find the actual attempt number used by generate_3d_conformer_with_torsions
 /// Run: LOG_ATTEMPTS=1 cargo run --release --bin find_real_attempt -- 1 17
 use serde::Deserialize;

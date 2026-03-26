@@ -1,3 +1,8 @@
+//! Debug: compare analytical and numerical UFF gradients on a test molecule
+//! to verify gradient correctness.
+//!
+//! Category: debug
+
 use nalgebra::DMatrix;
 use sci_form::forcefield::{
     energy::calculate_total_energy, gradients::compute_analytical_gradient, FFParams,
