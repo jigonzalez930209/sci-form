@@ -1,3 +1,0 @@
-# Git LFS tracking for files that cannot fit in normal git history
-data/chembl_36_chemreps.txt.gz filter=lfs diff=lfs merge=lfs -text
-tests/fixtures/*.json filter=lfs diff=lfs merge=lfs -text
