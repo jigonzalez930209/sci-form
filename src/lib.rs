@@ -89,6 +89,22 @@ pub mod alpha;
 ))]
 pub mod beta;
 
+// ─── ALPHA modules (feature-gated) ──────────────────────────────────────────
+
+#[cfg(feature = "alpha-dynamics-live")]
+pub mod dynamics_live;
+
+#[cfg(feature = "alpha-dft")]
+pub mod dft;
+
+#[cfg(feature = "alpha-mlff")]
+pub mod mlff {
+    //! Re-export MLFF types from the ml module.
+    pub use crate::ml::inference::*;
+    pub use crate::ml::mlff::*;
+    pub use crate::ml::symmetry_functions::*;
+}
+
 use serde::{Deserialize, Serialize};
 
 // ─── Public API Types ────────────────────────────────────────────────────────

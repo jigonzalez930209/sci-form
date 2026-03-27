@@ -67,7 +67,7 @@ pub struct NebPathResult {
     pub notes: Vec<String>,
 }
 
-fn atomic_mass_amu(z: u8) -> f64 {
+pub fn atomic_mass_amu(z: u8) -> f64 {
     match z {
         1 => 1.008,
         5 => 10.81,
@@ -373,7 +373,7 @@ pub fn compute_simplified_neb_path(
 /// Compute energy and gradients using the specified backend.
 ///
 /// Returns (energy_kcal_mol, gradients) or an error.
-fn compute_backend_energy_and_gradients(
+pub fn compute_backend_energy_and_gradients(
     backend: MdBackend,
     smiles: &str,
     elements: &[u8],
