@@ -123,8 +123,9 @@ fn build_csd_torsions(
 
 #[test]
 fn test_diagnose_failures() {
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .expect("Run scripts/generate_gdb20_reference.py first");
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
+            .expect("Run scripts/generate_gdb20_reference.py first");
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
 
     let limit = std::env::var("GDB20_LIMIT")
