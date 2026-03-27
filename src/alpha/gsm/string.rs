@@ -3,7 +3,9 @@
 //! Core algorithm for growing the string of images between reactant and product.
 
 /// GSM configuration.
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GsmConfig {
     /// Maximum number of nodes in the string (including endpoints).
     pub max_nodes: usize,

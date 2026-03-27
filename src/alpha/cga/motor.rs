@@ -178,7 +178,7 @@ pub fn extract_euclidean(p: &Multivector) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f64::consts::{FRAC_PI_2, PI};
+    use std::f64::consts::FRAC_PI_2;
 
     #[test]
     fn test_identity_motor() {

@@ -68,6 +68,7 @@ pub fn apply_motor_to_subtree(coords: &[f64], indices: &[usize], motor: &Motor) 
 /// `adjacency`: adjacency list (for each atom, list of bonded atom indices).
 ///
 /// Returns the set of atom indices on the `bond_b` side (excluding `bond_a`).
+#[allow(dead_code)]
 pub fn find_rotation_subtree(bond_a: usize, bond_b: usize, adjacency: &[Vec<usize>]) -> Vec<usize> {
     let n = adjacency.len();
     let mut visited = vec![false; n];
@@ -128,6 +129,7 @@ pub fn refine_torsion_cga(
 }
 
 /// Compute the dihedral angle defined by four points (in radians, range -π..π).
+#[allow(dead_code)]
 pub fn dihedral_angle(p1: [f64; 3], p2: [f64; 3], p3: [f64; 3], p4: [f64; 3]) -> f64 {
     let b1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
     let b2 = [p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]];
@@ -142,6 +144,7 @@ pub fn dihedral_angle(p1: [f64; 3], p2: [f64; 3], p3: [f64; 3], p4: [f64; 3]) ->
     (-y).atan2(-x) + std::f64::consts::PI
 }
 
+#[allow(dead_code)]
 fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     [
         a[1] * b[2] - a[2] * b[1],
@@ -150,10 +153,12 @@ fn cross(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     ]
 }
 
+#[allow(dead_code)]
 fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
+#[allow(dead_code)]
 fn b2_unit(b: [f64; 3]) -> [f64; 3] {
     let len = (b[0] * b[0] + b[1] * b[1] + b[2] * b[2]).sqrt();
     if len < 1e-15 {

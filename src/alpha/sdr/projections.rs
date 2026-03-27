@@ -3,9 +3,10 @@
 //! Alternating projections onto the PSD cone and distance constraint set.
 
 use nalgebra::DMatrix;
+use serde::{Deserialize, Serialize};
 
 /// SDR configuration.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SdrConfig {
     /// Maximum number of alternating projection iterations.
     pub max_iter: usize,

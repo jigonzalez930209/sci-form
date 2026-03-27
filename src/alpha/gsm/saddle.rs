@@ -133,7 +133,7 @@ pub fn find_transition_state(
         };
         (&path.nodes[prev_idx][..], &path.nodes[next_idx][..])
     } else {
-        (&reactant[..], &product[..])
+        (reactant, product)
     };
 
     let (ts_coords, ts_energy) = refine_saddle(
