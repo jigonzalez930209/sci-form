@@ -62,8 +62,9 @@ fn test_trace_failing_molecule() {
     let smiles = "C#CCOC(C)CC1CC2C3CCC(C)C(O)(C3)C2O1";
 
     // Build molecule from reference JSON (matching RDKit's graph exactly)
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .expect("Reference file needed");
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
+            .expect("Reference file needed");
     let ref_mols: Vec<serde_json::Value> = serde_json::from_str(&ref_data).unwrap();
     let ref_mol = ref_mols
         .iter()
