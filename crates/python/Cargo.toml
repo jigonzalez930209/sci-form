@@ -39,6 +39,6 @@ beta-cpm = ["sci-form-core/beta-cpm"]
 
 [dependencies]
 sci-form-core = { path = "../..", package = "sci-form", version = "0.12.0", default-features = false }
-pyo3 = { version = "0.22", features = ["extension-module"] }
+pyo3 = { version = "0.22", features = ["extension-module", "serde"] }
 rayon = "1.10"
 nalgebra = "0.32"

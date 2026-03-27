@@ -18,8 +18,23 @@ use pyo3::prelude::*;
 
 #[cfg(feature = "beta-kpm")]
 mod kpm_py {
+    use nalgebra::DMatrix;
     use pyo3::prelude::*;
-    use sci_form_core::beta::kpm::density::{compute_kpm_dos, compute_kpm_mulliken, KpmConfig};
+    use sci_form_core::beta::kpm::{compute_kpm_dos, compute_kpm_mulliken, KpmConfig};
+
+    fn build_eht_matrices(
+        elements: &[u8],
+        positions: &[[f64; 3]],
+    ) -> (
+        Vec<sci_form_core::eht::basis::AtomicOrbital>,
+        DMatrix<f64>,
+        DMatrix<f64>,
+    ) {
+        let basis = sci_form_core::eht::basis::build_basis(elements, positions);
+        let overlap = sci_form_core::eht::build_overlap_matrix(&basis);
+        let hamiltonian = sci_form_core::eht::build_hamiltonian(&basis, &overlap, None);
+        (basis, hamiltonian, overlap)
+    }
 
     #[pyclass]
     #[derive(Clone)]
@@ -64,15 +79,14 @@ mod kpm_py {
         temperature: f64,
     ) -> PyResult<KpmDosResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let eht = sci_form_core::eht::solver::solve_eht(&elements, &positions, None)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+        let (_basis, hamiltonian, _overlap) = build_eht_matrices(&elements, &positions);
         let config = KpmConfig {
             order,
             temperature,
             n_vectors: 0,
             seed: 42,
         };
-        let r = compute_kpm_dos(&eht.hamiltonian, &config);
+        let r = compute_kpm_dos(&hamiltonian, &config, -30.0, 5.0, 500);
         Ok(KpmDosResultPy {
             energies: r.energies,
             total_dos: r.total_dos,
@@ -89,13 +103,32 @@ mod kpm_py {
     #[pyfunction]
     pub fn kpm_mulliken(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<KpmMullikenResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let eht = sci_form_core::eht::solver::solve_eht(&elements, &positions, None)
+        let (basis, hamiltonian, overlap) = build_eht_matrices(&elements, &positions);
+        let eht = sci_form_core::eht::solve_eht(&elements, &positions)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
         let config = KpmConfig::default();
-        let r = compute_kpm_mulliken(&eht.hamiltonian, &eht.overlap, &config);
+        let nuclear_charges: Vec<f64> = basis
+            .iter()
+            .map(|orbital| elements[orbital.atom_index] as f64)
+            .collect();
+        let r = compute_kpm_mulliken(
+            &hamiltonian,
+            &overlap,
+            eht.n_electrons,
+            &nuclear_charges,
+            &config,
+        );
+
+        let mut mulliken_charges = vec![0.0; elements.len()];
+        let mut orbital_populations = vec![0.0; basis.len()];
+        for (idx, orbital) in basis.iter().enumerate() {
+            let charge = r.charges.get(idx).copied().unwrap_or(0.0);
+            mulliken_charges[orbital.atom_index] += charge;
+            orbital_populations[idx] = nuclear_charges[idx] - charge;
+        }
         Ok(KpmMullikenResultPy {
-            mulliken_charges: r.mulliken_charges,
-            orbital_populations: r.orbital_populations,
+            mulliken_charges,
+            orbital_populations,
         })
     }
 
@@ -186,8 +219,22 @@ mod mbh_py {
 
 #[cfg(feature = "beta-randnla")]
 mod randnla_py {
+    use nalgebra::DMatrix;
     use pyo3::prelude::*;
-    use sci_form_core::beta::rand_nla::solver::{solve_eht_randnla, RandNlaConfig};
+    use sci_form_core::beta::rand_nla::{solve_eht_randnla, RandNlaConfig};
+
+    fn build_eht_matrices(
+        elements: &[u8],
+        positions: &[[f64; 3]],
+    ) -> (DMatrix<f64>, DMatrix<f64>, usize) {
+        let basis = sci_form_core::eht::basis::build_basis(elements, positions);
+        let overlap = sci_form_core::eht::build_overlap_matrix(&basis);
+        let hamiltonian = sci_form_core::eht::build_hamiltonian(&basis, &overlap, None);
+        let n_electrons = sci_form_core::eht::solve_eht(elements, positions)
+            .map(|result| result.n_electrons)
+            .unwrap_or(elements.len() * 2);
+        (hamiltonian, overlap, n_electrons)
+    }
 
     #[pyclass]
     #[derive(Clone)]
@@ -231,17 +278,16 @@ mod randnla_py {
         max_error: f64,
     ) -> PyResult<RandNlaResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let eht = sci_form_core::eht::solver::solve_eht(&elements, &positions, None)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
         let config = RandNlaConfig {
             sketch_size,
             max_error,
             seed: 42,
             fallback_enabled: true,
         };
-        let (eigenvalues, _, info) = solve_eht_randnla(&eht.hamiltonian, &eht.overlap, &config);
+        let (hamiltonian, overlap, n_electrons) = build_eht_matrices(&elements, &positions);
+        let (eigenvalues, _, info) = solve_eht_randnla(&hamiltonian, &overlap, &config);
         let energies: Vec<f64> = eigenvalues.iter().cloned().collect();
-        let n_occ = eht.n_electrons / 2;
+        let n_occ = n_electrons / 2;
         let homo_idx = n_occ.saturating_sub(1);
         let lumo_idx = n_occ.min(energies.len().saturating_sub(1));
         let homo = energies.get(homo_idx).copied().unwrap_or(0.0);
@@ -355,17 +401,16 @@ mod cpm_py {
         coords: Vec<f64>,
         potential: f64,
     ) -> PyResult<CpmResultPy> {
-        let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let config = CpmConfig {
-            electrode_potential: potential,
+            mu_ev: potential,
             ..Default::default()
         };
-        let r = compute_cpm_charges(&elements, &positions, &config)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+        let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let r = compute_cpm_charges(&elements, &positions, &config);
         Ok(CpmResultPy {
             charges: r.charges,
             total_charge: r.total_charge,
-            energy: r.energy,
+            energy: r.grand_potential,
         })
     }
 

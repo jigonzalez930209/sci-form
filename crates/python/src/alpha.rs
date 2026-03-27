@@ -77,7 +77,7 @@ mod dft_py {
         let r = solve_ks_dft(&elements, &positions, &config)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
         Ok(DftResultPy {
-            energy: r.energy,
+            energy: r.total_energy_ev,
             homo_energy: r.homo_energy,
             lumo_energy: r.lumo_energy,
             gap: r.gap,
@@ -105,12 +105,42 @@ mod reaxff_py {
     use pyo3::prelude::*;
     use sci_form_core::forcefield::reaxff::{
         bond_order::compute_bond_orders,
-        eem::{default_eem_params, solve_eem},
+        eem::solve_eem,
         energy::compute_bonded_energy,
         gradients::compute_reaxff_gradient,
         nonbonded::compute_nonbonded_energy,
-        params::ReaxffParams,
+        params::{ReaxffAtomParams, ReaxffParams},
     };
+
+    fn build_atom_params(elements: &[u8], params: &ReaxffParams) -> Vec<ReaxffAtomParams> {
+        let fallback = params
+            .atom_params
+            .last()
+            .cloned()
+            .unwrap_or(ReaxffAtomParams {
+                element: 1,
+                r_sigma: 1.0,
+                r_pi: 0.0,
+                r_pipi: 0.0,
+                p_bo1: 0.0,
+                p_bo2: 1.0,
+                p_bo3: 0.0,
+                p_bo4: 1.0,
+                p_bo5: 0.0,
+                p_bo6: 1.0,
+                valence: 1.0,
+            });
+
+        elements
+            .iter()
+            .map(|&z| {
+                params
+                    .element_index(z)
+                    .map(|idx| params.atom_params[idx].clone())
+                    .unwrap_or_else(|| fallback.clone())
+            })
+            .collect()
+    }
 
     #[pyclass]
     #[derive(Clone)]
@@ -171,17 +201,23 @@ mod reaxff_py {
     ///     ReaxffEnergyResultPy: bonded, coulomb, van_der_waals, total
     #[pyfunction]
     pub fn reaxff_energy(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReaxffEnergyResultPy> {
-        let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let params = ReaxffParams::default_chon();
-        let charges = solve_eem(&elements, &positions, &default_eem_params());
-        let bo = compute_bond_orders(&elements, &positions, &params);
-        let bonded = compute_bonded_energy(&bo, &elements, &params);
-        let nb = compute_nonbonded_energy(&elements, &positions, &charges, &params);
+        let atom_params = build_atom_params(&elements, &params);
+        let eem_params: Vec<_> = elements
+            .iter()
+            .map(|&z| sci_form_core::forcefield::reaxff::eem::default_eem_params(z))
+            .collect();
+        let charges = solve_eem(&coords, &eem_params, 0.0)
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+        let bo = compute_bond_orders(&coords, &atom_params, params.cutoff);
+        let bonded = compute_bonded_energy(&coords, &bo, &params);
+        let (van_der_waals, coulomb) =
+            compute_nonbonded_energy(&coords, &charges, &elements, params.cutoff);
         Ok(ReaxffEnergyResultPy {
-            bonded,
-            coulomb: nb.coulomb,
-            van_der_waals: nb.van_der_waals,
-            total: bonded + nb.coulomb + nb.van_der_waals,
+            bonded: bonded.total,
+            coulomb,
+            van_der_waals,
+            total: bonded.total + coulomb + van_der_waals,
         })
     }
 
@@ -191,8 +227,11 @@ mod reaxff_py {
     ///     EemChargesResultPy: charges, total_charge
     #[pyfunction]
     pub fn eem_charges(elements: Vec<u8>, coords: Vec<f64>) -> EemChargesResultPy {
-        let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let charges = solve_eem(&elements, &positions, &default_eem_params());
+        let eem_params: Vec<_> = elements
+            .iter()
+            .map(|&z| sci_form_core::forcefield::reaxff::eem::default_eem_params(z))
+            .collect();
+        let charges = solve_eem(&coords, &eem_params, 0.0).unwrap_or_default();
         let total: f64 = charges.iter().sum();
         EemChargesResultPy {
             charges,
@@ -253,10 +292,10 @@ mod mlff_py {
         config_dict: &pyo3::types::PyDict,
     ) -> PyResult<MlffResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let config_str = pyo3::Python::with_gil(|_py| {
-            serde_json::to_string(&config_dict.as_any()).unwrap_or_default()
-        });
-        let config: MlffConfig = serde_json::from_str(&config_str)
+        let config_value = config_dict
+            .extract::<serde_json::Value>()
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("bad config: {}", e)))?;
+        let config: MlffConfig = serde_json::from_value(config_value)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("bad config: {}", e)))?;
         let r = compute_mlff(&elements, &positions, &config)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
@@ -287,7 +326,7 @@ mod mlff_py {
         };
         let aevs = compute_aevs(&elements, &positions, &params);
         let aev_length = aevs.first().map(|v| v.len()).unwrap_or(0);
-        let aev_arrays: Vec<Vec<f64>> = aevs.iter().map(|v| v.as_slice().to_vec()).collect();
+        let aev_arrays: Vec<Vec<f64>> = aevs.iter().map(|v| v.to_vec()).collect();
         AevResultPy {
             n_atoms: elements.len(),
             aev_length,
@@ -374,6 +413,72 @@ mod cga_py {
     use pyo3::prelude::*;
     use sci_form_core::alpha::cga;
 
+    fn dihedral_angle(p1: [f64; 3], p2: [f64; 3], p3: [f64; 3], p4: [f64; 3]) -> f64 {
+        let b1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
+        let b2 = [p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]];
+        let b3 = [p4[0] - p3[0], p4[1] - p3[1], p4[2] - p3[2]];
+
+        let n1 = [
+            b1[1] * b2[2] - b1[2] * b2[1],
+            b1[2] * b2[0] - b1[0] * b2[2],
+            b1[0] * b2[1] - b1[1] * b2[0],
+        ];
+        let n2 = [
+            b2[1] * b3[2] - b2[2] * b3[1],
+            b2[2] * b3[0] - b2[0] * b3[2],
+            b2[0] * b3[1] - b2[1] * b3[0],
+        ];
+        let b2_norm = (b2[0] * b2[0] + b2[1] * b2[1] + b2[2] * b2[2]).sqrt();
+        let b2_unit = if b2_norm > 1e-15 {
+            [b2[0] / b2_norm, b2[1] / b2_norm, b2[2] / b2_norm]
+        } else {
+            [0.0, 0.0, 0.0]
+        };
+        let m1 = [
+            n1[1] * b2_unit[2] - n1[2] * b2_unit[1],
+            n1[2] * b2_unit[0] - n1[0] * b2_unit[2],
+            n1[0] * b2_unit[1] - n1[1] * b2_unit[0],
+        ];
+
+        let x = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
+        let y = m1[0] * n2[0] + m1[1] * n2[1] + m1[2] * n2[2];
+        (-y).atan2(-x) + std::f64::consts::PI
+    }
+
+    fn rotation_subtree(
+        bond_a: usize,
+        bond_b: usize,
+        bonds: &[(usize, usize)],
+        n_atoms: usize,
+    ) -> Vec<usize> {
+        let mut adjacency = vec![Vec::new(); n_atoms];
+        for &(i, j) in bonds {
+            if i < n_atoms && j < n_atoms {
+                adjacency[i].push(j);
+                adjacency[j].push(i);
+            }
+        }
+
+        let mut visited = vec![false; n_atoms];
+        visited[bond_a] = true;
+        visited[bond_b] = true;
+
+        let mut stack = vec![bond_b];
+        let mut subtree = vec![bond_b];
+
+        while let Some(current) = stack.pop() {
+            for &neighbor in &adjacency[current] {
+                if !visited[neighbor] {
+                    visited[neighbor] = true;
+                    subtree.push(neighbor);
+                    stack.push(neighbor);
+                }
+            }
+        }
+
+        subtree
+    }
+
     /// Apply a dihedral rotation to a sub-tree of atoms using CGA motors.
     ///
     /// Args:
@@ -393,8 +498,7 @@ mod cga_py {
         angle_rad: f64,
     ) -> Vec<f64> {
         let motor = cga::dihedral_motor(axis_a, axis_b, angle_rad);
-        cga::apply_motor_to_subtree(&mut coords, &subtree_indices, &motor);
-        coords
+        cga::apply_motor_to_subtree(&coords, &subtree_indices, &motor)
     }
 
     /// Refine a torsion angle to a target value using CGA.
@@ -421,18 +525,38 @@ mod cga_py {
                 "torsion_indices must have exactly 4 elements",
             ));
         }
-        Ok(cga::refine_torsion_cga(
-            &elements,
-            &coords,
-            &bonds,
-            &[
-                torsion_indices[0],
-                torsion_indices[1],
-                torsion_indices[2],
-                torsion_indices[3],
-            ],
-            target_angle_rad,
-        ))
+        if coords.len() != elements.len() * 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "coords length must equal 3 × number of elements",
+            ));
+        }
+
+        let i = torsion_indices[0];
+        let j = torsion_indices[1];
+        let k = torsion_indices[2];
+        let l = torsion_indices[3];
+        let current_angle = dihedral_angle(
+            [coords[i * 3], coords[i * 3 + 1], coords[i * 3 + 2]],
+            [coords[j * 3], coords[j * 3 + 1], coords[j * 3 + 2]],
+            [coords[k * 3], coords[k * 3 + 1], coords[k * 3 + 2]],
+            [coords[l * 3], coords[l * 3 + 1], coords[l * 3 + 2]],
+        );
+
+        let mut delta = target_angle_rad - current_angle;
+        while delta <= -std::f64::consts::PI {
+            delta += 2.0 * std::f64::consts::PI;
+        }
+        while delta > std::f64::consts::PI {
+            delta -= 2.0 * std::f64::consts::PI;
+        }
+
+        let subtree = rotation_subtree(j, k, &bonds, elements.len());
+        let motor = cga::dihedral_motor(
+            [coords[j * 3], coords[j * 3 + 1], coords[j * 3 + 2]],
+            [coords[k * 3], coords[k * 3 + 1], coords[k * 3 + 2]],
+            delta,
+        );
+        Ok(cga::apply_motor_to_subtree(&coords, &subtree, &motor))
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -459,9 +583,15 @@ mod gsm_py {
         #[pyo3(get)]
         pub path_energies: Vec<f64>,
         #[pyo3(get)]
+        pub reverse_barrier: f64,
+        #[pyo3(get)]
+        pub path_coords: Vec<Vec<f64>>,
+        #[pyo3(get)]
+        pub ts_node_index: usize,
+        #[pyo3(get)]
         pub n_nodes: usize,
         #[pyo3(get)]
-        pub converged: bool,
+        pub energy_evaluations: usize,
     }
 
     /// Interpolate reaction path node at parameter t ∈ [0, 1].
@@ -486,21 +616,23 @@ mod gsm_py {
         n_nodes: usize,
     ) -> PyResult<GsmResultPy> {
         let config = GsmConfig {
-            n_nodes,
+            max_nodes: n_nodes,
             ..Default::default()
         };
         let owned_smiles = smiles.to_string();
         let energy_fn = move |coords: &[f64]| -> f64 {
             sci_form_core::compute_uff_energy(&owned_smiles, coords).unwrap_or(f64::MAX)
         };
-        let r = gsm::find_transition_state(&reactant_coords, &product_coords, &config, &energy_fn)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+        let r = gsm::find_transition_state(&reactant_coords, &product_coords, &energy_fn, &config);
         Ok(GsmResultPy {
             ts_coords: r.ts_coords,
             ts_energy: r.ts_energy,
             path_energies: r.path_energies,
+            reverse_barrier: r.reverse_barrier,
+            path_coords: r.path_coords,
+            ts_node_index: r.ts_node_index,
             n_nodes: r.n_nodes,
-            converged: r.converged,
+            energy_evaluations: r.energy_evaluations,
         })
     }
 
@@ -521,15 +653,30 @@ mod sdr_py {
 
     #[pyclass]
     #[derive(Clone)]
+    pub struct SdrConvergencePy {
+        #[pyo3(get)]
+        pub iterations: usize,
+        #[pyo3(get)]
+        pub converged: bool,
+        #[pyo3(get)]
+        pub final_residual: f64,
+        #[pyo3(get)]
+        pub neg_eigenvalues_removed: usize,
+    }
+
+    #[pyclass]
+    #[derive(Clone)]
     pub struct SdrResultPy {
         #[pyo3(get)]
         pub coords: Vec<f64>,
         #[pyo3(get)]
-        pub residual: f64,
+        pub num_atoms: usize,
         #[pyo3(get)]
-        pub converged: bool,
+        pub convergence: SdrConvergencePy,
         #[pyo3(get)]
-        pub iterations: usize,
+        pub max_distance_error: f64,
+        #[pyo3(get)]
+        pub retries_avoided: usize,
     }
 
     /// Embed a molecule from pairwise distances using Semidefinite Relaxation.
@@ -551,20 +698,27 @@ mod sdr_py {
         tolerance: f64,
     ) -> SdrResultPy {
         let config = SdrConfig {
-            max_iterations,
-            tolerance,
+            max_iter: max_iterations,
+            tol: tolerance,
             ..Default::default()
         };
-        let result = sdr_embed(&distance_pairs, n_atoms, &config);
+        let result = sdr_embed(n_atoms, &distance_pairs, &config);
         SdrResultPy {
             coords: result.coords,
-            residual: result.residual,
-            converged: result.converged,
-            iterations: result.iterations,
+            num_atoms: result.num_atoms,
+            convergence: SdrConvergencePy {
+                iterations: result.convergence.iterations,
+                converged: result.convergence.converged,
+                final_residual: result.convergence.final_residual,
+                neg_eigenvalues_removed: result.convergence.neg_eigenvalues_removed,
+            },
+            max_distance_error: result.max_distance_error,
+            retries_avoided: result.retries_avoided,
         }
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        m.add_class::<SdrConvergencePy>()?;
         m.add_class::<SdrResultPy>()?;
         m.add_function(wrap_pyfunction!(sdr_embed_py, m)?)?;
         Ok(())
