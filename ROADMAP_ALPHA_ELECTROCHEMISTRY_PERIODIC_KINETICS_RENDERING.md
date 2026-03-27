@@ -103,6 +103,58 @@ The four tracks should not be executed as one serial chain. They should be split
 - WASM examples for interactive DOS/path/profile plots.
 - CLI commands for reproducible batch validation.
 
+## Sprint Prioritization
+
+The roadmap is intentionally large. These sprint bands define the recommended execution order and make the alpha program parallelizable without losing dependency discipline.
+
+### Sprint Alpha 1: Contracts, adapters, and CPU references
+
+Primary goal: establish stable alpha-shaped interfaces before optimizing kernels.
+
+- Finalize all result schemas for EDL, periodic linear solvers, HTST, and rendering bridges.
+- Add adapter layers around existing CPM, ALPB, EEQ, band structure, KPM, RandNLA, GSM, and MBH code.
+- Implement CPU reference paths for the first compact-layer EDL solver, the first periodic mesh utilities, the first HTST rate calculator, and the first rendering payload builders.
+- Freeze transport format decisions for JSON, typed arrays, and Arrow-style buffers.
+- Add baseline regression fixtures for slabs, periodic cells, GSM paths, and DOS outputs.
+
+### Sprint Alpha 2: Core physics and scaling kernels
+
+Primary goal: make each track scientifically useful on CPU.
+
+- Complete Helmholtz and Gouy-Chapman-Stern EDL profiles with CPM coupling.
+- Implement Monkhorst-Pack k-mesh generation and periodic operator assembly.
+- Extend KPM and RandNLA to periodic operators with k-point loops.
+- Build the GSM-to-MBH-to-HTST calculation chain and the small-network microkinetic solver.
+- Add chart-ready and animation-ready payloads for KPM DOS, GSM trajectories, and EDL profiles.
+
+### Sprint Alpha 3: Parallel CPU scaling and validation hardening
+
+Primary goal: remove bottlenecks and prove the alpha outputs are numerically trustworthy.
+
+- Parallelize bias sweeps, k-point loops, temperature sweeps, and data chunking with `rayon`.
+- Add error estimation and convergence diagnostics for all four tracks.
+- Validate analytic limits, exact small-system references, and conservation laws.
+- Benchmark CPU scaling and establish workload-size thresholds for GPU promotion.
+- Propagate the stable alpha surfaces to Python, WASM, and CLI examples.
+
+### Sprint Alpha 4: Selective GPU acceleration
+
+Primary goal: accelerate only the kernels that clearly benefit from it.
+
+- GPU-accelerate EDL profile scans with large interface grids.
+- GPU-batch periodic KPM and select RandNLA stages for many k-points or large basis sets.
+- Keep HTST and microkinetic scalar work CPU-first unless large network sweeps justify GPU batching.
+- Add GPU-backed rendering buffers only after the CPU data model is stable.
+
+### Sprint Alpha 5: Binding rollout and beta-readiness gate
+
+Primary goal: turn the alpha stack into a usable cross-language platform.
+
+- Complete Python, WASM, and CLI adapters for the finalized alpha surfaces.
+- Add end-to-end examples for EDL scans, periodic DOS, HTST rates, and rendering payload export.
+- Lock down the final benchmark suite and promotion criteria.
+- Decide which alpha modules have enough evidence to move toward beta staging.
+
 ## Track A: Explicit Electrical Double Layer Models for Solid-Liquid Interfaces
 
 ### Goal
