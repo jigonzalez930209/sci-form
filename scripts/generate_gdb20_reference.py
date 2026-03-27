@@ -2,13 +2,13 @@
 """Generate RDKit reference coordinates + CSD torsion params for GDB20 50k molecules.
 
 Uses multiprocessing to parallelize across all CPU cores.
-Output: tests/fixtures/gdb20_reference.json (coords + torsions)
+Output: tests/fixtures/gdb20_reference.json.gz (coords + torsions)
 """
 
-import json
 import sys
 import time
 from multiprocessing import Pool, cpu_count
+from fixture_io import dump_json_gz
 
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom
@@ -80,7 +80,7 @@ def process_smiles(smiles):
 
 def main():
     input_file = "GDB20.50000.smi"
-    output_file = "tests/fixtures/gdb20_reference.json"
+    output_file = "tests/fixtures/gdb20_reference.json.gz"
 
     with open(input_file) as f:
         smiles_list = [line.strip() for line in f if line.strip()]
@@ -113,8 +113,7 @@ def main():
     )
     print(f"Embed failures: {total - len(results)}", file=sys.stderr)
 
-    with open(output_file, "w") as f:
-        json.dump(results, f)
+    dump_json_gz(output_file, results)
     print(f"Saved to {output_file} ({len(results)} molecules)", file=sys.stderr)
 
 

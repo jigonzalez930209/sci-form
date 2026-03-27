@@ -13,11 +13,11 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom
 from rdkit import RDLogger
+from fixture_io import load_json_fixture
 RDLogger.logger().setLevel(RDLogger.ERROR)
 
 # Load reference data
-with open("tests/fixtures/gdb20_reference.json") as f:
-    ref_data = json.load(f)
+ref_data = load_json_fixture("tests/fixtures/gdb20_reference.json")
 
 # Load SMILES
 smiles_list = []

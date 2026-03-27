@@ -14,6 +14,7 @@ import json
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom
+from fixture_io import load_json_fixture
 
 class MinstdRand:
     """Match our Rust MinstdRand exactly."""
@@ -152,8 +153,7 @@ def power_eigen_solver(num_eig, mat, n, seed):
 
 
 # Load a specific failing molecule
-with open("tests/fixtures/gdb20_reference.json") as f:
-    ref_mols = json.load(f)
+ref_mols = load_json_fixture("tests/fixtures/gdb20_reference.json")
 
 # Find a molecule with high RMSD from our test output
 # Pick one from the worst-RMSD list

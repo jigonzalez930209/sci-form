@@ -3,7 +3,7 @@
 Three-way comparison: sci-form vs RDKit vs OpenBabel
 Compares pairwise-distance RMSD between conformers from all three methods.
 
-Uses GDB-20 molecules from gdb20_reference.json.
+Uses GDB-20 molecules from gdb20_reference.json or gdb20_reference.json.gz.
 For each molecule:
   1. RDKit: Reference from JSON (seed=42 with explicit H coords)
   2. OpenBabel: OBBuilder + MMFF94/UFF optimization  
@@ -19,6 +19,7 @@ import time
 import subprocess
 import os
 import numpy as np
+from fixture_io import load_json_fixture
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -211,8 +212,7 @@ def main():
         sys.exit(1)
 
     print(f"Loading reference from {ref_file}...")
-    with open(ref_file) as f:
-        ref_mols = json.load(f)[:limit]
+    ref_mols = load_json_fixture(ref_file)[:limit]
     
     seeds = [42] + list(range(n_seeds - 1))
     smiles_list = [m['smiles'] for m in ref_mols]

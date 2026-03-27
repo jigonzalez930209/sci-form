@@ -9,6 +9,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom
 import sys
+from fixture_io import load_json_fixture
 
 class MinstdRand:
     """boost::minstd_rand (a=48271, c=0, m=2^31-1)"""
@@ -232,8 +233,7 @@ def main():
     mol_idx = int(sys.argv[1]) if len(sys.argv) > 1 else 1
     
     # Load reference data
-    with open('tests/fixtures/gdb20_reference.json') as f:
-        data = json.load(f)
+    data = load_json_fixture('tests/fixtures/gdb20_reference.json')
     
     mol_data = data[mol_idx]
     smiles = mol_data['smiles']

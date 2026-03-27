@@ -17,10 +17,11 @@ Output format (JSON):
   }
 }]
 """
-import json, sys, os
+import os, sys
 from multiprocessing import Pool
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom
+from fixture_io import dump_json_gz, load_json_fixture
 
 SEEDS = [42, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
 
@@ -115,12 +116,11 @@ def process_mol(args):
 
 def main():
     # Load GDB-20 reference
-    src = sys.argv[1] if len(sys.argv) > 1 else "tests/fixtures/gdb20_reference.json"
+    src = sys.argv[1] if len(sys.argv) > 1 else "tests/fixtures/gdb20_reference.json.gz"
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 1000
     
     print(f"Loading molecules from {src}...")
-    with open(src) as f:
-        ref_mols = json.load(f)
+    ref_mols = load_json_fixture(src)
     
     smiles_list = [(m["smiles"], i) for i, m in enumerate(ref_mols[:limit])]
     print(f"Processing {len(smiles_list)} molecules with {len(SEEDS)} seeds each...")
@@ -136,9 +136,8 @@ def main():
     print(f"Success: {len(results)}/{len(smiles_list)} molecules, "
           f"avg {avg_seeds:.1f} conformers per molecule")
     
-    out_path = "tests/fixtures/gdb20_ensemble.json"
-    with open(out_path, 'w') as f:
-        json.dump(results, f)
+    out_path = "tests/fixtures/gdb20_ensemble.json.gz"
+    dump_json_gz(out_path, results)
     
     sz = os.path.getsize(out_path) / 1e6
     print(f"Saved to {out_path} ({sz:.1f} MB)")

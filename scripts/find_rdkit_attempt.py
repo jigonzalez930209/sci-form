@@ -7,6 +7,7 @@ import json, sys
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom
 import numpy as np
+from fixture_io import load_json_fixture
 
 def find_rdkit_attempt(smiles, max_check=200):
     """Find which attempt number RDKit succeeds on."""
@@ -23,8 +24,7 @@ def find_rdkit_attempt(smiles, max_check=200):
     return -1
 
 def main():
-    with open('tests/fixtures/gdb20_reference.json') as f:
-        data = json.load(f)
+    data = load_json_fixture('tests/fixtures/gdb20_reference.json')
     
     # Check specific molecules
     indices = [int(x) for x in sys.argv[1:]] if len(sys.argv) > 1 else list(range(20))

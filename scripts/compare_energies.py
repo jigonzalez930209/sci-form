@@ -13,6 +13,7 @@ This tells us whether both codes converge to the same energy minimum.
 import json
 import sys
 import numpy as np
+from fixture_io import load_json_fixture
 
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom, rdMolDescriptors
@@ -112,8 +113,7 @@ def main():
         return
     
     # Load our coords from reference data
-    with open("tests/fixtures/gdb20_reference.json") as f:
-        ref_data = json.load(f)
+    ref_data = load_json_fixture("tests/fixtures/gdb20_reference.json")
     
     ref_mol = None
     for ref in ref_data:

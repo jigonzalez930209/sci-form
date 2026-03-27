@@ -10,6 +10,7 @@ from rdkit.Chem import AllChem, rdDistGeom, rdMolDescriptors
 from rdkit import RDLogger
 import numpy as np
 import json
+from fixture_io import load_json_fixture
 
 RDLogger.logger().setLevel(RDLogger.ERROR)
 
@@ -37,8 +38,7 @@ def main():
     n = mol.GetNumAtoms()
     
     # Load reference data to get bounds
-    with open("tests/fixtures/gdb20_reference.json") as f:
-        refs = json.load(f)
+    refs = load_json_fixture("tests/fixtures/gdb20_reference.json")
     
     # Find this molecule
     ref = None
