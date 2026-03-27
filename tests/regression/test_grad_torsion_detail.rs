@@ -110,8 +110,8 @@ fn build_csd_torsions(t: &[RefTorsion]) -> Vec<sci_form::forcefield::etkdg_3d::M
 
 #[test]
 fn test_torsion_gradient_detail() {
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .unwrap();
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
 
     let mol_idx = 47; // C#CCNCC1(C)CC2C(C(C)O)CCCCC2(C)C1 — worst case
