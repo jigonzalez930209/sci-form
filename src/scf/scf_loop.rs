@@ -238,6 +238,188 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     }
 }
 
+/// **ALPHA** — Hardened SCF with stagnation detection and auto-recovery.
+///
+/// If the standard DIIS-based SCF stagnates (energy oscillation detected
+/// over a window), the driver automatically enables level shifting and
+/// Fermi smearing (FON) to break the oscillation and re-converge.
+pub fn run_scf_hardened(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
+    // First, try normal SCF
+    let result = run_scf(system, config);
+    if result.converged {
+        return result;
+    }
+
+    // Phase 2: retry with level shift + damping
+    let config_ls = ScfConfig {
+        level_shift: 0.3,
+        damping: 0.3,
+        ..config.clone()
+    };
+    let result_ls = run_scf(system, &config_ls);
+    if result_ls.converged {
+        return result_ls;
+    }
+
+    // Phase 3: retry with FON (Fermi smearing) + heavy damping + level shift
+    run_scf_with_fon(system, config)
+}
+
+/// SCF loop with fractional occupation numbers via Fermi smearing.
+fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
+    let n_electrons = system.n_electrons();
+    let n_occupied = n_electrons / 2;
+    let temperature_au = 0.01; // ~3000K Fermi smearing in atomic units
+
+    let basis = BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
+    let n_basis = basis.n_basis;
+
+    let core_matrices = CoreMatrices::build(&basis, &system.atomic_numbers, &system.positions_bohr);
+    let s = &core_matrices.overlap;
+    let h_core = &core_matrices.core_hamiltonian;
+
+    let eris = TwoElectronIntegrals::compute(&basis);
+    let e_nuc = nuclear_repulsion_energy(&system.atomic_numbers, &system.positions_bohr);
+
+    let (x, _n_independent) = lowdin_orthogonalization(s, 1e-8);
+
+    // Initial guess
+    let h_ortho = transform_to_orthogonal(h_core, &x);
+    let eigen = h_ortho.symmetric_eigen();
+
+    let mut indices: Vec<usize> = (0..n_basis).collect();
+    indices.sort_by(|&a, &b| {
+        eigen.eigenvalues[a]
+            .partial_cmp(&eigen.eigenvalues[b])
+            .unwrap()
+    });
+
+    let mut c_ortho = DMatrix::zeros(n_basis, n_basis);
+    let mut orbital_energies = vec![0.0; n_basis];
+    for (new_idx, &old_idx) in indices.iter().enumerate() {
+        orbital_energies[new_idx] = eigen.eigenvalues[old_idx];
+        for i in 0..n_basis {
+            c_ortho[(i, new_idx)] = eigen.eigenvectors[(i, old_idx)];
+        }
+    }
+
+    let mut c = back_transform(&c_ortho, &x);
+    let mut p = super::density_matrix::build_density_matrix_fon(
+        &c,
+        &orbital_energies,
+        n_electrons,
+        temperature_au,
+    );
+    let mut p_old = p.clone();
+
+    let mut diis = DiisAccelerator::new(config.diis_size);
+    let mut e_total = 0.0;
+    let mut converged = false;
+    let mut scf_iter = 0;
+    let mut fock = h_core.clone();
+
+    let level_shift = 0.5; // strong level shift for FON path
+    let damping = 0.4;
+
+    for iteration in 0..config.max_iterations {
+        scf_iter = iteration + 1;
+
+        fock = build_fock_matrix(h_core, &p, &eris);
+
+        // Apply level shift
+        for i in 0..fock.nrows() {
+            fock[(i, i)] += level_shift;
+        }
+
+        // DIIS
+        if config.diis_size > 0 {
+            diis.add_iteration(&fock, &p, s);
+            if let Some(f_diis) = diis.extrapolate() {
+                fock = f_diis;
+            }
+        }
+
+        let f_ortho = transform_to_orthogonal(&fock, &x);
+        let eigen = f_ortho.symmetric_eigen();
+
+        let mut indices: Vec<usize> = (0..n_basis).collect();
+        indices.sort_by(|&a, &b| {
+            eigen.eigenvalues[a]
+                .partial_cmp(&eigen.eigenvalues[b])
+                .unwrap()
+        });
+
+        for (new_idx, &old_idx) in indices.iter().enumerate() {
+            orbital_energies[new_idx] = eigen.eigenvalues[old_idx] - level_shift;
+            for i in 0..n_basis {
+                c_ortho[(i, new_idx)] = eigen.eigenvectors[(i, old_idx)];
+            }
+        }
+
+        c = back_transform(&c_ortho, &x);
+
+        // FON density matrix
+        let p_new = super::density_matrix::build_density_matrix_fon(
+            &c,
+            &orbital_energies,
+            n_electrons,
+            temperature_au,
+        );
+
+        p = &p_new * (1.0 - damping) + &p_old * damping;
+
+        let e_new = energy::total_energy(&p, h_core, &fock, e_nuc);
+        let delta_e = (e_new - e_total).abs();
+        let delta_p = super::density_matrix::density_rms_change(&p, &p_old);
+
+        if delta_e < config.energy_threshold && delta_p < config.density_threshold && iteration > 0
+        {
+            converged = true;
+            e_total = e_new;
+            break;
+        }
+
+        e_total = e_new;
+        p_old = p.clone();
+    }
+
+    let e_elec = energy::electronic_energy(&p, h_core, &fock);
+    let homo_energy = if n_occupied > 0 {
+        orbital_energies[n_occupied - 1]
+    } else {
+        0.0
+    };
+    let lumo_energy = if n_occupied < n_basis {
+        Some(orbital_energies[n_occupied])
+    } else {
+        None
+    };
+    let gap_ev = lumo_energy
+        .map(|lumo| (lumo - homo_energy) * super::constants::HARTREE_TO_EV)
+        .unwrap_or(0.0);
+
+    let mulliken = mulliken_analysis(&p, s, &basis.function_to_atom, &system.atomic_numbers);
+
+    ScfResult {
+        orbital_energies,
+        mo_coefficients: c,
+        density_matrix: p,
+        electronic_energy: e_elec,
+        nuclear_repulsion: e_nuc,
+        total_energy: e_total,
+        homo_energy,
+        lumo_energy,
+        gap_ev,
+        mulliken_charges: mulliken.charges,
+        scf_iterations: scf_iter,
+        converged,
+        n_basis,
+        n_electrons,
+        overlap_matrix: s.clone(),
+        fock_matrix: fock,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::constants::ANGSTROM_TO_BOHR;

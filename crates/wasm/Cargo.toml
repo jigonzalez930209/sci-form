@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-wasm"
-version = "0.11.2"
+version = "0.12.0"
 edition = "2021"
 description = "WASM/TypeScript bindings for high-performance 3D molecular conformer generation"
 license = "MIT"
@@ -25,9 +25,23 @@ experimental-sdr = ["sci-form/experimental-sdr"]
 experimental-mbh = ["sci-form/experimental-mbh"]
 experimental-cpm = ["sci-form/experimental-cpm"]
 experimental-gsm = ["sci-form/experimental-gsm"]
+alpha-dynamics-live = ["sci-form/alpha-dynamics-live"]
+alpha-dft = ["sci-form/alpha-dft", "sci-form/alpha-obara-saika"]
+alpha-reaxff = ["sci-form/alpha-reaxff"]
+alpha-mlff = ["sci-form/alpha-mlff"]
+alpha-obara-saika = ["sci-form/alpha-obara-saika"]
+alpha-cga = ["sci-form/alpha-cga"]
+alpha-gsm = ["sci-form/alpha-gsm"]
+alpha-sdr = ["sci-form/alpha-sdr"]
+alpha-imd = ["sci-form/alpha-imd", "alpha-dynamics-live"]
+beta-kpm = ["sci-form/beta-kpm"]
+beta-mbh = ["sci-form/beta-mbh"]
+beta-randnla = ["sci-form/beta-randnla"]
+beta-riemannian = ["sci-form/beta-riemannian"]
+beta-cpm = ["sci-form/beta-cpm"]
 
 [dependencies]
-sci-form = { path = "../..", version = "0.11.2", default-features = false }
+sci-form = { path = "../..", version = "0.12.0", default-features = false }
 wasm-bindgen = "0.2"
 wasm-bindgen-rayon = { version = "1.3.0", optional = true }
 serde = "1.0"

@@ -36,3 +36,8 @@ pub mod scf_loop;
 pub mod two_electron;
 pub mod types;
 pub mod validation;
+
+#[cfg(feature = "alpha-obara-saika")]
+pub mod obara_saika;
+#[cfg(feature = "alpha-obara-saika")]
+pub mod screening;

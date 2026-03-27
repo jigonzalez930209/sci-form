@@ -28,6 +28,9 @@ pub mod torsion_scan;
 pub mod traits;
 pub mod uff;
 
+#[cfg(feature = "alpha-reaxff")]
+pub mod reaxff;
+
 pub use bounds_ff::*;
 pub use dg_terms::*;
 pub use energy::*;

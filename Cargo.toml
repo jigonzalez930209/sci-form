@@ -3,7 +3,7 @@ members = [".", "crates/cli", "crates/python", "crates/wasm"]
 
 [package]
 name = "sci-form"
-version = "0.11.2"
+version = "0.12.0"
 edition = "2021"
 authors = ["Sci-Form Team"]
 description = "High-performance 3D molecular conformer generation using ETKDG distance geometry"
@@ -48,6 +48,12 @@ experimental-gsm = ["alpha-gsm"]
 alpha-cga = []
 alpha-gsm = []
 alpha-sdr = []
+alpha-dynamics-live = []
+alpha-dft = []
+alpha-reaxff = []
+alpha-obara-saika = []
+alpha-mlff = []
+alpha-imd = []
 # Beta — tested, approaching core readiness
 beta-kpm = []
 beta-mbh = []

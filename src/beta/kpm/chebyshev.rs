@@ -102,49 +102,45 @@ impl ChebyshevExpansion {
         let b = (e_max + e_min) / 2.0;
         let h_tilde = rescale_matrix(h, e_min, e_max);
 
-        // Stochastic trace estimation using random ±1 vectors
-        let mut moments = vec![0.0; order];
-
+        // Generate all random ±1/sqrt(N) vectors upfront for deterministic results.
         use rand::rngs::StdRng;
         use rand::{Rng, SeedableRng};
+        let sqrt_n = (n as f64).sqrt();
         let mut rng = StdRng::seed_from_u64(seed);
+        let vectors: Vec<Vec<f64>> = (0..n_vectors)
+            .map(|_| {
+                (0..n)
+                    .map(|_| {
+                        if rng.gen_bool(0.5) {
+                            1.0 / sqrt_n
+                        } else {
+                            -1.0 / sqrt_n
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
 
-        for _v in 0..n_vectors {
-            // Random vector r with entries ±1/sqrt(N)
-            let mut r = vec![0.0; n];
-            for i in 0..n {
-                r[i] = if rng.gen_bool(0.5) {
-                    1.0 / (n as f64).sqrt()
-                } else {
-                    -1.0 / (n as f64).sqrt()
-                };
-            }
+        // Stochastic trace estimation — each random vector is independent.
+        // With the `parallel` feature vectors are processed across threads.
+        #[cfg(feature = "parallel")]
+        let moments: Vec<f64> = {
+            use rayon::prelude::*;
+            let partials: Vec<Vec<f64>> = vectors
+                .par_iter()
+                .map(|r| compute_moments_for_vector(r, &h_tilde, order))
+                .collect();
+            average_moments(partials, order, n_vectors)
+        };
 
-            // T_0 * r = r
-            let mut t_prev = r.clone();
-            // T_1 * r = H_tilde * r
-            let mut t_curr = matvec(&h_tilde, &r);
-
-            // mu_0 = r^T * T_0 * r = r^T * r = 1 (normalized)
-            moments[0] += dot(&r, &t_prev);
-
-            if order > 1 {
-                moments[1] += dot(&r, &t_curr);
-            }
-
-            for k in 2..order {
-                // T_{k} = 2 * H_tilde * T_{k-1} - T_{k-2}
-                let t_next = chebyshev_step(&h_tilde, &t_curr, &t_prev);
-                moments[k] += dot(&r, &t_next);
-                t_prev = t_curr;
-                t_curr = t_next;
-            }
-        }
-
-        // Average over random vectors
-        for m in moments.iter_mut() {
-            *m /= n_vectors as f64;
-        }
+        #[cfg(not(feature = "parallel"))]
+        let moments: Vec<f64> = {
+            let partials: Vec<Vec<f64>> = vectors
+                .iter()
+                .map(|r| compute_moments_for_vector(r, &h_tilde, order))
+                .collect();
+            average_moments(partials, order, n_vectors)
+        };
 
         Self {
             moments,
@@ -214,6 +210,38 @@ impl ChebyshevExpansion {
 
         (weight * sum * self.n as f64).max(0.0)
     }
+}
+
+/// Compute Chebyshev moments for a single random vector `r`.
+fn compute_moments_for_vector(r: &[f64], h_tilde: &DMatrix<f64>, order: usize) -> Vec<f64> {
+    let mut moments = vec![0.0; order];
+    let mut t_prev = r.to_vec();
+    let mut t_curr = matvec(h_tilde, r);
+    moments[0] = dot(r, &t_prev);
+    if order > 1 {
+        moments[1] = dot(r, &t_curr);
+    }
+    for k in 2..order {
+        let t_next = chebyshev_step(h_tilde, &t_curr, &t_prev);
+        moments[k] = dot(r, &t_next);
+        t_prev = t_curr;
+        t_curr = t_next;
+    }
+    moments
+}
+
+/// Average a collection of per-vector moment arrays.
+fn average_moments(partials: Vec<Vec<f64>>, order: usize, n_vectors: usize) -> Vec<f64> {
+    let mut moments = vec![0.0; order];
+    for local in partials {
+        for (m, &lm) in moments.iter_mut().zip(local.iter()) {
+            *m += lm;
+        }
+    }
+    for m in moments.iter_mut() {
+        *m /= n_vectors as f64;
+    }
+    moments
 }
 
 /// Dense matrix-vector product.

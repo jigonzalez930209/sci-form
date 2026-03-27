@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-python"
-version = "0.11.2"
+version = "0.12.0"
 edition = "2021"
 description = "Python bindings for sci-form 3D conformer generation"
 
@@ -22,8 +22,23 @@ experimental-sdr = ["sci-form-core/experimental-sdr"]
 experimental-mbh = ["sci-form-core/experimental-mbh"]
 experimental-cpm = ["sci-form-core/experimental-cpm"]
 experimental-gsm = ["sci-form-core/experimental-gsm"]
+alpha-dynamics-live = ["sci-form-core/alpha-dynamics-live"]
+alpha-dft = ["sci-form-core/alpha-dft", "sci-form-core/alpha-obara-saika"]
+alpha-reaxff = ["sci-form-core/alpha-reaxff"]
+alpha-mlff = ["sci-form-core/alpha-mlff"]
+alpha-obara-saika = ["sci-form-core/alpha-obara-saika"]
+alpha-cga = ["sci-form-core/alpha-cga"]
+alpha-gsm = ["sci-form-core/alpha-gsm"]
+alpha-sdr = ["sci-form-core/alpha-sdr"]
+alpha-imd = ["sci-form-core/alpha-imd", "alpha-dynamics-live"]
+beta-kpm = ["sci-form-core/beta-kpm"]
+beta-mbh = ["sci-form-core/beta-mbh"]
+beta-randnla = ["sci-form-core/beta-randnla"]
+beta-riemannian = ["sci-form-core/beta-riemannian"]
+beta-cpm = ["sci-form-core/beta-cpm"]
 
 [dependencies]
-sci-form-core = { path = "../..", package = "sci-form", version = "0.11.2", default-features = false }
+sci-form-core = { path = "../..", package = "sci-form", version = "0.12.0", default-features = false }
 pyo3 = { version = "0.22", features = ["extension-module"] }
 rayon = "1.10"
+nalgebra = "0.32"

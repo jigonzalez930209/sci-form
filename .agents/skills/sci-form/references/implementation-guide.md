@@ -22,7 +22,11 @@ Use this repo when you need to implement or fix chemistry functionality across t
 
 - `parallel` is the default Rust feature and should be preserved unless a change explicitly targets single-threaded behavior.
 - `experimental-gpu` implies the GPU rendering and compute stack; keep its code paths isolated from stable CPU logic.
-- Alpha and beta features are intentionally non-stable and may move faster than core APIs, but they still need consistent tests and docs.
+- Alpha features are proof-of-concept and may change API between minor versions.
+- Beta features are validated experimental surfaces and should remain API-stable within a minor version.
+- The current experimental set is:
+	- Alpha: DFT, ReaxFF, MLFF, Obara-Saika, CGA, GSM, SDR, Dynamics-Live, IMD
+	- Beta: KPM, MBH, RandNLA, Riemannian, CPM
 
 ## How to implement a change
 
@@ -52,6 +56,57 @@ Use this repo when you need to implement or fix chemistry functionality across t
 2. Prefer allocation reductions, parallel iteration, and stable numeric tolerances over new algorithms.
 3. Measure on the specific workload that motivated the change before broadening the scope.
 
+## Parallelization patterns
+
+- Keep parallelism behind `#[cfg(feature = "parallel")]` so single-threaded builds remain valid.
+- Extract pure helpers before parallelizing. Current repo patterns:
+	- `compute_aevs` delegates per-atom work to a helper and parallelizes the outer atom loop.
+	- `compute_reaxff_gradient` parallelizes independent central-difference coordinate displacements.
+	- `ChebyshevExpansion::from_matrix` computes per-probe moments independently and reduces at the end.
+- Prefer collecting `Result<T, String>` in parallel and failing only after collection, instead of panicking inside rayon workers.
+- Preserve determinism when randomization is involved by generating seeds, probes, or task slices before the parallel section.
+
+### Recommended shape for a parallel refactor
+
+1. Isolate a side-effect-free helper for one work item.
+2. Precompute shared immutable inputs.
+3. Add `#[cfg(feature = "parallel")]` and a sequential fallback path.
+4. Keep output ordering identical to the sequential path.
+5. Validate with and without the `parallel` feature.
+
+## Binding update checklist
+
+When a public function is added or changed, check each layer explicitly.
+
+### Rust core
+
+- Public signature, docs, units, and feature gates under `src/`
+- Targeted unit or regression tests
+
+### Python
+
+- PyO3 exposure under `crates/python/src/`
+- `sci_form.alpha` or `sci_form.beta` submodule placement when experimental
+- PyO3 0.22 API conventions such as `PyModule::new_bound()`
+
+### WASM / TypeScript
+
+- `wasm-bindgen` export in `crates/wasm/src/`
+- JSON-string or typed-array boundary preserved
+- JS re-export and declaration files in `crates/wasm/js/`
+- Subpath exposure via `sci-form-wasm/alpha` or `sci-form-wasm/beta` when experimental
+
+### CLI
+
+- Subcommand or flag wiring in `crates/cli/`
+- JSON output shape aligned with Rust surface
+
+### Documentation
+
+- `README.md` or `docs/` for user-facing behavior when needed
+- `.agents/skills/sci-form/references/api-surface.md` for AI-agent lookup
+- `.agents/skills/sci-form/examples/` when the change affects usage patterns
+
 ## Public surface synchronization rules
 
 - If a Rust function is public and user-facing, assume Python, WASM, CLI, and docs may need matching updates.
@@ -72,6 +127,24 @@ Use this repo when you need to implement or fix chemistry functionality across t
 - Bindings should stay thin and preserve native semantics.
 - Tests should assert scientific invariants, not just snapshot text.
 - Docs should explain units, expected inputs, and any feature-gate requirements.
+
+## Experimental algorithm map
+
+Use this when routing work quickly.
+
+- Alpha DFT: minimal-basis Kohn-Sham, XC methods SVWN/PBE, depends on ERI infrastructure.
+- Alpha ReaxFF: reactive bonded/nonbonded model, EEM charge equilibration, gradient path is parallelizable.
+- Alpha MLFF: atomic environment vectors and neural network energy/force inference.
+- Alpha Obara-Saika: ERI engine, Boys functions, Schwarz screening.
+- Alpha CGA: rigid-body and torsional geometry operations via conformal geometric algebra.
+- Alpha GSM: transition-state and reaction-path search by string evolution.
+- Alpha SDR: coordinate embedding from distance constraints using semidefinite relaxation.
+- Alpha Dynamics-Live and IMD: interactive molecular dynamics and steering integration.
+- Beta KPM: O(N) DOS and population estimates via Chebyshev moments.
+- Beta MBH: reduced-DOF vibrational analysis for large systems.
+- Beta RandNLA: randomized sparse diagonalization path for EHT-like problems.
+- Beta Riemannian: PSD geometry operations for metrics, projections, and gradients.
+- Beta CPM: fixed-potential electrochemical charge equilibration.
 
 ## Practical decision rules
 
