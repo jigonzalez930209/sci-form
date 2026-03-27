@@ -221,8 +221,8 @@ fn test_gdb20_parallel() {
         eprintln!("SKIP {fixture}: run scripts/generate_gdb20_reference.py to generate it");
         return;
     }
-    let ref_data =
-        sci_form::fixture_io::read_text_fixture(fixture).expect("Failed to read gdb20_reference fixture");
+    let ref_data = sci_form::fixture_io::read_text_fixture(fixture)
+        .expect("Failed to read gdb20_reference fixture");
     let mut ref_mols: Vec<RefMolecule> =
         serde_json::from_str(&ref_data).expect("Invalid gdb20_reference fixture");
 
