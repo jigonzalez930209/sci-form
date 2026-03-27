@@ -122,8 +122,8 @@ fn pairwise_rmsd_f64(coords: &nalgebra::DMatrix<f64>, ref_atoms: &[RefAtom]) -> 
 /// Compare power method eigendecomposition with nalgebra
 #[test]
 fn test_trace_pipeline() {
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .unwrap();
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
 
     let limit: usize = std::env::var("GDB20_LIMIT")
