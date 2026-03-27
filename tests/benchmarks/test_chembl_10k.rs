@@ -178,8 +178,8 @@ fn validate_chembl_molecule(smiles: &str, chembl_id: &str, heavy_atoms: usize) -
 
 #[test]
 fn test_chembl_10k() {
-    let chembl_file = std::env::var("CHEMBL_FILE")
-        .unwrap_or_else(|_| "data/chembl_1k_practical.smi".to_string());
+    let chembl_file =
+        std::env::var("CHEMBL_FILE").unwrap_or_else(|_| "data/chembl_1k_practical.smi".to_string());
     let data = fs::read_to_string(&chembl_file).unwrap_or_else(|_| {
         panic!(
             "File not found: {}. Run scripts/extract_chembl_practical.py first",
