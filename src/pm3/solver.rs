@@ -540,9 +540,7 @@ pub(crate) fn solve_pm3_with_state(
                         // Coulomb integral (μμ|νν)
                         let coulomb = if la == 0 && lb == 0 {
                             pa.gss // (ss|ss)
-                        } else if la == 0 && lb == 1 {
-                            pa.gsp // (ss|pp)
-                        } else if la == 1 && lb == 0 {
+                        } else if (la == 0 && lb == 1) || (la == 1 && lb == 0) {
                             pa.gsp // (pp|ss)
                         } else if la == 1 && lb == 1 {
                             if ma == mb {

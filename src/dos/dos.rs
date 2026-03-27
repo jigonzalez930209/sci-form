@@ -7,6 +7,7 @@ use crate::eht::basis::{build_basis, AtomicOrbital};
 use crate::eht::overlap::build_overlap_matrix;
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 fn gaussian_value(energy: f64, center: f64, norm: f64, inv_2s2: f64) -> f64 {
     norm * (-(energy - center).powi(2) * inv_2s2).exp()
 }
