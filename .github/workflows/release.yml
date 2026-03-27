@@ -10,6 +10,19 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PYTHON_BINDING_FEATURES: >-
+    parallel
+    alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
+    beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
+  WASM_WEB_FEATURES: >-
+    parallel experimental-gpu
+    alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
+    alpha-dynamics-live alpha-imd
+    beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
+  WASM_NODE_FEATURES: >-
+    alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
+    alpha-dynamics-live alpha-imd
+    beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Release pipeline:
@@ -173,7 +186,7 @@ jobs:
       - name: Install maturin
         run: pip install maturin
       - name: Build wheel
-        run: cd crates/python && maturin build --release
+        run: cd crates/python && maturin build --release --features "${PYTHON_BINDING_FEATURES}"
       - uses: actions/upload-artifact@v6
         with:
           name: python-wheel-${{ matrix.os }}
@@ -193,9 +206,15 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build WASM packages (web + nodejs)
-        run: cd crates/wasm && bash build.sh --web-features "parallel experimental-gpu"
+        run: cd crates/wasm && bash build.sh --web-features "${WASM_WEB_FEATURES}" --node-features "${WASM_NODE_FEATURES}"
+      - name: Check alpha/beta subpath packaging
+        run: |
+          test -f crates/wasm/pkg/alpha/index.js
+          test -f crates/wasm/pkg/alpha/index.d.ts
+          test -f crates/wasm/pkg/beta/index.js
+          test -f crates/wasm/pkg/beta/index.d.ts
       - name: Verify Node.js install
-        run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.log('✓ Node.js WASM works');"
+        run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const alpha = require('./alpha'); const beta = require('./beta'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.assert(typeof sci.alpha_compute_dft === 'function', 'missing alpha root export'); console.assert(typeof sci.beta_compute_kpm_dos === 'function', 'missing beta root export'); console.assert(typeof alpha.alpha_modules_info === 'function', 'missing alpha subpath export'); console.assert(typeof beta.beta_modules_info === 'function', 'missing beta subpath export'); console.log('✓ Node.js WASM works with alpha/beta exports');"
       - uses: actions/upload-artifact@v6
         with:
           name: wasm-pkg
@@ -241,6 +260,28 @@ jobs:
           assert not failed, f'Failed: {failed}'
           print(f'OK: {len(results)} molecules embedded')
           "
+      - name: Smoke test — experimental Python bindings
+        run: |
+          python3 -c "
+          from sci_form.alpha import dft_calculate, reaxff_gradient, alpha_compute_aevs
+          from sci_form.beta import kpm_dos, eht_randnla, cpm_charges
+          import sci_form
+          result = sci_form.embed('CCO', 42)
+          assert result.error is None, result.error
+          dft = dft_calculate(result.elements, result.coords, 'pbe')
+          reax = reaxff_gradient(result.elements, result.coords)
+          aevs = alpha_compute_aevs(result.elements, result.coords)
+          kpm = kpm_dos(result.elements, result.coords, order=64)
+          randnla = eht_randnla(result.elements, result.coords, sketch_size=8)
+          cpm = cpm_charges(result.elements, result.coords, potential=0.0)
+          assert dft.n_basis > 0
+          assert len(reax.gradient) == len(result.coords)
+          assert aevs.n_atoms == result.num_atoms
+          assert len(kpm.energies) > 0
+          assert len(randnla.orbital_energies) > 0
+          assert len(cpm.charges) == result.num_atoms
+          print('OK: experimental Python bindings work')
+          "
 
   # ─── Verify: WASM/Node package installs cleanly ───────────────────────────
   verify-node:
@@ -260,9 +301,15 @@ jobs:
         run: |
           node -e "
           const sci = require('./pkg-node/sci_form_wasm.js');
+          const alpha = require('./pkg-node/alpha');
+          const beta = require('./pkg-node/beta');
           const result = JSON.parse(sci.embed('Cn1cnc2c1c(=O)n(c(=O)n2C)C', 42));
           if (result.error) throw new Error('embed failed: ' + result.error);
           if (result.num_atoms !== 24) throw new Error('expected 24 atoms, got ' + result.num_atoms);
+          if (typeof sci.alpha_compute_dft !== 'function') throw new Error('missing alpha root export');
+          if (typeof sci.beta_compute_kpm_dos !== 'function') throw new Error('missing beta root export');
+          if (typeof alpha.alpha_modules_info !== 'function') throw new Error('missing alpha subpath export');
+          if (typeof beta.beta_modules_info !== 'function') throw new Error('missing beta subpath export');
           console.log('OK: ' + result.num_atoms + ' atoms embedded');
           "
 
