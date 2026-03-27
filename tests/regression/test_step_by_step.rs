@@ -121,8 +121,8 @@ fn build_csd_torsions(
 
 #[test]
 fn test_step_by_step_trace() {
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .unwrap();
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
 
     // Target: mol[10] = N#Cc1ccc(Br)c(CC2CCCCC2)c1C=O (aromatic, RMSD=0.9280)
