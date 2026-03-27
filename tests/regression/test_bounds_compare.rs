@@ -204,8 +204,8 @@ fn compare_bounds(ref_mol: &RefMolecule, rdkit_file: &str) {
 #[test]
 #[ignore = "requires RDKit-generated /tmp/rdkit_bounds_0.json"]
 fn test_compare_bounds_mol0() {
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .unwrap();
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
     compare_bounds(&ref_mols[0], "/tmp/rdkit_bounds_0.json");
 }
@@ -215,8 +215,8 @@ fn test_compare_bounds_mol0() {
 #[test]
 #[ignore = "requires RDKit-generated /tmp/rdkit_bounds_fail1.json"]
 fn test_compare_bounds_fail1() {
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .unwrap();
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
     let target = "C#CC1C(C(O)(CC)CN)CCCC(O)C12CCCO2";
     let ref_mol = ref_mols
