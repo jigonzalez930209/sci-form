@@ -110,3 +110,28 @@ pub fn compute_ani(elements_json: &str, coords_flat_json: &str) -> String {
         Err(e) => json_error(&e),
     }
 }
+
+/// **ALPHA** — Run Kohn-Sham DFT calculation.
+///
+/// `method`: `"svwn"` (LDA) or `"pbe"` (GGA).
+/// Returns JSON DftResult with energy, orbital energies, gap, Mulliken charges.
+#[cfg(feature = "alpha-dft")]
+#[wasm_bindgen]
+pub fn compute_dft(elements_json: &str, coords_flat_json: &str, method: &str) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    let dft_method = match method {
+        "pbe" => sci_form::dft::DftMethod::Pbe,
+        _ => sci_form::dft::DftMethod::Svwn,
+    };
+    let config = sci_form::dft::ks_fock::DftConfig {
+        method: dft_method,
+        ..Default::default()
+    };
+    match sci_form::dft::solve_ks_dft(&elems, &positions, &config) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}

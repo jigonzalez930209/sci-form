@@ -1,6 +1,8 @@
 use pyo3::prelude::*;
 
+mod alpha;
 mod analysis;
+mod beta;
 mod compare;
 mod dynamics;
 mod eht;
@@ -48,5 +50,7 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     solvation::register(m)?;
     rings::register(m)?;
     experimental::register(m)?;
+    alpha::register(m)?;
+    beta::register(m)?;
     Ok(())
 }
