@@ -4,7 +4,9 @@
 //! by minimizing the grand potential Ω = E_elec - μ·Q.
 
 /// CPM configuration.
-#[derive(Debug, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpmConfig {
     /// Electrochemical potential in eV (vs vacuum).
     /// SHE ≈ -4.44 eV. Range: [-5.5, -3.5] eV for typical electrochemistry.

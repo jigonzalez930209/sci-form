@@ -7,4 +7,4 @@ mod lbfgs;
 mod manifold;
 
 pub use lbfgs::{DistanceConstraint, RiemannianConfig, RiemannianLbfgs, RiemannianResult};
-pub use manifold::{psd_projection, psd_retraction, tangent_projection, PsdManifold};
+pub use manifold::{psd_distance, psd_projection, psd_retraction, tangent_projection, PsdManifold};

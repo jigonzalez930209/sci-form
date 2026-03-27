@@ -6,11 +6,12 @@
 use nalgebra::{DMatrix, DVector, SymmetricEigen};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use serde::{Deserialize, Serialize};
 
 use super::nystrom::{GaussianSketch, NystromApprox};
 
 /// Configuration for the randomized EHT solver.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RandNlaConfig {
     /// Sketch size k. If None, uses default_k(N).
     pub sketch_size: Option<usize>,
