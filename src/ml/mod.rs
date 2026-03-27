@@ -13,6 +13,13 @@ pub mod pharmacophore;
 pub mod rdf_descriptors;
 pub mod whim;
 
+#[cfg(feature = "alpha-mlff")]
+pub mod inference;
+#[cfg(feature = "alpha-mlff")]
+pub mod mlff;
+#[cfg(feature = "alpha-mlff")]
+pub mod symmetry_functions;
+
 pub use descriptors::{
     compute_3d_descriptors, compute_descriptors, Descriptors3D, MolecularDescriptors,
 };
