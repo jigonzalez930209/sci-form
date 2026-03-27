@@ -16,6 +16,11 @@ export default defineConfig({
   title: 'sci-form',
   description: 'High-performance 3D molecular conformer generation from SMILES',
   
+  ignoreDeadLinks: [
+    // Ignore links to source code files outside /docs/
+    /^\.\.\/\.\.\//,
+  ],
+  
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/sci-form/logo.svg' }],
   ],
