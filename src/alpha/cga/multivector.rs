@@ -402,9 +402,9 @@ mod tests {
 
     #[test]
     fn test_reverse_identity_for_scalars() {
-        let s = Multivector::blade(0, 3.14);
+        let s = Multivector::blade(0, std::f64::consts::PI);
         let rev = s.reverse();
-        assert!((rev.scalar() - 3.14).abs() < 1e-14);
+        assert!((rev.scalar() - std::f64::consts::PI).abs() < 1e-14);
     }
 
     #[test]

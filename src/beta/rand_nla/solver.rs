@@ -267,7 +267,6 @@ mod tests {
             seed: 42,
             max_error: 1.0, // disable fallback
             fallback_enabled: false,
-            ..Default::default()
         };
         let (e_rand, _, info) = solve_eht_randnla(&h, &s, &config_rand);
 

@@ -235,7 +235,7 @@ mod tests {
         assert_eq!(decomp.blocks[0].atom_indices.len(), 6);
         assert!(decomp.blocks[0].is_aromatic);
         assert_eq!(decomp.flexible_atoms.len(), 6); // 6 hydrogens
-        assert_eq!(decomp.n_dof_reduced, 6 * 1 + 3 * 6); // 6 + 18 = 24
+        assert_eq!(decomp.n_dof_reduced, 24); // 6 + 18 = 24
         assert_eq!(decomp.n_dof_full, 36);
     }
 

@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn test_extract_coordinates_from_known() {
         // Build Gram from known coords
-        let known = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+        let known = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
         let n = 3;
         let mut gram = DMatrix::zeros(n, n);
         for i in 0..n {
