@@ -21,6 +21,7 @@ cd "$SCRIPT_DIR"
 PROFILE="release"
 WEB_ONLY=false
 WEB_FEATURES="parallel"
+NODE_FEATURES=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -42,6 +43,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --profile=*)
       PROFILE="${1#*=}"
+      shift
+      ;;
+    --node-features)
+      NODE_FEATURES="$2"
+      shift 2
+      ;;
+    --node-features=*)
+      NODE_FEATURES="${1#*=}"
       shift
       ;;
     *)
@@ -73,23 +82,86 @@ const fs = require('fs');
 const pkgPath = 'pkg/package.json';
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
-['snippets', 'README.md'].forEach(f => {
+['snippets', 'README.md', 'alpha', 'beta'].forEach(f => {
   if (!pkg.files.includes(f)) pkg.files.push(f);
 });
 pkg.readme = 'README.md';
+pkg.exports = {
+  '.': {
+    types: './sci_form_wasm.d.ts',
+    default: './sci_form_wasm.js'
+  },
+  './alpha': {
+    types: './alpha/index.d.ts',
+    default: './alpha/index.js'
+  },
+  './beta': {
+    types: './beta/index.d.ts',
+    default: './beta/index.js'
+  }
+};
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 console.log('  files:', JSON.stringify(pkg.files));
+console.log('  exports:', JSON.stringify(pkg.exports));
 "
 
-# ── 3. Copy root README into pkg/ ────────────────────────────────────────────
+# ── 3. Copy root README and alpha/beta subpath shims into pkg/ ──────────────
 echo "→ Copying README.md → pkg/README.md..."
 cp ../../README.md pkg/README.md
 
-# ── 4. Node.js target (Jest / server-side) without parallelisation ───────────
+echo "→ Copying alpha/beta ESM subpath shims into pkg/..."
+mkdir -p pkg/alpha pkg/beta
+cp js/alpha/index.js pkg/alpha/index.js
+cp js/alpha/index.d.ts pkg/alpha/index.d.ts
+cp js/beta/index.js pkg/beta/index.js
+cp js/beta/index.d.ts pkg/beta/index.d.ts
+
+# ── 4. Node.js target (Jest / server-side) ───────────────────────────────────
 if [ "$WEB_ONLY" = false ]; then
-  echo "→ Building WASM — nodejs target (no parallelization, profile: $PROFILE)..."
-  wasm-pack build --target nodejs "$PROFILE_FLAG" --out-dir pkg-node --no-default-features
+  echo "→ Building WASM — nodejs target (features: ${NODE_FEATURES:-<none>}, profile: $PROFILE)..."
+  if [[ -n "${NODE_FEATURES// }" ]]; then
+    wasm-pack build --target nodejs "$PROFILE_FLAG" --out-dir pkg-node --no-default-features --features "$NODE_FEATURES"
+  else
+    wasm-pack build --target nodejs "$PROFILE_FLAG" --out-dir pkg-node --no-default-features
+  fi
+
+  echo "→ Patching pkg-node/package.json..."
+  node -e "
+const fs = require('fs');
+const pkgPath = 'pkg-node/package.json';
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+['README.md', 'alpha', 'beta'].forEach(f => {
+  if (!pkg.files.includes(f)) pkg.files.push(f);
+});
+pkg.readme = 'README.md';
+pkg.exports = {
+  '.': './sci_form_wasm.js',
+  './alpha': './alpha/index.js',
+  './beta': './beta/index.js'
+};
+
+fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+console.log('  files:', JSON.stringify(pkg.files));
+console.log('  exports:', JSON.stringify(pkg.exports));
+"
+
+  echo "→ Copying README.md → pkg-node/README.md..."
+  cp ../../README.md pkg-node/README.md
+
+  echo "→ Creating alpha/beta CommonJS subpath shims in pkg-node/..."
+  mkdir -p pkg-node/alpha pkg-node/beta
+  cat > pkg-node/alpha/index.js <<'EOF'
+'use strict';
+module.exports = require('../sci_form_wasm.js');
+EOF
+  cat > pkg-node/beta/index.js <<'EOF'
+'use strict';
+module.exports = require('../sci_form_wasm.js');
+EOF
+  cp js/alpha/index.d.ts pkg-node/alpha/index.d.ts
+  cp js/beta/index.d.ts pkg-node/beta/index.d.ts
 fi
 
 echo "✓ sci-form-wasm build complete."
