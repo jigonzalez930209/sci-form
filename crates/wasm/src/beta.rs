@@ -15,6 +15,20 @@ use crate::helpers::{json_error, parse_elements_and_positions, parse_flat_coords
 #[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
+fn build_eht_matrices(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> (
+    Vec<sci_form::eht::basis::AtomicOrbital>,
+    nalgebra::DMatrix<f64>,
+    nalgebra::DMatrix<f64>,
+) {
+    let basis = sci_form::eht::basis::build_basis(elements, positions);
+    let overlap = sci_form::eht::build_overlap_matrix(&basis);
+    let hamiltonian = sci_form::eht::build_hamiltonian(&basis, &overlap, None);
+    (basis, hamiltonian, overlap)
+}
+
 // ─── B1: KPM — Kernel Polynomial Method ─────────────────────────────────────
 
 /// Compute EHT Density of States using the Kernel Polynomial Method (O(N)).
@@ -40,21 +54,15 @@ pub fn beta_compute_kpm_dos(
     coords_flat_json: &str,
     config_json: &str,
 ) -> String {
-    use sci_form::beta::kpm::density::{compute_kpm_dos, KpmConfig};
+    use sci_form::beta::kpm::{compute_kpm_dos, KpmConfig};
 
     let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
 
-    // Build EHT Hamiltonian
-    let eht = match sci_form::eht::solver::solve_eht(&elems, &positions, None) {
-        Ok(r) => r,
-        Err(e) => return json_error(&format!("EHT failed: {}", e)),
-    };
-
-    let n = eht.hamiltonian.nrows();
-    if n == 0 {
+    let (_basis, hamiltonian, _overlap) = build_eht_matrices(&elems, &positions);
+    if hamiltonian.nrows() == 0 {
         return json_error("empty Hamiltonian");
     }
 
@@ -76,24 +84,17 @@ pub fn beta_compute_kpm_dos(
         temperature: user.temperature.unwrap_or(0.0),
     };
 
-    let result = compute_kpm_dos(&eht.hamiltonian, &config);
-
-    // Override e_min/e_max grid if requested
-    let (energies, dos) = if user.e_min.is_some() || user.e_max.is_some() {
-        let e_min = user.e_min.unwrap_or(result.e_min);
-        let e_max = user.e_max.unwrap_or(result.e_max);
-        let n_pts = user.n_points.unwrap_or(200);
-        let energies: Vec<f64> = (0..n_pts)
-            .map(|i| e_min + (e_max - e_min) * i as f64 / (n_pts - 1) as f64)
-            .collect();
-        (energies, result.total_dos.clone())
-    } else {
-        (result.energies.clone(), result.total_dos.clone())
-    };
+    let result = compute_kpm_dos(
+        &hamiltonian,
+        &config,
+        user.e_min.unwrap_or(-30.0),
+        user.e_max.unwrap_or(5.0),
+        user.n_points.unwrap_or(200),
+    );
 
     serde_json::json!({
-        "energies": energies,
-        "total_dos": dos,
+        "energies": result.energies,
+        "total_dos": result.total_dos,
         "e_min": result.e_min,
         "e_max": result.e_max,
         "order": result.order
@@ -107,23 +108,42 @@ pub fn beta_compute_kpm_dos(
 #[cfg(feature = "beta-kpm")]
 #[wasm_bindgen]
 pub fn beta_compute_kpm_mulliken(elements_json: &str, coords_flat_json: &str) -> String {
-    use sci_form::beta::kpm::density::{compute_kpm_mulliken, KpmConfig};
+    use sci_form::beta::kpm::{compute_kpm_mulliken, KpmConfig};
 
     let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let eht = match sci_form::eht::solver::solve_eht(&elems, &positions, None) {
+    let (basis, hamiltonian, overlap) = build_eht_matrices(&elems, &positions);
+    let eht = match sci_form::eht::solve_eht(&elems, &positions, None) {
         Ok(r) => r,
         Err(e) => return json_error(&format!("EHT failed: {}", e)),
     };
 
     let config = KpmConfig::default();
-    let result = compute_kpm_mulliken(&eht.hamiltonian, &eht.overlap, &config);
+    let nuclear_charges: Vec<f64> = basis
+        .iter()
+        .map(|orbital| elems[orbital.atom_index] as f64)
+        .collect();
+    let result = compute_kpm_mulliken(
+        &hamiltonian,
+        &overlap,
+        eht.n_electrons,
+        &nuclear_charges,
+        &config,
+    );
+
+    let mut mulliken_charges = vec![0.0; elems.len()];
+    let mut orbital_populations = vec![0.0; basis.len()];
+    for (idx, orbital) in basis.iter().enumerate() {
+        let charge = result.charges.get(idx).copied().unwrap_or(0.0);
+        mulliken_charges[orbital.atom_index] += charge;
+        orbital_populations[idx] = nuclear_charges[idx] - charge;
+    }
 
     serde_json::json!({
-        "mulliken_charges": result.mulliken_charges,
-        "orbital_populations": result.orbital_populations
+        "mulliken_charges": mulliken_charges,
+        "orbital_populations": orbital_populations
     })
     .to_string()
 }
@@ -205,14 +225,14 @@ pub fn beta_solve_eht_randnla(
     coords_flat_json: &str,
     config_json: &str,
 ) -> String {
-    use sci_form::beta::rand_nla::solver::{self, RandNlaConfig};
+    use sci_form::beta::rand_nla::{solve_eht_randnla, RandNlaConfig};
 
     let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    // Build EHT H and S matrices
-    let eht = match sci_form::eht::solver::solve_eht(&elems, &positions, None) {
+    let (_basis, hamiltonian, overlap) = build_eht_matrices(&elems, &positions);
+    let eht = match sci_form::eht::solve_eht(&elems, &positions, None) {
         Ok(r) => r,
         Err(e) => return json_error(&format!("EHT failed: {}", e)),
     };
@@ -227,8 +247,7 @@ pub fn beta_solve_eht_randnla(
             }
         };
 
-    let (eigenvalues, _eigenvectors, info) =
-        solver::solve_eht_randnla(&eht.hamiltonian, &eht.overlap, &cfg);
+    let (eigenvalues, _eigenvectors, info) = solve_eht_randnla(&hamiltonian, &overlap, &cfg);
 
     let energies: Vec<f64> = eigenvalues.iter().cloned().collect();
     let n_occ = eht.n_electrons / 2;
@@ -323,18 +342,16 @@ pub fn beta_compute_cpm_charges(
         Err(e) => return json_error(&e),
     };
     let config = CpmConfig {
-        electrode_potential: potential,
+        mu_ev: potential,
         ..Default::default()
     };
-    match compute_cpm_charges(&elems, &positions, &config) {
-        Ok(r) => serde_json::json!({
-            "charges": r.charges,
-            "total_charge": r.total_charge,
-            "energy": r.energy
-        })
-        .to_string(),
-        Err(e) => json_error(&e),
-    }
+    let r = compute_cpm_charges(&elems, &positions, &config);
+    serde_json::json!({
+        "charges": r.charges,
+        "total_charge": r.total_charge,
+        "energy": r.grand_potential
+    })
+    .to_string()
 }
 
 // ─── Metadata ────────────────────────────────────────────────────────────────

@@ -15,6 +15,102 @@ use crate::helpers::{json_error, parse_elements_and_positions, parse_flat_coords
 #[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
+fn build_reaxff_atom_params(
+    elements: &[u8],
+) -> Vec<sci_form::forcefield::reaxff::params::ReaxffAtomParams> {
+    let params = sci_form::forcefield::reaxff::params::ReaxffParams::default_chon();
+    let fallback = params.atom_params.last().cloned().unwrap_or(
+        sci_form::forcefield::reaxff::params::ReaxffAtomParams {
+            element: 1,
+            r_sigma: 1.0,
+            r_pi: 0.0,
+            r_pipi: 0.0,
+            p_bo1: 0.0,
+            p_bo2: 1.0,
+            p_bo3: 0.0,
+            p_bo4: 1.0,
+            p_bo5: 0.0,
+            p_bo6: 1.0,
+            valence: 1.0,
+        },
+    );
+
+    elements
+        .iter()
+        .map(|&z| {
+            params
+                .element_index(z)
+                .map(|idx| params.atom_params[idx].clone())
+                .unwrap_or_else(|| fallback.clone())
+        })
+        .collect()
+}
+
+fn dihedral_angle(p1: [f64; 3], p2: [f64; 3], p3: [f64; 3], p4: [f64; 3]) -> f64 {
+    let b1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
+    let b2 = [p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]];
+    let b3 = [p4[0] - p3[0], p4[1] - p3[1], p4[2] - p3[2]];
+
+    let n1 = [
+        b1[1] * b2[2] - b1[2] * b2[1],
+        b1[2] * b2[0] - b1[0] * b2[2],
+        b1[0] * b2[1] - b1[1] * b2[0],
+    ];
+    let n2 = [
+        b2[1] * b3[2] - b2[2] * b3[1],
+        b2[2] * b3[0] - b2[0] * b3[2],
+        b2[0] * b3[1] - b2[1] * b3[0],
+    ];
+    let b2_norm = (b2[0] * b2[0] + b2[1] * b2[1] + b2[2] * b2[2]).sqrt();
+    let b2_unit = if b2_norm > 1e-15 {
+        [b2[0] / b2_norm, b2[1] / b2_norm, b2[2] / b2_norm]
+    } else {
+        [0.0, 0.0, 0.0]
+    };
+    let m1 = [
+        n1[1] * b2_unit[2] - n1[2] * b2_unit[1],
+        n1[2] * b2_unit[0] - n1[0] * b2_unit[2],
+        n1[0] * b2_unit[1] - n1[1] * b2_unit[0],
+    ];
+
+    let x = n1[0] * n2[0] + n1[1] * n2[1] + n1[2] * n2[2];
+    let y = m1[0] * n2[0] + m1[1] * n2[1] + m1[2] * n2[2];
+    (-y).atan2(-x) + std::f64::consts::PI
+}
+
+fn rotation_subtree(
+    bond_a: usize,
+    bond_b: usize,
+    bonds: &[(usize, usize)],
+    n_atoms: usize,
+) -> Vec<usize> {
+    let mut adjacency = vec![Vec::new(); n_atoms];
+    for &(i, j) in bonds {
+        if i < n_atoms && j < n_atoms {
+            adjacency[i].push(j);
+            adjacency[j].push(i);
+        }
+    }
+
+    let mut visited = vec![false; n_atoms];
+    visited[bond_a] = true;
+    visited[bond_b] = true;
+    let mut stack = vec![bond_b];
+    let mut subtree = vec![bond_b];
+
+    while let Some(current) = stack.pop() {
+        for &neighbor in &adjacency[current] {
+            if !visited[neighbor] {
+                visited[neighbor] = true;
+                subtree.push(neighbor);
+                stack.push(neighbor);
+            }
+        }
+    }
+
+    subtree
+}
+
 // ─── A1: Kohn-Sham DFT ──────────────────────────────────────────────────────
 
 /// Run a Kohn-Sham DFT single-point calculation.
@@ -94,24 +190,34 @@ pub fn alpha_compute_reaxff_energy(elements_json: &str, coords_flat_json: &str) 
         Ok(v) => v,
         Err(e) => return json_error(&format!("bad elements: {}", e)),
     };
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     let params = sci_form::forcefield::reaxff::params::ReaxffParams::default_chon();
-    let charges = sci_form::forcefield::reaxff::eem::solve_eem(
-        &elems,
-        &positions,
-        &sci_form::forcefield::reaxff::eem::default_eem_params(),
+    let atom_params = build_reaxff_atom_params(&elems);
+    let eem_params: Vec<_> = elems
+        .iter()
+        .map(|&z| sci_form::forcefield::reaxff::eem::default_eem_params(z))
+        .collect();
+    let charges = match sci_form::forcefield::reaxff::eem::solve_eem(&flat, &eem_params, 0.0) {
+        Ok(charges) => charges,
+        Err(e) => return json_error(&e),
+    };
+    let bo = sci_form::forcefield::reaxff::bond_order::compute_bond_orders(
+        &flat,
+        &atom_params,
+        params.cutoff,
     );
-    let bo =
-        sci_form::forcefield::reaxff::bond_order::compute_bond_orders(&elems, &positions, &params);
-    let bonded = sci_form::forcefield::reaxff::energy::compute_bonded_energy(&bo, &elems, &params);
-    let nonbonded = sci_form::forcefield::reaxff::nonbonded::compute_nonbonded_energy(
-        &elems, &positions, &charges, &params,
-    );
+    let bonded = sci_form::forcefield::reaxff::energy::compute_bonded_energy(&flat, &bo, &params);
+    let (van_der_waals, coulomb) =
+        sci_form::forcefield::reaxff::nonbonded::compute_nonbonded_energy(
+            &flat,
+            &charges,
+            &elems,
+            params.cutoff,
+        );
     serde_json::json!({
-        "bonded": bonded,
-        "coulomb": nonbonded.coulomb,
-        "van_der_waals": nonbonded.van_der_waals,
-        "total": bonded + nonbonded.coulomb + nonbonded.van_der_waals
+        "bonded": bonded.total,
+        "coulomb": coulomb,
+        "van_der_waals": van_der_waals,
+        "total": bonded.total + coulomb + van_der_waals
     })
     .to_string()
 }
@@ -126,8 +232,15 @@ pub fn alpha_compute_eem_charges(elements_json: &str, coords_flat_json: &str) ->
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let params = sci_form::forcefield::reaxff::eem::default_eem_params();
-    let charges = sci_form::forcefield::reaxff::eem::solve_eem(&elems, &positions, &params);
+    let flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
+    let eem_params: Vec<_> = elems
+        .iter()
+        .map(|&z| sci_form::forcefield::reaxff::eem::default_eem_params(z))
+        .collect();
+    let charges = match sci_form::forcefield::reaxff::eem::solve_eem(&flat, &eem_params, 0.0) {
+        Ok(charges) => charges,
+        Err(e) => return json_error(&e),
+    };
     let total: f64 = charges.iter().sum();
     serde_json::json!({
         "charges": charges,
@@ -200,7 +313,7 @@ pub fn alpha_compute_aevs(
         };
     let aevs = sci_form::mlff::compute_aevs(&elems, &positions, &params);
     let aev_length = aevs.first().map(|v| v.len()).unwrap_or(0);
-    let aev_arrays: Vec<Vec<f64>> = aevs.iter().map(|v| v.as_slice().to_vec()).collect();
+    let aev_arrays: Vec<Vec<f64>> = aevs.iter().map(|v| v.to_vec()).collect();
     serde_json::json!({
         "n_atoms": elems.len(),
         "aev_length": aev_length,
@@ -322,8 +435,7 @@ pub fn alpha_rotate_dihedral_cga(
     };
 
     let motor = sci_form::alpha::cga::dihedral_motor(a, b, angle_rad);
-    let mut coords = flat.clone();
-    sci_form::alpha::cga::apply_motor_to_subtree(&mut coords, &indices, &motor);
+    let coords = sci_form::alpha::cga::apply_motor_to_subtree(&flat, &indices, &motor);
     serde_json::json!({ "coords": coords }).to_string()
 }
 
@@ -354,7 +466,6 @@ pub fn alpha_refine_torsion_cga(
     if torsion.len() != 4 {
         return json_error("torsion_indices must have exactly 4 elements");
     }
-    // Parse bonds from SMILES
     let mol = match sci_form::parse(smiles) {
         Ok(m) => m,
         Err(e) => return json_error(&format!("parse error: {}", e)),
@@ -368,13 +479,30 @@ pub fn alpha_refine_torsion_cga(
         })
         .collect();
     let flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().cloned()).collect();
-    let new_coords = sci_form::alpha::cga::refine_torsion_cga(
-        &elems,
-        &flat,
-        &bonds,
-        &[torsion[0], torsion[1], torsion[2], torsion[3]],
-        target_angle_rad,
+    let i = torsion[0];
+    let j = torsion[1];
+    let k = torsion[2];
+    let l = torsion[3];
+    let current = dihedral_angle(
+        [flat[i * 3], flat[i * 3 + 1], flat[i * 3 + 2]],
+        [flat[j * 3], flat[j * 3 + 1], flat[j * 3 + 2]],
+        [flat[k * 3], flat[k * 3 + 1], flat[k * 3 + 2]],
+        [flat[l * 3], flat[l * 3 + 1], flat[l * 3 + 2]],
     );
+    let mut delta = target_angle_rad - current;
+    while delta <= -std::f64::consts::PI {
+        delta += 2.0 * std::f64::consts::PI;
+    }
+    while delta > std::f64::consts::PI {
+        delta -= 2.0 * std::f64::consts::PI;
+    }
+    let subtree = rotation_subtree(j, k, &bonds, elems.len());
+    let motor = sci_form::alpha::cga::dihedral_motor(
+        [flat[j * 3], flat[j * 3 + 1], flat[j * 3 + 2]],
+        [flat[k * 3], flat[k * 3 + 1], flat[k * 3 + 2]],
+        delta,
+    );
+    let new_coords = sci_form::alpha::cga::apply_motor_to_subtree(&flat, &subtree, &motor);
     serde_json::json!({ "coords": new_coords }).to_string()
 }
 
@@ -439,10 +567,19 @@ pub fn alpha_gsm_find_ts(
         sci_form::compute_uff_energy(smiles, coords).unwrap_or(f64::MAX)
     };
 
-    match sci_form::alpha::gsm::find_transition_state(&reactant, &product, &config, &energy_fn) {
-        Ok(r) => serde_json::to_string(&r).unwrap_or_else(|e| json_error(&e.to_string())),
-        Err(e) => json_error(&e),
-    }
+    let r = sci_form::alpha::gsm::find_transition_state(&reactant, &product, &energy_fn, &config);
+    serde_json::json!({
+        "ts_coords": r.ts_coords,
+        "ts_energy": r.ts_energy,
+        "activation_energy": r.activation_energy,
+        "reverse_barrier": r.reverse_barrier,
+        "path_energies": r.path_energies,
+        "path_coords": r.path_coords,
+        "ts_node_index": r.ts_node_index,
+        "n_nodes": r.n_nodes,
+        "energy_evaluations": r.energy_evaluations
+    })
+    .to_string()
 }
 
 // ─── A7: SDR Embedding ──────────────────────────────────────────────────────
@@ -480,12 +617,18 @@ pub fn alpha_sdr_embed(distance_pairs_json: &str, n_atoms: usize, config_json: &
             }
         };
 
-    let result = sci_form::alpha::sdr::sdr_embed(&distance_pairs, n_atoms, &config);
+    let result = sci_form::alpha::sdr::sdr_embed(n_atoms, &distance_pairs, &config);
     serde_json::json!({
         "coords": result.coords,
-        "residual": result.residual,
-        "converged": result.converged,
-        "iterations": result.iterations
+        "num_atoms": result.num_atoms,
+        "convergence": {
+            "iterations": result.convergence.iterations,
+            "converged": result.convergence.converged,
+            "final_residual": result.convergence.final_residual,
+            "neg_eigenvalues_removed": result.convergence.neg_eigenvalues_removed
+        },
+        "max_distance_error": result.max_distance_error,
+        "retries_avoided": result.retries_avoided
     })
     .to_string()
 }

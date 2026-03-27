@@ -111,6 +111,7 @@ pub fn predict_nmr_shifts_for_nucleus(smiles: &str, nucleus: &str) -> String {
 
 /// Run the public SCF-backed GIAO NMR route for a specific nucleus.
 #[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
 pub fn compute_giao_nmr(
     elements_json: &str,
     coords_flat_json: &str,

@@ -5,6 +5,7 @@
 //! interactive steering forces (IMD).
 
 use crate::helpers::*;
+use petgraph::graph::NodeIndex;
 use wasm_bindgen::prelude::*;
 
 /// Persistent live simulation state accessible from JavaScript.
@@ -53,7 +54,7 @@ impl LiveSimulation {
                     Ok(mol) => {
                         let n = mol.graph.node_count();
                         (0..n)
-                            .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+                            .map(|i| mol.graph[NodeIndex::new(i)].element)
                             .collect()
                     }
                     Err(e) => return Err(JsValue::from_str(&e)),
@@ -98,7 +99,7 @@ impl LiveSimulation {
     /// Advance the simulation by `n_steps` with time step `dt_fs` (femtoseconds).
     pub fn step(&mut self, n_steps: usize, dt_fs: f64) {
         for _ in 0..n_steps {
-            self.system.integrate(dt_fs);
+            let _ = self.system.integrate(dt_fs, 1);
         }
     }
 
@@ -117,14 +118,24 @@ impl LiveSimulation {
         spring_k: f64,
     ) {
         if atom_index < self.system.atoms.len() {
-            let sf = sci_form::dynamics_live::steering::SteeringForce {
-                atom_index,
-                target_xyz: [tx, ty, tz],
-                spring_k,
-            };
-            let mut forces = sci_form::dynamics_live::steering::SteeringForces::new();
-            forces.add(sf);
-            forces.apply(&mut self.system.atoms);
+            let atom = &mut self.system.atoms[atom_index];
+            let dx = atom.position[0] - tx;
+            let dy = atom.position[1] - ty;
+            let dz = atom.position[2] - tz;
+            let steering_force = [-spring_k * dx, -spring_k * dy, -spring_k * dz];
+
+            atom.force[0] += steering_force[0];
+            atom.force[1] += steering_force[1];
+            atom.force[2] += steering_force[2];
+
+            let base = atom_index * 3;
+            if self.system.forces_flat.len() >= base + 3 {
+                self.system.forces_flat[base] += steering_force[0];
+                self.system.forces_flat[base + 1] += steering_force[1];
+                self.system.forces_flat[base + 2] += steering_force[2];
+            }
+
+            self.system.potential_energy += 0.5 * spring_k * (dx * dx + dy * dy + dz * dz);
         }
     }
 
