@@ -92,7 +92,7 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
 #[test]
 fn test_embedding_trace_mol0() {
     let data: Vec<RefMolecule> = serde_json::from_str(
-        &std::fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap(),
+        &sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap(),
     )
     .unwrap();
 

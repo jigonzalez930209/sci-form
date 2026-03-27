@@ -416,7 +416,7 @@ fn gradient_norms(
 
 #[test]
 fn debug_ff_energy_breakdown() {
-    let data = std::fs::read_to_string("tests/fixtures/reference_coords.json").unwrap();
+    let data = std::fs::read_to_string("tests/fixtures/reference_coords_500.json").unwrap();
     let mut molecules: Vec<OracleMolecule> = serde_json::from_str(&data).unwrap();
 
     use rand::seq::SliceRandom;

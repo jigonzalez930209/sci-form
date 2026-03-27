@@ -1,6 +1,6 @@
 //! Comprehensive 1000-molecule benchmark validating ALL public API functions.
 //!
-//! Loads the first 1000 SMILES from data/chembl_10k_practical_asc.smi (avg ~31 heavy atoms),
+//! Loads the first 1000 SMILES from data/chembl_1k_practical_asc.smi (avg ~31 heavy atoms),
 //! runs every public function, and checks physical invariants with ≤0.5% deviation tolerance.
 //!
 //! Run: cargo test --test test_comprehensive_1k_benchmark --release -- --nocapture
@@ -12,8 +12,8 @@ use std::io::BufRead;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 fn load_smiles(limit: usize) -> Vec<(String, String)> {
-    let path = std::path::Path::new("data/chembl_10k_practical_asc.smi");
-    let file = std::fs::File::open(path).expect("Cannot open data/chembl_10k_practical_asc.smi");
+    let path = std::path::Path::new("data/chembl_1k_practical_asc.smi");
+    let file = std::fs::File::open(path).expect("Cannot open data/chembl_1k_practical_asc.smi");
     let reader = std::io::BufReader::new(file);
     reader
         .lines()

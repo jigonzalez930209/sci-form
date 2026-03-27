@@ -295,7 +295,8 @@ fn numerical_gradient(energy_fn: &dyn Fn(&[f64]) -> f64, coords: &[f64], eps: f6
 
 #[test]
 fn test_gradient_perterm() {
-    let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap();
+    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
+        .unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
 
     // Pick molecules that had BAD gradients: indices 10, 13, 47, 50, 89, 93

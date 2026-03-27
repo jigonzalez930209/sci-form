@@ -43,7 +43,7 @@ fn main() {
         .unwrap_or(1000);
 
     let data: Vec<RefMolecule> = serde_json::from_str(
-        &std::fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap(),
+        &sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap(),
     )
     .unwrap();
 

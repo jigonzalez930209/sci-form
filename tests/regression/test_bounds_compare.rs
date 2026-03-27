@@ -204,22 +204,24 @@ fn compare_bounds(ref_mol: &RefMolecule, rdkit_file: &str) {
 #[test]
 #[ignore = "requires RDKit-generated /tmp/rdkit_bounds_0.json"]
 fn test_compare_bounds_mol0() {
-    let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap();
+    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
+        .unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
     compare_bounds(&ref_mols[0], "/tmp/rdkit_bounds_0.json");
 }
 
-/// Finds the first failing molecule by index in gdb20_reference.json
+/// Finds the first failing molecule by index in gdb20_reference_1k.json
 /// That matches the SMILES C#CC1C(C(O)(CC)CN)CCCC(O)C12CCCO2
 #[test]
 #[ignore = "requires RDKit-generated /tmp/rdkit_bounds_fail1.json"]
 fn test_compare_bounds_fail1() {
-    let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json").unwrap();
+    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
+        .unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
     let target = "C#CC1C(C(O)(CC)CN)CCCC(O)C12CCCO2";
     let ref_mol = ref_mols
         .iter()
         .find(|m| m.smiles == target)
-        .unwrap_or_else(|| panic!("SMILES '{}' not found in gdb20_reference.json", target));
+        .unwrap_or_else(|| panic!("SMILES '{}' not found in gdb20_reference_1k.json", target));
     compare_bounds(ref_mol, "/tmp/rdkit_bounds_fail1.json");
 }

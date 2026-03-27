@@ -50,7 +50,7 @@ struct CsdTorsion {
 #[test]
 fn test_parse_reference_data() {
     let ref_file = std::env::var("REF_FILE")
-        .unwrap_or_else(|_| "tests/fixtures/reference_coords.json".to_string());
+        .unwrap_or_else(|_| "tests/fixtures/reference_coords_500.json".to_string());
     let data = fs::read_to_string(&ref_file).expect("Should be able to read reference JSON");
     let mut molecules: Vec<OracleMolecule> =
         serde_json::from_str(&data).expect("JSON was not well-formatted");

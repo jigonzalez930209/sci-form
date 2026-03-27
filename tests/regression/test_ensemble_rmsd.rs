@@ -296,26 +296,27 @@ fn process(
 
 #[test]
 fn test_ensemble_rmsd() {
-    let ensemble_fixture = "tests/fixtures/gdb20_ensemble.json";
-    let reference_fixture = "tests/fixtures/gdb20_reference.json";
+    let ensemble_fixture = "tests/fixtures/gdb20_ensemble_300.json";
+    let reference_fixture = "tests/fixtures/gdb20_reference_1k.json";
     for fixture in [ensemble_fixture, reference_fixture] {
-        if !std::path::Path::new(fixture).exists() {
+        if !sci_form::fixture_io::fixture_exists(fixture) {
             eprintln!("SKIP {fixture}: run scripts/generate_ensemble_reference.py to generate it");
             return;
         }
     }
-    let data = fs::read_to_string(ensemble_fixture).expect("Failed to read gdb20_ensemble.json");
+    let data = sci_form::fixture_io::read_text_fixture(ensemble_fixture)
+        .expect("Failed to read gdb20_ensemble fixture");
     let mut mols: Vec<EnsembleMolecule> =
-        serde_json::from_str(&data).expect("Invalid gdb20_ensemble.json");
+        serde_json::from_str(&data).expect("Invalid gdb20_ensemble fixture");
 
     // Sort by heaviest molecules first (most atoms) for a representative sample
     mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));
 
     // Load original reference for correct torsion data
-    let ref_data =
-        fs::read_to_string(reference_fixture).expect("Failed to read gdb20_reference.json");
+    let ref_data = sci_form::fixture_io::read_text_fixture(reference_fixture)
+        .expect("Failed to read gdb20_reference fixture");
     let ref_mols: Vec<RefMolecule> =
-        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference.json");
+        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference fixture");
 
     // Build SMILES → torsion index
     let ref_torsion_map: HashMap<&str, &Vec<EnsembleTorsion>> = ref_mols

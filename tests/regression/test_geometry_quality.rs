@@ -265,12 +265,13 @@ fn validate_molecule(ref_mol: &RefMolecule) -> QualityResult {
 
 #[test]
 fn test_geometry_quality() {
-    let fixture = "tests/fixtures/gdb20_reference.json";
-    if !std::path::Path::new(fixture).exists() {
+    let fixture = "tests/fixtures/gdb20_reference_1k.json";
+    if !sci_form::fixture_io::fixture_exists(fixture) {
         eprintln!("SKIP {fixture}: run scripts/generate_gdb20_reference.py to generate it");
         return;
     }
-    let metadata = match std::fs::metadata(fixture) {
+    let resolved_fixture = sci_form::fixture_io::resolve_fixture_path(fixture).unwrap();
+    let metadata = match std::fs::metadata(&resolved_fixture) {
         Ok(m) => m,
         Err(e) => {
             eprintln!("SKIP {fixture}: could not read metadata: {e}");
@@ -284,7 +285,7 @@ fn test_geometry_quality() {
         );
         return;
     }
-    let ref_data = match fs::read_to_string(fixture) {
+    let ref_data = match sci_form::fixture_io::read_text_fixture(fixture) {
         Ok(d) => d,
         Err(e) => {
             eprintln!("SKIP {fixture}: read error: {e}");

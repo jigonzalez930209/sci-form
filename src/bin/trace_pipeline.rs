@@ -101,7 +101,8 @@ fn main() {
 
     // Load reference data
     let ref_data: Vec<serde_json::Value> = serde_json::from_str(
-        &std::fs::read_to_string("tests/fixtures/gdb20_reference.json").expect("open ref"),
+        &sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
+            .expect("open ref"),
     )
     .expect("parse ref");
 

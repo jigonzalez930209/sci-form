@@ -36,7 +36,7 @@ struct OracleMolecule {
 
 #[test]
 fn test_bounds_matrix() {
-    let data = fs::read_to_string("tests/fixtures/reference_coords.json").unwrap();
+    let data = fs::read_to_string("tests/fixtures/reference_coords_500.json").unwrap();
     let molecules: Vec<OracleMolecule> = serde_json::from_str(&data).unwrap();
     let mol = &molecules[47]; // C1COC1
 

@@ -216,14 +216,15 @@ fn process_molecule(ref_mol: &RefMolecule) -> MolResult {
 #[test]
 fn test_gdb20_parallel() {
     // Load reference data (skip gracefully when the large fixture is absent)
-    let fixture = "tests/fixtures/gdb20_reference.json";
-    if !std::path::Path::new(fixture).exists() {
+    let fixture = "tests/fixtures/gdb20_reference_1k.json";
+    if !sci_form::fixture_io::fixture_exists(fixture) {
         eprintln!("SKIP {fixture}: run scripts/generate_gdb20_reference.py to generate it");
         return;
     }
-    let ref_data = fs::read_to_string(fixture).expect("Failed to read gdb20_reference.json");
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture(fixture).expect("Failed to read gdb20_reference fixture");
     let mut ref_mols: Vec<RefMolecule> =
-        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference.json");
+        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference fixture");
 
     // Sort by heaviest molecules first (most atoms) for a representative sample
     ref_mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));

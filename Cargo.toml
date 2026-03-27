@@ -17,6 +17,7 @@ categories = ["science", "algorithms"]
 exclude = [
     "rdkit-master/",
     "tests/fixtures/*.json",
+    "tests/fixtures/*.json.gz",
     "data/",
     "scripts/",
     "GDB20.50000.smi",
@@ -55,6 +56,7 @@ beta-randnla = []
 beta-riemannian = []
 
 [dependencies]
+flate2 = "1.1"
 petgraph = "0.6.4"
 nalgebra = { version = "0.32", features = ["rand"] }
 serde = { version = "1.0", features = ["derive"] }

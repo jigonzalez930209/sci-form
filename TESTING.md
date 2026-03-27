@@ -70,6 +70,19 @@ Tests are grouped by purpose:
 
 All Rust suites pass on the release profile.
 
+The large GDB-20 reference fixtures are stored compressed in git:
+
+- `tests/fixtures/gdb20_reference.json.gz`
+- `tests/fixtures/gdb20_ensemble.json.gz`
+
+The Rust tests and internal bins resolve `*.json` first and then fall back to `*.json.gz` automatically.
+If you need to regenerate them locally, use:
+
+```bash
+python scripts/generate_gdb20_reference.py
+python scripts/generate_ensemble_reference.py
+```
+
 ```bash
 # Compact CI gate
 cargo test --release --test ci -- --nocapture

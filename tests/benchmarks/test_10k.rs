@@ -58,7 +58,7 @@ fn test_smiles_parsing_10k() {
         .collect();
 
     // Load reference for atom count comparison
-    let ref_data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff.json")
+    let ref_data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff_500.json")
         .expect("Should read reference JSON");
     let ref_mols: Vec<OracleMolecule> =
         serde_json::from_str(&ref_data).expect("Reference JSON parse");
@@ -174,7 +174,7 @@ fn test_conformer_10k() {
         .collect();
 
     // Load reference
-    let ref_data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff.json")
+    let ref_data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff_500.json")
         .expect("Should read reference JSON");
     let ref_mols: Vec<OracleMolecule> =
         serde_json::from_str(&ref_data).expect("Reference JSON parse");

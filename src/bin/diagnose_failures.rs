@@ -3,7 +3,7 @@
 use std::io::BufRead;
 
 fn main() {
-    let path = std::path::Path::new("data/chembl_10k_practical_asc.smi");
+    let path = std::path::Path::new("data/chembl_1k_practical_asc.smi");
     let file = std::fs::File::open(path).unwrap();
     let reader = std::io::BufReader::new(file);
 

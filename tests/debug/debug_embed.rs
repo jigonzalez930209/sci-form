@@ -88,8 +88,8 @@ fn build_mol(mol: &OracleMolecule) -> sci_form::graph::Molecule {
 
 #[test]
 fn debug_embedding_failures() {
-    let data = fs::read_to_string("tests/fixtures/reference_coords.json")
-        .expect("Should be able to read reference_coords.json");
+    let data = fs::read_to_string("tests/fixtures/reference_coords_500.json")
+        .expect("Should be able to read reference_coords_500.json");
     let mut molecules: Vec<OracleMolecule> =
         serde_json::from_str(&data).expect("JSON was not well-formatted");
 

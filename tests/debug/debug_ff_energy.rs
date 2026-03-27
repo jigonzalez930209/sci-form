@@ -153,10 +153,10 @@ fn test_ff_energy_comparison() {
     use sci_form::distgeom::bounds::{calculate_bounds_matrix_opts, triangle_smooth_tol};
     use sci_form::forcefield::etkdg_3d::{build_etkdg_3d_ff_with_torsions, etkdg_3d_energy_f64};
 
-    let ref_data = fs::read_to_string("tests/fixtures/gdb20_reference.json")
+    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
         .expect("Run scripts/generate_gdb20_reference.py first");
     let ref_mols: Vec<RefMolecule> =
-        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference.json");
+        serde_json::from_str(&ref_data).expect("Invalid gdb20_reference fixture");
 
     // Target: first 1000 molecules, find worst 10 failures
     let limit = std::env::var("GDB20_LIMIT")

@@ -47,6 +47,8 @@ pub mod eht;
 pub mod esp;
 pub mod etkdg;
 pub mod experimental_status;
+#[doc(hidden)]
+pub mod fixture_io;
 pub mod forcefield;
 pub mod gpu;
 pub mod graph;

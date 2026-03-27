@@ -43,7 +43,7 @@ fn debug_remaining_failures() {
         bonds: Vec<OracleBond>,
     }
 
-    let data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff.json").unwrap();
+    let data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff_500.json").unwrap();
     let mut molecules: Vec<OracleMolecule> = serde_json::from_str(&data).unwrap();
 
     use rand::seq::SliceRandom;

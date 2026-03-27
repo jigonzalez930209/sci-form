@@ -125,9 +125,8 @@ fn build_csd_torsions(
 
 #[test]
 fn test_gradient_finite_diff() {
-    let fixture = "tests/fixtures/gdb20_reference.json";
-    let path = std::path::Path::new(fixture);
-    if !path.exists() {
+    let fixture = "tests/fixtures/gdb20_reference_1k.json";
+    if !sci_form::fixture_io::fixture_exists(fixture) {
         eprintln!(
             "SKIP {fixture}: file not found (generate with scripts/generate_gdb20_reference.py)"
         );
@@ -135,7 +134,8 @@ fn test_gradient_finite_diff() {
     }
 
     // Check if file is too small (likely a Git LFS pointer, not actual data)
-    let metadata = match fs::metadata(fixture) {
+    let resolved_fixture = sci_form::fixture_io::resolve_fixture_path(fixture).unwrap();
+    let metadata = match fs::metadata(&resolved_fixture) {
         Ok(m) => m,
         Err(e) => {
             eprintln!("SKIP {fixture}: cannot read metadata: {e}");
@@ -151,7 +151,7 @@ fn test_gradient_finite_diff() {
         return;
     }
 
-    let ref_data = match fs::read_to_string(fixture) {
+    let ref_data = match sci_form::fixture_io::read_text_fixture(fixture) {
         Ok(data) => data,
         Err(e) => {
             eprintln!("SKIP {fixture}: cannot read file: {e}");

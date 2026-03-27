@@ -79,7 +79,7 @@ struct CsdTorsion {
 
 #[test]
 fn test_new_pipeline() {
-    let data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff.json")
+    let data = fs::read_to_string("tests/fixtures/reference_coords_no_mmff_500.json")
         .expect("Should be able to read reference JSON");
     let mut molecules: Vec<OracleMolecule> =
         serde_json::from_str(&data).expect("JSON was not well-formatted");

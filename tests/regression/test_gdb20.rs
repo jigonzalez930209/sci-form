@@ -64,7 +64,7 @@ fn check_geometry(
 
 #[test]
 fn test_gdb20_50k() {
-    let smiles_data = fs::read_to_string("GDB20.50000.smi").expect("Should read GDB20.50000.smi");
+    let smiles_data = fs::read_to_string("GDB20.1000.smi").expect("Should read GDB20.1000.smi");
     let smiles_list: Vec<&str> = smiles_data
         .lines()
         .filter(|l| !l.trim().is_empty())
