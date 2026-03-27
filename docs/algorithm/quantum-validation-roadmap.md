@@ -13,8 +13,8 @@ This note collects the current validation surface for PM3, GFN0/xTB, GFN1, GFN2,
 
 - [tests/regression/test_experimental_comparison.rs](https://github.com/jigonzalez930209/sci-form/blob/main/tests/regression/test_experimental_comparison.rs) already contains NIST/CCCBDB reference energies for H2, H2O, CH4, NH3, HF, CO, C2H4, and CH2O.
 - The same test file also stores NIST ionization potentials for H2, H2O, CH4, NH3, and HF.
-- [tests/fixtures/experimental_reference.json](../../tests/fixtures/experimental_reference.json) contains experimental bond lengths, dipoles, ionization energies, IR frequencies, and NMR shifts for a compact set of light molecules.
-- [tests/fixtures/gdb20_reference.json.gz](../../tests/fixtures/gdb20_reference.json.gz) is the current geometry reference source for conformer validation.
+- [tests/fixtures/experimental_reference.json](https://github.com/jigonzalez930209/sci-form/blob/main/tests/fixtures/experimental_reference.json) contains experimental bond lengths, dipoles, ionization energies, IR frequencies, and NMR shifts for a compact set of light molecules.
+- [tests/fixtures/gdb20_reference_1k.json](https://github.com/jigonzalez930209/sci-form/blob/main/tests/fixtures/gdb20_reference_1k.json) is the current geometry reference source for conformer validation.
 
 ## Observed data snapshot
 
