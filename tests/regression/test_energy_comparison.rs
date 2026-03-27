@@ -138,8 +138,8 @@ fn pairwise_rmsd(our_coords: &DMatrix<f32>, ref_atoms: &[RefAtom]) -> f32 {
 
 #[test]
 fn test_energy_comparison() {
-    let ref_data = sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json")
-        .unwrap();
+    let ref_data =
+        sci_form::fixture_io::read_text_fixture("tests/fixtures/gdb20_reference_1k.json").unwrap();
     let ref_mols: Vec<RefMolecule> = serde_json::from_str(&ref_data).unwrap();
 
     let limit: usize = std::env::var("GDB20_LIMIT")
