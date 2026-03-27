@@ -1517,6 +1517,7 @@ dependencies = [
 name = "sci-form-python"
 version = "0.11.2"
 dependencies = [
+ "nalgebra",
  "pyo3",
  "rayon",
  "sci-form",
