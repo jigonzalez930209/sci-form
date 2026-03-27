@@ -1,12 +1,74 @@
 # Experimental Modules
 
-sci-form includes a set of **experimental algorithms** behind feature flags. These modules explore next-generation computational chemistry methods without affecting the stable production API.
+sci-form organises pre-production algorithms into three tiers based on maturity:
 
-> All experimental modules live under `sci_form::experimental::*` and require explicit feature flags to compile.
+| Tier | Stability | API guarantee | Coverage |
+|------|-----------|--------------|----------|
+| **Alpha** | Proof-of-concept | May break between minor versions | Basic integration tests |
+| **Beta** | Validated | Minor-version bumps only | Regression + reference validation |
+| **Experimental** (legacy) | Track-by-track | See individual track page | Varies |
 
 ---
 
-## Track Summary
+## [Alpha Modules →](./alpha)
+
+New methods gated by `alpha-*` feature flags. Functionally correct but API shapes may still change.
+
+| ID | Module | Feature flag | Description |
+|----|--------|-------------|-------------|
+| A1 | `alpha::dft` | `alpha-dft` | Kohn-Sham DFT (SVWN / PBE) |
+| A2 | `alpha::reaxff` | `alpha-reaxff` | ReaxFF reactive force field |
+| A3 | `alpha::mlff` | `alpha-mlff` | Neural network FF with AEV descriptors |
+| A4 | `alpha::obara_saika` | `alpha-obara-saika` | Obara-Saika ERIs + Boys function |
+| A5 | `alpha::cga` | `alpha-cga` | CGA motor algebra dihedral refinement |
+| A6 | `alpha::gsm` | `alpha-gsm` | Growing String Method |
+| A7 | `alpha::sdr` | `alpha-sdr` | Semidefinite relaxation embedding |
+| A8 | `alpha::dynamics` | `alpha-dynamics-live` | Live interactive MD |
+| A9 | `alpha::imd` | `alpha-imd` | IMD wire-protocol bridge |
+
+```typescript
+// WASM: subpath import
+import { alpha_compute_dft, alpha_compute_reaxff_gradient } from 'sci-form-wasm/alpha';
+```
+
+```python
+# Python: submodule
+from sci_form.alpha import dft_calculate, reaxff_gradient
+```
+
+---
+
+## [Beta Modules →](./beta)
+
+Validated methods gated by `beta-*` feature flags. API is stable within minor versions.
+
+| ID | Module | Feature flag | Description |
+|----|--------|-------------|-------------|
+| B1 | `beta::kpm` | `beta-kpm` | Kernel Polynomial Method — O(N) DOS |
+| B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian |
+| B3 | `beta::randnla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) |
+| B4 | `beta::riemannian` | `beta-riemannian` | Riemannian PSD cone geometry |
+| B5 | `beta::cpm` | `beta-cpm` | Constant Potential Method |
+
+```typescript
+// WASM: subpath import
+import { beta_compute_kpm_dos, beta_solve_eht_randnla } from 'sci-form-wasm/beta';
+```
+
+```python
+# Python: submodule
+from sci_form.beta import kpm_dos, eht_randnla
+```
+
+---
+
+## Legacy Experimental Tracks
+
+The older `experimental-*` feature flags remain available at their existing module paths:
+
+> All experimental modules live under `sci_form::experimental::*` and require explicit feature flags to compile.
+
+### Track Summary
 
 | Track | Module | Feature Flag | Description |
 |-------|--------|-------------|-------------|
@@ -22,11 +84,9 @@ sci-form includes a set of **experimental algorithms** behind feature flags. The
 | E10 | `cpm` | `experimental-cpm` | Constant Potential Method |
 | E11 | `gsm` | `experimental-gsm` | Growing String Method |
 
----
+### Groups
 
-## Groups
-
-### Group A — Advanced Geometry
+#### Group A — Advanced Geometry
 
 | Track | Focus |
 |-------|-------|
@@ -34,7 +94,7 @@ sci-form includes a set of **experimental algorithms** behind feature flags. The
 | [E2: RandNLA](./randnla) | Sub-cubic EHT diagonalization with randomized sketching |
 | [E3: Riemannian](./riemannian) | PSD-guaranteed embedding via manifold optimization |
 
-### Group B — Electronic Structure
+#### Group B — Electronic Structure
 
 | Track | Focus |
 |-------|-------|
@@ -42,7 +102,7 @@ sci-form includes a set of **experimental algorithms** behind feature flags. The
 | [E5: EEQ](./eeq) | Geometry-dependent electronegativity equalization charges |
 | [E6: ALPB](./alpb) | Analytical implicit solvation with Born radii |
 
-### Group C — Precision Methods
+#### Group C — Precision Methods
 
 | Track | Focus |
 |-------|-------|
@@ -60,18 +120,34 @@ sci-form includes a set of **experimental algorithms** behind feature flags. The
 
 ```toml
 [dependencies]
-sci-form = { version = "0.8", features = ["experimental-d4", "experimental-kpm"] }
+# Alpha modules
+sci-form = { version = "0.11", features = ["alpha-dft", "alpha-reaxff"] }
+
+# Beta modules
+sci-form = { version = "0.11", features = ["beta-kpm", "beta-randnla"] }
+
+# Legacy experimental
+sci-form = { version = "0.11", features = ["experimental-d4", "experimental-kpm"] }
+
+# Everything + parallel
+sci-form = { version = "0.11", features = [
+    "alpha-dft", "alpha-reaxff", "alpha-mlff",
+    "beta-kpm", "beta-randnla",
+    "experimental-d4",
+    "parallel"
+] }
 ```
 
-### Build with all experimental features
+### Run tests
 
 ```bash
-cargo build --features "experimental-cga,experimental-randnla,experimental-riemannian,experimental-kpm,experimental-eeq,experimental-alpb,experimental-d4,experimental-sdr,experimental-mbh,experimental-cpm,experimental-gsm"
-```
+# Alpha tests
+cargo test --features alpha-dft,alpha-reaxff,alpha-mlff --lib --test 'alpha_*'
 
-### Run tests for a specific track
+# Beta tests
+cargo test --features beta-kpm,beta-mbh,beta-randnla --lib --test 'beta_*'
 
-```bash
+# Legacy experimental tests
 cargo test --features experimental-d4 --test regression -- test_d4
 ```
 
@@ -82,4 +158,4 @@ cargo test --features experimental-d4 --test regression -- test_d4
 1. **Isolation** — Experimental code never modifies stable modules (`src/conformer/`, `src/eht/`, etc.)
 2. **Feature gates** — Each track compiles only when its flag is enabled
 3. **Independent testing** — Each track has its own test suite under `tests/experimental/`
-4. **Graduation path** — Tracks may be promoted to production after passing all validation tests and code review
+4. **Graduation path** — Tracks may be promoted through alpha → beta → stable after validation
