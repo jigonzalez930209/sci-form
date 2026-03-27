@@ -1,11 +1,29 @@
 use sci_form::{
-    analyze_stereo, compute_charges, compute_dipole, compute_ecfp,
-    compute_nonpolar_solvation, compute_pm3, compute_population, compute_sssr,
-    compute_tanimoto, compute_xtb, embed, embed_batch, parse, ConformerConfig,
+    analyze_stereo, compute_charges, compute_dipole, compute_ecfp, compute_nonpolar_solvation,
+    compute_pm3, compute_population, compute_sssr, compute_tanimoto, compute_xtb, embed,
+    embed_batch, parse, ConformerConfig,
 };
 
+#[cfg(feature = "alpha-dft")]
+use sci_form::dft::ks_fock::{solve_ks_dft, DftConfig};
+#[cfg(feature = "alpha-mlff")]
+use sci_form::mlff::{compute_aevs, SymmetryFunctionParams};
+#[cfg(feature = "alpha-reaxff")]
+use sci_form::forcefield::reaxff::{compute_reaxff_gradient, ReaxffParams};
+#[cfg(feature = "beta-cpm")]
+use sci_form::beta::cpm::{compute_cpm_charges, CpmConfig};
+#[cfg(feature = "beta-kpm")]
+use sci_form::beta::kpm::{compute_kpm_dos, KpmConfig};
+#[cfg(feature = "beta-randnla")]
+use sci_form::beta::rand_nla::{solve_eht_randnla, RandNlaConfig};
+#[cfg(any(feature = "beta-kpm", feature = "beta-randnla"))]
+use sci_form::eht::solver::solve_eht;
+
 fn positions_from_flat(coords: &[f64]) -> Vec<[f64; 3]> {
-    coords.chunks_exact(3).map(|chunk| [chunk[0], chunk[1], chunk[2]]).collect()
+    coords
+        .chunks_exact(3)
+        .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+        .collect()
 }
 
 fn main() -> Result<(), String> {
@@ -38,10 +56,7 @@ fn main() -> Result<(), String> {
     println!("Gasteiger total charge: {:.4}", charge_result.total_charge);
 
     let population = compute_population(&ethanol.elements, &positions)?;
-    println!(
-        "Mulliken total charge: {:.4}",
-        population.total_charge_mulliken
-    );
+    println!("Mulliken total charge: {:.4}", population.total_charge_mulliken);
 
     let dipole = compute_dipole(&ethanol.elements, &positions)?;
     println!("dipole magnitude: {:.3} D", dipole.magnitude);
@@ -60,56 +75,59 @@ fn main() -> Result<(), String> {
     println!("stereocenters: {}", stereo.n_stereocenters);
 
     let solvation = compute_nonpolar_solvation(&ethanol.elements, &positions, None);
-    println!(
-        "non-polar solvation: {:.3} kcal/mol",
-        solvation.energy_kcal_mol
-    );
+    println!("non-polar solvation: {:.3} kcal/mol", solvation.energy_kcal_mol);
 
     let rings = compute_sssr("c1ccccc1")?;
     println!("benzene rings: {}", rings.rings.len());
 
     let benzene = compute_ecfp("c1ccccc1", 2, 2048)?;
     let toluene = compute_ecfp("Cc1ccccc1", 2, 2048)?;
-    println!(
-        "benzene/toluene tanimoto: {:.3}",
-        compute_tanimoto(&benzene, &toluene)
-    );
+    println!("benzene/toluene tanimoto: {:.3}", compute_tanimoto(&benzene, &toluene));
 
-    Ok(())
-}
-
-    let rmsd_mat = compute_rmsd_matrix(&conformers);
-    println!("RMSD matrix: {}x{}", rmsd_mat.len(), rmsd_mat[0].len());
-    for (i, row) in rmsd_mat.iter().enumerate() {
-        println!("  row {}: {:?}", i, row.iter().map(|v| format!("{:.3}", v)).collect::<Vec<_>>());
+    #[cfg(feature = "alpha-dft")]
+    {
+        let dft = solve_ks_dft(&ethanol.elements, &positions, &DftConfig::default())?;
+        println!("DFT gap: {:.3} eV, converged: {}", dft.gap, dft.converged);
     }
 
-    // ── NMR ensemble J-couplings ───────────────────────────────────────────────
-    let conf_coords: Vec<Vec<f64>> = (0..3u64).map(|s| embed("CCC", s).coords).collect();
-    let energies_kcal = vec![0.0, 0.5, 1.2];
-    let ens_j = compute_ensemble_j_couplings("CCC", &conf_coords, &energies_kcal, 298.15)?;
-    println!("Ensemble J-couplings: {} pairs", ens_j.len());
-    for c in &ens_j { println!("  J({},{}) = {:.2} Hz  {}", c.h1_index, c.h2_index, c.j_hz, c.coupling_type); }
+    #[cfg(feature = "alpha-reaxff")]
+    {
+        let params = ReaxffParams::default_chon();
+        let (energy, gradient) = compute_reaxff_gradient(&ethanol.coords, &ethanol.elements, &params)?;
+        println!("ReaxFF energy: {:.3} gradient length: {}", energy, gradient.len());
+    }
 
-    // ── IR broadened (Gaussian) ──────────────────────────────────────────────
-    let (el, pos, _) = water_system();
-    let vib2 = compute_vibrational_analysis(&el, &pos, "eht", None)?;
-    let ir_gauss = compute_ir_spectrum_broadened(&vib2, 20.0, 400.0, 4000.0, 1000, "gaussian");
-    println!("IR Gaussian: {} points, {} peaks", ir_gauss.wavenumbers.len(), ir_gauss.peaks.len());
+    #[cfg(feature = "alpha-mlff")]
+    {
+        let aevs = compute_aevs(&ethanol.elements, &positions, &SymmetryFunctionParams::default());
+        println!("AEV atoms: {}", aevs.len());
+    }
 
-    // ── Charges configured ─────────────────────────────────────────────────
-    let cfg = sci_form::charges::gasteiger::GasteigerConfig {
-        max_iter: 10,
-        initial_damping: 0.4,
-        convergence_threshold: 1e-8,
-    };
-    let ch_cfg = compute_charges_configured("CC(=O)O", &cfg)?;
-    println!("Configured charges: {:?}", ch_cfg.charges.iter().map(|c| format!("{:.3}", c)).collect::<Vec<_>>());
+    #[cfg(feature = "beta-kpm")]
+    {
+        let eht = solve_eht(&ethanol.elements, &positions, None)?;
+        let config = KpmConfig::default();
+        let kpm = compute_kpm_dos(&eht.hamiltonian, &config, -30.0, 5.0, 256);
+        println!("KPM points: {} order: {}", kpm.energies.len(), kpm.order);
+    }
+
+    #[cfg(feature = "beta-randnla")]
+    {
+        let eht = solve_eht(&ethanol.elements, &positions, None)?;
+        let config = RandNlaConfig::default();
+        let (orbital_energies, _, info) = solve_eht_randnla(&eht.hamiltonian, &eht.overlap, &config);
+        println!(
+            "RandNLA orbitals: {} residual: {:.3e}",
+            orbital_energies.len(),
+            info.residual_error
+        );
+    }
+
+    #[cfg(feature = "beta-cpm")]
+    {
+        let cpm = compute_cpm_charges(&ethanol.elements, &positions, &CpmConfig::default());
+        println!("CPM total charge: {:.4}", cpm.total_charge);
+    }
 
     Ok(())
-}
-
-fn extract_elpos(r: &sci_form::ConformerResult) -> (Vec<u8>, Vec<[f64; 3]>) {
-    let positions = r.coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
-    (r.elements.clone(), positions)
 }
