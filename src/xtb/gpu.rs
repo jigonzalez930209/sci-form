@@ -209,6 +209,6 @@ mod tests {
 
     #[test]
     fn test_xtb_gpu_module_compiles() {
-        assert!(true);
+        let _ = super::XTB_GAMMA_SHADER;
     }
 }
