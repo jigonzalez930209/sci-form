@@ -77,7 +77,15 @@ pub mod topology;
 pub mod transport;
 pub mod xtb;
 
-#[cfg(any(feature = "alpha-cga", feature = "alpha-gsm", feature = "alpha-sdr"))]
+#[cfg(any(
+    feature = "alpha-cga",
+    feature = "alpha-gsm",
+    feature = "alpha-sdr",
+    feature = "alpha-edl",
+    feature = "alpha-periodic-linear",
+    feature = "alpha-kinetics",
+    feature = "alpha-render-bridge"
+))]
 pub mod alpha;
 
 #[cfg(any(
