@@ -5,7 +5,7 @@
 /// GSM configuration.
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GsmConfig {
     /// Maximum number of nodes in the string (including endpoints).
     pub max_nodes: usize,
