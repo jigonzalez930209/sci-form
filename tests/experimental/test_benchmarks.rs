@@ -1141,8 +1141,8 @@ mod bench_cga_geometry {
         let p = [2.0, 1.0, 0.0];
         let p_rot = motor.transform_point(p);
 
-        let dist_orig = ((p[1] * p[1] + p[2] * p[2]) as f64).sqrt();
-        let dist_rot = ((p_rot[1] * p_rot[1] + p_rot[2] * p_rot[2]) as f64).sqrt();
+        let dist_orig = (p[1] * p[1] + p[2] * p[2]).sqrt();
+        let dist_rot = (p_rot[1] * p_rot[1] + p_rot[2] * p_rot[2]).sqrt();
 
         println!(
             "[B9] Original dist from axis: {:.4}, Rotated: {:.4}",

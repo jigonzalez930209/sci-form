@@ -149,7 +149,11 @@ mod cga_tests {
 
     #[test]
     fn e1_2a_round_trip_embed_extract() {
-        let points = [[1.234, -5.678, 9.012], [0.0, 0.0, 0.0], [-3.14, 2.72, 1.41]];
+        let points = [
+            [1.234, -5.678, 9.012],
+            [0.0, 0.0, 0.0],
+            [-std::f64::consts::PI, 2.72, 1.41],
+        ];
         for &p in &points {
             let embedded = embed_point(p);
             let extracted = extract_point(&embedded);
@@ -264,9 +268,9 @@ mod cga_tests {
 
     #[test]
     fn e1_2c_torsion_scan_produces_snapshots() {
-        let mut coords = vec![0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 3.0, 0.0, 0.0, 4.5, 0.0, 0.0];
+        let coords = vec![0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 3.0, 0.0, 0.0, 4.5, 0.0, 0.0];
         let subtree = vec![2, 3];
-        let snapshots = refine_torsion_cga(&mut coords, 1, 2, &subtree, 12);
+        let snapshots = refine_torsion_cga(&coords, 1, 2, &subtree, 12);
         assert_eq!(snapshots.len(), 12, "Should produce 12 torsion snapshots");
     }
 

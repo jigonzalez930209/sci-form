@@ -56,7 +56,7 @@ mod sdr_tests {
     #[test]
     fn test_extract_coordinates_preserves_distances() {
         // Build Gram from 4 known 3D points
-        let pts = vec![
+        let pts = [
             [0.0, 0.0, 0.0],
             [1.5, 0.0, 0.0],
             [0.0, 1.5, 0.0],
