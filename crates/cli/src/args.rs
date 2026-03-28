@@ -223,4 +223,200 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 78.5)]
         dielectric: f64,
     },
+
+    /// [experimental-alpha] Generate EDL profile chart visualization
+    #[cfg(feature = "alpha-render-bridge")]
+    EdlChart {
+        #[arg(short, long, default_value_t = 0.1)]
+        potential: f64,
+        #[arg(short, long, default_value_t = 0.1)]
+        ionic_strength: f64,
+    },
+
+    /// [experimental-alpha] Generate capacitance scan chart visualization
+    #[cfg(feature = "alpha-render-bridge")]
+    CapacitanceChart {
+        #[arg(long, default_value_t = -0.5)]
+        v_min: f64,
+        #[arg(long, default_value_t = 0.5)]
+        v_max: f64,
+        #[arg(short, long, default_value_t = 50)]
+        n_points: usize,
+        #[arg(short, long, default_value_t = 0.1)]
+        ionic_strength: f64,
+        #[arg(short, long, default_value = "gouy-chapman")]
+        model: String,
+    },
+
+    /// [experimental-alpha] Generate Arrhenius chart
+    #[cfg(feature = "alpha-render-bridge")]
+    ArrheniusChart {
+        #[arg(short, long)]
+        temperatures: String,
+        #[arg(short, long)]
+        rates: String,
+    },
+
+    /// [experimental-alpha] Generate band structure chart
+    #[cfg(feature = "alpha-render-bridge")]
+    BandStructureChart {
+        #[arg(long, default_value_t = 100)]
+        k_points: usize,
+        #[arg(long, default_value_t = 20)]
+        n_bands: usize,
+        #[arg(long, default_value_t = -30.0)]
+        e_min: f64,
+        #[arg(long, default_value_t = 5.0)]
+        e_max: f64,
+    },
+
+    /// [experimental-alpha] Generate DOS chart
+    #[cfg(feature = "alpha-render-bridge")]
+    DosChart {
+        #[arg(short, long)]
+        energies: String,
+        #[arg(short, long)]
+        dos_values: String,
+    },
+
+    /// [experimental-alpha] Generate trajectory chart
+    #[cfg(feature = "alpha-render-bridge")]
+    TrajectoryChart,
+
+    /// [experimental-alpha] Generate k-point path chart
+    #[cfg(feature = "alpha-render-bridge")]
+    KpointPathChart,
+
+    /// [experimental-alpha] Generate Fermi surface chart
+    #[cfg(feature = "alpha-render-bridge")]
+    FermiSurfaceChart,
+
+    /// [experimental-alpha] Generate phase portrait chart
+    #[cfg(feature = "alpha-render-bridge")]
+    PhasePortraitChart,
+
+    /// [experimental-alpha] Generate reaction coordinate chart
+    #[cfg(feature = "alpha-render-bridge")]
+    ReactionCoordinateChart,
+
+    /// [experimental-alpha] Generate thermal properties chart
+    #[cfg(feature = "alpha-render-bridge")]
+    ThermalPropChart,
+
+    // ─── PERIODIC LINEAR COMMANDS ──────────────
+    /// [experimental-alpha] Compute periodic DOS
+    #[cfg(feature = "alpha-periodic-linear")]
+    ComputePeriodicDos {
+        #[arg(long, default_value_t = 10)]
+        n_kpoints: usize,
+        #[arg(long, default_value_t = 100)]
+        order: usize,
+    },
+
+    /// [experimental-alpha] Solve periodic RandNLA
+    #[cfg(feature = "alpha-periodic-linear")]
+    SolvePeriodicRandnla {
+        #[arg(long, default_value_t = 10)]
+        n_kpoints: usize,
+    },
+
+    /// [experimental-alpha] Compute Bloch phase
+    #[cfg(feature = "alpha-periodic-linear")]
+    BlochPhase {
+        #[arg(long, default_value_t = 0.0)]
+        k_x: f64,
+        #[arg(long, default_value_t = 0.0)]
+        k_y: f64,
+        #[arg(long, default_value_t = 0.0)]
+        k_z: f64,
+    },
+
+    /// [experimental-alpha] Build Bloch Hamiltonian
+    #[cfg(feature = "alpha-periodic-linear")]
+    BuildBlochHamiltonian {
+        #[arg(long, default_value_t = 10)]
+        n_basis: usize,
+    },
+
+    /// [experimental-alpha] Validate electron count
+    #[cfg(feature = "alpha-periodic-linear")]
+    ValidateElectronCount {
+        #[arg(long)]
+        n_electrons: usize,
+        #[arg(long)]
+        n_bands: usize,
+        #[arg(long)]
+        n_kpoints: usize,
+    },
+
+    // ─── KINETICS COMMANDS ────────────────────
+    /// [experimental-alpha] Extract kinetics diagnostics
+    #[cfg(feature = "alpha-kinetics")]
+    ExtractKineticsDiagnostics,
+
+    /// [experimental-alpha] Solve microkinetic network
+    #[cfg(feature = "alpha-kinetics")]
+    SolveMicrokineticNetwork {
+        #[arg(long, default_value_t = 5)]
+        n_steps: usize,
+    },
+
+    /// [experimental-alpha] Solve microkinetic steady state
+    #[cfg(feature = "alpha-kinetics")]
+    SolveMicrokineticSteadyState {
+        #[arg(long, default_value_t = 5)]
+        n_steps: usize,
+    },
+
+    /// [experimental-alpha] Analyze GSM+MBH+HTST step
+    #[cfg(feature = "alpha-kinetics")]
+    AnalyzeGsmMbhHtstStep,
+
+    // ──── RENDER BRIDGE: Missing chart utilities ───────────────────────────────
+    /// [render-bridge] Serialize chart to JSON
+    ChartToJson,
+
+    /// [render-bridge] Deserialize chart from JSON
+    #[command(args_conflicts_with_subcommands = true)]
+    ChartFromJson {
+        /// JSON string input
+        #[arg(value_name = "JSON")]
+        json_input: Option<String>,
+    },
+
+    /// [render-bridge] Validate chart schema
+    #[command(args_conflicts_with_subcommands = true)]
+    ValidateChartSchema {
+        /// JSON string to validate
+        #[arg(value_name = "JSON")]
+        json_input: Option<String>,
+    },
+
+    // ──── AUXILIARY: Missing utility functions ──────────────────────────────
+    /// [auxiliary] Validate experimental result
+    ValidateExperimentalResult,
+
+    /// [auxiliary] Merge experimental results
+    MergeExperimentResults,
+
+    /// [auxiliary] Export result to SDF format
+    ExperimentalResultToSdf,
+
+    /// [auxiliary] Export result to JSON format
+    ExperimentalResultToJson,
+
+    /// [auxiliary] Benchmark function execution
+    BenchmarkFunction,
+
+    /// [auxiliary] Trace function calls for debugging
+    TraceFunctionCalls,
+
+    /// [auxiliary] Generate structured report
+    ReportGenerator,
+
+    /// [auxiliary] Validate pipeline consistency
+    PipelineValidator,
+
+    /// [auxiliary] Cache computation results
+    CacheResults,
 }

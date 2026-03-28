@@ -15,6 +15,7 @@ use crate::helpers::{json_error, parse_elements_and_positions, parse_flat_coords
 #[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
+#[cfg(feature = "alpha-reaxff")]
 fn build_reaxff_atom_params(
     elements: &[u8],
 ) -> Vec<sci_form::forcefield::reaxff::params::ReaxffAtomParams> {

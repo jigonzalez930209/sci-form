@@ -27,6 +27,10 @@ experimental-sdr = ["sci-form/experimental-sdr"]
 experimental-mbh = ["sci-form/experimental-mbh"]
 experimental-cpm = ["sci-form/experimental-cpm"]
 experimental-gsm = ["sci-form/experimental-gsm"]
+alpha-edl = ["sci-form/alpha-edl"]
+alpha-periodic-linear = ["sci-form/alpha-periodic-linear"]
+alpha-kinetics = ["sci-form/alpha-kinetics"]
+alpha-render-bridge = ["sci-form/alpha-render-bridge"]
 
 [dependencies]
 sci-form = { path = "../..", version = "0.12.4", default-features = false }

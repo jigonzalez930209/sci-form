@@ -122,5 +122,126 @@ fn main() {
             mu_ev,
             dielectric,
         } => experimental_cmds::cmd_cpm(&elements, &coords, mu_ev, dielectric),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::EdlChart {
+            potential,
+            ionic_strength,
+        } => experimental_cmds::cmd_edl_chart(potential, ionic_strength),
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::CapacitanceChart {
+            v_min,
+            v_max,
+            n_points,
+            ionic_strength,
+            model,
+        } => {
+            experimental_cmds::cmd_capacitance_chart(v_min, v_max, n_points, ionic_strength, &model)
+        }
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::ArrheniusChart {
+            temperatures,
+            rates,
+        } => experimental_cmds::cmd_arrhenius_chart(&temperatures, &rates),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::BandStructureChart {
+            k_points,
+            n_bands,
+            e_min,
+            e_max,
+        } => experimental_cmds::cmd_band_structure_chart(k_points, n_bands, e_min, e_max),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::DosChart {
+            energies,
+            dos_values,
+        } => experimental_cmds::cmd_dos_chart(&energies, &dos_values),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::TrajectoryChart => experimental_cmds::cmd_trajectory_chart(),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::KpointPathChart => experimental_cmds::cmd_kpoint_path_chart(),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::FermiSurfaceChart => experimental_cmds::cmd_fermi_surface_chart(),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::PhasePortraitChart => experimental_cmds::cmd_phase_portrait_chart(),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::ReactionCoordinateChart => experimental_cmds::cmd_reaction_coordinate_chart(),
+
+        #[cfg(feature = "alpha-render-bridge")]
+        Commands::ThermalPropChart => experimental_cmds::cmd_thermal_prop_chart(),
+
+        // ─── PERIODIC LINEAR ───
+        #[cfg(feature = "alpha-periodic-linear")]
+        Commands::ComputePeriodicDos { n_kpoints, order } => {
+            experimental_cmds::cmd_compute_periodic_dos(n_kpoints, order)
+        }
+
+        #[cfg(feature = "alpha-periodic-linear")]
+        Commands::SolvePeriodicRandnla { n_kpoints } => {
+            experimental_cmds::cmd_solve_periodic_randnla(n_kpoints)
+        }
+
+        #[cfg(feature = "alpha-periodic-linear")]
+        Commands::BlochPhase { k_x, k_y, k_z } => experimental_cmds::cmd_bloch_phase(k_x, k_y, k_z),
+
+        #[cfg(feature = "alpha-periodic-linear")]
+        Commands::BuildBlochHamiltonian { n_basis } => {
+            experimental_cmds::cmd_build_bloch_hamiltonian(n_basis)
+        }
+
+        #[cfg(feature = "alpha-periodic-linear")]
+        Commands::ValidateElectronCount {
+            n_electrons,
+            n_bands,
+            n_kpoints,
+        } => experimental_cmds::cmd_validate_electron_count(n_electrons, n_bands, n_kpoints),
+
+        // ─── KINETICS ──────────
+        #[cfg(feature = "alpha-kinetics")]
+        Commands::ExtractKineticsDiagnostics => {
+            experimental_cmds::cmd_extract_kinetics_diagnostics()
+        }
+
+        #[cfg(feature = "alpha-kinetics")]
+        Commands::SolveMicrokineticNetwork { n_steps } => {
+            experimental_cmds::cmd_solve_microkinetic_network(n_steps)
+        }
+
+        #[cfg(feature = "alpha-kinetics")]
+        Commands::SolveMicrokineticSteadyState { n_steps } => {
+            experimental_cmds::cmd_solve_microkinetic_steady_state(n_steps)
+        }
+
+        #[cfg(feature = "alpha-kinetics")]
+        Commands::AnalyzeGsmMbhHtstStep => experimental_cmds::cmd_analyze_gsm_mbh_htst_step(),
+
+        // Render Bridge commands
+        Commands::ChartToJson => experimental_cmds::cmd_chart_to_json(),
+        Commands::ChartFromJson { json_input } => {
+            experimental_cmds::cmd_chart_from_json(json_input.unwrap_or_default())
+        }
+        Commands::ValidateChartSchema { json_input } => {
+            experimental_cmds::cmd_validate_chart_schema(json_input.unwrap_or_default())
+        }
+
+        // Auxiliary commands
+        Commands::ValidateExperimentalResult => {
+            experimental_cmds::cmd_validate_experimental_result()
+        }
+        Commands::MergeExperimentResults => experimental_cmds::cmd_merge_experiment_results(),
+        Commands::ExperimentalResultToSdf => experimental_cmds::cmd_experimental_result_to_sdf(),
+        Commands::ExperimentalResultToJson => experimental_cmds::cmd_experimental_result_to_json(),
+        Commands::BenchmarkFunction => experimental_cmds::cmd_benchmark_function(),
+        Commands::TraceFunctionCalls => experimental_cmds::cmd_trace_function_calls(),
+        Commands::ReportGenerator => experimental_cmds::cmd_report_generator(),
+        Commands::PipelineValidator => experimental_cmds::cmd_pipeline_validator(),
+        Commands::CacheResults => experimental_cmds::cmd_cache_results(),
     }
 }
