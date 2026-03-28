@@ -63,7 +63,7 @@ pub fn compute_mmff94_nonbonded_gpu(
     }
 
     // Guard against excessive memory usage for exclusion bitmap (N²/8 bytes)
-    let excl_bitmap_bytes = (n_atoms * n_atoms + 7) / 8;
+    let excl_bitmap_bytes = (n_atoms * n_atoms).div_ceil(8);
     let atom_buffer_bytes = n_atoms * 32;
     let total_gpu_memory = excl_bitmap_bytes + atom_buffer_bytes;
     const MAX_GPU_BUFFER: usize = 512 * 1024 * 1024; // 512 MB
@@ -92,7 +92,7 @@ pub fn compute_mmff94_nonbonded_gpu(
     }
 
     // Pack exclusions as a bitmap for fast lookup
-    let excl_size = (n_atoms * n_atoms + 31) / 32;
+    let excl_size = (n_atoms * n_atoms).div_ceil(32);
     let mut excl_bits = vec![0u32; excl_size];
     for &(i, j) in exclusions_14 {
         let bit_idx = i * n_atoms + j;
@@ -115,7 +115,7 @@ pub fn compute_mmff94_nonbonded_gpu(
 
     let wg_size = 64u32;
     let n_pairs = n_atoms * (n_atoms - 1) / 2;
-    let wg_count = ((n_pairs as u32) + wg_size - 1) / wg_size;
+    let wg_count = (n_pairs as u32).div_ceil(wg_size);
 
     let descriptor = ComputeDispatchDescriptor {
         label: "MMFF94 non-bonded".to_string(),
