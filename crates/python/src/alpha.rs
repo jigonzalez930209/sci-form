@@ -733,7 +733,7 @@ mod sdr_py {
 // ─── Module registration ─────────────────────────────────────────────────────
 
 pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
-    let m = PyModule::new_bound(parent.py(), "alpha")?;
+    let m = PyModule::new_bound(parent.py(), "sci_form.alpha")?;
     m.add("__doc__", "Alpha-tier experimental modules for sci_form.\n\nThese APIs are early-stage and subject to breaking changes.")?;
 
     #[cfg(feature = "alpha-dft")]
@@ -752,5 +752,7 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     sdr_py::register(&m)?;
 
     parent.add_submodule(&m)?;
+    let sys = parent.py().import_bound("sys")?;
+    sys.getattr("modules")?.set_item("sci_form.alpha", &m)?;
     Ok(())
 }

@@ -424,7 +424,7 @@ mod cpm_py {
 // ─── Module registration ─────────────────────────────────────────────────────
 
 pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
-    let m = PyModule::new_bound(parent.py(), "beta")?;
+    let m = PyModule::new_bound(parent.py(), "sci_form.beta")?;
     m.add("__doc__", "Beta-tier experimental modules for sci_form.\n\nThese APIs have passed validation but may still change before stable release.")?;
 
     #[cfg(feature = "beta-kpm")]
@@ -439,5 +439,7 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     cpm_py::register(&m)?;
 
     parent.add_submodule(&m)?;
+    let sys = parent.py().import_bound("sys")?;
+    sys.getattr("modules")?.set_item("sci_form.beta", &m)?;
     Ok(())
 }
