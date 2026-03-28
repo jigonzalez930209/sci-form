@@ -287,15 +287,20 @@ mod mlff_py {
     ///     MlffResultPy: energy, atomic_energies, forces
     #[pyfunction]
     pub fn alpha_compute_mlff(
+        py: Python<'_>,
         elements: Vec<u8>,
         coords: Vec<f64>,
-        config_dict: &pyo3::types::PyDict,
+        config_dict: pyo3::Bound<'_, pyo3::types::PyDict>,
     ) -> PyResult<MlffResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let config_value = config_dict
-            .extract::<serde_json::Value>()
+        let json = py
+            .import_bound("json")
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+        let config_json: String = json
+            .call_method1("dumps", (config_dict,))
+            .and_then(|obj| obj.extract::<String>())
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("bad config: {}", e)))?;
-        let config: MlffConfig = serde_json::from_value(config_value)
+        let config: MlffConfig = serde_json::from_str(&config_json)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("bad config: {}", e)))?;
         let r = compute_mlff(&elements, &positions, &config)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
@@ -491,7 +496,7 @@ mod cga_py {
     ///     list[float] — new flat coordinates
     #[pyfunction]
     pub fn rotate_dihedral_cga(
-        mut coords: Vec<f64>,
+        coords: Vec<f64>,
         subtree_indices: Vec<usize>,
         axis_a: [f64; 3],
         axis_b: [f64; 3],

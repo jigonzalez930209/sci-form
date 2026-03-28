@@ -42,3 +42,4 @@ sci-form-core = { path = "../..", package = "sci-form", version = "0.12.2", defa
 pyo3 = { version = "0.22", features = ["extension-module", "serde"] }
 rayon = "1.10"
 nalgebra = "0.32"
+serde_json = "1.0"

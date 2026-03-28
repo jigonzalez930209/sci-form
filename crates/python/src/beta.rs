@@ -104,7 +104,7 @@ mod kpm_py {
     pub fn kpm_mulliken(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<KpmMullikenResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let (basis, hamiltonian, overlap) = build_eht_matrices(&elements, &positions);
-        let eht = sci_form_core::eht::solve_eht(&elements, &positions)
+        let eht = sci_form_core::eht::solve_eht(&elements, &positions, None)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
         let config = KpmConfig::default();
         let nuclear_charges: Vec<f64> = basis
@@ -230,7 +230,7 @@ mod randnla_py {
         let basis = sci_form_core::eht::basis::build_basis(elements, positions);
         let overlap = sci_form_core::eht::build_overlap_matrix(&basis);
         let hamiltonian = sci_form_core::eht::build_hamiltonian(&basis, &overlap, None);
-        let n_electrons = sci_form_core::eht::solve_eht(elements, positions)
+        let n_electrons = sci_form_core::eht::solve_eht(elements, positions, None)
             .map(|result| result.n_electrons)
             .unwrap_or(elements.len() * 2);
         (hamiltonian, overlap, n_electrons)
