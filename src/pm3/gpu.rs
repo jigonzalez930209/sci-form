@@ -139,6 +139,6 @@ mod tests {
     #[test]
     fn test_pm3_gpu_module_compiles() {
         // Verify the module compiles with or without gpu feature
-        assert!(true);
+        let _ = super::PM3_G_MATRIX_SHADER;
     }
 }
