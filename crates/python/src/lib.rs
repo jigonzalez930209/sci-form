@@ -19,6 +19,7 @@ mod population;
 mod properties;
 mod reactivity;
 mod rings;
+mod smirks;
 mod solvation;
 mod spectroscopy;
 mod stereo;
@@ -49,6 +50,7 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     stereo::register(m)?;
     solvation::register(m)?;
     rings::register(m)?;
+    smirks::register(m)?;
     experimental::register(m)?;
     alpha::register(m)?;
     beta::register(m)?;
