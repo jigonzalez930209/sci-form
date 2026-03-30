@@ -17,6 +17,7 @@ mod mesh;
 mod ml;
 mod nmr;
 mod population;
+mod potentials;
 mod properties;
 mod reactivity;
 mod rings;
@@ -61,5 +62,6 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     experimental::register(m)?;
     alpha::register(m)?;
     beta::register(m)?;
+    potentials::register(m)?;
     Ok(())
 }
