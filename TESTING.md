@@ -114,7 +114,40 @@ cargo test --release --test regression test_tet_centers -- --nocapture
 
 ---
 
-## 4. Python Bindings (`crates/python/`)
+## 4. SMIRKS Reaction Testing
+
+SMIRKS (SMILES Reaction Specification) allows pattern-based chemical reaction transforms.
+
+```bash
+# Run all SMIRKS unit tests (23 tests)
+cargo test --lib smirks
+
+# Run SMIRKS integration tests (15 tests)
+cargo test --test test_smirks_reactions
+
+# Compare with RDKit (requires RDKit installation)
+python scripts/compare_smirks_reactions.py
+
+# Python integration tests
+python tests/integration/test_smirks_reactions.py
+```
+
+### SMIRKS Test Categories
+
+| Category | Tests | What it validates |
+|----------|-------|-------------------|
+| Parsing | 8 tests | SMIRKS pattern parsing, atom maps, validation |
+| Acid-base | 3 tests | Deprotonation, protonation reactions |
+| Redox | 3 tests | Oxidation and reduction patterns |
+| Substitution | 2 tests | Aromatic halogenation, nitration |
+| Hydrolysis | 2 tests | Ester and amide cleavage |
+| Edge cases | 5 tests | Multi-component, stereochemistry, errors |
+
+See [SMIRKS_TESTING.md](SMIRKS_TESTING.md) for detailed documentation.
+
+---
+
+## 5. Python Bindings (`crates/python/`)
 
 ```bash
 # Build a wheel for the current platform
@@ -138,7 +171,7 @@ python tests/integration/test_python_integration.py
 
 ---
 
-## 5. WebAssembly / Node.js (`crates/wasm/`)
+## 6. WebAssembly / Node.js (`crates/wasm/`)
 
 ```bash
 # Build for Node.js (CommonJS) — sequential, no parallelization
@@ -163,7 +196,7 @@ node tests/integration/test_wasm_integration.js
 
 ---
 
-## 6. CLI (`crates/cli/`)
+## 7. CLI (`crates/cli/`)
 
 ```bash
 # Build the CLI binary
@@ -228,7 +261,7 @@ echo "All checks passed — ready to tag."
 
 ---
 
-## 8. Computational Chemistry Validation and Ground Truth Testing (EHT Pipeline)
+## 9. Computational Chemistry Validation and Ground Truth Testing (EHT Pipeline)
 
 Validating a computational chemistry engine is the most critical development step. To ensure sci-form calculates quantum-mechanical tensors correctly, you must establish a "ground truth" using established reference tools and compare mathematical matrices step-by-step, not just visual output.
 
