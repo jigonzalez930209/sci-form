@@ -63,7 +63,7 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 ### Platform
 - **Multi-platform** — Rust lib, Python (PyO3), TypeScript/JS (WASM), CLI (Linux/macOS/Windows)
 - **Zero runtime dependencies** — pure Rust, no C++ toolchain needed
-- **SMILES + SMARTS** — full parser and substructure matcher; 60+ bracket elements
+- **SMILES, SMARTS, SMIRKS** — full parser, substructure matcher, and reaction transforms; 60+ bracket elements
 
 ---
 
