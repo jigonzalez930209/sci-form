@@ -41,6 +41,7 @@ pub mod conformer;
 pub mod dipole;
 pub mod dispersion;
 pub mod distgeom;
+pub mod potentials;
 pub mod dos;
 pub mod dynamics;
 pub mod eht;
