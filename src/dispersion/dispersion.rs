@@ -2,7 +2,7 @@
 //!
 //! Two-body BJ-damped dispersion with optional three-body ATM term.
 
-use super::params::{c8_from_c6, d4_coordination_number, dynamic_c6};
+use super::params::{c8_from_c6, d4_coordination_number, dynamic_c6, get_d4_params};
 use serde::{Deserialize, Serialize};
 
 /// D4 configuration.
@@ -194,7 +194,22 @@ fn triple_energy(
     let angular = 3.0 * cos_a * cos_b * cos_c + 1.0;
     let r_prod = r_ab * r_bc * r_ca;
 
-    config.s9 * c9 * angular / r_prod.powi(3)
+    // ATM BJ-like damping per Grimme D3 (JCP 132, 154104, Eq. 6):
+    // f_damp = 1 / (1 + 6 * (R0_ABC / r_mean)^alpha)
+    // where R0_ABC = (4/3)*(R_cov_A + R_cov_B)^(1/3) * ... geometric mean of covalent radii
+    // and alpha = 14 (steep damping exponent)
+    let r_cov_i = get_d4_params(elements[i]).r_cov;
+    let r_cov_j = get_d4_params(elements[j]).r_cov;
+    let r_cov_k = get_d4_params(elements[k]).r_cov;
+    let r0_ab = (4.0 / 3.0) * (r_cov_i + r_cov_j);
+    let r0_bc = (4.0 / 3.0) * (r_cov_j + r_cov_k);
+    let r0_ca = (4.0 / 3.0) * (r_cov_k + r_cov_i);
+    let r0_prod = r0_ab * r0_bc * r0_ca;
+    let r9 = r_prod.powi(3);
+    let r0_9 = r0_prod.powi(3);
+    let fdamp = 1.0 / (1.0 + 6.0 * (r0_9 / r9));
+
+    config.s9 * c9 * angular / r9 * fdamp
 }
 
 /// Compute numerical D4 gradient.
