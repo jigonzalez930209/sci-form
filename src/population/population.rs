@@ -169,9 +169,30 @@ pub(crate) fn valence_electrons(z: u8) -> f64 {
         79 => 11.0, // Au
         80 => 12.0, // Hg
         // Period 6 main-group
-        81 => 3.0, // Tl
-        82 => 4.0, // Pb
-        83 => 5.0, // Bi
+        55 => 1.0,  // Cs
+        56 => 2.0,  // Ba
+        81 => 3.0,  // Tl
+        82 => 4.0,  // Pb
+        83 => 5.0,  // Bi
+        84 => 6.0,  // Po
+        85 => 7.0,  // At
+        86 => 8.0,  // Rn
+        // Lanthanides (4f + 5d + 6s valence)
+        57 => 3.0,  // La
+        58 => 4.0,  // Ce
+        59 => 5.0,  // Pr
+        60 => 6.0,  // Nd
+        61 => 7.0,  // Pm
+        62 => 8.0,  // Sm
+        63 => 9.0,  // Eu
+        64 => 10.0, // Gd
+        65 => 11.0, // Tb
+        66 => 12.0, // Dy
+        67 => 13.0, // Ho
+        68 => 14.0, // Er
+        69 => 15.0, // Tm
+        70 => 16.0, // Yb
+        71 => 17.0, // Lu
         _ => 0.0,
     }
 }
@@ -304,6 +325,64 @@ pub fn compute_population(
     }
 }
 
+/// Compute population analysis with parallel matrix operations (rayon).
+#[cfg(feature = "parallel")]
+pub fn compute_population_parallel(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    coefficients: &[Vec<f64>],
+    n_electrons: usize,
+) -> PopulationResult {
+    use rayon::prelude::*;
+
+    let basis = crate::eht::basis::build_basis(elements, positions);
+    let overlap = crate::eht::build_overlap_matrix(&basis);
+    let n_ao = basis.len();
+    let n_atoms = elements.len();
+    let ao_map = ao_to_atom_map(&basis);
+    let p = build_density_matrix(coefficients, n_electrons);
+
+    // Mulliken: PS
+    let ps = &p * &overlap;
+    let mut mulliken_pop = vec![0.0; n_atoms];
+    let mut mulliken_ao_pop = vec![0.0; n_ao];
+    for mu in 0..n_ao {
+        mulliken_ao_pop[mu] = ps[(mu, mu)];
+        mulliken_pop[ao_map[mu]] += ps[(mu, mu)];
+    }
+    let mulliken_charges: Vec<f64> = (0..n_atoms)
+        .into_par_iter()
+        .map(|a| valence_electrons(elements[a]) - mulliken_pop[a])
+        .collect();
+    let total_mulliken: f64 = mulliken_charges.iter().sum();
+
+    // Löwdin: S^{1/2} P S^{1/2}
+    let sps = lowdin_orthogonalized_density(&overlap, &p);
+    let lowdin_charges: Vec<f64> = (0..n_atoms)
+        .into_par_iter()
+        .map(|a| {
+            let mut pop = 0.0;
+            for mu in 0..n_ao {
+                if ao_map[mu] == a {
+                    pop += sps[(mu, mu)];
+                }
+            }
+            valence_electrons(elements[a]) - pop
+        })
+        .collect();
+    let total_lowdin: f64 = lowdin_charges.iter().sum();
+
+    PopulationResult {
+        mulliken_charges,
+        lowdin_charges,
+        mulliken_populations: mulliken_ao_pop,
+        num_atoms: n_atoms,
+        total_charge_mulliken: total_mulliken,
+        total_charge_lowdin: total_lowdin,
+        charge_conservation_error: (total_mulliken - total_mulliken.round()).abs(),
+    }
+}
+
 /// Compute Wiberg-like and Mayer-like bond orders from an EHT density matrix.
 pub fn compute_bond_orders(
     elements: &[u8],
@@ -363,6 +442,80 @@ pub fn compute_bond_orders(
     BondOrderResult {
         bonds,
         num_atoms: elements.len(),
+        wiberg_valence,
+        mayer_valence,
+    }
+}
+
+/// Compute bond orders with parallel atom-pair processing (rayon).
+#[cfg(feature = "parallel")]
+pub fn compute_bond_orders_parallel(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    coefficients: &[Vec<f64>],
+    n_electrons: usize,
+) -> BondOrderResult {
+    use rayon::prelude::*;
+
+    let basis = crate::eht::basis::build_basis(elements, positions);
+    let overlap = crate::eht::build_overlap_matrix(&basis);
+    let ao_map = ao_to_atom_map(&basis);
+    let density = build_density_matrix(coefficients, n_electrons);
+    let ps = &density * &overlap;
+    let p_orth = lowdin_orthogonalized_density(&overlap, &density);
+
+    let mut atom_aos = vec![Vec::new(); elements.len()];
+    for (ao_idx, &atom_idx) in ao_map.iter().enumerate() {
+        atom_aos[atom_idx].push(ao_idx);
+    }
+
+    // Build atom pair list
+    let n_atoms = elements.len();
+    let pairs: Vec<(usize, usize)> = (0..n_atoms)
+        .flat_map(|i| ((i + 1)..n_atoms).map(move |j| (i, j)))
+        .collect();
+
+    let bonds: Vec<BondOrderEntry> = pairs
+        .par_iter()
+        .map(|&(atom_i, atom_j)| {
+            let mut wiberg = 0.0;
+            let mut mayer = 0.0;
+
+            for &mu in &atom_aos[atom_i] {
+                for &nu in &atom_aos[atom_j] {
+                    let p_orth_mn = p_orth[(mu, nu)];
+                    wiberg += p_orth_mn * p_orth_mn;
+                    mayer += ps[(mu, nu)] * ps[(nu, mu)];
+                }
+            }
+
+            let dx = positions[atom_i][0] - positions[atom_j][0];
+            let dy = positions[atom_i][1] - positions[atom_j][1];
+            let dz = positions[atom_i][2] - positions[atom_j][2];
+            let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+
+            BondOrderEntry {
+                atom_i,
+                atom_j,
+                distance,
+                wiberg,
+                mayer,
+            }
+        })
+        .collect();
+
+    let mut wiberg_valence = vec![0.0; n_atoms];
+    let mut mayer_valence = vec![0.0; n_atoms];
+    for bond in &bonds {
+        wiberg_valence[bond.atom_i] += bond.wiberg;
+        wiberg_valence[bond.atom_j] += bond.wiberg;
+        mayer_valence[bond.atom_i] += bond.mayer;
+        mayer_valence[bond.atom_j] += bond.mayer;
+    }
+
+    BondOrderResult {
+        bonds,
+        num_atoms: n_atoms,
         wiberg_valence,
         mayer_valence,
     }
@@ -525,5 +678,144 @@ mod tests {
         assert!(oh_2.wiberg > hh.wiberg);
         assert!(oh_1.mayer > hh.mayer);
         assert!(oh_2.mayer > hh.mayer);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // valence_electrons coverage — Period 6 main-group + lanthanides + all TMs
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_valence_electrons_period1_period2() {
+        assert_eq!(valence_electrons(1), 1.0); // H
+        assert_eq!(valence_electrons(2), 2.0); // He
+        assert_eq!(valence_electrons(6), 4.0); // C
+        assert_eq!(valence_electrons(7), 5.0); // N
+        assert_eq!(valence_electrons(8), 6.0); // O
+        assert_eq!(valence_electrons(9), 7.0); // F
+        assert_eq!(valence_electrons(10), 8.0); // Ne
+    }
+
+    #[test]
+    fn test_valence_electrons_period6_main_group() {
+        assert_eq!(valence_electrons(55), 1.0); // Cs
+        assert_eq!(valence_electrons(56), 2.0); // Ba
+        assert_eq!(valence_electrons(81), 3.0); // Tl
+        assert_eq!(valence_electrons(82), 4.0); // Pb
+        assert_eq!(valence_electrons(83), 5.0); // Bi
+        assert_eq!(valence_electrons(84), 6.0); // Po
+        assert_eq!(valence_electrons(85), 7.0); // At
+        assert_eq!(valence_electrons(86), 8.0); // Rn
+    }
+
+    #[test]
+    fn test_valence_electrons_lanthanides() {
+        // La(57)→Lu(71): valence = 4f + 5d + 6s
+        assert_eq!(valence_electrons(57), 3.0);  // La
+        assert_eq!(valence_electrons(58), 4.0);  // Ce
+        assert_eq!(valence_electrons(63), 9.0);  // Eu
+        assert_eq!(valence_electrons(64), 10.0); // Gd
+        assert_eq!(valence_electrons(70), 16.0); // Yb
+        assert_eq!(valence_electrons(71), 17.0); // Lu
+    }
+
+    #[test]
+    fn test_valence_electrons_3d_transition_metals() {
+        assert_eq!(valence_electrons(21), 3.0);  // Sc
+        assert_eq!(valence_electrons(22), 4.0);  // Ti
+        assert_eq!(valence_electrons(26), 8.0);  // Fe
+        assert_eq!(valence_electrons(29), 11.0); // Cu
+        assert_eq!(valence_electrons(30), 12.0); // Zn
+    }
+
+    #[test]
+    fn test_valence_electrons_4d_transition_metals() {
+        assert_eq!(valence_electrons(39), 3.0);  // Y
+        assert_eq!(valence_electrons(44), 8.0);  // Ru
+        assert_eq!(valence_electrons(46), 10.0); // Pd
+        assert_eq!(valence_electrons(47), 11.0); // Ag
+        assert_eq!(valence_electrons(48), 12.0); // Cd
+    }
+
+    #[test]
+    fn test_valence_electrons_5d_transition_metals() {
+        assert_eq!(valence_electrons(72), 4.0);  // Hf
+        assert_eq!(valence_electrons(74), 6.0);  // W
+        assert_eq!(valence_electrons(76), 8.0);  // Os
+        assert_eq!(valence_electrons(78), 10.0); // Pt
+        assert_eq!(valence_electrons(79), 11.0); // Au
+        assert_eq!(valence_electrons(80), 12.0); // Hg
+    }
+
+    #[test]
+    fn test_valence_electrons_unknown_returns_zero() {
+        // Elements beyond the lookup table should return 0.0
+        assert_eq!(valence_electrons(87), 0.0); // Fr (not in table)
+        assert_eq!(valence_electrons(0), 0.0);  // invalid
+        assert_eq!(valence_electrons(255), 0.0);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Parallel population / bond-order equivalence
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn test_population_parallel_matches_serial() {
+        let (elems, pos) = water_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+
+        let serial = compute_population(&elems, &pos, &result.coefficients, result.n_electrons);
+        let parallel =
+            compute_population_parallel(&elems, &pos, &result.coefficients, result.n_electrons);
+
+        for i in 0..elems.len() {
+            assert!(
+                (serial.mulliken_charges[i] - parallel.mulliken_charges[i]).abs() < 1e-10,
+                "Mulliken mismatch at atom {}: serial={:.6} vs parallel={:.6}",
+                i,
+                serial.mulliken_charges[i],
+                parallel.mulliken_charges[i]
+            );
+            assert!(
+                (serial.lowdin_charges[i] - parallel.lowdin_charges[i]).abs() < 1e-10,
+                "Löwdin mismatch at atom {}: serial={:.6} vs parallel={:.6}",
+                i,
+                serial.lowdin_charges[i],
+                parallel.lowdin_charges[i]
+            );
+        }
+    }
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn test_bond_orders_parallel_matches_serial() {
+        let (elems, pos) = water_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+
+        let serial = compute_bond_orders(&elems, &pos, &result.coefficients, result.n_electrons);
+        let parallel =
+            compute_bond_orders_parallel(&elems, &pos, &result.coefficients, result.n_electrons);
+
+        assert_eq!(serial.bonds.len(), parallel.bonds.len());
+        for (s, p) in serial.bonds.iter().zip(parallel.bonds.iter()) {
+            assert_eq!(s.atom_i, p.atom_i);
+            assert_eq!(s.atom_j, p.atom_j);
+            assert!(
+                (s.wiberg - p.wiberg).abs() < 1e-10,
+                "Wiberg mismatch ({},{}): {:.6} vs {:.6}",
+                s.atom_i,
+                s.atom_j,
+                s.wiberg,
+                p.wiberg
+            );
+            assert!(
+                (s.mayer - p.mayer).abs() < 1e-10,
+                "Mayer mismatch ({},{}): {:.6} vs {:.6}",
+                s.atom_i,
+                s.atom_j,
+                s.mayer,
+                p.mayer
+            );
+        }
     }
 }
