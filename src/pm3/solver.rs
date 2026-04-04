@@ -364,7 +364,16 @@ pub(crate) fn solve_pm3_with_state(
             // Simple exponential decay: exp(-α × R) — standard PM3/MNDO form
             let exp_a = (-pa.alpha * r_angstrom).exp();
             let exp_b = (-pb.alpha * r_angstrom).exp();
-            e_nuc += pa.core_charge * pb.core_charge * gamma * (1.0 + exp_a + exp_b);
+            let za = pa.core_charge;
+            let zb = pb.core_charge;
+            e_nuc += za * zb * gamma * (1.0 + exp_a + exp_b);
+
+            // PM3 Gaussian core-core correction terms (Stewart 1989):
+            //   ΔE_nuc += Z_A × Z_B × Σ_k a_k × exp(−b_k × (R − c_k)²)
+            // Applied per-atom: sum corrections from both atom A and atom B
+            for &(a_k, b_k, c_k) in pa.gaussians.iter().chain(pb.gaussians.iter()) {
+                e_nuc += za * zb * a_k * (-b_k * (r_angstrom - c_k).powi(2)).exp();
+            }
         }
     }
 
