@@ -529,6 +529,54 @@ pub fn alpha_gsm_interpolate(reactant_json: &str, product_json: &str, t: f64) ->
     serde_json::json!({ "coords": node }).to_string()
 }
 
+/// Plan which GSM backends are available for a molecule.
+#[cfg(feature = "alpha-gsm")]
+#[wasm_bindgen]
+pub fn alpha_gsm_backend_plan(smiles: &str) -> String {
+    match sci_form::alpha::gsm::plan_gsm_backends_for_smiles(smiles) {
+        Ok(plan) => serde_json::to_string(&plan).unwrap_or_else(|e| json_error(&e.to_string())),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Compare one or more GSM backends on the same geometry.
+///
+/// `methods_json` can be `[]` to evaluate the full backend list.
+#[cfg(feature = "alpha-gsm")]
+#[wasm_bindgen]
+pub fn alpha_gsm_compare_backends(
+    smiles: &str,
+    coords_flat_json: &str,
+    methods_json: &str,
+) -> String {
+    let coords: Vec<f64> = match serde_json::from_str(coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad coords: {}", e)),
+    };
+    let methods: Vec<sci_form::alpha::gsm::GsmEnergyBackend> =
+        if methods_json.trim().is_empty() || methods_json == "null" {
+            Vec::new()
+        } else {
+            let raw_methods: Vec<String> = match serde_json::from_str(methods_json) {
+                Ok(v) => v,
+                Err(e) => return json_error(&format!("bad methods: {}", e)),
+            };
+            let mut parsed = Vec::with_capacity(raw_methods.len());
+            for method in raw_methods {
+                match method.parse::<sci_form::alpha::gsm::GsmEnergyBackend>() {
+                    Ok(value) => parsed.push(value),
+                    Err(err) => return json_error(&err),
+                }
+            }
+            parsed
+        };
+
+    match sci_form::alpha::gsm::compare_gsm_backends(smiles, &coords, &methods) {
+        Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| json_error(&e.to_string())),
+        Err(e) => json_error(&e),
+    }
+}
+
 /// Grow the reaction string and find the transition state node between
 /// reactant and product geometries using UFF energy.
 ///
@@ -544,6 +592,26 @@ pub fn alpha_gsm_find_ts(
     reactant_coords_json: &str,
     product_coords_json: &str,
     config_json: &str,
+) -> String {
+    alpha_gsm_find_ts_with_method(
+        smiles,
+        reactant_coords_json,
+        product_coords_json,
+        config_json,
+        "uff",
+    )
+}
+
+/// Grow the reaction string and find the transition state node between
+/// reactant and product geometries using the selected backend.
+#[cfg(feature = "alpha-gsm")]
+#[wasm_bindgen]
+pub fn alpha_gsm_find_ts_with_method(
+    smiles: &str,
+    reactant_coords_json: &str,
+    product_coords_json: &str,
+    config_json: &str,
+    method: &str,
 ) -> String {
     let reactant: Vec<f64> = match serde_json::from_str(reactant_coords_json) {
         Ok(v) => v,
@@ -563,13 +631,18 @@ pub fn alpha_gsm_find_ts(
             }
         };
 
-    // Use UFF as energy evaluator (only topology needed from SMILES)
-    let energy_fn = |coords: &[f64]| -> f64 {
-        sci_form::compute_uff_energy(smiles, coords).unwrap_or(f64::MAX)
+    let backend: sci_form::alpha::gsm::GsmEnergyBackend = match method.parse() {
+        Ok(value) => value,
+        Err(err) => return json_error(&err),
     };
-
-    let r = sci_form::alpha::gsm::find_transition_state(&reactant, &product, &energy_fn, &config);
+    let r = match sci_form::alpha::gsm::find_transition_state_with_backend(
+        smiles, &reactant, &product, backend, &config,
+    ) {
+        Ok(result) => result,
+        Err(err) => return json_error(&err),
+    };
     serde_json::json!({
+        "backend": backend.as_str(),
         "ts_coords": r.ts_coords,
         "ts_energy": r.ts_energy,
         "activation_energy": r.activation_energy,

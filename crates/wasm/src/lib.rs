@@ -21,6 +21,7 @@ pub mod materials;
 pub mod mesh;
 pub mod ml;
 pub mod properties;
+pub mod reaction;
 pub mod reactivity;
 pub mod rings;
 pub mod solvation;
