@@ -35,6 +35,7 @@ pub mod overlap_matrix;
 pub mod scf_loop;
 pub mod two_electron;
 pub mod types;
+pub mod uhf;
 pub mod validation;
 
 #[cfg(feature = "alpha-obara-saika")]
