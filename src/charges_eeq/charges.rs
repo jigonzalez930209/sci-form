@@ -281,11 +281,15 @@ pub fn fractional_coordination(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f
 }
 
 /// Coulomb interaction kernel with Gaussian damping.
+///
+/// Uses 1/3-power averaging of EEQ radii for the damping width, matching
+/// the tblite convention: σ_ij = (r³_i + r³_j)^(1/3) / √2
 fn gamma_damped(r_ij: f64, r_eeq_i: f64, r_eeq_j: f64) -> f64 {
     if r_ij < 1e-10 {
         return 0.0;
     }
-    let sigma_ij = (r_eeq_i * r_eeq_i + r_eeq_j * r_eeq_j).sqrt();
+    // 1/3-power combination: better behaviour for atoms with very different sizes
+    let sigma_ij = (r_eeq_i.powi(3) + r_eeq_j.powi(3)).cbrt();
     let arg = std::f64::consts::SQRT_2 / sigma_ij * r_ij;
     erf_approx(arg) / r_ij
 }
