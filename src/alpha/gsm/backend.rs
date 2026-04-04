@@ -512,7 +512,9 @@ fn backend_raw_energy(
             #[cfg(feature = "alpha-reaxff")]
             {
                 let params = crate::forcefield::reaxff::params::ReaxffParams::default_chon();
-                let atom_params = build_reaxff_atom_params(elements, &params);
+                // per_atom_params is one entry per molecule atom (not per element type).
+                let per_atom_params = build_reaxff_atom_params(elements, &params);
+                let n = per_atom_params.len();
                 let eem_params: Vec<_> = elements
                     .iter()
                     .map(|&z| crate::forcefield::reaxff::eem::default_eem_params(z))
@@ -520,13 +522,30 @@ fn backend_raw_energy(
                 let charges = crate::forcefield::reaxff::eem::solve_eem(coords, &eem_params, 0.0)?;
                 let bond_orders = crate::forcefield::reaxff::bond_order::compute_bond_orders(
                     coords,
-                    &atom_params,
+                    &per_atom_params,
                     params.cutoff,
                 );
+                // Build per-molecule params: atom_params indexed by atom (not element type)
+                // and bond_de rebuilt as n_atoms×n_atoms to match bond_orders dimensions.
+                let mut atom_bond_de = vec![vec![100.0f64; n]; n];
+                for ia in 0..n {
+                    for ib in 0..n {
+                        let ti = params
+                            .element_index(per_atom_params[ia].element)
+                            .unwrap_or(0);
+                        let tj = params
+                            .element_index(per_atom_params[ib].element)
+                            .unwrap_or(0);
+                        atom_bond_de[ia][ib] = params.get_bond_de(ti, tj);
+                    }
+                }
+                let mut energy_params = params.clone();
+                energy_params.atom_params = per_atom_params;
+                energy_params.bond_de = atom_bond_de;
                 let bonded = crate::forcefield::reaxff::energy::compute_bonded_energy(
                     coords,
                     &bond_orders,
-                    &params,
+                    &energy_params,
                 );
                 let (van_der_waals, coulomb) =
                     crate::forcefield::reaxff::nonbonded::compute_nonbonded_energy(
