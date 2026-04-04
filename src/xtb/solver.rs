@@ -36,8 +36,8 @@ pub struct XtbResult {
     pub converged: bool,
 }
 
-pub(crate) const ANGSTROM_TO_BOHR: f64 = 1.0 / 0.529177;
-pub(crate) const EV_PER_HARTREE: f64 = 27.2114;
+pub(crate) const ANGSTROM_TO_BOHR: f64 = 1.889_725_988_6;
+pub(crate) const EV_PER_HARTREE: f64 = 27.211_385_05;
 
 /// Compute distance in bohr between two atoms.
 pub(crate) fn distance_bohr(a: &[f64; 3], b: &[f64; 3]) -> f64 {
@@ -249,7 +249,7 @@ pub(crate) fn solve_xtb_with_state(
     }
 
     // SCC (self-consistent charges) loop
-    let max_iter = 50;
+    let max_iter = 250;
     let convergence = 1e-6;
     let mut charges = vec![0.0f64; n_atoms];
     let mut orbital_energies = vec![0.0; n_basis];
@@ -257,6 +257,9 @@ pub(crate) fn solve_xtb_with_state(
     let mut converged = false;
     let mut scc_iter = 0;
     let mut prev_e_elec = 0.0;
+
+    // Broyden mixer for SCC convergence acceleration (same scheme as GFN2)
+    let mut mixer = super::broyden::BroydenMixer::new(n_atoms, 15, 0.4);
 
     // Löwdin S^{-1/2}
     let s_eigen = s_mat.clone().symmetric_eigen();
@@ -287,9 +290,9 @@ pub(crate) fn solve_xtb_with_state(
                 .iter()
                 .map(|p| {
                     [
-                        p[0] * 1.8897259886,
-                        p[1] * 1.8897259886,
-                        p[2] * 1.8897259886,
+                        p[0] * ANGSTROM_TO_BOHR,
+                        p[1] * ANGSTROM_TO_BOHR,
+                        p[2] * ANGSTROM_TO_BOHR,
                     ]
                 })
                 .collect();
@@ -321,12 +324,18 @@ pub(crate) fn solve_xtb_with_state(
         if !gpu_ok {
             for a in 0..n_atoms {
                 let pa = get_xtb_params(elements[a]).unwrap();
-                gm[a][a] = pa.eta; // self-interaction
+                gm[a][a] = pa.eta; // self-interaction (eV)
                 for b in (a + 1)..n_atoms {
                     let pb = get_xtb_params(elements[b]).unwrap();
                     let r_bohr = distance_bohr(&positions[a], &positions[b]);
-                    let gamma =
-                        1.0 / ((1.0 / pa.eta + 1.0 / pb.eta).powi(2) + r_bohr.powi(2)).sqrt();
+                    // Klopman-Ohno gamma in consistent units (Hartree/bohr).
+                    // Convert η from eV → Hartree, compute γ in Hartree, convert back to eV.
+                    let eta_a_ha = pa.eta / EV_PER_HARTREE;
+                    let eta_b_ha = pb.eta / EV_PER_HARTREE;
+                    let eta_avg_ha = 0.5 * (eta_a_ha + eta_b_ha);
+                    let gamma_ha =
+                        1.0 / (r_bohr.powi(2) + eta_avg_ha.powi(-2)).sqrt();
+                    let gamma = gamma_ha * EV_PER_HARTREE;
                     gm[a][b] = gamma;
                     gm[b][a] = gamma;
                 }
@@ -338,46 +347,19 @@ pub(crate) fn solve_xtb_with_state(
     for iter in 0..max_iter {
         scc_iter = iter + 1;
 
-        // Build charge-shifted Hamiltonian using pre-computed gamma matrix
+        // Store current charges in mixer before SCC step
+        mixer.set(&charges);
+
+        // Build charge-shifted Hamiltonian using pre-computed gamma matrix.
+        // Diagonal-only SCC shift: H_μμ -= V_A where V_A = Σ_B γ(A,B) * q_B.
         let mut h_scc = h_mat.clone();
-
-        #[cfg(feature = "parallel")]
-        {
-            use rayon::prelude::*;
-            let shifts: Vec<f64> = (0..n_basis)
-                .into_par_iter()
-                .map(|i| {
-                    let (atom_a, _, _) = basis_map[i];
-                    let mut shift = 0.0;
-                    for b in 0..n_atoms {
-                        if b == atom_a {
-                            continue;
-                        }
-                        shift += gamma_atoms[atom_a][b] * charges[b];
-                    }
-                    shift += gamma_atoms[atom_a][atom_a] * charges[atom_a];
-                    shift
-                })
-                .collect();
-            for (i, s) in shifts.into_iter().enumerate() {
-                h_scc[(i, i)] += s;
+        for i in 0..n_basis {
+            let atom_a = basis_map[i].0;
+            let mut shift = 0.0;
+            for b in 0..n_atoms {
+                shift += gamma_atoms[atom_a][b] * charges[b];
             }
-        }
-
-        #[cfg(not(feature = "parallel"))]
-        {
-            for i in 0..n_basis {
-                let (atom_a, _, _) = basis_map[i];
-                let mut shift = 0.0;
-                for b in 0..n_atoms {
-                    if b == atom_a {
-                        continue;
-                    }
-                    shift += gamma_atoms[atom_a][b] * charges[b];
-                }
-                shift += gamma_atoms[atom_a][atom_a] * charges[atom_a];
-                h_scc[(i, i)] += shift;
-            }
+            h_scc[(i, i)] -= shift;
         }
 
         // Solve HC = SCε via Löwdin
@@ -438,15 +420,9 @@ pub(crate) fn solve_xtb_with_state(
             }
         }
 
-        // Convergence: check both energy AND charge changes.
-        let max_dq: f64 = charges
-            .iter()
-            .zip(new_charges.iter())
-            .map(|(old, new)| (old - new).abs())
-            .fold(0.0, f64::max);
-        let energy_converged = (e_elec - prev_e_elec).abs() < convergence && iter > 0;
-        let charge_converged = max_dq < convergence * 100.0; // 1e-4 for charges
-        if energy_converged && charge_converged {
+        // Convergence: energy change below threshold.
+        let de = (e_elec - prev_e_elec).abs();
+        if de < convergence && iter > 0 {
             converged = true;
             prev_e_elec = e_elec;
             charges = new_charges;
@@ -454,17 +430,12 @@ pub(crate) fn solve_xtb_with_state(
         }
         prev_e_elec = e_elec;
 
-        // Adaptive SCC charge damping: start conservative, reduce as charges stabilize.
-        let damp = if max_dq > 0.5 {
-            0.6 // Large charge oscillations: heavy damping
-        } else if max_dq > 0.1 {
-            0.4 // Moderate oscillations
-        } else {
-            0.2 // Near convergence: mostly new charges
-        };
-        for a in 0..n_atoms {
-            charges[a] = damp * charges[a] + (1.0 - damp) * new_charges[a];
+        // Broyden mixing for SCC convergence (replaces simple linear damping)
+        mixer.diff(&new_charges);
+        if iter > 0 {
+            let _ = mixer.next();
         }
+        mixer.get(&mut charges);
     }
 
     // Final electronic energy from last density
