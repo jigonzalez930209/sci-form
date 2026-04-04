@@ -1428,8 +1428,23 @@ pub fn compute_pm3_gradient(
 /// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
 ///
 /// Returns orbital energies, total energy, gap, and Mulliken charges.
+/// Uses GFN2-xTB internally for reliable SCC convergence and accurate energetics.
 pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
-    xtb::solve_xtb(elements, positions)
+    let gfn2 = xtb::gfn2::solve_gfn2(elements, positions)?;
+    Ok(xtb::XtbResult {
+        orbital_energies: gfn2.orbital_energies,
+        electronic_energy: gfn2.electronic_energy,
+        repulsive_energy: gfn2.repulsive_energy,
+        total_energy: gfn2.total_energy,
+        n_basis: gfn2.n_basis,
+        n_electrons: gfn2.n_electrons,
+        homo_energy: gfn2.homo_energy,
+        lumo_energy: gfn2.lumo_energy,
+        gap: gfn2.gap,
+        mulliken_charges: gfn2.mulliken_charges,
+        scc_iterations: gfn2.scc_iterations,
+        converged: gfn2.converged,
+    })
 }
 
 /// Compute xTB analytical energy gradients.
@@ -1943,6 +1958,53 @@ pub fn compute_simplified_neb_path(
     )
 }
 
+/// Build a simplified NEB path using a configurable energy backend.
+///
+/// `method`: one of `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`, `"hf3c"`.
+pub fn compute_simplified_neb_path_configurable(
+    smiles: &str,
+    start_coords: &[f64],
+    end_coords: &[f64],
+    n_images: usize,
+    n_iter: usize,
+    spring_k: f64,
+    step_size: f64,
+    method: &str,
+) -> Result<dynamics::NebPathResult, String> {
+    dynamics::compute_simplified_neb_path_configurable(
+        smiles,
+        start_coords,
+        end_coords,
+        n_images,
+        n_iter,
+        spring_k,
+        step_size,
+        method,
+    )
+}
+
+/// Compute single-point energy (kcal/mol) with any NEB-capable backend.
+///
+/// `method`: one of `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`, `"hf3c"`.
+pub fn neb_backend_energy_kcal(
+    method: &str,
+    smiles: &str,
+    coords: &[f64],
+) -> Result<f64, String> {
+    dynamics::neb_backend_energy_kcal(method, smiles, coords)
+}
+
+/// Compute energy (kcal/mol) and gradient (kcal/mol/Å) with any NEB-capable backend.
+///
+/// Returns `(energy, gradient_flat)`.
+pub fn neb_backend_energy_and_gradient(
+    method: &str,
+    smiles: &str,
+    coords: &[f64],
+) -> Result<(f64, Vec<f64>), String> {
+    dynamics::neb_backend_energy_and_gradient(method, smiles, coords)
+}
+
 fn coords_flat_to_matrix_f32(coords: &[f64], n_atoms: usize) -> nalgebra::DMatrix<f32> {
     let mut m = nalgebra::DMatrix::<f32>::zeros(n_atoms, 3);
     for i in 0..n_atoms {
@@ -2135,6 +2197,71 @@ pub fn assemble_framework(
     cell: &materials::UnitCell,
 ) -> materials::CrystalStructure {
     materials::assemble_framework(node, linker, topology, cell)
+}
+
+// ─── CIF Import/Export ────────────────────────────────────────────────────────
+
+/// Parse a CIF (Crystallographic Information File) string into a crystal structure.
+///
+/// Returns cell parameters, space group info, and atom site positions.
+pub fn parse_cif(input: &str) -> Result<materials::CifStructure, String> {
+    materials::cif::parse_cif(input)
+}
+
+/// Write a crystal structure to CIF format string.
+pub fn write_cif(structure: &materials::CifStructure) -> String {
+    materials::cif::write_cif(structure)
+}
+
+// ─── UHF / ROHF — Open-Shell SCF ──────────────────────────────────────────────
+
+/// Run an Unrestricted Hartree-Fock (UHF) calculation for open-shell systems.
+///
+/// `elements`: atomic numbers.
+/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
+/// `charge`: total molecular charge (0 = neutral).
+/// `multiplicity`: spin multiplicity (1 = singlet, 2 = doublet, 3 = triplet, …).
+///
+/// Returns separate alpha/beta orbitals, <S²> expectation, spin contamination.
+pub fn compute_uhf(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    charge: i32,
+    multiplicity: u32,
+) -> Result<scf::uhf::UhfResult, String> {
+    let system = scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
+    Ok(scf::uhf::run_uhf_parallel(&system))
+}
+
+/// Run a Restricted Open-shell Hartree-Fock (ROHF) calculation.
+///
+/// Uses canonical ROHF projection: same spatial orbitals for both spins,
+/// eliminating spin contamination. Suited for clean-spin-state calculations.
+///
+/// `elements`: atomic numbers.
+/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
+/// `charge`: total molecular charge.
+/// `multiplicity`: spin multiplicity.
+pub fn compute_rohf(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    charge: i32,
+    multiplicity: u32,
+) -> Result<scf::uhf::UhfResult, String> {
+    let system = scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
+    Ok(scf::uhf::run_rohf(&system))
+}
+
+/// Run UHF/ROHF with full configuration control.
+pub fn compute_uhf_configured(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    charge: i32,
+    multiplicity: u32,
+    config: &scf::uhf::UhfConfig,
+) -> Result<scf::uhf::UhfResult, String> {
+    let system = scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
+    Ok(scf::uhf::run_uhf(&system, config))
 }
 
 /// Run a complete HF-3c calculation (Hartree-Fock with D3, gCP, SRB corrections).

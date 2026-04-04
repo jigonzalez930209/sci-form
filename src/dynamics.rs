@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 const AMU_ANGFS2_TO_KCAL_MOL: f64 = 2_390.057_361_533_49;
 const R_GAS_KCAL_MOLK: f64 = 0.001_987_204_258_640_83;
+const EV_TO_KCAL_MOL: f64 = 23.060_5;
+const HARTREE_TO_KCAL_MOL: f64 = 627.509_474_063_1;
 
 /// Force backend for molecular dynamics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -14,6 +16,61 @@ pub enum MdBackend {
     Pm3,
     /// GFN-xTB tight-binding (moderate speed, good for metals).
     Xtb,
+}
+
+/// Energy backend for NEB path calculations.
+///
+/// Supports all methods that can provide energy and gradients (analytical
+/// or numerical) for NEB image relaxation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NebBackend {
+    /// UFF force field — fast exploratory paths.
+    Uff,
+    /// MMFF94 force field — better organic coverage than UFF.
+    Mmff94,
+    /// PM3 semi-empirical — analytical gradients.
+    Pm3,
+    /// GFN0-xTB tight-binding — analytical gradients.
+    Xtb,
+    /// GFN1-xTB — numerical gradients (energy-only + finite differences).
+    Gfn1,
+    /// GFN2-xTB — numerical gradients (energy-only + finite differences).
+    Gfn2,
+    /// HF-3c minimal-basis Hartree-Fock — numerical gradients (expensive).
+    Hf3c,
+}
+
+impl NebBackend {
+    /// Parse a method string into a `NebBackend`.
+    pub fn from_method(s: &str) -> Result<Self, String> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "uff" => Ok(Self::Uff),
+            "mmff94" | "mmff" => Ok(Self::Mmff94),
+            "pm3" => Ok(Self::Pm3),
+            "xtb" | "gfn0" | "gfn0-xtb" | "gfn0_xtb" => Ok(Self::Xtb),
+            "gfn1" | "gfn1-xtb" | "gfn1_xtb" => Ok(Self::Gfn1),
+            "gfn2" | "gfn2-xtb" | "gfn2_xtb" => Ok(Self::Gfn2),
+            "hf3c" | "hf-3c" => Ok(Self::Hf3c),
+            other => Err(format!(
+                "Unknown NEB backend '{}'. Expected: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c",
+                other
+            )),
+        }
+    }
+
+    /// method label for human display.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Uff => "uff",
+            Self::Mmff94 => "mmff94",
+            Self::Pm3 => "pm3",
+            Self::Xtb => "xtb",
+            Self::Gfn1 => "gfn1",
+            Self::Gfn2 => "gfn2",
+            Self::Hf3c => "hf3c",
+        }
+    }
 }
 
 /// One trajectory frame for molecular-dynamics sampling.
@@ -368,6 +425,275 @@ pub fn compute_simplified_neb_path(
                 .to_string(),
         ],
     })
+}
+
+// ─── Configurable NEB backend dispatch ──────────────────────────────────────
+
+/// Compute energy (kcal/mol) for a single point using a backend that only
+/// exposes energy (no analytical gradients). Used by the numerical gradient
+/// fallback for GFN1, GFN2, and HF-3c.
+fn neb_point_energy_kcal(
+    backend: NebBackend,
+    elements: &[u8],
+    coords: &[f64],
+) -> Result<f64, String> {
+    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    match backend {
+        NebBackend::Gfn1 => {
+            let r = crate::xtb::gfn1::solve_gfn1(elements, &positions)?;
+            Ok(r.total_energy * EV_TO_KCAL_MOL)
+        }
+        NebBackend::Gfn2 => {
+            let r = crate::xtb::gfn2::solve_gfn2(elements, &positions)?;
+            Ok(r.total_energy * EV_TO_KCAL_MOL)
+        }
+        NebBackend::Hf3c => {
+            let r = crate::hf::solve_hf3c(
+                elements,
+                &positions,
+                &crate::hf::HfConfig::default(),
+            )?;
+            Ok(r.energy * HARTREE_TO_KCAL_MOL)
+        }
+        _ => unreachable!("neb_point_energy_kcal only for energy-only backends"),
+    }
+}
+
+/// Compute energy and numerical gradient (central finite differences) for
+/// backends without analytical gradients.
+fn neb_numerical_gradient(
+    backend: NebBackend,
+    elements: &[u8],
+    coords: &[f64],
+    grad: &mut [f64],
+) -> Result<f64, String> {
+    let delta = 1e-5; // Å
+    let e0 = neb_point_energy_kcal(backend, elements, coords)?;
+    let mut displaced = coords.to_vec();
+    for i in 0..coords.len() {
+        displaced[i] = coords[i] + delta;
+        let e_plus = neb_point_energy_kcal(backend, elements, &displaced)?;
+        displaced[i] = coords[i] - delta;
+        let e_minus = neb_point_energy_kcal(backend, elements, &displaced)?;
+        displaced[i] = coords[i]; // restore
+        grad[i] = (e_plus - e_minus) / (2.0 * delta);
+    }
+    Ok(e0)
+}
+
+/// Compute energy (kcal/mol) and gradients (kcal/mol/Å) for a NEB image
+/// using the specified backend.
+pub fn neb_energy_and_gradient(
+    backend: NebBackend,
+    _smiles: &str,
+    elements: &[u8],
+    mol: &crate::graph::Molecule,
+    coords: &[f64],
+    grad: &mut [f64],
+) -> Result<f64, String> {
+    match backend {
+        NebBackend::Uff => {
+            let ff = crate::forcefield::builder::build_uff_force_field(mol);
+            Ok(ff.compute_system_energy_and_gradients(coords, grad))
+        }
+        NebBackend::Mmff94 => {
+            let bonds: Vec<(usize, usize, u8)> = mol
+                .graph
+                .edge_indices()
+                .map(|e| {
+                    let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+                    let order = match mol.graph[e].order {
+                        crate::graph::BondOrder::Single => 1u8,
+                        crate::graph::BondOrder::Double => 2,
+                        crate::graph::BondOrder::Triple => 3,
+                        crate::graph::BondOrder::Aromatic => 2,
+                        crate::graph::BondOrder::Unknown => 1,
+                    };
+                    (a.index(), b.index(), order)
+                })
+                .collect();
+            let terms =
+                crate::forcefield::mmff94::Mmff94Builder::build(elements, &bonds);
+            let (energy, g) =
+                crate::forcefield::mmff94::Mmff94Builder::total_energy(&terms, coords);
+            grad[..g.len()].copy_from_slice(&g);
+            Ok(energy)
+        }
+        NebBackend::Pm3 => {
+            let positions: Vec<[f64; 3]> =
+                coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+            let r = crate::pm3::gradients::compute_pm3_gradient(elements, &positions)?;
+            let energy_kcal = r.energy * EV_TO_KCAL_MOL;
+            for (a, g) in r.gradients.iter().enumerate() {
+                for d in 0..3 {
+                    grad[a * 3 + d] = g[d] * EV_TO_KCAL_MOL;
+                }
+            }
+            Ok(energy_kcal)
+        }
+        NebBackend::Xtb => {
+            let positions: Vec<[f64; 3]> =
+                coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+            let r = crate::xtb::gradients::compute_xtb_gradient(elements, &positions)?;
+            let energy_kcal = r.energy * EV_TO_KCAL_MOL;
+            for (a, g) in r.gradients.iter().enumerate() {
+                for d in 0..3 {
+                    grad[a * 3 + d] = g[d] * EV_TO_KCAL_MOL;
+                }
+            }
+            Ok(energy_kcal)
+        }
+        NebBackend::Gfn1 | NebBackend::Gfn2 | NebBackend::Hf3c => {
+            neb_numerical_gradient(backend, elements, coords, grad)
+        }
+    }
+}
+
+/// Build a simplified NEB path with a configurable energy backend.
+///
+/// This is the multi-method version of [`compute_simplified_neb_path`].
+/// Supply `method` as one of: `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`,
+/// `"gfn1"`, `"gfn2"`, `"hf3c"`.
+pub fn compute_simplified_neb_path_configurable(
+    smiles: &str,
+    start_coords: &[f64],
+    end_coords: &[f64],
+    n_images: usize,
+    n_iter: usize,
+    spring_k: f64,
+    step_size: f64,
+    method: &str,
+) -> Result<NebPathResult, String> {
+    let backend = NebBackend::from_method(method)?;
+    if n_images < 2 {
+        return Err("n_images must be >= 2".to_string());
+    }
+    if n_iter == 0 {
+        return Err("n_iter must be > 0".to_string());
+    }
+    if step_size <= 0.0 {
+        return Err("step_size must be > 0".to_string());
+    }
+
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    let n_xyz = n_atoms * 3;
+    if start_coords.len() != n_xyz || end_coords.len() != n_xyz {
+        return Err(format!(
+            "start/end coords must each have length {} (3 * n_atoms)",
+            n_xyz
+        ));
+    }
+
+    let elements: Vec<u8> = (0..n_atoms)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+
+    // Linear interpolation
+    let mut images = vec![vec![0.0f64; n_xyz]; n_images];
+    for (img_idx, img) in images.iter_mut().enumerate() {
+        let t = img_idx as f64 / (n_images - 1) as f64;
+        for k in 0..n_xyz {
+            img[k] = (1.0 - t) * start_coords[k] + t * end_coords[k];
+        }
+    }
+
+    // Spring-coupled NEB relaxation
+    for _ in 0..n_iter {
+        let prev = images.clone();
+        for i in 1..(n_images - 1) {
+            let mut grad = vec![0.0f64; n_xyz];
+            let _ = neb_energy_and_gradient(
+                backend, smiles, &elements, &mol, &prev[i], &mut grad,
+            )?;
+            for k in 0..n_xyz {
+                let spring_force =
+                    spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
+                let total_force = -grad[k] + spring_force;
+                images[i][k] = prev[i][k] + step_size * total_force;
+            }
+        }
+    }
+
+    // Evaluate final energies
+    let mut out_images = Vec::with_capacity(n_images);
+    for (i, coords) in images.into_iter().enumerate() {
+        let mut grad = vec![0.0f64; n_xyz];
+        let e = neb_energy_and_gradient(
+            backend, smiles, &elements, &mol, &coords, &mut grad,
+        )?;
+        out_images.push(NebImage {
+            index: i,
+            coords,
+            potential_energy_kcal_mol: e,
+        });
+    }
+
+    Ok(NebPathResult {
+        images: out_images,
+        notes: vec![
+            format!(
+                "Simplified NEB ({}) with spring-coupled gradient relaxation on {} internal images.",
+                backend.as_str(),
+                n_images.saturating_sub(2),
+            ),
+            "Low-cost exploratory path; not a full climbing-image / tangent-projected NEB."
+                .to_string(),
+        ],
+    })
+}
+
+/// Compute energy-only for any NEB backend (used for single-point comparisons).
+///
+/// Returns energy in kcal/mol.
+pub fn neb_backend_energy_kcal(
+    method: &str,
+    smiles: &str,
+    coords: &[f64],
+) -> Result<f64, String> {
+    let backend = NebBackend::from_method(method)?;
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    let n_xyz = n_atoms * 3;
+    if coords.len() != n_xyz {
+        return Err(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n_atoms
+        ));
+    }
+    let elements: Vec<u8> = (0..n_atoms)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+    let mut grad = vec![0.0f64; n_xyz];
+    neb_energy_and_gradient(backend, smiles, &elements, &mol, coords, &mut grad)
+}
+
+/// Compute energy and return both energy (kcal/mol) and flat gradient (kcal/mol/Å).
+pub fn neb_backend_energy_and_gradient(
+    method: &str,
+    smiles: &str,
+    coords: &[f64],
+) -> Result<(f64, Vec<f64>), String> {
+    let backend = NebBackend::from_method(method)?;
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let n_atoms = mol.graph.node_count();
+    let n_xyz = n_atoms * 3;
+    if coords.len() != n_xyz {
+        return Err(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n_atoms
+        ));
+    }
+    let elements: Vec<u8> = (0..n_atoms)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+    let mut grad = vec![0.0f64; n_xyz];
+    let energy = neb_energy_and_gradient(
+        backend, smiles, &elements, &mol, coords, &mut grad,
+    )?;
+    Ok((energy, grad))
 }
 
 /// Compute energy and gradients using the specified backend.
