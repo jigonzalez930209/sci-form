@@ -132,7 +132,6 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
     // Shell-resolved SCC iterations
     let max_scc = 100;
     let scc_tol = 1e-6;
-    let damp = 0.4;
     let mut converged = false;
     let mut scc_iter = 0;
     let mut orbital_energies = state.orbital_energies.clone();
@@ -140,10 +139,17 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
     let mut density = state.density.clone();
     let mut prev_e_elec = 0.0;
 
+    // Broyden mixer for shell-resolved SCC convergence acceleration
+    let mut mixer = super::broyden::BroydenMixer::new(n_shells, 15, 0.4);
+
     for iter in 0..max_scc {
         scc_iter = iter + 1;
 
-        // Build charge-shifted Hamiltonian
+        // Store current shell charges in mixer before SCC step
+        mixer.set(&shell_dq);
+
+        // Build charge-shifted Hamiltonian: F_μμ = H0_μμ - V_sh(μ)
+        // The potential is subtracted (tblite convention) to stabilize occupied levels.
         let mut h_scc = state.hamiltonian.clone();
         for mu in 0..n_basis {
             let s_mu = basis_to_shell[mu];
@@ -151,7 +157,7 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
             for s in 0..n_shells {
                 shift += gamma[(s_mu, s)] * shell_dq[s];
             }
-            h_scc[(mu, mu)] += shift;
+            h_scc[(mu, mu)] -= shift;
         }
 
         // Solve HC = SCε via Löwdin orthogonalization
@@ -216,10 +222,12 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
         }
         prev_e_elec = e_elec;
 
-        // Damped mixing
-        for s in 0..n_shells {
-            shell_dq[s] = damp * shell_dq[s] + (1.0 - damp) * new_dq[s];
+        // Broyden mixing for shell-resolved SCC convergence
+        mixer.diff(&new_dq);
+        if iter > 0 {
+            let _ = mixer.next();
         }
+        mixer.get(&mut shell_dq);
     }
 
     // Atom-level Mulliken charges from final density
@@ -347,7 +355,7 @@ fn build_shell_gamma_matrix(
                 let dx = positions[atom_i][0] - positions[atom_j][0];
                 let dy = positions[atom_i][1] - positions[atom_j][1];
                 let dz = positions[atom_i][2] - positions[atom_j][2];
-                let r_bohr = (dx * dx + dy * dy + dz * dz).sqrt() / 0.529177;
+                let r_bohr = (dx * dx + dy * dy + dz * dz).sqrt() * 1.889_725_988_6;
                 1.0 / ((1.0 / shell_eta[i] + 1.0 / shell_eta[j]).powi(2) + r_bohr.powi(2)).sqrt()
             };
 
