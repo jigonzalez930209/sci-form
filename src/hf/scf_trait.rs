@@ -156,7 +156,7 @@ pub struct XtbScfSolver {
 
 impl ScfSolver for XtbScfSolver {
     fn solve(&self, _config: &ScfConvergenceConfig) -> Result<ScfOutput, String> {
-        let result = crate::xtb::solver::solve_xtb(&self.elements, &self.positions)?;
+        let result = crate::xtb::gfn2::solve_gfn2(&self.elements, &self.positions)?;
         Ok(ScfOutput {
             energy: result.total_energy,
             orbital_energies: result.orbital_energies,

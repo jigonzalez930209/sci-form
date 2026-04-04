@@ -19,6 +19,7 @@ pub mod d3;
 pub mod fock;
 pub mod gcp;
 pub mod integrals;
+pub mod mo_transform;
 pub mod nuclear;
 pub mod overlap_kin;
 pub mod scf;
