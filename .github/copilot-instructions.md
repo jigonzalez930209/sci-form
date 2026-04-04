@@ -1,6 +1,6 @@
 # sci-form — Agent Instructions
 
-**sci-form** is a Rust library (v0.9.1) for computational chemistry: 3D conformer generation, semi-empirical quantum chemistry (EHT, PM3, PM3(tm), GFN0/GFN1/GFN2-xTB), ab-initio (HF-3c, CISD), neural network potentials (ANI-2x, ANI-TM), molecular properties, ML property prediction, 3D molecular descriptors (WHIM, RDF, GETAWAY), machine learning models (Random Forest, Gradient Boosting), stereochemistry (R/S, E/Z, helical, atropisomeric), solvation, ring perception, fingerprints, clustering, NMR/IR/UV-Vis spectroscopy, band structure, crystallographic materials (230 space groups), and framework geometry optimization. Available as a Rust crate, Python package, WebAssembly/TypeScript module, and a CLI binary.
+**sci-form** is a Rust library (v0.13.0) for computational chemistry: 3D conformer generation, semi-empirical quantum chemistry (EHT, PM3, PM3(tm), GFN0/GFN1/GFN2-xTB), ab-initio (HF-3c, CISD, UHF/ROHF), neural network potentials (ANI-2x, ANI-TM), molecular properties, ML property prediction, 3D molecular descriptors (WHIM, RDF, GETAWAY), machine learning models (Random Forest, Gradient Boosting), stereochemistry (R/S, E/Z, helical, atropisomeric), solvation, ring perception, fingerprints, clustering, NMR/IR/UV-Vis spectroscopy, band structure, crystallographic materials (230 space groups, CIF import/export), and framework geometry optimization. Available as a Rust crate, Python package, WebAssembly/TypeScript module, and a CLI binary.
 
 ---
 
@@ -18,12 +18,14 @@
 | GFN1-xTB | GFN1 tight-binding with shell-resolved charges + D3 dispersion |
 | GFN2-xTB | GFN2 tight-binding with multipole electrostatics + D4 + XB |
 | HF-3c | Minimal-basis Hartree-Fock with D3, gCP, SRB corrections |
+| UHF/ROHF | Unrestricted & restricted open-shell Hartree-Fock SCF |
 | CISD | Configuration Interaction Singles+Doubles (excited states) |
+| AO→MO Transform | 4-index integral transform for post-HF methods |
 | ANI-2x | Neural network potential for H, C, N, O, F, S, Cl |
 | ANI-TM | ANI extended to 24 elements including transition metals |
 | Charges | Gasteiger-Marsili partial charges |
 | SASA | Solvent-accessible surface area (Shrake-Rupley) |
-| Population | Mulliken & Löwdin population analysis |
+| Population | Mulliken & Löwdin population analysis (parallel, Z=1–86) |
 | NPA/NBO | Natural Population Analysis & Natural Bond Orbital analysis |
 | Dipole | Molecular dipole moment (Debye) |
 | ESP | Electrostatic potential grid |
@@ -34,7 +36,7 @@
 | ML Descriptors | MW, Wiener index, Balaban J, FSP3, 17+ descriptors |
 | 3D Descriptors | WHIM, RDF, GETAWAY molecular descriptors |
 | ML Models | Decision Trees, Random Forest, Gradient Boosting, cross-validation |
-| Materials | Unit cell, MOF framework assembly, 230 space groups |
+| Materials | Unit cell, MOF framework assembly, 230 space groups, CIF import/export |
 | Framework Opt | BFGS & steepest descent geometry optimization with PBC |
 | Transport | Arrow columnar batch + Web Worker task splitting (parallelizable) |
 | Stereochemistry | CIP priorities, R/S, E/Z, atropisomeric M/P, helical chirality |
@@ -42,10 +44,10 @@
 | SSSR | Smallest Set of Smallest Rings (Horton's algorithm) |
 | ECFP | Extended-Connectivity Fingerprints (Morgan), Tanimoto similarity |
 | Clustering | Butina (Taylor-Butina) RMSD clustering, diversity filtering |
-| NMR | Chemical shifts (HOSE codes), J-coupling (Karplus), ensemble averaging |
+| NMR | Chemical shifts (HOSE codes), J-coupling (Karplus, 2J–5J), ensemble averaging |
 | IR | Vibrational analysis, IR spectrum broadening, thermochemistry (RRHO) |
 | Periodic Systems | Periodic molecular graphs with PBC, hapticity/metallocene detection |
-| SMIRKS | Reaction transforms via atom-mapped reactant→product patterns |
+| SMIRKS | Reaction transforms via atom-mapped reactant→product patterns (multi-component) |
 
 ---
 
@@ -132,11 +134,29 @@ sci_form::solve_hf3c(elements: &[u8], positions: &[[f64;3]], config: &HfConfig) 
 // Hf3cResult { energy, hf_energy, nuclear_repulsion, d3_energy, gcp_energy, srb_energy,
 //              orbital_energies, scf_iterations, converged, cis }
 
+// ── UHF / ROHF — Open-shell Hartree-Fock ──────────────────
+sci_form::compute_uhf(elements: &[u8], positions: &[[f64;3]], charge: i32, multiplicity: u32) -> Result<UhfResult, String>
+sci_form::compute_rohf(elements: &[u8], positions: &[[f64;3]], charge: i32, multiplicity: u32) -> Result<UhfResult, String>
+sci_form::compute_uhf_configured(elements: &[u8], positions: &[[f64;3]], charge: i32, multiplicity: u32, config: &UhfConfig) -> Result<UhfResult, String>
+// UhfResult { total_energy, electronic_energy, nuclear_repulsion, alpha_orbital_energies,
+//             beta_orbital_energies, n_alpha, n_beta, n_basis, scf_iterations, converged,
+//             s2_expectation, spin_contamination, mulliken_charges }
+
 // ── CISD — Excited states ─────────────────────────────────
 sci_form::hf::cisd::compute_cisd(orbital_energies: &[f64], coefficients: &DMatrix<f64>,
     eris: &[f64], n_basis: usize, n_occupied: usize, n_states: usize) -> CisdResult
 // CisdResult { excitations: Vec<CisdExcitation>, correlation_energy, n_csfs }
 // CisdExcitation { energy, energy_ev, wavelength_nm, oscillator_strength, dominant_transition, character }
+
+// ── AO→MO Integral Transform ─────────────────────────────
+sci_form::hf::mo_transform::ao_to_mo_transform(eris_ao: &[f64], coefficients: &DMatrix<f64>,
+    n_basis: usize) -> MoIntegrals
+// MoIntegrals { get(p, q, r, s) -> f64, 4-fold symmetry: (pq|rs) = (qp|rs) = (pq|sr) = (rs|pq) }
+
+// ── CIF Import/Export ─────────────────────────────────────
+sci_form::parse_cif(cif_text: &str) -> Result<CifStructure, String>
+sci_form::write_cif(structure: &CifStructure) -> String
+// CifStructure { data_block, cell, cell_params, space_group_hm, space_group_number, atom_sites }
 
 // ── EHT Band Structure (periodic systems) ─────────────────
 sci_form::eht::band_structure::compute_band_structure(elements: &[u8], positions: &[[f64;3]],
