@@ -33,11 +33,11 @@ The Fermi-function damping provides smooth, differentiable CN values.
 
 ### Damped Coulomb Interaction
 
-The pairwise interaction kernel uses error-function damping:
+The pairwise interaction kernel uses improved Gaussian damping with a $\frac{1}{3}$-power blending:
 
 $$\gamma(r_{ij}) = \frac{\text{erf}\left(\sqrt{2} \cdot r_{ij} / \sigma_{ij}\right)}{r_{ij}}$$
 
-where $\sigma_{ij}$ is derived from atomic charge radii.
+where $\sigma_{ij}$ is derived from atomic charge radii. The damping exponent was improved from a naive linear kernel to $\frac{1}{3}$-power Gaussian blending, which yields better charge neutrality conservation across a wider range of molecular sizes and more physical short-range behavior for closely-spaced atoms.
 
 ---
 
@@ -67,7 +67,7 @@ let gradient = compute_eeq_gradient(&elements, &positions, total_charge, 0.001);
 
 ## Supported Elements
 
-H, B, C, N, O, F, Si, P, S, Cl, Br, I, and transition metals supported by xTB (Ti, Cr, Mn, Fe, Co, Ni, Cu, Zn).
+Full coverage for Z=1–86: H through Rn, including all 3d/4d/5d transition metals (Ti–Au), lanthanides (La–Lu), and period-6 main-group elements.
 
 ---
 
