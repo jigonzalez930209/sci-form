@@ -7,6 +7,7 @@
 pub mod gpu;
 
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 
 const KCAL_MOL_TO_EV: f64 = 0.043_364_115_308_770_5;
 const SPEED_OF_LIGHT_CM_PER_S: f64 = 2.997_924_58e10;
@@ -515,6 +516,64 @@ pub fn analyze_gsm_mbh_htst_step(
         n_nodes: gsm_result.n_nodes,
         energy_evaluations: gsm_result.energy_evaluations,
     })
+}
+
+/// Build an HTST rate analysis using a named sci-form GSM backend.
+pub fn analyze_gsm_mbh_htst_step_with_backend(
+    smiles: &str,
+    reactant: &[f64],
+    product: &[f64],
+    backend: crate::alpha::gsm::GsmEnergyBackend,
+    config: &HtstAdapterConfig,
+) -> Result<HtstAnalysisResult, String> {
+    let elements = crate::alpha::gsm::backend::elements_for_smiles(smiles)?;
+    let rings = crate::alpha::gsm::backend::rings_from_smiles(smiles)?;
+    let capability = crate::alpha::gsm::plan_gsm_backends(&elements)
+        .into_iter()
+        .find(|entry| entry.backend == backend)
+        .ok_or_else(|| format!("unknown GSM backend '{}'", backend.as_str()))?;
+    if !capability.available || !capability.suitable_for_reaction_path {
+        let message = capability
+            .limitations
+            .first()
+            .or_else(|| capability.warnings.first())
+            .cloned()
+            .unwrap_or_else(|| {
+                format!(
+                    "GSM backend '{}' is unavailable for this system",
+                    backend.as_str()
+                )
+            });
+        return Err(message);
+    }
+
+    let owned_smiles = smiles.to_string();
+    let owned_elements = elements.clone();
+    let first_error = RefCell::new(None::<String>);
+    let energy_fn = |coords: &[f64]| -> f64 {
+        match crate::alpha::gsm::backend::evaluate_gsm_backend_energy_kcal(
+            &owned_smiles,
+            &owned_elements,
+            coords,
+            backend,
+        ) {
+            Ok(energy) => energy,
+            Err(err) => {
+                let mut slot = first_error.borrow_mut();
+                if slot.is_none() {
+                    *slot = Some(err);
+                }
+                f64::INFINITY
+            }
+        }
+    };
+
+    let result =
+        analyze_gsm_mbh_htst_step(&elements, reactant, product, &rings, &energy_fn, config);
+    if let Some(err) = first_error.into_inner() {
+        return Err(err);
+    }
+    result
 }
 
 fn flat_coords_to_positions(coords: &[f64]) -> Result<Vec<[f64; 3]>, String> {
