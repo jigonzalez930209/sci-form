@@ -46,14 +46,17 @@ Use this skill for any task in the sci-form repo that touches core chemistry cod
 - Conformer generation and topology parsing (ETKDG)
 - Charges (Gasteiger), SASA, population analysis, dipole, ESP, and DOS
 - UFF/MMFF94 force fields and RMSD/alignment
-- PM3, GFN0/GFN1/GFN2-xTB, HF-3c, CISD
+- PM3 (+ PM3(tm) transition metals), GFN0/GFN1/GFN2-xTB, HF-3c, CISD
+- UHF/ROHF open-shell Hartree-Fock (spin contamination, level shift, separate α/β orbitals)
 - EHT gradients, orbital grids, band structure, and multi-method DOS
 - ANI-2x and ANI-TM atomic environment vectors
 - ML descriptors, property prediction, random forest, and gradient boosting
 - Stereochemistry (R/S, E/Z, helical, atropisomeric), solvation, rings, fingerprints, and clustering
 - IR, UV-Vis, and NMR spectroscopy with peak assignment
 - Unit cells, space groups, periodic systems, hapticity, and framework optimization
-- SMIRKS transforms and batch/transport helpers
+- CIF import/export with uncertainty notation and space group recognition
+- AO→MO 4-index integral transform for post-HF methods
+- SMIRKS transforms (single and multi-component) and batch/transport helpers
 
 ### Alpha modules (proof-of-concept, may break API)
 
@@ -112,7 +115,7 @@ import { beta_compute_kpm_dos, beta_solve_eht_randnla } from 'sci-form-wasm/beta
 ## Validation checklist
 
 - Rust formatting and linting: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`
-- Unit tests: `cargo test --lib` (618+ tests)
+- Unit tests: `cargo test --lib` (633+ tests)
 - Alpha features: `cargo test --lib --features alpha-dft,alpha-reaxff,alpha-mlff`
 - Beta features: `cargo test --lib --features beta-kpm,beta-mbh,beta-randnla`
 - Parallel paths: `cargo test --lib --features alpha-mlff,beta-kpm,parallel`
