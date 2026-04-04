@@ -3,6 +3,30 @@
 #[allow(unused_imports)]
 use crate::format::parse_elems_coords;
 
+fn parse_flat_coords_json(coords: &str) -> Vec<f64> {
+    serde_json::from_str(coords).unwrap_or_else(|e| {
+        eprintln!("Bad coords JSON: {}", e);
+        std::process::exit(1);
+    })
+}
+
+#[cfg(feature = "alpha-gsm")]
+fn parse_gsm_methods_json(methods: &str) -> Vec<sci_form::alpha::gsm::GsmEnergyBackend> {
+    let raw_methods: Vec<String> = serde_json::from_str(methods).unwrap_or_else(|e| {
+        eprintln!("Bad methods JSON: {}", e);
+        std::process::exit(1);
+    });
+    raw_methods
+        .into_iter()
+        .map(|method| {
+            method.parse().unwrap_or_else(|e| {
+                eprintln!("{}", e);
+                std::process::exit(1);
+            })
+        })
+        .collect()
+}
+
 /// EEQ geometry-dependent charges.
 #[cfg(feature = "experimental-eeq")]
 pub fn cmd_eeq(elements: &str, coords: &str, total_charge: f64) {
@@ -226,6 +250,104 @@ pub fn cmd_htst_rate(
         }
         Err(e) => {
             eprintln!("HTST error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Show available GSM backends for a molecule.
+#[cfg(feature = "alpha-gsm")]
+pub fn cmd_gsm_backend_plan(smiles: &str) {
+    match sci_form::alpha::gsm::plan_gsm_backends_for_smiles(smiles) {
+        Ok(plan) => println!("{}", serde_json::to_string_pretty(&plan).unwrap()),
+        Err(e) => {
+            eprintln!("GSM backend plan error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Compare GSM backends on the same geometry.
+#[cfg(feature = "alpha-gsm")]
+pub fn cmd_gsm_compare_backends(smiles: &str, coords: &str, methods: &str) {
+    let flat = parse_flat_coords_json(coords);
+    let parsed_methods = parse_gsm_methods_json(methods);
+    match sci_form::alpha::gsm::compare_gsm_backends(smiles, &flat, &parsed_methods) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("GSM backend comparison error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Compute a simplified NEB-like path between two geometries.
+pub fn cmd_simplified_neb_path(
+    smiles: &str,
+    start_coords: &str,
+    end_coords: &str,
+    n_images: usize,
+    n_iter: usize,
+    spring_k: f64,
+    step_size: f64,
+    method: &str,
+) {
+    let start = parse_flat_coords_json(start_coords);
+    let end = parse_flat_coords_json(end_coords);
+    match sci_form::compute_simplified_neb_path_configurable(
+        smiles,
+        &start,
+        &end,
+        n_images,
+        n_iter,
+        spring_k,
+        step_size,
+        method,
+    ) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("Simplified NEB error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Compute single-point energy with any NEB-capable backend.
+pub fn cmd_neb_energy(smiles: &str, coords: &str, method: &str) {
+    let flat = parse_flat_coords_json(coords);
+    match sci_form::neb_backend_energy_kcal(method, smiles, &flat) {
+        Ok(energy) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "method": method,
+                    "energy_kcal_mol": energy,
+                })
+            );
+        }
+        Err(e) => {
+            eprintln!("NEB energy error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Compute energy + gradient with any NEB-capable backend.
+pub fn cmd_neb_gradient(smiles: &str, coords: &str, method: &str) {
+    let flat = parse_flat_coords_json(coords);
+    match sci_form::neb_backend_energy_and_gradient(method, smiles, &flat) {
+        Ok((energy, gradient)) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "method": method,
+                    "energy_kcal_mol": energy,
+                    "gradient_kcal_mol_ang": gradient,
+                })
+            );
+        }
+        Err(e) => {
+            eprintln!("NEB gradient error: {}", e);
             std::process::exit(1);
         }
     }
@@ -719,15 +841,70 @@ pub fn cmd_solve_microkinetic_steady_state(n_steps: usize) {
 }
 
 #[cfg(feature = "alpha-kinetics")]
-pub fn cmd_analyze_gsm_mbh_htst_step() {
-    println!(
-        "{}",
-        serde_json::json!({
-            "method": "gsm_mbh_htst",
-            "converged": true,
-            "barrier_kcal_mol": 15.0
-        })
-    );
+pub fn cmd_analyze_gsm_mbh_htst_step(
+    smiles: &str,
+    reactant_coords: &str,
+    product_coords: &str,
+    method: &str,
+    step_id: &str,
+    temperature_k: f64,
+    pressure_bar: f64,
+    n_nodes: usize,
+    mbh_fd_step: f64,
+) {
+    let reactant = parse_flat_coords_json(reactant_coords);
+    let product = parse_flat_coords_json(product_coords);
+    let backend: sci_form::alpha::gsm::GsmEnergyBackend = method.parse().unwrap_or_else(|e| {
+        eprintln!("{}", e);
+        std::process::exit(1);
+    });
+    let config = sci_form::alpha::kinetics::HtstAdapterConfig {
+        step_id: step_id.to_string(),
+        state: sci_form::alpha::kinetics::ThermodynamicState {
+            temperature_k,
+            pressure_bar,
+        },
+        gsm: sci_form::alpha::gsm::GsmConfig {
+            max_nodes: n_nodes,
+            ..Default::default()
+        },
+        mbh_fd_step,
+    };
+
+    match sci_form::alpha::kinetics::analyze_gsm_mbh_htst_step_with_backend(
+        smiles, &reactant, &product, backend, &config,
+    ) {
+        Ok(result) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "backend": backend.as_str(),
+                    "step_id": result.rate.step_id,
+                    "temperature_k": result.rate.state.temperature_k,
+                    "pressure_bar": result.rate.state.pressure_bar,
+                    "forward_rate_s_inv": result.rate.forward_rate_s_inv,
+                    "reverse_rate_s_inv": result.rate.reverse_rate_s_inv,
+                    "equilibrium_constant": result.rate.equilibrium_constant,
+                    "ts_energy_kcal_mol": result.ts_energy_kcal_mol,
+                    "activation_energy_kcal_mol": result.activation_energy_kcal_mol,
+                    "reverse_barrier_kcal_mol": result.reverse_barrier_kcal_mol,
+                    "imaginary_frequency_cm1": result.imaginary_frequency_cm1,
+                    "mbh_frequencies_cm1": result.mbh_frequencies_cm1,
+                    "n_blocks": result.n_blocks,
+                    "n_flexible": result.n_flexible,
+                    "path_energies_kcal_mol": result.path_energies_kcal_mol,
+                    "path_coords": result.path_coords,
+                    "ts_coords": result.ts_coords,
+                    "n_nodes": result.n_nodes,
+                    "energy_evaluations": result.energy_evaluations
+                })
+            );
+        }
+        Err(e) => {
+            eprintln!("GSM+MBH+HTST analysis error: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 // ──── RENDER BRIDGE: Missing chart utilities ──────────────────────────────

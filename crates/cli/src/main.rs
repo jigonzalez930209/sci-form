@@ -27,6 +27,35 @@ fn main() {
         Commands::Info => embed_cmds::cmd_info(),
         Commands::Charges { smiles } => embed_cmds::cmd_charges(&smiles),
         Commands::Uff { smiles, coords } => embed_cmds::cmd_uff(&smiles, &coords),
+        Commands::SimplifiedNebPath {
+            smiles,
+            start_coords,
+            end_coords,
+            n_images,
+            n_iter,
+            spring_k,
+            step_size,
+            method,
+        } => experimental_cmds::cmd_simplified_neb_path(
+            &smiles,
+            &start_coords,
+            &end_coords,
+            n_images,
+            n_iter,
+            spring_k,
+            step_size,
+            &method,
+        ),
+        Commands::NebEnergy {
+            smiles,
+            coords,
+            method,
+        } => experimental_cmds::cmd_neb_energy(&smiles, &coords, &method),
+        Commands::NebGradient {
+            smiles,
+            coords,
+            method,
+        } => experimental_cmds::cmd_neb_gradient(&smiles, &coords, &method),
         Commands::Rmsd { coords, reference } => embed_cmds::cmd_rmsd(&coords, &reference),
         Commands::Eht {
             elements,
@@ -203,6 +232,16 @@ fn main() {
             n_kpoints,
         } => experimental_cmds::cmd_validate_electron_count(n_electrons, n_bands, n_kpoints),
 
+        #[cfg(feature = "alpha-gsm")]
+        Commands::GsmBackendPlan { smiles } => experimental_cmds::cmd_gsm_backend_plan(&smiles),
+
+        #[cfg(feature = "alpha-gsm")]
+        Commands::GsmCompareBackends {
+            smiles,
+            coords,
+            methods,
+        } => experimental_cmds::cmd_gsm_compare_backends(&smiles, &coords, &methods),
+
         // ─── KINETICS ──────────
         #[cfg(feature = "alpha-kinetics")]
         Commands::ExtractKineticsDiagnostics => {
@@ -220,7 +259,27 @@ fn main() {
         }
 
         #[cfg(feature = "alpha-kinetics")]
-        Commands::AnalyzeGsmMbhHtstStep => experimental_cmds::cmd_analyze_gsm_mbh_htst_step(),
+        Commands::AnalyzeGsmMbhHtstStep {
+            smiles,
+            reactant_coords,
+            product_coords,
+            method,
+            step_id,
+            temperature_k,
+            pressure_bar,
+            n_nodes,
+            mbh_fd_step,
+        } => experimental_cmds::cmd_analyze_gsm_mbh_htst_step(
+            &smiles,
+            &reactant_coords,
+            &product_coords,
+            &method,
+            &step_id,
+            temperature_k,
+            pressure_bar,
+            n_nodes,
+            mbh_fd_step,
+        ),
 
         // Render Bridge commands
         Commands::ChartToJson => experimental_cmds::cmd_chart_to_json(),

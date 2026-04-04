@@ -8,7 +8,7 @@
 //!     eem_charges, compute_mlff, compute_aevs,
 //!     boys_function, eri_ssss,
 //!     rotate_dihedral_cga, refine_torsion_cga,
-//!     gsm_interpolate, gsm_find_ts,
+//!     gsm_interpolate, gsm_backend_plan, gsm_compare_backends, gsm_find_ts,
 //!     sdr_embed,
 //! )
 //! ```
@@ -576,11 +576,63 @@ mod cga_py {
 #[cfg(feature = "alpha-gsm")]
 mod gsm_py {
     use pyo3::prelude::*;
-    use sci_form_core::alpha::gsm::{self, GsmConfig};
+    use sci_form_core::alpha::gsm::{
+        self, GsmBackendCapability, GsmBackendEvaluation, GsmConfig, GsmEnergyBackend,
+    };
+
+    #[pyclass]
+    #[derive(Clone)]
+    pub struct GsmBackendCapabilityPy {
+        #[pyo3(get)]
+        pub backend: String,
+        #[pyo3(get)]
+        pub available: bool,
+        #[pyo3(get)]
+        pub suitable_for_reaction_path: bool,
+        #[pyo3(get)]
+        pub model_family: String,
+        #[pyo3(get)]
+        pub energy_unit: String,
+        #[pyo3(get)]
+        pub support_level: Option<String>,
+        #[pyo3(get)]
+        pub warnings: Vec<String>,
+        #[pyo3(get)]
+        pub limitations: Vec<String>,
+    }
+
+    #[pyclass]
+    #[derive(Clone)]
+    pub struct GsmBackendEvaluationPy {
+        #[pyo3(get)]
+        pub backend: String,
+        #[pyo3(get)]
+        pub status: String,
+        #[pyo3(get)]
+        pub available: bool,
+        #[pyo3(get)]
+        pub suitable_for_reaction_path: bool,
+        #[pyo3(get)]
+        pub energy_kcal_mol: Option<f64>,
+        #[pyo3(get)]
+        pub raw_energy: Option<f64>,
+        #[pyo3(get)]
+        pub raw_energy_unit: Option<String>,
+        #[pyo3(get)]
+        pub converged: Option<bool>,
+        #[pyo3(get)]
+        pub warnings: Vec<String>,
+        #[pyo3(get)]
+        pub limitations: Vec<String>,
+        #[pyo3(get)]
+        pub error: Option<String>,
+    }
 
     #[pyclass]
     #[derive(Clone)]
     pub struct GsmResultPy {
+        #[pyo3(get)]
+        pub backend: String,
         #[pyo3(get)]
         pub ts_coords: Vec<f64>,
         #[pyo3(get)]
@@ -608,28 +660,54 @@ mod gsm_py {
         gsm::interpolate_node(&reactant, &product, t)
     }
 
-    /// Find transition state using Growing String Method with UFF energy.
+    #[pyfunction]
+    pub fn gsm_backend_plan(smiles: &str) -> PyResult<Vec<GsmBackendCapabilityPy>> {
+        let plan = gsm::plan_gsm_backends_for_smiles(smiles)
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        Ok(plan.into_iter().map(capability_to_py).collect())
+    }
+
+    #[pyfunction]
+    #[pyo3(signature = (smiles, coords, methods = None))]
+    pub fn gsm_compare_backends(
+        smiles: &str,
+        coords: Vec<f64>,
+        methods: Option<Vec<String>>,
+    ) -> PyResult<Vec<GsmBackendEvaluationPy>> {
+        let parsed_methods = parse_methods(methods)?;
+        let result = gsm::compare_gsm_backends(smiles, &coords, &parsed_methods)
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        Ok(result.into_iter().map(evaluation_to_py).collect())
+    }
+
+    /// Find a transition state using GSM with the selected single-point backend.
     ///
     /// Returns:
     ///     GsmResultPy
     #[pyfunction]
-    #[pyo3(signature = (smiles, reactant_coords, product_coords, n_nodes = 9))]
+    #[pyo3(signature = (smiles, reactant_coords, product_coords, n_nodes = 9, method = "uff"))]
     pub fn gsm_find_ts(
         smiles: &str,
         reactant_coords: Vec<f64>,
         product_coords: Vec<f64>,
         n_nodes: usize,
+        method: &str,
     ) -> PyResult<GsmResultPy> {
         let config = GsmConfig {
             max_nodes: n_nodes,
             ..Default::default()
         };
-        let owned_smiles = smiles.to_string();
-        let energy_fn = move |coords: &[f64]| -> f64 {
-            sci_form_core::compute_uff_energy(&owned_smiles, coords).unwrap_or(f64::MAX)
-        };
-        let r = gsm::find_transition_state(&reactant_coords, &product_coords, &energy_fn, &config);
+        let backend = parse_backend(method)?;
+        let r = gsm::find_transition_state_with_backend(
+            smiles,
+            &reactant_coords,
+            &product_coords,
+            backend,
+            &config,
+        )
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         Ok(GsmResultPy {
+            backend: backend.as_str().to_string(),
             ts_coords: r.ts_coords,
             ts_energy: r.ts_energy,
             path_energies: r.path_energies,
@@ -641,9 +719,58 @@ mod gsm_py {
         })
     }
 
+    fn capability_to_py(capability: GsmBackendCapability) -> GsmBackendCapabilityPy {
+        GsmBackendCapabilityPy {
+            backend: capability.backend.as_str().to_string(),
+            available: capability.available,
+            suitable_for_reaction_path: capability.suitable_for_reaction_path,
+            model_family: capability.model_family,
+            energy_unit: capability.energy_unit,
+            support_level: capability
+                .support_level
+                .map(|value| format!("{:?}", value).to_lowercase()),
+            warnings: capability.warnings,
+            limitations: capability.limitations,
+        }
+    }
+
+    fn evaluation_to_py(evaluation: GsmBackendEvaluation) -> GsmBackendEvaluationPy {
+        GsmBackendEvaluationPy {
+            backend: evaluation.backend.as_str().to_string(),
+            status: format!("{:?}", evaluation.status).to_lowercase(),
+            available: evaluation.available,
+            suitable_for_reaction_path: evaluation.suitable_for_reaction_path,
+            energy_kcal_mol: evaluation.energy_kcal_mol,
+            raw_energy: evaluation.raw_energy,
+            raw_energy_unit: evaluation.raw_energy_unit,
+            converged: evaluation.converged,
+            warnings: evaluation.warnings,
+            limitations: evaluation.limitations,
+            error: evaluation.error,
+        }
+    }
+
+    fn parse_backend(method: &str) -> PyResult<GsmEnergyBackend> {
+        method
+            .parse()
+            .map_err(pyo3::exceptions::PyValueError::new_err)
+    }
+
+    fn parse_methods(methods: Option<Vec<String>>) -> PyResult<Vec<GsmEnergyBackend>> {
+        methods
+            .unwrap_or_default()
+            .into_iter()
+            .map(|method| parse_backend(&method))
+            .collect()
+    }
+
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        m.add_class::<GsmBackendCapabilityPy>()?;
+        m.add_class::<GsmBackendEvaluationPy>()?;
         m.add_class::<GsmResultPy>()?;
         m.add_function(wrap_pyfunction!(gsm_interpolate, m)?)?;
+        m.add_function(wrap_pyfunction!(gsm_backend_plan, m)?)?;
+        m.add_function(wrap_pyfunction!(gsm_compare_backends, m)?)?;
         m.add_function(wrap_pyfunction!(gsm_find_ts, m)?)?;
         Ok(())
     }

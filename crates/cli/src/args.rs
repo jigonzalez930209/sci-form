@@ -100,6 +100,50 @@ pub enum Commands {
     Rmsd { coords: String, reference: String },
     /// Compute UFF force field energy
     Uff { smiles: String, coords: String },
+    /// Compute a simplified NEB-like path between two geometries
+    SimplifiedNebPath {
+        /// SMILES string for topology and atom typing
+        smiles: String,
+        /// JSON array of flat start coords
+        start_coords: String,
+        /// JSON array of flat end coords
+        end_coords: String,
+        /// Number of images along the path
+        #[arg(long, default_value_t = 8)]
+        n_images: usize,
+        /// Number of relaxation iterations
+        #[arg(long, default_value_t = 50)]
+        n_iter: usize,
+        /// Harmonic spring constant between adjacent images
+        #[arg(long, default_value_t = 0.1)]
+        spring_k: f64,
+        /// Cartesian update step size
+        #[arg(long, default_value_t = 0.01)]
+        step_size: f64,
+        /// Energy backend: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c
+        #[arg(long, default_value = "uff")]
+        method: String,
+    },
+    /// Compute single-point energy with any NEB-capable backend
+    NebEnergy {
+        /// SMILES string for topology
+        smiles: String,
+        /// JSON array of flat coords
+        coords: String,
+        /// Energy backend: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c
+        #[arg(long, default_value = "uff")]
+        method: String,
+    },
+    /// Compute energy + gradient with any NEB-capable backend
+    NebGradient {
+        /// SMILES string for topology
+        smiles: String,
+        /// JSON array of flat coords
+        coords: String,
+        /// Energy backend: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c
+        #[arg(long, default_value = "uff")]
+        method: String,
+    },
     /// Create a unit cell and show parameters
     Cell {
         #[arg(long)]
@@ -349,6 +393,25 @@ pub enum Commands {
         n_kpoints: usize,
     },
 
+    /// [experimental-alpha] Show available GSM reaction-path backends for a molecule
+    #[cfg(feature = "alpha-gsm")]
+    GsmBackendPlan {
+        /// SMILES string used to derive the element set
+        smiles: String,
+    },
+
+    /// [experimental-alpha] Compare GSM backends on the same geometry
+    #[cfg(feature = "alpha-gsm")]
+    GsmCompareBackends {
+        /// SMILES string for topology and atom typing
+        smiles: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// JSON array of backend names, or [] for all
+        #[arg(long, default_value = "[]")]
+        methods: String,
+    },
+
     // ─── KINETICS COMMANDS ────────────────────
     /// [experimental-alpha] Extract kinetics diagnostics
     #[cfg(feature = "alpha-kinetics")]
@@ -370,7 +433,32 @@ pub enum Commands {
 
     /// [experimental-alpha] Analyze GSM+MBH+HTST step
     #[cfg(feature = "alpha-kinetics")]
-    AnalyzeGsmMbhHtstStep,
+    AnalyzeGsmMbhHtstStep {
+        /// SMILES string for topology, ring perception, and backend capability checks
+        smiles: String,
+        /// JSON array of flat reactant coords
+        reactant_coords: String,
+        /// JSON array of flat product coords
+        product_coords: String,
+        /// GSM backend: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c, reaxff
+        #[arg(long, default_value = "uff")]
+        method: String,
+        /// Stable identifier for the elementary step
+        #[arg(long, default_value = "elementary-step")]
+        step_id: String,
+        /// Temperature in K
+        #[arg(long, default_value_t = 298.15)]
+        temperature_k: f64,
+        /// Pressure in bar
+        #[arg(long, default_value_t = 1.0)]
+        pressure_bar: f64,
+        /// Maximum number of GSM nodes
+        #[arg(long, default_value_t = 11)]
+        n_nodes: usize,
+        /// MBH finite-difference step in Å
+        #[arg(long, default_value_t = 0.005)]
+        mbh_fd_step: f64,
+    },
 
     // ──── RENDER BRIDGE: Missing chart utilities ───────────────────────────────
     /// [render-bridge] Serialize chart to JSON
