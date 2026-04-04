@@ -1,3 +1,192 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:4a59812eb79e1f560df3e40f9c31db07b46331a8ccf8ec7bff5cba13756f1432
-size 3425
+[
+  {
+    "smiles": "C#Cc1ccccc1",
+    "atoms": [
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP"
+      },
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP"
+      },
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP2"
+      },
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP2"
+      },
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP2"
+      },
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP2"
+      },
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP2"
+      },
+      {
+        "element": 6,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "SP2"
+      },
+      {
+        "element": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "UNSPECIFIED"
+      },
+      {
+        "element": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "UNSPECIFIED"
+      },
+      {
+        "element": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "UNSPECIFIED"
+      },
+      {
+        "element": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "UNSPECIFIED"
+      },
+      {
+        "element": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "UNSPECIFIED"
+      },
+      {
+        "element": 1,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "formal_charge": 0,
+        "hybridization": "UNSPECIFIED"
+      }
+    ],
+    "bonds": [
+      {
+        "start": 0,
+        "end": 1,
+        "order": "TRIPLE"
+      },
+      {
+        "start": 1,
+        "end": 2,
+        "order": "SINGLE"
+      },
+      {
+        "start": 2,
+        "end": 3,
+        "order": "AROMATIC"
+      },
+      {
+        "start": 3,
+        "end": 4,
+        "order": "AROMATIC"
+      },
+      {
+        "start": 4,
+        "end": 5,
+        "order": "AROMATIC"
+      },
+      {
+        "start": 5,
+        "end": 6,
+        "order": "AROMATIC"
+      },
+      {
+        "start": 6,
+        "end": 7,
+        "order": "AROMATIC"
+      },
+      {
+        "start": 7,
+        "end": 2,
+        "order": "AROMATIC"
+      },
+      {
+        "start": 0,
+        "end": 8,
+        "order": "SINGLE"
+      },
+      {
+        "start": 3,
+        "end": 9,
+        "order": "SINGLE"
+      },
+      {
+        "start": 4,
+        "end": 10,
+        "order": "SINGLE"
+      },
+      {
+        "start": 5,
+        "end": 11,
+        "order": "SINGLE"
+      },
+      {
+        "start": 6,
+        "end": 12,
+        "order": "SINGLE"
+      },
+      {
+        "start": 7,
+        "end": 13,
+        "order": "SINGLE"
+      }
+    ],
+    "torsions": []
+  }
+]

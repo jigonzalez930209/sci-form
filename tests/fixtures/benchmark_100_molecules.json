@@ -1,3 +1,739 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:b538cacda8795cbce9bca6ac34c3425cf704aa1040c843d5bd0af6693b2138da
-size 27917
+{
+  "_comment": "Benchmark dataset: 100+ small molecules with experimental reference values",
+  "_sources": [
+    "NIST Computational Chemistry Comparison and Benchmark Database (CCCBDB) Release 22",
+    "NIST Chemistry WebBook, NIST Standard Reference Database Number 69",
+    "CRC Handbook of Chemistry and Physics, 97th Ed.",
+    "Stewart, J.J.P. J. Comput. Chem. 1989, 10, 209-220 (PM3 training set)",
+    "Active Thermochemical Tables (ATcT), Argonne National Laboratory",
+    "Curtiss, L.A. et al. J. Chem. Phys. 1997, 106, 1063 (G2/97 test set)"
+  ],
+  "_units": {
+    "heat_of_formation": "kcal/mol at 298K",
+    "ionization_potential": "eV",
+    "dipole_moment": "Debye"
+  },
+
+  "molecules": [
+    {
+      "id": 1, "name": "Hydrogen", "formula": "H2",
+      "smiles": "[H][H]",
+      "n_atoms": 2,
+      "experimental": { "heat_of_formation": 0.0, "ionization_potential": 15.43, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 2, "name": "Water", "formula": "H2O",
+      "smiles": "O",
+      "n_atoms": 3,
+      "experimental": { "heat_of_formation": -57.80, "ionization_potential": 12.62, "dipole_moment": 1.855 }
+    },
+    {
+      "id": 3, "name": "Methane", "formula": "CH4",
+      "smiles": "C",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -17.89, "ionization_potential": 12.61, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 4, "name": "Ammonia", "formula": "NH3",
+      "smiles": "N",
+      "n_atoms": 4,
+      "experimental": { "heat_of_formation": -10.98, "ionization_potential": 10.07, "dipole_moment": 1.47 }
+    },
+    {
+      "id": 5, "name": "Hydrogen fluoride", "formula": "HF",
+      "smiles": "F",
+      "n_atoms": 2,
+      "experimental": { "heat_of_formation": -65.14, "ionization_potential": 16.01, "dipole_moment": 1.826 }
+    },
+    {
+      "id": 6, "name": "Hydrogen chloride", "formula": "HCl",
+      "smiles": "Cl",
+      "n_atoms": 2,
+      "experimental": { "heat_of_formation": -22.06, "ionization_potential": 12.75, "dipole_moment": 1.109 }
+    },
+    {
+      "id": 7, "name": "Hydrogen sulfide", "formula": "H2S",
+      "smiles": "S",
+      "n_atoms": 3,
+      "experimental": { "heat_of_formation": -4.93, "ionization_potential": 10.46, "dipole_moment": 0.97 }
+    },
+    {
+      "id": 8, "name": "Carbon monoxide", "formula": "CO",
+      "smiles": "[C-]#[O+]",
+      "n_atoms": 2,
+      "experimental": { "heat_of_formation": -26.42, "ionization_potential": 14.01, "dipole_moment": 0.110 }
+    },
+    {
+      "id": 9, "name": "Carbon dioxide", "formula": "CO2",
+      "smiles": "O=C=O",
+      "n_atoms": 3,
+      "experimental": { "heat_of_formation": -94.05, "ionization_potential": 13.78, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 10, "name": "Formaldehyde", "formula": "CH2O",
+      "smiles": "C=O",
+      "n_atoms": 4,
+      "experimental": { "heat_of_formation": -25.95, "ionization_potential": 10.88, "dipole_moment": 2.332 }
+    },
+    {
+      "id": 11, "name": "Methanol", "formula": "CH3OH",
+      "smiles": "CO",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": -48.00, "ionization_potential": 10.84, "dipole_moment": 1.70 }
+    },
+    {
+      "id": 12, "name": "Ethane", "formula": "C2H6",
+      "smiles": "CC",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": -20.24, "ionization_potential": 11.52, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 13, "name": "Ethylene", "formula": "C2H4",
+      "smiles": "C=C",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": 12.54, "ionization_potential": 10.51, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 14, "name": "Acetylene", "formula": "C2H2",
+      "smiles": "C#C",
+      "n_atoms": 4,
+      "experimental": { "heat_of_formation": 54.19, "ionization_potential": 11.40, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 15, "name": "Ethanol", "formula": "C2H5OH",
+      "smiles": "CCO",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": -56.21, "ionization_potential": 10.48, "dipole_moment": 1.69 }
+    },
+    {
+      "id": 16, "name": "Dimethyl ether", "formula": "CH3OCH3",
+      "smiles": "COC",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": -43.99, "ionization_potential": 10.03, "dipole_moment": 1.30 }
+    },
+    {
+      "id": 17, "name": "Acetaldehyde", "formula": "CH3CHO",
+      "smiles": "CC=O",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": -39.70, "ionization_potential": 10.23, "dipole_moment": 2.750 }
+    },
+    {
+      "id": 18, "name": "Acetic acid", "formula": "CH3COOH",
+      "smiles": "CC(=O)O",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": -103.40, "ionization_potential": 10.65, "dipole_moment": 1.74 }
+    },
+    {
+      "id": 19, "name": "Formic acid", "formula": "HCOOH",
+      "smiles": "O=CO",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -90.49, "ionization_potential": 11.33, "dipole_moment": 1.41 }
+    },
+    {
+      "id": 20, "name": "Acetone", "formula": "CH3COCH3",
+      "smiles": "CC(=O)C",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -51.90, "ionization_potential": 9.70, "dipole_moment": 2.88 }
+    },
+    {
+      "id": 21, "name": "Propane", "formula": "C3H8",
+      "smiles": "CCC",
+      "n_atoms": 11,
+      "experimental": { "heat_of_formation": -25.02, "ionization_potential": 10.94, "dipole_moment": 0.084 }
+    },
+    {
+      "id": 22, "name": "Propene", "formula": "C3H6",
+      "smiles": "CC=C",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": 4.78, "ionization_potential": 9.73, "dipole_moment": 0.366 }
+    },
+    {
+      "id": 23, "name": "Cyclopropane", "formula": "C3H6",
+      "smiles": "C1CC1",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": 12.74, "ionization_potential": 9.86, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 24, "name": "Propyne", "formula": "C3H4",
+      "smiles": "CC#C",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": 44.20, "ionization_potential": 10.36, "dipole_moment": 0.784 }
+    },
+    {
+      "id": 25, "name": "Allene", "formula": "C3H4",
+      "smiles": "C=C=C",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": 45.55, "ionization_potential": 10.20, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 26, "name": "Butane", "formula": "C4H10",
+      "smiles": "CCCC",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": -30.03, "ionization_potential": 10.53, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 27, "name": "Isobutane", "formula": "C4H10",
+      "smiles": "CC(C)C",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": -32.07, "ionization_potential": 10.57, "dipole_moment": 0.132 }
+    },
+    {
+      "id": 28, "name": "1,3-Butadiene", "formula": "C4H6",
+      "smiles": "C=CC=C",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": 26.33, "ionization_potential": 9.07, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 29, "name": "Benzene", "formula": "C6H6",
+      "smiles": "c1ccccc1",
+      "n_atoms": 12,
+      "experimental": { "heat_of_formation": 19.82, "ionization_potential": 9.24, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 30, "name": "Methylamine", "formula": "CH3NH2",
+      "smiles": "CN",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": -5.49, "ionization_potential": 8.97, "dipole_moment": 1.31 }
+    },
+    {
+      "id": 31, "name": "Dimethylamine", "formula": "(CH3)2NH",
+      "smiles": "CNC",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -4.40, "ionization_potential": 8.24, "dipole_moment": 1.03 }
+    },
+    {
+      "id": 32, "name": "Trimethylamine", "formula": "(CH3)3N",
+      "smiles": "CN(C)C",
+      "n_atoms": 13,
+      "experimental": { "heat_of_formation": -5.67, "ionization_potential": 7.82, "dipole_moment": 0.612 }
+    },
+    {
+      "id": 33, "name": "Ethylamine", "formula": "C2H5NH2",
+      "smiles": "CCN",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -11.35, "ionization_potential": 8.86, "dipole_moment": 1.22 }
+    },
+    {
+      "id": 34, "name": "Hydrogen cyanide", "formula": "HCN",
+      "smiles": "C#N",
+      "n_atoms": 3,
+      "experimental": { "heat_of_formation": 31.51, "ionization_potential": 13.60, "dipole_moment": 2.985 }
+    },
+    {
+      "id": 35, "name": "Acetonitrile", "formula": "CH3CN",
+      "smiles": "CC#N",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": 17.70, "ionization_potential": 12.20, "dipole_moment": 3.925 }
+    },
+    {
+      "id": 36, "name": "Nitromethane", "formula": "CH3NO2",
+      "smiles": "C[N+](=O)[O-]",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": -17.86, "ionization_potential": 11.08, "dipole_moment": 3.46 }
+    },
+    {
+      "id": 37, "name": "Methyl chloride", "formula": "CH3Cl",
+      "smiles": "CCl",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -19.60, "ionization_potential": 11.22, "dipole_moment": 1.892 }
+    },
+    {
+      "id": 38, "name": "Methylene chloride", "formula": "CH2Cl2",
+      "smiles": "ClCCl",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -22.83, "ionization_potential": 11.32, "dipole_moment": 1.60 }
+    },
+    {
+      "id": 39, "name": "Chloroform", "formula": "CHCl3",
+      "smiles": "ClC(Cl)Cl",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -24.65, "ionization_potential": 11.37, "dipole_moment": 1.04 }
+    },
+    {
+      "id": 40, "name": "Carbon tetrachloride", "formula": "CCl4",
+      "smiles": "ClC(Cl)(Cl)Cl",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -22.94, "ionization_potential": 11.47, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 41, "name": "Methyl fluoride", "formula": "CH3F",
+      "smiles": "CF",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -56.80, "ionization_potential": 12.47, "dipole_moment": 1.858 }
+    },
+    {
+      "id": 42, "name": "Difluoromethane", "formula": "CH2F2",
+      "smiles": "FCF",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -107.71, "ionization_potential": 12.71, "dipole_moment": 1.978 }
+    },
+    {
+      "id": 43, "name": "Trifluoromethane", "formula": "CHF3",
+      "smiles": "FC(F)F",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -166.60, "ionization_potential": 14.00, "dipole_moment": 1.651 }
+    },
+    {
+      "id": 44, "name": "Tetrafluoromethane", "formula": "CF4",
+      "smiles": "FC(F)(F)F",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -223.04, "ionization_potential": 15.30, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 45, "name": "Ethyl chloride", "formula": "C2H5Cl",
+      "smiles": "CCCl",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": -26.84, "ionization_potential": 10.98, "dipole_moment": 2.05 }
+    },
+    {
+      "id": 46, "name": "Vinyl chloride", "formula": "C2H3Cl",
+      "smiles": "C=CCl",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": 8.40, "ionization_potential": 9.99, "dipole_moment": 1.44 }
+    },
+    {
+      "id": 47, "name": "Fluoroethane", "formula": "C2H5F",
+      "smiles": "CCF",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": -62.50, "ionization_potential": 11.78, "dipole_moment": 1.937 }
+    },
+    {
+      "id": 48, "name": "Fluoroethylene", "formula": "C2H3F",
+      "smiles": "C=CF",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": -33.20, "ionization_potential": 10.36, "dipole_moment": 1.43 }
+    },
+    {
+      "id": 49, "name": "Ethylene oxide", "formula": "C2H4O",
+      "smiles": "C1CO1",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": -12.57, "ionization_potential": 10.56, "dipole_moment": 1.89 }
+    },
+    {
+      "id": 50, "name": "Furan", "formula": "C4H4O",
+      "smiles": "c1ccoc1",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": -8.29, "ionization_potential": 8.88, "dipole_moment": 0.661 }
+    },
+    {
+      "id": 51, "name": "Pyrrole", "formula": "C4H5N",
+      "smiles": "c1cc[nH]c1",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": 25.88, "ionization_potential": 8.21, "dipole_moment": 1.767 }
+    },
+    {
+      "id": 52, "name": "Thiophene", "formula": "C4H4S",
+      "smiles": "c1ccsc1",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": 27.50, "ionization_potential": 8.87, "dipole_moment": 0.55 }
+    },
+    {
+      "id": 53, "name": "Pyridine", "formula": "C5H5N",
+      "smiles": "c1ccncc1",
+      "n_atoms": 11,
+      "experimental": { "heat_of_formation": 33.61, "ionization_potential": 9.26, "dipole_moment": 2.215 }
+    },
+    {
+      "id": 54, "name": "Imidazole", "formula": "C3H4N2",
+      "smiles": "c1cnc[nH]1",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": 14.92, "ionization_potential": 8.81, "dipole_moment": 3.67 }
+    },
+    {
+      "id": 55, "name": "Formamide", "formula": "HCONH2",
+      "smiles": "O=CN",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": -44.50, "ionization_potential": 10.16, "dipole_moment": 3.73 }
+    },
+    {
+      "id": 56, "name": "Acetamide", "formula": "CH3CONH2",
+      "smiles": "CC(=O)N",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": -57.00, "ionization_potential": 9.65, "dipole_moment": 3.68 }
+    },
+    {
+      "id": 57, "name": "Urea", "formula": "CO(NH2)2",
+      "smiles": "NC(=O)N",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": -56.29, "ionization_potential": 9.70, "dipole_moment": 3.83 }
+    },
+    {
+      "id": 58, "name": "Nitric acid", "formula": "HNO3",
+      "smiles": "[O-][N+](=O)O",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -32.10, "ionization_potential": 11.95, "dipole_moment": 2.17 }
+    },
+    {
+      "id": 59, "name": "Sulfur dioxide", "formula": "SO2",
+      "smiles": "O=S=O",
+      "n_atoms": 3,
+      "experimental": { "heat_of_formation": -70.93, "ionization_potential": 12.35, "dipole_moment": 1.633 }
+    },
+    {
+      "id": 60, "name": "Carbonyl sulfide", "formula": "OCS",
+      "smiles": "O=C=S",
+      "n_atoms": 3,
+      "experimental": { "heat_of_formation": -33.08, "ionization_potential": 11.19, "dipole_moment": 0.715 }
+    },
+    {
+      "id": 61, "name": "Carbon disulfide", "formula": "CS2",
+      "smiles": "S=C=S",
+      "n_atoms": 3,
+      "experimental": { "heat_of_formation": 27.95, "ionization_potential": 10.07, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 62, "name": "Methanethiol", "formula": "CH3SH",
+      "smiles": "CS",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": -5.46, "ionization_potential": 9.44, "dipole_moment": 1.52 }
+    },
+    {
+      "id": 63, "name": "Dimethyl sulfide", "formula": "(CH3)2S",
+      "smiles": "CSC",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": -8.96, "ionization_potential": 8.69, "dipole_moment": 1.554 }
+    },
+    {
+      "id": 64, "name": "Ethanethiol", "formula": "C2H5SH",
+      "smiles": "CCS",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": -11.03, "ionization_potential": 9.31, "dipole_moment": 1.58 }
+    },
+    {
+      "id": 65, "name": "Dimethyl sulfoxide", "formula": "(CH3)2SO",
+      "smiles": "CS(=O)C",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -36.20, "ionization_potential": 9.10, "dipole_moment": 3.96 }
+    },
+    {
+      "id": 66, "name": "Toluene", "formula": "C7H8",
+      "smiles": "Cc1ccccc1",
+      "n_atoms": 15,
+      "experimental": { "heat_of_formation": 11.95, "ionization_potential": 8.83, "dipole_moment": 0.375 }
+    },
+    {
+      "id": 67, "name": "Phenol", "formula": "C6H5OH",
+      "smiles": "Oc1ccccc1",
+      "n_atoms": 13,
+      "experimental": { "heat_of_formation": -23.04, "ionization_potential": 8.49, "dipole_moment": 1.224 }
+    },
+    {
+      "id": 68, "name": "Aniline", "formula": "C6H5NH2",
+      "smiles": "Nc1ccccc1",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": 20.76, "ionization_potential": 7.72, "dipole_moment": 1.13 }
+    },
+    {
+      "id": 69, "name": "Nitrobenzene", "formula": "C6H5NO2",
+      "smiles": "[O-][N+](=O)c1ccccc1",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": 16.38, "ionization_potential": 9.86, "dipole_moment": 4.22 }
+    },
+    {
+      "id": 70, "name": "Fluorobenzene", "formula": "C6H5F",
+      "smiles": "Fc1ccccc1",
+      "n_atoms": 12,
+      "experimental": { "heat_of_formation": -27.68, "ionization_potential": 9.20, "dipole_moment": 1.60 }
+    },
+    {
+      "id": 71, "name": "Chlorobenzene", "formula": "C6H5Cl",
+      "smiles": "Clc1ccccc1",
+      "n_atoms": 12,
+      "experimental": { "heat_of_formation": 12.39, "ionization_potential": 9.07, "dipole_moment": 1.69 }
+    },
+    {
+      "id": 72, "name": "Naphthalene", "formula": "C10H8",
+      "smiles": "c1ccc2ccccc2c1",
+      "n_atoms": 18,
+      "experimental": { "heat_of_formation": 35.99, "ionization_potential": 8.14, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 73, "name": "Hydrazine", "formula": "N2H4",
+      "smiles": "NN",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": 22.79, "ionization_potential": 8.98, "dipole_moment": 1.75 }
+    },
+    {
+      "id": 74, "name": "Hydrogen peroxide", "formula": "H2O2",
+      "smiles": "OO",
+      "n_atoms": 4,
+      "experimental": { "heat_of_formation": -32.53, "ionization_potential": 10.58, "dipole_moment": 1.573 }
+    },
+    {
+      "id": 75, "name": "Methyl formate", "formula": "HCOOCH3",
+      "smiles": "COC=O",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": -83.70, "ionization_potential": 10.82, "dipole_moment": 1.77 }
+    },
+    {
+      "id": 76, "name": "Ethyl acetate", "formula": "CH3COOC2H5",
+      "smiles": "CCOC(=O)C",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": -106.44, "ionization_potential": 10.01, "dipole_moment": 1.78 }
+    },
+    {
+      "id": 77, "name": "Dimethylformamide", "formula": "(CH3)2NCHO",
+      "smiles": "CN(C)C=O",
+      "n_atoms": 12,
+      "experimental": { "heat_of_formation": -45.80, "ionization_potential": 9.12, "dipole_moment": 3.82 }
+    },
+    {
+      "id": 78, "name": "Acrylonitrile", "formula": "C3H3N",
+      "smiles": "C=CC#N",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": 43.70, "ionization_potential": 10.91, "dipole_moment": 3.87 }
+    },
+    {
+      "id": 79, "name": "Isopropanol", "formula": "C3H7OH",
+      "smiles": "CC(O)C",
+      "n_atoms": 12,
+      "experimental": { "heat_of_formation": -65.20, "ionization_potential": 10.17, "dipole_moment": 1.58 }
+    },
+    {
+      "id": 80, "name": "Acrolein", "formula": "C3H4O",
+      "smiles": "C=CC=O",
+      "n_atoms": 7,
+      "experimental": { "heat_of_formation": -15.30, "ionization_potential": 10.10, "dipole_moment": 3.12 }
+    },
+    {
+      "id": 81, "name": "Glycine", "formula": "C2H5NO2",
+      "smiles": "NCC(=O)O",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -93.30, "ionization_potential": 9.00, "dipole_moment": 1.18 }
+    },
+    {
+      "id": 82, "name": "Diethyl ether", "formula": "C4H10O",
+      "smiles": "CCOCC",
+      "n_atoms": 15,
+      "experimental": { "heat_of_formation": -60.29, "ionization_potential": 9.51, "dipole_moment": 1.15 }
+    },
+    {
+      "id": 83, "name": "Tetrahydrofuran", "formula": "C4H8O",
+      "smiles": "C1CCOC1",
+      "n_atoms": 13,
+      "experimental": { "heat_of_formation": -44.03, "ionization_potential": 9.38, "dipole_moment": 1.63 }
+    },
+    {
+      "id": 84, "name": "1,4-Dioxane", "formula": "C4H8O2",
+      "smiles": "C1COCOC1",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": -75.42, "ionization_potential": 9.13, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 85, "name": "Cyclopentane", "formula": "C5H10",
+      "smiles": "C1CCCC1",
+      "n_atoms": 15,
+      "experimental": { "heat_of_formation": -18.46, "ionization_potential": 10.33, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 86, "name": "Cyclohexane", "formula": "C6H12",
+      "smiles": "C1CCCCC1",
+      "n_atoms": 18,
+      "experimental": { "heat_of_formation": -29.43, "ionization_potential": 9.88, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 87, "name": "Cyclopentanone", "formula": "C5H8O",
+      "smiles": "O=C1CCCC1",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": -45.93, "ionization_potential": 9.26, "dipole_moment": 3.30 }
+    },
+    {
+      "id": 88, "name": "Cyclohexanone", "formula": "C6H10O",
+      "smiles": "O=C1CCCCC1",
+      "n_atoms": 17,
+      "experimental": { "heat_of_formation": -55.23, "ionization_potential": 9.14, "dipole_moment": 3.08 }
+    },
+    {
+      "id": 89, "name": "1-Propanol", "formula": "C3H7OH",
+      "smiles": "CCCO",
+      "n_atoms": 12,
+      "experimental": { "heat_of_formation": -61.17, "ionization_potential": 10.22, "dipole_moment": 1.55 }
+    },
+    {
+      "id": 90, "name": "Propanal", "formula": "C3H6O",
+      "smiles": "CCC=O",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -45.09, "ionization_potential": 9.96, "dipole_moment": 2.52 }
+    },
+    {
+      "id": 91, "name": "Propanoic acid", "formula": "C3H6O2",
+      "smiles": "CCC(=O)O",
+      "n_atoms": 11,
+      "experimental": { "heat_of_formation": -108.78, "ionization_potential": 10.24, "dipole_moment": 1.75 }
+    },
+    {
+      "id": 92, "name": "Methyl acetate", "formula": "CH3COOCH3",
+      "smiles": "COC(=O)C",
+      "n_atoms": 11,
+      "experimental": { "heat_of_formation": -98.02, "ionization_potential": 10.25, "dipole_moment": 1.72 }
+    },
+    {
+      "id": 93, "name": "Butanal", "formula": "C4H8O",
+      "smiles": "CCCC=O",
+      "n_atoms": 13,
+      "experimental": { "heat_of_formation": -49.60, "ionization_potential": 9.82, "dipole_moment": 2.72 }
+    },
+    {
+      "id": 94, "name": "2-Butanone", "formula": "C4H8O",
+      "smiles": "CCC(=O)C",
+      "n_atoms": 13,
+      "experimental": { "heat_of_formation": -57.02, "ionization_potential": 9.52, "dipole_moment": 2.78 }
+    },
+    {
+      "id": 95, "name": "Cyanamide", "formula": "CH2N2",
+      "smiles": "NC#N",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": 16.00, "ionization_potential": 10.40, "dipole_moment": 4.28 }
+    },
+    {
+      "id": 96, "name": "N-Methylformamide", "formula": "C2H5NO",
+      "smiles": "CNC=O",
+      "n_atoms": 9,
+      "experimental": { "heat_of_formation": -49.50, "ionization_potential": 9.83, "dipole_moment": 3.83 }
+    },
+    {
+      "id": 97, "name": "Oxazole", "formula": "C3H3NO",
+      "smiles": "c1cocn1",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": -3.70, "ionization_potential": 9.95, "dipole_moment": 1.503 }
+    },
+    {
+      "id": 98, "name": "Isoxazole", "formula": "C3H3NO",
+      "smiles": "c1conc1",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": 3.00, "ionization_potential": 9.96, "dipole_moment": 2.95 }
+    },
+    {
+      "id": 99, "name": "Thiazole", "formula": "C3H3NS",
+      "smiles": "c1cscn1",
+      "n_atoms": 8,
+      "experimental": { "heat_of_formation": 32.20, "ionization_potential": 9.50, "dipole_moment": 1.61 }
+    },
+    {
+      "id": 100, "name": "Pyrimidine", "formula": "C4H4N2",
+      "smiles": "c1ccnc(n1)",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": 46.88, "ionization_potential": 9.33, "dipole_moment": 2.334 }
+    },
+    {
+      "id": 101, "name": "Pyrazine", "formula": "C4H4N2",
+      "smiles": "c1cnccn1",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": 46.90, "ionization_potential": 9.28, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 102, "name": "Ketene", "formula": "C2H2O",
+      "smiles": "C=C=O",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": -11.40, "ionization_potential": 9.62, "dipole_moment": 1.42 }
+    },
+    {
+      "id": 103, "name": "Methyl isocyanide", "formula": "CH3NC",
+      "smiles": "C[N+]#[C-]",
+      "n_atoms": 6,
+      "experimental": { "heat_of_formation": 35.00, "ionization_potential": 11.24, "dipole_moment": 3.85 }
+    },
+    {
+      "id": 104, "name": "Diazomethane", "formula": "CH2N2",
+      "smiles": "[CH2]=[N+]=[N-]",
+      "n_atoms": 5,
+      "experimental": { "heat_of_formation": 48.30, "ionization_potential": 9.00, "dipole_moment": 1.50 }
+    },
+    {
+      "id": 105, "name": "Acrylamide", "formula": "C3H5NO",
+      "smiles": "C=CC(=O)N",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -31.10, "ionization_potential": 9.50, "dipole_moment": 3.68 }
+    },
+    {
+      "id": 106, "name": "Pyrrolidine", "formula": "C4H9N",
+      "smiles": "C1CCNC1",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": -0.80, "ionization_potential": 8.41, "dipole_moment": 1.57 }
+    },
+    {
+      "id": 107, "name": "Piperidine", "formula": "C5H11N",
+      "smiles": "C1CCNCC1",
+      "n_atoms": 17,
+      "experimental": { "heat_of_formation": -11.27, "ionization_potential": 8.03, "dipole_moment": 1.19 }
+    },
+    {
+      "id": 108, "name": "Morpholine", "formula": "C4H9NO",
+      "smiles": "C1COCCN1",
+      "n_atoms": 15,
+      "experimental": { "heat_of_formation": -41.90, "ionization_potential": 8.36, "dipole_moment": 1.55 }
+    },
+    {
+      "id": 109, "name": "Benzoic acid", "formula": "C7H6O2",
+      "smiles": "OC(=O)c1ccccc1",
+      "n_atoms": 15,
+      "experimental": { "heat_of_formation": -70.31, "ionization_potential": 9.40, "dipole_moment": 1.72 }
+    },
+    {
+      "id": 110, "name": "Benzaldehyde", "formula": "C7H6O",
+      "smiles": "O=Cc1ccccc1",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": -8.80, "ionization_potential": 9.50, "dipole_moment": 3.00 }
+    },
+    {
+      "id": 111, "name": "Acetophenone", "formula": "C8H8O",
+      "smiles": "CC(=O)c1ccccc1",
+      "n_atoms": 17,
+      "experimental": { "heat_of_formation": -20.72, "ionization_potential": 9.28, "dipole_moment": 3.02 }
+    },
+    {
+      "id": 112, "name": "Styrene", "formula": "C8H8",
+      "smiles": "C=Cc1ccccc1",
+      "n_atoms": 16,
+      "experimental": { "heat_of_formation": 35.22, "ionization_potential": 8.43, "dipole_moment": 0.123 }
+    },
+    {
+      "id": 113, "name": "Indole", "formula": "C8H7N",
+      "smiles": "c1ccc2[nH]ccc2c1",
+      "n_atoms": 16,
+      "experimental": { "heat_of_formation": 39.50, "ionization_potential": 7.76, "dipole_moment": 2.11 }
+    },
+    {
+      "id": 114, "name": "Methyl vinyl ether", "formula": "C3H6O",
+      "smiles": "COC=C",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -25.30, "ionization_potential": 8.95, "dipole_moment": 0.965 }
+    },
+    {
+      "id": 115, "name": "Methyl vinyl ketone", "formula": "C4H6O",
+      "smiles": "CC(=O)C=C",
+      "n_atoms": 11,
+      "experimental": { "heat_of_formation": -26.40, "ionization_potential": 9.65, "dipole_moment": 3.11 }
+    },
+    {
+      "id": 116, "name": "Ethylene glycol", "formula": "C2H6O2",
+      "smiles": "OCCO",
+      "n_atoms": 10,
+      "experimental": { "heat_of_formation": -93.20, "ionization_potential": 10.16, "dipole_moment": 2.28 }
+    },
+    {
+      "id": 117, "name": "Crotonaldehyde", "formula": "C4H6O",
+      "smiles": "CC=CC=O",
+      "n_atoms": 11,
+      "experimental": { "heat_of_formation": -24.00, "ionization_potential": 9.73, "dipole_moment": 3.67 }
+    },
+    {
+      "id": 118, "name": "Cyanogen", "formula": "C2N2",
+      "smiles": "N#CC#N",
+      "n_atoms": 4,
+      "experimental": { "heat_of_formation": 73.84, "ionization_potential": 13.37, "dipole_moment": 0.0 }
+    },
+    {
+      "id": 119, "name": "Anisole", "formula": "C7H8O",
+      "smiles": "COc1ccccc1",
+      "n_atoms": 16,
+      "experimental": { "heat_of_formation": -17.10, "ionization_potential": 8.21, "dipole_moment": 1.38 }
+    },
+    {
+      "id": 120, "name": "2-Methylpyridine", "formula": "C6H7N",
+      "smiles": "Cc1ccccn1",
+      "n_atoms": 14,
+      "experimental": { "heat_of_formation": 23.61, "ionization_potential": 9.02, "dipole_moment": 1.85 }
+    }
+  ]
+}

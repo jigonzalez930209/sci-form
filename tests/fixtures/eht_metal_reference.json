@@ -1,3 +1,46 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5819dcb3814f4b98ad11f4b30192157702b56eb7ccd15047b57f3d45400f6672
-size 1197
+[
+  {
+    "name": "ferrocene_like",
+    "homo_energy": -11.791666439353591,
+    "lumo_energy": -11.748055479293678,
+    "gap": 0.043610960059913495,
+    "n_orbitals": 59,
+    "n_electrons": 58,
+    "support_level": "experimental",
+    "tolerance": 0.0001,
+    "max_variation_percent": 0.1
+  },
+  {
+    "name": "cisplatin_like",
+    "homo_energy": -12.589977741382743,
+    "lumo_energy": -12.589801603671358,
+    "gap": 1.761377113851381e-4,
+    "n_orbitals": 31,
+    "n_electrons": 40,
+    "support_level": "experimental",
+    "tolerance": 0.0001,
+    "max_variation_percent": 0.1
+  },
+  {
+    "name": "fecl6_octahedral",
+    "homo_energy": -12.599997819122052,
+    "lumo_energy": -12.599997819122038,
+    "gap": 0.000000000000014210854715202004,
+    "n_orbitals": 33,
+    "n_electrons": 50,
+    "support_level": "experimental",
+    "tolerance": 0.0001,
+    "max_variation_percent": 0.1
+  },
+  {
+    "name": "pdcl4_square_planar",
+    "homo_energy": -12.019999226336667,
+    "lumo_energy": -12.019998828015133,
+    "gap": 0.00000039832153397867387,
+    "n_orbitals": 25,
+    "n_electrons": 38,
+    "support_level": "experimental",
+    "tolerance": 0.0001,
+    "max_variation_percent": 0.1
+  }
+]
