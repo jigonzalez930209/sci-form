@@ -248,6 +248,47 @@ pub fn predict_j_couplings(mol: &crate::graph::Molecule, positions: &[[f64; 3]])
                         break; // only report one 4-bond path per pair
                     }
                 }
+
+                // ⁵J long-range coupling: H-X-Y-Z-W-H (5-bond path)
+                // Observed in aromatic systems and extended conjugation, typically 0.2–1.0 Hz
+                if couplings.last().map_or(true, |c| c.n_bonds != 4 || c.h1_index != h1 || c.h2_index != h2) {
+                    'five_bond: for &mid1 in &p1_neighbors {
+                        let mid1_neighbors: Vec<petgraph::graph::NodeIndex> = mol
+                            .graph
+                            .neighbors(mid1)
+                            .filter(|&nb| nb != p1 && nb != h1_idx && mol.graph[nb].element != 1)
+                            .collect();
+                        for &mid2 in &mid1_neighbors {
+                            if mol.graph.find_edge(mid2, p2).is_some() {
+                                // Found 5-bond path: H1-p1-mid1-mid2-p2-H2
+                                let is_aromatic_path = [p1, mid1, mid2, p2].iter().all(|&n| {
+                                    mol.graph[n].hybridization == crate::graph::Hybridization::SP2
+                                });
+
+                                let j_hz = if is_aromatic_path {
+                                    0.7 // aromatic ⁵J
+                                } else {
+                                    0.3 // generic five-bond
+                                };
+
+                                couplings.push(JCoupling {
+                                    h1_index: h1,
+                                    h2_index: h2,
+                                    j_hz,
+                                    n_bonds: 5,
+                                    coupling_type: format!(
+                                        "long_range_5J_H-{}-{}-{}-{}-H",
+                                        element_symbol(mol.graph[p1].element),
+                                        element_symbol(mol.graph[mid1].element),
+                                        element_symbol(mol.graph[mid2].element),
+                                        element_symbol(mol.graph[p2].element)
+                                    ),
+                                });
+                                break 'five_bond;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
