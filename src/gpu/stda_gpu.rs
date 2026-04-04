@@ -51,8 +51,8 @@ pub fn compute_stda_j_matrix_gpu(
         shader_source: MATMUL_SHADER.to_string(),
         entry_point: "main".to_string(),
         workgroup_count: [
-            ((n_atoms + 15) / 16) as u32,
-            ((n_singles + 15) / 16) as u32,
+            n_atoms.div_ceil(16) as u32,
+            n_singles.div_ceil(16) as u32,
             1,
         ],
         bindings: vec![
@@ -79,7 +79,12 @@ pub fn compute_stda_j_matrix_gpu(
         ],
     };
 
-    let gamma_q_result = ctx.run_compute(&dispatch)?.outputs.into_iter().last().unwrap_or_default();
+    let gamma_q_result = ctx
+        .run_compute(&dispatch)?
+        .outputs
+        .into_iter()
+        .last()
+        .unwrap_or_default();
 
     // Step 2: A_off = 2 · Q^T · GammaQ
     let result_bytes = vec![0u8; n_singles * n_singles * 4];
@@ -89,8 +94,8 @@ pub fn compute_stda_j_matrix_gpu(
         shader_source: MATMUL_TRANSPOSE_SHADER.to_string(),
         entry_point: "main".to_string(),
         workgroup_count: [
-            ((n_singles + 15) / 16) as u32,
-            ((n_singles + 15) / 16) as u32,
+            n_singles.div_ceil(16) as u32,
+            n_singles.div_ceil(16) as u32,
             1,
         ],
         bindings: vec![
@@ -117,7 +122,12 @@ pub fn compute_stda_j_matrix_gpu(
         ],
     };
 
-    let a_off_bytes = ctx.run_compute(&dispatch2)?.outputs.into_iter().last().unwrap_or_default();
+    let a_off_bytes = ctx
+        .run_compute(&dispatch2)?
+        .outputs
+        .into_iter()
+        .last()
+        .unwrap_or_default();
 
     // Convert f32 result back to f64 with 2× scaling
     let a_off_f32: &[f32] = bytemuck_cast_from_u8(&a_off_bytes);

@@ -6,8 +6,8 @@
 //! Uses the half-transformation (Yoshimine) approach for O(N⁵) scaling
 //! instead of naive O(N⁸).
 
-use nalgebra::DMatrix;
 use super::integrals::get_eri;
+use nalgebra::DMatrix;
 
 /// Pre-computed MO-basis electron repulsion integrals.
 ///
@@ -307,10 +307,8 @@ mod tests {
     #[test]
     fn test_mo_integrals_symmetry() {
         // Simple 2-MO system
-        let c = DMatrix::from_row_slice(2, 2, &[
-            0.7071, 0.7071,
-            0.7071, -0.7071,
-        ]);
+        let s = std::f64::consts::FRAC_1_SQRT_2;
+        let c = DMatrix::from_row_slice(2, 2, &[s, s, s, -s]);
         // Simple AO ERIs (all equal for testing)
         let eris = vec![0.5; 16];
         let mo = ao_to_mo_transform(&c, &eris, 2, 2);

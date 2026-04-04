@@ -168,7 +168,8 @@ fn uhf_electronic_energy(
     for i in 0..n {
         for j in 0..n {
             let p_t = p_alpha[(i, j)] + p_beta[(i, j)];
-            e += p_t * h_core[(i, j)] + p_alpha[(i, j)] * f_alpha[(i, j)]
+            e += p_t * h_core[(i, j)]
+                + p_alpha[(i, j)] * f_alpha[(i, j)]
                 + p_beta[(i, j)] * f_beta[(i, j)];
         }
     }
@@ -220,11 +221,7 @@ fn density_rms(a: &DMatrix<f64>, b: &DMatrix<f64>) -> f64 {
 
 /// Diagonalize a Fock matrix in orthogonal basis, return sorted
 /// (coefficients_AO, orbital_energies).
-fn diag_fock(
-    fock: &DMatrix<f64>,
-    x: &DMatrix<f64>,
-    n_basis: usize,
-) -> (DMatrix<f64>, Vec<f64>) {
+fn diag_fock(fock: &DMatrix<f64>, x: &DMatrix<f64>, n_basis: usize) -> (DMatrix<f64>, Vec<f64>) {
     let f_ortho = transform_to_orthogonal(fock, x);
     let eigen = f_ortho.symmetric_eigen();
 

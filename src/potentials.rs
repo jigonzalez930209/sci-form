@@ -14,8 +14,7 @@ pub fn asymmetric_1d(x: f64) -> f64 {
 
 /// 1D SN2 model potential: V(x) = -2*exp(-2(x+1.5)^2) - 3*exp(-2(x-1.5)^2) + 1.5*exp(-8x^2)
 pub fn sn2_model_1d(x: f64) -> f64 {
-    -2.0 * (-(2.0 * (x + 1.5).powi(2))).exp()
-        - 3.0 * (-(2.0 * (x - 1.5).powi(2))).exp()
+    -2.0 * (-(2.0 * (x + 1.5).powi(2))).exp() - 3.0 * (-(2.0 * (x - 1.5).powi(2))).exp()
         + 1.5 * (-(8.0 * x.powi(2))).exp()
 }
 

@@ -290,9 +290,9 @@ fn spherical_to_cartesian_components(l: u8, m: u8) -> Vec<((u8, u8, u8), f64)> {
         2 => {
             let s3_4: f64 = (3.0_f64 / 4.0).sqrt(); // sqrt(3)/2
             match m {
-                0 => vec![((1, 1, 0), 1.0)],                                      // dxy
-                1 => vec![((1, 0, 1), 1.0)],                                      // dxz
-                2 => vec![((0, 1, 1), 1.0)],                                      // dyz
+                0 => vec![((1, 1, 0), 1.0)],                                       // dxy
+                1 => vec![((1, 0, 1), 1.0)],                                       // dxz
+                2 => vec![((0, 1, 1), 1.0)],                                       // dyz
                 3 => vec![((2, 0, 0), s3_4), ((0, 2, 0), -s3_4)],                  // dx²-y²
                 4 => vec![((2, 0, 0), -0.5), ((0, 2, 0), -0.5), ((0, 0, 2), 1.0)], // dz²
                 _ => vec![((0, 0, 0), 1.0)],
@@ -303,6 +303,7 @@ fn spherical_to_cartesian_components(l: u8, m: u8) -> Vec<((u8, u8, u8), f64)> {
 }
 
 /// Legacy single-Cartesian mapping for s and p orbitals (not used for d).
+#[allow(dead_code)]
 fn angular_to_cartesian(l: u8, m: u8) -> (u8, u8, u8) {
     match l {
         0 => (0, 0, 0),
@@ -373,14 +374,23 @@ fn overlap_1d(la: u8, lb: u8, pa: f64, pb: f64, gamma: f64) -> f64 {
 
     // Fill first column: s[i][0]
     for i in 0..la {
-        s[i + 1][0] = pa * s[i][0] + if i > 0 { inv2g * (i as f64) * s[i - 1][0] } else { 0.0 };
+        s[i + 1][0] = pa * s[i][0]
+            + if i > 0 {
+                inv2g * (i as f64) * s[i - 1][0]
+            } else {
+                0.0
+            };
     }
 
     // Fill remaining columns
     for j in 0..lb {
         // s[0][j+1]
-        s[0][j + 1] =
-            pb * s[0][j] + if j > 0 { inv2g * (j as f64) * s[0][j - 1] } else { 0.0 };
+        s[0][j + 1] = pb * s[0][j]
+            + if j > 0 {
+                inv2g * (j as f64) * s[0][j - 1]
+            } else {
+                0.0
+            };
         // s[i][j+1] for i > 0
         for i in 1..=la {
             s[i][j + 1] = pa * s[i - 1][j + 1]
@@ -448,7 +458,9 @@ pub fn sto_overlap_ng(
     pos_b: &[f64; 3],
 ) -> f64 {
     // Default: STO-3G
-    sto_overlap_with_ng(n_a, l_a, m_a, zeta_a, pos_a, 3, n_b, l_b, m_b, zeta_b, pos_b, 3)
+    sto_overlap_with_ng(
+        n_a, l_a, m_a, zeta_a, pos_a, 3, n_b, l_b, m_b, zeta_b, pos_b, 3,
+    )
 }
 
 /// Compute STO overlap between two basis functions with explicit number of Gaussians.
@@ -498,8 +510,7 @@ pub fn sto_overlap_with_ng(
                     s_cart += ca
                         * cb
                         * primitive_overlap(
-                            lx_a, ly_a, lz_a, alpha_a, pos_a,
-                            lx_b, ly_b, lz_b, alpha_b, pos_b,
+                            lx_a, ly_a, lz_a, alpha_a, pos_a, lx_b, ly_b, lz_b, alpha_b, pos_b,
                         );
                 }
             }
@@ -524,7 +535,7 @@ fn sto6g_coefficients(n: u8, l: u8) -> Vec<(f64, f64)> {
 /// Closed-form 1D overlap moment integral: ∫ x^l exp(-α x²) dx
 /// Returns (0.5/alpha)^(l/2) * (l-1)!! for even l, 0 for odd l.
 fn s1d_moment(l: usize, eab: f64) -> f64 {
-    if l % 2 != 0 {
+    if !l.is_multiple_of(2) {
         return 0.0;
     }
     let half_inv = 0.5 / eab;
@@ -588,8 +599,16 @@ pub struct MultipoleResult {
 /// Compute overlap, dipole, and quadrupole integrals between two Cartesian Gaussian primitives.
 /// Dipole is about center A (the first atom). Quadrupole is traceless about center A.
 fn primitive_multipole(
-    lx_a: u8, ly_a: u8, lz_a: u8, alpha_a: f64, a: &[f64; 3],
-    lx_b: u8, ly_b: u8, lz_b: u8, alpha_b: f64, b: &[f64; 3],
+    lx_a: u8,
+    ly_a: u8,
+    lz_a: u8,
+    alpha_a: f64,
+    a: &[f64; 3],
+    lx_b: u8,
+    ly_b: u8,
+    lz_b: u8,
+    alpha_b: f64,
+    b: &[f64; 3],
 ) -> MultipoleResult {
     let gamma = alpha_a + alpha_b;
     let mu = alpha_a * alpha_b / gamma;
@@ -645,9 +664,9 @@ fn primitive_multipole(
         for l in 0..=la[k] + lb[k] {
             v1d[k][0] += s1d_arr[l] * vv[l];
             v1d[k][1] += (s1d_arr[l + 1] + rpi[k] * s1d_arr[l]) * vv[l];
-            v1d[k][2] += (s1d_arr[l + 2] + 2.0 * rpi[k] * s1d_arr[l + 1]
-                + rpi[k] * rpi[k] * s1d_arr[l])
-                * vv[l];
+            v1d[k][2] +=
+                (s1d_arr[l + 2] + 2.0 * rpi[k] * s1d_arr[l + 1] + rpi[k] * rpi[k] * s1d_arr[l])
+                    * vv[l];
         }
     }
 
@@ -672,8 +691,12 @@ fn primitive_multipole(
         overlap: cc * s3d,
         dipole: [cc * d3d[0], cc * d3d[1], cc * d3d[2]],
         quadrupole: [
-            cc * q3d[0], cc * q3d[1], cc * q3d[2],
-            cc * q3d[3], cc * q3d[4], cc * q3d[5],
+            cc * q3d[0],
+            cc * q3d[1],
+            cc * q3d[2],
+            cc * q3d[3],
+            cc * q3d[4],
+            cc * q3d[5],
         ],
     }
 }
@@ -685,8 +708,18 @@ fn primitive_multipole(
 /// For d-orbitals, uses proper spherical harmonic → Cartesian decomposition.
 /// Returns (overlap, dipole[3], quadrupole[6]).
 pub fn sto_multipole_with_ng(
-    n_a: u8, l_a: u8, m_a: u8, zeta_a: f64, pos_a: &[f64; 3], ng_a: u8,
-    n_b: u8, l_b: u8, m_b: u8, zeta_b: f64, pos_b: &[f64; 3], ng_b: u8,
+    n_a: u8,
+    l_a: u8,
+    m_a: u8,
+    zeta_a: f64,
+    pos_a: &[f64; 3],
+    ng_a: u8,
+    n_b: u8,
+    l_b: u8,
+    m_b: u8,
+    zeta_b: f64,
+    pos_b: &[f64; 3],
+    ng_b: u8,
 ) -> (f64, [f64; 3], [f64; 6]) {
     let comps_a = spherical_to_cartesian_components(l_a, m_a);
     let comps_b = spherical_to_cartesian_components(l_b, m_b);
@@ -720,8 +753,7 @@ pub fn sto_multipole_with_ng(
                 for &(br, cb) in prims_b.iter() {
                     let alpha_b = br * zeta_b_sq;
                     let mp = primitive_multipole(
-                        lx_a, ly_a, lz_a, alpha_a, pos_a,
-                        lx_b, ly_b, lz_b, alpha_b, pos_b,
+                        lx_a, ly_a, lz_a, alpha_a, pos_a, lx_b, ly_b, lz_b, alpha_b, pos_b,
                     );
                     let c = ca * cb;
                     s_cart += c * mp.overlap;
@@ -747,10 +779,10 @@ pub fn sto_multipole_with_ng(
     // Make quadrupole traceless: q' = 1.5*q - 0.5*tr*I
     let tr = 0.5 * (q_total[0] + q_total[2] + q_total[5]); // 0.5*(xx + yy + zz)
     q_total[0] = 1.5 * q_total[0] - tr; // xx
-    q_total[1] = 1.5 * q_total[1];       // xy
+    q_total[1] *= 1.5; // xy
     q_total[2] = 1.5 * q_total[2] - tr; // yy
-    q_total[3] = 1.5 * q_total[3];       // xz
-    q_total[4] = 1.5 * q_total[4];       // yz
+    q_total[3] *= 1.5; // xz
+    q_total[4] *= 1.5; // yz
     q_total[5] = 1.5 * q_total[5] - tr; // zz
 
     (s_total, d_total, q_total)
@@ -802,7 +834,10 @@ mod tests {
         let b = [0.0, 0.0, 2.91];
         let s = sto_overlap_ng(2, 1, 2, 1.80, &a, 2, 1, 2, 1.80, &b);
         // pz-pz σ overlap should be significant
-        assert!(s.abs() > 0.01, "2pσ-2pσ overlap should be significant, got {s}");
+        assert!(
+            s.abs() > 0.01,
+            "2pσ-2pσ overlap should be significant, got {s}"
+        );
     }
 
     #[test]
@@ -837,7 +872,10 @@ mod tests {
         assert!(d[2].abs() < 1e-10, "dipole z should be 0 on same center");
         // Traceless quadrupole on same center for s orbital should be zero
         let q_trace = q[0] + q[2] + q[5];
-        assert!(q_trace.abs() < 1e-10, "traceless quadrupole trace should be 0, got {q_trace}");
+        assert!(
+            q_trace.abs() < 1e-10,
+            "traceless quadrupole trace should be 0, got {q_trace}"
+        );
     }
 
     #[test]
@@ -850,9 +888,16 @@ mod tests {
         assert!(s > 0.5, "overlap should be substantial, got {s}");
         assert!(d[0].abs() < 1e-10, "dipole x should be 0 by symmetry");
         assert!(d[1].abs() < 1e-10, "dipole y should be 0 by symmetry");
-        assert!(d[2].abs() > 0.01, "dipole z should be nonzero, got {}", d[2]);
+        assert!(
+            d[2].abs() > 0.01,
+            "dipole z should be nonzero, got {}",
+            d[2]
+        );
         // Dipole z should be positive (center of charge between A and B, relative to A)
-        assert!(d[2] > 0.0, "dipole z about A should be positive for B at +z");
+        assert!(
+            d[2] > 0.0,
+            "dipole z about A should be positive for B at +z"
+        );
     }
 
     #[test]
@@ -877,7 +922,10 @@ mod tests {
         let b = [1.2, 0.5, 0.8];
         let (_s, _d, q) = sto_multipole_with_ng(2, 1, 0, 1.80, &a, 4, 2, 0, 0, 2.0, &b, 4);
         let trace = q[0] + q[2] + q[5]; // xx + yy + zz
-        assert!(trace.abs() < 1e-10, "quadrupole trace should be 0, got {trace}");
+        assert!(
+            trace.abs() < 1e-10,
+            "quadrupole trace should be 0, got {trace}"
+        );
     }
 
     #[test]
@@ -887,91 +935,109 @@ mod tests {
         let b = [0.0, 0.0, 2.672];
         let alpha_a = 2.227660 * 2.363_f64.powi(2);
         let alpha_b = 3.242212833e-1 * 2.026128_f64.powi(2);
-        
+
         let s_direct = primitive_overlap(0, 0, 0, alpha_a, &a, 0, 0, 0, alpha_b, &b);
         let mp = primitive_multipole(0, 0, 0, alpha_a, &a, 0, 0, 0, alpha_b, &b);
-        
+
         println!("primitive_overlap:  {:.15e}", s_direct);
         println!("multipole.overlap:  {:.15e}", mp.overlap);
         println!("ratio: {:.15}", mp.overlap / s_direct);
-        
+
         // Now compare full STO-nG overlap vs multipole
-        let (s_mp, _, _) = sto_multipole_with_ng(
-            1, 0, 0, 2.363, &a, 3,
-            4, 0, 0, 2.026128, &b, 4,
-        );
-        let s_ov = sto_overlap_with_ng(
-            1, 0, 0, 2.363, &a, 3,
-            4, 0, 0, 2.026128, &b, 4,
-        );
+        let (s_mp, _, _) = sto_multipole_with_ng(1, 0, 0, 2.363, &a, 3, 4, 0, 0, 2.026128, &b, 4);
+        let s_ov = sto_overlap_with_ng(1, 0, 0, 2.363, &a, 3, 4, 0, 0, 2.026128, &b, 4);
         println!("\nFull STO-nG:");
         println!("sto_overlap_with_ng:    {:.15e}", s_ov);
         println!("sto_multipole_with_ng:  {:.15e}", s_mp);
         println!("ratio: {:.15}", s_mp / s_ov);
-        
-        assert!((s_direct - mp.overlap).abs() < 1e-12, 
-            "primitive overlap vs multipole differ: {} vs {}", s_direct, mp.overlap);
+
+        assert!(
+            (s_direct - mp.overlap).abs() < 1e-12,
+            "primitive overlap vs multipole differ: {} vs {}",
+            s_direct,
+            mp.overlap
+        );
     }
 
     #[test]
     fn test_hbr_overlap_debug() {
         // HBr along z-axis: H at origin, Br at z=2.672 bohr (~1.414 Å)
         // GFN2 params for H: pqn=1, l=0, zeta=2.363, STO-4G
-        // GFN2 params for Br: 
+        // GFN2 params for Br:
         //   4s: pqn=4, l=0, zeta=2.026128, STO-4G
-        //   4p: pqn=4, l=1, zeta=1.949257, STO-4G  
+        //   4p: pqn=4, l=1, zeta=1.949257, STO-4G
         //   4d: pqn=4, l=2, zeta=1.040181, STO-3G
         let h_pos = [0.0, 0.0, 0.0];
         let br_pos = [0.0, 0.0, 2.672];
 
         println!("\n=== HBr overlap matrix (GFN2 params) ===");
-        
+
         // H 1s - Br 4s
         let s_hs = sto_overlap_with_ng(1, 0, 0, 2.363, &h_pos, 4, 4, 0, 0, 2.026128, &br_pos, 4);
         println!("S(H_1s, Br_4s) = {:.8e}", s_hs);
-        
+
         // H 1s - Br 4p (m=0 px, m=1 py, m=2 pz)
         for m in 0..3u8 {
             let s = sto_overlap_with_ng(1, 0, 0, 2.363, &h_pos, 4, 4, 1, m, 1.949257, &br_pos, 4);
             println!("S(H_1s, Br_4p_m{}) = {:.8e}", m, s);
         }
-        
+
         // H 1s - Br 4d (m=0..4: dxy, dxz, dyz, dx2-y2, dz2)
         for m in 0..5u8 {
-            let name = match m { 0 => "dxy", 1 => "dxz", 2 => "dyz", 3 => "dx2-y2", _ => "dz2" };
+            let name = match m {
+                0 => "dxy",
+                1 => "dxz",
+                2 => "dyz",
+                3 => "dx2-y2",
+                _ => "dz2",
+            };
             let s = sto_overlap_with_ng(1, 0, 0, 2.363, &h_pos, 4, 4, 2, m, 1.040181, &br_pos, 3);
             println!("S(H_1s, Br_{}) = {:.8e}", name, s);
         }
-        
+
         // Now compute the raw Cartesian d overlaps to understand the decomposition
         println!("\n=== Raw Cartesian d primitive overlaps ===");
         let zeta_h = 2.363;
         let zeta_d = 1.040181;
-        
+
         let cart_labels = ["xx", "yy", "zz", "xy", "xz", "yz"];
-        let cart_lxyz: [(u8,u8,u8); 6] = [(2,0,0), (0,2,0), (0,0,2), (1,1,0), (1,0,1), (0,1,1)];
-        
+        let cart_lxyz: [(u8, u8, u8); 6] = [
+            (2, 0, 0),
+            (0, 2, 0),
+            (0, 0, 2),
+            (1, 1, 0),
+            (1, 0, 1),
+            (0, 1, 1),
+        ];
+
         for (idx, &(lx, ly, lz)) in cart_lxyz.iter().enumerate() {
             let mut s = 0.0;
             // H: STO-4G, 1s
-            let prims_h = [(5.216844534e+0, 5.675242080e-2), (9.546182760e-1, 2.601413550e-1), 
-                           (2.652034102e-1, 5.324461400e-1), (8.801862774e-2, 2.916254405e-1)];
+            let prims_h = [
+                (5.216844534e+0, 5.675242080e-2),
+                (9.546182760e-1, 2.601413550e-1),
+                (2.652034102e-1, 5.324461400e-1),
+                (8.801862774e-2, 2.916254405e-1),
+            ];
             // Br d: STO-3G, 4d
-            let prims_d = [(0.338099, 0.023893), (0.085930, 0.505389), (0.038380, 0.562553)];
-            
+            let prims_d = [
+                (0.338099, 0.023893),
+                (0.085930, 0.505389),
+                (0.038380, 0.562553),
+            ];
+
             for &(ar, ca) in &prims_h {
                 let alpha_a = ar * zeta_h * zeta_h;
                 for &(br, cb) in &prims_d {
                     let alpha_b = br * zeta_d * zeta_d;
-                    s += ca * cb * primitive_overlap(
-                        0, 0, 0, alpha_a, &h_pos,
-                        lx, ly, lz, alpha_b, &br_pos,
-                    );
+                    s += ca
+                        * cb
+                        * primitive_overlap(0, 0, 0, alpha_a, &h_pos, lx, ly, lz, alpha_b, &br_pos);
                 }
             }
             println!("  <1s_H | d_{}_Br> = {:.8e}", cart_labels[idx], s);
         }
-        
+
         // Verify: dz2 = -0.5*<s|xx> -0.5*<s|yy> + 1.0*<s|zz>
         // vs old: dz2 = <s|zz>
         println!("\n=== Decomposition check ===");
@@ -979,11 +1045,12 @@ mod tests {
         println!("dz2 components: {:?}", comps);
         let comps2 = spherical_to_cartesian_components(2, 3);
         println!("dx2-y2 components: {:?}", comps2);
-        
+
         // Br d-d self-overlaps (should be ~1 for same m)
         println!("\n=== Br 4d self-overlaps ===");
         for m in 0..5u8 {
-            let s = sto_overlap_with_ng(4, 2, m, 1.040181, &br_pos, 3, 4, 2, m, 1.040181, &br_pos, 3);
+            let s =
+                sto_overlap_with_ng(4, 2, m, 1.040181, &br_pos, 3, 4, 2, m, 1.040181, &br_pos, 3);
             println!("S(Br_4d_m{}, Br_4d_m{}) = {:.8}", m, m, s);
         }
     }
@@ -1025,8 +1092,10 @@ mod tests {
                 let alpha_h = ar_h * zeta_h_sq;
                 let prim = primitive_overlap(0, 0, 0, alpha_o, &o_pos, 0, 0, 0, alpha_h, &h1_pos);
                 total += c_o * c_h * prim;
-                println!("prim[{},{}] alpha_o={:.8e} alpha_h={:.8e} overlap={:.15e}", 
-                         i, j, alpha_o, alpha_h, prim);
+                println!(
+                    "prim[{},{}] alpha_o={:.8e} alpha_h={:.8e} overlap={:.15e}",
+                    i, j, alpha_o, alpha_h, prim
+                );
             }
         }
         println!("\nTotal primitive_overlap sum: {:.15e}", total);
@@ -1036,7 +1105,8 @@ mod tests {
         println!("sto_overlap_with_ng:       {:.15e}", s_func);
 
         // Also compute via sto_multipole_with_ng
-        let (s_mp, _, _) = sto_multipole_with_ng(2, 0, 0, zeta_o_s, &o_pos, 4, 1, 0, 0, zeta_h, &h1_pos, 3);
+        let (s_mp, _, _) =
+            sto_multipole_with_ng(2, 0, 0, zeta_o_s, &o_pos, 4, 1, 0, 0, zeta_h, &h1_pos, 3);
         println!("sto_multipole_with_ng:     {:.15e}", s_mp);
 
         // Expected from tblite (Python): 4.446492247020593e-01

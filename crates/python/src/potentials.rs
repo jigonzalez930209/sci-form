@@ -33,7 +33,7 @@ fn proton_transfer_2d_morse(r_ah: f64, r_hb: f64) -> PyResult<f64> {
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let sub = PyModule::new_bound(m.py(), "potentials")?;
-    
+
     sub.add_function(wrap_pyfunction!(double_well_1d, &sub)?)?;
     sub.add_function(wrap_pyfunction!(asymmetric_1d, &sub)?)?;
     sub.add_function(wrap_pyfunction!(sn2_model_1d, &sub)?)?;
@@ -42,7 +42,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     sub.add_function(wrap_pyfunction!(proton_transfer_2d_morse, &sub)?)?;
 
     m.add_submodule(&sub)?;
-    
+
     // Register it to sys.modules so `from sci_form.potentials import xyz` works
     let sys = m.py().import_bound("sys")?;
     let sys_modules = sys.getattr("modules")?;

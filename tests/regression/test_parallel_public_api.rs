@@ -4,9 +4,9 @@ mod parallel_public_api_tests {
 
     use sci_form::materials::{CoordinationGeometry, Sbu, Topology};
     use sci_form::{
-        assemble_framework, compute_charges, compute_dipole, compute_dos, compute_esp,
-        compute_pm3, compute_population, compute_rmsd, compute_sasa, compute_uff_energy,
-        compute_xtb, create_unit_cell, embed, embed_batch, parse, version, ConformerConfig,
+        assemble_framework, compute_charges, compute_dipole, compute_dos, compute_esp, compute_pm3,
+        compute_population, compute_rmsd, compute_sasa, compute_uff_energy, compute_xtb,
+        create_unit_cell, embed, embed_batch, parse, version, ConformerConfig,
     };
 
     fn positions_from_flat(coords: &[f64]) -> Vec<[f64; 3]> {
@@ -196,40 +196,36 @@ mod parallel_public_api_tests {
                 });
 
                 // Quantum methods under concurrency
-                scope.spawn(|_| {
-                    match compute_pm3(&elements, &positions) {
-                        Ok(r) if !r.converged => {
-                            failures
-                                .lock()
-                                .unwrap()
-                                .push("compute_pm3 did not converge".to_string());
-                        }
-                        Err(e) => {
-                            failures
-                                .lock()
-                                .unwrap()
-                                .push(format!("compute_pm3 error: {e}"));
-                        }
-                        _ => {}
+                scope.spawn(|_| match compute_pm3(&elements, &positions) {
+                    Ok(r) if !r.converged => {
+                        failures
+                            .lock()
+                            .unwrap()
+                            .push("compute_pm3 did not converge".to_string());
                     }
+                    Err(e) => {
+                        failures
+                            .lock()
+                            .unwrap()
+                            .push(format!("compute_pm3 error: {e}"));
+                    }
+                    _ => {}
                 });
 
-                scope.spawn(|_| {
-                    match compute_xtb(&elements, &positions) {
-                        Ok(r) if !r.converged => {
-                            failures
-                                .lock()
-                                .unwrap()
-                                .push("compute_xtb did not converge".to_string());
-                        }
-                        Err(e) => {
-                            failures
-                                .lock()
-                                .unwrap()
-                                .push(format!("compute_xtb error: {e}"));
-                        }
-                        _ => {}
+                scope.spawn(|_| match compute_xtb(&elements, &positions) {
+                    Ok(r) if !r.converged => {
+                        failures
+                            .lock()
+                            .unwrap()
+                            .push("compute_xtb did not converge".to_string());
                     }
+                    Err(e) => {
+                        failures
+                            .lock()
+                            .unwrap()
+                            .push(format!("compute_xtb error: {e}"));
+                    }
+                    _ => {}
                 });
 
                 scope.spawn(|_| {
@@ -241,8 +237,8 @@ mod parallel_public_api_tests {
                     }
                 });
 
-                scope.spawn(|_| {
-                    match sci_form::xtb::gfn2::solve_gfn2(&elements, &positions) {
+                scope.spawn(
+                    |_| match sci_form::xtb::gfn2::solve_gfn2(&elements, &positions) {
                         Ok(r) if !r.converged => {
                             failures
                                 .lock()
@@ -256,8 +252,8 @@ mod parallel_public_api_tests {
                                 .push(format!("solve_gfn2 error: {e}"));
                         }
                         _ => {}
-                    }
-                });
+                    },
+                );
             }
         });
 

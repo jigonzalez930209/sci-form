@@ -225,8 +225,18 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
             let za = pa.slater[sh_a];
             if za > 1e-10 {
                 let (_, _, qij) = sto_multipole_with_ng(
-                    pa.pqn[sh_a], l_a, m_a, za, &pos_bohr[atom_a], pa.ngauss[sh_a],
-                    pa.pqn[sh_a], l_a, m_a, za, &pos_bohr[atom_a], pa.ngauss[sh_a],
+                    pa.pqn[sh_a],
+                    l_a,
+                    m_a,
+                    za,
+                    &pos_bohr[atom_a],
+                    pa.ngauss[sh_a],
+                    pa.pqn[sh_a],
+                    l_a,
+                    m_a,
+                    za,
+                    &pos_bohr[atom_a],
+                    pa.ngauss[sh_a],
                 );
                 for c in 0..6 {
                     qpint[c][(i, i)] = qij[c];
@@ -245,8 +255,18 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
                 // Same-atom: overlap is identity (already set), but dipole/quadrupole
                 // integrals <s|(r-R_A)|p> etc. can be nonzero. Compute them.
                 let (_, dij, qij) = sto_multipole_with_ng(
-                    pa.pqn[sh_a], l_a, m_a, za, &pos_bohr[atom_a], pa.ngauss[sh_a],
-                    pb.pqn[sh_b], l_b, m_b, zb, &pos_bohr[atom_b], pb.ngauss[sh_b],
+                    pa.pqn[sh_a],
+                    l_a,
+                    m_a,
+                    za,
+                    &pos_bohr[atom_a],
+                    pa.ngauss[sh_a],
+                    pb.pqn[sh_b],
+                    l_b,
+                    m_b,
+                    zb,
+                    &pos_bohr[atom_b],
+                    pb.ngauss[sh_b],
                 );
                 // Same atom: both about atom_a = atom_b, no shift needed
                 for alpha in 0..3 {
@@ -313,10 +333,10 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
             // Apply traceless projection to the shift
             let tr_s = 0.5 * (shift_raw[0] + shift_raw[2] + shift_raw[5]);
             qpint[0][(j, i)] = qij[0] + 1.5 * shift_raw[0] - tr_s; // xx
-            qpint[1][(j, i)] = qij[1] + 1.5 * shift_raw[1];        // xy
+            qpint[1][(j, i)] = qij[1] + 1.5 * shift_raw[1]; // xy
             qpint[2][(j, i)] = qij[2] + 1.5 * shift_raw[2] - tr_s; // yy
-            qpint[3][(j, i)] = qij[3] + 1.5 * shift_raw[3];        // xz
-            qpint[4][(j, i)] = qij[4] + 1.5 * shift_raw[4];        // yz
+            qpint[3][(j, i)] = qij[3] + 1.5 * shift_raw[3]; // xz
+            qpint[4][(j, i)] = qij[4] + 1.5 * shift_raw[4]; // yz
             qpint[5][(j, i)] = qij[5] + 1.5 * shift_raw[5] - tr_s; // zz
         }
     }
@@ -407,23 +427,35 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     // ── DEBUG: dump intermediate values ──
     if debug_diag {
         eprintln!("=== GFN2 DEBUG ===");
-        eprintln!("n_atoms={}, n_basis={}, n_electrons={}, n_occ={}", n_atoms, n_basis, n_electrons, n_occ);
+        eprintln!(
+            "n_atoms={}, n_basis={}, n_electrons={}, n_occ={}",
+            n_atoms, n_basis, n_electrons, n_occ
+        );
         eprintln!("CN: {:?}", cn);
         eprintln!("--- Overlap matrix ---");
         for i in 0..n_basis {
-            let row: Vec<f64> = (0..n_basis).map(|j| s_mat[(i,j)]).collect();
+            let row: Vec<f64> = (0..n_basis).map(|j| s_mat[(i, j)]).collect();
             eprintln!("S[{}]: {:?}", i, row);
         }
         eprintln!("--- H0 diagonal (Hartree) ---");
         for i in 0..n_basis {
             let (atom, sh, l, m) = basis_map[i];
-            eprintln!("H0[{},{}] = {:.10} (atom={}, sh={}, l={}, m={})", i, i, h_mat[(i,i)], atom, sh, l, m);
+            eprintln!(
+                "H0[{},{}] = {:.10} (atom={}, sh={}, l={}, m={})",
+                i,
+                i,
+                h_mat[(i, i)],
+                atom,
+                sh,
+                l,
+                m
+            );
         }
         eprintln!("--- H0 off-diagonal (Hartree, nonzero) ---");
         for i in 0..n_basis {
-            for j in (i+1)..n_basis {
-                if h_mat[(i,j)].abs() > 1e-15 {
-                    eprintln!("H0[{},{}] = {:.10}", i, j, h_mat[(i,j)]);
+            for j in (i + 1)..n_basis {
+                if h_mat[(i, j)].abs() > 1e-15 {
+                    eprintln!("H0[{},{}] = {:.10}", i, j, h_mat[(i, j)]);
                 }
             }
         }
@@ -435,13 +467,17 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
             if val > 1e-8 {
                 let inv_sqrt = 1.0 / val.sqrt();
                 let col = s_eig_dbg.eigenvectors.column(k);
-                for ii in 0..n_basis { for jj in 0..n_basis { s_half_inv_dbg[(ii,jj)] += inv_sqrt * col[ii] * col[jj]; } }
+                for ii in 0..n_basis {
+                    for jj in 0..n_basis {
+                        s_half_inv_dbg[(ii, jj)] += inv_sqrt * col[ii] * col[jj];
+                    }
+                }
             }
         }
         let f_dbg = &s_half_inv_dbg * &h_mat * &s_half_inv_dbg;
         let eig_dbg = f_dbg.symmetric_eigen();
         let mut h0_evals: Vec<f64> = eig_dbg.eigenvalues.iter().cloned().collect();
-        h0_evals.sort_by(|a,b| a.partial_cmp(b).unwrap());
+        h0_evals.sort_by(|a, b| a.partial_cmp(b).unwrap());
         eprintln!("--- H0 eigenvalues (Hartree) ---");
         for (i, e) in h0_evals.iter().enumerate() {
             eprintln!("  ε_H0[{}] = {:.10} ({:.6} eV)", i, e, e * EV_PER_HARTREE);
@@ -457,9 +493,9 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     // ── Shell-resolved SCC setup ──
     struct ShellInfo {
         atom: usize,
-        eta: f64,      // shell Hubbard = hubbard * shell_hubbard[sh] (Hartree)
-        ref_occ: f64,  // reference occupation
-        gam3_sh: f64,  // third-order shell Hubbard derivative (Hartree)
+        eta: f64,     // shell Hubbard = hubbard * shell_hubbard[sh] (Hartree)
+        ref_occ: f64, // reference occupation
+        gam3_sh: f64, // third-order shell Hubbard derivative (Hartree)
     }
     let mut shells: Vec<ShellInfo> = Vec::new();
     let mut basis_to_shell: Vec<usize> = Vec::with_capacity(n_basis);
@@ -485,7 +521,6 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
         }
     }
     let n_shells = shells.len();
-
 
     // Shell-pair gamma matrix (n_shells × n_shells)
     // GFN2 uses the arithmetic-average gamma kernel with gexp=2.0:
@@ -603,7 +638,7 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     // AES multipole moments (per atom)
     let mut dpat = vec![[0.0f64; 3]; n_atoms]; // atomic dipole moments
     let mut qpat = vec![[0.0f64; 6]; n_atoms]; // atomic traceless quadrupoles
-    // AES multipole potentials (per atom)
+                                               // AES multipole potentials (per atom)
     let mut vdp = vec![[0.0f64; 3]; n_atoms]; // dipole potential
     let mut vqp = vec![[0.0f64; 6]; n_atoms]; // quadrupole potential
     let mut vat_mp = vec![0.0f64; n_atoms]; // charge potential from multipoles
@@ -617,8 +652,12 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     let flatten_multipoles = |sh: &[f64], dp: &[[f64; 3]], qp: &[[f64; 6]]| -> Vec<f64> {
         let mut v = Vec::with_capacity(mix_len);
         v.extend_from_slice(sh);
-        for d in dp { v.extend_from_slice(d); }
-        for q in qp { v.extend_from_slice(q); }
+        for d in dp {
+            v.extend_from_slice(d);
+        }
+        for q in qp {
+            v.extend_from_slice(q);
+        }
         v
     };
 
@@ -627,7 +666,7 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
 
         // Broyden mixing: apply mixing step and retrieve mixed charges (for iter > 0)
         if iter > 0 {
-            mixer.next().unwrap_or(());
+            mixer.step().unwrap_or(());
             // Retrieve mixed values back into sh_charges, dpat, qpat
             let mut mixed = vec![0.0f64; mix_len];
             mixer.get(&mut mixed);
@@ -915,7 +954,9 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
                 let mut vd_dd = [0.0f64; 3];
                 let mut vq_sq = [0.0f64; 6];
                 for jat in 0..n_atoms {
-                    if iat == jat { continue; }
+                    if iat == jat {
+                        continue;
+                    }
                     for k in 0..3 {
                         vd_sd[k] += amat_sd[jat][iat][k] * new_qat[jat];
                         for l in 0..3 {
@@ -935,10 +976,14 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
                 }
                 let p = gfn2_params::get_gfn2_params(elements[iat]).unwrap();
                 let mut dk_e = 0.0;
-                for k in 0..3 { dk_e += new_dpat[iat][k] * new_dpat[iat][k]; }
+                for k in 0..3 {
+                    dk_e += new_dpat[iat][k] * new_dpat[iat][k];
+                }
                 e_aes_dk += p.dkernel * dk_e;
                 let mut qk_e = 0.0;
-                for c in 0..6 { qk_e += new_qpat[iat][c] * new_qpat[iat][c] * qp_scale[c]; }
+                for c in 0..6 {
+                    qk_e += new_qpat[iat][c] * new_qpat[iat][c] * qp_scale[c];
+                }
                 e_aes_qk += p.qkernel * qk_e;
             }
         }
@@ -954,8 +999,10 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
             let e_total_iter = e_elec + e_rep;
             eprintln!("SCC iter {}: e_total={:.12} e_band={:.12} e_scc={:.10} e_3rd={:.10} e_aes={:.10} e_d4_sc={:.10} ts={:.10}", 
                       scc_iter, e_total_iter, e_band, e_scc, e_3rd, e_aes, e_d4_sc, ts);
-            eprintln!("  AES breakdown: e_sd={:.10} e_dd={:.10} e_sq={:.10} e_dk={:.10} e_qk={:.10}",
-                      e_aes_sd, e_aes_dd, e_aes_sq, e_aes_dk, e_aes_qk);
+            eprintln!(
+                "  AES breakdown: e_sd={:.10} e_dd={:.10} e_sq={:.10} e_dk={:.10} e_qk={:.10}",
+                e_aes_sd, e_aes_dd, e_aes_sq, e_aes_dk, e_aes_qk
+            );
             for iat in 0..n_atoms {
                 eprintln!("  atom {}: dpat=[{:.8},{:.8},{:.8}] qpat=[{:.6},{:.6},{:.6},{:.6},{:.6},{:.6}] q={:.12}",
                     iat, new_dpat[iat][0], new_dpat[iat][1], new_dpat[iat][2],
@@ -968,11 +1015,13 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
         // Convergence check (matching tblite: econv=1e-6, pconv=2e-5)
         let econv = 1e-6; // Hartree — tblite uses 1e-6 * accuracy (accuracy=1.0)
         let pconv = 2e-5; // tblite uses 2e-5 * accuracy
-        // Compute RMS residual for density convergence (same metric as tblite's mixer%get_error)
+                          // Compute RMS residual for density convergence (same metric as tblite's mixer%get_error)
         let x_in_tmp = flatten_multipoles(&sh_charges, &dpat, &qpat);
         let x_out_tmp = flatten_multipoles(&new_sh_charges, &new_dpat, &new_qpat);
         let rms_dq: f64 = {
-            let sum_sq: f64 = x_in_tmp.iter().zip(x_out_tmp.iter())
+            let sum_sq: f64 = x_in_tmp
+                .iter()
+                .zip(x_out_tmp.iter())
                 .map(|(i, o)| (o - i).powi(2))
                 .sum();
             (sum_sq / mix_len as f64).sqrt()
@@ -1016,7 +1065,10 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     let total_ha = e_elec_ha + e_rep + disp_ha + xb_ha;
 
     // DEBUG: energy decomposition
-    let orb_ev: Vec<f64> = orbital_energies.iter().map(|e| e * EV_PER_HARTREE).collect();
+    let orb_ev: Vec<f64> = orbital_energies
+        .iter()
+        .map(|e| e * EV_PER_HARTREE)
+        .collect();
     let homo_idx = if n_occ > 0 { n_occ - 1 } else { 0 };
     let lumo_idx = n_occ.min(n_basis - 1);
     let homo_energy = orb_ev[homo_idx];
@@ -1078,7 +1130,7 @@ fn compute_coordination_numbers(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Vec<f
         for j in (i + 1)..n {
             let rj_cov = covalent_radius_d3_bohr(elements[j]);
             let r_ij = dist_raw(&pos_bohr[i], &pos_bohr[j]);
-            if r_ij < 0.1 || r_ij > CUTOFF {
+            if !(0.1..=CUTOFF).contains(&r_ij) {
                 continue;
             }
             let rc = ri_cov + rj_cov;
@@ -1096,39 +1148,39 @@ fn compute_coordination_numbers(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Vec<f
 fn covalent_radius_d3_bohr(z: u8) -> f64 {
     // Values from mctc-lib covrad.f90 (covalent_rad_2009), NOT atomicrad.f90
     let r_angstrom = match z {
-        1 => 0.32,   // H
-        2 => 0.46,   // He
-        3 => 1.20,   // Li
-        4 => 0.94,   // Be
-        5 => 0.77,   // B
-        6 => 0.75,   // C
-        7 => 0.71,   // N
-        8 => 0.63,   // O
-        9 => 0.64,   // F
-        10 => 0.67,  // Ne
-        11 => 1.40,  // Na
-        12 => 1.25,  // Mg
-        13 => 1.13,  // Al
-        14 => 1.04,  // Si
-        15 => 1.10,  // P
-        16 => 1.02,  // S
-        17 => 0.99,  // Cl
-        18 => 0.96,  // Ar
-        22 => 1.22,  // Ti
-        24 => 1.10,  // Cr
-        25 => 1.07,  // Mn
-        26 => 1.04,  // Fe
-        27 => 1.00,  // Co
-        28 => 0.99,  // Ni
-        29 => 1.01,  // Cu
-        30 => 1.09,  // Zn
-        35 => 1.14,  // Br
-        44 => 1.13,  // Ru
-        46 => 1.08,  // Pd
-        47 => 1.15,  // Ag
-        53 => 1.32,  // I
-        78 => 1.12,  // Pt
-        79 => 1.13,  // Au
+        1 => 0.32,  // H
+        2 => 0.46,  // He
+        3 => 1.20,  // Li
+        4 => 0.94,  // Be
+        5 => 0.77,  // B
+        6 => 0.75,  // C
+        7 => 0.71,  // N
+        8 => 0.63,  // O
+        9 => 0.64,  // F
+        10 => 0.67, // Ne
+        11 => 1.40, // Na
+        12 => 1.25, // Mg
+        13 => 1.13, // Al
+        14 => 1.04, // Si
+        15 => 1.10, // P
+        16 => 1.02, // S
+        17 => 0.99, // Cl
+        18 => 0.96, // Ar
+        22 => 1.22, // Ti
+        24 => 1.10, // Cr
+        25 => 1.07, // Mn
+        26 => 1.04, // Fe
+        27 => 1.00, // Co
+        28 => 0.99, // Ni
+        29 => 1.01, // Cu
+        30 => 1.09, // Zn
+        35 => 1.14, // Br
+        44 => 1.13, // Ru
+        46 => 1.08, // Pd
+        47 => 1.15, // Ag
+        53 => 1.32, // I
+        78 => 1.12, // Pt
+        79 => 1.13, // Au
         _ => 1.20,
     };
     (4.0 / 3.0) * r_angstrom * ANGSTROM_TO_BOHR
@@ -1194,6 +1246,7 @@ fn compute_gfn2_repulsion(elements: &[u8], positions: &[[f64; 3]]) -> f64 {
 }
 
 /// D4 dispersion: charge-dependent C6 coefficients (returns Hartree).
+#[allow(dead_code)]
 fn compute_d4_dispersion(elements: &[u8], positions: &[[f64; 3]], charges: &[f64]) -> f64 {
     let n = elements.len();
     let mut e_disp = 0.0;
@@ -1206,7 +1259,7 @@ fn compute_d4_dispersion(elements: &[u8], positions: &[[f64; 3]], charges: &[f64
     for i in 0..n {
         for j in (i + 1)..n {
             let r_bohr = distance_bohr(&positions[i], &positions[j]);
-            if r_bohr < 0.2 || r_bohr > 95.0 {
+            if !(0.2..=95.0).contains(&r_bohr) {
                 continue;
             }
 
@@ -1241,13 +1294,11 @@ fn compute_halogen_bond_correction(elements: &[u8], positions: &[[f64; 3]]) -> f
         if !halogens.contains(&elements[i]) {
             continue;
         }
-        let bonded_atom = (0..n)
-            .filter(|&k| k != i)
-            .min_by(|&a, &b| {
-                let da = dist(&positions[i], &positions[a]);
-                let db = dist(&positions[i], &positions[b]);
-                da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-            });
+        let bonded_atom = (0..n).filter(|&k| k != i).min_by(|&a, &b| {
+            let da = dist(&positions[i], &positions[a]);
+            let db = dist(&positions[i], &positions[b]);
+            da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for j in 0..n {
             if i == j || !bases.contains(&elements[j]) {
@@ -1319,12 +1370,14 @@ fn get_xb_strength(z_hal: u8) -> f64 {
     }
 }
 
+#[allow(dead_code)]
 fn get_c6_d4(z1: u8, z2: u8) -> f64 {
     let c6_1 = atomic_c6_d4(z1);
     let c6_2 = atomic_c6_d4(z2);
     (2.0 * c6_1 * c6_2) / (c6_1 + c6_2 + 1e-30)
 }
 
+#[allow(dead_code)]
 fn atomic_c6_d4(z: u8) -> f64 {
     match z {
         1 => 6.5,
@@ -1350,6 +1403,7 @@ fn atomic_c6_d4(z: u8) -> f64 {
     }
 }
 
+#[allow(dead_code)]
 fn get_r2r4_d4(z: u8) -> f64 {
     match z {
         1 => 2.00,
@@ -1401,8 +1455,14 @@ mod tests {
         eprintln!("  E_rep:   {:.6} Ha", r.repulsive_energy / 27.2114);
         eprintln!("  E_disp:  {:.6} Ha", r.dispersion_energy / 27.2114);
         eprintln!("  E_xb:    {:.6} Ha", r.halogen_bond_energy / 27.2114);
-        eprintln!("  E_total: {:.6} Ha  (tblite: -5.070370 Ha)", r.total_energy / 27.2114);
-        eprintln!("  n_basis={}, n_elec={}, SCC={}, conv={}", r.n_basis, r.n_electrons, r.scc_iterations, r.converged);
+        eprintln!(
+            "  E_total: {:.6} Ha  (tblite: -5.070370 Ha)",
+            r.total_energy / 27.2114
+        );
+        eprintln!(
+            "  n_basis={}, n_elec={}, SCC={}, conv={}",
+            r.n_basis, r.n_electrons, r.scc_iterations, r.converged
+        );
         eprintln!("  charges: {:?}", r.mulliken_charges);
 
         // H2 test
@@ -1411,7 +1471,10 @@ mod tests {
         eprintln!("  E_elec:  {:.6} Ha", h2_r.electronic_energy / 27.2114);
         eprintln!("  E_rep:   {:.6} Ha", h2_r.repulsive_energy / 27.2114);
         eprintln!("  E_disp:  {:.6} Ha", h2_r.dispersion_energy / 27.2114);
-        eprintln!("  E_total: {:.6} Ha  (tblite: -0.981984 Ha)", h2_r.total_energy / 27.2114);
+        eprintln!(
+            "  E_total: {:.6} Ha  (tblite: -0.981984 Ha)",
+            h2_r.total_energy / 27.2114
+        );
     }
 
     #[test]
@@ -1440,17 +1503,36 @@ mod tests {
         eprintln!("  E_rep:   {:.10} Ha", r.repulsive_energy / EV_PER_HARTREE);
         eprintln!("  E_disp:  {:.10} Ha", r.dispersion_energy / EV_PER_HARTREE);
         eprintln!("  E_total: {:.10} Ha  (tblite: -0.9819836925 Ha)", e_ha);
-        eprintln!("  error:   {:.6}%", (e_ha - (-0.9819836925)).abs() / 0.9819836925 * 100.0);
+        eprintln!(
+            "  error:   {:.6}%",
+            (e_ha - (-0.9819836925)).abs() / 0.9819836925 * 100.0
+        );
 
         // Now manually compute overlap and H0 for H2 to check
         use crate::xtb::solver::ANGSTROM_TO_BOHR;
-        let pos_bohr: Vec<[f64; 3]> = positions.iter().map(|p| [p[0] * ANGSTROM_TO_BOHR, p[1] * ANGSTROM_TO_BOHR, p[2] * ANGSTROM_TO_BOHR]).collect();
+        let pos_bohr: Vec<[f64; 3]> = positions
+            .iter()
+            .map(|p| {
+                [
+                    p[0] * ANGSTROM_TO_BOHR,
+                    p[1] * ANGSTROM_TO_BOHR,
+                    p[2] * ANGSTROM_TO_BOHR,
+                ]
+            })
+            .collect();
         let r_bohr = dist_raw(&pos_bohr[0], &pos_bohr[1]);
         eprintln!("  R(H-H): {:.10} bohr ({:.6} Å)", r_bohr, 0.74);
 
         let p = gfn2_params::get_gfn2_params(1).unwrap();
-        eprintln!("  H slater: {:.6}, pqn: {}, ngauss: {}", p.slater[0], p.pqn[0], p.ngauss[0]);
-        eprintln!("  H selfenergy: {:.6} eV = {:.10} Ha", p.selfenergy[0], p.selfenergy[0] * EV_TO_HARTREE);
+        eprintln!(
+            "  H slater: {:.6}, pqn: {}, ngauss: {}",
+            p.slater[0], p.pqn[0], p.ngauss[0]
+        );
+        eprintln!(
+            "  H selfenergy: {:.6} eV = {:.10} Ha",
+            p.selfenergy[0],
+            p.selfenergy[0] * EV_TO_HARTREE
+        );
         eprintln!("  H kcn: {:.6} eV", p.kcn[0]);
         eprintln!("  H pauling_en: {:.4}", p.pauling_en);
         eprintln!("  H shpoly[0]: {:.10}", p.shpoly[0]);
@@ -1460,13 +1542,24 @@ mod tests {
 
         // Overlap S12
         let s12 = crate::xtb::sto_overlap::sto_overlap_with_ng(
-            p.pqn[0], 0, 0, p.slater[0], &pos_bohr[0], p.ngauss[0],
-            p.pqn[0], 0, 0, p.slater[0], &pos_bohr[1], p.ngauss[0],
+            p.pqn[0],
+            0,
+            0,
+            p.slater[0],
+            &pos_bohr[0],
+            p.ngauss[0],
+            p.pqn[0],
+            0,
+            0,
+            p.slater[0],
+            &pos_bohr[1],
+            p.ngauss[0],
         );
         eprintln!("  S12 overlap: {:.10}", s12);
 
         // zij factor
-        let zij = (2.0_f64 * (p.slater[0] * p.slater[0]).sqrt() / (p.slater[0] + p.slater[0])).sqrt();
+        let zij =
+            (2.0_f64 * (p.slater[0] * p.slater[0]).sqrt() / (p.slater[0] + p.slater[0])).sqrt();
         eprintln!("  zij: {:.10} (should be 1.0 for same element)", zij);
 
         // enp factor
@@ -1484,7 +1577,11 @@ mod tests {
 
         // SE_eff with CN shift
         let se_eff = (p.selfenergy[0] - p.kcn[0] * cn[0]) * EV_TO_HARTREE;
-        eprintln!("  SE_eff: {:.10} Ha = {:.6} eV", se_eff, se_eff / EV_TO_HARTREE);
+        eprintln!(
+            "  SE_eff: {:.10} Ha = {:.6} eV",
+            se_eff,
+            se_eff / EV_TO_HARTREE
+        );
 
         // shpoly
         let rad_sum = p.atomic_rad + p.atomic_rad;
@@ -1503,7 +1600,10 @@ mod tests {
         let s_diag = 1.0;
         eprintln!("  --- 2x2 generalized eigenvalue ---");
         eprintln!("  H = [[{:.8}, {:.8}], [{:.8}, {:.8}]]", h11, h12, h12, h11);
-        eprintln!("  S = [[{:.8}, {:.8}], [{:.8}, {:.8}]]", s_diag, s12, s12, s_diag);
+        eprintln!(
+            "  S = [[{:.8}, {:.8}], [{:.8}, {:.8}]]",
+            s_diag, s12, s12, s_diag
+        );
 
         // Eigenvalues of H*c = e*S*c for 2x2 symmetric:
         // e_bond = (H11 + H12) / (1 + S12)
@@ -1532,9 +1632,18 @@ mod tests {
         eprintln!("  E_rep:   {:.10} Ha", r.repulsive_energy / EV_PER_HARTREE);
         eprintln!("  E_disp:  {:.10} Ha", r.dispersion_energy / EV_PER_HARTREE);
         eprintln!("  E_total: {:.10} Ha  (tblite: -5.2064375858 Ha)", e_ha);
-        eprintln!("  error:   {:.6}%", (e_ha - (-5.2064375858)).abs() / 5.2064375858 * 100.0);
-        eprintln!("  n_basis={}, n_elec={}, SCC={}, conv={}", r.n_basis, r.n_electrons, r.scc_iterations, r.converged);
+        eprintln!(
+            "  error:   {:.6}%",
+            (e_ha - (-5.2064375858)).abs() / 5.2064375858 * 100.0
+        );
+        eprintln!(
+            "  n_basis={}, n_elec={}, SCC={}, conv={}",
+            r.n_basis, r.n_electrons, r.scc_iterations, r.converged
+        );
         eprintln!("  charges: {:?}", r.mulliken_charges);
-        eprintln!("  HOMO: {:.6} eV, LUMO: {:.6} eV, gap: {:.6} eV", r.homo_energy, r.lumo_energy, r.gap);
+        eprintln!(
+            "  HOMO: {:.6} eV, LUMO: {:.6} eV, gap: {:.6} eV",
+            r.homo_energy, r.lumo_energy, r.gap
+        );
     }
 }

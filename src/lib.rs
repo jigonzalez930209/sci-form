@@ -41,7 +41,6 @@ pub mod conformer;
 pub mod dipole;
 pub mod dispersion;
 pub mod distgeom;
-pub mod potentials;
 pub mod dos;
 pub mod dynamics;
 pub mod eht;
@@ -63,6 +62,7 @@ pub mod optimization;
 pub mod periodic;
 pub mod pm3;
 pub mod population;
+pub mod potentials;
 pub mod reactivity;
 pub mod rings;
 pub mod scf;
@@ -1986,11 +1986,7 @@ pub fn compute_simplified_neb_path_configurable(
 /// Compute single-point energy (kcal/mol) with any NEB-capable backend.
 ///
 /// `method`: one of `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`, `"hf3c"`.
-pub fn neb_backend_energy_kcal(
-    method: &str,
-    smiles: &str,
-    coords: &[f64],
-) -> Result<f64, String> {
+pub fn neb_backend_energy_kcal(method: &str, smiles: &str, coords: &[f64]) -> Result<f64, String> {
     dynamics::neb_backend_energy_kcal(method, smiles, coords)
 }
 
@@ -2229,7 +2225,8 @@ pub fn compute_uhf(
     charge: i32,
     multiplicity: u32,
 ) -> Result<scf::uhf::UhfResult, String> {
-    let system = scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
+    let system =
+        scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
     Ok(scf::uhf::run_uhf_parallel(&system))
 }
 
@@ -2248,7 +2245,8 @@ pub fn compute_rohf(
     charge: i32,
     multiplicity: u32,
 ) -> Result<scf::uhf::UhfResult, String> {
-    let system = scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
+    let system =
+        scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
     Ok(scf::uhf::run_rohf(&system))
 }
 
@@ -2260,7 +2258,8 @@ pub fn compute_uhf_configured(
     multiplicity: u32,
     config: &scf::uhf::UhfConfig,
 ) -> Result<scf::uhf::UhfResult, String> {
-    let system = scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
+    let system =
+        scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
     Ok(scf::uhf::run_uhf(&system, config))
 }
 

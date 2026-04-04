@@ -80,10 +80,10 @@ pub const AATOAU: f64 = 1.8897259886;
 /// gam3shell(kind, l): kind=1 (main group), kind=2 (TM).
 /// Indexed as [s, p, d, f] = [[1.0, 1.0], [0.5, 0.5], [0.25, 0.25], [0.25, 0.25]].
 pub const GAM3_SHELL: [[f64; 2]; 4] = [
-    [1.0, 1.0],     // s
-    [0.5, 0.5],     // p
-    [0.25, 0.25],   // d
-    [0.25, 0.25],   // f
+    [1.0, 1.0],   // s
+    [0.5, 0.5],   // p
+    [0.25, 0.25], // d
+    [0.25, 0.25], // f
 ];
 
 /// Gamma function exponent (alphaj in xtb).

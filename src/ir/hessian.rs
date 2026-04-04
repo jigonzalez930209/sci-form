@@ -583,5 +583,4 @@ mod tests {
             "Hessian should have non-zero off-diagonal elements"
         );
     }
-
 }

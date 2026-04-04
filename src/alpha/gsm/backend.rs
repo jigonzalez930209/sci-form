@@ -150,6 +150,7 @@ pub fn compare_gsm_backends(
         .collect()
 }
 
+#[allow(dead_code)]
 pub(crate) fn evaluate_gsm_backend_energy_kcal(
     smiles: &str,
     elements: &[u8],
@@ -159,6 +160,7 @@ pub(crate) fn evaluate_gsm_backend_energy_kcal(
     backend_energy_kcal_mol(backend, smiles, elements, coords)
 }
 
+#[allow(dead_code)]
 pub(crate) fn rings_from_smiles(smiles: &str) -> Result<Vec<(Vec<usize>, bool)>, String> {
     let sssr = crate::compute_sssr(smiles)?;
     Ok(sssr
@@ -168,6 +170,7 @@ pub(crate) fn rings_from_smiles(smiles: &str) -> Result<Vec<(Vec<usize>, bool)>,
         .collect())
 }
 
+#[allow(dead_code)]
 pub(crate) fn elements_for_smiles(smiles: &str) -> Result<Vec<u8>, String> {
     elements_from_smiles(smiles)
 }
@@ -391,7 +394,7 @@ fn capability_for_backend(backend: GsmEnergyBackend, elements: &[u8]) -> GsmBack
         }
         GsmEnergyBackend::Reaxff => {
             let unsupported = unsupported_elements(elements, |z| REAXFF_CHON_ELEMENTS.contains(&z));
-            let mut limitations = unsupported_message("ReaxFF default CHON parameter set", &unsupported);
+            let limitations = unsupported_message("ReaxFF default CHON parameter set", &unsupported);
             #[cfg(not(feature = "alpha-reaxff"))]
             {
                 limitations.push(

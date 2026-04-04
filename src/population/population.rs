@@ -169,14 +169,14 @@ pub(crate) fn valence_electrons(z: u8) -> f64 {
         79 => 11.0, // Au
         80 => 12.0, // Hg
         // Period 6 main-group
-        55 => 1.0,  // Cs
-        56 => 2.0,  // Ba
-        81 => 3.0,  // Tl
-        82 => 4.0,  // Pb
-        83 => 5.0,  // Bi
-        84 => 6.0,  // Po
-        85 => 7.0,  // At
-        86 => 8.0,  // Rn
+        55 => 1.0, // Cs
+        56 => 2.0, // Ba
+        81 => 3.0, // Tl
+        82 => 4.0, // Pb
+        83 => 5.0, // Bi
+        84 => 6.0, // Po
+        85 => 7.0, // At
+        86 => 8.0, // Rn
         // Lanthanides (4f + 5d + 6s valence)
         57 => 3.0,  // La
         58 => 4.0,  // Ce
@@ -710,9 +710,9 @@ mod tests {
     #[test]
     fn test_valence_electrons_lanthanides() {
         // La(57)→Lu(71): valence = 4f + 5d + 6s
-        assert_eq!(valence_electrons(57), 3.0);  // La
-        assert_eq!(valence_electrons(58), 4.0);  // Ce
-        assert_eq!(valence_electrons(63), 9.0);  // Eu
+        assert_eq!(valence_electrons(57), 3.0); // La
+        assert_eq!(valence_electrons(58), 4.0); // Ce
+        assert_eq!(valence_electrons(63), 9.0); // Eu
         assert_eq!(valence_electrons(64), 10.0); // Gd
         assert_eq!(valence_electrons(70), 16.0); // Yb
         assert_eq!(valence_electrons(71), 17.0); // Lu
@@ -720,17 +720,17 @@ mod tests {
 
     #[test]
     fn test_valence_electrons_3d_transition_metals() {
-        assert_eq!(valence_electrons(21), 3.0);  // Sc
-        assert_eq!(valence_electrons(22), 4.0);  // Ti
-        assert_eq!(valence_electrons(26), 8.0);  // Fe
+        assert_eq!(valence_electrons(21), 3.0); // Sc
+        assert_eq!(valence_electrons(22), 4.0); // Ti
+        assert_eq!(valence_electrons(26), 8.0); // Fe
         assert_eq!(valence_electrons(29), 11.0); // Cu
         assert_eq!(valence_electrons(30), 12.0); // Zn
     }
 
     #[test]
     fn test_valence_electrons_4d_transition_metals() {
-        assert_eq!(valence_electrons(39), 3.0);  // Y
-        assert_eq!(valence_electrons(44), 8.0);  // Ru
+        assert_eq!(valence_electrons(39), 3.0); // Y
+        assert_eq!(valence_electrons(44), 8.0); // Ru
         assert_eq!(valence_electrons(46), 10.0); // Pd
         assert_eq!(valence_electrons(47), 11.0); // Ag
         assert_eq!(valence_electrons(48), 12.0); // Cd
@@ -738,9 +738,9 @@ mod tests {
 
     #[test]
     fn test_valence_electrons_5d_transition_metals() {
-        assert_eq!(valence_electrons(72), 4.0);  // Hf
-        assert_eq!(valence_electrons(74), 6.0);  // W
-        assert_eq!(valence_electrons(76), 8.0);  // Os
+        assert_eq!(valence_electrons(72), 4.0); // Hf
+        assert_eq!(valence_electrons(74), 6.0); // W
+        assert_eq!(valence_electrons(76), 8.0); // Os
         assert_eq!(valence_electrons(78), 10.0); // Pt
         assert_eq!(valence_electrons(79), 11.0); // Au
         assert_eq!(valence_electrons(80), 12.0); // Hg
@@ -750,7 +750,7 @@ mod tests {
     fn test_valence_electrons_unknown_returns_zero() {
         // Elements beyond the lookup table should return 0.0
         assert_eq!(valence_electrons(87), 0.0); // Fr (not in table)
-        assert_eq!(valence_electrons(0), 0.0);  // invalid
+        assert_eq!(valence_electrons(0), 0.0); // invalid
         assert_eq!(valence_electrons(255), 0.0);
     }
 

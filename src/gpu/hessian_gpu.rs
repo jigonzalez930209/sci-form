@@ -7,11 +7,8 @@
 //! This module provides a GPU dispatch wrapper that batches the
 //! displaced-geometry energy evaluations across GPU workgroups.
 
-use super::context::{
-    ComputeBindingDescriptor, ComputeBindingKind, ComputeDispatchDescriptor, GpuContext,
-};
-
 /// Minimum atoms to justify GPU dispatch for Hessian.
+#[allow(dead_code)]
 const GPU_HESSIAN_THRESHOLD: usize = 5;
 
 /// Generate all displaced geometries for numerical Hessian.
@@ -98,10 +95,7 @@ pub fn assemble_hessian_from_energies(
 /// `energy_fn`: closure that computes energy for a given geometry.
 /// `displacements`: list of displaced geometries.
 #[cfg(feature = "parallel")]
-pub fn evaluate_displacements_parallel<F>(
-    displacements: &[Vec<[f64; 3]>],
-    energy_fn: F,
-) -> Vec<f64>
+pub fn evaluate_displacements_parallel<F>(displacements: &[Vec<[f64; 3]>], energy_fn: F) -> Vec<f64>
 where
     F: Fn(&[[f64; 3]]) -> f64 + Sync,
 {

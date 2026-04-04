@@ -333,8 +333,7 @@ pub(crate) fn solve_xtb_with_state(
                     let eta_a_ha = pa.eta / EV_PER_HARTREE;
                     let eta_b_ha = pb.eta / EV_PER_HARTREE;
                     let eta_avg_ha = 0.5 * (eta_a_ha + eta_b_ha);
-                    let gamma_ha =
-                        1.0 / (r_bohr.powi(2) + eta_avg_ha.powi(-2)).sqrt();
+                    let gamma_ha = 1.0 / (r_bohr.powi(2) + eta_avg_ha.powi(-2)).sqrt();
                     let gamma = gamma_ha * EV_PER_HARTREE;
                     gm[a][b] = gamma;
                     gm[b][a] = gamma;
@@ -433,7 +432,7 @@ pub(crate) fn solve_xtb_with_state(
         // Broyden mixing for SCC convergence (replaces simple linear damping)
         mixer.diff(&new_charges);
         if iter > 0 {
-            let _ = mixer.next();
+            let _ = mixer.step();
         }
         mixer.get(&mut charges);
     }
