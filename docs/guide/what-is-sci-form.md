@@ -18,8 +18,11 @@
 14. **Periodic Systems** — PBC-aware bonding, hapticity detection (metallocenes)
 15. **Reaction Transforms** — SMIRKS atom-mapped reactant→product patterns
 16. **Fingerprints & Clustering** — ECFP/Morgan, Tanimoto, Butina RMSD clustering
+17. **Reaction Path Backends** — alpha GSM backend planning and TS search across UFF, MMFF94, PM3, xTB/GFN, HF-3c, and feature-gated ReaxFF
 
 Everything is available from **four entry points**: Rust, Python, TypeScript/WASM, and CLI — with **no C++ dependencies** and **native performance**.
+
+For the reaction-specific split between interpretation, path construction, and backend energetics, see [Reaction Simulation Backends](/guide/reaction-backends).
 
 ## Why sci-form?
 
