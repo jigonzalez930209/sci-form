@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-cli"
-version = "0.14.1"
+version = "0.14.2"
 edition = "2021"
 description = "CLI tool for high-performance 3D molecular conformer generation"
 license = "MIT"
@@ -34,7 +34,7 @@ alpha-kinetics = ["sci-form/alpha-kinetics"]
 alpha-render-bridge = ["sci-form/alpha-render-bridge"]
 
 [dependencies]
-sci-form = { path = "../..", version = "0.14.1", default-features = false }
+sci-form = { path = "../..", version = "0.14.2", default-features = false }
 clap = { version = "4", features = ["derive"] }
 rayon = "1.10"
 serde_json = "1.0"
