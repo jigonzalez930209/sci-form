@@ -251,7 +251,10 @@ pub fn predict_j_couplings(mol: &crate::graph::Molecule, positions: &[[f64; 3]])
 
                 // ⁵J long-range coupling: H-X-Y-Z-W-H (5-bond path)
                 // Observed in aromatic systems and extended conjugation, typically 0.2–1.0 Hz
-                if couplings.last().map_or(true, |c| c.n_bonds != 4 || c.h1_index != h1 || c.h2_index != h2) {
+                if couplings
+                    .last()
+                    .is_none_or(|c| c.n_bonds != 4 || c.h1_index != h1 || c.h2_index != h2)
+                {
                     'five_bond: for &mid1 in &p1_neighbors {
                         let mid1_neighbors: Vec<petgraph::graph::NodeIndex> = mol
                             .graph

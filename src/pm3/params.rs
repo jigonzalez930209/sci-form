@@ -114,7 +114,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 1.0,
         heat_of_atomization: 52.102,
         alpha: 3.356386,
-        gaussians: &[(1.1287500, 5.0962820, 1.5374650), (-1.0603290, 6.0037880, 1.5701890)],
+        gaussians: &[
+            (1.1287500, 5.0962820, 1.5374650),
+            (-1.0603290, 6.0037880, 1.5701890),
+        ],
     },
     // Carbon
     Pm3Params {
@@ -134,7 +137,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 4.0,
         heat_of_atomization: 170.89,
         alpha: 2.707807,
-        gaussians: &[(0.0501070, 6.0034480, 1.6422140), (0.0507330, 6.0027790, 0.8924880)],
+        gaussians: &[
+            (0.0501070, 6.0034480, 1.6422140),
+            (0.0507330, 6.0027790, 0.8924880),
+        ],
     },
     // Nitrogen
     Pm3Params {
@@ -154,7 +160,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 5.0,
         heat_of_atomization: 113.00,
         alpha: 2.830545,
-        gaussians: &[(1.5016740, 7.9990500, 1.7107400), (-1.5057720, 7.9999780, 1.7161490)],
+        gaussians: &[
+            (1.5016740, 7.9990500, 1.7107400),
+            (-1.5057720, 7.9999780, 1.7161490),
+        ],
     },
     // Oxygen
     Pm3Params {
@@ -174,7 +183,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 6.0,
         heat_of_atomization: 59.559,
         alpha: 3.217102,
-        gaussians: &[(-1.1313810, 6.0024770, 1.6073110), (1.1378910, 5.9505120, 1.5983950)],
+        gaussians: &[
+            (-1.1313810, 6.0024770, 1.6073110),
+            (1.1378910, 5.9505120, 1.5983950),
+        ],
     },
     // Fluorine
     Pm3Params {
@@ -194,7 +206,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 7.0,
         heat_of_atomization: 18.86,
         alpha: 3.358921,
-        gaussians: &[(-0.0121660, 6.0235740, 1.8568590), (-0.0028520, 6.0037170, 2.4280440)],
+        gaussians: &[
+            (-0.0121660, 6.0235740, 1.8568590),
+            (-0.0028520, 6.0037170, 2.4280440),
+        ],
     },
     // Phosphorus
     Pm3Params {
@@ -214,7 +229,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 5.0,
         heat_of_atomization: 75.57,
         alpha: 1.943950,
-        gaussians: &[(-0.0318270, 6.0012000, 1.4743230), (0.0184700, 7.0011200, 1.4867330)],
+        gaussians: &[
+            (-0.0318270, 6.0012000, 1.4743230),
+            (0.0184700, 7.0011200, 1.4867330),
+        ],
     },
     // Sulfur
     Pm3Params {
@@ -234,7 +252,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 6.0,
         heat_of_atomization: 66.40,
         alpha: 2.267302,
-        gaussians: &[(-0.5091950, 6.0006900, 1.5914990), (-0.0118630, 6.0016800, 2.6618000)],
+        gaussians: &[
+            (-0.5091950, 6.0006900, 1.5914990),
+            (-0.0118630, 6.0016800, 2.6618000),
+        ],
     },
     // Chlorine
     Pm3Params {
@@ -254,7 +275,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 7.0,
         heat_of_atomization: 28.99,
         alpha: 2.542201,
-        gaussians: &[(0.0184890, 7.0000960, 2.0816800), (-0.0147330, 6.0009170, 2.5258100)],
+        gaussians: &[
+            (0.0184890, 7.0000960, 2.0816800),
+            (-0.0147330, 6.0009170, 2.5258100),
+        ],
     },
     // Bromine
     Pm3Params {
@@ -274,7 +298,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 7.0,
         heat_of_atomization: 28.18,
         alpha: 2.455000,
-        gaussians: &[(0.9661410, 5.8580900, 2.4384280), (-0.5765950, 6.2395000, 2.0775220)],
+        gaussians: &[
+            (0.9661410, 5.8580900, 2.4384280),
+            (-0.5765950, 6.2395000, 2.0775220),
+        ],
     },
     // Iodine
     Pm3Params {
@@ -294,7 +321,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 7.0,
         heat_of_atomization: 25.52,
         alpha: 2.144000,
-        gaussians: &[(0.0043610, 9.0000100, 3.0001000), (-0.0043610, 9.0000100, 3.0001000)],
+        gaussians: &[
+            (0.0043610, 9.0000100, 3.0001000),
+            (-0.0043610, 9.0000100, 3.0001000),
+        ],
     },
     // ─── Transition Metals (Period 3 / common Period 4) ──────────────
     // PM3(tm) parameters from Cundari et al., J. Chem. Inf. Comput. Sci. 38 (1998): 941.
@@ -477,7 +507,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 3.0,
         heat_of_atomization: 79.49,
         alpha: 1.504622,
-        gaussians: &[(0.0900000, 12.3924430, 2.0503940), (-0.0060000, 6.0236580, 2.4203280)],
+        gaussians: &[
+            (0.0900000, 12.3924430, 2.0503940),
+            (-0.0060000, 6.0236580, 2.4203280),
+        ],
     },
     // Silicon (already in PM3 as Si)
     Pm3Params {
@@ -497,7 +530,10 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
         core_charge: 4.0,
         heat_of_atomization: 108.39,
         alpha: 2.278000,
-        gaussians: &[(-0.0916300, 6.0012390, 1.2978070), (0.0554100, 6.0014490, 2.3276450)],
+        gaussians: &[
+            (-0.0916300, 6.0012390, 1.2978070),
+            (0.0554100, 6.0014490, 2.3276450),
+        ],
     },
 ];
 

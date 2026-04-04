@@ -52,14 +52,14 @@ mod test_reaction_dft_mesh;
 mod test_roadmap_validation;
 #[path = "regression/test_sasa.rs"]
 mod test_sasa;
+#[path = "regression/test_session_algorithms.rs"]
+mod test_session_algorithms;
 #[path = "regression/test_spectroscopy.rs"]
 mod test_spectroscopy;
 #[path = "regression/test_step_by_step.rs"]
 mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
-#[path = "regression/test_session_algorithms.rs"]
-mod test_session_algorithms;
 
 #[cfg(feature = "alpha-cga")]
 #[path = "experimental/test_cga.rs"]

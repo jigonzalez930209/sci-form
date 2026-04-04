@@ -73,7 +73,7 @@ fn select_active_space(scf: &ScfInput, config: &StdaConfig) -> ActiveSpace {
     // back to including the highest occupied orbitals so sTDA can still produce
     // transitions.
     if occ_indices.is_empty() && n_occ > 0 {
-        let n_include = n_occ.min(3).max(1);
+        let n_include = n_occ.clamp(1, 3);
         occ_indices = ((n_occ - n_include)..n_occ).collect();
     }
 

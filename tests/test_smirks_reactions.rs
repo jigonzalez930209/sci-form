@@ -21,7 +21,10 @@ fn test_acid_base_reactions() {
 
     // Amine protonation - should not match CCO
     let result = apply_smirks("[N:1]>>[N+:1]", "CCO").unwrap();
-    assert!(!result.success, "Should not match molecules without nitrogen");
+    assert!(
+        !result.success,
+        "Should not match molecules without nitrogen"
+    );
 }
 
 #[test]

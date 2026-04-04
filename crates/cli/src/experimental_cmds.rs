@@ -295,14 +295,7 @@ pub fn cmd_simplified_neb_path(
     let start = parse_flat_coords_json(start_coords);
     let end = parse_flat_coords_json(end_coords);
     match sci_form::compute_simplified_neb_path_configurable(
-        smiles,
-        &start,
-        &end,
-        n_images,
-        n_iter,
-        spring_k,
-        step_size,
-        method,
+        smiles, &start, &end, n_images, n_iter, spring_k, step_size, method,
     ) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
         Err(e) => {

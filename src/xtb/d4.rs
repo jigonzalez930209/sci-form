@@ -45,6 +45,7 @@ pub struct D4Model {
     mref: usize,
     /// Scaled reference polarizabilities (23 freq per ref per atom).
     /// scaled_alpha[iat][iref][freq] — only populated for iref < nref(Z).
+    #[allow(dead_code)]
     scaled_alpha: Vec<Vec<Vec<f64>>>,
     /// Reference C6 coefficients: c6_ref[izp][jzp][iref][jref].
     /// Stored per element-type pair (not per atom pair).
@@ -114,8 +115,7 @@ impl D4Model {
                             c6 += CP_WEIGHTS[k] * alpha_i[k] * alpha_j[k];
                         }
                         c6 *= 3.0 / std::f64::consts::PI;
-                        let idx =
-                            (it * n_types + jt) * mref * mref + iref * mref + jref;
+                        let idx = (it * n_types + jt) * mref * mref + iref * mref + jref;
                         c6_ref_flat[idx] = c6;
                     }
                 }
@@ -152,8 +152,7 @@ impl D4Model {
 
                 for iref in 0..nref_i {
                     for jref in 0..nref_j {
-                        let c6_idx =
-                            (it * n_types + jt) * mref * mref + iref * mref + jref;
+                        let c6_idx = (it * n_types + jt) * mref * mref + iref * mref + jref;
                         let c6 = c6_ref_flat[c6_idx];
                         let val = de * c6;
 
@@ -381,10 +380,8 @@ impl D4Model {
                     let c6jk = c6[kat * nat + jat];
                     let c9 = -D4_S9 * (c6ij * c6ik * c6jk).abs().sqrt();
 
-                    let r0ik =
-                        D4_A1 * (3.0 * R4R2[kz - 1] * R4R2[iz - 1]).sqrt() + D4_A2;
-                    let r0jk =
-                        D4_A1 * (3.0 * R4R2[kz - 1] * R4R2[jz - 1]).sqrt() + D4_A2;
+                    let r0ik = D4_A1 * (3.0 * R4R2[kz - 1] * R4R2[iz - 1]).sqrt() + D4_A2;
+                    let r0jk = D4_A1 * (3.0 * R4R2[kz - 1] * R4R2[jz - 1]).sqrt() + D4_A2;
                     let r0 = r0ij * r0ik * r0jk;
 
                     // triple_scale: all different atoms -> 1.0
@@ -412,10 +409,10 @@ impl D4Model {
                     let r5 = r3 * r2;
 
                     let fdmp = 1.0 / (1.0 + 6.0 * (r0 / r1).powf(alp3));
-                    let ang = 0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik)
-                        * (-r2ij + r2jk + r2ik)
-                        / r5
-                        + 1.0 / r3;
+                    let ang =
+                        0.375 * (r2ij + r2jk - r2ik) * (r2ij - r2jk + r2ik) * (-r2ij + r2jk + r2ik)
+                            / r5
+                            + 1.0 / r3;
 
                     let rr = ang * fdmp;
                     let de = rr * c9 * triple / 6.0;
@@ -446,8 +443,7 @@ impl D4Model {
                 let mut val = 0.0;
                 for iref in 0..nref_i {
                     for jref in 0..nref_j {
-                        let c6_idx =
-                            (it * n_types + jt) * mref * mref + iref * mref + jref;
+                        let c6_idx = (it * n_types + jt) * mref * mref + iref * mref + jref;
                         val += weights.gwvec[iat][iref]
                             * weights.gwvec[jat][jref]
                             * self.c6_ref_flat[c6_idx];
@@ -599,9 +595,8 @@ fn erf(x: f64) -> f64 {
     let t3 = t2 * t;
     let t4 = t3 * t;
     let t5 = t4 * t;
-    let poly = 0.254829592 * t - 0.284496736 * t2 + 1.421413741 * t3
-        - 1.453152027 * t4
-        + 1.061405429 * t5;
+    let poly =
+        0.254829592 * t - 0.284496736 * t2 + 1.421413741 * t3 - 1.453152027 * t4 + 1.061405429 * t5;
     sign * (1.0 - poly * (-x * x).exp())
 }
 
@@ -726,10 +721,7 @@ mod tests {
 
         // Sanity checks
         assert!(vat[0].abs() > 1e-6, "O vat should be non-zero");
-        assert!(
-            (vat[1] - vat[2]).abs() < 1e-12,
-            "H vat should be symmetric"
-        );
+        assert!((vat[1] - vat[2]).abs() < 1e-12, "H vat should be symmetric");
         assert!(e_sc < 0.0, "SC energy should be negative");
         assert!(
             (e_sc - (-2.506e-4)).abs() < 5e-5,

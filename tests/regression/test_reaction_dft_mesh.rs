@@ -8,7 +8,12 @@
 
 fn embed_smiles(smiles: &str) -> (Vec<u8>, Vec<[f64; 3]>) {
     let conf = sci_form::embed(smiles, 42);
-    assert!(conf.error.is_none(), "embed failed for {}: {:?}", smiles, conf.error);
+    assert!(
+        conf.error.is_none(),
+        "embed failed for {}: {:?}",
+        smiles,
+        conf.error
+    );
     let positions: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     (conf.elements.clone(), positions)
 }
@@ -67,8 +72,8 @@ mod dft_endpoints {
         // Stretch the C-O bond by moving the last heavy atom outward
         let mut pos_str = pos_ref.clone();
         // Move the oxygen atom (element 8) outward along its current direction
-        for i in 0..conf.elements.len() {
-            if conf.elements[i] == 8 {
+        for (i, &elem) in conf.elements.iter().enumerate() {
+            if elem == 8 {
                 // Shift oxygen 0.5 Å further from center of mass
                 pos_str[i][0] += 0.5;
                 pos_str[i][1] += 0.3;
@@ -114,10 +119,14 @@ mod dft_endpoints {
             assert!(
                 grad_norm > 1e-6,
                 "{} gradient norm too small: {}",
-                method, grad_norm
+                method,
+                grad_norm
             );
 
-            eprintln!("  [{}] E={:.4} kcal/mol, |grad|={:.6}", method, e, grad_norm);
+            eprintln!(
+                "  [{}] E={:.4} kcal/mol, |grad|={:.6}",
+                method, e, grad_norm
+            );
         }
     }
 }
@@ -157,14 +166,22 @@ mod neb_paths {
             assert!(
                 img.potential_energy_kcal_mol.is_finite(),
                 "Image {} energy not finite: {}",
-                img.index, img.potential_energy_kcal_mol
+                img.index,
+                img.potential_energy_kcal_mol
             );
         }
 
-        eprintln!("  NEB ethane torsion UFF: {} images, E range: {:.2} to {:.2} kcal/mol",
+        eprintln!(
+            "  NEB ethane torsion UFF: {} images, E range: {:.2} to {:.2} kcal/mol",
             path.images.len(),
-            path.images.iter().map(|i| i.potential_energy_kcal_mol).fold(f64::INFINITY, f64::min),
-            path.images.iter().map(|i| i.potential_energy_kcal_mol).fold(f64::NEG_INFINITY, f64::max),
+            path.images
+                .iter()
+                .map(|i| i.potential_energy_kcal_mol)
+                .fold(f64::INFINITY, f64::min),
+            path.images
+                .iter()
+                .map(|i| i.potential_energy_kcal_mol)
+                .fold(f64::NEG_INFINITY, f64::max),
         );
     }
 
@@ -202,7 +219,10 @@ mod neb_paths {
             );
         }
 
-        eprintln!("  NEB ethane PM3: {} images OK, energies finite", path.images.len());
+        eprintln!(
+            "  NEB ethane PM3: {} images OK, energies finite",
+            path.images.len()
+        );
     }
 
     /// Multi-method NEB: same path with different backends validates finite energies.
@@ -237,7 +257,8 @@ mod neb_paths {
                         );
                     }
                     successful += 1;
-                    eprintln!("  [{method}] ethanol NEB: {} images, E₀={:.2}, E_mid={:.2}",
+                    eprintln!(
+                        "  [{method}] ethanol NEB: {} images, E₀={:.2}, E_mid={:.2}",
                         path.images.len(),
                         path.images[0].potential_energy_kcal_mol,
                         path.images[path.images.len() / 2].potential_energy_kcal_mol,
@@ -309,8 +330,14 @@ mod orbital_mesh {
 
             match result {
                 Ok(res) => {
-                    assert!(res.mesh.num_triangles > 0, "[{method_str}] mesh should have triangles");
-                    assert!(res.orbital_energies.len() > 0, "[{method_str}] should have orbital energies");
+                    assert!(
+                        res.mesh.num_triangles > 0,
+                        "[{method_str}] mesh should have triangles"
+                    );
+                    assert!(
+                        !res.orbital_energies.is_empty(),
+                        "[{method_str}] should have orbital energies"
+                    );
                     assert!(res.gap >= 0.0, "[{method_str}] gap should be non-negative");
 
                     eprintln!(
@@ -382,11 +409,8 @@ mod reaction_pipeline {
         let mut homo_energies = Vec::new();
 
         for (idx, image) in path.images.iter().enumerate() {
-            let positions: Vec<[f64; 3]> = image
-                .coords
-                .chunks(3)
-                .map(|c| [c[0], c[1], c[2]])
-                .collect();
+            let positions: Vec<[f64; 3]> =
+                image.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
 
             let eht = sci_form::eht::solve_eht(&elements, &positions, None)
                 .unwrap_or_else(|e| panic!("EHT failed at image {}: {}", idx, e));
@@ -461,7 +485,11 @@ mod reaction_pipeline {
 
             eprintln!(
                 "  [{label}] PM3 E={:.4} eV, gap={:.3} eV, mesh={} tri",
-                if label == "reactant" { pm3_start.total_energy } else { pm3_end.total_energy },
+                if label == "reactant" {
+                    pm3_start.total_energy
+                } else {
+                    pm3_end.total_energy
+                },
                 eht.gap,
                 mesh.num_triangles
             );
@@ -475,17 +503,26 @@ mod reaction_pipeline {
         let smirks = "[C:1](=O)[OH:2]>>[C:1](=O)[O-:2]";
         let reactant = "CC(=O)O"; // acetic acid
 
-        let transform = sci_form::smirks::parse_smirks(smirks).expect("SMIRKS parse should succeed");
-        assert!(!transform.atom_map.is_empty(), "Atom map should not be empty");
+        let transform =
+            sci_form::smirks::parse_smirks(smirks).expect("SMIRKS parse should succeed");
+        assert!(
+            !transform.atom_map.is_empty(),
+            "Atom map should not be empty"
+        );
 
-        let result = sci_form::smirks::apply_smirks(smirks, reactant).expect("SMIRKS apply should succeed");
+        let result =
+            sci_form::smirks::apply_smirks(smirks, reactant).expect("SMIRKS apply should succeed");
         assert!(result.success, "SMIRKS should apply to acetic acid");
         assert!(!result.products.is_empty(), "Should produce products");
 
         // Embed and compute energy for reactant
         let r_conf = sci_form::embed(reactant, 42);
         assert!(r_conf.error.is_none());
-        let r_pos: Vec<[f64; 3]> = r_conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let r_pos: Vec<[f64; 3]> = r_conf
+            .coords
+            .chunks(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .collect();
 
         let r_eht = sci_form::eht::solve_eht(&r_conf.elements, &r_pos, None).unwrap();
         let r_pm3 = sci_form::compute_pm3(&r_conf.elements, &r_pos).unwrap();
@@ -499,7 +536,11 @@ mod reaction_pipeline {
         let product_smiles = &result.products[0];
         let p_conf = sci_form::embed(product_smiles, 42);
         if p_conf.error.is_none() {
-            let p_pos: Vec<[f64; 3]> = p_conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+            let p_pos: Vec<[f64; 3]> = p_conf
+                .coords
+                .chunks(3)
+                .map(|c| [c[0], c[1], c[2]])
+                .collect();
             let p_eht = sci_form::eht::solve_eht(&p_conf.elements, &p_pos, None).unwrap();
 
             eprintln!(
@@ -524,7 +565,11 @@ mod smirks_mesh {
 
         let r_conf = sci_form::embed(reactant, 42);
         assert!(r_conf.error.is_none(), "Embed failed: {:?}", r_conf.error);
-        let r_pos: Vec<[f64; 3]> = r_conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let r_pos: Vec<[f64; 3]> = r_conf
+            .coords
+            .chunks(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .collect();
 
         // Compute HOMO mesh for reactant
         let eht = sci_form::eht::solve_eht(&r_conf.elements, &r_pos, None).unwrap();
@@ -555,8 +600,10 @@ mod smirks_mesh {
 
         eprintln!(
             "  Methyl acetate: HOMO dual ({}/{} tri), LUMO ({} tri), gap={:.3} eV",
-            dual.positive.num_triangles, dual.negative.num_triangles,
-            lumo_mesh.num_triangles, eht.gap
+            dual.positive.num_triangles,
+            dual.negative.num_triangles,
+            lumo_mesh.num_triangles,
+            eht.gap
         );
     }
 
@@ -574,12 +621,19 @@ mod smirks_mesh {
                 // Compute Fukui descriptors for the reactant (electrophilic susceptibility)
                 let r_conf = sci_form::embed(reactant, 42);
                 assert!(r_conf.error.is_none());
-                let r_pos: Vec<[f64; 3]> = r_conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+                let r_pos: Vec<[f64; 3]> = r_conf
+                    .coords
+                    .chunks(3)
+                    .map(|c| [c[0], c[1], c[2]])
+                    .collect();
 
                 let eht = sci_form::eht::solve_eht(&r_conf.elements, &r_pos, None).unwrap();
                 assert!(eht.gap > 0.0);
 
-                eprintln!("  Benzene pre-nitration: gap={:.3} eV, HOMO={:.3} eV", eht.gap, eht.homo_energy);
+                eprintln!(
+                    "  Benzene pre-nitration: gap={:.3} eV, HOMO={:.3} eV",
+                    eht.gap, eht.homo_energy
+                );
             }
             Ok(_result) => {
                 eprintln!("  Aromatic nitration: SMIRKS did not apply (no match). Acceptable.");
@@ -612,12 +666,12 @@ mod dynamics_mesh {
         assert!(traj.frames.len() > 1, "Should have multiple frames");
 
         // Analyze first and last frames with EHT
-        for (label, frame) in [("start", &traj.frames[0]), ("end", traj.frames.last().unwrap())] {
-            let positions: Vec<[f64; 3]> = frame
-                .coords
-                .chunks(3)
-                .map(|c| [c[0], c[1], c[2]])
-                .collect();
+        for (label, frame) in [
+            ("start", &traj.frames[0]),
+            ("end", traj.frames.last().unwrap()),
+        ] {
+            let positions: Vec<[f64; 3]> =
+                frame.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
 
             let eht = sci_form::eht::solve_eht(&elements, &positions, None)
                 .unwrap_or_else(|e| panic!("EHT failed at {} frame: {}", label, e));
@@ -637,10 +691,9 @@ mod dynamics_mesh {
         let conf = sci_form::embed("CCO", 42);
         assert!(conf.error.is_none());
 
-        let traj = sci_form::compute_md_trajectory_nvt(
-            "CCO", &conf.coords, 5, 0.5, 42, 300.0, 50.0,
-        )
-        .expect("NVT MD should succeed");
+        let traj =
+            sci_form::compute_md_trajectory_nvt("CCO", &conf.coords, 5, 0.5, 42, 300.0, 50.0)
+                .expect("NVT MD should succeed");
 
         assert!(!traj.frames.is_empty());
         let last = traj.frames.last().unwrap();
@@ -666,7 +719,9 @@ mod dynamics_mesh {
 
         eprintln!(
             "  NVT MD ethanol: {} frames, final T={:.1} K, HOMO mesh={} tri",
-            traj.frames.len(), last.temperature_k, mesh.num_triangles
+            traj.frames.len(),
+            last.temperature_k,
+            mesh.num_triangles
         );
     }
 }

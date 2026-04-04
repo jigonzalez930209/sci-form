@@ -60,7 +60,7 @@ fn test_uhf_h2_cation_doublet() {
 fn test_uhf_h2_triplet() {
     let elements = [1u8, 1];
     let positions = [[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]]; // Stretched H₂
-    // H₂ triplet: 2 electrons, multiplicity=3 → n_alpha=2, n_beta=0
+                                                        // H₂ triplet: 2 electrons, multiplicity=3 → n_alpha=2, n_beta=0
     let result = sci_form::compute_uhf(&elements, &positions, 0, 3).unwrap();
 
     assert_eq!(result.n_alpha, 2);
@@ -104,8 +104,7 @@ fn test_uhf_configured_h2() {
         damping: 0.3,
         ..Default::default()
     };
-    let result =
-        sci_form::compute_uhf_configured(&elements, &positions, 0, 1, &config).unwrap();
+    let result = sci_form::compute_uhf_configured(&elements, &positions, 0, 1, &config).unwrap();
 
     assert!(result.converged, "UHF with level shift should converge");
     assert!(result.total_energy < 0.0);
@@ -270,7 +269,10 @@ fn test_mo_integrals_4fold_symmetry() {
     // Since we can't construct MoIntegrals directly, test through the transform function.
     // This is already tested in the unit test; here we verify it links correctly.
     // The regression test confirms the module is accessible from the public API.
-    assert!(std::mem::size_of::<MoIntegrals>() > 0, "MoIntegrals type should exist");
+    assert!(
+        std::mem::size_of::<MoIntegrals>() > 0,
+        "MoIntegrals type should exist"
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -283,7 +285,7 @@ fn test_gpu_stda_module_exists() {
     // Verify the GPU sTDA module compiles and is accessible
     use sci_form::gpu::stda_gpu::compute_stda_j_matrix_gpu;
     // Actual GPU execution requires hardware; just verify signature
-    let _ = std::mem::size_of_val(&(compute_stda_j_matrix_gpu as fn(_, _, _, _) -> _));
+    let _ = std::mem::size_of_val(&(compute_stda_j_matrix_gpu as fn(_, _, _, _, _) -> _));
 }
 
 #[cfg(feature = "experimental-gpu")]
@@ -293,7 +295,11 @@ fn test_gpu_hessian_displacement_generation() {
     let positions = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]];
     let (displacements, _) = generate_hessian_displacements(&positions, 0.005);
     // 2 atoms × 3 DOF × 2 (±) = 12 displacements
-    assert_eq!(displacements.len(), 12, "Should have 12 displaced geometries");
+    assert_eq!(
+        displacements.len(),
+        12,
+        "Should have 12 displaced geometries"
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -347,8 +353,15 @@ fn test_pm3_water_with_gaussians() {
 
     assert!(result.converged, "PM3 water should converge");
     // Total energy should be finite and negative
-    assert!(result.total_energy.is_finite(), "Total energy should be finite");
-    assert!(result.total_energy < 0.0, "Total energy should be negative: {:.2}", result.total_energy);
+    assert!(
+        result.total_energy.is_finite(),
+        "Total energy should be finite"
+    );
+    assert!(
+        result.total_energy < 0.0,
+        "Total energy should be negative: {:.2}",
+        result.total_energy
+    );
 }
 
 #[test]
@@ -460,7 +473,10 @@ fn test_gfn1_ethanol_broyden() {
     let result = solve_gfn1(&conf.elements, &positions).unwrap();
 
     assert!(result.converged, "GFN1 ethanol should converge");
-    assert!(result.total_energy < 0.0, "GFN1 ethanol energy should be negative");
+    assert!(
+        result.total_energy < 0.0,
+        "GFN1 ethanol energy should be negative"
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -484,11 +500,7 @@ fn test_nmr_5j_naphthalene() {
     // (between H's separated by 5 bonds)
     if !five_j.is_empty() {
         for c in &five_j {
-            assert!(
-                c.j_hz.abs() < 2.0,
-                "5J should be small: {:.2} Hz",
-                c.j_hz
-            );
+            assert!(c.j_hz.abs() < 2.0, "5J should be small: {:.2} Hz", c.j_hz);
             assert!(
                 c.coupling_type.contains("5J"),
                 "Coupling type should contain '5J': {}",
@@ -566,7 +578,11 @@ fn test_smirks_multi_component_apply() {
     // apply_smirks_multi with two reactants
     let smirks = "[C:1](=[O:2])[OH:3].[C:4][OH:5]>>[C:1](=[O:2])[O:5][C:4]";
     let result = sci_form::smirks::apply_smirks_multi(smirks, &["CC(=O)O", "CO"]);
-    assert!(result.is_ok(), "Multi-component apply should not error: {:?}", result.err());
+    assert!(
+        result.is_ok(),
+        "Multi-component apply should not error: {:?}",
+        result.err()
+    );
 }
 
 #[test]
@@ -598,7 +614,10 @@ fn test_population_water_public_api() {
     let pop = sci_form::compute_population(&elements, &positions).unwrap();
 
     // Oxygen should be negative
-    assert!(pop.mulliken_charges[0] < 0.0, "O Mulliken should be negative");
+    assert!(
+        pop.mulliken_charges[0] < 0.0,
+        "O Mulliken should be negative"
+    );
     // Charge conservation
     let total: f64 = pop.mulliken_charges.iter().sum();
     assert!(total.abs() < 0.01, "Charge conservation: {:.4}", total);
@@ -651,11 +670,7 @@ fn test_eeq_charge_neutrality_after_damping_change() {
     let result = compute_eeq_charges(&elements, &positions, &config);
 
     let sum: f64 = result.charges.iter().sum();
-    assert!(
-        sum.abs() < 0.01,
-        "EEQ charges should sum to ~0: {:.6}",
-        sum
-    );
+    assert!(sum.abs() < 0.01, "EEQ charges should sum to ~0: {:.6}", sum);
 }
 
 #[test]

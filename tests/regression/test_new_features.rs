@@ -185,7 +185,12 @@ fn test_semianalytical_vs_numerical_hessian_consistency() {
     // 2. Finite values
     for i in 0..n3 {
         for j in 0..n3 {
-            assert!(semi[(i, j)].is_finite(), "Hessian[{},{}] is not finite", i, j);
+            assert!(
+                semi[(i, j)].is_finite(),
+                "Hessian[{},{}] is not finite",
+                i,
+                j
+            );
         }
     }
 

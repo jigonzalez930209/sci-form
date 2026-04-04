@@ -448,11 +448,7 @@ fn neb_point_energy_kcal(
             Ok(r.total_energy * EV_TO_KCAL_MOL)
         }
         NebBackend::Hf3c => {
-            let r = crate::hf::solve_hf3c(
-                elements,
-                &positions,
-                &crate::hf::HfConfig::default(),
-            )?;
+            let r = crate::hf::solve_hf3c(elements, &positions, &crate::hf::HfConfig::default())?;
             Ok(r.energy * HARTREE_TO_KCAL_MOL)
         }
         _ => unreachable!("neb_point_energy_kcal only for energy-only backends"),
@@ -512,16 +508,14 @@ pub fn neb_energy_and_gradient(
                     (a.index(), b.index(), order)
                 })
                 .collect();
-            let terms =
-                crate::forcefield::mmff94::Mmff94Builder::build(elements, &bonds);
+            let terms = crate::forcefield::mmff94::Mmff94Builder::build(elements, &bonds);
             let (energy, g) =
                 crate::forcefield::mmff94::Mmff94Builder::total_energy(&terms, coords);
             grad[..g.len()].copy_from_slice(&g);
             Ok(energy)
         }
         NebBackend::Pm3 => {
-            let positions: Vec<[f64; 3]> =
-                coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+            let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
             let r = crate::pm3::gradients::compute_pm3_gradient(elements, &positions)?;
             let energy_kcal = r.energy * EV_TO_KCAL_MOL;
             for (a, g) in r.gradients.iter().enumerate() {
@@ -532,8 +526,7 @@ pub fn neb_energy_and_gradient(
             Ok(energy_kcal)
         }
         NebBackend::Xtb => {
-            let positions: Vec<[f64; 3]> =
-                coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+            let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
             let r = crate::xtb::gradients::compute_xtb_gradient(elements, &positions)?;
             let energy_kcal = r.energy * EV_TO_KCAL_MOL;
             for (a, g) in r.gradients.iter().enumerate() {
@@ -603,12 +596,9 @@ pub fn compute_simplified_neb_path_configurable(
         let prev = images.clone();
         for i in 1..(n_images - 1) {
             let mut grad = vec![0.0f64; n_xyz];
-            let _ = neb_energy_and_gradient(
-                backend, smiles, &elements, &mol, &prev[i], &mut grad,
-            )?;
+            let _ = neb_energy_and_gradient(backend, smiles, &elements, &mol, &prev[i], &mut grad)?;
             for k in 0..n_xyz {
-                let spring_force =
-                    spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
+                let spring_force = spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
                 let total_force = -grad[k] + spring_force;
                 images[i][k] = prev[i][k] + step_size * total_force;
             }
@@ -619,9 +609,7 @@ pub fn compute_simplified_neb_path_configurable(
     let mut out_images = Vec::with_capacity(n_images);
     for (i, coords) in images.into_iter().enumerate() {
         let mut grad = vec![0.0f64; n_xyz];
-        let e = neb_energy_and_gradient(
-            backend, smiles, &elements, &mol, &coords, &mut grad,
-        )?;
+        let e = neb_energy_and_gradient(backend, smiles, &elements, &mol, &coords, &mut grad)?;
         out_images.push(NebImage {
             index: i,
             coords,
@@ -646,11 +634,7 @@ pub fn compute_simplified_neb_path_configurable(
 /// Compute energy-only for any NEB backend (used for single-point comparisons).
 ///
 /// Returns energy in kcal/mol.
-pub fn neb_backend_energy_kcal(
-    method: &str,
-    smiles: &str,
-    coords: &[f64],
-) -> Result<f64, String> {
+pub fn neb_backend_energy_kcal(method: &str, smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let backend = NebBackend::from_method(method)?;
     let mol = crate::graph::Molecule::from_smiles(smiles)?;
     let n_atoms = mol.graph.node_count();
@@ -690,9 +674,7 @@ pub fn neb_backend_energy_and_gradient(
         .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
         .collect();
     let mut grad = vec![0.0f64; n_xyz];
-    let energy = neb_energy_and_gradient(
-        backend, smiles, &elements, &mol, coords, &mut grad,
-    )?;
+    let energy = neb_energy_and_gradient(backend, smiles, &elements, &mol, coords, &mut grad)?;
     Ok((energy, grad))
 }
 

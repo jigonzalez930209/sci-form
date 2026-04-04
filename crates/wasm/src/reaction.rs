@@ -88,11 +88,7 @@ pub fn compute_neb_path_with_method(
 ///
 /// Returns JSON `{"energy": <f64>, "method": "<str>"}`.
 #[wasm_bindgen]
-pub fn neb_single_point_energy(
-    method: &str,
-    smiles: &str,
-    coords_json: &str,
-) -> String {
+pub fn neb_single_point_energy(method: &str, smiles: &str, coords_json: &str) -> String {
     let coords = match parse_flat_coords(coords_json) {
         Ok(v) => v,
         Err(e) => return json_error(&e),
@@ -113,11 +109,7 @@ pub fn neb_single_point_energy(
 ///
 /// Returns JSON `{"energy": <f64>, "gradient": [<f64>...], "method": "<str>"}`.
 #[wasm_bindgen]
-pub fn neb_energy_and_gradient(
-    method: &str,
-    smiles: &str,
-    coords_json: &str,
-) -> String {
+pub fn neb_energy_and_gradient(method: &str, smiles: &str, coords_json: &str) -> String {
     let coords = match parse_flat_coords(coords_json) {
         Ok(v) => v,
         Err(e) => return json_error(&e),
@@ -199,12 +191,9 @@ pub fn list_neb_backends(elements_json: &str) -> String {
         Err(e) => return json_error(&e),
     };
 
-    let has_transition_metals = elements.iter().any(|&z| {
-        matches!(
-            z,
-            22 | 24..=30 | 44 | 46 | 47 | 78 | 79
-        )
-    });
+    let has_transition_metals = elements
+        .iter()
+        .any(|&z| matches!(z, 22 | 24..=30 | 44 | 46 | 47 | 78 | 79));
 
     let backends = vec![
         serde_json::json!({

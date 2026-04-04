@@ -10,14 +10,14 @@ pub struct BroydenMixer {
     memory: usize,
     iter: usize,
     damp: f64,
-    df: Vec<Vec<f64>>,        // df[memory][ndim] — normalized delta-F vectors
-    u: Vec<Vec<f64>>,         // u[memory][ndim] — Broyden update vectors
-    a: Vec<Vec<f64>>,         // a[memory][memory] — dot product matrix
-    omega: Vec<f64>,          // omega[memory] — iteration weights
-    dq: Vec<f64>,             // dq[ndim] — current residual (output - input)
-    dqlast: Vec<f64>,         // dqlast[ndim] — previous residual
-    qlast_in: Vec<f64>,       // qlast_in[ndim] — previous input
-    q_in: Vec<f64>,           // q_in[ndim] — current input
+    df: Vec<Vec<f64>>,  // df[memory][ndim] — normalized delta-F vectors
+    u: Vec<Vec<f64>>,   // u[memory][ndim] — Broyden update vectors
+    a: Vec<Vec<f64>>,   // a[memory][memory] — dot product matrix
+    omega: Vec<f64>,    // omega[memory] — iteration weights
+    dq: Vec<f64>,       // dq[ndim] — current residual (output - input)
+    dqlast: Vec<f64>,   // dqlast[ndim] — previous residual
+    qlast_in: Vec<f64>, // qlast_in[ndim] — previous input
+    q_in: Vec<f64>,     // q_in[ndim] — current input
 }
 
 impl BroydenMixer {
@@ -77,7 +77,7 @@ impl BroydenMixer {
 
     /// Apply the Broyden mixing step. Call this at the start of each iteration (after iter 0).
     /// Returns Ok(()) on success, Err on linear algebra failure.
-    pub fn next(&mut self) -> Result<(), &'static str> {
+    pub fn step(&mut self) -> Result<(), &'static str> {
         self.iter += 1;
         self.broyden_step()
     }
@@ -151,7 +151,11 @@ impl BroydenMixer {
 
         // Build a, beta, c
         // a[i][it1] = df[i] . df[it1]
-        let j_start = if itn > self.memory { itn - self.memory + 1 } else { 1 };
+        let j_start = if itn > self.memory {
+            itn - self.memory + 1
+        } else {
+            1
+        };
         for j in j_start..=itn {
             let i = (j - 1) % self.memory;
             let dot: f64 = (0..n).map(|k| self.df[i][k] * self.df[it1][k]).sum();
@@ -163,7 +167,11 @@ impl BroydenMixer {
         let mut c = vec![0.0f64; nhistory];
         for j in j_start..=itn {
             let i = (j - 1) % self.memory;
-            let idx = if itn <= self.memory { j - 1 } else { j - j_start };
+            let idx = if itn <= self.memory {
+                j - 1
+            } else {
+                j - j_start
+            };
             let dot: f64 = (0..n).map(|k| self.df[i][k] * self.dq[k]).sum();
             c[idx] = self.omega[i] * dot;
         }
@@ -298,7 +306,7 @@ mod tests {
         mixer.diff(&[1.5, 2.5, 3.5]);
 
         // Apply mixing
-        mixer.next().unwrap();
+        mixer.step().unwrap();
 
         // Should get q_in + alpha * dq = [1.0, 2.0, 3.0] + 0.4 * [0.5, 0.5, 0.5]
         let mut out = vec![0.0; 3];

@@ -71,10 +71,7 @@ impl SmirksResult {
                 self.n_transforms
             )
         } else {
-            format!(
-                "SmirksResult(success=False, messages={:?})",
-                self.messages
-            )
+            format!("SmirksResult(success=False, messages={:?})", self.messages)
         }
     }
 

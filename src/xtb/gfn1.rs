@@ -225,7 +225,7 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
         // Broyden mixing for shell-resolved SCC convergence
         mixer.diff(&new_dq);
         if iter > 0 {
-            let _ = mixer.next();
+            let _ = mixer.step();
         }
         mixer.get(&mut shell_dq);
     }

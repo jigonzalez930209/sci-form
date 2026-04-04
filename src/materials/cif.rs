@@ -145,33 +145,15 @@ pub fn parse_cif(input: &str) -> Result<CifStructure, String> {
 
             if !col_names.is_empty() {
                 // Map column indices
-                let label_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_label");
-                let type_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_type_symbol");
-                let fx_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_fract_x");
-                let fy_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_fract_y");
-                let fz_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_fract_z");
-                let occ_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_occupancy");
-                let cx_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_Cartn_x");
-                let cy_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_Cartn_y");
-                let cz_col = col_names
-                    .iter()
-                    .position(|c| c == "_atom_site_Cartn_z");
+                let label_col = col_names.iter().position(|c| c == "_atom_site_label");
+                let type_col = col_names.iter().position(|c| c == "_atom_site_type_symbol");
+                let fx_col = col_names.iter().position(|c| c == "_atom_site_fract_x");
+                let fy_col = col_names.iter().position(|c| c == "_atom_site_fract_y");
+                let fz_col = col_names.iter().position(|c| c == "_atom_site_fract_z");
+                let occ_col = col_names.iter().position(|c| c == "_atom_site_occupancy");
+                let cx_col = col_names.iter().position(|c| c == "_atom_site_Cartn_x");
+                let cy_col = col_names.iter().position(|c| c == "_atom_site_Cartn_y");
+                let cz_col = col_names.iter().position(|c| c == "_atom_site_Cartn_z");
 
                 let has_frac = fx_col.is_some() && fy_col.is_some() && fz_col.is_some();
                 let has_cart = cx_col.is_some() && cy_col.is_some() && cz_col.is_some();
@@ -193,9 +175,7 @@ pub fn parse_cif(input: &str) -> Result<CifStructure, String> {
                         continue;
                     }
 
-                    let label = label_col
-                        .map(|c| fields[c].to_string())
-                        .unwrap_or_default();
+                    let label = label_col.map(|c| fields[c].to_string()).unwrap_or_default();
                     let type_sym = type_col
                         .map(|c| fields[c].to_string())
                         .or_else(|| {
@@ -308,23 +288,26 @@ pub fn write_cif(structure: &CifStructure) -> String {
     out.push_str(&format!("_cell_length_a                    {:.6}\n", p.a));
     out.push_str(&format!("_cell_length_b                    {:.6}\n", p.b));
     out.push_str(&format!("_cell_length_c                    {:.6}\n", p.c));
-    out.push_str(&format!("_cell_angle_alpha                 {:.4}\n", p.alpha));
-    out.push_str(&format!("_cell_angle_beta                  {:.4}\n", p.beta));
-    out.push_str(&format!("_cell_angle_gamma                 {:.4}\n", p.gamma));
+    out.push_str(&format!(
+        "_cell_angle_alpha                 {:.4}\n",
+        p.alpha
+    ));
+    out.push_str(&format!(
+        "_cell_angle_beta                  {:.4}\n",
+        p.beta
+    ));
+    out.push_str(&format!(
+        "_cell_angle_gamma                 {:.4}\n",
+        p.gamma
+    ));
     out.push_str("#\n");
 
     // Space group
     if let Some(ref hm) = structure.space_group_hm {
-        out.push_str(&format!(
-            "_symmetry_space_group_name_H-M    '{}'\n",
-            hm
-        ));
+        out.push_str(&format!("_symmetry_space_group_name_H-M    '{}'\n", hm));
     }
     if let Some(num) = structure.space_group_number {
-        out.push_str(&format!(
-            "_symmetry_Int_Tables_number       {}\n",
-            num
-        ));
+        out.push_str(&format!("_symmetry_Int_Tables_number       {}\n", num));
     }
     out.push_str("#\n");
 
@@ -340,12 +323,7 @@ pub fn write_cif(structure: &CifStructure) -> String {
         for site in &structure.atom_sites {
             out.push_str(&format!(
                 "{:<8} {:<4} {:.6} {:.6} {:.6} {:.4}\n",
-                site.label,
-                site.type_symbol,
-                site.frac_x,
-                site.frac_y,
-                site.frac_z,
-                site.occupancy
+                site.label, site.type_symbol, site.frac_x, site.frac_y, site.frac_z, site.occupancy
             ));
         }
     }
