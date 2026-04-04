@@ -64,9 +64,18 @@ fn select_active_space(scf: &ScfInput, config: &StdaConfig) -> ActiveSpace {
     let core_floor_hartree = -20.0 / HARTREE_TO_EV;
     let effective_occ_cutoff = occ_cutoff.max(core_floor_hartree);
 
-    let occ_indices: Vec<usize> = (0..n_occ)
+    let mut occ_indices: Vec<usize> = (0..n_occ)
         .filter(|&i| scf.orbital_energies[i] >= effective_occ_cutoff)
         .collect();
+
+    // Safety: if the energy window excludes all occupied orbitals (e.g., due to
+    // systematically shifted orbital energies from a minimal-basis SCF), fall
+    // back to including the highest occupied orbitals so sTDA can still produce
+    // transitions.
+    if occ_indices.is_empty() && n_occ > 0 {
+        let n_include = n_occ.min(3).max(1);
+        occ_indices = ((n_occ - n_include)..n_occ).collect();
+    }
 
     let virt_indices: Vec<usize> = (n_occ..scf.n_basis)
         .filter(|&a| scf.orbital_energies[a] <= virt_cutoff)
