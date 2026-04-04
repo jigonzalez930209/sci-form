@@ -111,6 +111,42 @@ cargo test --release --test regression test_tet_centers -- --nocapture
 | `regression/test_gdb20_rmsd.rs` | RMSD vs. RDKit/ETKDG on GDB-20 subset (benchmark accuracy) |
 | `regression/test_gdb20.rs` | Success rate ≥ 99 % on GDB-20 subset |
 | `regression/test_tet_centers.rs` | Tetrahedral stereocentres are preserved after embedding |
+| `regression/test_session_algorithms.rs` | 33 tests covering all recent session algorithms (see below) |
+
+### Session Algorithm Regression Tests (`test_session_algorithms.rs`)
+
+This suite validates every algorithm implemented in the latest development iteration.
+
+```bash
+cargo test --test regression test_session_algorithms
+```
+
+| Section | Tests | What it validates |
+|---------|-------|-------------------|
+| UHF/ROHF (§1) | 6 | H₂ singlet/doublet/triplet, ROHF H₂⁺, configured UHF, α/β symmetry |
+| CIF Import/Export (§2) | 4 | Parse NaCl-type, roundtrip fidelity, uncertainty notation `5.640(1)`, required fields |
+| AO→MO Transform (§3) | 1 | `MoIntegrals` type existence and public linkage |
+| GPU sTDA/Hessian (§4) | 2 | Compile-time checks (`cfg(experimental-gpu)`) |
+| PM3 Gaussians (§5) | 5 | Main-group 2-Gaussian params, TM empty gaussians, water/CH₄/H₂ convergence |
+| xTB Broyden (§6) | 4 | GFN0 water/H₂ convergence, GFN1 water/ethanol convergence |
+| NMR 5J Coupling (§7) | 3 | Naphthalene peri-H 5J, ethane bond counts, coupling type format |
+| SMIRKS Multi-Component (§8) | 4 | Multi-component parse/apply, single-component backward compat, dot-separated |
+| Population Public API (§9) | 2 | Water/ethanol via `compute_population()` wrapper |
+| EEQ Damping (§10) | 4 | Charge neutrality, O negative, charged molecule, H₂O symmetry |
+
+### Population Internal Unit Tests (`src/population/population.rs`)
+
+Internal `#[cfg(test)]` tests for `pub(crate)` functions not accessible from integration tests:
+
+| Test | What it validates |
+|------|-------------------|
+| `test_valence_electrons_period1_period2` | H, He, C, N, O, F, Ne coverage |
+| `test_valence_electrons_period6_main_group` | Cs, Ba, Tl, Pb, Bi, Po, At, Rn (Z=55–86) |
+| `test_valence_electrons_lanthanides` | La→Lu (Z=57–71) valence electron counts |
+| `test_valence_electrons_3d/4d/5d_transition_metals` | All transition metal series coverage |
+| `test_valence_electrons_unknown_returns_zero` | Out-of-range Z returns 0.0 |
+| `test_population_parallel_matches_serial` | Parallel ≡ serial Mulliken/Löwdin charges (feature `parallel`) |
+| `test_bond_orders_parallel_matches_serial` | Parallel ≡ serial Wiberg/Mayer bond orders (feature `parallel`) |
 
 ---
 

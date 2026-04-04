@@ -1,3 +1,5 @@
+> **Historical document** — Session 5 part 2 implementation log.
+
 # Session 5 — Part 2: Unified Alpha/Beta Architecture
 
 **Date**: Session 5, Week 2  

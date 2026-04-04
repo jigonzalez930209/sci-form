@@ -1,3 +1,5 @@
+> **Historical document** — Session 5 part 2 visual summary.
+
 # 📊 Session 5 Part 2 — Visual Summary
 
 ## 🎯 Mission Accomplished
