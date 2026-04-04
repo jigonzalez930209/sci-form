@@ -492,7 +492,8 @@ fn test_nmr_couplings_ethanol() {
     let couplings =
         sci_form::predict_nmr_couplings("CCO", &pos).expect("J-couplings should work for ethanol");
 
-    // Ethanol has H-C-C-H vicinal couplings (³J) and possibly geminal (²J)
+    // Ethanol has H-C-C-H vicinal couplings (³J), possibly geminal (²J),
+    // and long-range ⁴J couplings (e.g., H-C-C-O-H pathway)
     for coupling in &couplings {
         assert!(
             coupling.j_hz.abs() < 20.0,
@@ -500,8 +501,8 @@ fn test_nmr_couplings_ethanol() {
             coupling.j_hz
         );
         assert!(
-            coupling.n_bonds == 2 || coupling.n_bonds == 3,
-            "expected geminal or vicinal coupling, got {} bonds",
+            coupling.n_bonds >= 2 && coupling.n_bonds <= 4,
+            "expected 2/3/4-bond coupling, got {} bonds",
             coupling.n_bonds
         );
     }

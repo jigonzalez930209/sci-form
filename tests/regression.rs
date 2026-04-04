@@ -46,6 +46,8 @@ mod test_phase_c;
 mod test_phase_c_validation;
 #[path = "regression/test_pipeline_trace.rs"]
 mod test_pipeline_trace;
+#[path = "regression/test_reaction_dft_mesh.rs"]
+mod test_reaction_dft_mesh;
 #[path = "regression/test_roadmap_validation.rs"]
 mod test_roadmap_validation;
 #[path = "regression/test_sasa.rs"]
@@ -56,6 +58,8 @@ mod test_spectroscopy;
 mod test_step_by_step;
 #[path = "regression/test_tet_centers.rs"]
 mod test_tet_centers;
+#[path = "regression/test_session_algorithms.rs"]
+mod test_session_algorithms;
 
 #[cfg(feature = "alpha-cga")]
 #[path = "experimental/test_cga.rs"]

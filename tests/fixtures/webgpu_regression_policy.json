@@ -1,3 +1,17 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:591799fa3818240c746e821a5cf5ef866246ce76679141011e0934155e22f019
-size 342
+{
+  "status": {
+    "requirePassIfBaselinePassed": true,
+    "failOnMissingComparison": true
+  },
+  "accuracy": {
+    "maxAbsMultiplier": 2.0,
+    "rmsMultiplier": 2.0,
+    "maxAbsFloor": 1e-8,
+    "rmsFloor": 1e-8
+  },
+  "performance": {
+    "minSpeedupRetention": 0.75,
+    "enforceModeTiming": false,
+    "maxModeSlowdownRatio": 1.35
+  }
+}

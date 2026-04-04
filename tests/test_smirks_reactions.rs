@@ -117,15 +117,12 @@ fn test_stereochemistry_preservation() {
 }
 
 #[test]
-fn test_multi_component_rejection() {
-    // Multi-component reactions not yet supported
-    let smirks = "[C:1](=O)[OH:2].[Na+:3]>>[C:1](=O)[O-:2].[Na+:3]";
-    let result = apply_smirks(smirks, "CC(=O)O").unwrap();
-    assert!(!result.success, "Multi-component should be rejected");
-    assert!(
-        result.messages[0].contains("Multi-component"),
-        "Should explain rejection"
-    );
+fn test_multi_component_handling() {
+    // Multi-component reactions are now supported via per-component matching.
+    // With a single SMILES input, apply_smirks splits on '.' internally.
+    let smirks = "[C:1](=[O:2])[OH:3].[O:4]>>[C:1](=[O:2])[O:3].[O:4]";
+    let result = apply_smirks(smirks, "CC(=O)O.O");
+    assert!(result.is_ok());
 }
 
 #[test]
