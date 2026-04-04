@@ -315,6 +315,32 @@ Specific deep-dive for NMR: [docs/nmr_detailed_roadmap.md](file:///home/lestad/g
 
 ---
 
+## Track H: Algorithmic Hardening and Open-Shell Methods (April 2026)
+
+This track closed multiple methodological gaps identified in the todo.md audit, adding new solvers, improving existing ones, and expanding chemical coverage.
+
+### Completed Items
+
+- [x] **UHF / ROHF open-shell SCF** — `src/scf/uhf.rs`: unrestricted and restricted open-shell Hartree-Fock with configurable level shift, damping, spin contamination analysis ($\langle S^2 \rangle$), and separate α/β orbital energies. Public API: `compute_uhf()`, `compute_rohf()`, `compute_uhf_configured()`.
+- [x] **CIF import/export** — `src/materials/cif.rs`: CIF 1.1 parser and writer with uncertainty notation (`5.640(1)`), space group recognition, atom site labels, and full roundtrip fidelity. Public API: `parse_cif()`, `write_cif()`.
+- [x] **AO→MO integral transform** — `src/hf/mo_transform.rs`: 4-index transform with 4-fold symmetry (`(pq|rs) = (qp|rs) = (pq|sr) = (rs|pq)`), enabling CISD and post-HF correlation methods.
+- [x] **GPU sTDA acceleration** — `src/gpu/stda_gpu.rs`: wgpu-based J-matrix computation for sTDA UV-Vis (behind `experimental-gpu` feature).
+- [x] **GPU Hessian** — `src/gpu/hessian_gpu.rs`: GPU-accelerated displacement generation and numerical Hessian assembly for IR (behind `experimental-gpu` feature).
+- [x] **PM3 Gaussian core-core corrections** — `src/pm3/solver.rs`: added standard PM3 two-Gaussian corrections to nuclear repulsion for main-group elements (H, C, N, O, F, P, S, Cl, Br, I, Al, Si, Ge). PM3(tm) transition metals correctly skip Gaussians.
+- [x] **xTB Broyden SCC mixing** — `src/xtb/solver.rs`, `src/xtb/gfn1.rs`: replaced linear charge mixing with Broyden/modified Broyden acceleration for faster SCC convergence in GFN0 and GFN1.
+- [x] **NMR 5J long-range coupling** — `src/nmr/coupling.rs`: extended J-coupling prediction from 4J to 5J bonds through aromatic pathways; coupling type strings include `long_range_5J_H-*` format.
+- [x] **SMIRKS multi-component reactions** — `src/smirks.rs`: `apply_smirks_multi()` supports multi-reactant reaction transforms with dot-separated SMILES input.
+- [x] **Population parallel + Z=86 coverage** — `src/population/population.rs`: `valence_electrons()` expanded to cover all elements Z=1–86 including lanthanides (La–Lu), period 6 main-group (Cs–Rn), and all 3d/4d/5d transition metals. Added `compute_population_parallel()` and `compute_bond_orders_parallel()` with rayon.
+- [x] **EEQ improved Gaussian damping** — `src/charges_eeq/charges.rs`: improved 1/3-power Gaussian damping in EEQ charge model for better charge neutrality.
+
+### Test Coverage Added
+
+- 33 integration tests in `tests/regression/test_session_algorithms.rs` spanning all 10 algorithm categories
+- 9 internal unit tests in `src/population/population.rs` for `valence_electrons` coverage and parallel equivalence
+- Total lib test count: **633 passing** (up from 624)
+
+---
+
 ## Track G: Large-Scale Algorithmic Validation
 
 With the conformer engine, spectroscopic models, ML potentials (ANI), and quantum engines (HF-3c) essentially built, the system needs to be stress-tested against established standard libraries using comprehensive molecule sets.

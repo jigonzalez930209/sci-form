@@ -1,3 +1,5 @@
+> **Historical document** — Session 5 audit summary.
+
 # Alpha Module Audit & Enhancement — Session 5 Summary
 
 **Date:** March 28, 2026  

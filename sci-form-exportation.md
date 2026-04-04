@@ -1,3 +1,5 @@
+> **Historical document** — This is a session exploration log, not current documentation. For the current API surface see `.github/copilot-instructions.md` and `README.md`.
+
 # sci-form Exploration Summary
 
 ## Key Files Read Successfully

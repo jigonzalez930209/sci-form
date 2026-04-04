@@ -1,3 +1,5 @@
+> **Historical document** — Snapshot of the unified alpha/beta architecture design. For current feature gate patterns see `.agents/skills/sci-form/SKILL.md`.
+
 # Unified Alpha/Beta Architecture
 
 ## Overview

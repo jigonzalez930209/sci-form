@@ -1,3 +1,5 @@
+> **Historical document** — This session log describes the initial dynamics module implementation. Alpha module architecture is now documented in `docs/experimental/alpha.md`.
+
 k# Dynamics Roadmap Implementation Session
 
 ## Key patterns observed:

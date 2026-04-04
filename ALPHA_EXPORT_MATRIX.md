@@ -1,3 +1,5 @@
+> **Historical document** — Session 5 export audit. For the current API surface see `.github/copilot-instructions.md`.
+
 # Alpha Functions Export Matrix (Session 5 - Week 2)
 
 ## Master List: All 42 Alpha Functions and Their Export Status

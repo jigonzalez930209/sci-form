@@ -2,7 +2,7 @@
 
 **High-performance 3D molecular conformer generation and quantum-chemistry-inspired property computation**, written in pure Rust.
 
-Generates chemically valid 3D coordinates from SMILES strings with RDKit-quality accuracy (ETKDGv2), and provides a full suite of computational chemistry tools: Extended Hückel Theory, electrostatic potentials, density of states, population analysis, molecular alignment, force field energy evaluation (UFF + MMFF94), partial charges, SASA, and materials framework assembly.
+Generates chemically valid 3D coordinates from SMILES strings with RDKit-quality accuracy (ETKDGv2), and provides a full suite of computational chemistry tools: Extended Hückel Theory, semi-empirical quantum chemistry (PM3, PM3(tm), GFN0/GFN1/GFN2-xTB), ab-initio methods (HF-3c, UHF/ROHF, CISD), neural network potentials (ANI-2x, ANI-TM), electrostatic potentials, density of states, population analysis, molecular alignment, force field energy evaluation (UFF + MMFF94), partial charges, SASA, stereochemistry, NMR/IR/UV-Vis spectroscopy, CIF crystallography, and materials framework assembly.
 
 Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and a **cross-platform CLI**.
 
@@ -21,10 +21,32 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 
 ### Quantum Chemistry (EHT)
 - **Extended Hückel Theory** — Wolfsberg-Helmholtz Hamiltonian, Löwdin orthogonalization, HOMO/LUMO gaps
-- **Mulliken & Löwdin population analysis** — atomic orbital contributions per atom
+- **Mulliken & Löwdin population analysis** — atomic orbital contributions per atom (parallel, Z=1–86 including lanthanides)
 - **Molecular dipole moment** — bond dipoles + lone-pair contributions in Debye
 - **Volumetric orbital grids** — STO-3G basis, chunked evaluation for large molecules, marching cubes isosurfaces
 - **Density of States** — total DOS + per-atom PDOS with Gaussian smearing, JSON export, MSE metric
+
+### Semi-Empirical & Tight-Binding Methods
+- **PM3 / PM3(tm)** — NDDO semi-empirical SCF with Gaussian core-core corrections, heat of formation, HOMO/LUMO; transition metal support (Ti–Au)
+- **GFN0/GFN1/GFN2-xTB** — Tight-binding DFT family with Broyden SCC mixing, shell-resolved charges, D3/D4 dispersion, halogen bonding
+- **EEQ Charges** — Extended Electronegativity Equalization with improved Gaussian damping
+
+### Ab-Initio Methods
+- **HF-3c** — Minimal-basis Hartree-Fock with D3-BJ dispersion, gCP, and SRB corrections
+- **UHF / ROHF** — Unrestricted and restricted open-shell Hartree-Fock SCF with configurable level shift and damping
+- **CISD** — Configuration Interaction Singles+Doubles for excited states
+- **AO→MO Integral Transform** — 4-index integral transform with 4-fold symmetry for post-HF methods
+
+### Spectroscopy
+- **UV-Vis** — sTDA-xTB vertical excitations, Gaussian/Lorentzian broadening
+- **IR** — Numerical Hessian vibrational analysis, dipole intensities, thermochemistry (RRHO), peak assignment
+- **NMR** — Chemical shifts via HOSE codes, J-coupling (Karplus 2J–5J including long-range), ensemble averaging
+
+### Machine Learning
+- **ANI-2x / ANI-TM** — Neural network potentials with analytical gradients (24 elements including transition metals)
+- **ML Properties** — LogP, molar refractivity, solubility, Lipinski Ro5, druglikeness
+- **3D Descriptors** — WHIM, RDF, GETAWAY molecular descriptors
+- **ML Models** — Decision Trees, Random Forest, Gradient Boosting with cross-validation
 
 ### Experimental RHF Engine
 - **Isolated `experimental_2` namespace** — next-generation Roothaan-Hall RHF engine without affecting stable APIs
@@ -59,11 +81,13 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 - **Periodic unit cells** — lattice parameters (a, b, c, α, β, γ) to Cartesian tensor
 - **Secondary Building Units (SBUs)** — node/linker topology with coordination sites
 - **Framework assembly** — MOF-type crystal structure generation from SBUs + topology
+- **230 space groups** — full ITC space group library with equivalent position generation
+- **CIF import/export** — parse and write CIF 1.1 crystallographic files with uncertainty notation support
 
 ### Platform
 - **Multi-platform** — Rust lib, Python (PyO3), TypeScript/JS (WASM), CLI (Linux/macOS/Windows)
 - **Zero runtime dependencies** — pure Rust, no C++ toolchain needed
-- **SMILES, SMARTS, SMIRKS** — full parser, substructure matcher, and reaction transforms; 60+ bracket elements
+- **SMILES, SMARTS, SMIRKS** — full parser, substructure matcher, and reaction transforms (multi-component); 60+ bracket elements
 
 ---
 
@@ -73,9 +97,9 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 
 ```toml
 [dependencies]
-sci-form = "0.2"
+sci-form = "0.13"
 # For parallel batch + ESP:
-sci-form = { version = "0.2", features = ["parallel"] }
+sci-form = { version = "0.13", features = ["parallel"] }
 ```
 
 ```rust
@@ -321,7 +345,14 @@ More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader p
 | `sci_form::compute_esp` | Electrostatic potential grid (Mulliken charges) |
 | `sci_form::compute_dos` | Density of states + PDOS (EHT orbital energies) |
 | `sci_form::compute_rmsd` | RMSD after Kabsch alignment |
+| `sci_form::compute_pm3` | PM3/PM3(tm) semi-empirical SCF |
+| `sci_form::compute_xtb` | GFN0-xTB tight-binding with Broyden SCC |
+| `sci_form::compute_uhf` | Unrestricted Hartree-Fock SCF |
+| `sci_form::compute_rohf` | Restricted open-shell Hartree-Fock SCF |
 | `sci_form::compute_uff_energy` | UFF force field energy evaluation |
+| `sci_form::compute_mmff94_energy` | MMFF94 force field energy evaluation |
+| `sci_form::parse_cif` | CIF crystallographic file import |
+| `sci_form::write_cif` | CIF crystallographic file export |
 | `sci_form::create_unit_cell` | Periodic unit cell from lattice parameters |
 | `sci_form::assemble_framework` | MOF-type framework assembly from SBUs |
 
@@ -330,13 +361,23 @@ More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader p
 | Module Path | Key API |
 |-------------|---------|
 | `sci_form::eht` | `solve_eht()`, `EhtResult`, `evaluate_orbital_on_grid_chunked()`, `marching_cubes()` |
+| `sci_form::pm3` | `compute_pm3()`, PM3/PM3(tm) SCF, Gaussian core-core corrections |
+| `sci_form::xtb` | `compute_xtb()`, GFN0 SCC with Broyden mixing; `xtb::gfn1`, `xtb::gfn2` |
+| `sci_form::scf::uhf` | `run_uhf()`, `run_rohf()`, open-shell SCF with spin contamination analysis |
+| `sci_form::hf` | `solve_hf3c()`, CISD, `mo_transform::ao_to_mo_transform()` |
 | `sci_form::esp` | `compute_esp_grid_parallel()`, `esp_color_map()`, `esp_grid_to_colors()`, `export_cube()`, `read_cube()` |
 | `sci_form::dos` | `compute_dos()`, `compute_pdos()`, `dos_mse()`, `export_dos_json()` |
 | `sci_form::alignment` | `align_coordinates()`, `align_quaternion()`, `compute_rmsd()` |
 | `sci_form::forcefield` | `build_uff_force_field()`, `Mmff94Builder::build()` |
 | `sci_form::charges::gasteiger` | `gasteiger_marsili_charges()` |
+| `sci_form::charges_eeq` | `compute_eeq_charges()` — improved Gaussian damping |
 | `sci_form::surface::sasa` | `compute_sasa()` |
 | `sci_form::materials` | `UnitCell`, `Sbu`, `Topology`, `assemble_framework()` |
+| `sci_form::materials::cif` | `parse_cif()`, `write_cif()`, `CifStructure`, `CifAtomSite` |
+| `sci_form::nmr` | `predict_nmr_shifts()`, `predict_j_couplings()` (2J–5J) |
+| `sci_form::smirks` | `apply_smirks()`, `apply_smirks_multi()`, `parse_smirks()` |
+| `sci_form::stereo` | `analyze_stereo()` — R/S, E/Z, helical, atropisomeric |
+| `sci_form::population` | `compute_population()`, `compute_bond_orders()`, parallel variants |
 | `sci_form::transport` | `pack_batch_arrow()`, `ChunkedIterator`, `WorkerTask` |
 
 ---
