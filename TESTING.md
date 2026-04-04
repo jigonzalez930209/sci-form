@@ -128,6 +128,24 @@ cargo test --test test_smirks_reactions
 # Compare with RDKit (requires RDKit installation)
 python scripts/compare_smirks_reactions.py
 
+# Layered reaction comparison harness
+# - RDKit for SMIRKS semantics
+# - sci-form CLI for configurable-method NEB, backend planning, and energetics
+# - geomeTRIC ElasticBand using configurable sci-form CLI engine
+# - (optional --external) ASE NEB with tblite GFN2-xTB for truly external path validation
+# - (optional --external) tblite GFN1/GFN2 and PySCF HF/STO-3G single-point cross-validation
+python scripts/compare_reaction_layers.py
+
+# Multi-method NEB (each backend runs NEB path independently)
+python scripts/compare_reaction_layers.py --methods uff,pm3,xtb
+
+# With external reference validation (requires: pip install tblite ase pyscf)
+# NOTE: tblite may need LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libgfortran.so.5
+python scripts/compare_reaction_layers.py --methods uff,pm3 --external
+
+# JSON output
+python scripts/compare_reaction_layers.py --methods uff,pm3 --external --json
+
 # Python integration tests
 python tests/integration/test_smirks_reactions.py
 ```
@@ -144,6 +162,49 @@ python tests/integration/test_smirks_reactions.py
 | Edge cases | 5 tests | Multi-component, stereochemistry, errors |
 
 See [SMIRKS_TESTING.md](SMIRKS_TESTING.md) for detailed documentation.
+
+### Reaction-layer comparison harness
+
+`scripts/compare_reaction_layers.py` splits the reaction benchmark into independent layers instead of collapsing everything into a single pass/fail number.
+
+| Layer | Reference / target | Purpose |
+|------|---------------------|---------|
+| Semantics | RDKit | Compare SMIRKS interpretation and transform agreement |
+| Path / TS | sci-form NEB (any method) vs geomeTRIC ElasticBand vs ASE NEB (tblite) | Compare internal vs external path optimization on curated, aligned endpoint pairs |
+| Energetics | Configurable methods on common geometries | Smoke-test comparison on the same aligned endpoint geometries |
+| Cross-validation | sci-form GFN1/GFN2 vs tblite GFN1/GFN2, PySCF HF/STO-3G | Truly external single-point energy validation on identical geometries |
+
+Available NEB backend methods: `uff`, `mmff94`, `pm3`, `xtb` (GFN0), `gfn1`, `gfn2`, `hf3c`.
+Methods with analytical gradients (fast): uff, mmff94, pm3, xtb.
+Methods with numerical gradients (slow, for single-point use): gfn1, gfn2, hf3c.
+
+The script uses the experimental CLI commands:
+
+```bash
+# Single-point energy with any backend
+cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
+    neb-energy "<smiles>" "<coords_json>" --method pm3
+
+# Energy + gradient with any backend
+cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
+    neb-gradient "<smiles>" "<coords_json>" --method uff
+
+# NEB path with configurable backend
+cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
+    simplified-neb-path "<smiles>" "<start_json>" "<end_json>" --method pm3 --n-images 5 --n-iter 20
+
+# Backend planning
+cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
+    gsm-backend-plan "[H][H]"
+
+# Common-geometry backend smoke comparison used by the harness energy layer:
+cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
+    gsm-compare-backends "<smiles>" "<coords_json>" --methods '["uff","pm3"]'
+
+# GSM+MBH+HTST remains available for deeper investigation, but is no longer the default smoke-test path layer:
+cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
+    analyze-gsm-mbh-htst-step "<smiles>" "<reactant_coords_json>" "<product_coords_json>" --method xtb
+```
 
 ---
 
