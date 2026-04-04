@@ -4,9 +4,10 @@
 //! refines it using gradient information.
 
 use super::string::{grow_string, GsmConfig, GsmPath};
+use serde::{Deserialize, Serialize};
 
 /// Result of a GSM transition state search.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GsmResult {
     /// Transition state coordinates (flat).
     pub ts_coords: Vec<f64>,
