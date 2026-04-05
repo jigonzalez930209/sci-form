@@ -1334,7 +1334,11 @@ fn build_reaction_complex(
         let rz = mols[1].0[best_j * 3 + 2];
         let rl = (rx * rx + ry * ry + rz * rz).sqrt();
         if rl > 0.05 {
-            rotate_to_align(&mut mols[1].0, [rx / rl, ry / rl, rz / rl], [-1.0, 0.0, 0.0]);
+            rotate_to_align(
+                &mut mols[1].0,
+                [rx / rl, ry / rl, rz / rl],
+                [-1.0, 0.0, 0.0],
+            );
         }
     }
 
@@ -1408,12 +1412,9 @@ fn map_atoms_greedy(
     let mut used_p = vec![false; n];
 
     for (&elem, r_indices) in &r_by_elem {
-        let p_indices = p_by_elem.get(&elem).ok_or_else(|| {
-            format!(
-                "Element Z={} present in reactants but not products",
-                elem,
-            )
-        })?;
+        let p_indices = p_by_elem
+            .get(&elem)
+            .ok_or_else(|| format!("Element Z={} present in reactants but not products", elem,))?;
         if r_indices.len() != p_indices.len() {
             return Err(format!(
                 "Element Z={}: {} in reactants vs {} in products",
@@ -1547,7 +1548,10 @@ pub fn compute_reaction_dynamics(
         .collect();
     for (i, c) in r_confs.iter().enumerate() {
         if let Some(ref e) = c.error {
-            return Err(format!("Failed to embed reactant '{}': {}", reactant_smiles[i], e));
+            return Err(format!(
+                "Failed to embed reactant '{}': {}",
+                reactant_smiles[i], e
+            ));
         }
     }
 
@@ -1557,7 +1561,10 @@ pub fn compute_reaction_dynamics(
         .collect();
     for (i, c) in p_confs.iter().enumerate() {
         if let Some(ref e) = c.error {
-            return Err(format!("Failed to embed product '{}': {}", product_smiles[i], e));
+            return Err(format!(
+                "Failed to embed product '{}': {}",
+                product_smiles[i], e
+            ));
         }
     }
 
@@ -1643,11 +1650,22 @@ pub fn compute_reaction_dynamics(
 
     let na = config.n_approach_frames;
     for i in 0..na {
-        let alpha = if na > 1 { i as f64 / (na - 1) as f64 } else { 1.0 };
+        let alpha = if na > 1 {
+            i as f64 / (na - 1) as f64
+        } else {
+            1.0
+        };
         let coords = slide_molecules(&r_coords, &r_mol_ranges, alpha, config.far_distance);
         let mut grad = vec![0.0; n_xyz];
-        let energy = neb_energy_and_gradient(backend, &combined_smiles, &r_elements, &mol, &coords, &mut grad)
-            .unwrap_or(0.0);
+        let energy = neb_energy_and_gradient(
+            backend,
+            &combined_smiles,
+            &r_elements,
+            &mol,
+            &coords,
+            &mut grad,
+        )
+        .unwrap_or(0.0);
         frames.push(ReactionDynamicsFrame {
             index: frames.len(),
             coords,
@@ -1669,11 +1687,22 @@ pub fn compute_reaction_dynamics(
     // ── 9. Departure frames with energies ──────────────────────────────
     let nd = config.n_departure_frames;
     for i in 0..nd {
-        let alpha = if nd > 1 { 1.0 - i as f64 / (nd - 1) as f64 } else { 0.0 };
+        let alpha = if nd > 1 {
+            1.0 - i as f64 / (nd - 1) as f64
+        } else {
+            0.0
+        };
         let coords = slide_molecules(&p_reordered, &p_mol_ranges, alpha, config.far_distance);
         let mut grad = vec![0.0; n_xyz];
-        let energy = neb_energy_and_gradient(backend, &combined_smiles, &r_elements, &mol, &coords, &mut grad)
-            .unwrap_or(0.0);
+        let energy = neb_energy_and_gradient(
+            backend,
+            &combined_smiles,
+            &r_elements,
+            &mol,
+            &coords,
+            &mut grad,
+        )
+        .unwrap_or(0.0);
         frames.push(ReactionDynamicsFrame {
             index: frames.len(),
             coords,

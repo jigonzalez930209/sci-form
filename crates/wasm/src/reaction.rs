@@ -264,16 +264,15 @@ pub fn compute_reaction_dynamics(
         Err(e) => return json_error(&format!("bad product_smiles: {}", e)),
     };
 
-    let config: sci_form::dynamics::ReactionDynamicsConfig = if config_json.is_empty()
-        || config_json == "{}"
-    {
-        sci_form::dynamics::ReactionDynamicsConfig::default()
-    } else {
-        match serde_json::from_str(config_json) {
-            Ok(c) => c,
-            Err(e) => return json_error(&format!("bad config: {}", e)),
-        }
-    };
+    let config: sci_form::dynamics::ReactionDynamicsConfig =
+        if config_json.is_empty() || config_json == "{}" {
+            sci_form::dynamics::ReactionDynamicsConfig::default()
+        } else {
+            match serde_json::from_str(config_json) {
+                Ok(c) => c,
+                Err(e) => return json_error(&format!("bad config: {}", e)),
+            }
+        };
 
     let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
     let p_refs: Vec<&str> = products.iter().map(String::as_str).collect();
