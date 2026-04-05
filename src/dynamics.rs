@@ -1513,10 +1513,81 @@ fn slide_molecules(
     out
 }
 
+/// Build a reactant complex guided by the product geometry.
+///
+/// For each reactant fragment, positions its embedded 3D geometry at the
+/// centre-of-mass of the corresponding atoms in the **reordered product**
+/// (product coords in reactant atom order).  Each fragment is Kabsch-aligned
+/// to its product target positions and then translated to the product-derived
+/// COM.  This ensures that the approach direction is chemically meaningful:
+/// e.g. for H₂ + C₂H₂ → C₂H₄, H₂ approaches from beside the C≡C bond
+/// (where the H atoms end up in ethylene), not end-on.
+fn build_product_guided_reactant_complex(
+    r_confs: &[crate::ConformerResult],
+    p_reordered_coords: &[f64],
+) -> Vec<f64> {
+    let n_total: usize = r_confs.iter().map(|c| c.num_atoms).sum();
+    let mut all_coords = vec![0.0f64; n_total * 3];
+    let mut atom_off = 0usize;
+
+    for conf in r_confs {
+        let n = conf.num_atoms;
+        // Product-side positions for this fragment's atoms
+        let p_frag: Vec<f64> = (atom_off..atom_off + n)
+            .flat_map(|a| {
+                [
+                    p_reordered_coords[a * 3],
+                    p_reordered_coords[a * 3 + 1],
+                    p_reordered_coords[a * 3 + 2],
+                ]
+            })
+            .collect();
+        let p_com = com_flat(&p_frag);
+
+        // Reactant fragment's own geometry, centred at origin
+        let mut r_frag = conf.coords.clone();
+        centre_at_origin(&mut r_frag);
+
+        // Kabsch-align reactant fragment onto the product fragment positions
+        // (both centred at their own COMs) to get the best rotation.
+        if n >= 2 {
+            let aligned = crate::alignment::kabsch::align_coordinates(&r_frag, &p_frag);
+            // The aligned_coords are translated onto reference centroid,
+            // so we must re-centre them and use the product COM.
+            let ac = com_flat(&aligned.aligned_coords);
+            for a in 0..n {
+                all_coords[(atom_off + a) * 3] = aligned.aligned_coords[a * 3] - ac[0] + p_com[0];
+                all_coords[(atom_off + a) * 3 + 1] =
+                    aligned.aligned_coords[a * 3 + 1] - ac[1] + p_com[1];
+                all_coords[(atom_off + a) * 3 + 2] =
+                    aligned.aligned_coords[a * 3 + 2] - ac[2] + p_com[2];
+            }
+        } else {
+            // Single atom — just place at product position
+            for a in 0..n {
+                all_coords[(atom_off + a) * 3] = r_frag[a * 3] + p_com[0];
+                all_coords[(atom_off + a) * 3 + 1] = r_frag[a * 3 + 1] + p_com[1];
+                all_coords[(atom_off + a) * 3 + 2] = r_frag[a * 3 + 2] + p_com[2];
+            }
+        }
+
+        atom_off += n;
+    }
+
+    centre_at_origin(&mut all_coords);
+    all_coords
+}
+
 /// Compute a full reaction dynamics path: embed reactants + products,
 /// build oriented complexes, run NEB for the reactive region, and generate
 /// approach/departure frames — all energies computed in Rust with the
 /// chosen quantum-chemistry method.
+///
+/// The reactant complex orientation is **derived from the product geometry**:
+/// each reactant fragment is positioned where its atoms end up in the product,
+/// ensuring a chemically meaningful approach direction.  For example, in
+/// H₂ + C₂H₂ → C₂H₄ the H₂ approaches side-on to the π system rather than
+/// end-on along the C≡C axis.
 ///
 /// # Arguments
 ///
@@ -1579,18 +1650,29 @@ pub fn compute_reaction_dynamics(
         ));
     }
 
-    // ── 2. Build oriented reactive complexes ───────────────────────────
-    let (r_coords, r_elements) = build_reaction_complex(&r_confs, config.reactive_distance);
+    // ── 2. Build product complex and collect elements ──────────────────
     let (p_coords, p_elements) = build_reaction_complex(&p_confs, config.reactive_distance);
 
+    // Reactant elements in concatenation order
+    let r_elements: Vec<u8> = r_confs
+        .iter()
+        .flat_map(|c| c.elements.iter().copied())
+        .collect();
+
     // ── 3. Atom mapping: greedy by element + distance ──────────────────
-    let mapping = map_atoms_greedy(&r_elements, &r_coords, &p_elements, &p_coords)?;
+    //  We need a temporary reactant complex just for the distance mapping.
+    //  Use product-agnostic placement first, then rebuild with guidance.
+    let (r_coords_tmp, _) = build_reaction_complex(&r_confs, config.reactive_distance);
+    let mapping = map_atoms_greedy(&r_elements, &r_coords_tmp, &p_elements, &p_coords)?;
     let p_reordered = reorder_coords(&p_coords, &mapping);
 
-    // ── 4. Combined SMILES (dot-separated reactants) for NEB topology ──
+    // ── 4. Build reactant complex guided by product geometry ───────────
+    let r_coords = build_product_guided_reactant_complex(&r_confs, &p_reordered);
+
+    // ── 5. Combined SMILES (dot-separated reactants) for NEB topology ──
     let combined_smiles = reactant_smiles.join(".");
 
-    // ── 5. NEB between reactant and product complexes ──────────────────
+    // ── 6. NEB between product-guided reactant complex and product ─────
     let neb = compute_simplified_neb_path_configurable(
         &combined_smiles,
         &r_coords,
@@ -1602,7 +1684,7 @@ pub fn compute_reaction_dynamics(
         method,
     )?;
 
-    // ── 6. Compute molecule ranges for approach/departure sliding ──────
+    // ── 7. Compute molecule ranges for approach sliding ────────────────
     let r_mol_ranges: Vec<(usize, usize)> = {
         let mut ranges = Vec::new();
         let mut off = 0usize;
@@ -1613,37 +1695,7 @@ pub fn compute_reaction_dynamics(
         ranges
     };
 
-    // Product molecule ranges (after reordering into reactant atom order)
-    let p_mol_assign: Vec<usize> = {
-        let mut assign = vec![0usize; p_total];
-        let mut off = 0usize;
-        for (m, c) in p_confs.iter().enumerate() {
-            for a in off..off + c.num_atoms {
-                assign[a] = m;
-            }
-            off += c.num_atoms;
-        }
-        // Remap into reactant order via mapping
-        mapping.iter().map(|&pi| assign[pi]).collect()
-    };
-    let p_mol_ranges: Vec<(usize, usize)> = {
-        let n_mols = p_confs.len();
-        let mut ranges = Vec::with_capacity(n_mols);
-        for m in 0..n_mols {
-            let atoms: Vec<usize> = p_mol_assign
-                .iter()
-                .enumerate()
-                .filter(|(_, &a)| a == m)
-                .map(|(i, _)| i)
-                .collect();
-            if let (Some(&lo), Some(&hi)) = (atoms.first(), atoms.last()) {
-                ranges.push((lo, hi + 1));
-            }
-        }
-        ranges
-    };
-
-    // ── 7. Build approach frames with energies ─────────────────────────
+    // ── 8. Build approach frames with energies ─────────────────────────
     let mut frames = Vec::new();
     let mol = crate::graph::Molecule::from_smiles(&combined_smiles)?;
     let n_xyz = r_total * 3;
@@ -1674,7 +1726,7 @@ pub fn compute_reaction_dynamics(
         });
     }
 
-    // ── 8. Reaction frames from NEB ────────────────────────────────────
+    // ── 9. Reaction frames from NEB ────────────────────────────────────
     for img in &neb.images {
         frames.push(ReactionDynamicsFrame {
             index: frames.len(),
@@ -1684,15 +1736,56 @@ pub fn compute_reaction_dynamics(
         });
     }
 
-    // ── 9. Departure frames with energies ──────────────────────────────
+    // ── 10. Departure frames with energies ─────────────────────────────
+    //   If all products form a single molecule (e.g. C2H2 + H2 → C2H4),
+    //   the departure phase holds the product geometry steady — no sliding.
+    //   When there are multiple product molecules, slide them apart.
     let nd = config.n_departure_frames;
+    let single_product = p_confs.len() == 1;
+
+    // Product molecule ranges (after reordering into reactant atom order)
+    let p_mol_ranges: Vec<(usize, usize)> = if single_product {
+        vec![(0, r_total)]
+    } else {
+        let p_mol_assign: Vec<usize> = {
+            let mut assign = vec![0usize; p_total];
+            let mut off = 0usize;
+            for (m, c) in p_confs.iter().enumerate() {
+                for a in off..off + c.num_atoms {
+                    assign[a] = m;
+                }
+                off += c.num_atoms;
+            }
+            mapping.iter().map(|&pi| assign[pi]).collect()
+        };
+        let n_mols = p_confs.len();
+        let mut ranges = Vec::with_capacity(n_mols);
+        for m in 0..n_mols {
+            let atoms: Vec<usize> = p_mol_assign
+                .iter()
+                .enumerate()
+                .filter(|(_, &a)| a == m)
+                .map(|(i, _)| i)
+                .collect();
+            if let (Some(&lo), Some(&hi)) = (atoms.first(), atoms.last()) {
+                ranges.push((lo, hi + 1));
+            }
+        }
+        ranges
+    };
+
     for i in 0..nd {
         let alpha = if nd > 1 {
             1.0 - i as f64 / (nd - 1) as f64
         } else {
             0.0
         };
-        let coords = slide_molecules(&p_reordered, &p_mol_ranges, alpha, config.far_distance);
+        let coords = if single_product {
+            // Single product — no separation; hold the product geometry
+            p_reordered.clone()
+        } else {
+            slide_molecules(&p_reordered, &p_mol_ranges, alpha, config.far_distance)
+        };
         let mut grad = vec![0.0; n_xyz];
         let energy = neb_energy_and_gradient(
             backend,
@@ -1711,7 +1804,7 @@ pub fn compute_reaction_dynamics(
         });
     }
 
-    // ── 10. Find TS and compute energetics ─────────────────────────────
+    // ── 11. Find TS and compute energetics ─────────────────────────────
     let ts_idx = frames
         .iter()
         .enumerate()
@@ -1735,6 +1828,10 @@ pub fn compute_reaction_dynamics(
         nd,
         frames.len(),
     ));
+    notes.push(
+        "Reactant complex oriented using product geometry for chemically meaningful approach."
+            .to_string(),
+    );
 
     Ok(ReactionDynamicsResult {
         frames,
