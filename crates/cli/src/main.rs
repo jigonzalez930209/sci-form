@@ -302,5 +302,47 @@ fn main() {
         Commands::ReportGenerator => experimental_cmds::cmd_report_generator(),
         Commands::PipelineValidator => experimental_cmds::cmd_pipeline_validator(),
         Commands::CacheResults => experimental_cmds::cmd_cache_results(),
+
+        #[cfg(feature = "alpha-reaction-dynamics")]
+        Commands::ReactionDynamics3d {
+            reactant_smiles,
+            product_smiles,
+            method,
+            n_images,
+            n_approach,
+            n_departure,
+            smirks,
+            seed,
+        } => {
+            let reactants: Vec<String> =
+                serde_json::from_str(&reactant_smiles).unwrap_or_else(|e| {
+                    eprintln!("bad reactant_smiles: {e}");
+                    std::process::exit(1);
+                });
+            let products: Vec<String> = serde_json::from_str(&product_smiles).unwrap_or_else(|e| {
+                eprintln!("bad product_smiles: {e}");
+                std::process::exit(1);
+            });
+            let config = sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig {
+                method,
+                n_images,
+                n_approach_frames: n_approach,
+                n_departure_frames: n_departure,
+                smirks,
+                seed,
+                ..Default::default()
+            };
+            let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
+            let p_refs: Vec<&str> = products.iter().map(String::as_str).collect();
+            match sci_form::alpha::reaction_dynamics::compute_reaction_dynamics_3d(
+                &r_refs, &p_refs, &config,
+            ) {
+                Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
     }
 }

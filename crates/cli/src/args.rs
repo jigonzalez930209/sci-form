@@ -507,4 +507,31 @@ pub enum Commands {
 
     /// [auxiliary] Cache computation results
     CacheResults,
+
+    /// [alpha-reaction-dynamics] Compute full 3D reaction dynamics path
+    #[cfg(feature = "alpha-reaction-dynamics")]
+    ReactionDynamics3d {
+        /// JSON array of reactant SMILES, e.g. '["[Cl-]", "CBr"]'
+        reactant_smiles: String,
+        /// JSON array of product SMILES, e.g. '["ClC", "[Br-]"]'
+        product_smiles: String,
+        /// Energy backend: uff, xtb, gfn1, gfn2 (default), pm3, hf3c
+        #[arg(long, default_value = "gfn2")]
+        method: String,
+        /// Number of NEB images
+        #[arg(long, default_value_t = 30)]
+        n_images: usize,
+        /// Number of approach frames
+        #[arg(long, default_value_t = 15)]
+        n_approach: usize,
+        /// Number of departure frames
+        #[arg(long, default_value_t = 15)]
+        n_departure: usize,
+        /// Optional SMIRKS reaction string
+        #[arg(long)]
+        smirks: Option<String>,
+        /// Random seed
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+    },
 }
