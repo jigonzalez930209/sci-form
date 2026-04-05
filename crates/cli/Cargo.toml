@@ -32,6 +32,7 @@ alpha-edl = ["sci-form/alpha-edl"]
 alpha-periodic-linear = ["sci-form/alpha-periodic-linear"]
 alpha-kinetics = ["sci-form/alpha-kinetics"]
 alpha-render-bridge = ["sci-form/alpha-render-bridge"]
+alpha-reaction-dynamics = ["sci-form/alpha-reaction-dynamics"]
 
 [dependencies]
 sci-form = { path = "../..", version = "0.14.4", default-features = false }
