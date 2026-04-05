@@ -727,10 +727,60 @@ pub fn alpha_modules_info() -> String {
             "cga",
             "gsm",
             "sdr",
-            "dynamics-live"
+            "dynamics-live",
+            "reaction-dynamics"
         ],
         "stability": "alpha — experimental, subject to breaking changes",
-        "version": "0.11.2"
+        "version": "0.14.4"
     })
     .to_string()
+}
+
+// ─── A9: Alpha Reaction Dynamics 3D ─────────────────────────────────────────
+
+/// Compute a full 3D reaction dynamics path using the alpha pipeline.
+///
+/// Uses CI-NEB with IDPP initialisation, constrained geometry relaxation,
+/// orbital/electrostatic approach guidance, and optional SMIRKS atom mapping.
+///
+/// `reactant_smiles_json`: JSON array of reactant SMILES, e.g. `["[Cl-]", "CBr"]`.
+/// `product_smiles_json`:  JSON array of product SMILES, e.g. `["ClC", "[Br-]"]`.
+/// `config_json`: optional JSON config; pass `""` or `"{}"` for defaults (GFN2-xTB).
+///
+/// Returns JSON with frames (approach + NEB + departure), energies, TS info.
+#[cfg(feature = "alpha-reaction-dynamics")]
+#[wasm_bindgen]
+pub fn compute_reaction_dynamics_3d(
+    reactant_smiles_json: &str,
+    product_smiles_json: &str,
+    config_json: &str,
+) -> String {
+    let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad reactant_smiles: {}", e)),
+    };
+    let products: Vec<String> = match serde_json::from_str(product_smiles_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad product_smiles: {}", e)),
+    };
+
+    let config: sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig =
+        if config_json.is_empty() || config_json == "{}" {
+            sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig::default()
+        } else {
+            match serde_json::from_str(config_json) {
+                Ok(c) => c,
+                Err(e) => return json_error(&format!("bad config: {}", e)),
+            }
+        };
+
+    let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
+    let p_refs: Vec<&str> = products.iter().map(String::as_str).collect();
+
+    match sci_form::alpha::reaction_dynamics::compute_reaction_dynamics_3d(
+        &r_refs, &p_refs, &config,
+    ) {
+        Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| json_error(&e.to_string())),
+        Err(e) => json_error(&e),
+    }
 }
