@@ -58,6 +58,7 @@ alpha-edl = ["experimental-cpm", "experimental-eeq", "experimental-alpb"]
 alpha-periodic-linear = ["experimental-kpm", "experimental-randnla"]
 alpha-kinetics = ["experimental-gsm", "experimental-mbh"]
 alpha-render-bridge = ["experimental-kpm", "experimental-gsm", "experimental-gpu-rendering"]
+alpha-reaction-dynamics = []
 # Beta — tested, approaching core readiness
 beta-kpm = []
 beta-mbh = []
