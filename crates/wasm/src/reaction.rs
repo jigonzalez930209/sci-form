@@ -235,3 +235,51 @@ pub fn list_neb_backends(elements_json: &str) -> String {
 
     serde_json::to_string(&backends).unwrap_or_else(|e| json_error(&e.to_string()))
 }
+
+// ─── Full reaction dynamics ─────────────────────────────────────────────────
+
+/// Compute a full reaction dynamics path: embed reactant + product fragments,
+/// build oriented complexes, run NEB for the reactive zone, and generate
+/// approach/departure frames — all energies computed in Rust.
+///
+/// `reactant_smiles_json`: JSON array of reactant SMILES, e.g. `["CC(=O)O", "N"]`.
+/// `product_smiles_json`:  JSON array of product SMILES, e.g. `["CC(=O)N", "O"]`.
+/// `method`: energy backend — `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`, `"hf3c"`.
+/// `config_json`: optional JSON [`ReactionDynamicsConfig`]; pass `""` or `"{}"` for defaults.
+///
+/// Returns JSON [`ReactionDynamicsResult`] with frames, energies, TS info.
+#[wasm_bindgen]
+pub fn compute_reaction_dynamics(
+    reactant_smiles_json: &str,
+    product_smiles_json: &str,
+    method: &str,
+    config_json: &str,
+) -> String {
+    let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad reactant_smiles: {}", e)),
+    };
+    let products: Vec<String> = match serde_json::from_str(product_smiles_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad product_smiles: {}", e)),
+    };
+
+    let config: sci_form::dynamics::ReactionDynamicsConfig = if config_json.is_empty()
+        || config_json == "{}"
+    {
+        sci_form::dynamics::ReactionDynamicsConfig::default()
+    } else {
+        match serde_json::from_str(config_json) {
+            Ok(c) => c,
+            Err(e) => return json_error(&format!("bad config: {}", e)),
+        }
+    };
+
+    let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
+    let p_refs: Vec<&str> = products.iter().map(String::as_str).collect();
+
+    match sci_form::compute_reaction_dynamics(&r_refs, &p_refs, method, &config) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}

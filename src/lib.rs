@@ -2001,6 +2001,20 @@ pub fn neb_backend_energy_and_gradient(
     dynamics::neb_backend_energy_and_gradient(method, smiles, coords)
 }
 
+/// Compute a full reaction dynamics path: embed reactant + product fragments,
+/// build oriented complexes, run NEB for the reactive zone, and generate
+/// approach/departure frames — all with energies computed in Rust.
+///
+/// See [`dynamics::ReactionDynamicsConfig`] for tuning parameters.
+pub fn compute_reaction_dynamics(
+    reactant_smiles: &[&str],
+    product_smiles: &[&str],
+    method: &str,
+    config: &dynamics::ReactionDynamicsConfig,
+) -> Result<dynamics::ReactionDynamicsResult, String> {
+    dynamics::compute_reaction_dynamics(reactant_smiles, product_smiles, method, config)
+}
+
 fn coords_flat_to_matrix_f32(coords: &[f64], n_atoms: usize) -> nalgebra::DMatrix<f32> {
     let mut m = nalgebra::DMatrix::<f32>::zeros(n_atoms, 3);
     for i in 0..n_atoms {
