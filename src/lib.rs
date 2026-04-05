@@ -85,7 +85,8 @@ pub mod xtb;
     feature = "alpha-edl",
     feature = "alpha-periodic-linear",
     feature = "alpha-kinetics",
-    feature = "alpha-render-bridge"
+    feature = "alpha-render-bridge",
+    feature = "alpha-reaction-dynamics"
 ))]
 pub mod alpha;
 

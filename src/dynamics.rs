@@ -457,6 +457,9 @@ fn neb_point_energy_kcal(
 
 /// Compute energy and numerical gradient (central finite differences) for
 /// backends without analytical gradients.
+///
+/// When the `parallel` feature is enabled, displacement evaluations are
+/// distributed across the rayon thread pool for ~Nx speedup.
 fn neb_numerical_gradient(
     backend: NebBackend,
     elements: &[u8],
@@ -465,15 +468,40 @@ fn neb_numerical_gradient(
 ) -> Result<f64, String> {
     let delta = 1e-5; // Å
     let e0 = neb_point_energy_kcal(backend, elements, coords)?;
-    let mut displaced = coords.to_vec();
-    for i in 0..coords.len() {
-        displaced[i] = coords[i] + delta;
-        let e_plus = neb_point_energy_kcal(backend, elements, &displaced)?;
-        displaced[i] = coords[i] - delta;
-        let e_minus = neb_point_energy_kcal(backend, elements, &displaced)?;
-        displaced[i] = coords[i]; // restore
-        grad[i] = (e_plus - e_minus) / (2.0 * delta);
+
+    #[cfg(feature = "parallel")]
+    {
+        use rayon::prelude::*;
+        let n = coords.len();
+        let results: Vec<Result<f64, String>> = (0..n)
+            .into_par_iter()
+            .map(|i| {
+                let mut displaced = coords.to_vec();
+                displaced[i] = coords[i] + delta;
+                let e_plus = neb_point_energy_kcal(backend, elements, &displaced)?;
+                displaced[i] = coords[i] - delta;
+                let e_minus = neb_point_energy_kcal(backend, elements, &displaced)?;
+                Ok((e_plus - e_minus) / (2.0 * delta))
+            })
+            .collect();
+        for (i, r) in results.into_iter().enumerate() {
+            grad[i] = r?;
+        }
     }
+
+    #[cfg(not(feature = "parallel"))]
+    {
+        let mut displaced = coords.to_vec();
+        for i in 0..coords.len() {
+            displaced[i] = coords[i] + delta;
+            let e_plus = neb_point_energy_kcal(backend, elements, &displaced)?;
+            displaced[i] = coords[i] - delta;
+            let e_minus = neb_point_energy_kcal(backend, elements, &displaced)?;
+            displaced[i] = coords[i]; // restore
+            grad[i] = (e_plus - e_minus) / (2.0 * delta);
+        }
+    }
+
     Ok(e0)
 }
 
@@ -1186,7 +1214,7 @@ pub struct ReactionDynamicsResult {
 }
 
 /// Centre-of-mass of a flat coordinate array.
-fn com_flat(coords: &[f64]) -> [f64; 3] {
+pub fn com_flat(coords: &[f64]) -> [f64; 3] {
     let n = coords.len() / 3;
     if n == 0 {
         return [0.0; 3];
@@ -1204,7 +1232,7 @@ fn com_flat(coords: &[f64]) -> [f64; 3] {
 }
 
 /// Translate coords so COM is at origin.
-fn centre_at_origin(coords: &mut [f64]) {
+pub fn centre_at_origin(coords: &mut [f64]) {
     let [cx, cy, cz] = com_flat(coords);
     for i in (0..coords.len()).step_by(3) {
         coords[i] -= cx;
@@ -1385,7 +1413,7 @@ fn build_reaction_complex(
 /// Returns `mapping[i]` = index in the product complex that corresponds
 /// to reactant atom `i`. Matches atoms of the same element, choosing the
 /// closest unmatched pair greedily.
-fn map_atoms_greedy(
+pub fn map_atoms_greedy(
     r_elements: &[u8],
     r_coords: &[f64],
     p_elements: &[u8],
@@ -1451,7 +1479,7 @@ fn map_atoms_greedy(
 }
 
 /// Reorder product coords into reactant atom order using `mapping`.
-fn reorder_coords(coords: &[f64], mapping: &[usize]) -> Vec<f64> {
+pub fn reorder_coords(coords: &[f64], mapping: &[usize]) -> Vec<f64> {
     let mut out = vec![0.0; coords.len()];
     for (i, &j) in mapping.iter().enumerate() {
         out[i * 3] = coords[j * 3];
@@ -1465,7 +1493,7 @@ fn reorder_coords(coords: &[f64], mapping: &[usize]) -> Vec<f64> {
 ///
 /// `mol_ranges[m] = (start_atom, end_atom)` (exclusive end) per molecule.
 /// `alpha` = 0 → atoms at `far_dist` from global COM; `alpha` = 1 → at complex position.
-fn slide_molecules(
+pub fn slide_molecules(
     complex_coords: &[f64],
     mol_ranges: &[(usize, usize)],
     alpha: f64,
