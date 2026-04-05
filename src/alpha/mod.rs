@@ -47,3 +47,6 @@ pub mod render_bridge;
 
 #[cfg(feature = "alpha-sdr")]
 pub mod sdr;
+
+#[cfg(feature = "alpha-reaction-dynamics")]
+pub mod reaction_dynamics;
