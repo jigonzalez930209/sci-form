@@ -1107,3 +1107,614 @@ fn element_symbol(z: u8) -> &'static str {
         _ => "X",
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Reaction dynamics: SMILES → embed → complex → NEB → full frame path
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Configuration for a full reaction dynamics computation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReactionDynamicsConfig {
+    /// Number of NEB images for the reactive region.
+    pub n_neb_images: usize,
+    /// NEB spring-coupled relaxation iterations.
+    pub neb_iterations: usize,
+    /// NEB spring constant (kcal/mol/Å²).
+    pub spring_k: f64,
+    /// NEB optimisation step size (Å).
+    pub step_size: f64,
+    /// Number of approach frames (molecules approaching).
+    pub n_approach_frames: usize,
+    /// Number of departure frames (products separating).
+    pub n_departure_frames: usize,
+    /// Far distance (Å) at start/end of approach/departure.
+    pub far_distance: f64,
+    /// Target distance between reactive atoms in the complexes (Å).
+    pub reactive_distance: f64,
+    /// Random seed for conformer generation.
+    pub seed: u64,
+}
+
+impl Default for ReactionDynamicsConfig {
+    fn default() -> Self {
+        Self {
+            n_neb_images: 30,
+            neb_iterations: 100,
+            spring_k: 0.1,
+            step_size: 0.01,
+            n_approach_frames: 15,
+            n_departure_frames: 15,
+            far_distance: 8.0,
+            reactive_distance: 2.0,
+            seed: 42,
+        }
+    }
+}
+
+/// A single frame along the reaction coordinate.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReactionDynamicsFrame {
+    /// Frame index (0-based).
+    pub index: usize,
+    /// Flat xyz coordinates `[x0,y0,z0, x1,y1,z1, ...]` in Å.
+    pub coords: Vec<f64>,
+    /// Energy at this frame (kcal/mol).
+    pub energy_kcal_mol: f64,
+    /// Phase label: `"approach"`, `"reaction"`, or `"departure"`.
+    pub phase: String,
+}
+
+/// Full result of a reaction dynamics computation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReactionDynamicsResult {
+    /// All frames ordered along the reaction coordinate.
+    pub frames: Vec<ReactionDynamicsFrame>,
+    /// Atomic numbers for every atom in each frame (same for all frames).
+    pub elements: Vec<u8>,
+    /// Frame index of the transition state (highest energy).
+    pub ts_frame_index: usize,
+    /// Activation energy (kcal/mol) = E(TS) − E(first frame).
+    pub activation_energy_kcal_mol: f64,
+    /// Reaction energy (kcal/mol) = E(last frame) − E(first frame).
+    pub reaction_energy_kcal_mol: f64,
+    /// Method used for energy/gradient evaluation.
+    pub method: String,
+    /// Number of atoms per frame.
+    pub n_atoms: usize,
+    /// Informational notes.
+    pub notes: Vec<String>,
+}
+
+/// Centre-of-mass of a flat coordinate array.
+fn com_flat(coords: &[f64]) -> [f64; 3] {
+    let n = coords.len() / 3;
+    if n == 0 {
+        return [0.0; 3];
+    }
+    let mut cx = 0.0;
+    let mut cy = 0.0;
+    let mut cz = 0.0;
+    for i in 0..n {
+        cx += coords[i * 3];
+        cy += coords[i * 3 + 1];
+        cz += coords[i * 3 + 2];
+    }
+    let nf = n as f64;
+    [cx / nf, cy / nf, cz / nf]
+}
+
+/// Translate coords so COM is at origin.
+fn centre_at_origin(coords: &mut [f64]) {
+    let [cx, cy, cz] = com_flat(coords);
+    for i in (0..coords.len()).step_by(3) {
+        coords[i] -= cx;
+        coords[i + 1] -= cy;
+        coords[i + 2] -= cz;
+    }
+}
+
+/// Rodrigues rotation: rotate flat coords so direction `from` aligns with `to`.
+fn rotate_to_align(coords: &mut [f64], from: [f64; 3], to: [f64; 3]) {
+    let fl = (from[0] * from[0] + from[1] * from[1] + from[2] * from[2]).sqrt();
+    let tl = (to[0] * to[0] + to[1] * to[1] + to[2] * to[2]).sqrt();
+    if fl < 1e-10 || tl < 1e-10 {
+        return;
+    }
+    let fx = from[0] / fl;
+    let fy = from[1] / fl;
+    let fz = from[2] / fl;
+    let tx = to[0] / tl;
+    let ty = to[1] / tl;
+    let tz = to[2] / tl;
+
+    let kx = fy * tz - fz * ty;
+    let ky = fz * tx - fx * tz;
+    let kz = fx * ty - fy * tx;
+    let sin_a = (kx * kx + ky * ky + kz * kz).sqrt();
+    let cos_a = fx * tx + fy * ty + fz * tz;
+
+    if sin_a < 1e-10 {
+        if cos_a > 0.0 {
+            return; // already aligned
+        }
+        // Anti-aligned: reflect through a perpendicular plane
+        for i in (0..coords.len()).step_by(3) {
+            coords[i] = -coords[i];
+        }
+        return;
+    }
+
+    let nkx = kx / sin_a;
+    let nky = ky / sin_a;
+    let nkz = kz / sin_a;
+    let c = cos_a;
+    let s = sin_a;
+    let t1 = 1.0 - c;
+
+    for i in (0..coords.len()).step_by(3) {
+        let x = coords[i];
+        let y = coords[i + 1];
+        let z = coords[i + 2];
+        let dot = nkx * x + nky * y + nkz * z;
+        coords[i] = x * c + (nky * z - nkz * y) * s + nkx * dot * t1;
+        coords[i + 1] = y * c + (nkz * x - nkx * z) * s + nky * dot * t1;
+        coords[i + 2] = z * c + (nkx * y - nky * x) * s + nkz * dot * t1;
+    }
+}
+
+/// Build a reactive complex from separately-embedded molecule conformers.
+///
+/// Each molecule is centred at its own COM, then the first two are oriented so
+/// their closest-pair atoms face each other at `reactive_dist` Å apart.
+/// Returns `(flat_coords, elements)` with the overall COM at origin.
+fn build_reaction_complex(
+    conformers: &[crate::ConformerResult],
+    reactive_dist: f64,
+) -> (Vec<f64>, Vec<u8>) {
+    if conformers.is_empty() {
+        return (vec![], vec![]);
+    }
+
+    // Centre each molecule at its own COM
+    let mut mols: Vec<(Vec<f64>, Vec<u8>)> = conformers
+        .iter()
+        .map(|c| {
+            let mut coords = c.coords.clone();
+            centre_at_origin(&mut coords);
+            (coords, c.elements.clone())
+        })
+        .collect();
+
+    if mols.len() == 1 {
+        let (mut coords, elems) = mols.remove(0);
+        centre_at_origin(&mut coords);
+        return (coords, elems);
+    }
+
+    // Find closest inter-molecular pair between mol 0 and mol 1
+    let n0 = mols[0].1.len();
+    let n1 = mols[1].1.len();
+    let mut best_i = 0usize;
+    let mut best_j = 0usize;
+    let mut best_d2 = f64::INFINITY;
+    // Use a reference offset so we rank "face-to-face" proximity
+    let ref_off = 4.0;
+    for i in 0..n0 {
+        let xi = mols[0].0[i * 3];
+        let yi = mols[0].0[i * 3 + 1];
+        let zi = mols[0].0[i * 3 + 2];
+        for j in 0..n1 {
+            let dx = mols[1].0[j * 3] + ref_off - xi;
+            let dy = mols[1].0[j * 3 + 1] - yi;
+            let dz = mols[1].0[j * 3 + 2] - zi;
+            let d2 = dx * dx + dy * dy + dz * dz;
+            if d2 < best_d2 {
+                best_d2 = d2;
+                best_i = i;
+                best_j = j;
+            }
+        }
+    }
+
+    // Orient mol 0 reactive atom → +X
+    {
+        let rx = mols[0].0[best_i * 3];
+        let ry = mols[0].0[best_i * 3 + 1];
+        let rz = mols[0].0[best_i * 3 + 2];
+        let rl = (rx * rx + ry * ry + rz * rz).sqrt();
+        if rl > 0.05 {
+            rotate_to_align(&mut mols[0].0, [rx / rl, ry / rl, rz / rl], [1.0, 0.0, 0.0]);
+        }
+    }
+
+    // Orient mol 1 reactive atom → −X
+    {
+        let rx = mols[1].0[best_j * 3];
+        let ry = mols[1].0[best_j * 3 + 1];
+        let rz = mols[1].0[best_j * 3 + 2];
+        let rl = (rx * rx + ry * ry + rz * rz).sqrt();
+        if rl > 0.05 {
+            rotate_to_align(&mut mols[1].0, [rx / rl, ry / rl, rz / rl], [-1.0, 0.0, 0.0]);
+        }
+    }
+
+    // Place mol 1 so reactive atoms are `reactive_dist` apart along X
+    let ra_x = mols[0].0[best_i * 3];
+    let rb_x = mols[1].0[best_j * 3];
+    let offset_x = ra_x - rb_x + reactive_dist;
+
+    // Assemble combined coords
+    let total_atoms: usize = mols.iter().map(|(_, e)| e.len()).sum();
+    let mut all_coords = Vec::with_capacity(total_atoms * 3);
+    let mut all_elements = Vec::with_capacity(total_atoms);
+
+    // Mol 0 — no offset
+    all_coords.extend_from_slice(&mols[0].0);
+    all_elements.extend_from_slice(&mols[0].1);
+
+    // Mol 1 — shifted along X
+    for k in 0..n1 {
+        all_coords.push(mols[1].0[k * 3] + offset_x);
+        all_coords.push(mols[1].0[k * 3 + 1]);
+        all_coords.push(mols[1].0[k * 3 + 2]);
+    }
+    all_elements.extend_from_slice(&mols[1].1);
+
+    // Spectator molecules (m ≥ 2) — stacked further along +X
+    let mut extra = offset_x + 4.0;
+    for mol in mols.iter().skip(2) {
+        for k in 0..mol.1.len() {
+            all_coords.push(mol.0[k * 3] + extra);
+            all_coords.push(mol.0[k * 3 + 1]);
+            all_coords.push(mol.0[k * 3 + 2]);
+        }
+        all_elements.extend_from_slice(&mol.1);
+        extra += 4.0;
+    }
+
+    centre_at_origin(&mut all_coords);
+    (all_coords, all_elements)
+}
+
+/// Greedy atom mapping between two complexes by element and distance.
+///
+/// Returns `mapping[i]` = index in the product complex that corresponds
+/// to reactant atom `i`. Matches atoms of the same element, choosing the
+/// closest unmatched pair greedily.
+fn map_atoms_greedy(
+    r_elements: &[u8],
+    r_coords: &[f64],
+    p_elements: &[u8],
+    p_coords: &[f64],
+) -> Result<Vec<usize>, String> {
+    let n = r_elements.len();
+    if n != p_elements.len() {
+        return Err(format!(
+            "Atom count mismatch: {} reactant atoms vs {} product atoms",
+            n,
+            p_elements.len(),
+        ));
+    }
+
+    // Group indices by element
+    let mut r_by_elem: std::collections::HashMap<u8, Vec<usize>> = std::collections::HashMap::new();
+    let mut p_by_elem: std::collections::HashMap<u8, Vec<usize>> = std::collections::HashMap::new();
+    for i in 0..n {
+        r_by_elem.entry(r_elements[i]).or_default().push(i);
+        p_by_elem.entry(p_elements[i]).or_default().push(i);
+    }
+
+    let mut mapping = vec![0usize; n];
+    let mut used_p = vec![false; n];
+
+    for (&elem, r_indices) in &r_by_elem {
+        let p_indices = p_by_elem.get(&elem).ok_or_else(|| {
+            format!(
+                "Element Z={} present in reactants but not products",
+                elem,
+            )
+        })?;
+        if r_indices.len() != p_indices.len() {
+            return Err(format!(
+                "Element Z={}: {} in reactants vs {} in products",
+                elem,
+                r_indices.len(),
+                p_indices.len(),
+            ));
+        }
+
+        // Build distance pairs and sort by distance
+        let mut pairs: Vec<(usize, usize, f64)> = Vec::new();
+        for &ri in r_indices {
+            for &pi in p_indices {
+                let dx = r_coords[ri * 3] - p_coords[pi * 3];
+                let dy = r_coords[ri * 3 + 1] - p_coords[pi * 3 + 1];
+                let dz = r_coords[ri * 3 + 2] - p_coords[pi * 3 + 2];
+                pairs.push((ri, pi, dx * dx + dy * dy + dz * dz));
+            }
+        }
+        pairs.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut used_r = vec![false; n];
+        for (ri, pi, _) in pairs {
+            if used_r[ri] || used_p[pi] {
+                continue;
+            }
+            mapping[ri] = pi;
+            used_r[ri] = true;
+            used_p[pi] = true;
+        }
+    }
+
+    Ok(mapping)
+}
+
+/// Reorder product coords into reactant atom order using `mapping`.
+fn reorder_coords(coords: &[f64], mapping: &[usize]) -> Vec<f64> {
+    let mut out = vec![0.0; coords.len()];
+    for (i, &j) in mapping.iter().enumerate() {
+        out[i * 3] = coords[j * 3];
+        out[i * 3 + 1] = coords[j * 3 + 1];
+        out[i * 3 + 2] = coords[j * 3 + 2];
+    }
+    out
+}
+
+/// Rigid-body slide: move each molecule's atoms toward/away from the global COM.
+///
+/// `mol_ranges[m] = (start_atom, end_atom)` (exclusive end) per molecule.
+/// `alpha` = 0 → atoms at `far_dist` from global COM; `alpha` = 1 → at complex position.
+fn slide_molecules(
+    complex_coords: &[f64],
+    mol_ranges: &[(usize, usize)],
+    alpha: f64,
+    far_dist: f64,
+) -> Vec<f64> {
+    let mut out = complex_coords.to_vec();
+    let [gcx, gcy, gcz] = com_flat(complex_coords);
+
+    for &(start, end) in mol_ranges {
+        let n = end - start;
+        if n == 0 {
+            continue;
+        }
+        let mut mx = 0.0;
+        let mut my = 0.0;
+        let mut mz = 0.0;
+        for a in start..end {
+            mx += complex_coords[a * 3];
+            my += complex_coords[a * 3 + 1];
+            mz += complex_coords[a * 3 + 2];
+        }
+        let nf = n as f64;
+        mx /= nf;
+        my /= nf;
+        mz /= nf;
+
+        let dx = mx - gcx;
+        let dy = my - gcy;
+        let dz = mz - gcz;
+        let d = (dx * dx + dy * dy + dz * dz).sqrt();
+        if d < 0.01 {
+            continue;
+        }
+        let target = d + (far_dist - d) * (1.0 - alpha);
+        let shift = target - d;
+        let nx = dx / d;
+        let ny = dy / d;
+        let nz = dz / d;
+        for a in start..end {
+            out[a * 3] += nx * shift;
+            out[a * 3 + 1] += ny * shift;
+            out[a * 3 + 2] += nz * shift;
+        }
+    }
+    out
+}
+
+/// Compute a full reaction dynamics path: embed reactants + products,
+/// build oriented complexes, run NEB for the reactive region, and generate
+/// approach/departure frames — all energies computed in Rust with the
+/// chosen quantum-chemistry method.
+///
+/// # Arguments
+///
+/// * `reactant_smiles` — SMILES of each reactant fragment (e.g. `["CC(=O)O", "N"]`).
+/// * `product_smiles`  — SMILES of each product fragment (e.g. `["CC(=O)N", "O"]`).
+/// * `method`          — NEB backend: `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`, `"hf3c"`.
+/// * `config`          — [`ReactionDynamicsConfig`] with NEB/path parameters.
+///
+/// Returns [`ReactionDynamicsResult`] with all frames, energies, and TS info.
+pub fn compute_reaction_dynamics(
+    reactant_smiles: &[&str],
+    product_smiles: &[&str],
+    method: &str,
+    config: &ReactionDynamicsConfig,
+) -> Result<ReactionDynamicsResult, String> {
+    if reactant_smiles.is_empty() {
+        return Err("At least one reactant SMILES is required".into());
+    }
+    if product_smiles.is_empty() {
+        return Err("At least one product SMILES is required".into());
+    }
+
+    let backend = NebBackend::from_method(method)?;
+
+    // ── 1. Embed all fragments ─────────────────────────────────────────
+    let r_confs: Vec<crate::ConformerResult> = reactant_smiles
+        .iter()
+        .map(|s| crate::embed(s, config.seed))
+        .collect();
+    for (i, c) in r_confs.iter().enumerate() {
+        if let Some(ref e) = c.error {
+            return Err(format!("Failed to embed reactant '{}': {}", reactant_smiles[i], e));
+        }
+    }
+
+    let p_confs: Vec<crate::ConformerResult> = product_smiles
+        .iter()
+        .map(|s| crate::embed(s, config.seed))
+        .collect();
+    for (i, c) in p_confs.iter().enumerate() {
+        if let Some(ref e) = c.error {
+            return Err(format!("Failed to embed product '{}': {}", product_smiles[i], e));
+        }
+    }
+
+    // Validate atom conservation
+    let r_total: usize = r_confs.iter().map(|c| c.num_atoms).sum();
+    let p_total: usize = p_confs.iter().map(|c| c.num_atoms).sum();
+    if r_total != p_total {
+        return Err(format!(
+            "Atom count mismatch: {} atoms in reactants vs {} in products — \
+             atoms must be conserved",
+            r_total, p_total,
+        ));
+    }
+
+    // ── 2. Build oriented reactive complexes ───────────────────────────
+    let (r_coords, r_elements) = build_reaction_complex(&r_confs, config.reactive_distance);
+    let (p_coords, p_elements) = build_reaction_complex(&p_confs, config.reactive_distance);
+
+    // ── 3. Atom mapping: greedy by element + distance ──────────────────
+    let mapping = map_atoms_greedy(&r_elements, &r_coords, &p_elements, &p_coords)?;
+    let p_reordered = reorder_coords(&p_coords, &mapping);
+
+    // ── 4. Combined SMILES (dot-separated reactants) for NEB topology ──
+    let combined_smiles = reactant_smiles.join(".");
+
+    // ── 5. NEB between reactant and product complexes ──────────────────
+    let neb = compute_simplified_neb_path_configurable(
+        &combined_smiles,
+        &r_coords,
+        &p_reordered,
+        config.n_neb_images,
+        config.neb_iterations,
+        config.spring_k,
+        config.step_size,
+        method,
+    )?;
+
+    // ── 6. Compute molecule ranges for approach/departure sliding ──────
+    let r_mol_ranges: Vec<(usize, usize)> = {
+        let mut ranges = Vec::new();
+        let mut off = 0usize;
+        for c in &r_confs {
+            ranges.push((off, off + c.num_atoms));
+            off += c.num_atoms;
+        }
+        ranges
+    };
+
+    // Product molecule ranges (after reordering into reactant atom order)
+    let p_mol_assign: Vec<usize> = {
+        let mut assign = vec![0usize; p_total];
+        let mut off = 0usize;
+        for (m, c) in p_confs.iter().enumerate() {
+            for a in off..off + c.num_atoms {
+                assign[a] = m;
+            }
+            off += c.num_atoms;
+        }
+        // Remap into reactant order via mapping
+        mapping.iter().map(|&pi| assign[pi]).collect()
+    };
+    let p_mol_ranges: Vec<(usize, usize)> = {
+        let n_mols = p_confs.len();
+        let mut ranges = Vec::with_capacity(n_mols);
+        for m in 0..n_mols {
+            let atoms: Vec<usize> = p_mol_assign
+                .iter()
+                .enumerate()
+                .filter(|(_, &a)| a == m)
+                .map(|(i, _)| i)
+                .collect();
+            if let (Some(&lo), Some(&hi)) = (atoms.first(), atoms.last()) {
+                ranges.push((lo, hi + 1));
+            }
+        }
+        ranges
+    };
+
+    // ── 7. Build approach frames with energies ─────────────────────────
+    let mut frames = Vec::new();
+    let mol = crate::graph::Molecule::from_smiles(&combined_smiles)?;
+    let n_xyz = r_total * 3;
+
+    let na = config.n_approach_frames;
+    for i in 0..na {
+        let alpha = if na > 1 { i as f64 / (na - 1) as f64 } else { 1.0 };
+        let coords = slide_molecules(&r_coords, &r_mol_ranges, alpha, config.far_distance);
+        let mut grad = vec![0.0; n_xyz];
+        let energy = neb_energy_and_gradient(backend, &combined_smiles, &r_elements, &mol, &coords, &mut grad)
+            .unwrap_or(0.0);
+        frames.push(ReactionDynamicsFrame {
+            index: frames.len(),
+            coords,
+            energy_kcal_mol: energy,
+            phase: "approach".into(),
+        });
+    }
+
+    // ── 8. Reaction frames from NEB ────────────────────────────────────
+    for img in &neb.images {
+        frames.push(ReactionDynamicsFrame {
+            index: frames.len(),
+            coords: img.coords.clone(),
+            energy_kcal_mol: img.potential_energy_kcal_mol,
+            phase: "reaction".into(),
+        });
+    }
+
+    // ── 9. Departure frames with energies ──────────────────────────────
+    let nd = config.n_departure_frames;
+    for i in 0..nd {
+        let alpha = if nd > 1 { 1.0 - i as f64 / (nd - 1) as f64 } else { 0.0 };
+        let coords = slide_molecules(&p_reordered, &p_mol_ranges, alpha, config.far_distance);
+        let mut grad = vec![0.0; n_xyz];
+        let energy = neb_energy_and_gradient(backend, &combined_smiles, &r_elements, &mol, &coords, &mut grad)
+            .unwrap_or(0.0);
+        frames.push(ReactionDynamicsFrame {
+            index: frames.len(),
+            coords,
+            energy_kcal_mol: energy,
+            phase: "departure".into(),
+        });
+    }
+
+    // ── 10. Find TS and compute energetics ─────────────────────────────
+    let ts_idx = frames
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| {
+            a.energy_kcal_mol
+                .partial_cmp(&b.energy_kcal_mol)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+
+    let e_first = frames.first().map(|f| f.energy_kcal_mol).unwrap_or(0.0);
+    let e_last = frames.last().map(|f| f.energy_kcal_mol).unwrap_or(0.0);
+    let e_ts = frames[ts_idx].energy_kcal_mol;
+
+    let mut notes = neb.notes;
+    notes.push(format!(
+        "Full reaction path: {} approach + {} NEB + {} departure = {} total frames.",
+        na,
+        neb.images.len(),
+        nd,
+        frames.len(),
+    ));
+
+    Ok(ReactionDynamicsResult {
+        frames,
+        elements: r_elements,
+        ts_frame_index: ts_idx,
+        activation_energy_kcal_mol: e_ts - e_first,
+        reaction_energy_kcal_mol: e_last - e_first,
+        method: method.to_string(),
+        n_atoms: r_total,
+        notes,
+    })
+}
