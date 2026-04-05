@@ -857,6 +857,130 @@ mod sdr_py {
     }
 }
 
+// ─── A8: Alpha Reaction Dynamics 3D ──────────────────────────────────────────
+
+#[cfg(feature = "alpha-reaction-dynamics")]
+mod reaction_dynamics_py {
+    use pyo3::prelude::*;
+    use sci_form_core::alpha::reaction_dynamics::{
+        compute_reaction_dynamics_3d, ReactionDynamics3DConfig,
+    };
+
+    #[pyclass]
+    #[derive(Clone)]
+    pub struct ReactionFrame3DPy {
+        #[pyo3(get)]
+        pub index: usize,
+        #[pyo3(get)]
+        pub coords: Vec<f64>,
+        #[pyo3(get)]
+        pub energy_kcal_mol: f64,
+        #[pyo3(get)]
+        pub phase: String,
+    }
+
+    #[pyclass]
+    #[derive(Clone)]
+    pub struct ReactionDynamics3DResultPy {
+        #[pyo3(get)]
+        pub frames: Vec<ReactionFrame3DPy>,
+        #[pyo3(get)]
+        pub elements: Vec<u8>,
+        #[pyo3(get)]
+        pub ts_frame_index: usize,
+        #[pyo3(get)]
+        pub activation_energy_kcal_mol: f64,
+        #[pyo3(get)]
+        pub reaction_energy_kcal_mol: f64,
+        #[pyo3(get)]
+        pub method: String,
+        #[pyo3(get)]
+        pub n_atoms: usize,
+        #[pyo3(get)]
+        pub notes: Vec<String>,
+    }
+
+    /// Compute a full 3D reaction dynamics path (alpha pipeline).
+    ///
+    /// Args:
+    ///     reactant_smiles (list[str]): Reactant SMILES strings.
+    ///     product_smiles (list[str]): Product SMILES strings.
+    ///     method (str): Energy backend — "uff", "xtb", "gfn1", "gfn2" (default), "pm3", "hf3c".
+    ///     n_images (int): Number of NEB images (default 30).
+    ///     n_approach (int): Number of approach frames (default 15).
+    ///     n_departure (int): Number of departure frames (default 15).
+    ///     smirks (str | None): Optional SMIRKS reaction string.
+    ///     seed (int): Random seed (default 42).
+    ///
+    /// Returns:
+    ///     ReactionDynamics3DResultPy
+    #[pyfunction]
+    #[pyo3(signature = (
+        reactant_smiles,
+        product_smiles,
+        method = "gfn2",
+        n_images = 30,
+        n_approach = 15,
+        n_departure = 15,
+        smirks = None,
+        seed = 42,
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    pub fn reaction_dynamics_3d(
+        reactant_smiles: Vec<String>,
+        product_smiles: Vec<String>,
+        method: &str,
+        n_images: usize,
+        n_approach: usize,
+        n_departure: usize,
+        smirks: Option<String>,
+        seed: u64,
+    ) -> PyResult<ReactionDynamics3DResultPy> {
+        let config = ReactionDynamics3DConfig {
+            method: method.to_string(),
+            n_images,
+            n_approach_frames: n_approach,
+            n_departure_frames: n_departure,
+            smirks,
+            seed,
+            ..Default::default()
+        };
+
+        let r_refs: Vec<&str> = reactant_smiles.iter().map(String::as_str).collect();
+        let p_refs: Vec<&str> = product_smiles.iter().map(String::as_str).collect();
+
+        let result = compute_reaction_dynamics_3d(&r_refs, &p_refs, &config)
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+
+        Ok(ReactionDynamics3DResultPy {
+            frames: result
+                .frames
+                .into_iter()
+                .map(|f| ReactionFrame3DPy {
+                    index: f.index,
+                    coords: f.coords,
+                    energy_kcal_mol: f.energy_kcal_mol,
+                    phase: f.phase,
+                })
+                .collect(),
+            elements: result.elements,
+            ts_frame_index: result.ts_frame_index,
+            activation_energy_kcal_mol: result.activation_energy_kcal_mol,
+            reaction_energy_kcal_mol: result.reaction_energy_kcal_mol,
+            method: result.method,
+            n_atoms: result.n_atoms,
+            notes: result.notes,
+        })
+    }
+
+    pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        m.add_class::<ReactionFrame3DPy>()?;
+        m.add_class::<ReactionDynamics3DResultPy>()?;
+        m.add_function(wrap_pyfunction!(reaction_dynamics_3d, m)?)?;
+        Ok(())
+    }
+}
+
 // ─── Module registration ─────────────────────────────────────────────────────
 
 pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -877,6 +1001,8 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     gsm_py::register(&m)?;
     #[cfg(feature = "alpha-sdr")]
     sdr_py::register(&m)?;
+    #[cfg(feature = "alpha-reaction-dynamics")]
+    reaction_dynamics_py::register(&m)?;
 
     parent.add_submodule(&m)?;
     let sys = parent.py().import_bound("sys")?;
