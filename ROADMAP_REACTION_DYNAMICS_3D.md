@@ -23,17 +23,8 @@ capacidades que este roadmap pedía:
 
 ### Verificación focalizada ejecutada
 
-Se verificaron localmente los siguientes tests:
-
-```bash
-cargo test --lib smirks
-cargo test --test test_smirks_reactions
-cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d complex_3d_does_not_force_x_axis
-cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d reactive_sites_smirks_sn2
-cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d reactive_atom_pairs_from_smirks_bond_changes
-cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d orbital_approach_gives_direction
-cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d reaction_smirks_integration_with_pipeline
-```
+La verificación local se hizo con la suite base de SMIRKS y con la batería específica de
+`alpha-reaction-dynamics` documentada en [`TESTING.md`](TESTING.md).
 
 Los tests anteriores pasan y confirman que:
 

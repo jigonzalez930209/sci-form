@@ -3,6 +3,8 @@
 This file captures the project-level highlights from `v0.12.0` onward.
 GitHub Releases already exist for each tag, but most release bodies are auto-generated;
 the summary below records the substantive work that landed in each release line.
+Future releases should append new sections here so this file remains the maintained,
+human-written changelog for the repository.
 
 ## v0.15.0 - 2026-04-06
 
