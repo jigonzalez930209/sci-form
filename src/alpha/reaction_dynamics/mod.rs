@@ -772,3 +772,333 @@ pub fn compute_reaction_dynamics_3d(
         approach_direction: approach_dir,
     })
 }
+
+/// Reactant-only approach-PES scan — no product SMILES required.
+///
+/// Embeds the reactant fragments, identifies reactive sites using Fukui/FMO
+/// and electrostatic analysis, assembles a start complex at `far_distance`,
+/// then performs a constrained-relaxed scan from `far_distance` down to
+/// `reactive_distance` using the same `slide_molecules` + `optimize_frame_sequence`
+/// machinery as the full NEB pipeline.
+///
+/// The result has the same `ReactionDynamics3DResult` shape as
+/// `compute_reaction_dynamics_3d` — approach frames only, `phase = "approach"`.
+/// `reaction_energy_kcal_mol` is always 0.0 because no products are known.
+///
+/// Feature flag: `alpha-reaction-dynamics`
+pub fn compute_approach_dynamics(
+    reactant_smiles: &[&str],
+    config: &ReactionDynamics3DConfig,
+) -> Result<ReactionDynamics3DResult, String> {
+    if reactant_smiles.len() < 2 {
+        return Err(
+            "compute_approach_dynamics requires at least 2 reactant SMILES (one per fragment)"
+                .into(),
+        );
+    }
+
+    let backend = crate::dynamics::NebBackend::from_method(&config.method)?;
+
+    // ── 1. Embed reactant fragments ────────────────────────────────
+    #[cfg(feature = "parallel")]
+    let confs: Vec<crate::ConformerResult> = {
+        use rayon::prelude::*;
+        reactant_smiles
+            .par_iter()
+            .map(|s| crate::embed(s, config.seed))
+            .collect()
+    };
+    #[cfg(not(feature = "parallel"))]
+    let confs: Vec<crate::ConformerResult> = reactant_smiles
+        .iter()
+        .map(|s| crate::embed(s, config.seed))
+        .collect();
+
+    for (i, c) in confs.iter().enumerate() {
+        if let Some(ref e) = c.error {
+            return Err(format!(
+                "Failed to embed reactant '{}': {}",
+                reactant_smiles[i], e
+            ));
+        }
+    }
+
+    let r_total: usize = confs.iter().map(|c| c.num_atoms).sum();
+    let r_elements: Vec<u8> = confs
+        .iter()
+        .flat_map(|c| c.elements.iter().copied())
+        .collect();
+    let combined_smiles = reactant_smiles.join(".");
+
+    // ── 1b. Identify reactive sites ────────────────────────────────
+    let fragment_elements: Vec<&[u8]> = confs.iter().map(|c| c.elements.as_slice()).collect();
+    let fragment_coords: Vec<&[f64]> = confs.iter().map(|c| c.coords.as_slice()).collect();
+    let site_analysis = reactive_sites::identify_reactive_sites(
+        &fragment_elements,
+        &fragment_coords,
+        reactant_smiles,
+        config.smirks.as_deref(),
+    );
+    let reactive_pairs = site_analysis
+        .as_ref()
+        .ok()
+        .map(reactive_sites::reactive_atom_pairs)
+        .unwrap_or_default();
+    let reactive_pair_0 = reactive_pairs.first().copied();
+
+    // ── 2. Build reactant complex at reactive_distance ─────────────
+    let (mut r_coords, _) = complex::build_3d_reaction_complex_guided(
+        &confs[..2.min(confs.len())],
+        config.reactive_distance,
+        reactive_pair_0,
+    );
+    // If there are more than 2 fragments, append them naively (rare case)
+    for c in confs.iter().skip(2) {
+        r_coords.extend_from_slice(&c.coords);
+    }
+
+    // ── 3. Approach direction: orbital > electrostatic > site heuristic
+    let mut approach_dir: Option<[f64; 3]> = None;
+    let mut notes: Vec<String> = Vec::new();
+
+    if let Ok(ref sa) = site_analysis {
+        if let Some(dir) = sa.approach_direction {
+            approach_dir = Some(dir);
+            complex::orient_fragment_along_direction(
+                &mut r_coords,
+                confs[0].num_atoms,
+                r_total,
+                dir,
+            );
+        }
+        for note in &sa.notes {
+            notes.push(note.clone());
+        }
+        if !reactive_pairs.is_empty() {
+            notes.push(format!("Reactive atom pairs: {:?}", reactive_pairs));
+        }
+    }
+
+    if approach_dir.is_none() && config.use_orbital_guidance && confs.len() >= 2 {
+        let n0 = confs[0].num_atoms;
+        if let Some(info) = orbital_approach::compute_orbital_approach_direction(
+            &r_elements[..n0],
+            &r_coords[..n0 * 3],
+            &r_elements[n0..],
+            &r_coords[n0 * 3..],
+        ) {
+            approach_dir = Some(info.direction);
+            notes.push(format!(
+                "Orbital-guided approach ({})",
+                info.interaction_type
+            ));
+            complex::orient_fragment_along_direction(&mut r_coords, n0, r_total, info.direction);
+        }
+    }
+
+    if approach_dir.is_none() && config.use_electrostatic_steering && confs.len() >= 2 {
+        let n0 = confs[0].num_atoms;
+        if let Some(info) = electrostatics::compute_electrostatic_approach(
+            &r_elements[..n0],
+            &r_coords[..n0 * 3],
+            &r_elements[n0..],
+            &r_coords[n0 * 3..],
+        ) {
+            approach_dir = Some(info.direction);
+            notes.push("Electrostatic steering applied.".into());
+            complex::orient_fragment_along_direction(&mut r_coords, n0, r_total, info.direction);
+        }
+    }
+
+    // ── 4. Optional: multi-angular sampling ────────────────────────
+    if config.n_angular_samples > 0 && confs.len() >= 2 {
+        let n0 = confs[0].num_atoms;
+        if let Ok(result) = sampling::sample_approach_orientations(
+            &combined_smiles,
+            &r_elements[..n0],
+            &r_coords[..n0 * 3],
+            &r_elements[n0..],
+            &r_coords[n0 * 3..],
+            config.reactive_distance,
+            config.n_angular_samples,
+            &config.method,
+        ) {
+            approach_dir = Some(result.best_direction);
+            notes.push(format!(
+                "Multi-angular sampling ({} orientations), best barrier: {:.2} kcal/mol",
+                config.n_angular_samples, result.best_barrier
+            ));
+            complex::orient_fragment_along_direction(
+                &mut r_coords,
+                n0,
+                r_total,
+                result.best_direction,
+            );
+        }
+    }
+
+    // ── 5. Generate approach frames with slide_molecules ───────────
+    let r_mol_ranges: Vec<(usize, usize)> = {
+        let mut ranges = Vec::new();
+        let mut off = 0usize;
+        for c in &confs {
+            ranges.push((off, off + c.num_atoms));
+            off += c.num_atoms;
+        }
+        ranges
+    };
+
+    let na = config.n_approach_frames.max(2);
+    let mut approach_raw: Vec<Vec<f64>> = Vec::with_capacity(na);
+    for i in 0..na {
+        let alpha = i as f64 / (na - 1).max(1) as f64;
+        // alpha=0 → far apart; alpha=1 → close (reactive_distance)
+        let coords =
+            crate::dynamics::slide_molecules(&r_coords, &r_mol_ranges, alpha, config.far_distance);
+        approach_raw.push(coords);
+    }
+    // Reverse so frames[0] = far (reactants separated), frames[na-1] = contact
+    approach_raw.reverse();
+
+    let relax_config = constrained_opt::ConstrainedOptConfig {
+        max_steps: config.complex_opt_max_steps.min(30),
+        grad_threshold: 0.1,
+        step_size: 0.008,
+        method: config.method.clone(),
+        constraint_tolerance: 1e-4,
+    };
+
+    let approach_optimised = constrained_opt::optimize_frame_sequence(
+        &combined_smiles,
+        &r_elements,
+        &approach_raw,
+        &r_mol_ranges,
+        &relax_config,
+    )
+    .unwrap_or_else(|e| {
+        notes.push(format!(
+            "Constrained relaxation failed: {e}; using rigid frames."
+        ));
+        approach_raw
+            .iter()
+            .map(|coords| constrained_opt::ConstrainedOptResult {
+                coords: coords.clone(),
+                energy: 0.0,
+                n_steps: 0,
+                converged: false,
+                grad_norm: 0.0,
+            })
+            .collect()
+    });
+
+    // ── 6. Evaluate frame energies ─────────────────────────────────
+    let n_xyz = r_total * 3;
+    let mol = crate::graph::Molecule::from_smiles(&combined_smiles)?;
+
+    #[cfg(feature = "parallel")]
+    let mut frames: Vec<ReactionFrame3D> = {
+        use rayon::prelude::*;
+        approach_optimised
+            .par_iter()
+            .enumerate()
+            .map(|(idx, opt)| {
+                let mut grad = vec![0.0; n_xyz];
+                let energy = crate::dynamics::neb_energy_and_gradient(
+                    backend,
+                    &combined_smiles,
+                    &r_elements,
+                    &mol,
+                    &opt.coords,
+                    &mut grad,
+                )
+                .unwrap_or(opt.energy);
+                ReactionFrame3D {
+                    index: idx,
+                    coords: opt.coords.clone(),
+                    energy_kcal_mol: energy,
+                    phase: "approach".into(),
+                    properties: None,
+                }
+            })
+            .collect()
+    };
+    #[cfg(not(feature = "parallel"))]
+    let mut frames: Vec<ReactionFrame3D> = approach_optimised
+        .iter()
+        .enumerate()
+        .map(|(idx, opt)| {
+            let mut grad = vec![0.0; n_xyz];
+            let energy = crate::dynamics::neb_energy_and_gradient(
+                backend,
+                &combined_smiles,
+                &r_elements,
+                &mol,
+                &opt.coords,
+                &mut grad,
+            )
+            .unwrap_or(opt.energy);
+            ReactionFrame3D {
+                index: idx,
+                coords: opt.coords.clone(),
+                energy_kcal_mol: energy,
+                phase: "approach".into(),
+                properties: None,
+            }
+        })
+        .collect();
+
+    // ── 7. Optional per-frame properties ──────────────────────────
+    if config.compute_properties {
+        #[cfg(feature = "parallel")]
+        {
+            use rayon::prelude::*;
+            let props: Vec<Option<FrameProperties>> = frames
+                .par_iter()
+                .map(|f| per_frame::compute_frame_properties(&r_elements, &f.coords).ok())
+                .collect();
+            for (frame, p) in frames.iter_mut().zip(props) {
+                frame.properties = p;
+            }
+        }
+        #[cfg(not(feature = "parallel"))]
+        for frame in &mut frames {
+            if let Ok(p) = per_frame::compute_frame_properties(&r_elements, &frame.coords) {
+                frame.properties = Some(p);
+            }
+        }
+    }
+
+    // ── 8. Summary statistics ──────────────────────────────────────
+    let ts_idx = frames
+        .iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| {
+            a.energy_kcal_mol
+                .partial_cmp(&b.energy_kcal_mol)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+
+    let e_first = frames.first().map(|f| f.energy_kcal_mol).unwrap_or(0.0);
+    let e_last = frames.last().map(|f| f.energy_kcal_mol).unwrap_or(0.0);
+    let e_ts = frames.get(ts_idx).map(|f| f.energy_kcal_mol).unwrap_or(0.0);
+
+    notes.push(format!(
+        "Approach-only scan: {} frames, {:.1}–{:.1} Å, method: {}. \
+         No product SMILES provided — NEB not performed.",
+        na, config.far_distance, config.reactive_distance, config.method
+    ));
+
+    Ok(ReactionDynamics3DResult {
+        frames,
+        elements: r_elements,
+        ts_frame_index: ts_idx,
+        activation_energy_kcal_mol: (e_ts - e_first).max(0.0),
+        reaction_energy_kcal_mol: e_last - e_first,
+        method: config.method.clone(),
+        n_atoms: r_total,
+        notes,
+        approach_direction: approach_dir,
+    })
+}
