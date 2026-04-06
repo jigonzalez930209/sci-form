@@ -4,6 +4,60 @@
 
 ---
 
+## Estado actualizado verificado en `v0.15.0`
+
+La situación actual ya no es la misma que la del diagnóstico inicial. Desde `v0.15.0`
+existe un pipeline específico bajo `src/alpha/reaction_dynamics/` que cubre varias de las
+capacidades que este roadmap pedía:
+
+- [x] **CI-NEB con climbing image** (`ci_neb.rs`)
+- [x] **Complejo reactivo 3D sin forzado al eje X** (`complex.rs`)
+- [x] **Identificación de átomos reactivos** con jerarquía
+      `SMIRKS → Fukui/frontier → cargas → proximidad` (`reactive_sites.rs`)
+- [x] **Approach orbital-guided** (`orbital_approach.rs`)
+- [x] **Optimización restringida del complejo** (`constrained_opt.rs`)
+- [x] **Electrostatic steering** (`electrostatics.rs`)
+- [x] **Per-frame properties** (`per_frame.rs`)
+- [x] **IRC desde el TS** (`irc.rs`)
+- [x] **Sampling angular** (`sampling.rs`)
+
+### Verificación focalizada ejecutada
+
+La verificación local se hizo con la suite base de SMIRKS y con la batería específica de
+`alpha-reaction-dynamics` documentada en [`TESTING.md`](TESTING.md).
+
+Los tests anteriores pasan y confirman que:
+
+- el ensamblado 3D validado ya **no depende** de una orientación fija `±X`,
+- la identificación de sitios reactivos vía **SMIRKS** ya está conectada al pipeline,
+- existe una ruta de integración entre **reactive-site detection**, **approach direction**
+  y **pipeline 3D de reacción**.
+
+### Deficiencias reales que siguen abiertas
+
+El problema ya no es “no existe nada”, sino que hay una convivencia entre el camino legado y
+el camino alpha nuevo. Las carencias más importantes hoy son:
+
+1. **`src/dynamics.rs` todavía conserva lógica legacy** con ensamblado y fallbacks históricos;
+   el camino validado para 3D reaction dynamics está en `src/alpha/reaction_dynamics/`.
+2. **La colocación temporal para el mapeo inicial** en
+   `assemble_fragments_at_product_positions()` sigue usando offsets simples, útil para mapear,
+   pero todavía no es un ensamblado físico many-body completamente optimizado.
+3. **El approach avanzado no está activado por defecto**:
+   `use_orbital_guidance`, `use_electrostatic_steering` y `optimise_complex` arrancan en `false`,
+   así que hay que pedir explícitamente el modo más rico.
+4. **La validación actual es de regresión/sanity, no de exactitud experimental completa**:
+   todavía falta comparación sistemática de ángulos de ataque, barreras y trayectorias contra
+   referencias externas para cada familia de reacción.
+5. **Sistemas con más de dos fragmentos** mejoraron frente al hardcode en X, pero aún no usan un
+   optimizador global de orientación multi-fragmento.
+
+> **Lectura recomendada de este roadmap:** el diagnóstico histórico de abajo sigue siendo útil para
+> entender el origen del problema, pero ya no describe fielmente el estado de `v0.15.0`.
+> A partir de ahora debe leerse como “gap analysis” entre el camino legacy y el pipeline alpha.
+
+---
+
 ## Diagnóstico del Estado Actual
 
 ### Problemas Identificados
