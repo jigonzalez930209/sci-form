@@ -11,6 +11,8 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 [![npm](https://img.shields.io/npm/v/sci-form-wasm)](https://www.npmjs.com/package/sci-form-wasm)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+See also: [CHANGELOG.md](CHANGELOG.md) · [TESTING.md](TESTING.md) · [ROADMAP_REACTION_DYNAMICS_3D.md](ROADMAP_REACTION_DYNAMICS_3D.md)
+
 ## Features
 
 ### Conformer Generation
