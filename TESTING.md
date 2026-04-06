@@ -242,6 +242,37 @@ cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
     analyze-gsm-mbh-htst-step "<smiles>" "<reactant_coords_json>" "<product_coords_json>" --method xtb
 ```
 
+### 3D reaction-dynamics validation (`alpha-reaction-dynamics`)
+
+For the newer 3D reaction pipeline, run focused regression tests instead of only the
+SMIRKS transform suite:
+
+```bash
+# No forced ±X orientation in the validated 3D complex builder
+cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d \
+    complex_3d_does_not_force_x_axis
+
+# Reactive-site identification from SMIRKS atom mapping
+cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d \
+    reactive_sites_smirks_sn2
+
+# Bond-change-derived reactive atom pairs
+cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d \
+    reactive_atom_pairs_from_smirks_bond_changes
+
+# Orbital-guided approach direction smoke test
+cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d \
+    orbital_approach_gives_direction
+
+# End-to-end SMIRKS integration with the 3D reaction pipeline
+cargo test --features alpha-reaction-dynamics --test alpha_reaction_dynamics_3d \
+    reaction_smirks_integration_with_pipeline
+```
+
+These tests complement the core SMIRKS suite:
+- `cargo test --lib smirks`
+- `cargo test --test test_smirks_reactions`
+
 ---
 
 ## 5. Python Bindings (`crates/python/`)
