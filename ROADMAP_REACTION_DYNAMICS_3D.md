@@ -21,7 +21,7 @@ capacidades que este roadmap pedía:
 - [x] **IRC desde el TS** (`irc.rs`)
 - [x] **Sampling angular** (`sampling.rs`)
 
-### Comprobación focalizada ejecutada
+### Verificación focalizada ejecutada
 
 Se verificaron localmente los siguientes tests:
 
