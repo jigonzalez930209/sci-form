@@ -784,3 +784,51 @@ pub fn compute_reaction_dynamics_3d(
         Err(e) => json_error(&e),
     }
 }
+
+/// Reactant-only approach PES scan — no product SMILES required.
+///
+/// Embeds the reactant fragments, identifies reactive sites using Fukui/FMO
+/// and electrostatic analysis, then performs a constrained-relaxed approach
+/// scan from `far_distance` down to `reactive_distance`.
+///
+/// This is the correct workflow when only reactants are known:
+/// sci-form builds a physically meaningful approach trajectory with real
+/// quantum energies without needing to specify the products.
+///
+/// `reactant_smiles_json`: JSON array of reactant SMILES, e.g. `["CC(=O)O", "N"]`.
+/// `config_json`: optional JSON [`ReactionDynamics3DConfig`]; pass `""` for defaults.
+///
+/// Returns JSON `ReactionDynamics3DResult` with approach frames only
+/// (`phase = "approach"`). `reaction_energy_kcal_mol` is `0.0` (no products known).
+#[cfg(feature = "alpha-reaction-dynamics")]
+#[wasm_bindgen]
+pub fn compute_approach_dynamics(reactant_smiles_json: &str, config_json: &str) -> String {
+    let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad reactant_smiles: {}", e)),
+    };
+
+    let mut config: sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig =
+        if config_json.is_empty() || config_json == "{}" {
+            sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig::default()
+        } else {
+            match serde_json::from_str(config_json) {
+                Ok(c) => c,
+                Err(e) => return json_error(&format!("bad config: {}", e)),
+            }
+        };
+
+    // For approach-only, orbital and electrostatic guidance default to true
+    // so the user gets a physically meaningful direction without NEB.
+    if config_json.is_empty() || config_json == "{}" {
+        config.use_orbital_guidance = true;
+        config.use_electrostatic_steering = true;
+    }
+
+    let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
+
+    match sci_form::alpha::reaction_dynamics::compute_approach_dynamics(&r_refs, &config) {
+        Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| json_error(&e.to_string())),
+        Err(e) => json_error(&e),
+    }
+}
