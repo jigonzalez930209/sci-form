@@ -21,7 +21,9 @@
     "webgpu:compare": "node tests/integration/compare_webgpu_reports.js",
     "webgpu:benchmark:dev": "npm --prefix crates/wasm/examples/vite-webgpu-hybrid run benchmark:dev",
     "webgpu:benchmark:build": "npm --prefix crates/wasm/examples/vite-webgpu-hybrid run build",
-    "webgpu:benchmark:preview": "npm --prefix crates/wasm/examples/vite-webgpu-hybrid run benchmark:preview"
+    "webgpu:benchmark:preview": "npm --prefix crates/wasm/examples/vite-webgpu-hybrid run benchmark:preview",
+    "examples:dev": "npm --prefix examples/reaction-viewer run dev",
+    "examples:build": "npm --prefix examples/reaction-viewer run build"
   },
   "repository": {
     "type": "git",
