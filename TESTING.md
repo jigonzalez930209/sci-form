@@ -197,7 +197,7 @@ python tests/integration/test_smirks_reactions.py
 | Hydrolysis | 2 tests | Ester and amide cleavage |
 | Edge cases | 5 tests | Multi-component, stereochemistry, errors |
 
-See [SMIRKS_TESTING.md](SMIRKS_TESTING.md) for detailed documentation.
+See the test commands above for detailed SMIRKS testing.
 
 ### Reaction-layer comparison harness
 
