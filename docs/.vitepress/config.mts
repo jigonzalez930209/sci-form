@@ -15,12 +15,12 @@ export default defineConfig({
   base: '/sci-form/',
   title: 'sci-form',
   description: 'High-performance 3D molecular conformer generation from SMILES',
-  
+
   ignoreDeadLinks: [
     // Ignore links to source code files outside /docs/
     /^\.\.\/\.\.\//,
   ],
-  
+
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/sci-form/logo.svg' }],
   ],
@@ -41,7 +41,7 @@ export default defineConfig({
 
   themeConfig: {
     logo: '/sci-form/logo.svg',
-    
+
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Algorithm', link: '/algorithm/overview' },
@@ -67,6 +67,12 @@ export default defineConfig({
             { text: 'TypeScript / JS', link: '/guide/typescript' },
             { text: 'CLI', link: '/guide/cli' },
             { text: 'Metal EHT Validity', link: '/guide/metal-eht-validity' },
+          ],
+        },
+        {
+          text: 'Examples',
+          items: [
+            { text: '3D Reaction Viewer', link: '/guide/reaction-viewer' },
           ],
         },
       ],
