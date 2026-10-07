@@ -87,6 +87,61 @@ pub enum NmrNucleus {
     Pb207,
     Bi209,
     Mn55,
+    /// NMR-active metal isotope stored in `METAL_CATALOG`.
+    Catalog(u8),
+}
+
+struct MetalCatalogEntry {
+    z: u8,
+    mass: u16,
+    symbol: &'static str,
+    label: &'static str,
+    pretty: &'static str,
+    freq_mhz: f64,
+    /// Nuclear spin I. Values above 1/2 are quadrupolar.
+    spin_i: f64,
+    range: (f64, f64),
+    center: f64,
+    fwhm_hz: f64,
+}
+
+/// Default NMR-active isotope for metals that are not already a unit variant.
+/// Cerium is omitted: every natural Ce isotope has I = 0.
+const METAL_CATALOG: &[MetalCatalogEntry] = &[
+    MetalCatalogEntry { z: 39, mass: 89, symbol: "Y", label: "89Y", pretty: "⁸⁹Y", freq_mhz: 19.6, spin_i: 0.5, range: (-1500.0, 1500.0), center: 0.0, fwhm_hz: 25.0 },
+    MetalCatalogEntry { z: 43, mass: 99, symbol: "Tc", label: "99Tc", pretty: "⁹⁹Tc", freq_mhz: 90.1, spin_i: 4.5, range: (-5000.0, 8000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 57, mass: 139, symbol: "La", label: "139La", pretty: "¹³⁹La", freq_mhz: 56.5, spin_i: 3.5, range: (-1500.0, 1500.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 59, mass: 141, symbol: "Pr", label: "141Pr", pretty: "¹⁴¹Pr", freq_mhz: 11.7, spin_i: 2.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 60, mass: 143, symbol: "Nd", label: "143Nd", pretty: "¹⁴³Nd", freq_mhz: 22.0, spin_i: 3.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 61, mass: 147, symbol: "Pm", label: "147Pm", pretty: "¹⁴⁷Pm", freq_mhz: 22.0, spin_i: 3.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 62, mass: 149, symbol: "Sm", label: "149Sm", pretty: "¹⁴⁹Sm", freq_mhz: 14.0, spin_i: 3.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 63, mass: 151, symbol: "Eu", label: "151Eu", pretty: "¹⁵¹Eu", freq_mhz: 10.0, spin_i: 2.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 64, mass: 155, symbol: "Gd", label: "155Gd", pretty: "¹⁵⁵Gd", freq_mhz: 16.0, spin_i: 1.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 800.0 },
+    MetalCatalogEntry { z: 65, mass: 159, symbol: "Tb", label: "159Tb", pretty: "¹⁵⁹Tb", freq_mhz: 24.0, spin_i: 1.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 66, mass: 163, symbol: "Dy", label: "163Dy", pretty: "¹⁶³Dy", freq_mhz: 18.0, spin_i: 2.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 67, mass: 165, symbol: "Ho", label: "165Ho", pretty: "¹⁶⁵Ho", freq_mhz: 8.7, spin_i: 3.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 68, mass: 167, symbol: "Er", label: "167Er", pretty: "¹⁶⁷Er", freq_mhz: 11.5, spin_i: 3.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 69, mass: 169, symbol: "Tm", label: "169Tm", pretty: "¹⁶⁹Tm", freq_mhz: 33.0, spin_i: 0.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 40.0 },
+    MetalCatalogEntry { z: 70, mass: 171, symbol: "Yb", label: "171Yb", pretty: "¹⁷¹Yb", freq_mhz: 70.0, spin_i: 0.5, range: (-20000.0, 20000.0), center: 0.0, fwhm_hz: 40.0 },
+    MetalCatalogEntry { z: 71, mass: 175, symbol: "Lu", label: "175Lu", pretty: "¹⁷⁵Lu", freq_mhz: 48.0, spin_i: 3.5, range: (-2000.0, 2000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 72, mass: 177, symbol: "Hf", label: "177Hf", pretty: "¹⁷⁷Hf", freq_mhz: 12.8, spin_i: 3.5, range: (-3000.0, 3000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 73, mass: 181, symbol: "Ta", label: "181Ta", pretty: "¹⁸¹Ta", freq_mhz: 48.0, spin_i: 3.5, range: (-4000.0, 4000.0), center: 0.0, fwhm_hz: 600.0 },
+    MetalCatalogEntry { z: 75, mass: 187, symbol: "Re", label: "187Re", pretty: "¹⁸⁷Re", freq_mhz: 91.0, spin_i: 2.5, range: (-5000.0, 5000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 76, mass: 187, symbol: "Os", label: "187Os", pretty: "¹⁸⁷Os", freq_mhz: 9.2, spin_i: 0.5, range: (-6000.0, 4000.0), center: 0.0, fwhm_hz: 30.0 },
+    MetalCatalogEntry { z: 77, mass: 193, symbol: "Ir", label: "193Ir", pretty: "¹⁹³Ir", freq_mhz: 8.0, spin_i: 1.5, range: (-6000.0, 6000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 87, mass: 223, symbol: "Fr", label: "223Fr", pretty: "²²³Fr", freq_mhz: 88.0, spin_i: 1.5, range: (-500.0, 500.0), center: 0.0, fwhm_hz: 200.0 },
+    MetalCatalogEntry { z: 88, mass: 223, symbol: "Ra", label: "223Ra", pretty: "²²³Ra", freq_mhz: 28.0, spin_i: 1.5, range: (-500.0, 500.0), center: 0.0, fwhm_hz: 200.0 },
+    MetalCatalogEntry { z: 89, mass: 227, symbol: "Ac", label: "227Ac", pretty: "²²⁷Ac", freq_mhz: 56.0, spin_i: 1.5, range: (-2000.0, 2000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 90, mass: 229, symbol: "Th", label: "229Th", pretty: "²²⁹Th", freq_mhz: 14.0, spin_i: 2.5, range: (-2000.0, 2000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 91, mass: 231, symbol: "Pa", label: "231Pa", pretty: "²³¹Pa", freq_mhz: 50.0, spin_i: 1.5, range: (-4000.0, 4000.0), center: 0.0, fwhm_hz: 400.0 },
+    MetalCatalogEntry { z: 92, mass: 235, symbol: "U", label: "235U", pretty: "²³⁵U", freq_mhz: 7.6, spin_i: 3.5, range: (-4000.0, 4000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 93, mass: 237, symbol: "Np", label: "237Np", pretty: "²³⁷Np", freq_mhz: 45.0, spin_i: 2.5, range: (-6000.0, 6000.0), center: 0.0, fwhm_hz: 500.0 },
+    MetalCatalogEntry { z: 94, mass: 239, symbol: "Pu", label: "239Pu", pretty: "²³⁹Pu", freq_mhz: 15.0, spin_i: 0.5, range: (-4000.0, 4000.0), center: 0.0, fwhm_hz: 40.0 },
+    MetalCatalogEntry { z: 95, mass: 243, symbol: "Am", label: "243Am", pretty: "²⁴³Am", freq_mhz: 24.0, spin_i: 2.5, range: (-8000.0, 8000.0), center: 0.0, fwhm_hz: 500.0 },
+];
+
+fn catalog_entry(index: u8) -> &'static MetalCatalogEntry {
+    &METAL_CATALOG[index as usize]
 }
 
 impl NmrNucleus {
@@ -272,6 +327,13 @@ impl NmrNucleus {
             "207pb" | "pb207" | "lead" => Self::Pb207,
             "209bi" | "bi209" | "bismuth" => Self::Bi209,
             _ => {
+                if let Some(index) = METAL_CATALOG.iter().position(|entry| {
+                    let label = entry.label.to_ascii_lowercase();
+                    let swapped = format!("{}{}", &label[label.len() - entry.symbol.len()..], &label[..label.len() - entry.symbol.len()]);
+                    normalized == label || normalized == swapped
+                }) {
+                    return Ok(Self::Catalog(index as u8));
+                }
                 return Err(format!(
                     "Unknown nucleus '{}'. Supported: {}",
                     alias,
@@ -284,10 +346,9 @@ impl NmrNucleus {
     }
 
     pub fn supported_labels() -> Vec<&'static str> {
-        Self::ALL
-            .iter()
-            .map(|nucleus| nucleus.canonical())
-            .collect()
+        let mut labels: Vec<&'static str> = Self::ALL.iter().map(|nucleus| nucleus.canonical()).collect();
+        labels.extend(METAL_CATALOG.iter().map(|entry| entry.label));
+        labels
     }
 
     pub fn atomic_number(self) -> u8 {
@@ -350,6 +411,7 @@ impl NmrNucleus {
             Self::Tl203 | Self::Tl205 => 81,
             Self::Pb207 => 82,
             Self::Bi209 => 83,
+            Self::Catalog(index) => catalog_entry(index).z,
         }
     }
 
@@ -440,6 +502,7 @@ impl NmrNucleus {
             Self::Tl205 => 205,
             Self::Pb207 => 207,
             Self::Bi209 => 209,
+            Self::Catalog(index) => catalog_entry(index).mass,
         }
     }
 
@@ -530,6 +593,7 @@ impl NmrNucleus {
             Self::Tl205 => "205Tl",
             Self::Pb207 => "207Pb",
             Self::Bi209 => "209Bi",
+            Self::Catalog(index) => catalog_entry(index).label,
         }
     }
 
@@ -620,10 +684,14 @@ impl NmrNucleus {
             Self::Tl205 => "²⁰⁵Tl",
             Self::Pb207 => "²⁰⁷Pb",
             Self::Bi209 => "²⁰⁹Bi",
+            Self::Catalog(index) => catalog_entry(index).pretty,
         }
     }
 
     pub fn element_symbol(self) -> &'static str {
+        if let Self::Catalog(index) = self {
+            return catalog_entry(index).symbol;
+        }
         match self.atomic_number() {
             1 => "H",
             2 => "He",
@@ -692,6 +760,9 @@ impl NmrNucleus {
     }
 
     pub fn is_quadrupolar(self) -> bool {
+        if let Self::Catalog(index) = self {
+            return catalog_entry(index).spin_i > 0.5;
+        }
         !matches!(
             self,
             Self::H1
@@ -783,7 +854,12 @@ impl NmrNucleus {
             81 => Self::Tl205,
             82 => Self::Pb207,
             83 => Self::Bi209,
-            _ => return None,
+            _ => {
+                return METAL_CATALOG
+                    .iter()
+                    .position(|entry| entry.z == atomic_number)
+                    .map(|index| Self::Catalog(index as u8));
+            }
         };
 
         Some(nucleus)
@@ -872,6 +948,7 @@ impl NmrNucleus {
             Self::Au197 => 8.7,
             Self::Hg199 => 74.7,
             Self::Hg201 => 22.1,
+            Self::Catalog(index) => catalog_entry(index).freq_mhz,
             Self::Tl203 => 96.6,
             Self::Tl205 => 100.2,
             Self::Pb207 => 83.7,
@@ -907,6 +984,7 @@ impl NmrNucleus {
             Self::Cr53 | Self::Mn55 | Self::Co59 | Self::Nb93 => 260.0,
             Self::Mo95 | Self::Mo97 | Self::Ru99 | Self::Ru101 | Self::In113 | Self::In115 => 200.0,
             Self::Bi209 | Self::Au197 => 320.0,
+            Self::Catalog(index) => catalog_entry(index).fwhm_hz,
             _ if self.is_quadrupolar() => 120.0,
             _ => 15.0,
         }
@@ -953,6 +1031,7 @@ impl NmrNucleus {
             Self::Tl203 | Self::Tl205 => (-3000.0, 2000.0),
             Self::Pb207 => (-6000.0, 6000.0),
             Self::Bi209 => (-8000.0, 8000.0),
+            Self::Catalog(index) => catalog_entry(index).range,
         }
     }
 
@@ -989,6 +1068,7 @@ impl NmrNucleus {
             Self::Tl203 | Self::Tl205 => 150.0,
             Self::Pb207 => 500.0,
             Self::Bi209 => 1200.0,
+            Self::Catalog(index) => catalog_entry(index).center,
             Self::He3
             | Self::Li6
             | Self::Li7

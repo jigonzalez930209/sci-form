@@ -988,12 +988,16 @@ pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
     let mut o_shifts = Vec::new();
     let mut s_shifts = Vec::new();
     let mut other_shifts: BTreeMap<NmrNucleus, Vec<ChemicalShift>> = BTreeMap::new();
+    let mut skipped_nmr_inactive: Vec<u8> = Vec::new();
 
     for atom_idx in 0..n {
         let idx = NodeIndex::new(atom_idx);
         let elem = mol.graph[idx].element;
 
         let Some(nucleus) = NmrNucleus::default_for_element(elem) else {
+            if elem == 58 {
+                skipped_nmr_inactive.push(elem);
+            }
             continue;
         };
 
@@ -1041,15 +1045,23 @@ pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
         o_shifts,
         s_shifts,
         other_shifts,
-        notes: vec![
+        notes: {
+            let mut notes = vec![
             "Chemical shifts predicted using empirical additivity rules based on local atomic environment.".to_string(),
             "¹H and ¹³C remain the main accuracy targets. Other nuclei use fast relative inference intended for screening and trend inspection.".to_string(),
             format!(
                 "Representative nuclei are exported through legacy fields plus other_shifts. Full per-nucleus access is available for {} nuclei.",
-                NmrNucleus::ALL.len()
+                NmrNucleus::supported_labels().len()
             ),
             "Quadrupolar nuclei are treated as quick relative estimates only; relative intensities and isotope abundances are not modeled in this path.".to_string(),
-        ],
+            ];
+            if skipped_nmr_inactive.contains(&58) {
+                notes.push(
+                    "Ce has no natural NMR-active isotope (all I = 0); no chemical shift is emitted for cerium.".to_string(),
+                );
+            }
+            notes
+        },
     }
 }
 
