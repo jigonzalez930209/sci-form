@@ -18,6 +18,7 @@
 //! (HOSE code) NMR but requires 3D coordinates and a SCF calculation.
 //! The user can choose fast topological NMR or slower quantum NMR.
 
+pub mod fluorescence;
 mod giao_nmr;
 pub mod hessian;
 pub mod ir_intensities;
@@ -28,6 +29,7 @@ mod types;
 pub use giao_nmr::{
     compute_nmr_shieldings, compute_nmr_shieldings_for_nucleus, shieldings_to_shifts,
 };
+pub use fluorescence::{compute_fluorescence_spectrum, FluorescenceConfig, FluorescenceSpectrum};
 pub use stda_uvvis::{compute_stda, StdaConfig};
 pub use types::{
     NmrShieldingResult, ScfInput, ShieldingTensor, SpectroscopyResult, TransitionInfo,
