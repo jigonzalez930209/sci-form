@@ -167,4 +167,4 @@ console.log(`λ_max ≈ ${spec.wavelengths_nm[maxIdx].toFixed(1)} nm`);
 - Excitation energies from EHT are systematically blue-shifted compared to TDDFT or experimental values; use for **trends and fingerprinting**, not absolute accuracy.
 - Transition dipole moments are computed in the minimal STO basis; heavy elements may have reduced accuracy.
 - No solvent effects are included.
-- For transition-metal chromophores, GFN-xTB MOs are used automatically when EHT unsupported elements are detected.
+- Every metal through Z = 103 has an EHT valence basis. The d-block already in the parameter table keeps its literature VSIP and ζ. The rest (alkali, alkaline earth, Al–Bi outside that table, lanthanides, actinides) use H_ii = −IP and ζ = sqrt(IP / 13.6 eV). f electrons stay in the core. Open-shell singlets are counted with the SOMO occupied. The result is still an EHT screening spectrum, not TD-DFT. Fluorescence on these singlets is documented in [fluorescence.md](fluorescence.md).
