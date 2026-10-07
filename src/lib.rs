@@ -1479,6 +1479,19 @@ pub fn compute_stda_uvvis(
     )
 }
 
+/// Fluorescence spectrum from the same sTDA singlets as UV-Vis absorption.
+///
+/// Selects the emitting state by Kasha's rule, builds the spontaneous-emission
+/// lineshape, and reports the Einstein A radiative rate. A Stokes shift is
+/// applied only when `config.stokes_ev` is set; this path does not optimize S1.
+pub fn compute_fluorescence(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    config: spectroscopy::FluorescenceConfig,
+) -> Result<spectroscopy::FluorescenceSpectrum, String> {
+    spectroscopy::compute_fluorescence_spectrum(elements, positions, &config)
+}
+
 /// Perform vibrational analysis via numerical Hessian.
 ///
 /// Computes vibrational frequencies (cm⁻¹), normal modes, IR intensities,

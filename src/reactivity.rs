@@ -416,7 +416,63 @@ pub struct StdaUvVisSpectrum {
 
 const EV_TO_NM: f64 = 1239.841984;
 
-/// Build an sTDA-xTB UV-Vis spectrum using xTB molecular orbitals.
+/// Single excitations from the same EHT orbitals used for the absorption spectrum.
+///
+/// Dark transitions (`f ≈ 0`) are kept so emission selection can apply Kasha's rule.
+pub fn collect_stda_excitations(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    e_window: f64,
+) -> Result<Vec<StdaExcitation>, String> {
+    let eht = crate::eht::solve_eht(elements, positions, None)?;
+    let basis = crate::eht::basis::build_basis(elements, positions);
+    let orbital_energies = eht.energies;
+    let coefficients = eht.coefficients;
+    let n_basis = orbital_energies.len();
+    let n_occ = eht.n_electrons.div_ceil(2);
+    let n_virt = n_basis.saturating_sub(n_occ);
+    if n_occ == 0 || n_virt == 0 {
+        return Err("No occupied or virtual orbitals for sTDA".to_string());
+    }
+
+    let n_ao = coefficients.len();
+    let mut excitations = Vec::new();
+    for occ in 0..n_occ.min(n_basis) {
+        for virt in n_occ..n_basis {
+            let delta_e = orbital_energies[virt] - orbital_energies[occ];
+            if delta_e <= 0.01 || delta_e > e_window {
+                continue;
+            }
+
+            let mut tdm = [0.0f64; 3];
+            for mu in 0..n_ao {
+                let product = coefficients[mu][occ] * coefficients[mu][virt];
+                if product.abs() < 1e-12 {
+                    continue;
+                }
+                if let Some(ao) = basis.get(mu) {
+                    tdm[0] += product * ao.center[0];
+                    tdm[1] += product * ao.center[1];
+                    tdm[2] += product * ao.center[2];
+                }
+            }
+            let tdm_mag = (tdm[0] * tdm[0] + tdm[1] * tdm[1] + tdm[2] * tdm[2]).sqrt();
+            let delta_e_ha = delta_e / 27.211386;
+            let f_osc = (2.0 / 3.0) * delta_e_ha * tdm_mag * tdm_mag;
+            excitations.push(StdaExcitation {
+                energy_ev: delta_e,
+                wavelength_nm: EV_TO_NM / delta_e,
+                oscillator_strength: f_osc,
+                from_mo: occ,
+                to_mo: virt,
+                transition_dipole: tdm_mag * 4.80320425,
+            });
+        }
+    }
+    Ok(excitations)
+}
+
+/// Build an sTDA UV-Vis spectrum from EHT molecular orbitals.
 ///
 /// The simplified Tamm-Dancoff approximation (sTDA) selects single excitations
 /// from occupied→virtual MO pairs, computes transition dipole moments from
@@ -439,19 +495,6 @@ pub fn compute_stda_uvvis_spectrum(
 ) -> Result<StdaUvVisSpectrum, String> {
     // Keep energies and coefficients on the same electronic-structure model.
     // Mixing xTB orbital energies with EHT MO coefficients produces inconsistent transition energies.
-    let eht = crate::eht::solve_eht(elements, positions, None)?;
-    let basis = crate::eht::basis::build_basis(elements, positions);
-    let orbital_energies = eht.energies.clone();
-    let coefficients = eht.coefficients.clone();
-    let n_electrons = eht.n_electrons;
-    let n_basis = orbital_energies.len();
-
-    let n_occ = n_electrons / 2;
-    let n_virt = n_basis.saturating_sub(n_occ);
-    if n_occ == 0 || n_virt == 0 {
-        return Err("No occupied or virtual orbitals for sTDA".to_string());
-    }
-
     let n_points = n_points.max(2);
     let span = (e_max - e_min).max(1e-6);
     let step = span / (n_points as f64 - 1.0);
@@ -462,68 +505,17 @@ pub fn compute_stda_uvvis_spectrum(
         .collect();
     let mut absorptivity = vec![0.0; n_points];
 
-    // sTDA: select single excitations
-    let mut excitations = Vec::new();
-    let n_ao = coefficients.len();
-
-    // Energy window for selecting excitations
-    let e_window = e_max + 2.0 * sigma; // include transitions that could bleed into window
-
-    for occ in 0..n_occ.min(n_basis) {
-        for virt in n_occ..n_basis {
-            let delta_e = orbital_energies[virt] - orbital_energies[occ];
-            if delta_e <= 0.01 || delta_e > e_window {
-                continue;
-            }
-
-            // Transition dipole moment: μ_if = Σ_μ c_μi * c_μf * <μ|r|μ>
-            // One-center approximation: weight each AO pair by its AO center.
-            let mut tdm = [0.0f64; 3];
-            for mu in 0..n_ao {
-                let c_occ = coefficients[mu][occ];
-                let c_virt = coefficients[mu][virt];
-                let product = c_occ * c_virt;
-                if product.abs() < 1e-12 {
-                    continue;
-                }
-                if let Some(ao) = basis.get(mu) {
-                    tdm[0] += product * ao.center[0];
-                    tdm[1] += product * ao.center[1];
-                    tdm[2] += product * ao.center[2];
-                }
-            }
-
-            let tdm_mag = (tdm[0] * tdm[0] + tdm[1] * tdm[1] + tdm[2] * tdm[2]).sqrt();
-
-            // Oscillator strength: f = (2/3) * ΔE * |μ|²
-            // In atomic units. Convert ΔE from eV to Hartree for the formula.
-            let delta_e_ha = delta_e / 27.2114;
-            let f_osc = (2.0 / 3.0) * delta_e_ha * tdm_mag * tdm_mag;
-
-            if f_osc < 1e-8 {
-                continue;
-            }
-
-            excitations.push(StdaExcitation {
-                energy_ev: delta_e,
-                wavelength_nm: EV_TO_NM / delta_e,
-                oscillator_strength: f_osc,
-                from_mo: occ,
-                to_mo: virt,
-                transition_dipole: tdm_mag * 4.80321, // convert to Debye
-            });
-
-            // Add to spectrum with selected broadening
-            // ε(E) = (NA * π * e² / (2 * me * c * ln(10))) * f * g(E)
-            // Simplified: ε ∝ f * g(E-ΔE)
-            let scale = f_osc * 28700.0; // approximate ε scaling (L/(mol·cm))
-            for (idx, &e) in energies_ev.iter().enumerate() {
-                absorptivity[idx] += scale
-                    * match broadening {
-                        BroadeningType::Gaussian => gaussian(e, delta_e, sigma),
-                        BroadeningType::Lorentzian => lorentzian(e, delta_e, sigma),
-                    };
-            }
+    let e_window = e_max + 2.0 * sigma;
+    let mut excitations = collect_stda_excitations(elements, positions, e_window)?;
+    excitations.retain(|ex| ex.oscillator_strength >= 1e-8);
+    for ex in &excitations {
+        let scale = ex.oscillator_strength * 28700.0;
+        for (idx, &e) in energies_ev.iter().enumerate() {
+            absorptivity[idx] += scale
+                * match broadening {
+                    BroadeningType::Gaussian => gaussian(e, ex.energy_ev, sigma),
+                    BroadeningType::Lorentzian => lorentzian(e, ex.energy_ev, sigma),
+                };
         }
     }
 
