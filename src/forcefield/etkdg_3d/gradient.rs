@@ -277,8 +277,8 @@ pub fn etkdg_3d_gradient_f64(
             - 4.0 * vv[3] * ss[3] * (8.0 * cp3 * sin_phi - 4.0 * cos_phi * sin_phi)
             - 5.0 * vv[4] * ss[4] * (16.0 * cp4 * sin_phi - 12.0 * cp2 * sin_phi + sin_phi)
             - 6.0
-                * vv[4]
-                * ss[4]
+                * vv[5]
+                * ss[5]
                 * (32.0 * cp5 * sin_phi - 32.0 * cp3 * sin_phi + 6.0 * cos_phi * sin_phi);
         let is_zero_sin = sin_phi < 1e-10;
         let sin_term = -de_dphi
