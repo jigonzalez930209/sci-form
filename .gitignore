@@ -28,3 +28,4 @@ nohup.out
 vendor
 dist
 build
+graphify-out/

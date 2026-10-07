@@ -40,9 +40,10 @@ See also: [CHANGELOG.md](CHANGELOG.md) · [TESTING.md](TESTING.md) · [ROADMAP_R
 - **AO→MO Integral Transform** — 4-index integral transform with 4-fold symmetry for post-HF methods
 
 ### Spectroscopy
-- **UV-Vis** — sTDA-xTB vertical excitations, Gaussian/Lorentzian broadening
-- **IR** — Numerical Hessian vibrational analysis, dipole intensities, thermochemistry (RRHO), peak assignment
-- **NMR** — Chemical shifts via HOSE codes, J-coupling (Karplus 2J–5J including long-range), ensemble averaging
+- **UV-Vis** — sTDA vertical excitations on EHT orbitals, Gaussian/Lorentzian broadening
+- **Fluorescence** — Kasha emission from those singlets, spontaneous-emission lineshape, Einstein A lifetime
+- **IR** — Numerical Hessian vibrational analysis, dipole intensities, thermochemistry (RRHO), peak assignment; atomic masses through Z = 103
+- **NMR** — Chemical shifts via HOSE codes for NMR-active nuclei including metals (Ce omitted, I = 0), J-coupling (Karplus 2J–5J including long-range), ensemble averaging
 
 ### Machine Learning
 - **ANI-2x / ANI-TM** — Neural network potentials with analytical gradients (24 elements including transition metals)
