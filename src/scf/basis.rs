@@ -157,61 +157,63 @@ pub struct BasisSet {
 impl BasisSet {
     /// Build STO-3G basis set for a molecular system.
     pub fn sto3g(elements: &[u8], positions_bohr: &[[f64; 3]]) -> Self {
-        let mut functions = Vec::new();
         let mut shells = Vec::new();
-        let mut function_to_atom = Vec::new();
-
         for (atom_idx, (&z, &center)) in elements.iter().zip(positions_bohr.iter()).enumerate() {
-            let atom_shells = get_sto3g_shells(z, atom_idx, center);
-            for shell in &atom_shells {
-                match shell.l {
-                    0 => {
+            shells.extend(get_sto3g_shells(z, atom_idx, center));
+        }
+        Self::from_shells(shells)
+    }
+
+    /// Assemble a basis from contracted shells already assigned to atoms.
+    pub fn from_shells(shells: Vec<ContractedShell>) -> Self {
+        let mut functions = Vec::new();
+        let mut function_to_atom = Vec::new();
+        for shell in &shells {
+            match shell.l {
+                0 => {
+                    functions.push(BasisFunction {
+                        atom_index: shell.atom_index,
+                        center: shell.center,
+                        angular: [0, 0, 0],
+                        l_total: 0,
+                        primitives: shell.primitives.clone(),
+                    });
+                    function_to_atom.push(shell.atom_index);
+                }
+                1 => {
+                    for (lx, ly, lz) in [(1, 0, 0), (0, 1, 0), (0, 0, 1)] {
                         functions.push(BasisFunction {
-                            atom_index: atom_idx,
-                            center,
-                            angular: [0, 0, 0],
-                            l_total: 0,
+                            atom_index: shell.atom_index,
+                            center: shell.center,
+                            angular: [lx, ly, lz],
+                            l_total: 1,
                             primitives: shell.primitives.clone(),
                         });
-                        function_to_atom.push(atom_idx);
+                        function_to_atom.push(shell.atom_index);
                     }
-                    1 => {
-                        for (lx, ly, lz) in [(1, 0, 0), (0, 1, 0), (0, 0, 1)] {
-                            functions.push(BasisFunction {
-                                atom_index: atom_idx,
-                                center,
-                                angular: [lx, ly, lz],
-                                l_total: 1,
-                                primitives: shell.primitives.clone(),
-                            });
-                            function_to_atom.push(atom_idx);
-                        }
-                    }
-                    2 => {
-                        for (lx, ly, lz) in [
-                            (2, 0, 0),
-                            (1, 1, 0),
-                            (1, 0, 1),
-                            (0, 2, 0),
-                            (0, 1, 1),
-                            (0, 0, 2),
-                        ] {
-                            functions.push(BasisFunction {
-                                atom_index: atom_idx,
-                                center,
-                                angular: [lx, ly, lz],
-                                l_total: 2,
-                                primitives: shell.primitives.clone(),
-                            });
-                            function_to_atom.push(atom_idx);
-                        }
-                    }
-                    _ => {}
                 }
+                2 => {
+                    for (lx, ly, lz) in [
+                        (2, 0, 0),
+                        (1, 1, 0),
+                        (1, 0, 1),
+                        (0, 2, 0),
+                        (0, 1, 1),
+                        (0, 0, 2),
+                    ] {
+                        functions.push(BasisFunction {
+                            atom_index: shell.atom_index,
+                            center: shell.center,
+                            angular: [lx, ly, lz],
+                            l_total: 2,
+                            primitives: shell.primitives.clone(),
+                        });
+                        function_to_atom.push(shell.atom_index);
+                    }
+                }
+                _ => {}
             }
-            shells.extend(atom_shells);
         }
-
         let n_basis = functions.len();
         BasisSet {
             functions,
@@ -222,10 +224,16 @@ impl BasisSet {
     }
 }
 
+/// Hehre–Stewart–Pople STO-3G parameters exist for these atomic numbers.
+/// Every other element currently receives a one-function hydrogenic fallback.
+pub fn sto3g_tabulated(z: u8) -> bool {
+    matches!(z, 1 | 2 | 6 | 7 | 8 | 9 | 15 | 16 | 17)
+}
+
 /// Return the STO-3G shells for a given element.
 ///
 /// Parameters from Hehre, Stewart, Pople, J. Chem. Phys. 51, 2657 (1969).
-fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Vec<ContractedShell> {
+pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Vec<ContractedShell> {
     match z {
         // Hydrogen: 1s
         1 => vec![ContractedShell {
