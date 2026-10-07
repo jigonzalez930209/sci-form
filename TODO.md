@@ -1,5 +1,16 @@
 # sci-form — Estado del Proyecto y Tareas Pendientes
 
+## Ciclo actual — Kohn–Sham DFT en la librería
+
+El DFT no se importa de otro paquete. El solver es `src/dft/` (`alpha-dft`): F = H + J + Vxc, SVWN y PBE, grilla de Becke.
+
+- [x] Base mínima all-electron hasta Zn para los elementos que no están en la tabla Hehre. Antes caían en un solo 1s.
+- [ ] ECP de core pequeño para Z > 30 (4d, 5d, lantánidos). Sin eso el all-electron no es razonable.
+- [ ] UKS para capas abiertas. Hoy el SCF es capa cerrada.
+- [ ] Base mejor que la mínima (split-valence) y gradiente analítico de la energía KS.
+
+El detalle está en `docs/algorithm/ks-dft.md`.
+
 > Última revisión: 2026-04-07
 > Consolidación de: ROADMAP.md, ROADMAP_EXPERIMENTAL.md, ROADMAP_ALPHA_*.md, ROADMAP_REACTION_DYNAMICS_3D.md, todo.md, SESSION_5_*.md, SMIRKS_*.md, sci-form-exportation.md, dynamics-roadmap-implementation.md, uv-vis-spectroscopy-findings.md
 
@@ -44,7 +55,8 @@
 - Butina RMSD clustering, diversity filtering
 
 ### Spectroscopy
-- UV-Vis: sTDA-xTB vertical excitations + spectral broadening
+- UV-Vis: sTDA vertical excitations + spectral broadening
+- Fluorescence: Kasha selection, spontaneous-emission lineshape, Einstein A lifetime (vertical; no S1 optimization)
 - IR: numerical Hessian, vibrational frequencies, dipole intensities, peak assignment, RRHO thermochemistry
 - NMR: HOSE-code 1H/13C shifts, J-coupling (Karplus, 2J–5J incl. long-range), ensemble averaging
 
@@ -119,7 +131,7 @@
 
 ### 8. Espectroscopía
 - [ ] Prescreening real (Cauchy-Schwarz o similar) para reducir cuello de botella O(N⁴) en sTDA
-- [ ] Clasificar excitaciones dark/bright de forma más explícita
+- [x] Clasificar excitaciones dark/bright de forma más explícita (fluorescencia: umbral `dark_threshold` y bandera de Kasha)
 
 ### 9. SMARTS / SMIRKS
 - [ ] Recursive SMARTS (`$()`)
@@ -153,8 +165,8 @@
 
 ### 15. Reaction Dynamics 3D (alpha)
 - [ ] Deprecar `dynamics.rs` legacy como assembly primario
-- [ ] Rotación Kabsch para >2 fragmentos
-- [ ] Posicionamiento de moléculas extra (≥2) según átomos equivalentes en el producto
+- [x] Rotación Kabsch para >2 fragmentos (`assemble_fragments_at_product_positions`)
+- [x] Posicionamiento de moléculas extra (≥2) según átomos equivalentes en el producto
 - [ ] Optimizador global de orientación multi-fragmento
 - [ ] Comparación sistemática de ángulos de ataque, barreras y trayectorias vs referencias externas
 - [ ] Frontend: eliminar V-path X-axis fallback (rotateToAlign ±X hardcodeados)
