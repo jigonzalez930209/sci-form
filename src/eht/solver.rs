@@ -114,7 +114,7 @@ fn count_valence_electrons(elements: &[u8]) -> usize {
             28 | 46 | 78 => 10, // group 10: Ni, Pd, Pt
             29 | 47 | 79 => 11, // group 11: Cu, Ag, Au
             30 | 48 | 80 => 12, // group 12: Zn, Cd, Hg
-            _ => 0,
+            z => super::metal_fallback::valence_electrons(z),
         })
         .sum()
 }

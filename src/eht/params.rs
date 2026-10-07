@@ -68,8 +68,9 @@ pub fn is_transition_metal(z: u8) -> bool {
 pub fn support_level_for_element(z: u8) -> SupportLevel {
     if get_params(z).is_none() {
         SupportLevel::Unsupported
-    } else if is_transition_metal(z) {
-        // Calibrated against Alvarez/Ammeter/Hoffmann literature tables.
+    } else if is_transition_metal(z) || crate::eht::metal_fallback::is_derived(z) {
+        // Literature d-block tables, or hydrogenic parameters derived from the
+        // first ionization potential for metals missing from that table.
         SupportLevel::Experimental
     } else {
         SupportLevel::Supported
@@ -107,10 +108,20 @@ pub fn analyze_eht_support(elements: &[u8]) -> EhtSupport {
     unsupported_elements.sort_unstable();
 
     let mut warnings = Vec::new();
-    if !provisional_elements.is_empty() {
+    let (literature_tm, derived): (Vec<u8>, Vec<u8>) = provisional_elements
+        .iter()
+        .copied()
+        .partition(|z| !crate::eht::metal_fallback::is_derived(*z));
+    if !literature_tm.is_empty() {
         warnings.push(format!(
             "Transition-metal EHT parameters are provisional for elements {:?}; results should be treated as experimental until benchmark calibration is completed.",
-            provisional_elements
+            literature_tm
+        ));
+    }
+    if !derived.is_empty() {
+        warnings.push(format!(
+            "Elements {:?} use hydrogenic EHT parameters from the first ionization potential. Lanthanides and actinides keep f electrons in the core (ns/np/(n-1)d valence).",
+            derived
         ));
     }
     if !unsupported_elements.is_empty() {
@@ -1233,7 +1244,10 @@ static ALL_PARAMS: &[EhtParams] = &[
 
 /// Look up EHT parameters by atomic number.
 pub fn get_params(z: u8) -> Option<&'static EhtParams> {
-    ALL_PARAMS.iter().find(|p| p.z == z)
+    ALL_PARAMS
+        .iter()
+        .find(|p| p.z == z)
+        .or_else(|| crate::eht::metal_fallback::derived_params(z))
 }
 
 /// Count the total number of valence basis functions for an element.
