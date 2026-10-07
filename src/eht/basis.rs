@@ -203,26 +203,31 @@ pub fn sto3g_expansion(n: u8, l: u8, zeta: f64) -> Vec<GaussianPrimitive> {
         (4, 0) => &STO3G_4SP_INNER,
         (4, 1) => &STO3G_4SP_OUTER,
         (4, 2) => &STO3G_3D,
-        (5, 0) => &STO3G_5SP_INNER,
-        (5, 1) => &STO3G_5SP_OUTER,
-        (5, 2) => &STO3G_3D,
+        (5, 0) | (6, 0) | (7, 0) => &STO3G_5SP_INNER,
+        (5, 1) | (6, 1) | (7, 1) => &STO3G_5SP_OUTER,
+        (5, 2) | (6, 2) | (7, 2) => &STO3G_3D,
         _ => return vec![],
     };
 
-    // For 4d/5d orbitals, scale exponents by (3/n)² to account for the
-    // more diffuse nature of higher principal quantum number d shells.
-    let d_scale = if l == 2 && n > 3 {
-        let ratio = 3.0 / n as f64;
-        ratio * ratio
-    } else {
-        1.0
+    // Higher principal shells reuse the nearest STO-3G contraction and
+    // scale the exponents by (n_ref/n)² so the orbital stays diffuse.
+    let radial_scale = match (n, l) {
+        (6, 0 | 1) | (7, 0 | 1) => {
+            let ratio = 5.0 / n as f64;
+            ratio * ratio
+        }
+        (_, 2) if n > 3 => {
+            let ratio = 3.0 / n as f64;
+            ratio * ratio
+        }
+        _ => 1.0,
     };
 
     table
         .iter()
         .map(|&(coeff, alpha)| GaussianPrimitive {
             coeff,
-            alpha: alpha * zeta_sq * d_scale,
+            alpha: alpha * zeta_sq * radial_scale,
         })
         .collect()
 }

@@ -12,6 +12,7 @@ pub mod basis;
 pub mod gradients;
 pub mod hamiltonian;
 pub mod marching_cubes;
+pub mod metal_fallback;
 pub mod overlap;
 pub mod params;
 pub mod solver;
