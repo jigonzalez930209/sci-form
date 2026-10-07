@@ -28,6 +28,44 @@ pub fn compute_stda_uvvis(
     }
 }
 
+/// Fluorescence from the same sTDA singlets as absorption.
+/// `stokes_ev` is an extra red-shift; 0 keeps the vertical emission energy.
+#[wasm_bindgen]
+pub fn compute_fluorescence(
+    elements_json: &str,
+    coords_flat_json: &str,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    stokes_ev: f64,
+    refractive_index: f64,
+    broadening: &str,
+) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    let bt = match broadening {
+        "lorentzian" | "Lorentzian" => sci_form::reactivity::BroadeningType::Lorentzian,
+        _ => sci_form::reactivity::BroadeningType::Gaussian,
+    };
+    let config = sci_form::spectroscopy::FluorescenceConfig {
+        sigma,
+        e_min,
+        e_max,
+        n_points,
+        stokes_ev,
+        refractive_index,
+        broadening: bt,
+        ..Default::default()
+    };
+    match sci_form::compute_fluorescence(&elems, &positions, config) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
 /// Perform vibrational analysis via numerical Hessian.
 #[wasm_bindgen]
 pub fn compute_vibrational_analysis(

@@ -41,11 +41,11 @@ mod eeq_py {
         total_charge: f64,
     ) -> PyResult<EeqChargeResultPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let config = sci_form_core::experimental::eeq::EeqConfig {
+        let config = sci_form_core::charges_eeq::EeqConfig {
             total_charge,
             regularization: 1e-10,
         };
-        let r = sci_form_core::experimental::eeq::compute_eeq_charges(&elements, &pos, &config);
+        let r = sci_form_core::charges_eeq::compute_eeq_charges(&elements, &pos, &config);
         Ok(EeqChargeResultPy {
             charges: r.charges,
             coordination_numbers: r.coordination_numbers,
@@ -62,11 +62,11 @@ mod eeq_py {
         total_charge: f64,
     ) -> PyResult<EeqEnergyResultPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let config = sci_form_core::experimental::eeq::EeqConfig {
+        let config = sci_form_core::charges_eeq::EeqConfig {
             total_charge,
             regularization: 1e-10,
         };
-        let r = sci_form_core::experimental::eeq::compute_eeq_energy(&elements, &pos, &config);
+        let r = sci_form_core::charges_eeq::compute_eeq_energy(&elements, &pos, &config);
         Ok(EeqEnergyResultPy {
             electrostatic_energy: r.electrostatic_energy,
             charges: r.charges,
@@ -123,12 +123,12 @@ mod alpb_py {
         surface_tension: f64,
     ) -> PyResult<AlpbResultPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let config = sci_form_core::experimental::alpb::AlpbConfig {
+        let config = sci_form_core::solvation_alpb::AlpbConfig {
             solvent_dielectric,
             probe_radius,
             surface_tension,
         };
-        let r = sci_form_core::experimental::alpb::compute_alpb_solvation(
+        let r = sci_form_core::solvation_alpb::compute_alpb_solvation(
             &elements, &pos, &charges, &config,
         );
         Ok(AlpbResultPy {
@@ -150,7 +150,7 @@ mod alpb_py {
     ) -> PyResult<AlpbBornRadiiPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let r =
-            sci_form_core::experimental::alpb::compute_born_radii(&elements, &pos, probe_radius);
+            sci_form_core::solvation_alpb::compute_born_radii(&elements, &pos, probe_radius);
         Ok(AlpbBornRadiiPy {
             radii: r.radii,
             intrinsic: r.intrinsic,
@@ -198,7 +198,7 @@ mod d4_py {
         three_body: bool,
     ) -> PyResult<D4ResultPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let config = sci_form_core::experimental::d4::D4Config {
+        let config = sci_form_core::dispersion::D4Config {
             s6,
             s8,
             a1,
@@ -206,7 +206,7 @@ mod d4_py {
             three_body,
             s9: 1.0,
         };
-        let r = sci_form_core::experimental::d4::compute_d4_energy(&elements, &pos, &config);
+        let r = sci_form_core::dispersion::compute_d4_energy(&elements, &pos, &config);
         Ok(D4ResultPy {
             e2_body: r.e2_body,
             e3_body: r.e3_body,
@@ -272,13 +272,13 @@ mod cpm_py {
         dielectric: f64,
     ) -> PyResult<CpmResultPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let config = sci_form_core::experimental::cpm::CpmConfig {
+        let config = sci_form_core::beta::cpm::CpmConfig {
             mu_ev,
             dielectric,
             max_iter: 100,
             charge_tol: 1e-6,
         };
-        let r = sci_form_core::experimental::cpm::compute_cpm_charges(&elements, &pos, &config);
+        let r = sci_form_core::beta::cpm::compute_cpm_charges(&elements, &pos, &config);
         Ok(CpmResultPy {
             charges: r.charges,
             total_charge: r.total_charge,
@@ -302,7 +302,7 @@ mod cpm_py {
         dielectric: f64,
     ) -> PyResult<CpmSurfacePy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let r = sci_form_core::experimental::cpm::compute_cpm_surface(
+        let r = sci_form_core::beta::cpm::compute_cpm_surface(
             &elements, &pos, mu_min, mu_max, n_points, dielectric,
         );
         Ok(CpmSurfacePy {
