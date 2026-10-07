@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 
 use super::grid::{GridQuality, MolecularGrid};
 use super::vxc_matrix::build_vxc_matrix;
-use crate::scf::basis::BasisSet;
 use crate::scf::constants::{HARTREE_TO_EV, SCF_MAX_ITER};
 use crate::scf::core_matrices::{nuclear_repulsion_energy, CoreMatrices};
 use crate::scf::density_matrix::{build_density_matrix, density_rms_change};
@@ -117,7 +116,7 @@ pub fn solve_ks_dft(
     }
 
     // Build basis set
-    let basis = BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
+    let basis = super::valence_basis::ks_basis(&system.atomic_numbers, &system.positions_bohr)?;
     let n_basis = basis.functions.len();
 
     // Build molecular integration grid
@@ -312,6 +311,21 @@ mod tests {
         assert!(result.total_energy < 0.0, "total energy should be negative");
         assert!(result.n_electrons == 2);
         assert!(result.n_basis >= 2);
+    }
+
+    #[test]
+    fn dft_lih_uses_a_valence_basis() {
+        let elements = [3u8, 1];
+        let positions = [[0.0, 0.0, 0.0], [1.60, 0.0, 0.0]];
+        let config = DftConfig {
+            grid_quality: super::super::grid::GridQuality::Coarse,
+            max_iterations: 40,
+            ..DftConfig::default()
+        };
+        let result = solve_ks_dft(&elements, &positions, &config).unwrap();
+        assert!(result.n_basis > 2, "Li must not collapse to a single 1s");
+        assert!(result.total_energy.is_finite());
+        assert_eq!(result.n_electrons, 4);
     }
 
     #[test]

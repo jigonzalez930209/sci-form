@@ -14,6 +14,7 @@
 //! ```
 
 pub mod becke;
+mod valence_basis;
 pub mod functionals;
 pub mod grid;
 pub mod ks_fock;
@@ -21,4 +22,4 @@ pub mod lebedev;
 pub mod vxc_matrix;
 
 pub use grid::MolecularGrid;
-pub use ks_fock::{solve_ks_dft, DftMethod, DftResult};
+pub use ks_fock::{solve_ks_dft, DftConfig, DftMethod, DftResult};
