@@ -142,6 +142,92 @@ fn stda_uvvis(
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct FluorescenceSpectrumPy {
+    #[pyo3(get)]
+    energies_ev: Vec<f64>,
+    #[pyo3(get)]
+    wavelengths_nm: Vec<f64>,
+    #[pyo3(get)]
+    intensity: Vec<f64>,
+    #[pyo3(get)]
+    absorption_energy_ev: f64,
+    #[pyo3(get)]
+    emission_energy_ev: f64,
+    #[pyo3(get)]
+    emission_wavelength_nm: f64,
+    #[pyo3(get)]
+    oscillator_strength: f64,
+    #[pyo3(get)]
+    radiative_rate_hz: f64,
+    #[pyo3(get)]
+    radiative_lifetime_ns: f64,
+    #[pyo3(get)]
+    kasha: bool,
+    #[pyo3(get)]
+    from_mo: usize,
+    #[pyo3(get)]
+    to_mo: usize,
+    #[pyo3(get)]
+    notes: Vec<String>,
+}
+
+#[pyfunction]
+#[pyo3(signature = (elements, coords, sigma=0.25, e_min=0.5, e_max=8.0, n_points=400, stokes_ev=0.0, refractive_index=1.0, dark_threshold=1e-3, broadening="gaussian"))]
+fn fluorescence_spectrum(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    stokes_ev: f64,
+    refractive_index: f64,
+    dark_threshold: f64,
+    broadening: &str,
+) -> PyResult<FluorescenceSpectrumPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(),
+            elements.len() * 3
+        )));
+    }
+    let positions = coords_to_positions(&coords);
+    let bt = match broadening {
+        "lorentzian" | "Lorentzian" => sci_form_core::reactivity::BroadeningType::Lorentzian,
+        _ => sci_form_core::reactivity::BroadeningType::Gaussian,
+    };
+    let config = sci_form_core::spectroscopy::FluorescenceConfig {
+        sigma,
+        e_min,
+        e_max,
+        n_points,
+        stokes_ev,
+        refractive_index,
+        dark_threshold,
+        broadening: bt,
+    };
+    sci_form_core::compute_fluorescence(&elements, &positions, config)
+        .map(|r| FluorescenceSpectrumPy {
+            energies_ev: r.energies_ev,
+            wavelengths_nm: r.wavelengths_nm,
+            intensity: r.intensity,
+            absorption_energy_ev: r.absorption_energy_ev,
+            emission_energy_ev: r.emission_energy_ev,
+            emission_wavelength_nm: r.emission_wavelength_nm,
+            oscillator_strength: r.oscillator_strength,
+            radiative_rate_hz: r.radiative_rate_hz,
+            radiative_lifetime_ns: r.radiative_lifetime_ns,
+            kasha: r.kasha,
+            from_mo: r.from_mo,
+            to_mo: r.to_mo,
+            notes: r.notes,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
 #[pyfunction]
 #[pyo3(signature = (elements, coords, method="eht", step_size=None, smiles=None))]
 fn vibrational_analysis(
@@ -239,10 +325,12 @@ fn ir_spectrum(
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(stda_uvvis, m)?)?;
+    m.add_function(wrap_pyfunction!(fluorescence_spectrum, m)?)?;
     m.add_function(wrap_pyfunction!(vibrational_analysis, m)?)?;
     m.add_function(wrap_pyfunction!(ir_spectrum, m)?)?;
     m.add_class::<StdaExcitationPy>()?;
     m.add_class::<StdaUvVisSpectrumPy>()?;
+    m.add_class::<FluorescenceSpectrumPy>()?;
     m.add_class::<VibrationalModePy>()?;
     m.add_class::<VibrationalAnalysisPy>()?;
     m.add_class::<IrPeakPy>()?;
