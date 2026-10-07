@@ -231,3 +231,4 @@ console.log(`Dominant band at ${wn.toFixed(1)} cm⁻¹`);
 - For PM3: ~5 ms/eval → ~15 s for 50 atoms.
 - For GFN-xTB: ~20 ms/eval → ~60 s for 50 atoms.
 - Use `method = "eht"` for rapid screening; `"xtb"` for higher fidelity.
+- Mass weighting uses standard atomic weights for Z = 1–103, so metal-ligand stretches are not scaled by the old `Z × 2.1` placeholder. The electronic method still has to accept those elements.

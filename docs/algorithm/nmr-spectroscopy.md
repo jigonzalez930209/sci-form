@@ -311,4 +311,5 @@ console.log(`Most intense peak at δ ${ppm.toFixed(2)} ppm`);
 - Stereochemical effects (axial/equatorial, diastereotopic protons) are partially handled through 3D Karplus.
 - Solvent and temperature effects are not modeled.
 - Expanded heteronuclear support is screening-level relative inference; quadrupolar linewidths and isotope abundances are not modeled quantitatively.
+- Metals outside the named isotopes use the NMR catalog (Y, Tc, lanthanides except Ce, Hf, Ta, Re, Os, Ir, and actinides through Am). Cerium emits no shift: every natural isotope has spin 0.
 - For HOSE code matching, rare environments with no database match fall back to hybridization-based defaults.
