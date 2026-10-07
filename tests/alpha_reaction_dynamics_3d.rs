@@ -1208,3 +1208,69 @@ fn reaction_smirks_integration_with_pipeline() {
         dyn_result.notes
     );
 }
+
+fn dummy_conf(coords: &[f64]) -> sci_form::ConformerResult {
+    let n = coords.len() / 3;
+    sci_form::ConformerResult {
+        smiles: String::new(),
+        num_atoms: n,
+        coords: coords.to_vec(),
+        elements: vec![6; n],
+        bonds: Vec::new(),
+        error: None,
+        time_ms: 0.0,
+    }
+}
+
+fn fragment_com(coords: &[f64], start: usize, n: usize) -> [f64; 3] {
+    let mut c = [0.0; 3];
+    for a in start..start + n {
+        c[0] += coords[a * 3];
+        c[1] += coords[a * 3 + 1];
+        c[2] += coords[a * 3 + 2];
+    }
+    let nf = n as f64;
+    [c[0] / nf, c[1] / nf, c[2] / nf]
+}
+
+#[test]
+fn assemble_three_fragments_follow_product_coms() {
+    // Three diatomic fragments. Product places them on a triangle, not on +X.
+    let r1 = dummy_conf(&[0.0, 0.0, 0.0, 1.2, 0.0, 0.0]);
+    let r2 = dummy_conf(&[0.0, 0.0, 0.0, 1.1, 0.0, 0.0]);
+    let r3 = dummy_conf(&[0.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
+    let p = [
+        0.0, 0.0, 0.0, 0.0, 1.2, 0.0, // frag 0 along +Y
+        5.0, 0.0, 0.0, 5.0, 0.0, 1.1, // frag 1 along +Z
+        2.0, 4.0, 1.0, 3.0, 4.0, 1.0, // frag 2 along +X
+    ];
+    let assembled = assemble_fragments_at_product_positions(
+        &[r1, r2, r3],
+        &p,
+        &[6; 6],
+        &[6; 6],
+    );
+    assert_eq!(assembled.len(), 18);
+
+    let p_coms = [
+        fragment_com(&p, 0, 2),
+        fragment_com(&p, 2, 2),
+        fragment_com(&p, 4, 2),
+    ];
+    let a_coms = [
+        fragment_com(&assembled, 0, 2),
+        fragment_com(&assembled, 2, 2),
+        fragment_com(&assembled, 4, 2),
+    ];
+    // Global recentring preserves COM differences.
+    for i in 1..3 {
+        for k in 0..3 {
+            let dp = p_coms[i][k] - p_coms[0][k];
+            let da = a_coms[i][k] - a_coms[0][k];
+            assert!(
+                (dp - da).abs() < 1e-6,
+                "fragment {i} axis {k}: product delta {dp} vs assembled {da}"
+            );
+        }
+    }
+}
