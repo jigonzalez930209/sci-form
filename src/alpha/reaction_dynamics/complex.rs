@@ -209,16 +209,73 @@ pub fn build_product_guided_complex_3d(
 
 /// Assemble reactant fragments at product-derived positions for atom mapping.
 ///
-/// Places each reactant fragment centered at the COM of the product atoms
-/// corresponding to that fragment's position. Used to compute the greedy
-/// atom mapping before the full product-guided complex.
+/// Each reactant fragment is translated to the centre of mass of the product
+/// atoms in the same concatenated order, then Kabsch-aligned when the fragment
+/// has at least two atoms. Extra fragments (≥3 reactants) use the same rule:
+/// they sit on the product atoms that correspond to them, not on a fixed axis.
+///
+/// If the product coordinate length does not match the reactant atom count,
+/// fragments fall back to a 4 Å spacing along +X.
 pub fn assemble_fragments_at_product_positions(
     r_confs: &[crate::ConformerResult],
-    _p_coords: &[f64],
+    p_coords: &[f64],
     _p_elements: &[u8],
     _r_elements: &[u8],
 ) -> Vec<f64> {
-    // Simple placement: centre each fragment at origin then offset
+    let n_total: usize = r_confs.iter().map(|c| c.num_atoms).sum();
+    if n_total == 0 {
+        return Vec::new();
+    }
+
+    let p_atoms = p_coords.len() / 3;
+    if p_atoms != n_total {
+        return place_fragments_along_x(r_confs);
+    }
+
+    let mut coords = vec![0.0f64; n_total * 3];
+    let mut atom_off = 0usize;
+
+    for conf in r_confs {
+        let n = conf.num_atoms;
+        if n == 0 {
+            continue;
+        }
+        let p_frag: Vec<f64> = (atom_off..atom_off + n)
+            .flat_map(|a| {
+                [
+                    p_coords[a * 3],
+                    p_coords[a * 3 + 1],
+                    p_coords[a * 3 + 2],
+                ]
+            })
+            .collect();
+        let p_com = com_flat(&p_frag);
+        let mut r_frag = conf.coords.clone();
+        centre_at_origin(&mut r_frag);
+
+        if n >= 2 {
+            let aligned = crate::alignment::kabsch::align_coordinates(&r_frag, &p_frag);
+            let ac = com_flat(&aligned.aligned_coords);
+            for a in 0..n {
+                coords[(atom_off + a) * 3] = aligned.aligned_coords[a * 3] - ac[0] + p_com[0];
+                coords[(atom_off + a) * 3 + 1] =
+                    aligned.aligned_coords[a * 3 + 1] - ac[1] + p_com[1];
+                coords[(atom_off + a) * 3 + 2] =
+                    aligned.aligned_coords[a * 3 + 2] - ac[2] + p_com[2];
+            }
+        } else {
+            coords[atom_off * 3] = p_com[0];
+            coords[atom_off * 3 + 1] = p_com[1];
+            coords[atom_off * 3 + 2] = p_com[2];
+        }
+        atom_off += n;
+    }
+
+    centre_at_origin(&mut coords);
+    coords
+}
+
+fn place_fragments_along_x(r_confs: &[crate::ConformerResult]) -> Vec<f64> {
     let n_total: usize = r_confs.iter().map(|c| c.num_atoms).sum();
     let mut coords = vec![0.0f64; n_total * 3];
     let mut off = 0usize;
