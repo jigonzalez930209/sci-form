@@ -48,25 +48,18 @@ fn vwn5_correlation(rho: f64) -> (f64, f64) {
     let c = 12.9352;
 
     let x = rs.sqrt();
-    let x_x0 = x - x0;
     let xx = x * x + b * x + c;
     let xx0 = x0 * x0 + b * x0 + c;
     let q = (4.0 * c - b * b).sqrt();
 
-    let _ec = a
-        * (x.powi(2).ln() / xx.ln() + 2.0 * b / q * (2.0 * x + b).atan2(q).atan()
-            - b * x0 / xx0 * ((x_x0).powi(2) / xx).ln()
-            + 2.0 * (b + 2.0 * x0) / q * (2.0 * x + b).atan2(q).atan());
-
-    // Simplified VWN-5: use the standard parameterization
-    // ε_c(r_s) = A/2 { ln(x²/X(x)) + 2b/Q arctan(Q/(2x+b))
-    //            - bx0/X(x0) [ ln((x-x0)²/X(x)) + 2(b+2x0)/Q arctan(Q/(2x+b)) ] }
+    // ε_c = A/2 { ln(x²/X) + 2b/Q arctan(Q/(2x+b))
+    //             − (b x0 / X0) [ ln((x−x0)²/X) + 2(b+2x0)/Q arctan(...) ] }
     let atan_term = (q / (2.0 * x + b)).atan();
     let ec_real = 0.5
         * a
-        * (2.0 * (x * x / xx).ln() + 2.0 * b / q * atan_term
+        * ((x * x / xx).ln() + 2.0 * b / q * atan_term
             - b * x0 / xx0
-                * (2.0 * ((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
+                * (((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
 
     // Numerical derivative for V_c = ε_c - (r_s / 3) dε_c/dr_s
     let delta = 1e-6 * rs.max(1e-10);
@@ -101,9 +94,9 @@ fn vwn5_correlation_energy(rho: f64) -> (f64, f64) {
 
     let ec = 0.5
         * a
-        * (2.0 * (x * x / xx).ln() + 2.0 * b / q * atan_term
+        * ((x * x / xx).ln() + 2.0 * b / q * atan_term
             - b * x0 / xx0
-                * (2.0 * ((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
+                * (((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
 
     (ec, 0.0)
 }
