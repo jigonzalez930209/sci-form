@@ -62,8 +62,8 @@ fn compute_density_at_point(phi: &[f64], density: &DMatrix<f64>) -> f64 {
     rho.max(0.0)
 }
 
-/// Compute density gradient squared |∇ρ|² at a grid point.
-fn compute_gradient_squared(phi: &[f64], dphi: &[[f64; 3]], density: &DMatrix<f64>) -> f64 {
+/// Density gradient ∇ρ. σ = |∇ρ|² is the GGA ingredient.
+fn compute_density_gradient(phi: &[f64], dphi: &[[f64; 3]], density: &DMatrix<f64>) -> [f64; 3] {
     let n = phi.len();
     let mut grad = [0.0f64; 3];
 
@@ -76,7 +76,7 @@ fn compute_gradient_squared(phi: &[f64], dphi: &[[f64; 3]], density: &DMatrix<f6
         }
     }
 
-    grad[0] * grad[0] + grad[1] * grad[1] + grad[2] * grad[2]
+    grad
 }
 
 /// Build the V_XC matrix from the density matrix on the molecular grid.
@@ -118,22 +118,24 @@ pub fn build_vxc_matrix(
             }
             DftMethod::Pbe => {
                 let dphi = evaluate_basis_gradient_at_point(basis, &gp.xyz);
-                let sigma = compute_gradient_squared(&phi, &dphi, density);
+                let grad_rho = compute_density_gradient(&phi, &dphi, density);
+                let sigma = grad_rho[0] * grad_rho[0]
+                    + grad_rho[1] * grad_rho[1]
+                    + grad_rho[2] * grad_rho[2];
 
                 let (exc, vxc_rho, vxc_sigma) = pbe::pbe(rho, sigma);
                 exc_total += gp.weight * rho * exc;
 
                 for mu in 0..n {
                     for nu in mu..n {
-                        // LDA part
                         let mut contrib = gp.weight * vxc_rho * phi[mu] * phi[nu];
 
-                        // GGA part: 2 * vxc_sigma * ∇ρ · (∇φ_μ φ_ν + φ_μ ∇φ_ν)
-                        // Simplified: use density gradient contribution
-                        let grad_contrib = vxc_sigma * 2.0;
+                        // ∫ 2 v_σ ∇ρ · (φ_ν ∇φ_μ + φ_μ ∇φ_ν)
                         for d in 0..3 {
                             contrib += gp.weight
-                                * grad_contrib
+                                * 2.0
+                                * vxc_sigma
+                                * grad_rho[d]
                                 * (dphi[mu][d] * phi[nu] + phi[mu] * dphi[nu][d]);
                         }
 
