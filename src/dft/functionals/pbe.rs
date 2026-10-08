@@ -52,17 +52,30 @@ fn pbe_exchange(rho: f64, sigma: f64) -> (f64, f64, f64) {
 
     let ex = ex_lda * fx;
 
-    // Derivatives (simplified)
+    // ∂(ρεx)/∂ρ at fixed σ. s depends on ρ, so the chain rule is numerical.
+    let delta = 1e-7 * rho.max(1e-12);
+    let ex_plus = pbe_exchange_only(rho + delta, sigma);
+    let ex_minus = pbe_exchange_only((rho - delta).max(1e-20), sigma);
+    let vx_rho = ex + rho * (ex_plus - ex_minus) / (2.0 * delta);
+
     let dfx_ds2 = MU / (denom * denom);
-
-    // ∂(ρ εx)/∂ρ
-    let vx_rho = 4.0 / 3.0 * ex_lda * fx - ex_lda * dfx_ds2 * 4.0 / 3.0 * s2;
-
-    // ∂(ρ εx)/∂σ = ρ εx_lda dfx/dσ
     let ds2_dsigma = 1.0 / (4.0 * kf * kf * rho * rho + 1e-30);
     let vx_sigma = ex_lda * rho * dfx_ds2 * ds2_dsigma;
 
     (ex, vx_rho, vx_sigma)
+}
+
+fn pbe_exchange_only(rho: f64, sigma: f64) -> f64 {
+    if rho < 1e-20 {
+        return 0.0;
+    }
+    let cx = -0.75 * (3.0 / PI).powf(1.0 / 3.0);
+    let ex_lda = cx * rho.powf(1.0 / 3.0);
+    let kf = (3.0 * PI * PI * rho).powf(1.0 / 3.0);
+    let s = sigma.sqrt() / (2.0 * kf * rho + 1e-30);
+    let denom = 1.0 + MU * s * s / KAPPA;
+    let fx = 1.0 + KAPPA - KAPPA / denom;
+    ex_lda * fx
 }
 
 /// PBE correlation.
@@ -88,17 +101,8 @@ fn pbe_correlation(rho: f64, sigma: f64) -> (f64, f64, f64) {
     let denom = 2.0 * a * (beta1 * rs_sqrt + beta2 * rs + beta3 * rs_32 + beta4 * rs * rs);
     let ec_lda = -2.0 * a * (1.0 + alpha1 * rs) * (1.0 + 1.0 / denom).ln();
 
-    // PBE gradient correction
     let kf = (3.0 * PI * PI * rho).powf(1.0 / 3.0);
-    let ks = (4.0 * kf / PI).sqrt();
-    let t2 = sigma / (4.0 * ks * ks * rho * rho + 1e-30);
-
-    let a_pbe = BETA / (-ec_lda).max(1e-20) * ((-ec_lda / BETA).exp() - 1.0).recip();
-    let at2 = a_pbe * t2;
-    let h = BETA * (1.0 + at2 * (1.0 + at2 * a_pbe) / (1.0 + at2 + at2 * at2 * a_pbe * a_pbe)).ln()
-        / BETA;
-
-    let ec = ec_lda + h * BETA;
+    let ec = ec_lda + pbe_h(ec_lda, rho, sigma, kf);
 
     // Numerical derivatives for robustness
     let delta = 1e-7 * rho.max(1e-12);
@@ -134,14 +138,22 @@ fn pbe_correlation_energy(rho: f64, sigma: f64) -> (f64, f64, f64) {
     let ec_lda = -2.0 * a * (1.0 + alpha1 * rs) * (1.0 + 1.0 / denom).ln();
 
     let kf = (3.0 * PI * PI * rho).powf(1.0 / 3.0);
+    (ec_lda + pbe_h(ec_lda, rho, sigma, kf), 0.0, 0.0)
+}
+
+/// PBE correlation gradient correction H.
+///
+/// H = γ ln(1 + (β/γ) t² (1+At²)/(1+At²+A²t⁴)),
+/// γ = (1−ln 2)/π², A = (β/γ) / (exp(−εc/γ) − 1).
+fn pbe_h(ec_lda: f64, rho: f64, sigma: f64, kf: f64) -> f64 {
+    let gamma = (1.0 - 2.0_f64.ln()) / (PI * PI);
     let ks = (4.0 * kf / PI).sqrt();
     let t2 = sigma / (4.0 * ks * ks * rho * rho + 1e-30);
-    let a_pbe = BETA / (-ec_lda).max(1e-20) * ((-ec_lda / BETA).exp() - 1.0).recip();
+    let denom = ((-ec_lda / gamma).exp() - 1.0).max(1e-30);
+    let a_pbe = (BETA / gamma) / denom;
     let at2 = a_pbe * t2;
-    let h = BETA * (1.0 + at2 * (1.0 + at2 * a_pbe) / (1.0 + at2 + at2 * at2 * a_pbe * a_pbe)).ln()
-        / BETA;
-
-    (ec_lda + h * BETA, 0.0, 0.0)
+    let frac = t2 * (1.0 + at2) / (1.0 + at2 + at2 * at2);
+    gamma * (1.0 + (BETA / gamma) * frac).ln()
 }
 
 #[cfg(test)]
