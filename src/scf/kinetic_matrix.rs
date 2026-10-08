@@ -98,9 +98,11 @@ fn kinetic_integral_primitive(
                 * overlap_primitive(alpha, center_a, la, beta, center_b, lb_minus);
         }
     }
-    term3 *= 0.5;
+    // β(2l+3)S − 2β² S(l+2) − ½ l(l−1) S(l−2) is already ⟨−½∇²⟩.
+    // An extra −½ here made H² STO-3G about 3 Ha too low versus PySCF.
+    term3 *= -0.5;
 
-    -0.5 * (term1 + term2 + term3)
+    term1 + term2 + term3
 }
 
 #[cfg(test)]
