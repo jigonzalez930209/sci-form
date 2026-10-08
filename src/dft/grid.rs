@@ -75,19 +75,18 @@ impl MolecularGrid {
         for (atom_idx, &center) in positions_bohr.iter().enumerate() {
             let r_bragg = bragg_slater_radius(atomic_numbers[atom_idx]);
 
-            for i_rad in 0..n_rad {
-                // Treutler-Ahlrichs radial mapping: r = r_bragg * (1+x)/(1-x)
-                // with Gauss-Chebyshev abscissa x_i
-                let x = ((i_rad as f64 + 0.5) / n_rad as f64) * std::f64::consts::PI;
-                let cos_x = x.cos();
-                let r = r_bragg * (1.0 + cos_x) / (1.0 - cos_x + 1e-15);
-                let r = r.max(1e-10);
-
-                // Radial weight: Euler-Maclaurin with Jacobian
-                let w_rad = std::f64::consts::PI / n_rad as f64 * x.sin() * r_bragg * 2.0
-                    / ((1.0 - cos_x + 1e-15).powi(2))
-                    * r
-                    * r;
+            for i_rad in 1..=n_rad {
+                // Becke radial map on a Gauss–Chebyshev grid of the second kind.
+                // θ_i = iπ/(n+1), r = R(1+cosθ)/(1−cosθ). The previous
+                // midpoint rule integrated the H₂ density to 2.07 electrons.
+                let theta = std::f64::consts::PI * i_rad as f64 / (n_rad as f64 + 1.0);
+                let x = theta.cos();
+                let denom = (1.0 - x).max(1e-15);
+                let r = r_bragg * (1.0 + x) / denom;
+                let dr = r_bragg * 2.0 / denom.powi(2) * theta.sin()
+                    * std::f64::consts::PI
+                    / (n_rad as f64 + 1.0);
+                let w_rad = dr * r * r;
 
                 for &(theta_phi, w_ang) in &angular {
                     let xyz = [
