@@ -134,22 +134,67 @@ fn nuclear_attraction_primitive(
     let ey = hermite_coefficients(la[1], lb[1], pa[1], pb[1], p);
     let ez = hermite_coefficients(la[2], lb[2], pa[2], pb[2], p);
 
+    // Boys values for R^n_000 = (−2p)^n F_n, n up to the total Hermite order.
     let max_n = l_total as usize;
-    let r_aux = r_auxiliary(max_n, p, &pc);
+    let arg = p * pc2;
+    let mut boys = Vec::with_capacity(max_n + 1);
+    let mut scale = 1.0;
+    for n in 0..=max_n {
+        boys.push(scale * boys_function(n as u32, arg));
+        scale *= -2.0 * p;
+    }
 
     let mut v = 0.0;
     for (t, et) in ex.iter().enumerate() {
+        if et.abs() < 1e-18 {
+            continue;
+        }
         for (u, eu) in ey.iter().enumerate() {
+            if eu.abs() < 1e-18 {
+                continue;
+            }
             for (vv, ev) in ez.iter().enumerate() {
-                let n = t + u + vv;
-                if n <= max_n {
-                    v += et * eu * ev * r_aux[n];
+                if ev.abs() < 1e-18 {
+                    continue;
                 }
+                v += et * eu * ev * r_tuv(t, u, vv, 0, &pc, &boys);
             }
         }
     }
 
     z * prefactor * v
+}
+
+/// Cartesian Hermite Coulomb auxiliary R^n_{tuv}.
+///
+/// R^n_000 = (−2p)^n F_n is precomputed in `boys`.
+/// R^{n}_{t+1,u,v} = t R^{n+1}_{t−1,u,v} + PC_x R^{n+1}_{t,u,v}.
+fn r_tuv(t: usize, u: usize, v: usize, n: usize, pc: &[f64; 3], boys: &[f64]) -> f64 {
+    if t == 0 && u == 0 && v == 0 {
+        return boys[n];
+    }
+    if t > 0 {
+        let lower = if t >= 2 {
+            (t - 1) as f64 * r_tuv(t - 2, u, v, n + 1, pc, boys)
+        } else {
+            0.0
+        };
+        return lower + pc[0] * r_tuv(t - 1, u, v, n + 1, pc, boys);
+    }
+    if u > 0 {
+        let lower = if u >= 2 {
+            (u - 1) as f64 * r_tuv(t, u - 2, v, n + 1, pc, boys)
+        } else {
+            0.0
+        };
+        return lower + pc[1] * r_tuv(t, u - 1, v, n + 1, pc, boys);
+    }
+    let lower = if v >= 2 {
+        (v - 1) as f64 * r_tuv(t, u, v - 2, n + 1, pc, boys)
+    } else {
+        0.0
+    };
+    lower + pc[2] * r_tuv(t, u, v - 1, n + 1, pc, boys)
 }
 
 /// Compute Hermite expansion coefficients E_t^{ij} for one dimension.
@@ -189,16 +234,6 @@ fn hermite_coefficients(la: u32, lb: u32, pa: f64, pb: f64, p: f64) -> Vec<f64> 
     }
 
     (0..=la + lb).map(|t| e[la][lb][t]).collect()
-}
-
-/// Compute R auxiliary integrals R_n(p, PC).
-fn r_auxiliary(max_n: usize, p: f64, pc: &[f64; 3]) -> Vec<f64> {
-    let pc2 = pc[0] * pc[0] + pc[1] * pc[1] + pc[2] * pc[2];
-    let arg = p * pc2;
-
-    (0..=max_n)
-        .map(|n| (-2.0 * p).powi(n as i32) * boys_function(n as u32, arg))
-        .collect()
 }
 
 #[cfg(test)]
