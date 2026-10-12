@@ -41,6 +41,12 @@ fn atom_in_ring_of_size(rings: &[RingInfo], atom: usize, size: usize) -> bool {
 /// - Out-of-plane inversions (three contributions per sp2 centre)
 /// - Non-bonded Lennard-Jones (12-6), skipping 1-2 / 1-3 pairs
 pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
+    // RDKit re-perceives aromaticity during sanitization; the Kekulé bond
+    // orders of our parser are rewritten here so that the typing, angle and
+    // torsion terms use the same aromatic (order 1.5) bonds (validation F16).
+    let perceived = crate::rings::perceived_aromaticity(mol);
+    let mol: &Molecule = perceived.as_ref().unwrap_or(mol);
+
     let mut ff = MolecularForceField::new();
     let n = mol.graph.node_count();
     let topo = topological_distances(mol);
