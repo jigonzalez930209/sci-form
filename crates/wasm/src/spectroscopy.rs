@@ -40,6 +40,7 @@ pub fn compute_fluorescence(
     n_points: usize,
     stokes_ev: f64,
     refractive_index: f64,
+    dark_threshold: f64,
     broadening: &str,
 ) -> String {
     let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
@@ -57,8 +58,8 @@ pub fn compute_fluorescence(
         n_points,
         stokes_ev,
         refractive_index,
+        dark_threshold,
         broadening: bt,
-        ..Default::default()
     };
     match sci_form::compute_fluorescence(&elems, &positions, config) {
         Ok(result) => serialize_or_error(&result),
