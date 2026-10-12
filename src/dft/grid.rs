@@ -83,8 +83,7 @@ impl MolecularGrid {
                 let x = theta.cos();
                 let denom = (1.0 - x).max(1e-15);
                 let r = r_bragg * (1.0 + x) / denom;
-                let dr = r_bragg * 2.0 / denom.powi(2) * theta.sin()
-                    * std::f64::consts::PI
+                let dr = r_bragg * 2.0 / denom.powi(2) * theta.sin() * std::f64::consts::PI
                     / (n_rad as f64 + 1.0);
                 let w_rad = dr * r * r;
 
