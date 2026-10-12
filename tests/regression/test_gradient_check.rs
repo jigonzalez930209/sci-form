@@ -62,6 +62,7 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
     for atom in &ref_mol.atoms {
         let hybridization = sci_form::graph::Hybridization::Unknown;
         let new_atom = sci_form::graph::Atom {
+            no_implicit_h: false,
             element: atom.element,
             position: nalgebra::Vector3::new(0.0, 0.0, 0.0),
             charge: 0.0,
