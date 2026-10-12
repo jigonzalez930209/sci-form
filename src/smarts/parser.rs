@@ -73,6 +73,25 @@ pub fn parse_smarts(smarts: &str) -> Result<SmartsPattern, String> {
     })
 }
 
+/// Element symbols indexed by atomic number (H = 1 .. Lr = 103).
+const ELEMENT_SYMBOLS: [&str; 103] = [
+    "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl",
+    "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As",
+    "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In",
+    "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb",
+    "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl",
+    "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk",
+    "Cf", "Es", "Fm", "Md", "No", "Lr",
+];
+
+/// Atomic number for a case-sensitive element symbol (`Mg` → 12).
+fn element_from_symbol(symbol: &str) -> Option<u8> {
+    ELEMENT_SYMBOLS
+        .iter()
+        .position(|&s| s == symbol)
+        .map(|idx| (idx + 1) as u8)
+}
+
 struct SmartsParser<'a> {
     input: &'a [u8],
     pos: usize,
@@ -367,6 +386,34 @@ impl<'a> SmartsParser<'a> {
     /// Parse a single atom primitive.
     fn parse_atom_primitive(&mut self) -> Result<AtomQuery, String> {
         let c = self.peek().ok_or("unexpected end in atom spec")?;
+
+        // Two-letter element symbols (`Mg`, `Br`, `As`, …): when the pair
+        // resolves to an element, consume it and return the element query;
+        // otherwise fall through to the single-letter query handling below.
+        if c.is_ascii_uppercase() {
+            if let Some(&next) = self.input.get(self.pos + 1) {
+                if next.is_ascii_lowercase() {
+                    let symbol = [c as char, next as char].iter().collect::<String>();
+                    if let Some(z) = element_from_symbol(&symbol) {
+                        self.advance();
+                        self.advance();
+                        return Ok(AtomQuery::Element(z));
+                    }
+                }
+            }
+        }
+        // Aromatic two-letter elements: `se` (34) and `as` (33).
+        if c == b's' && self.input.get(self.pos + 1) == Some(&b'e') {
+            self.advance();
+            self.advance();
+            return Ok(AtomQuery::AromaticElem(34));
+        }
+        if c == b'a' && self.input.get(self.pos + 1) == Some(&b's') {
+            self.advance();
+            self.advance();
+            return Ok(AtomQuery::AromaticElem(33));
+        }
+
         match c {
             b'!' => {
                 self.advance();
@@ -616,6 +663,23 @@ mod tests {
         assert_eq!(p.bonds.len(), 3);
         assert_eq!(p.atoms[0].map_idx, Some(1));
         assert_eq!(p.atoms[3].map_idx, Some(4));
+    }
+
+    #[test]
+    fn test_two_letter_element_symbols() {
+        let p = parse_smarts("[Mg:1][Br:2][As:3]").unwrap();
+        assert_eq!(p.atoms.len(), 3);
+        assert!(matches!(p.atoms[0].query, AtomQuery::Element(12)));
+        assert!(matches!(p.atoms[1].query, AtomQuery::Element(35)));
+        assert!(matches!(p.atoms[2].query, AtomQuery::Element(33)));
+
+        // Aromatic two-letter elements.
+        let p = parse_smarts("[se:1][as:2]").unwrap();
+        assert!(matches!(p.atoms[0].query, AtomQuery::AromaticElem(34)));
+        assert!(matches!(p.atoms[1].query, AtomQuery::AromaticElem(33)));
+
+        // Unknown symbols still fail.
+        assert!(parse_smarts("[Xx:1]").is_err());
     }
 
     #[test]
