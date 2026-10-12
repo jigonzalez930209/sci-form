@@ -46,7 +46,7 @@ let spec = compute_fluorescence(&elements, &positions, config)?;
 
 Python: `fluorescence_spectrum(elements, coords, stokes_ev=0.2)`.
 
-WASM: `compute_fluorescence(elements_json, coords_json, sigma, e_min, e_max, n_points, stokes_ev, refractive_index, broadening)`.
+WASM: `compute_fluorescence(elements_json, coords_json, sigma, e_min, e_max, n_points, stokes_ev, refractive_index, dark_threshold, broadening)`.
 
 ## What an organometallic spectrum is
 
