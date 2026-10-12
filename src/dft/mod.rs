@@ -14,12 +14,16 @@
 //! ```
 
 pub mod becke;
-mod valence_basis;
+pub mod ecp;
 pub mod functionals;
+pub mod gradient;
 pub mod grid;
 pub mod ks_fock;
 pub mod lebedev;
+mod valence_basis;
 pub mod vxc_matrix;
 
+pub use gradient::ks_nuclear_gradient;
 pub use grid::MolecularGrid;
 pub use ks_fock::{solve_ks_dft, DftConfig, DftMethod, DftResult};
+pub use valence_basis::DftBasisKind;
