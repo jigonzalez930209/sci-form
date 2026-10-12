@@ -180,6 +180,7 @@ mod tests {
             hybridization: Hybridization::SP3,
             chiral_tag,
             explicit_h: 0,
+            no_implicit_h: false,
         });
 
         let neighbors: Vec<_> = order
@@ -193,6 +194,7 @@ mod tests {
                     hybridization: Hybridization::SP3,
                     chiral_tag: ChiralType::Unspecified,
                     explicit_h: 0,
+                    no_implicit_h: false,
                 })
             })
             .collect();
