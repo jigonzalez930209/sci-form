@@ -12,539 +12,158 @@ pub struct UffAtomParams {
     pub zeta: f64,   // GMP electronegativity scale factor
     pub z_star: f64, // Effective nuclear charge for bond force constant
     pub chi: f64,    // GMP electronegativity (for bond length correction)
-    pub v_tors: f64, // Torsion barrier Vi (kcal/mol), used as sqrt(Vi*Vj)/2 (eq. 16)
+    pub v_tors: f64, // Torsion barrier Vi (kcal/mol), used in eq. 16
+    pub u1: f64,     // Torsion contribution Uj for sp2-sp3 bonds (UFF eq. 17)
 }
 
 /// Retrieve UFF parameters by atom type label.
+/// Canonical UFF atom parameters (RDKit `Params.cpp` values).
 pub fn get_uff_params(label: &str) -> Option<UffAtomParams> {
+    macro_rules! uff_atom {
+        ($label:expr, $z:expr, $r1:expr, $theta0:expr, $x1:expr, $d1:expr, $zeta:expr, $z_star:expr, $v1:expr, $u1:expr, $xi:expr) => {
+            Some(UffAtomParams {
+                label: $label,
+                element: $z,
+                r1: $r1,
+                theta0: $theta0,
+                x1: $x1,
+                d1: $d1,
+                zeta: $zeta,
+                z_star: $z_star,
+                chi: $xi,
+                v_tors: $v1,
+                u1: $u1,
+            })
+        };
+    }
     match label {
-        // Hydrogen
-        "H_" => Some(UffAtomParams {
-            label: "H_",
-            element: 1,
-            r1: 0.354,
-            theta0: 180.0,
-            x1: 2.886,
-            d1: 0.044,
-            zeta: 0.712,
-            z_star: 0.712,
-            chi: 4.528,
-            v_tors: 0.0,
-        }),
-        // Carbon
-        "C_3" => Some(UffAtomParams {
-            label: "C_3",
-            element: 6,
-            r1: 0.757,
-            theta0: 109.47,
-            x1: 3.851,
-            d1: 0.105,
-            zeta: 1.912,
-            z_star: 1.912,
-            chi: 5.343,
-            v_tors: 2.119,
-        }),
-        "C_2" => Some(UffAtomParams {
-            label: "C_2",
-            element: 6,
-            r1: 0.732,
-            theta0: 120.0,
-            x1: 3.851,
-            d1: 0.105,
-            zeta: 1.912,
-            z_star: 1.912,
-            chi: 5.343,
-            v_tors: 2.119,
-        }),
-        "C_R" => Some(UffAtomParams {
-            label: "C_R",
-            element: 6,
-            r1: 0.729,
-            theta0: 120.0,
-            x1: 3.851,
-            d1: 0.105,
-            zeta: 1.912,
-            z_star: 1.912,
-            chi: 5.343,
-            v_tors: 2.119,
-        }),
-        "C_1" => Some(UffAtomParams {
-            label: "C_1",
-            element: 6,
-            r1: 0.706,
-            theta0: 180.0,
-            x1: 3.851,
-            d1: 0.105,
-            zeta: 1.912,
-            z_star: 1.912,
-            chi: 5.343,
-            v_tors: 2.119,
-        }),
-        // Nitrogen
-        "N_3" => Some(UffAtomParams {
-            label: "N_3",
-            element: 7,
-            r1: 0.700,
-            theta0: 106.7,
-            x1: 3.660,
-            d1: 0.069,
-            zeta: 2.544,
-            z_star: 2.544,
-            chi: 6.899,
-            v_tors: 0.450,
-        }),
-        "N_2" => Some(UffAtomParams {
-            label: "N_2",
-            element: 7,
-            r1: 0.685,
-            theta0: 111.2,
-            x1: 3.660,
-            d1: 0.069,
-            zeta: 2.544,
-            z_star: 2.544,
-            chi: 6.899,
-            v_tors: 0.450,
-        }),
-        "N_R" => Some(UffAtomParams {
-            label: "N_R",
-            element: 7,
-            r1: 0.699,
-            theta0: 120.0,
-            x1: 3.660,
-            d1: 0.069,
-            zeta: 2.544,
-            z_star: 2.544,
-            chi: 6.899,
-            v_tors: 0.450,
-        }),
-        "N_1" => Some(UffAtomParams {
-            label: "N_1",
-            element: 7,
-            r1: 0.656,
-            theta0: 180.0,
-            x1: 3.660,
-            d1: 0.069,
-            zeta: 2.544,
-            z_star: 2.544,
-            chi: 6.899,
-            v_tors: 0.450,
-        }),
-        // Oxygen
-        "O_3" => Some(UffAtomParams {
-            label: "O_3",
-            element: 8,
-            r1: 0.658,
-            theta0: 104.51,
-            x1: 3.500,
-            d1: 0.060,
-            zeta: 2.300,
-            z_star: 2.300,
-            chi: 8.741,
-            v_tors: 2.100,
-        }),
-        "O_2" => Some(UffAtomParams {
-            label: "O_2",
-            element: 8,
-            r1: 0.634,
-            theta0: 120.0,
-            x1: 3.500,
-            d1: 0.060,
-            zeta: 2.300,
-            z_star: 2.300,
-            chi: 8.741,
-            v_tors: 2.100,
-        }),
-        "O_R" => Some(UffAtomParams {
-            label: "O_R",
-            element: 8,
-            r1: 0.680,
-            theta0: 110.0,
-            x1: 3.500,
-            d1: 0.060,
-            zeta: 2.300,
-            z_star: 2.300,
-            chi: 8.741,
-            v_tors: 2.100,
-        }),
-        "O_1" => Some(UffAtomParams {
-            label: "O_1",
-            element: 8,
-            r1: 0.639,
-            theta0: 180.0,
-            x1: 3.500,
-            d1: 0.060,
-            zeta: 2.300,
-            z_star: 2.300,
-            chi: 8.741,
-            v_tors: 2.100,
-        }),
-        // Halogens
-        "F_" => Some(UffAtomParams {
-            label: "F_",
-            element: 9,
-            r1: 0.668,
-            theta0: 180.0,
-            x1: 3.364,
-            d1: 0.050,
-            zeta: 1.735,
-            z_star: 1.735,
-            chi: 10.874,
-            v_tors: 1.082,
-        }),
-        "Cl" => Some(UffAtomParams {
-            label: "Cl",
-            element: 17,
-            r1: 1.029,
-            theta0: 109.47,
-            x1: 3.947,
-            d1: 0.227,
-            zeta: 2.315,
-            z_star: 2.315,
-            chi: 8.564,
-            v_tors: 1.673,
-        }),
-        "Br" => Some(UffAtomParams {
-            label: "Br",
-            element: 35,
-            r1: 1.137,
-            theta0: 109.47,
-            x1: 4.189,
-            d1: 0.251,
-            zeta: 2.283,
-            z_star: 2.283,
-            chi: 7.790,
-            v_tors: 1.682,
-        }),
-        "I_" => Some(UffAtomParams {
-            label: "I_",
-            element: 53,
-            r1: 1.353,
-            theta0: 109.47,
-            x1: 4.500,
-            d1: 0.339,
-            zeta: 2.650,
-            z_star: 2.650,
-            chi: 6.822,
-            v_tors: 1.530,
-        }),
-        // Sulfur
-        "S_3" => Some(UffAtomParams {
-            label: "S_3",
-            element: 16,
-            r1: 1.020,
-            theta0: 92.1,
-            x1: 4.035,
-            d1: 0.274,
-            zeta: 2.703,
-            z_star: 2.703,
-            chi: 10.000,
-            v_tors: 1.948,
-        }),
-        "S_2" => Some(UffAtomParams {
-            label: "S_2",
-            element: 16,
-            r1: 0.987,
-            theta0: 120.0,
-            x1: 4.035,
-            d1: 0.274,
-            zeta: 2.703,
-            z_star: 2.703,
-            chi: 10.000,
-            v_tors: 1.948,
-        }),
-        "S_R" => Some(UffAtomParams {
-            label: "S_R",
-            element: 16,
-            r1: 0.990,
-            theta0: 120.0,
-            x1: 4.035,
-            d1: 0.274,
-            zeta: 2.703,
-            z_star: 2.703,
-            chi: 10.000,
-            v_tors: 1.948,
-        }),
-        // Phosphorus
-        "P_3" => Some(UffAtomParams {
-            label: "P_3",
-            element: 15,
-            r1: 0.930,
-            theta0: 93.8,
-            x1: 4.147,
-            d1: 0.305,
-            zeta: 2.862,
-            z_star: 2.862,
-            chi: 8.000,
-            v_tors: 2.421,
-        }),
-        // Boron
-        "B_2" => Some(UffAtomParams {
-            label: "B_2",
-            element: 5,
-            r1: 0.828,
-            theta0: 120.0,
-            x1: 3.637,
-            d1: 0.180,
-            zeta: 1.755,
-            z_star: 1.755,
-            chi: 4.961,
-            v_tors: 0.0,
-        }),
-        // Silicon
-        "Si3" => Some(UffAtomParams {
-            label: "Si3",
-            element: 14,
-            r1: 1.117,
-            theta0: 109.47,
-            x1: 4.295,
-            d1: 0.402,
-            zeta: 2.323,
-            z_star: 2.323,
-            chi: 4.168,
-            v_tors: 1.225,
-        }),
-        // ─── Transition metals (Rappé 1992, Table 1) ─────────────────────
-        "Ti3+4" => Some(UffAtomParams {
-            label: "Ti3+4",
-            element: 22,
-            r1: 1.412,
-            theta0: 109.47,
-            x1: 3.175,
-            d1: 0.017,
-            zeta: 2.659,
-            z_star: 2.659,
-            chi: 3.470,
-            v_tors: 0.0,
-        }),
-        "V_3+5" => Some(UffAtomParams {
-            label: "V_3+5",
-            element: 23,
-            r1: 1.402,
-            theta0: 109.47,
-            x1: 3.144,
-            d1: 0.016,
-            zeta: 2.679,
-            z_star: 2.679,
-            chi: 3.650,
-            v_tors: 0.0,
-        }),
-        "Cr6+3" => Some(UffAtomParams {
-            label: "Cr6+3",
-            element: 24,
-            r1: 1.345,
-            theta0: 90.0,
-            x1: 3.023,
-            d1: 0.015,
-            zeta: 2.463,
-            z_star: 2.463,
-            chi: 3.415,
-            v_tors: 0.0,
-        }),
-        "Mn6+2" => Some(UffAtomParams {
-            label: "Mn6+2",
-            element: 25,
-            r1: 1.382,
-            theta0: 90.0,
-            x1: 2.961,
-            d1: 0.013,
-            zeta: 2.430,
-            z_star: 2.430,
-            chi: 3.325,
-            v_tors: 0.0,
-        }),
-        "Fe3+2" | "Fe6+2" => Some(UffAtomParams {
-            label: "Fe3+2",
-            element: 26,
-            r1: 1.335,
-            theta0: 109.47,
-            x1: 2.912,
-            d1: 0.013,
-            zeta: 2.430,
-            z_star: 2.430,
-            chi: 3.760,
-            v_tors: 0.0,
-        }),
-        "Co6+3" => Some(UffAtomParams {
-            label: "Co6+3",
-            element: 27,
-            r1: 1.241,
-            theta0: 90.0,
-            x1: 2.872,
-            d1: 0.014,
-            zeta: 2.430,
-            z_star: 2.430,
-            chi: 4.105,
-            v_tors: 0.0,
-        }),
-        "Ni4+2" => Some(UffAtomParams {
-            label: "Ni4+2",
-            element: 28,
-            r1: 1.164,
-            theta0: 90.0,
-            x1: 2.834,
-            d1: 0.015,
-            zeta: 2.430,
-            z_star: 2.430,
-            chi: 4.465,
-            v_tors: 0.0,
-        }),
-        "Cu3+1" => Some(UffAtomParams {
-            label: "Cu3+1",
-            element: 29,
-            r1: 1.302,
-            theta0: 109.47,
-            x1: 3.495,
-            d1: 0.005,
-            zeta: 1.756,
-            z_star: 1.756,
-            chi: 4.200,
-            v_tors: 0.0,
-        }),
-        "Zn3+2" => Some(UffAtomParams {
-            label: "Zn3+2",
-            element: 30,
-            r1: 1.193,
-            theta0: 109.47,
-            x1: 2.763,
-            d1: 0.124,
-            zeta: 1.308,
-            z_star: 1.308,
-            chi: 5.106,
-            v_tors: 0.0,
-        }),
-        // ─── Additional main-group elements ──────────────────────────────
-        "Ge3" => Some(UffAtomParams {
-            label: "Ge3",
-            element: 32,
-            r1: 1.197,
-            theta0: 109.47,
-            x1: 4.280,
-            d1: 0.379,
-            zeta: 2.789,
-            z_star: 2.789,
-            chi: 4.051,
-            v_tors: 0.701,
-        }),
-        "As3" => Some(UffAtomParams {
-            label: "As3",
-            element: 33,
-            r1: 1.211,
-            theta0: 92.1,
-            x1: 4.230,
-            d1: 0.309,
-            zeta: 2.864,
-            z_star: 2.864,
-            chi: 5.188,
-            v_tors: 1.476,
-        }),
-        "Se3" => Some(UffAtomParams {
-            label: "Se3",
-            element: 34,
-            r1: 1.190,
-            theta0: 90.6,
-            x1: 4.205,
-            d1: 0.291,
-            zeta: 2.764,
-            z_star: 2.764,
-            chi: 6.428,
-            v_tors: 0.335,
-        }),
-        "Sn3" => Some(UffAtomParams {
-            label: "Sn3",
-            element: 50,
-            r1: 1.399,
-            theta0: 109.47,
-            x1: 4.392,
-            d1: 0.567,
-            zeta: 3.198,
-            z_star: 3.198,
-            chi: 4.000,
-            v_tors: 0.199,
-        }),
-        "Sb3" => Some(UffAtomParams {
-            label: "Sb3",
-            element: 51,
-            r1: 1.404,
-            theta0: 91.6,
-            x1: 4.420,
-            d1: 0.449,
-            zeta: 3.510,
-            z_star: 3.510,
-            chi: 4.899,
-            v_tors: 1.100,
-        }),
-        "Te3" => Some(UffAtomParams {
-            label: "Te3",
-            element: 52,
-            r1: 1.386,
-            theta0: 90.25,
-            x1: 4.470,
-            d1: 0.398,
-            zeta: 3.526,
-            z_star: 3.526,
-            chi: 5.816,
-            v_tors: 0.300,
-        }),
-        "Mo3+6" => Some(UffAtomParams {
-            label: "Mo3+6",
-            element: 42,
-            r1: 1.386,
-            theta0: 109.47,
-            x1: 3.052,
-            d1: 0.056,
-            zeta: 3.056,
-            z_star: 3.056,
-            chi: 3.465,
-            v_tors: 0.0,
-        }),
-        "Pd4+2" => Some(UffAtomParams {
-            label: "Pd4+2",
-            element: 46,
-            r1: 1.338,
-            theta0: 90.0,
-            x1: 2.899,
-            d1: 0.048,
-            zeta: 2.899,
-            z_star: 2.899,
-            chi: 4.320,
-            v_tors: 0.0,
-        }),
-        "Ag1+1" => Some(UffAtomParams {
-            label: "Ag1+1",
-            element: 47,
-            r1: 1.386,
-            theta0: 180.0,
-            x1: 3.148,
-            d1: 0.036,
-            zeta: 1.956,
-            z_star: 1.956,
-            chi: 4.436,
-            v_tors: 0.0,
-        }),
-        "Pt4+2" => Some(UffAtomParams {
-            label: "Pt4+2",
-            element: 78,
-            r1: 1.364,
-            theta0: 90.0,
-            x1: 2.754,
-            d1: 0.080,
-            zeta: 2.754,
-            z_star: 2.754,
-            chi: 4.790,
-            v_tors: 0.0,
-        }),
-        "Au4+3" => Some(UffAtomParams {
-            label: "Au4+3",
-            element: 79,
-            r1: 1.255,
-            theta0: 90.0,
-            x1: 3.293,
-            d1: 0.039,
-            zeta: 2.309,
-            z_star: 2.309,
-            chi: 5.770,
-            v_tors: 0.0,
-        }),
+        "H_" => {
+            uff_atom!("H_", 1, 0.354, 180.0f64, 2.886, 0.044, 12.0f64, 0.712, 0.0f64, 0.0f64, 4.528)
+        }
+        "C_3" => {
+            uff_atom!("C_3", 6, 0.757, 109.47, 3.851, 0.105, 12.73, 1.912, 2.119, 2.0f64, 5.343)
+        }
+        "C_2" => {
+            uff_atom!("C_2", 6, 0.732, 120.0f64, 3.851, 0.105, 12.73, 1.912, 0.0f64, 2.0f64, 5.343)
+        }
+        "C_R" => {
+            uff_atom!("C_R", 6, 0.729, 120.0f64, 3.851, 0.105, 12.73, 1.912, 0.0f64, 2.0f64, 5.343)
+        }
+        "C_1" => {
+            uff_atom!("C_1", 6, 0.706, 180.0f64, 3.851, 0.105, 12.73, 1.912, 0.0f64, 2.0f64, 5.343)
+        }
+        "N_3" => uff_atom!("N_3", 7, 0.7, 106.7, 3.66, 0.069, 13.407, 2.544, 0.45, 2.0f64, 6.899),
+        "N_2" => {
+            uff_atom!("N_2", 7, 0.685, 111.2, 3.66, 0.069, 13.407, 2.544, 0.0f64, 2.0f64, 6.899)
+        }
+        "N_R" => {
+            uff_atom!("N_R", 7, 0.699, 120.0f64, 3.66, 0.069, 13.407, 2.544, 0.0f64, 2.0f64, 6.899)
+        }
+        "N_1" => {
+            uff_atom!("N_1", 7, 0.656, 180.0f64, 3.66, 0.069, 13.407, 2.544, 0.0f64, 2.0f64, 6.899)
+        }
+        "O_3" => uff_atom!("O_3", 8, 0.658, 104.51, 3.5, 0.06, 14.085, 2.3, 0.018, 2.0f64, 8.741),
+        "O_2" => {
+            uff_atom!("O_2", 8, 0.634, 120.0f64, 3.5, 0.06, 14.085, 2.3, 0.0f64, 2.0f64, 8.741)
+        }
+        "O_R" => uff_atom!("O_R", 8, 0.68, 110.0f64, 3.5, 0.06, 14.085, 2.3, 0.0f64, 2.0f64, 8.741),
+        "O_1" => {
+            uff_atom!("O_1", 8, 0.639, 180.0f64, 3.5, 0.06, 14.085, 2.3, 0.0f64, 2.0f64, 8.741)
+        }
+        "F_" => {
+            uff_atom!("F_", 9, 0.668, 180.0f64, 3.364, 0.05, 14.762, 1.735, 0.0f64, 2.0f64, 10.874)
+        }
+        "Cl" => {
+            uff_atom!("Cl", 17, 1.044, 180.0f64, 3.947, 0.227, 14.866, 2.348, 0.0f64, 1.25, 8.564)
+        }
+        "Br" => {
+            uff_atom!("Br", 35, 1.192, 180.0f64, 4.189, 0.251, 15.0f64, 2.519, 0.0f64, 0.7, 7.79)
+        }
+        "I_" => uff_atom!("I_", 53, 1.382, 180.0f64, 4.5, 0.339, 15.0f64, 2.65, 0.0f64, 0.2, 6.822),
+        "S_3" => {
+            uff_atom!("S_3", 16, 1.02, 92.1, 4.035, 0.274, 2.703, 2.703, 1.948, 0.0f64, 10.0f64)
+        }
+        "S_2" => {
+            uff_atom!("S_2", 16, 0.854, 120.0f64, 4.035, 0.274, 13.969, 2.703, 0.0f64, 1.25, 6.928)
+        }
+        "S_R" => {
+            uff_atom!("S_R", 16, 1.077, 92.2, 4.035, 0.274, 13.969, 2.703, 0.0f64, 1.25, 6.928)
+        }
+        "P_3" => {
+            uff_atom!("P_3", 15, 0.93, 93.8, 4.147, 0.305, 2.862, 2.862, 2.421, 0.0f64, 8.0f64)
+        }
+        "B_2" => {
+            uff_atom!("B_2", 5, 0.828, 120.0f64, 4.083, 0.18, 12.052, 1.755, 0.0f64, 2.0f64, 5.11)
+        }
+        "Si3" => {
+            uff_atom!("Si3", 14, 1.117, 109.47, 4.295, 0.402, 12.175, 2.323, 1.225, 1.25, 4.168)
+        }
+        "Ti3+4" => {
+            uff_atom!("Ti3+4", 22, 1.412, 109.47, 3.175, 0.017, 2.659, 2.659, 0.0f64, 0.0f64, 3.47)
+        }
+        "V_3+5" => {
+            uff_atom!("V_3+5", 23, 1.402, 109.47, 3.144, 0.016, 2.679, 2.679, 0.0f64, 0.0f64, 3.65)
+        }
+        "Cr6+3" => uff_atom!(
+            "Cr6+3", 24, 1.345, 90.0f64, 3.023, 0.015, 2.463, 2.463, 0.0f64, 0.0f64, 3.415
+        ),
+        "Mn6+2" => {
+            uff_atom!("Mn6+2", 25, 1.382, 90.0f64, 2.961, 0.013, 2.43, 2.43, 0.0f64, 0.0f64, 3.325)
+        }
+        "Fe3+2" | "Fe6+2" => {
+            uff_atom!("Fe3+2", 26, 1.335, 109.47, 2.912, 0.013, 2.43, 2.43, 0.0f64, 0.0f64, 3.76)
+        }
+        "Co6+3" => {
+            uff_atom!("Co6+3", 27, 1.241, 90.0f64, 2.872, 0.014, 2.43, 2.43, 0.0f64, 0.0f64, 4.105)
+        }
+        "Ni4+2" => {
+            uff_atom!("Ni4+2", 28, 1.164, 90.0f64, 2.834, 0.015, 2.43, 2.43, 0.0f64, 0.0f64, 4.465)
+        }
+        "Cu3+1" => {
+            uff_atom!("Cu3+1", 29, 1.302, 109.47, 3.495, 0.005, 1.756, 1.756, 0.0f64, 0.0f64, 4.2)
+        }
+        "Zn3+2" => {
+            uff_atom!("Zn3+2", 30, 1.193, 109.47, 2.763, 0.124, 1.308, 1.308, 0.0f64, 0.0f64, 5.106)
+        }
+        "Ge3" => uff_atom!("Ge3", 32, 1.197, 109.47, 4.28, 0.379, 2.789, 2.789, 0.701, 0.7, 4.051),
+        "As3" => uff_atom!("As3", 33, 1.211, 92.1, 4.23, 0.309, 2.864, 2.864, 1.476, 0.7, 5.188),
+        "Se3" => uff_atom!("Se3", 34, 1.19, 90.6, 4.205, 0.291, 2.764, 2.764, 0.335, 0.7, 6.428),
+        "Sn3" => {
+            uff_atom!("Sn3", 50, 1.399, 109.47, 4.392, 0.567, 3.198, 3.198, 0.199, 0.2, 4.0f64)
+        }
+        "Sb3" => uff_atom!("Sb3", 51, 1.404, 91.6, 4.42, 0.449, 3.51, 3.51, 1.1, 0.2, 4.899),
+        "Te3" => uff_atom!("Te3", 52, 1.386, 90.25, 4.47, 0.398, 3.526, 3.526, 0.3, 0.2, 5.816),
+        "Mo3+6" => {
+            uff_atom!("Mo3+6", 42, 1.386, 109.47, 3.052, 0.056, 3.056, 3.056, 0.0f64, 0.0f64, 3.465)
+        }
+        "Pd4+2" => {
+            uff_atom!("Pd4+2", 46, 1.338, 90.0f64, 2.899, 0.048, 2.899, 2.899, 0.0f64, 0.0f64, 4.32)
+        }
+        "Ag1+1" => uff_atom!(
+            "Ag1+1", 47, 1.386, 180.0f64, 3.148, 0.036, 1.956, 1.956, 0.0f64, 0.0f64, 4.436
+        ),
+        "Pt4+2" => {
+            uff_atom!("Pt4+2", 78, 1.364, 90.0f64, 2.754, 0.08, 2.754, 2.754, 0.0f64, 0.0f64, 4.79)
+        }
+        "Au4+3" => {
+            uff_atom!("Au4+3", 79, 1.255, 90.0f64, 3.293, 0.039, 2.309, 2.309, 0.0f64, 0.0f64, 5.77)
+        }
+        "B_3" => uff_atom!("B_3", 5, 0.838, 109.47, 4.083, 0.18, 12.052, 1.755, 0.0, 2.0, 5.11),
+        "P_3+3" => {
+            uff_atom!("P_3+3", 15, 1.101, 93.8, 4.147, 0.305, 13.072, 2.863, 2.4, 1.25, 5.463)
+        }
+        "P_3+5" => {
+            uff_atom!("P_3+5", 15, 1.056, 109.47, 4.147, 0.305, 13.072, 2.863, 2.4, 1.25, 5.463)
+        }
+        "S_3+2" => {
+            uff_atom!("S_3+2", 16, 1.064, 92.1, 4.035, 0.274, 13.969, 2.703, 0.484, 1.25, 6.928)
+        }
+        "S_3+4" => {
+            uff_atom!("S_3+4", 16, 1.049, 103.2, 4.035, 0.274, 13.969, 2.703, 0.484, 1.25, 6.928)
+        }
+        "S_3+6" => {
+            uff_atom!("S_3+6", 16, 1.027, 109.47, 4.035, 0.274, 13.969, 2.703, 0.484, 1.25, 6.928)
+        }
         _ => None,
     }
 }
@@ -604,37 +223,122 @@ pub fn get_uff_angle_force_constant(
     r_jk: f64,
     theta0_rad: f64,
 ) -> f64 {
-    let r_ik_sq = r_ij * r_ij + r_jk * r_jk - 2.0 * r_ij * r_jk * theta0_rad.cos();
-    if r_ik_sq < 1e-10 || r_ij < 1e-10 || r_jk < 1e-10 {
+    // Canonical RDKit formula (`AngleBend.cpp::calcAngleForceConstant`):
+    //   r13    = sqrt(r12^2 + r23^2 - 2 r12 r23 cos(theta0))
+    //   beta   = 2G / (r12 r23)
+    //   ka     = beta * Z1_i * Z1_k / r13^5 * r12 r23 * inner
+    //   inner  = 3 r12 r23 (1 - cos^2) - r13^2 cos
+    const G: f64 = 332.06;
+    if r_ij < 1e-10 || r_jk < 1e-10 {
         return 0.0;
     }
-    332.06 * pi.z_star * pk.z_star / (r_ij * r_jk * r_ik_sq)
+    let cos0 = theta0_rad.cos();
+    let r13_sq = r_ij * r_ij + r_jk * r_jk - 2.0 * r_ij * r_jk * cos0;
+    if r13_sq < 1e-12 {
+        return 0.0;
+    }
+    let r13 = r13_sq.sqrt();
+    let beta = 2.0 * G / (r_ij * r_jk);
+    let pre = beta * pi.z_star * pk.z_star / r13.powi(5);
+    let inner = 3.0 * r_ij * r_jk * (1.0 - cos0 * cos0) - r13_sq * cos0;
+    pre * r_ij * r_jk * inner
 }
 
-/// UFF torsion barriers for bond j–k (Rappé Section 3D, eq. 16).
-/// Returns (V_barrier, periodicity_n, cos_phi0).
-/// V_barrier = ½ · √(V_i · V_j)  for sp3–sp3 bonds.
+/// True for the UFF "group 6" elements used by the torsion special cases.
+pub fn is_uff_group6(z: u8) -> bool {
+    matches!(z, 8 | 16 | 34 | 52 | 84)
+}
+
+/// UFF equation 17: sp2-sp2 torsion barrier.
+pub fn uff_equation17(bond_order: f64, uj: f64, uk: f64) -> f64 {
+    5.0 * (uj * uk).sqrt() * (1.0 + 4.18 * bond_order.ln())
+}
+
+/// UFF torsion parameters for the central bond j-k.
+///
+/// Returns `(V, periodicity_n, cos_term)` such that
+/// `E = V/2 * (1 - cos_term * cos(n φ))`, exactly as the canonical
+/// implementation (`TorsionAngle.cpp::calcTorsionParams`).
+///
+/// `bond_order` is the numeric order of the j-k bond (1, 2, 3 or 1.5 for
+/// aromatic); `end_atom_is_sp2` is true when either terminal atom of the
+/// four-atom torsion is sp2.
 pub fn get_uff_torsion_params(
     hyb_j: &crate::graph::Hybridization,
     hyb_k: &crate::graph::Hybridization,
-    vj: f64,
-    vk: f64,
-    bond_order: &crate::graph::BondOrder,
+    at_num_j: u8,
+    at_num_k: u8,
+    pj: &UffAtomParams,
+    pk: &UffAtomParams,
+    bond_order: f64,
+    end_atom_is_sp2: bool,
 ) -> (f64, f64, f64) {
-    use crate::graph::BondOrder::*;
     use crate::graph::Hybridization::*;
 
-    match (hyb_j, hyb_k, bond_order) {
-        // sp3–sp3: three-fold (staggered → anti preferred)
-        (SP3, SP3, _) => (0.5 * (vj * vk).sqrt(), 3.0, 1.0),
-        // sp3–sp2 mixed: six-fold (nearly flat)
-        (SP3, SP2, _) | (SP2, SP3, _) => (1.0, 6.0, 1.0),
-        // sp2–sp2 conjugated (aromatic or double bond): strong planarity
-        (SP2, SP2, Aromatic) | (SP2, SP2, Double) => (5.0, 2.0, -1.0),
-        // sp2–sp2 single (biaryl/amide): moderate planarity
-        (SP2, SP2, Single) => (10.0, 2.0, -1.0),
-        // sp (linear): no torsion
-        (SP, _, _) | (_, SP, _) => (0.0, 1.0, 1.0),
-        _ => (1.0, 3.0, 1.0),
+    let both_sp3 = matches!(hyb_j, SP3) && matches!(hyb_k, SP3);
+    let both_sp2 = matches!(hyb_j, SP2) && matches!(hyb_k, SP2);
+    if both_sp3 {
+        let mut v = (pj.v_tors * pk.v_tors).sqrt();
+        let mut n = 3.0;
+        let mut cos_term = -1.0;
+        // Special case: single bond between two group-6 elements.
+        if (bond_order - 1.0).abs() < 1e-9 && is_uff_group6(at_num_j) && is_uff_group6(at_num_k) {
+            let v2: f64 = if at_num_j == 8 { 2.0 } else { 6.8 };
+            let v3: f64 = if at_num_k == 8 { 2.0 } else { 6.8 };
+            v = (v2 * v3).sqrt();
+            n = 2.0;
+            cos_term = -1.0;
+        }
+        (v, n, cos_term)
+    } else if both_sp2 {
+        (uff_equation17(bond_order, pj.u1, pk.u1), 2.0, 1.0)
+    } else {
+        // sp2-sp3: default V = 1, periodicity 6, phi0 = 0
+        let mut v = 1.0;
+        let mut n = 6.0;
+        let mut cos_term = 1.0;
+        if (bond_order - 1.0).abs() < 1e-9 {
+            let j_is_sp3_g6 = matches!(hyb_j, SP3) && is_uff_group6(at_num_j);
+            let k_is_sp3_g6 = matches!(hyb_k, SP3) && is_uff_group6(at_num_k);
+            if (j_is_sp3_g6 && !is_uff_group6(at_num_k))
+                || (k_is_sp3_g6 && !is_uff_group6(at_num_j))
+            {
+                v = uff_equation17(bond_order, pj.u1, pk.u1);
+                n = 2.0;
+                cos_term = -1.0;
+            } else if end_atom_is_sp2 {
+                v = 2.0;
+                n = 3.0;
+                cos_term = -1.0;
+            }
+        }
+        (v, n, cos_term)
+    }
+}
+
+/// UFF inversion coefficients and per-contribution force constant.
+///
+/// Returns `(K_per_contrib, C0, C1, C2)` with `K` already divided by three,
+/// matching `Utils::calcInversionCoefficientsAndForceConstant` used by the
+/// three inversion contributions per sp2 centre.
+pub fn get_uff_inversion_params(at2_atomic_num: u8, is_c_bound_to_o: bool) -> (f64, f64, f64, f64) {
+    use std::f64::consts::PI;
+    if matches!(at2_atomic_num, 6 | 7 | 8) {
+        let k = if is_c_bound_to_o { 50.0 } else { 6.0 };
+        (k / 3.0, 1.0, -1.0, 0.0)
+    } else {
+        let w0 = match at2_atomic_num {
+            15 => 84.4339_f64,
+            33 => 86.9735,
+            51 => 87.7047,
+            83 => 90.0,
+            _ => return (0.0, 0.0, 0.0, 0.0),
+        } * PI
+            / 180.0;
+        let c2 = 1.0;
+        let c1 = -4.0 * w0.cos();
+        let c0 = -(c1 * w0.cos() + c2 * (2.0 * w0).cos());
+        let k = 22.0 / (c0 + c1 + c2);
+        (k / 3.0, c0, c1, c2)
     }
 }
