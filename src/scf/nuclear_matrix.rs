@@ -15,12 +15,19 @@ pub fn build_nuclear_matrix(
     elements: &[u8],
     positions_bohr: &[[f64; 3]],
 ) -> DMatrix<f64> {
+    let charges: Vec<f64> = elements.iter().map(|&z| z as f64).collect();
+    build_nuclear_matrix_charges(basis, &charges, positions_bohr)
+}
+
+pub fn build_nuclear_matrix_charges(
+    basis: &BasisSet,
+    charges: &[f64],
+    positions_bohr: &[[f64; 3]],
+) -> DMatrix<f64> {
     let n = basis.n_basis;
     let mut v = DMatrix::zeros(n, n);
 
-    for (&z, &rc) in elements.iter().zip(positions_bohr.iter()) {
-        let z_eff = z as f64;
-
+    for (&z_eff, &rc) in charges.iter().zip(positions_bohr.iter()) {
         for i in 0..n {
             for j in i..n {
                 let v_ij = contracted_nuclear_attraction(
