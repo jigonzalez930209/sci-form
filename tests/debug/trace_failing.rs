@@ -95,6 +95,7 @@ fn test_trace_failing_molecule() {
             hybridization,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
             explicit_h: if element == 1 || element == 0 { 1 } else { 0 },
+            no_implicit_h: false,
         };
         node_indices.push(mol.add_atom(new_atom));
     }
