@@ -1416,7 +1416,7 @@ cargo test --test cross_validation -- --nocapture                    # measured 
 
 Implemented fichas (see §13 of the validation plan for measured values):
 F01 parse invariants, F05 strict SSSR, F13 Kabsch RMSD, F14 Butina,
-F16 UFF (exact parity with RDKit: max |ΔE| = 0 on 398 molecules),
+F16 UFF (exact parity with RDKit: max |ΔE| = 0 on 400 molecules),
 F17 UFF atom typing (0/33641 label mismatches), F21 Gasteiger (exact vs RDKit),
 F28 SASA (vs canonical FreeSASA), F36/F37/F23 SCF matrices, ERIs, energy and
 Mulliken charges vs PySCF RHF/STO-3G, F26 SCF Mulliken dipole parity
