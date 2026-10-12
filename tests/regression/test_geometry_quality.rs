@@ -100,6 +100,7 @@ fn build_mol_from_ref(ref_mol: &RefMolecule) -> sci_form::graph::Molecule {
             hybridization: hyb,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
             explicit_h: 0,
+            no_implicit_h: false,
         });
     }
     for b in &ref_mol.bonds {
