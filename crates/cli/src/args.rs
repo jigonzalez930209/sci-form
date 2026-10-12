@@ -228,8 +228,7 @@ pub enum Commands {
     },
 
     // ─── Experimental ──────────────────────────────────────────────────
-    /// [experimental] Compute EEQ geometry-dependent charges
-    #[cfg(feature = "experimental-eeq")]
+    /// Compute EEQ geometry-dependent charges
     Eeq {
         elements: String,
         coords: String,
