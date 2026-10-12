@@ -73,6 +73,7 @@ fn main() {
                 hybridization,
                 chiral_tag: sci_form::graph::ChiralType::Unspecified,
                 explicit_h: 0,
+                no_implicit_h: false,
             };
             let n_idx = our_mol.add_atom(new_atom);
             node_indices.push(n_idx);
