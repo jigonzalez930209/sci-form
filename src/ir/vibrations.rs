@@ -832,7 +832,12 @@ pub fn compute_vibrational_analysis_uff(
 }
 
 /// Build vibrational analysis from a pre-computed Hessian matrix.
-fn build_vibrational_analysis_from_hessian(
+///
+/// The Hessian must be in eV/Å² with atom-major XYZ ordering
+/// ([x1,y1,z1,x2,y2,z2,…]). Used to validate the mass-weighting,
+/// projection and frequency-conversion machinery against external
+/// Hessians (validation F48).
+pub fn build_vibrational_analysis_from_hessian(
     elements: &[u8],
     positions: &[[f64; 3]],
     hessian: &DMatrix<f64>,
