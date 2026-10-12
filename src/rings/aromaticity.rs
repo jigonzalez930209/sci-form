@@ -143,15 +143,20 @@ fn has_aromatic_bond(mol: &Molecule, atom_idx: usize) -> bool {
 }
 
 /// Mark the ring bonds aromatic and promote the ring atoms to sp².
+///
+/// `ring` is in cycle order (`RingInfo::atoms`), so only the consecutive
+/// ring edges are rewritten — never chords between non-adjacent ring atoms.
 fn mark_ring_aromatic(mol: &mut Molecule, ring: &[usize]) {
-    let edges: Vec<_> = mol
-        .graph
-        .edge_references()
-        .filter(|e| ring.contains(&e.source().index()) && ring.contains(&e.target().index()))
-        .map(|e| e.id())
-        .collect();
-    for edge in edges {
-        mol.graph[edge].order = BondOrder::Aromatic;
+    let n = ring.len();
+    if n < 3 {
+        return;
+    }
+    for i in 0..n {
+        let a = NodeIndex::new(ring[i]);
+        let b = NodeIndex::new(ring[(i + 1) % n]);
+        if let Some(edge) = mol.graph.find_edge(a, b) {
+            mol.graph[edge].order = BondOrder::Aromatic;
+        }
     }
     for &atom_idx in ring {
         let node = NodeIndex::new(atom_idx);
