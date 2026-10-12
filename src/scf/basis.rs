@@ -215,6 +215,45 @@ impl BasisSet {
             }
         }
         let n_basis = functions.len();
+        // Normalize contracted functions (PySCF convention): rescale the
+        // coefficients so that the self-overlap of every AO is exactly 1.
+        for func in functions.iter_mut() {
+            let mut self_overlap = 0.0;
+            for prim_a in &func.primitives {
+                let norm_a = BasisFunction::normalization(
+                    prim_a.alpha,
+                    func.angular[0],
+                    func.angular[1],
+                    func.angular[2],
+                );
+                for prim_b in &func.primitives {
+                    let norm_b = BasisFunction::normalization(
+                        prim_b.alpha,
+                        func.angular[0],
+                        func.angular[1],
+                        func.angular[2],
+                    );
+                    self_overlap += norm_a
+                        * prim_a.coefficient
+                        * norm_b
+                        * prim_b.coefficient
+                        * super::gaussian_integrals::overlap_primitive(
+                            prim_a.alpha,
+                            &func.center,
+                            func.angular,
+                            prim_b.alpha,
+                            &func.center,
+                            func.angular,
+                        );
+                }
+            }
+            if self_overlap > 0.0 {
+                let scale = 1.0 / self_overlap.sqrt();
+                for prim in func.primitives.iter_mut() {
+                    prim.coefficient *= scale;
+                }
+            }
+        }
         BasisSet {
             functions,
             shells,
@@ -242,42 +281,40 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
             l: 0,
             primitives: vec![
                 GaussianPrimitive {
-                    alpha: 3.42525091,
-                    coefficient: 0.15432897,
+                    alpha: 3.4252509099999999,
+                    coefficient: 0.15432897000000001,
                 },
                 GaussianPrimitive {
-                    alpha: 0.62353014,
-                    coefficient: 0.53532814,
+                    alpha: 0.62391373000000006,
+                    coefficient: 0.53532813999999995,
                 },
                 GaussianPrimitive {
-                    alpha: 0.16885540,
-                    coefficient: 0.44463454,
+                    alpha: 0.16885539999999999,
+                    coefficient: 0.44463454000000002,
                 },
             ],
         }],
 
-        // Helium: 1s
         2 => vec![ContractedShell {
             atom_index,
             center,
             l: 0,
             primitives: vec![
                 GaussianPrimitive {
-                    alpha: 6.36242139,
-                    coefficient: 0.15432897,
+                    alpha: 6.3624213899999997,
+                    coefficient: 0.15432897000000001,
                 },
                 GaussianPrimitive {
-                    alpha: 1.15892300,
-                    coefficient: 0.53532814,
+                    alpha: 1.1589229999999999,
+                    coefficient: 0.53532813999999995,
                 },
                 GaussianPrimitive {
-                    alpha: 0.31364979,
-                    coefficient: 0.44463454,
+                    alpha: 0.31364978999999998,
+                    coefficient: 0.44463454000000002,
                 },
             ],
         }],
 
-        // Carbon: 1s, 2s, 2p
         6 => vec![
             ContractedShell {
                 atom_index,
@@ -285,16 +322,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 71.6168370,
-                        coefficient: 0.15432897,
+                        alpha: 71.616837000000004,
+                        coefficient: 0.15432897000000001,
                     },
                     GaussianPrimitive {
-                        alpha: 13.0450960,
-                        coefficient: 0.53532814,
+                        alpha: 13.045095999999999,
+                        coefficient: 0.53532813999999995,
                     },
                     GaussianPrimitive {
-                        alpha: 3.53051220,
-                        coefficient: 0.44463454,
+                        alpha: 3.5305122,
+                        coefficient: 0.44463454000000002,
                     },
                 ],
             },
@@ -304,16 +341,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 2.94124940,
-                        coefficient: -0.09996723,
+                        alpha: 2.9412493999999998,
+                        coefficient: -0.099967230000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 0.68348310,
-                        coefficient: 0.39951283,
+                        alpha: 0.68348310000000001,
+                        coefficient: 0.39951282999999999,
                     },
                     GaussianPrimitive {
-                        alpha: 0.22228990,
-                        coefficient: 0.70011547,
+                        alpha: 0.22228990000000001,
+                        coefficient: 0.70011546999999996,
                     },
                 ],
             },
@@ -323,22 +360,21 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 1,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 2.94124940,
+                        alpha: 2.9412493999999998,
                         coefficient: 0.15591627,
                     },
                     GaussianPrimitive {
-                        alpha: 0.68348310,
-                        coefficient: 0.60768372,
+                        alpha: 0.68348310000000001,
+                        coefficient: 0.60768372000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 0.22228990,
-                        coefficient: 0.39195739,
+                        alpha: 0.22228990000000001,
+                        coefficient: 0.39195739000000002,
                     },
                 ],
             },
         ],
 
-        // Nitrogen: 1s, 2s, 2p
         7 => vec![
             ContractedShell {
                 atom_index,
@@ -346,16 +382,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 99.1061690,
-                        coefficient: 0.15432897,
+                        alpha: 99.106168999999994,
+                        coefficient: 0.15432897000000001,
                     },
                     GaussianPrimitive {
-                        alpha: 18.0523120,
-                        coefficient: 0.53532814,
+                        alpha: 18.052312000000001,
+                        coefficient: 0.53532813999999995,
                     },
                     GaussianPrimitive {
-                        alpha: 4.88566020,
-                        coefficient: 0.44463454,
+                        alpha: 4.8856602000000002,
+                        coefficient: 0.44463454000000002,
                     },
                 ],
             },
@@ -365,16 +401,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 3.78045590,
-                        coefficient: -0.09996723,
+                        alpha: 3.7804559000000002,
+                        coefficient: -0.099967230000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 0.87849660,
-                        coefficient: 0.39951283,
+                        alpha: 0.87849659999999996,
+                        coefficient: 0.39951282999999999,
                     },
                     GaussianPrimitive {
-                        alpha: 0.28571440,
-                        coefficient: 0.70011547,
+                        alpha: 0.28571439999999998,
+                        coefficient: 0.70011546999999996,
                     },
                 ],
             },
@@ -384,22 +420,21 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 1,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 3.78045590,
+                        alpha: 3.7804559000000002,
                         coefficient: 0.15591627,
                     },
                     GaussianPrimitive {
-                        alpha: 0.87849660,
-                        coefficient: 0.60768372,
+                        alpha: 0.87849659999999996,
+                        coefficient: 0.60768372000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 0.28571440,
-                        coefficient: 0.39195739,
+                        alpha: 0.28571439999999998,
+                        coefficient: 0.39195739000000002,
                     },
                 ],
             },
         ],
 
-        // Oxygen: 1s, 2s, 2p
         8 => vec![
             ContractedShell {
                 atom_index,
@@ -407,16 +442,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 130.709320,
-                        coefficient: 0.15432897,
+                        alpha: 130.70931999999999,
+                        coefficient: 0.15432897000000001,
                     },
                     GaussianPrimitive {
-                        alpha: 23.8088610,
-                        coefficient: 0.53532814,
+                        alpha: 23.808861,
+                        coefficient: 0.53532813999999995,
                     },
                     GaussianPrimitive {
-                        alpha: 6.44360830,
-                        coefficient: 0.44463454,
+                        alpha: 6.4436083000000002,
+                        coefficient: 0.44463454000000002,
                     },
                 ],
             },
@@ -426,16 +461,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 5.03315130,
-                        coefficient: -0.09996723,
+                        alpha: 5.0331513000000001,
+                        coefficient: -0.099967230000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 1.16959610,
-                        coefficient: 0.39951283,
+                        alpha: 1.1695960999999999,
+                        coefficient: 0.39951282999999999,
                     },
                     GaussianPrimitive {
-                        alpha: 0.38038900,
-                        coefficient: 0.70011547,
+                        alpha: 0.38038899999999998,
+                        coefficient: 0.70011546999999996,
                     },
                 ],
             },
@@ -445,22 +480,21 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 1,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 5.03315130,
+                        alpha: 5.0331513000000001,
                         coefficient: 0.15591627,
                     },
                     GaussianPrimitive {
-                        alpha: 1.16959610,
-                        coefficient: 0.60768372,
+                        alpha: 1.1695960999999999,
+                        coefficient: 0.60768372000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 0.38038900,
-                        coefficient: 0.39195739,
+                        alpha: 0.38038899999999998,
+                        coefficient: 0.39195739000000002,
                     },
                 ],
             },
         ],
 
-        // Fluorine: 1s, 2s, 2p
         9 => vec![
             ContractedShell {
                 atom_index,
@@ -468,16 +502,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 166.679130,
-                        coefficient: 0.15432897,
+                        alpha: 166.67912999999999,
+                        coefficient: 0.15432897000000001,
                     },
                     GaussianPrimitive {
-                        alpha: 30.3608120,
-                        coefficient: 0.53532814,
+                        alpha: 30.360811999999999,
+                        coefficient: 0.53532813999999995,
                     },
                     GaussianPrimitive {
-                        alpha: 8.21682070,
-                        coefficient: 0.44463454,
+                        alpha: 8.2168206999999995,
+                        coefficient: 0.44463454000000002,
                     },
                 ],
             },
@@ -487,16 +521,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 6.46480320,
-                        coefficient: -0.09996723,
+                        alpha: 6.4648032000000004,
+                        coefficient: -0.099967230000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 1.50228120,
-                        coefficient: 0.39951283,
+                        alpha: 1.5022812000000001,
+                        coefficient: 0.39951282999999999,
                     },
                     GaussianPrimitive {
-                        alpha: 0.48858850,
-                        coefficient: 0.70011547,
+                        alpha: 0.48858849999999998,
+                        coefficient: 0.70011546999999996,
                     },
                 ],
             },
@@ -506,22 +540,21 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 1,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 6.46480320,
+                        alpha: 6.4648032000000004,
                         coefficient: 0.15591627,
                     },
                     GaussianPrimitive {
-                        alpha: 1.50228120,
-                        coefficient: 0.60768372,
+                        alpha: 1.5022812000000001,
+                        coefficient: 0.60768372000000004,
                     },
                     GaussianPrimitive {
-                        alpha: 0.48858850,
-                        coefficient: 0.39195739,
+                        alpha: 0.48858849999999998,
+                        coefficient: 0.39195739000000002,
                     },
                 ],
             },
         ],
 
-        // Phosphorus: 1s, 2s, 2p, 3s, 3p
         15 => vec![
             ContractedShell {
                 atom_index,
@@ -529,54 +562,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 508.291310,
-                        coefficient: 0.15432897,
+                        alpha: 468.3656378,
+                        coefficient: 0.15432896730000001,
                     },
                     GaussianPrimitive {
-                        alpha: 92.5891370,
-                        coefficient: 0.53532814,
+                        alpha: 85.313385589999996,
+                        coefficient: 0.53532814230000003,
                     },
                     GaussianPrimitive {
-                        alpha: 25.0571730,
-                        coefficient: 0.44463454,
-                    },
-                ],
-            },
-            ContractedShell {
-                atom_index,
-                center,
-                l: 0,
-                primitives: vec![
-                    GaussianPrimitive {
-                        alpha: 18.5172490,
-                        coefficient: -0.09996723,
-                    },
-                    GaussianPrimitive {
-                        alpha: 4.30422160,
-                        coefficient: 0.39951283,
-                    },
-                    GaussianPrimitive {
-                        alpha: 1.39999670,
-                        coefficient: 0.70011547,
-                    },
-                ],
-            },
-            ContractedShell {
-                atom_index,
-                center,
-                l: 1,
-                primitives: vec![
-                    GaussianPrimitive {
-                        alpha: 18.5172490,
-                        coefficient: 0.15591627,
-                    },
-                    GaussianPrimitive {
-                        alpha: 4.30422160,
-                        coefficient: 0.60768372,
-                    },
-                    GaussianPrimitive {
-                        alpha: 1.39999670,
-                        coefficient: 0.39195739,
+                        alpha: 23.089131559999998,
+                        coefficient: 0.44463454219999998,
                     },
                 ],
             },
@@ -586,16 +581,35 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 1.56367880,
-                        coefficient: -0.09996723,
+                        alpha: 28.032639580000001,
+                        coefficient: -0.099967229190000007,
                     },
                     GaussianPrimitive {
-                        alpha: 0.36368650,
-                        coefficient: 0.39951283,
+                        alpha: 6.5141825769999997,
+                        coefficient: 0.3995128261,
                     },
                     GaussianPrimitive {
-                        alpha: 0.11828520,
-                        coefficient: 0.70011547,
+                        alpha: 2.1186143519999998,
+                        coefficient: 0.70011546889999998,
+                    },
+                ],
+            },
+            ContractedShell {
+                atom_index,
+                center,
+                l: 0,
+                primitives: vec![
+                    GaussianPrimitive {
+                        alpha: 1.7431032310000001,
+                        coefficient: -0.21962036900000001,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.48632137710000001,
+                        coefficient: 0.22559543360000001,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.19034289090000001,
+                        coefficient: 0.90039842599999997,
                     },
                 ],
             },
@@ -605,22 +619,40 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 1,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 1.56367880,
-                        coefficient: 0.15591627,
+                        alpha: 28.032639580000001,
+                        coefficient: 0.15591627499999999,
                     },
                     GaussianPrimitive {
-                        alpha: 0.36368650,
-                        coefficient: 0.60768372,
+                        alpha: 6.5141825769999997,
+                        coefficient: 0.60768371860000003,
                     },
                     GaussianPrimitive {
-                        alpha: 0.11828520,
-                        coefficient: 0.39195739,
+                        alpha: 2.1186143519999998,
+                        coefficient: 0.3919573931,
+                    },
+                ],
+            },
+            ContractedShell {
+                atom_index,
+                center,
+                l: 1,
+                primitives: vec![
+                    GaussianPrimitive {
+                        alpha: 1.7431032310000001,
+                        coefficient: 0.01058760429,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.48632137710000001,
+                        coefficient: 0.5951670053,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.19034289090000001,
+                        coefficient: 0.46200101199999999,
                     },
                 ],
             },
         ],
 
-        // Sulfur: 1s, 2s, 2p, 3s, 3p
         16 => vec![
             ContractedShell {
                 atom_index,
@@ -628,54 +660,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 598.642680,
-                        coefficient: 0.15432897,
+                        alpha: 533.1257359,
+                        coefficient: 0.15432896730000001,
                     },
                     GaussianPrimitive {
-                        alpha: 109.046680,
-                        coefficient: 0.53532814,
+                        alpha: 97.109518300000005,
+                        coefficient: 0.53532814230000003,
                     },
                     GaussianPrimitive {
-                        alpha: 29.5121090,
-                        coefficient: 0.44463454,
-                    },
-                ],
-            },
-            ContractedShell {
-                atom_index,
-                center,
-                l: 0,
-                primitives: vec![
-                    GaussianPrimitive {
-                        alpha: 22.1564680,
-                        coefficient: -0.09996723,
-                    },
-                    GaussianPrimitive {
-                        alpha: 5.14855900,
-                        coefficient: 0.39951283,
-                    },
-                    GaussianPrimitive {
-                        alpha: 1.67441430,
-                        coefficient: 0.70011547,
-                    },
-                ],
-            },
-            ContractedShell {
-                atom_index,
-                center,
-                l: 1,
-                primitives: vec![
-                    GaussianPrimitive {
-                        alpha: 22.1564680,
-                        coefficient: 0.15591627,
-                    },
-                    GaussianPrimitive {
-                        alpha: 5.14855900,
-                        coefficient: 0.60768372,
-                    },
-                    GaussianPrimitive {
-                        alpha: 1.67441430,
-                        coefficient: 0.39195739,
+                        alpha: 26.281625420000001,
+                        coefficient: 0.44463454219999998,
                     },
                 ],
             },
@@ -685,16 +679,35 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 1.80579080,
-                        coefficient: -0.09996723,
+                        alpha: 33.329751729999998,
+                        coefficient: -0.099967229190000007,
                     },
                     GaussianPrimitive {
-                        alpha: 0.41988400,
-                        coefficient: 0.39951283,
+                        alpha: 7.7451175210000001,
+                        coefficient: 0.3995128261,
                     },
                     GaussianPrimitive {
-                        alpha: 0.13655330,
-                        coefficient: 0.70011547,
+                        alpha: 2.5189525989999999,
+                        coefficient: 0.70011546889999998,
+                    },
+                ],
+            },
+            ContractedShell {
+                atom_index,
+                center,
+                l: 0,
+                primitives: vec![
+                    GaussianPrimitive {
+                        alpha: 2.029194274,
+                        coefficient: -0.21962036900000001,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.56614005180000004,
+                        coefficient: 0.22559543360000001,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.22158337920000001,
+                        coefficient: 0.90039842599999997,
                     },
                 ],
             },
@@ -704,22 +717,40 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 1,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 1.80579080,
-                        coefficient: 0.15591627,
+                        alpha: 33.329751729999998,
+                        coefficient: 0.15591627499999999,
                     },
                     GaussianPrimitive {
-                        alpha: 0.41988400,
-                        coefficient: 0.60768372,
+                        alpha: 7.7451175210000001,
+                        coefficient: 0.60768371860000003,
                     },
                     GaussianPrimitive {
-                        alpha: 0.13655330,
-                        coefficient: 0.39195739,
+                        alpha: 2.5189525989999999,
+                        coefficient: 0.3919573931,
+                    },
+                ],
+            },
+            ContractedShell {
+                atom_index,
+                center,
+                l: 1,
+                primitives: vec![
+                    GaussianPrimitive {
+                        alpha: 2.029194274,
+                        coefficient: 0.01058760429,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.56614005180000004,
+                        coefficient: 0.5951670053,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.22158337920000001,
+                        coefficient: 0.46200101199999999,
                     },
                 ],
             },
         ],
 
-        // Chlorine: 1s, 2s, 2p, 3s, 3p
         17 => vec![
             ContractedShell {
                 atom_index,
@@ -727,54 +758,16 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 696.408520,
-                        coefficient: 0.15432897,
+                        alpha: 601.34561359999998,
+                        coefficient: 0.15432896730000001,
                     },
                     GaussianPrimitive {
-                        alpha: 126.888800,
-                        coefficient: 0.53532814,
+                        alpha: 109.5358542,
+                        coefficient: 0.53532814230000003,
                     },
                     GaussianPrimitive {
-                        alpha: 34.3399080,
-                        coefficient: 0.44463454,
-                    },
-                ],
-            },
-            ContractedShell {
-                atom_index,
-                center,
-                l: 0,
-                primitives: vec![
-                    GaussianPrimitive {
-                        alpha: 25.9670530,
-                        coefficient: -0.09996723,
-                    },
-                    GaussianPrimitive {
-                        alpha: 6.03406090,
-                        coefficient: 0.39951283,
-                    },
-                    GaussianPrimitive {
-                        alpha: 1.96235810,
-                        coefficient: 0.70011547,
-                    },
-                ],
-            },
-            ContractedShell {
-                atom_index,
-                center,
-                l: 1,
-                primitives: vec![
-                    GaussianPrimitive {
-                        alpha: 25.9670530,
-                        coefficient: 0.15591627,
-                    },
-                    GaussianPrimitive {
-                        alpha: 6.03406090,
-                        coefficient: 0.60768372,
-                    },
-                    GaussianPrimitive {
-                        alpha: 1.96235810,
-                        coefficient: 0.39195739,
+                        alpha: 29.644676860000001,
+                        coefficient: 0.44463454219999998,
                     },
                 ],
             },
@@ -784,16 +777,35 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 0,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 2.14407210,
-                        coefficient: -0.09996723,
+                        alpha: 38.96041889,
+                        coefficient: -0.099967229190000007,
                     },
                     GaussianPrimitive {
-                        alpha: 0.49841410,
-                        coefficient: 0.39951283,
+                        alpha: 9.0535634770000009,
+                        coefficient: 0.3995128261,
                     },
                     GaussianPrimitive {
-                        alpha: 0.16208590,
-                        coefficient: 0.70011547,
+                        alpha: 2.9444998340000001,
+                        coefficient: 0.70011546889999998,
+                    },
+                ],
+            },
+            ContractedShell {
+                atom_index,
+                center,
+                l: 0,
+                primitives: vec![
+                    GaussianPrimitive {
+                        alpha: 2.1293864949999999,
+                        coefficient: -0.21962036900000001,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.59409342740000004,
+                        coefficient: 0.22559543360000001,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.23252414099999999,
+                        coefficient: 0.90039842599999997,
                     },
                 ],
             },
@@ -803,22 +815,39 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                 l: 1,
                 primitives: vec![
                     GaussianPrimitive {
-                        alpha: 2.14407210,
-                        coefficient: 0.15591627,
+                        alpha: 38.96041889,
+                        coefficient: 0.15591627499999999,
                     },
                     GaussianPrimitive {
-                        alpha: 0.49841410,
-                        coefficient: 0.60768372,
+                        alpha: 9.0535634770000009,
+                        coefficient: 0.60768371860000003,
                     },
                     GaussianPrimitive {
-                        alpha: 0.16208590,
-                        coefficient: 0.39195739,
+                        alpha: 2.9444998340000001,
+                        coefficient: 0.3919573931,
+                    },
+                ],
+            },
+            ContractedShell {
+                atom_index,
+                center,
+                l: 1,
+                primitives: vec![
+                    GaussianPrimitive {
+                        alpha: 2.1293864949999999,
+                        coefficient: 0.01058760429,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.59409342740000004,
+                        coefficient: 0.5951670053,
+                    },
+                    GaussianPrimitive {
+                        alpha: 0.23252414099999999,
+                        coefficient: 0.46200101199999999,
                     },
                 ],
             },
         ],
-
-        // Default fallback: use scaled hydrogen-like 1s
         _ => {
             let zeta = 0.5 * (z as f64).sqrt();
             vec![ContractedShell {
@@ -831,7 +860,7 @@ pub(crate) fn get_sto3g_shells(z: u8, atom_index: usize, center: [f64; 3]) -> Ve
                         coefficient: 0.15432897,
                     },
                     GaussianPrimitive {
-                        alpha: 0.62353014 * zeta * zeta,
+                        alpha: 0.62391373 * zeta * zeta,
                         coefficient: 0.53532814,
                     },
                     GaussianPrimitive {
