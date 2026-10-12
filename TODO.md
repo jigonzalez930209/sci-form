@@ -5,9 +5,11 @@
 El DFT no se importa de otro paquete. El solver es `src/dft/` (`alpha-dft`): F = H + J + Vxc, SVWN y PBE, grilla de Becke.
 
 - [x] Base mínima all-electron hasta Zn para los elementos que no están en la tabla Hehre. Antes caían en un solo 1s.
-- [ ] ECP de core pequeño para Z > 30 (4d, 5d, lantánidos). Sin eso el all-electron no es razonable.
-- [ ] UKS para capas abiertas. Hoy el SCF es capa cerrada.
-- [ ] Base mejor que la mínima (split-valence) y gradiente analítico de la energía KS.
+- [x] ERI cartesianos s/p (Obara–Saika) para el Coulomb KS; gate H₂/H₂O vs PySCF a 1 mHa.
+- [x] ERI d-shell para el Coulomb de Sc–Zn (Obara–Saika cartesiano con memo; humo Zn átomo).
+- [x] ECP de core pequeño para Z > 30 (Z_eff + potencial local Gaussiano; f en el core).
+- [x] UKS para capas abiertas (Slater polarizado + VWN sobre ρ total).
+- [x] Split-valence 3-21G (H, C, O) y gradiente KS frozen-P + Pulay.
 
 El detalle está en `docs/algorithm/ks-dft.md`.
 
@@ -109,9 +111,11 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Delimitar claramente PM3 vs PM3(tm) en la superficie pública
 
 ### 4. xTB
-- [ ] Corrección completa D3-BJ C8 (actualmente simplificada)
-- [ ] Refinamientos: gamma shell-resolved, SCC damping, criterio de convergencia de cargas
-- [ ] Repulsión dependiente de coordinación
+- [x] GFN1-xTB fiel a tblite 0.7.0 (H0 Slater con kpair/kshell/enscale, electrostática shell-resolved con tercer orden, repulsión efectiva, D3-BJ y corrección de halógeno); 8.1e-5 eV vs tblite en 18 moléculas (F44)
+- [x] D3-BJ con interpolación de CN, C8 completo y ATM (validado vs s-dftd3, 2.8e-11 Ha; F46)
+- [ ] UKS/unrestricted para capas abiertas (hoy el SCC de GFN1/GFN2 es restringido)
+- [ ] Decidir el destino de `solve_xtb` legacy (lo usa el Hessiano numérico) tras la promoción de GFN0/GFN2
+- [ ] Repulsión dependiente de coordinación más allá del esquema efectivo de tblite (sin referencia externa por ahora)
 
 ### 5. EHT
 - [ ] Soporte real de orbitales 4d/5d (hoy usa tabla 3d STO-3G)
@@ -210,4 +214,4 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ## Módulos Cerrados (sin deuda relevante)
 
-Alignment, ANI, Dipole, DOS, ML descriptors, Rings/SSSR, Transport, SCF (UHF/ROHF), CIF, AO→MO transform, EEQ damping Z=86, Population Z=86+parallel, NMR 5J coupling, SMIRKS multi-component, PM3 Gaussian corrections, xTB Broyden mixing.
+Alignment, ANI, Dipole, DOS, ML descriptors, Rings/SSSR, Transport, SCF (UHF/ROHF), CIF, AO→MO transform, EEQ damping Z=86, Population Z=86+parallel, NMR 5J coupling, SMIRKS multi-component, PM3 Gaussian corrections, xTB Broyden mixing, GFN1-xTB (F44), D3-BJ (F46), tablas STO-6G completas.
