@@ -7,6 +7,7 @@
 pub mod gasteiger;
 
 pub use gasteiger::{
-    gasteiger_marsili_charges, gasteiger_marsili_charges_configured, GasteigerConfig,
-    GasteigerParams,
+    gasteiger_marsili_charges, gasteiger_marsili_charges_configured,
+    gasteiger_marsili_charges_full, get_gasteiger_params, get_gasteiger_params_mode,
+    GasteigerConfig, GasteigerMode, GasteigerParams,
 };
