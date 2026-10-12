@@ -81,8 +81,9 @@ impl Topology {
         }
     }
 
-    /// Body-centered cubic (bcu) topology: 2 nodes at (0,0,0) and (0.5,0.5,0.5).
-    /// 8-connected, found in UiO-66 and related Zr-MOFs.
+    /// Body-centered cubic (bcu) topology: 2 nodes, 8-connected.
+    /// Each corner node bonds to all 8 body centers around it
+    /// (CsCl-like net, RCSR `bcu`, coordination 8 verified in F67).
     pub fn bcu() -> Self {
         Self {
             name: "bcu".to_string(),
@@ -92,43 +93,52 @@ impl Topology {
                 (0, 1, [-1, 0, 0]),
                 (0, 1, [0, -1, 0]),
                 (0, 1, [0, 0, -1]),
+                (0, 1, [-1, -1, 0]),
+                (0, 1, [-1, 0, -1]),
+                (0, 1, [0, -1, -1]),
+                (0, 1, [-1, -1, -1]),
             ],
         }
     }
 
-    /// Face-centered cubic (fcu) topology: 4 nodes with 12-connectivity.
-    /// Common in UiO-66 type structures.
+    /// Face-centered cubic (fcu) topology: 4 nodes, 12-connected.
+    /// Nodes at fcc positions; every node bonds to its 12 nearest
+    /// neighbours at distance a/sqrt(2) (RCSR `fcu`, e.g. UiO-66;
+    /// coordination 12 verified in F67).
     pub fn fcu() -> Self {
         Self {
             name: "fcu".to_string(),
             nodes: vec![
                 [0.0, 0.0, 0.0],
-                [0.5, 0.5, 0.0],
-                [0.5, 0.0, 0.5],
                 [0.0, 0.5, 0.5],
+                [0.5, 0.0, 0.5],
+                [0.5, 0.5, 0.0],
             ],
             edges: vec![
-                // Node 0 <-> Node 1
-                (0, 1, [0, 0, 0]),
+                (0, 1, [0, -1, -1]),
                 (0, 1, [0, -1, 0]),
-                (0, 1, [-1, 0, 0]),
-                // Node 0 <-> Node 2
-                (0, 2, [0, 0, 0]),
-                (0, 2, [0, 0, -1]),
+                (0, 1, [0, 0, -1]),
+                (0, 1, [0, 0, 0]),
+                (0, 2, [-1, 0, -1]),
                 (0, 2, [-1, 0, 0]),
-                // Node 0 <-> Node 3
-                (0, 3, [0, 0, 0]),
+                (0, 2, [0, 0, -1]),
+                (0, 2, [0, 0, 0]),
+                (0, 3, [-1, -1, 0]),
+                (0, 3, [-1, 0, 0]),
                 (0, 3, [0, -1, 0]),
-                (0, 3, [0, 0, -1]),
-                // Node 1 <-> Node 2
+                (0, 3, [0, 0, 0]),
+                (1, 2, [-1, 0, 0]),
+                (1, 2, [-1, 1, 0]),
                 (1, 2, [0, 0, 0]),
-                (1, 2, [0, 0, -1]),
-                // Node 1 <-> Node 3
-                (1, 3, [0, 0, 0]),
+                (1, 2, [0, 1, 0]),
                 (1, 3, [-1, 0, 0]),
-                // Node 2 <-> Node 3
-                (2, 3, [0, 0, 0]),
+                (1, 3, [-1, 0, 1]),
+                (1, 3, [0, 0, 0]),
+                (1, 3, [0, 0, 1]),
                 (2, 3, [0, -1, 0]),
+                (2, 3, [0, -1, 1]),
+                (2, 3, [0, 0, 0]),
+                (2, 3, [0, 0, 1]),
             ],
         }
     }
@@ -555,7 +565,8 @@ mod tests {
     fn test_topology_bcu() {
         let t = Topology::bcu();
         assert_eq!(t.nodes.len(), 2);
-        assert_eq!(t.edges.len(), 4);
+        // 8 edges -> 8-connected (RCSR bcu; fixed in F67, was 4).
+        assert_eq!(t.edges.len(), 8);
         assert_eq!(t.name, "bcu");
     }
 
@@ -563,7 +574,8 @@ mod tests {
     fn test_topology_fcu() {
         let t = Topology::fcu();
         assert_eq!(t.nodes.len(), 4);
-        assert_eq!(t.edges.len(), 15);
+        // 24 edges -> uniform 12-connectivity (RCSR fcu; fixed in F67).
+        assert_eq!(t.edges.len(), 24);
         assert_eq!(t.name, "fcu");
     }
 
@@ -613,8 +625,8 @@ mod tests {
         let cell = UnitCell::cubic(20.0);
 
         let structure = assemble_framework(&node, &linker, &topo, &cell);
-        // 4 nodes × 1 atom + 15 edges × 2 atoms = 34
-        assert_eq!(structure.num_atoms(), 34);
+        // 4 nodes × 1 atom + 24 edges × 2 atoms = 52
+        assert_eq!(structure.num_atoms(), 52);
     }
 
     #[test]
@@ -625,7 +637,7 @@ mod tests {
         let cell = UnitCell::cubic(15.0);
 
         let structure = assemble_framework(&node, &linker, &topo, &cell);
-        // 2 nodes × 1 atom + 4 edges × 1 atom = 6
-        assert_eq!(structure.num_atoms(), 6);
+        // 2 nodes × 1 atom + 8 edges × 1 atom = 10
+        assert_eq!(structure.num_atoms(), 10);
     }
 }
