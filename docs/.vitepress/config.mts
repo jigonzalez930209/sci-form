@@ -122,6 +122,17 @@ export default defineConfig({
           ],
         },
       ],
+      '/validation/': [
+        {
+          text: 'Validación',
+          items: [
+            {
+              text: 'Plan de validación cruzada (ES)',
+              link: '/validation/cross-library-validation.es',
+            },
+          ],
+        },
+      ],
       '/experimental/': [
         {
           text: 'Experimental Modules',
