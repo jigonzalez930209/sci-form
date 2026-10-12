@@ -28,6 +28,23 @@ pub fn build_density_matrix(coefficients: &DMatrix<f64>, n_occupied: usize) -> D
     p
 }
 
+/// Single-spin density: P^σ_μν = Σ_{k ∈ occ_σ} C_μk C_νk (no factor of 2).
+pub fn build_spin_density(coefficients: &DMatrix<f64>, n_occ: usize) -> DMatrix<f64> {
+    let n = coefficients.nrows();
+    let mut p = DMatrix::zeros(n, n);
+    for i in 0..n {
+        for j in 0..=i {
+            let mut val = 0.0;
+            for k in 0..n_occ {
+                val += coefficients[(i, k)] * coefficients[(j, k)];
+            }
+            p[(i, j)] = val;
+            p[(j, i)] = val;
+        }
+    }
+    p
+}
+
 /// Build the density matrix with fractional occupation numbers (FON).
 ///
 /// Useful for HOMO-LUMO near-degeneracy where integer occupation causes
