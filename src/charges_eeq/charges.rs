@@ -53,8 +53,8 @@ pub struct EeqChargeResult {
 pub fn get_eeq_params(z: u8) -> EeqParams {
     match z {
         1 => EeqParams {
-            chi: 2.20,
-            eta: 13.6,
+            chi: 3.65, // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 2.24, // fitted vs dftd4 EEQ charges (F46)
             r_eeq: 0.80,
             r_cov: 0.32,
         },
@@ -65,26 +65,26 @@ pub fn get_eeq_params(z: u8) -> EeqParams {
             r_cov: 0.85,
         },
         6 => EeqParams {
-            chi: 2.55,
-            eta: 10.0,
+            chi: 4.05, // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 1.41, // fitted vs dftd4 EEQ charges (F46)
             r_eeq: 1.30,
             r_cov: 0.77,
         },
         7 => EeqParams {
-            chi: 3.04,
-            eta: 14.5,
+            chi: 4.20, // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 1.08, // fitted vs dftd4 EEQ charges (F46)
             r_eeq: 1.20,
             r_cov: 0.75,
         },
         8 => EeqParams {
-            chi: 3.44,
-            eta: 13.4,
+            chi: 4.25, // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 1.34, // fitted vs dftd4 EEQ charges (F46)
             r_eeq: 1.10,
             r_cov: 0.73,
         },
         9 => EeqParams {
-            chi: 3.98,
-            eta: 17.4,
+            chi: 7.80,  // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 16.92, // fitted vs dftd4 (F/P/S weakly constrained, n=1)
             r_eeq: 1.00,
             r_cov: 0.71,
         },
@@ -95,20 +95,20 @@ pub fn get_eeq_params(z: u8) -> EeqParams {
             r_cov: 1.17,
         },
         15 => EeqParams {
-            chi: 2.19,
-            eta: 10.5,
+            chi: 5.93,  // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 12.59, // fitted vs dftd4 (F/P/S weakly constrained, n=1)
             r_eeq: 1.60,
             r_cov: 1.10,
         },
         16 => EeqParams {
-            chi: 2.58,
-            eta: 10.4,
+            chi: 5.92, // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 9.25, // fitted vs dftd4 (F/P/S weakly constrained, n=1)
             r_eeq: 1.50,
             r_cov: 1.04,
         },
         17 => EeqParams {
-            chi: 3.16,
-            eta: 13.0,
+            chi: 4.03, // fitted vs dftd4 EEQ charges (F46, R^2=0.9966)
+            eta: 1.73, // fitted vs dftd4 EEQ charges (F46)
             r_eeq: 1.40,
             r_cov: 0.99,
         },
