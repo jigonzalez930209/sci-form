@@ -1389,3 +1389,52 @@ Observed on Intel i5-10500H (12 logical cores):
 - N=42 (pyridine): ~4–6× speedup
 
 GPU acceleration (GTX 1650, CUDA 13.0) is planned via the `phase1_gpu_infrastructure` wgpu stub.
+
+---
+
+## 17. Cross-Library Validation Harness
+
+Cross-library agreement tests (RDKit / FreeSASA / NumPy references) live outside
+the main suites. Catalog, tolerances and fichas: `docs/validation/cross-library-validation.es.md`.
+
+```bash
+# Oracle venv (RDKit + FreeSASA are only needed to regenerate fixtures)
+python3 -m venv .venv-validation
+.venv-validation/bin/pip install rdkit freesasa numpy scipy
+
+# End-to-end: build CLI, regenerate fixtures, run tests, collect summary
+VALIDATION_PYTHON=.venv-validation/bin/python scripts/run_validation.sh
+
+# Faster (no debuginfo for the test profile)
+VALIDATION_FAST=1 VALIDATION_PYTHON=.venv-validation/bin/python scripts/run_validation.sh
+
+# Individual pieces
+.venv-validation/bin/python scripts/validation/oracle_rdkit.py all   # fixtures + oracle reports
+cargo test --test cross_validation -- --nocapture                    # measured metrics
+.venv-validation/bin/python scripts/validation/collect.py            # reports/validation/summary.json
+```
+
+Implemented fichas (see §13 of the validation plan for measured values):
+F01 parse invariants, F05 strict SSSR, F13 Kabsch RMSD, F14 Butina,
+F16 UFF (exact parity with RDKit: max |ΔE| = 0 on 398 molecules),
+F17 UFF atom typing (0/33641 label mismatches), F21 Gasteiger (exact vs RDKit),
+F28 SASA (vs canonical FreeSASA), F36/F37/F23 SCF matrices, ERIs, energy and
+Mulliken charges vs PySCF RHF/STO-3G, F26 SCF Mulliken dipole parity
+vs PySCF (1.8e-7 D, direction exact), F49 IR group assignment\nrecall 10/10 vs NIST/CCCBDB (+broadened-spectrum L0 checks), F43 faithful GFN0 port vs xtb 6.7.1 (1.7e-4 eV total, HOMO/LUMO 1e-4 eV; CN k=7.5, Schmidt H-2s, Cartesian-d + dtrf2, xx-common d norms, Pauling/fitted EN split in SRB), F70 BFGS+UFF\nvs RDKit UFF-opt (7.8e-10 kcal/mol/atom, RMSD 3.4e-6 A; fixed BFGS secant/line-search bugs + UFF angle/torsion gradients), F67 topologies\nvs pormake RCSR (16/16, fixed bcu/fcu nets) + MOF-5 assembly (53 atoms, junction 1.500 A), F68 porosity vs pyzeo\n(VF 8e-4, LCD 0.004 A, PLD 0.29 A; percolation-based PLD + mixed-loop CIF fix), F38 UHF/ROHF energies and <S^2> vs PySCF,
+F39 AO->MO transform vs PySCF ao2mo (1.9e-14 a.u.), F41 CIS/TDA singlet
+excitations vs PySCF (6.9e-5 eV over 29 states), F45 GFN2-xTB vs tblite
+(2.3e-5 eV), F46 standalone D4 vs dftd4/PBE (1.2e-10 Ha over 18 molecules),
+F59 ECFP similarity ranking, F64 space groups 230/230 vs
+pymatgen/spglib ITC tables, F65 CIF vs pymatgen, F66 minimum-image distances
+vs ASE (8.9e-16 Å), F69 powder XRD vs pymatgen (Δ2θ=0.0000°, intensity
+correlation ≥ 0.9982), F47 EAS site ranking from EHT Fukui f-
+(7/8 vs experimental rules, DFT-confirmed), F48 Hessian diagonalization machinery
+vs xtb vibspectrum (0.009 cm⁻¹ over 39 modes). F42 (PM3 ΔHf) is a documented
+gap with a regression guard: MOPAC parity is blocked (no binary/Fortran
+toolchain), the NDDO core needs revalidation (see §13.3 of the plan). F44
+(GFN1-xTB) is a faithful port of tblite 0.7.0 validated to 8.1e-5 eV
+(HOMO/LUMO ~4e-5 eV over 18 molecules), and F46-D3 is
+validated vs s-dftd3 (2.8e-11 Ha over 18 molecules, including ATM; HF-3c
+itself excludes ATM by definition). See §13.3 of the validation plan.
+Fixtures: `tests/fixtures/validation/`; reference
+versions: `validation/refs.lock.json`; reports: `reports/validation/summary.json`.
