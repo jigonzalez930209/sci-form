@@ -738,6 +738,13 @@ fn test_nmr_shifts_for_expanded_nuclei() {
         ("193Ir", "[Ir]"),
         ("235U", "[U]"),
         ("239Pu", "[Pu]"),
+        ("223Fr", "[Fr]"),
+        ("223Ra", "[Ra]"),
+        ("227Ac", "[Ac]"),
+        ("229Th", "[Th]"),
+        ("231Pa", "[Pa]"),
+        ("237Np", "[Np]"),
+        ("243Am", "[Am]"),
     ];
 
     for (nucleus, smiles) in cases {
@@ -757,6 +764,26 @@ fn test_nmr_shifts_for_expanded_nuclei() {
             nucleus
         );
     }
+}
+
+#[test]
+fn test_nmr_cerium_has_no_shift() {
+    let result = sci_form::predict_nmr_shifts("[Ce]").expect("Ce SMILES should parse");
+    assert!(
+        result
+            .other_shifts
+            .iter()
+            .all(|series| { series.shifts.iter().all(|shift| shift.element != 58) }),
+        "Ce (I = 0) must not emit a chemical shift"
+    );
+    assert!(
+        result
+            .notes
+            .iter()
+            .any(|note| note.contains("Ce") && note.contains("I = 0")),
+        "Ce omission should be recorded in notes, got {:?}",
+        result.notes
+    );
 }
 
 #[test]
