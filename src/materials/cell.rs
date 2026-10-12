@@ -280,7 +280,9 @@ pub struct PowderXrdResult {
 
 /// Simulate powder X-ray diffraction pattern from unit cell and atoms.
 ///
-/// Uses Bragg's law: $n\lambda = 2d\sin\theta$ with Cu-Kα radiation (λ=1.5406 Å).
+/// Uses Bragg's law: $n\lambda = 2d\sin\theta$ with Cu-Kα radiation
+/// (λ=1.54184 Å, weighted Kα1/Kα2 average — same convention as pymatgen's
+/// `XRDCalculator(wavelength="CuKa")`; see validation ficha F69).
 ///
 /// `cell`: unit cell definition.
 /// `elements`: atomic numbers of all atoms.
@@ -292,7 +294,7 @@ pub fn simulate_powder_xrd(
     frac_coords: &[[f64; 3]],
     two_theta_max: f64,
 ) -> PowderXrdResult {
-    let lambda = 1.5406; // Cu-Kα wavelength in Å
+    let lambda = 1.54184; // Cu-Kα weighted average in Å (pymatgen convention)
 
     // Max h, k, l to consider
     let params = cell.parameters();
@@ -335,11 +337,15 @@ pub fn simulate_powder_xrd(
                     continue;
                 }
 
-                // Structure factor (simplified — uses atomic number as scattering factor)
+                // Structure factor with angle-dependent atomic scattering
+                // factors (pymatgen convention, validation F69). Falls back to
+                // f = Z for elements missing from the reference table.
+                let s2 = (g_len / 2.0) * (g_len / 2.0);
                 let mut f_real = 0.0f64;
                 let mut f_imag = 0.0f64;
                 for (i, &elem) in elements.iter().enumerate() {
-                    let f_atom = elem as f64; // Approximation: f ≈ Z for low angles
+                    let f_atom = super::scattering_factors::atomic_scattering_factor(elem, s2)
+                        .unwrap_or(elem as f64);
                     let phase = 2.0
                         * std::f64::consts::PI
                         * (h as f64 * frac_coords[i][0]
@@ -348,7 +354,18 @@ pub fn simulate_powder_xrd(
                     f_real += f_atom * phase.cos();
                     f_imag += f_atom * phase.sin();
                 }
-                let intensity = f_real * f_real + f_imag * f_imag;
+                let mut intensity = f_real * f_real + f_imag * f_imag;
+
+                // Lorentz-polarization correction for an unpolarized laboratory
+                // source: LP = (1 + cos²2θ) / (sin²θ · cosθ). Without it the
+                // low-angle intensities are wildly off (validation F69).
+                let theta = 0.5 * two_theta_val.to_radians();
+                let (sin_t, cos_t) = theta.sin_cos();
+                let cos_2t = (2.0 * theta).cos();
+                let denom = sin_t * sin_t * cos_t;
+                if denom > 1e-12 {
+                    intensity *= (1.0 + cos_2t * cos_2t) / denom;
+                }
 
                 if intensity > 1e-6 {
                     reflections.push((two_theta_val, intensity, [h, k, l], d));
@@ -569,34 +586,20 @@ pub struct PorosityResult {
     pub pore_limiting_diameter: f64,
 }
 
-/// Compute geometric porosity using grid-based cavity detection.
-///
-/// Probes the unit cell with a grid and marks points as "void" if they are
-/// farther than any atom's van der Waals radius + probe radius.
-pub fn compute_porosity(
+/// Void-voxel mask and per-voxel clearance (distance to nearest atom
+/// surface) on a regular grid. Shared by [`compute_porosity`] and the
+/// percolation analysis.
+fn void_grid(
     cell: &UnitCell,
-    elements: &[u8],
-    frac_coords: &[[f64; 3]],
+    atom_positions: &[[f64; 3]],
+    vdw_radii: &[f64],
     probe_radius: f64,
-    grid_spacing: f64,
-) -> PorosityResult {
-    let params = cell.parameters();
-    let nx = (params.a / grid_spacing).ceil() as usize;
-    let ny = (params.b / grid_spacing).ceil() as usize;
-    let nz = (params.c / grid_spacing).ceil() as usize;
-
-    let total_points = nx * ny * nz;
-    let mut void_count = 0usize;
-    let mut max_void_dist = 0.0f64;
-    let mut min_void_dist = f64::INFINITY;
-
-    // Precompute Cartesian atom positions
-    let atom_positions: Vec<[f64; 3]> = frac_coords
-        .iter()
-        .map(|&fc| cell.frac_to_cart(fc))
-        .collect();
-    let vdw_radii: Vec<f64> = elements.iter().map(|&z| vdw_radius(z)).collect();
-
+    nx: usize,
+    ny: usize,
+    nz: usize,
+) -> (Vec<bool>, Vec<f64>) {
+    let mut void = vec![false; nx * ny * nz];
+    let mut clearance = vec![0.0f64; nx * ny * nz];
     for ix in 0..nx {
         for iy in 0..ny {
             for iz in 0..nz {
@@ -615,33 +618,192 @@ pub fn compute_porosity(
                     min_surface_dist = min_surface_dist.min(surface_d);
                 }
 
+                let idx = (ix * ny + iy) * nz + iz;
                 if min_surface_dist > probe_radius {
-                    void_count += 1;
-                    max_void_dist = max_void_dist.max(min_surface_dist);
-                    min_void_dist = min_void_dist.min(min_surface_dist);
+                    void[idx] = true;
+                    clearance[idx] = min_surface_dist;
                 }
             }
+        }
+    }
+    (void, clearance)
+}
+
+/// Whether any void cluster spans the cell in at least one lattice
+/// direction (6-connectivity with periodic wrap edges).
+///
+/// A cluster percolates along x if it contains voxels at both faces
+/// ix = 0 and ix = nx - 1 (likewise y, z). Directions with fewer than 3
+/// grid divisions are skipped (a single voxel trivially touches both
+/// faces there).
+fn void_percolates(void: &[bool], nx: usize, ny: usize, nz: usize) -> bool {
+    let n = void.len();
+    let mut visited = vec![false; n];
+    let idx = |ix: usize, iy: usize, iz: usize| (ix * ny + iy) * nz + iz;
+
+    for start in 0..n {
+        if !void[start] || visited[start] {
+            continue;
+        }
+        // BFS this cluster, tracking touched faces.
+        let mut stack = vec![start];
+        visited[start] = true;
+        let (mut x0, mut x1, mut y0, mut y1, mut z0, mut z1) =
+            (false, false, false, false, false, false);
+        while let Some(cur) = stack.pop() {
+            let iz = cur % nz;
+            let iy = (cur / nz) % ny;
+            let ix = cur / (ny * nz);
+            x0 |= ix == 0;
+            x1 |= ix + 1 == nx;
+            y0 |= iy == 0;
+            y1 |= iy + 1 == ny;
+            z0 |= iz == 0;
+            z1 |= iz + 1 == nz;
+            let nb = [
+                idx((ix + 1) % nx, iy, iz),
+                idx((ix + nx - 1) % nx, iy, iz),
+                idx(ix, (iy + 1) % ny, iz),
+                idx(ix, (iy + ny - 1) % ny, iz),
+                idx(ix, iy, (iz + 1) % nz),
+                idx(ix, iy, (iz + nz - 1) % nz),
+            ];
+            for &m in &nb {
+                if void[m] && !visited[m] {
+                    visited[m] = true;
+                    stack.push(m);
+                }
+            }
+        }
+        if (nx >= 3 && x0 && x1) || (ny >= 3 && y0 && y1) || (nz >= 3 && z0 && z1) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Pore-limiting diameter: largest sphere that can traverse the cell.
+///
+/// Bisects the probe radius: the PLD is twice the largest probe whose
+/// void space still percolates (see [`void_percolates`]). Returns 0 when
+/// even a point probe cannot cross, and infinity for an atom-free cell
+/// (unbounded void). Resolution is limited by `grid_spacing`.
+pub fn pore_limiting_diameter(
+    cell: &UnitCell,
+    elements: &[u8],
+    frac_coords: &[[f64; 3]],
+    grid_spacing: f64,
+) -> f64 {
+    if elements.is_empty() {
+        return f64::INFINITY;
+    }
+    let params = cell.parameters();
+    let nx = ((params.a / grid_spacing).ceil() as usize).max(1);
+    let ny = ((params.b / grid_spacing).ceil() as usize).max(1);
+    let nz = ((params.c / grid_spacing).ceil() as usize).max(1);
+
+    let atom_positions: Vec<[f64; 3]> = frac_coords
+        .iter()
+        .map(|&fc| cell.frac_to_cart(fc))
+        .collect();
+    let vdw_radii: Vec<f64> = elements.iter().map(|&z| vdw_radius(z)).collect();
+    let percolates_at = |probe: f64| {
+        let (void, _) = void_grid(cell, &atom_positions, &vdw_radii, probe, nx, ny, nz);
+        void_percolates(&void, nx, ny, nz)
+    };
+
+    if !percolates_at(0.0) {
+        return 0.0;
+    }
+    // Upper bound: largest cavity radius (nothing wider fits anywhere).
+    let (void0, clearance0) = void_grid(cell, &atom_positions, &vdw_radii, 0.0, nx, ny, nz);
+    let _ = &void0;
+    let max_clear = clearance0.iter().fold(0.0f64, |a, &b| a.max(b));
+    let mut lo = 0.0f64;
+    let mut hi = max_clear;
+    // 0.05 A resolution is plenty: the grid itself quantises to
+    // ~grid_spacing, and validation gates PLD at 0.5 A.
+    for _ in 0..24 {
+        if hi - lo < 0.05 {
+            break;
+        }
+        let mid = 0.5 * (lo + hi);
+        if percolates_at(mid) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    2.0 * lo
+}
+
+/// Void volume, void fraction and largest cavity diameter on a grid,
+/// without the (costly) percolation analysis.
+///
+/// Shared core of [`compute_porosity`]; exposed for probe scans where the
+/// pore-limiting diameter is probe-independent and must not be recomputed.
+pub fn porosity_grid_stats(
+    cell: &UnitCell,
+    elements: &[u8],
+    frac_coords: &[[f64; 3]],
+    probe_radius: f64,
+    grid_spacing: f64,
+) -> (f64, f64, f64) {
+    let params = cell.parameters();
+    let nx = ((params.a / grid_spacing).ceil() as usize).max(1);
+    let ny = ((params.b / grid_spacing).ceil() as usize).max(1);
+    let nz = ((params.c / grid_spacing).ceil() as usize).max(1);
+
+    let atom_positions: Vec<[f64; 3]> = frac_coords
+        .iter()
+        .map(|&fc| cell.frac_to_cart(fc))
+        .collect();
+    let vdw_radii: Vec<f64> = elements.iter().map(|&z| vdw_radius(z)).collect();
+
+    let (void, clearance) = void_grid(cell, &atom_positions, &vdw_radii, probe_radius, nx, ny, nz);
+    let total_points = nx * ny * nz;
+    let mut void_count = 0usize;
+    let mut max_void_dist = 0.0f64;
+    for (i, &v) in void.iter().enumerate() {
+        if v {
+            void_count += 1;
+            max_void_dist = max_void_dist.max(clearance[i]);
         }
     }
 
     let vol = cell.volume();
     let voxel_vol = vol / total_points as f64;
-    let pore_volume = void_count as f64 * voxel_vol;
-    let porosity = void_count as f64 / total_points as f64;
+    (
+        void_count as f64 * voxel_vol,
+        void_count as f64 / total_points as f64,
+        2.0 * max_void_dist,
+    )
+}
+
+/// Compute geometric porosity using grid-based cavity detection.
+///
+/// Probes the unit cell with a grid and marks points as "void" if they are
+/// farther than any atom's van der Waals radius + probe radius.
+///
+/// `largest_cavity_diameter` is twice the largest voxel clearance (the
+/// largest sphere that fits, up to grid resolution). `pore_limiting_diameter`
+/// is the percolation diameter from [`pore_limiting_diameter`] (the largest
+/// sphere that can traverse the cell), independent of `probe_radius`.
+pub fn compute_porosity(
+    cell: &UnitCell,
+    elements: &[u8],
+    frac_coords: &[[f64; 3]],
+    probe_radius: f64,
+    grid_spacing: f64,
+) -> PorosityResult {
+    let (pore_volume, porosity, largest_cavity_diameter) =
+        porosity_grid_stats(cell, elements, frac_coords, probe_radius, grid_spacing);
 
     PorosityResult {
         pore_volume,
         porosity,
-        largest_cavity_diameter: if max_void_dist > 0.0 {
-            2.0 * max_void_dist
-        } else {
-            0.0
-        },
-        pore_limiting_diameter: if min_void_dist < f64::INFINITY && void_count > 0 {
-            2.0 * min_void_dist
-        } else {
-            0.0
-        },
+        largest_cavity_diameter,
+        pore_limiting_diameter: pore_limiting_diameter(cell, elements, frac_coords, grid_spacing),
     }
 }
 
