@@ -457,26 +457,18 @@ def run_uff(limit: int) -> Report:
         mol0 = Chem.MolFromSmiles(smi)
         if mol0 is None:
             continue
-        # sci-form does not re-perceive aromaticity for Kekule input; RDKit
-        # sanitization does, which changes the bond orders used by the FF.
-        # Those inputs are tracked separately (docs §13.3) and skipped here.
+        # sci-form re-perceives Hückel aromaticity for Kekulé input in the
+        # force-field path (rings::perceive_aromaticity), so inputs where RDKit
+        # sanitization adds aromatic bonds are comparable. Inputs where
+        # sanitization *removes* aromaticity (raw aromatic bonds that the
+        # sanitized molecule keeps as single bonds) are still out of reach and
+        # tracked separately (docs §13.3).
         raw = Chem.MolFromSmiles(smi, sanitize=False)
         if raw is not None and raw.GetNumAtoms() == mol0.GetNumAtoms():
-            order_map = {
-                Chem.BondType.SINGLE: 1,
-                Chem.BondType.DOUBLE: 2,
-                Chem.BondType.TRIPLE: 3,
-                Chem.BondType.AROMATIC: 4,
-            }
+            def aromatic_count(m):
+                return sum(1 for b in m.GetBonds() if b.GetBondType() == Chem.BondType.AROMATIC)
 
-            def bond_sig(m):
-                out = []
-                for b in m.GetBonds():
-                    i, j = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
-                    out.append((min(i, j), max(i, j), order_map.get(b.GetBondType(), 1)))
-                return sorted(out)
-
-            if bond_sig(raw) != bond_sig(mol0):
+            if aromatic_count(mol0) < aromatic_count(raw):
                 skipped_reperception += 1
                 continue
         ring = mol0.GetRingInfo()
