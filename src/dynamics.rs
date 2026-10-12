@@ -376,11 +376,15 @@ pub fn compute_simplified_neb_path(
                     let mut grad = vec![0.0f64; n_xyz];
                     let _ = ff_local.compute_system_energy_and_gradients(&prev[i], &mut grad);
                     let mut new_img = prev[i].clone();
+                    let mut dx = vec![0.0f64; n_xyz];
                     for k in 0..n_xyz {
                         let spring_force =
                             spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
-                        let total_force = -grad[k] + spring_force;
-                        new_img[k] = prev[i][k] + step_size * total_force;
+                        dx[k] = step_size * (-grad[k] + spring_force);
+                    }
+                    clamp_neb_displacement(&mut dx);
+                    for k in 0..n_xyz {
+                        new_img[k] = prev[i][k] + dx[k];
                     }
                     (i, new_img)
                 })
@@ -395,11 +399,15 @@ pub fn compute_simplified_neb_path(
             for i in 1..(n_images - 1) {
                 let mut grad = vec![0.0f64; n_xyz];
                 let _ = ff.compute_system_energy_and_gradients(&prev[i], &mut grad);
+                let mut dx = vec![0.0f64; n_xyz];
                 for k in 0..n_xyz {
                     let spring_force =
                         spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
-                    let total_force = -grad[k] + spring_force;
-                    images[i][k] = prev[i][k] + step_size * total_force;
+                    dx[k] = step_size * (-grad[k] + spring_force);
+                }
+                clamp_neb_displacement(&mut dx);
+                for k in 0..n_xyz {
+                    images[i][k] = prev[i][k] + dx[k];
                 }
             }
         }
@@ -570,6 +578,23 @@ pub fn neb_energy_and_gradient(
     }
 }
 
+/// Safety cap on the per-image displacement of one relaxation iteration (Å).
+///
+/// The simplified NEB uses a fixed-step explicit Euler update; without a cap,
+/// stiff force fields (UFF/PM3 gradients of hundreds of kcal/mol/Å) diverge.
+const NEB_MAX_STEP_ANGSTROM: f64 = 0.05;
+
+/// Clamp an NEB displacement vector so no component exceeds the safety cap.
+fn clamp_neb_displacement(dx: &mut [f64]) {
+    let dmax = dx.iter().fold(0.0f64, |m, v| m.max(v.abs()));
+    if dmax > NEB_MAX_STEP_ANGSTROM {
+        let scale = NEB_MAX_STEP_ANGSTROM / dmax;
+        for v in dx.iter_mut() {
+            *v *= scale;
+        }
+    }
+}
+
 /// Build a simplified NEB path with a configurable energy backend.
 ///
 /// This is the multi-method version of [`compute_simplified_neb_path`].
@@ -619,16 +644,28 @@ pub fn compute_simplified_neb_path_configurable(
         }
     }
 
-    // Spring-coupled NEB relaxation
+    // Spring-coupled NEB relaxation. The fixed-step Euler update is clamped to
+    // `NEB_MAX_STEP_ANGSTROM` per image and iteration: strained interpolation
+    // endpoints can carry forces of hundreds of kcal/mol/Å, and an unclamped
+    // step of `step_size * force` would push atoms into overlap (energies
+    // diverge to ~1e48 kcal/mol for UFF, non-finite for PM3).
     for _ in 0..n_iter {
         let prev = images.clone();
         for i in 1..(n_images - 1) {
             let mut grad = vec![0.0f64; n_xyz];
-            let _ = neb_energy_and_gradient(backend, smiles, &elements, &mol, &prev[i], &mut grad)?;
+            let e = neb_energy_and_gradient(backend, smiles, &elements, &mol, &prev[i], &mut grad)?;
+            if !e.is_finite() {
+                // Keep the previous geometry rather than propagating a NaN.
+                continue;
+            }
+            let mut dx = vec![0.0f64; n_xyz];
             for k in 0..n_xyz {
                 let spring_force = spring_k * (prev[i + 1][k] - 2.0 * prev[i][k] + prev[i - 1][k]);
-                let total_force = -grad[k] + spring_force;
-                images[i][k] = prev[i][k] + step_size * total_force;
+                dx[k] = step_size * (-grad[k] + spring_force);
+            }
+            clamp_neb_displacement(&mut dx);
+            for k in 0..n_xyz {
+                images[i][k] = prev[i][k] + dx[k];
             }
         }
     }
