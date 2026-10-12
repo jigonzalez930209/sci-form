@@ -161,7 +161,8 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ### 14. Otros Módulos Pendientes Menores
 - [x] ESP: distancia mínima configurable (`EspGridConfig::min_distance`) y validación estricta de spacing/padding (`compute_esp_grid_with_config`, `compute_esp_with_config`)
 - [ ] Distance Geometry: detectar embeddings 2D/planos y re-perturbar; detección temprana de bounds contradictorios
-- [ ] EEQ: implementar cEEQ y limpiar restos de experimentalidad en nombres de API
+- [x] EEQ: limpiar restos de experimentalidad en nombres de API (comando CLI y bindings WASM sin feature gate)
+- [ ] EEQ: cEEQ/EEQ-BC — bloqueado por falta de referencia (no existe en xtb 6.7.1 ni tblite; requeriría el paper del modelo y sus tablas propias)
 - [x] Population: warning de cobertura (elementos sin modelo de valencia / sin parámetros EHT) y homo/lumo/gap expuestos en `PopulationResult` (Rust y binding Python)
 - [ ] Fukui: evaluar Hirshfeld/CM5 para mayor robustez (actualmente basis-set-dependent via Mulliken)
 - [x] Surface: tabla de radios documentada (`VDW_FALLBACK_RADIUS`, `vdw_radius_source`) y evaluación Connolly/SES documentada (diferida hasta que un consumidor necesite la malla)
