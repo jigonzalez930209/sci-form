@@ -118,8 +118,8 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Repulsión dependiente de coordinación más allá del esquema efectivo de tblite (sin referencia externa por ahora)
 
 ### 5. EHT
-- [ ] Soporte real de orbitales 4d/5d (hoy usa tabla 3d STO-3G)
-- [ ] Revisión de parámetros provisionales para metales de transición
+- [x] Soporte real de orbitales 4d/5d (contracciones STO-3G propias 4d/5d en `eht::basis`, tests de forma y de Mo)
+- [ ] Revisión de parámetros provisionales para metales de transición — pendiente de un benchmark contra tablas EHT de literatura (hoy: tabla d-block + fallback hydrogenic con warnings, ζ vs IP testeado)
 
 ### 6. NMR
 - [ ] Ampliación fuerte de HOSE database — bloqueado: requiere una base externa de shifts (NMRShiftDB/SDBS) con licencia y validación
