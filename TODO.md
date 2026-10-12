@@ -159,7 +159,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Descomposición energética visible cuando se combine con otros métodos
 
 ### 14. Otros Módulos Pendientes Menores
-- [ ] ESP: hacer configurable la distancia mínima (0.01 Å) y endurecer validación spacing/padding
+- [x] ESP: distancia mínima configurable (`EspGridConfig::min_distance`) y validación estricta de spacing/padding (`compute_esp_grid_with_config`, `compute_esp_with_config`)
 - [ ] Distance Geometry: detectar embeddings 2D/planos y re-perturbar; detección temprana de bounds contradictorios
 - [ ] EEQ: implementar cEEQ y limpiar restos de experimentalidad en nombres de API
 - [ ] Population: emitir warning cuando falte cobertura; exponer homo/lumo/gap en resultado público
