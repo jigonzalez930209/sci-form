@@ -1,0 +1,128 @@
+{
+ "generated": "2026-10-11",
+ "python": "3.14.4",
+ "references": [
+  {
+   "tool": "RDKit",
+   "version": "2026.09.1",
+   "used_by": [
+    "F01",
+    "F05",
+    "F14",
+    "F16",
+    "F17",
+    "F21",
+    "F59",
+    "corpus 3D (tblite/dftd4 oracles)",
+    "F70 (uff-opt)"
+   ]
+  },
+  {
+   "tool": "FreeSASA",
+   "version": "python-bindings",
+   "used_by": [
+    "F28"
+   ]
+  },
+  {
+   "tool": "PySCF",
+   "version": "2.14.0",
+   "used_by": [
+    "F23",
+    "F36",
+    "F37",
+    "F38",
+    "F39",
+    "F26"
+   ]
+  },
+  {
+   "tool": "NumPy",
+   "version": "2.5.4",
+   "used_by": [
+    "F13",
+    "F14",
+    "oracle common"
+   ]
+  },
+  {
+   "tool": "SciPy",
+   "version": "1.18.1",
+   "used_by": [
+    "ECFP ranking (oracle)"
+   ]
+  },
+  {
+   "tool": "tblite",
+   "version": "0.7.0",
+   "used_by": [
+    "F44 (gap)",
+    "F45"
+   ]
+  },
+  {
+   "tool": "dftd4",
+   "version": "4.3.0",
+   "used_by": [
+    "F46 (D4 gap)"
+   ]
+  },
+  {
+   "tool": "s-dftd3",
+   "version": "1.6.0",
+   "used_by": [
+    "F46 (D3 gap)"
+   ]
+  },
+  {
+   "tool": "xtb",
+   "version": "6.7.1 (binary)",
+   "used_by": [
+    "F43 (faithful GFN0 port)",
+    "F48 (hessian)",
+    "F49 (H2S/water spectrum L0)"
+   ]
+  },
+  {
+   "tool": "pymatgen",
+   "version": "2026.9.24",
+   "used_by": [
+    "F64",
+    "F65",
+    "F69"
+   ]
+  },
+  {
+   "tool": "ASE",
+   "version": "3.29.0",
+   "used_by": [
+    "F66"
+   ]
+  },
+  {
+   "tool": "spglib",
+   "version": "2.8.0",
+   "used_by": [
+    "F64 (s\u00edmbolos cortos)"
+   ]
+  },
+  {
+   "tool": "pormake",
+   "version": "0.2.3",
+   "used_by": [
+    "F67 (RCSR nets + MOF-5 Builder pcu/N16/E14)"
+   ]
+  },
+  {
+   "tool": "pyzeo (Zeo++ engine)",
+   "version": "0.2.0",
+   "used_by": [
+    "F68 (MOF-5 Di/Df/AV with sci-form radii)"
+   ]
+  }
+ ],
+ "pending": [
+  "ORCA (F40/F50/F52), LAMMPS (F78/F95), pyGSM/pysisyphus (F82/F89)",
+  "pymatgen/spglib (F64-F69 aux), Zeo++ binary (superseded by pyzeo for F68), geomstats/pymanopt (F94), pybinding (F34/F88/F91)"
+ ]
+}
