@@ -10,6 +10,6 @@ pub use npa::{
     compute_nbo, compute_npa, NaturalConfig, NboBond, NboLonePair, NboResult, NpaResult,
 };
 pub use population::{
-    compute_bond_orders, compute_population, lowdin_charges, mulliken_charges, BondOrderEntry,
-    BondOrderResult, PopulationResult,
+    compute_bond_orders, compute_population, compute_population_with_orbitals, lowdin_charges,
+    mulliken_charges, BondOrderEntry, BondOrderResult, PopulationResult,
 };
