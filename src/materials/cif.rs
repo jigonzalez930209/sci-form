@@ -263,7 +263,9 @@ pub fn parse_cif(input: &str) -> Result<CifStructure, String> {
     };
     let cell = UnitCell::from_parameters(&cell_params);
 
-    // Convert Cartesian atom sites to fractional if needed
+    // Convert Cartesian atom sites to fractional if needed, then normalize
+    // the fractional coordinates into [0, 1) (CIFs are frequently written with
+    // coordinates outside the cell, e.g. -0.1 or 1.05).
     let atom_sites: Vec<CifAtomSite> = atom_sites
         .into_iter()
         .map(|(mut site, is_cart)| {
@@ -273,6 +275,10 @@ pub fn parse_cif(input: &str) -> Result<CifStructure, String> {
                 site.frac_y = frac[1];
                 site.frac_z = frac[2];
             }
+            let wrapped = UnitCell::wrap_frac([site.frac_x, site.frac_y, site.frac_z]);
+            site.frac_x = wrapped[0];
+            site.frac_y = wrapped[1];
+            site.frac_z = wrapped[2];
             site
         })
         .collect();
@@ -570,6 +576,31 @@ Cl1      Cl   0.500000 0.500000 0.500000 1.0000
         assert_eq!(structure.atom_sites[1].type_symbol, "Cl");
         assert_eq!(structure.atom_sites[1].atomic_number, 17);
         assert!((structure.atom_sites[1].frac_x - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_parse_wraps_fractional_coordinates() {
+        let cif = r#"
+data_Wrap
+_cell_length_a 10.0
+_cell_length_b 10.0
+_cell_length_c 10.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+C1  C  -0.25  1.30  2.75
+"#;
+        let structure = parse_cif(cif).unwrap();
+        let site = &structure.atom_sites[0];
+        assert!((site.frac_x - 0.75).abs() < 1e-9, "got {}", site.frac_x);
+        assert!((site.frac_y - 0.30).abs() < 1e-9, "got {}", site.frac_y);
+        assert!((site.frac_z - 0.75).abs() < 1e-9, "got {}", site.frac_z);
     }
 
     #[test]
