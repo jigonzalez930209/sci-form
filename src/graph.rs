@@ -58,6 +58,9 @@ pub struct Atom {
     pub hybridization: Hybridization,
     pub chiral_tag: ChiralType,
     pub explicit_h: u8,
+    /// True for atoms written inside SMILES brackets: their hydrogen count is
+    /// exactly `explicit_h` and no implicit hydrogens are added.
+    pub no_implicit_h: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -79,6 +82,7 @@ impl Atom {
             hybridization: Hybridization::Unknown,
             chiral_tag: ChiralType::Unspecified,
             explicit_h: 0,
+            no_implicit_h: false,
         }
     }
 }
