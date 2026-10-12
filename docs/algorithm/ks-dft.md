@@ -20,9 +20,15 @@ Every other element through Zn gets an all-electron minimal basis. The exponent 
 
 with Slater's shielding rules. The radial function is the STO-3G three-Gaussian fit, \(\alpha_i = \alpha_i(\zeta=1)\,\zeta^2\). A valence p shell is kept even when it is empty, so the calculation has virtual orbitals. 3d functions are present from Sc onward.
 
-Z > 30 is rejected. An all-electron minimal basis is the wrong tool for 4d, 5d, and f-block metals; the next step is a small-core ECP.
+Z > 30 uses a small-core ECP: n_core electrons are removed, the nuclear charge is Z_eff, and a local Gaussian replaces the core. f electrons stay in the core. This is not a fitted Stuttgart/LANL potential.
 
-The SCF is closed-shell. An odd electron count drops the unpaired electron the same way restricted HF does. UKS is still ahead.
+The Coulomb matrix uses Cartesian Obara–Saika ERIs through d Gaussians (memoized VRR). The PySCF 1 mHa gate is H₂ and H₂O/STO-3G (s/p). Sc–Zn all-electron bases include 3d; a Zn atom RKS smoke checks that the d Coulomb is finite and the SCF runs.
+
+Closed-shell RKS is the default. UKS runs when `multiplicity > 1`, the valence electron count is odd, or `unrestricted` is set. Spin-polarized Slater + unpolarized VWN is used for SVWN.
+
+`DftConfig.basis = SplitValence` selects 3-21G for H, C, and O.
+
+`ks_nuclear_gradient` is the frozen-P KS force: analytic integrals are differentiated by central difference and the Pulay term −W:∂S/∂R is included.
 
 ## Entry point
 
