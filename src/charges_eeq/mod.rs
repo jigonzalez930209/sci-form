@@ -16,10 +16,13 @@
 //! (Grimme group, Spicher & Grimme, Angew. Chem. Int. Ed. 2020).
 
 mod charges;
+mod eeq2019;
+mod eeq2019_data;
 mod energy;
 
 pub use charges::{
     compute_eeq_charges, fractional_coordination, get_eeq_params, EeqChargeResult, EeqConfig,
     EeqParams,
 };
+pub use eeq2019::compute_eeq2019_charges;
 pub use energy::{compute_eeq_energy, compute_eeq_gradient, EeqEnergyResult};
