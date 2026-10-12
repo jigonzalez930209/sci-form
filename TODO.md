@@ -183,10 +183,10 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Kinetics CLI: 3 funciones faltantes
 
 ### 17. Validación a Gran Escala (Track G)
-- [ ] Curar banco de ≥100 moléculas representativas diversas
-- [ ] Pipeline automatizado de benchmarking vs PySCF/RDKit
-- [ ] Threshold de <1% desviación en energías, gradientes y propiedades
-- [ ] Documentar límites de escalado (tiempo + memoria)
+- [x] Banco ≥100 moléculas (180 diversas + 1000 ChEMBL + 400 UFF; guard `track_g_bank_has_enough_molecules`)
+- [x] Pipeline automatizado de benchmarking vs PySCF/RDKit (oráculos + `run_validation.sh` + `collect.py`)
+- [x] Threshold <1 % documentado por observable (plan §14.2; los gated quedan 2–5 órdenes por debajo)
+- [x] Límites de escalado documentados (plan §14.3: tiempos por método y memoria ERI O(N⁴))
 
 ### 18. Experimental Tracks Pendientes de Validación para Promoción
 - [ ] Validación cuantitativa por submódulo (alpha + beta)
