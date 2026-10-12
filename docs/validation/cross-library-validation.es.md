@@ -1786,6 +1786,62 @@ están activos (ningún `#[ignore]`).
 
 ---
 
+## 14. Track G — banco de validación, umbrales y escalado
+
+> Medido el 2026-10-12 en la misma máquina de referencia (Intel i5-10500H,
+> 12 hilos lógicos), build `--release`.
+
+### 14.1 Banco de moléculas (≥100)
+
+| Corpus | Moléculas | Uso |
+|---|---|---|
+| `tests/fixtures/diverse_molecules.smi` | 180 | F01/F05/F16/F17/F21/F59 (parse, SSSR, UFF, Gasteiger, ECFP) |
+| `data/chembl_1k_practical.smi` | 1000 | muestra práctica de ChEMBL para los oráculos |
+| `tests/fixtures/reference_coords_500.json` | 400 | F16/F70 (geometrías + energía UFF/RDKit) |
+| `tests/fixtures/validation/tblite_gfn.json` | 18 | F43–F45 (GFN0/GFN1/GFN2) |
+| `tests/fixtures/validation/pyscf_*.json` | 11–13 | F36–F39, F41 (SCF/ERI/TDA) |
+
+El guard del banco vive en `tests/cross_validation.rs::track_g_bank_has_enough_molecules`
+(≥100 SMILES válidos y parseables).
+
+### 14.2 Umbral < 1 % y valores medidos
+
+El umbral del 1 % se aplica a los observables *continuos* con referencia
+externa; los gated van muy por debajo:
+
+| Observable | Referencia | Medido | Umbral |
+|---|---|---|---|
+| Energía UFF | RDKit | 0.0000 kcal/mol (400) | 0.01 |
+| Energía GFN1-xTB | tblite | 8.1e-5 eV (18) | 0.01 eV |
+| Energía GFN2-xTB | tblite | 2.3e-5 eV (18) | 0.0217 eV |
+| Energía GFN0-xTB | xtb 6.7.1 | 1.7e-4 eV (18) | 0.01 eV |
+| E_tot RHF/STO-3G | PySCF | 1.2e-8 Ha (11) | 1e-7 Ha |
+| ERI AO | PySCF | 2.1e-11 a.u. (13 074) | 1e-10 |
+| ERI AO→MO | PySCF | 1.9e-14 a.u. | 1e-10 |
+| Gaps EHT metales | fixture propio | <0.1 % o tolerancia absoluta | — |
+| ΔHf PM3 | NIST | gap documentado (F42) | — |
+
+### 14.3 Límites de escalado (single point, alkanos lineales)
+
+| N (átomos) | EHT (ms) | GFN2 (ms) | PM3 (ms) |
+|---|---|---|---|
+| 26 | 2.0 | 8.3 | 241 (no conv.) |
+| 50 | 8.1 | 31.8 | 1254 (no conv.) |
+| 74 | 19.0 | 81.5 | 3719 (no conv.) |
+| 98 | 37.2 | 173.1 | 8412 (no conv.) |
+
+- EHT y GFN2 escalan ≈ O(N²) en este rango (el cuello es la diagonalización
+  O(N³) con bases pequeñas); PM3 ≈ O(N²·⁷) y **no converge** en la serie
+  (gap F42, bloqueado por MOPAC).
+- Memoria: los caminos HF/SCF guardan ERIs O(N⁴) en memoria
+  (`(N(N+1)/2)² × 8 B`); con STO-3G, N=150 funciones ≈ 1.0 GB y N=200 ≈ 3.2 GB.
+  Por encima de ~200 funciones hace falta batching (o el camino GPU ERI,
+  pendiente) antes de escalar.
+- El pipeline de conformeros (ETKDG+UFF) es el que sostiene el throughput de
+  producción (batch paralelo ~1–2 ms/mol en moléculas pequeñas; ver TESTING.md).
+
+---
+
 *Documento generado para el repo `sci-form 0.15.2`. Mantener sincronizado con `TESTING.md`
 (comandos y suites existentes), `docs/algorithm/quantum-validation-roadmap.md` (estado de los
 métodos semi-empíricos) y `docs/algorithm/validation.md` (checks geométricos internos).*
