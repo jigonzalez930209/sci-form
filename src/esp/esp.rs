@@ -35,6 +35,160 @@ pub struct EspGrid {
     pub values: Vec<f64>,
 }
 
+/// Evaluation settings for the ESP grid.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct EspGridConfig {
+    /// Grid spacing in Ångström (must be finite and > 0).
+    pub spacing: f64,
+    /// Padding around the molecular bounding box in Ångström (must be finite and >= 0).
+    pub padding: f64,
+    /// Minimum distance to a nucleus in Ångström; the `1/r` singularity is
+    /// clamped here (must be finite and > 0).
+    pub min_distance: f64,
+}
+
+impl Default for EspGridConfig {
+    fn default() -> Self {
+        Self {
+            spacing: 0.5,
+            padding: 2.0,
+            min_distance: DEFAULT_ESP_MIN_DISTANCE,
+        }
+    }
+}
+
+impl EspGridConfig {
+    /// Validate the configuration, returning a message for the first invalid field.
+    pub fn validate(&self) -> Result<(), String> {
+        if !self.spacing.is_finite() || self.spacing <= 0.0 {
+            return Err(format!(
+                "ESP grid spacing must be finite and > 0 Å (got {})",
+                self.spacing
+            ));
+        }
+        if !self.padding.is_finite() || self.padding < 0.0 {
+            return Err(format!(
+                "ESP grid padding must be finite and >= 0 Å (got {})",
+                self.padding
+            ));
+        }
+        if !self.min_distance.is_finite() || self.min_distance <= 0.0 {
+            return Err(format!(
+                "ESP grid minimum distance must be finite and > 0 Å (got {})",
+                self.min_distance
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Legacy default for the nuclear-distance clamp (Ångström).
+pub const DEFAULT_ESP_MIN_DISTANCE: f64 = 0.1;
+
+/// Upper bound on the number of grid points, to reject configurations whose
+/// `dims` product would exhaust memory (e.g. a 0.001 Å spacing).
+const MAX_ESP_GRID_POINTS: usize = 1 << 30;
+
+/// Grid origin and dimensions for a molecular bounding box.
+fn grid_bounds(positions: &[[f64; 3]], spacing: f64, padding: f64) -> ([f64; 3], [usize; 3]) {
+    let mut min = [f64::MAX; 3];
+    let mut max = [f64::MIN; 3];
+    for pos in positions {
+        for k in 0..3 {
+            min[k] = min[k].min(pos[k]);
+            max[k] = max[k].max(pos[k]);
+        }
+    }
+    let origin = [min[0] - padding, min[1] - padding, min[2] - padding];
+    let dims = [
+        ((max[0] - min[0] + 2.0 * padding) / spacing).ceil() as usize + 1,
+        ((max[1] - min[1] + 2.0 * padding) / spacing).ceil() as usize + 1,
+        ((max[2] - min[2] + 2.0 * padding) / spacing).ceil() as usize + 1,
+    ];
+    (origin, dims)
+}
+
+/// Evaluate the ESP values on a grid, clamping the distance to each nucleus.
+#[allow(clippy::too_many_arguments)]
+fn evaluate_esp_values(
+    positions: &[[f64; 3]],
+    mulliken_charges: &[f64],
+    origin: [f64; 3],
+    dims: [usize; 3],
+    spacing: f64,
+    min_distance: f64,
+) -> Vec<f64> {
+    let total = dims[0] * dims[1] * dims[2];
+    let mut values = vec![0.0f64; total];
+    for ix in 0..dims[0] {
+        for iy in 0..dims[1] {
+            for iz in 0..dims[2] {
+                let rx = origin[0] + ix as f64 * spacing;
+                let ry = origin[1] + iy as f64 * spacing;
+                let rz = origin[2] + iz as f64 * spacing;
+
+                let mut phi = 0.0;
+                for (a, pos) in positions.iter().enumerate() {
+                    let dx = rx - pos[0];
+                    let dy = ry - pos[1];
+                    let dz = rz - pos[2];
+                    let dist = (dx * dx + dy * dy + dz * dz).sqrt();
+                    let dist_clamped = dist.max(min_distance);
+                    phi += mulliken_charges[a] / (dist_clamped * ANG_TO_BOHR);
+                }
+
+                let idx = ix * dims[1] * dims[2] + iy * dims[2] + iz;
+                values[idx] = phi;
+            }
+        }
+    }
+    values
+}
+
+/// Compute the ESP grid with explicit evaluation settings.
+///
+/// Unlike [`compute_esp_grid`], invalid `spacing`/`padding`/`min_distance`
+/// values are rejected instead of silently adjusted.
+pub fn compute_esp_grid_with_config(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    mulliken_charges: &[f64],
+    config: EspGridConfig,
+) -> Result<EspGrid, String> {
+    config.validate()?;
+    if positions.len() != mulliken_charges.len() {
+        return Err(format!(
+            "positions ({}) and charges ({}) length mismatch",
+            positions.len(),
+            mulliken_charges.len()
+        ));
+    }
+    let _ = elements;
+    let (origin, dims) = grid_bounds(positions, config.spacing, config.padding);
+    let total = dims[0] * dims[1] * dims[2];
+    if total > MAX_ESP_GRID_POINTS {
+        return Err(format!(
+            "ESP grid would need {} points (spacing {} Å, padding {} Å); \
+             increase the spacing or reduce the padding",
+            total, config.spacing, config.padding
+        ));
+    }
+    let values = evaluate_esp_values(
+        positions,
+        mulliken_charges,
+        origin,
+        dims,
+        config.spacing,
+        config.min_distance,
+    );
+    Ok(EspGrid {
+        origin,
+        spacing: config.spacing,
+        dims,
+        values,
+    })
+}
+
 /// Compute ESP on a 3D grid using Mulliken-charge approximation.
 ///
 /// - `elements`: atomic numbers
@@ -49,75 +203,28 @@ pub fn compute_esp_grid(
     spacing: f64,
     padding: f64,
 ) -> EspGrid {
-    let n_atoms = elements.len();
+    // Legacy behaviour: sanitize instead of rejecting (use
+    // [`compute_esp_grid_with_config`] for validated settings).
+    let spacing = if spacing.is_finite() && spacing > 0.0 {
+        spacing
+    } else {
+        0.5
+    };
+    let padding = if padding.is_finite() {
+        padding.max(0.0)
+    } else {
+        0.0
+    };
 
-    let spacing = if spacing <= 0.0 { 0.5 } else { spacing };
-    let padding = padding.max(0.0);
-
-    // Compute bounding box
-    let mut min = [f64::MAX; 3];
-    let mut max = [f64::MIN; 3];
-    for pos in positions {
-        for k in 0..3 {
-            min[k] = min[k].min(pos[k]);
-            max[k] = max[k].max(pos[k]);
-        }
-    }
-
-    let origin = [min[0] - padding, min[1] - padding, min[2] - padding];
-    let dims = [
-        ((max[0] - min[0] + 2.0 * padding) / spacing).ceil() as usize + 1,
-        ((max[1] - min[1] + 2.0 * padding) / spacing).ceil() as usize + 1,
-        ((max[2] - min[2] + 2.0 * padding) / spacing).ceil() as usize + 1,
-    ];
-
-    let total = dims[0] * dims[1] * dims[2];
-    let mut values = vec![0.0f64; total];
-
-    // For each grid point, compute ESP = Σ_A q_eff(A) / |r - R_A|
-    // q_eff = nuclear_charge - core_electrons - mulliken_valence_population
-    // But simpler: use full nuclear charge + Mulliken partial charge concept
-    // ESP = Σ_A [ Z_A / |r-R_A| - electron_pop_A / |r-R_A| ]
-    // = Σ_A (Z_A - electron_pop_A) / |r-R_A|
-    // = Σ_A q_effective / |r-R_A|
-    //
-    // Where q_effective = Z_nuclear - (Z_valence - q_mulliken) - core_electrons
-    //                   = Z_nuclear - core_electrons - Z_valence + q_mulliken
-    //                   = 0 + q_mulliken (for neutral atoms, Z = core + valence)
-    //
-    // So ESP(r) = Σ_A q_mulliken(A) / |r - R_A|  (in appropriate units)
-    //
-    // Convert to atomic units: positions Å→bohr, charges in e, ESP in Hartree/e
-
-    for ix in 0..dims[0] {
-        for iy in 0..dims[1] {
-            for iz in 0..dims[2] {
-                let rx = origin[0] + ix as f64 * spacing;
-                let ry = origin[1] + iy as f64 * spacing;
-                let rz = origin[2] + iz as f64 * spacing;
-
-                let mut phi = 0.0;
-                for a in 0..n_atoms {
-                    let dx = rx - positions[a][0];
-                    let dy = ry - positions[a][1];
-                    let dz = rz - positions[a][2];
-                    let dist = (dx * dx + dy * dy + dz * dz).sqrt();
-
-                    // Clamp distance to avoid singularity at nucleus.
-                    // Using 0.1 Å minimum prevents discontinuities while
-                    // keeping the ESP smooth near nuclei.
-                    let dist_clamped = dist.max(0.1);
-
-                    // ESP contribution: Φ(r) = Σ_A q_mulliken(A) / |r - R_A|
-                    // (in atomic units: distance converted to bohr)
-                    phi += mulliken_charges[a] / (dist_clamped * ANG_TO_BOHR);
-                }
-
-                let idx = ix * dims[1] * dims[2] + iy * dims[2] + iz;
-                values[idx] = phi;
-            }
-        }
-    }
+    let (origin, dims) = grid_bounds(positions, spacing, padding);
+    let values = evaluate_esp_values(
+        positions,
+        mulliken_charges,
+        origin,
+        dims,
+        spacing,
+        DEFAULT_ESP_MIN_DISTANCE,
+    );
 
     EspGrid {
         origin,
@@ -138,27 +245,90 @@ pub fn compute_esp_grid_parallel(
     spacing: f64,
     padding: f64,
 ) -> EspGrid {
-    use rayon::prelude::*;
-
-    let _n_atoms = elements.len();
-    let spacing = if spacing <= 0.0 { 0.5 } else { spacing };
-    let padding = padding.max(0.0);
-
-    let mut min = [f64::MAX; 3];
-    let mut max = [f64::MIN; 3];
-    for pos in positions {
-        for k in 0..3 {
-            min[k] = min[k].min(pos[k]);
-            max[k] = max[k].max(pos[k]);
-        }
+    let spacing = if spacing.is_finite() && spacing > 0.0 {
+        spacing
+    } else {
+        0.5
+    };
+    let padding = if padding.is_finite() {
+        padding.max(0.0)
+    } else {
+        0.0
+    };
+    let (origin, dims) = grid_bounds(positions, spacing, padding);
+    let values = evaluate_esp_values_parallel(
+        positions,
+        mulliken_charges,
+        origin,
+        dims,
+        spacing,
+        DEFAULT_ESP_MIN_DISTANCE,
+    );
+    EspGrid {
+        origin,
+        spacing,
+        dims,
+        values,
     }
+}
 
-    let origin = [min[0] - padding, min[1] - padding, min[2] - padding];
-    let dims = [
-        ((max[0] - min[0] + 2.0 * padding) / spacing).ceil() as usize + 1,
-        ((max[1] - min[1] + 2.0 * padding) / spacing).ceil() as usize + 1,
-        ((max[2] - min[2] + 2.0 * padding) / spacing).ceil() as usize + 1,
-    ];
+/// Compute the ESP grid in parallel with explicit evaluation settings.
+///
+/// Validated counterpart of [`compute_esp_grid_parallel`]; invalid
+/// `spacing`/`padding`/`min_distance` values are rejected.
+#[cfg(feature = "parallel")]
+pub fn compute_esp_grid_parallel_with_config(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    mulliken_charges: &[f64],
+    config: EspGridConfig,
+) -> Result<EspGrid, String> {
+    config.validate()?;
+    if positions.len() != mulliken_charges.len() {
+        return Err(format!(
+            "positions ({}) and charges ({}) length mismatch",
+            positions.len(),
+            mulliken_charges.len()
+        ));
+    }
+    let _ = elements;
+    let (origin, dims) = grid_bounds(positions, config.spacing, config.padding);
+    let total = dims[0] * dims[1] * dims[2];
+    if total > MAX_ESP_GRID_POINTS {
+        return Err(format!(
+            "ESP grid would need {} points (spacing {} Å, padding {} Å); \
+             increase the spacing or reduce the padding",
+            total, config.spacing, config.padding
+        ));
+    }
+    let values = evaluate_esp_values_parallel(
+        positions,
+        mulliken_charges,
+        origin,
+        dims,
+        config.spacing,
+        config.min_distance,
+    );
+    Ok(EspGrid {
+        origin,
+        spacing: config.spacing,
+        dims,
+        values,
+    })
+}
+
+/// Parallel ESP evaluation with the distance clamp.
+#[cfg(feature = "parallel")]
+#[allow(clippy::too_many_arguments)]
+fn evaluate_esp_values_parallel(
+    positions: &[[f64; 3]],
+    mulliken_charges: &[f64],
+    origin: [f64; 3],
+    dims: [usize; 3],
+    spacing: f64,
+    min_distance: f64,
+) -> Vec<f64> {
+    use rayon::prelude::*;
 
     let total = dims[0] * dims[1] * dims[2];
     let ny = dims[1];
@@ -166,7 +336,7 @@ pub fn compute_esp_grid_parallel(
     let positions_clone = positions.to_vec();
     let charges_clone = mulliken_charges.to_vec();
 
-    let values: Vec<f64> = (0..total)
+    (0..total)
         .into_par_iter()
         .map(|flat_idx| {
             let ix = flat_idx / (ny * nz);
@@ -183,19 +353,12 @@ pub fn compute_esp_grid_parallel(
                 let dy = ry - pos[1];
                 let dz = rz - pos[2];
                 let dist = (dx * dx + dy * dy + dz * dz).sqrt();
-                let dist_clamped = dist.max(0.1);
+                let dist_clamped = dist.max(min_distance);
                 phi += charges_clone[a] / (dist_clamped * ANG_TO_BOHR);
             }
             phi
         })
-        .collect();
-
-    EspGrid {
-        origin,
-        spacing,
-        dims,
-        values,
-    }
+        .collect()
 }
 
 /// Map an ESP value to an RGB color.
@@ -548,5 +711,123 @@ mod tests {
 
         let colors = esp_grid_to_colors(&grid, 0.1);
         assert_eq!(colors.len(), grid.values.len() * 3);
+    }
+
+    #[test]
+    fn test_esp_config_validation_rejects_invalid_inputs() {
+        let (elems, pos) = water_molecule();
+        let charges = vec![-0.6, 0.3, 0.3];
+
+        for (config, needle) in [
+            (
+                EspGridConfig {
+                    spacing: 0.0,
+                    ..Default::default()
+                },
+                "spacing",
+            ),
+            (
+                EspGridConfig {
+                    spacing: f64::NAN,
+                    ..Default::default()
+                },
+                "spacing",
+            ),
+            (
+                EspGridConfig {
+                    padding: -1.0,
+                    ..Default::default()
+                },
+                "padding",
+            ),
+            (
+                EspGridConfig {
+                    padding: f64::INFINITY,
+                    ..Default::default()
+                },
+                "padding",
+            ),
+            (
+                EspGridConfig {
+                    min_distance: 0.0,
+                    ..Default::default()
+                },
+                "minimum distance",
+            ),
+        ] {
+            let err = compute_esp_grid_with_config(&elems, &pos, &charges, config)
+                .expect_err("invalid config must be rejected");
+            assert!(
+                err.contains(needle),
+                "error should mention {needle:?}, got {err:?}"
+            );
+        }
+
+        // Charges/positions length mismatch is rejected as well.
+        let err =
+            compute_esp_grid_with_config(&elems, &pos, &charges[..2], EspGridConfig::default())
+                .expect_err("length mismatch must be rejected");
+        assert!(err.contains("length mismatch"), "got {err:?}");
+    }
+
+    #[test]
+    fn test_esp_min_distance_is_configurable() {
+        // Single unit charge at the origin; the grid starts exactly at the
+        // nucleus (padding 0), so the first value is `q / (min_distance · bohr)`.
+        let elems = [6u8];
+        let pos = [[0.0, 0.0, 0.0]];
+        let charges = [1.0];
+
+        let near = compute_esp_grid_with_config(
+            &elems,
+            &pos,
+            &charges,
+            EspGridConfig {
+                spacing: 0.5,
+                padding: 0.0,
+                min_distance: 0.01,
+            },
+        )
+        .unwrap();
+        let far = compute_esp_grid_with_config(
+            &elems,
+            &pos,
+            &charges,
+            EspGridConfig {
+                spacing: 0.5,
+                padding: 0.0,
+                min_distance: 0.1,
+            },
+        )
+        .unwrap();
+
+        // The origin is the first grid point.
+        let ratio = near.values[0] / far.values[0];
+        assert!(
+            (ratio - 10.0).abs() < 1e-9,
+            "clamping at 0.01 Å should be 10x larger than at 0.1 Å, got {ratio}"
+        );
+    }
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn test_esp_parallel_config_matches_serial() {
+        let (elems, pos) = water_molecule();
+        let result = solve_eht(&elems, &pos, None).unwrap();
+        let pop = compute_population(&elems, &pos, &result.coefficients, result.n_electrons);
+        let config = EspGridConfig {
+            spacing: 0.5,
+            padding: 2.0,
+            min_distance: 0.05,
+        };
+        let serial =
+            compute_esp_grid_with_config(&elems, &pos, &pop.mulliken_charges, config).unwrap();
+        let parallel =
+            compute_esp_grid_parallel_with_config(&elems, &pos, &pop.mulliken_charges, config)
+                .unwrap();
+        assert_eq!(serial.dims, parallel.dims);
+        for (a, b) in serial.values.iter().zip(parallel.values.iter()) {
+            assert!((a - b).abs() < 1e-12, "{a} vs {b}");
+        }
     }
 }
