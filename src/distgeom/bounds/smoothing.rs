@@ -59,3 +59,42 @@ pub fn smooth_bounds_matrix(mut b: DMatrix<f64>) -> DMatrix<f64> {
     triangle_smooth(&mut b);
     b
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_contradictory_bounds_are_detected() {
+        // 3 atoms with an impossible triple: d(0,1)=1, d(1,2)=1 but d(0,2)=5
+        // violates the triangle inequality, so smoothing must report failure.
+        let mut b = DMatrix::<f64>::zeros(3, 3);
+        let set = |b: &mut DMatrix<f64>, i: usize, j: usize, lo: f64, hi: f64| {
+            b[(i, j)] = hi;
+            b[(j, i)] = lo;
+        };
+        set(&mut b, 0, 1, 1.0, 1.0);
+        set(&mut b, 1, 2, 1.0, 1.0);
+        set(&mut b, 0, 2, 5.0, 5.0);
+        assert!(!triangle_smooth_tol(&mut b, 0.0));
+
+        // With a tolerance the pair is clamped instead of rejected.
+        let mut b2 = DMatrix::<f64>::zeros(3, 3);
+        set(&mut b2, 0, 1, 1.0, 1.0);
+        set(&mut b2, 1, 2, 1.0, 1.0);
+        set(&mut b2, 0, 2, 2.000001, 2.000002);
+        assert!(triangle_smooth_tol(&mut b2, 0.05));
+    }
+
+    #[test]
+    fn test_consistent_bounds_smooth() {
+        let mut b = DMatrix::<f64>::zeros(3, 3);
+        b[(0, 1)] = 1.5;
+        b[(1, 0)] = 1.4;
+        b[(1, 2)] = 1.5;
+        b[(2, 1)] = 1.4;
+        b[(0, 2)] = 2.9;
+        b[(2, 0)] = 2.8;
+        assert!(triangle_smooth_tol(&mut b, 0.0));
+    }
+}
