@@ -60,6 +60,7 @@ fn build_mol(r: &RefMolecule) -> sci_form::graph::Molecule {
             hybridization: hyb,
             chiral_tag: sci_form::graph::ChiralType::Unspecified,
             explicit_h: if a.element <= 1 { 1 } else { 0 },
+            no_implicit_h: false,
         }));
     }
     for b in &r.bonds {
