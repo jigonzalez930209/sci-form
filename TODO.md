@@ -142,8 +142,8 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Endurecer validación de atom maps antes de aplicar transformaciones (mapas duplicados, `:0`, componentes vacíos y patrones SMARTS inválidos en `parse_smirks`; elementos de dos letras `Mg`/`As`/`se` en SMARTS)
 
 ### 10. Solvación
-- [ ] Unificar SASA entre módulo principal y ALPB
-- [ ] Separación clara entre GB y ALPB en la API
+- [x] Unificar SASA entre módulo principal y ALPB (ambos usan `surface::sasa`, test de equivalencia)
+- [x] Separación clara entre GB y ALPB en la API (`compute_gb_solvation` vs `compute_alpb_solvation`, documentados)
 
 ### 11. Materiales
 - [x] Normalización automática de coordenadas fraccionales (el parser CIF envuelve a [0,1) con `UnitCell::wrap_frac`)
