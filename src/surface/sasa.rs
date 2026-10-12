@@ -16,12 +16,31 @@ pub const DEFAULT_PROBE_RADIUS: f64 = 1.4;
 /// 960 or 2562 give higher accuracy).
 pub const DEFAULT_NUM_POINTS: usize = 960;
 
+/// Fallback van der Waals radius (Å) for elements without a Bondi entry.
+pub const VDW_FALLBACK_RADIUS: f64 = 1.70;
+
 /// Van der Waals radii (Å) by atomic number (Bondi radii).
 ///
-/// Explicit radii: H(1), B(5), C(6), N(7), O(8), F(9), Si(14), P(15),
-/// S(16), Cl(17), Se(34), Br(35), I(53).
-/// All other elements (including transition metals, lanthanides, etc.)
-/// use a fallback radius of 1.70 Å.
+/// Explicit table (Bondi 1964, plus Se):
+///
+/// | Z | element | radius (Å) |
+/// |---|---------|------------|
+/// | 1  | H  | 1.20 |
+/// | 5  | B  | 1.92 |
+/// | 6  | C  | 1.70 |
+/// | 7  | N  | 1.55 |
+/// | 8  | O  | 1.52 |
+/// | 9  | F  | 1.47 |
+/// | 14 | Si | 2.10 |
+/// | 15 | P  | 1.80 |
+/// | 16 | S  | 1.80 |
+/// | 17 | Cl | 1.75 |
+/// | 34 | Se | 1.90 |
+/// | 35 | Br | 1.85 |
+/// | 53 | I  | 1.98 |
+///
+/// All other elements (transition metals, lanthanides, etc.) use
+/// [`VDW_FALLBACK_RADIUS`]; [`vdw_radius_source`] reports which case applies.
 pub fn vdw_radius(z: u8) -> f64 {
     match z {
         1 => 1.20,
@@ -37,7 +56,16 @@ pub fn vdw_radius(z: u8) -> f64 {
         35 => 1.85,
         53 => 1.98,
         34 => 1.90,
-        _ => 1.70, // default fallback
+        _ => VDW_FALLBACK_RADIUS, // default fallback
+    }
+}
+
+/// Whether `z` has an explicit Bondi radius (`"Bondi"`) or uses the
+/// [`VDW_FALLBACK_RADIUS`] (`"fallback"`).
+pub fn vdw_radius_source(z: u8) -> &'static str {
+    match z {
+        1 | 5 | 6 | 7 | 8 | 9 | 14 | 15 | 16 | 17 | 34 | 35 | 53 => "Bondi",
+        _ => "fallback",
     }
 }
 
@@ -290,5 +318,18 @@ mod tests {
             result.atom_sasa[0],
             result.atom_sasa[1]
         );
+    }
+
+    #[test]
+    fn test_vdw_radius_sources_are_documented() {
+        for z in [1u8, 5, 6, 7, 8, 9, 14, 15, 16, 17, 34, 35, 53] {
+            assert_eq!(vdw_radius_source(z), "Bondi", "Z={z}");
+            assert!(vdw_radius(z) > 0.0);
+        }
+        // Transition metals and other unlisted elements use the fallback.
+        for z in [26u8, 78, 92] {
+            assert_eq!(vdw_radius_source(z), "fallback", "Z={z}");
+            assert_eq!(vdw_radius(z), VDW_FALLBACK_RADIUS);
+        }
     }
 }
