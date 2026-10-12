@@ -170,12 +170,12 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Optimization: variable-cell BFGS — pendiente de un tensor de stress en el modelo periódico (el callback energía/fuerzas no lo expone)
 
 ### 15. Reaction Dynamics 3D (alpha)
-- [ ] Deprecar `dynamics.rs` legacy como assembly primario
+- [x] Deprecar `dynamics.rs` legacy como assembly primario — `dynamics.rs` conserva solo energía/NEB; el assembly vive en `alpha::reaction_dynamics::complex` (documentado en la cabecera del módulo)
 - [x] Rotación Kabsch para >2 fragmentos (`assemble_fragments_at_product_positions`)
 - [x] Posicionamiento de moléculas extra (≥2) según átomos equivalentes en el producto
-- [ ] Optimizador global de orientación multi-fragmento
-- [ ] Comparación sistemática de ángulos de ataque, barreras y trayectorias vs referencias externas
-- [ ] Frontend: eliminar V-path X-axis fallback (rotateToAlign ±X hardcodeados)
+- [x] Optimizador global de orientación multi-fragmento (`optimize_reactive_complex_global`: Kabsch + rotaciones aleatorias + relajación, se guarda la mejor; tests de cota)
+- [ ] Comparación sistemática de ángulos de ataque, barreras y trayectorias vs referencias externas (requiere set de reacciones con barreras de literatura)
+- [ ] Frontend: eliminar V-path X-axis fallback (código del frontend, fuera de este repo)
 
 ### 16. Alpha Export Gaps (bindings faltantes)
 - [ ] Render Bridge: 13 funciones faltantes (arrhenius_chart, kpoint_path_chart, band_structure_chart, trajectory_chart, dos_chart, etc.)
