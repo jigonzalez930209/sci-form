@@ -95,9 +95,6 @@ pub(crate) struct XtbScfState {
     pub n_occ: usize,
     pub charges: Vec<f64>,
     pub h_diag: Vec<f64>,
-    pub overlap: DMatrix<f64>,
-    pub hamiltonian: DMatrix<f64>,
-    pub s_half_inv: DMatrix<f64>,
 }
 
 /// Run xTB calculation returning both result and internal SCF state.
@@ -479,9 +476,6 @@ pub(crate) fn solve_xtb_with_state(
         n_occ,
         charges: charges.clone(),
         h_diag,
-        overlap: s_mat,
-        hamiltonian: h_mat,
-        s_half_inv,
     };
 
     Ok((
