@@ -34,9 +34,21 @@ fn evaluate_basis_gradient_at_point(basis: &BasisSet, point: &[f64; 3]) -> Vec<[
             let exp_val = (-prim.alpha * r2).exp();
             let a = prim.alpha;
             let amp = BasisFunction::normalization(a, lx, ly, lz) * prim.coefficient * exp_val;
-            let ax = if lx == 0 { 0.0 } else { lx as f64 * dx.powi(lx as i32 - 1) };
-            let ay = if ly == 0 { 0.0 } else { ly as f64 * dy.powi(ly as i32 - 1) };
-            let az = if lz == 0 { 0.0 } else { lz as f64 * dz.powi(lz as i32 - 1) };
+            let ax = if lx == 0 {
+                0.0
+            } else {
+                lx as f64 * dx.powi(lx as i32 - 1)
+            };
+            let ay = if ly == 0 {
+                0.0
+            } else {
+                ly as f64 * dy.powi(ly as i32 - 1)
+            };
+            let az = if lz == 0 {
+                0.0
+            } else {
+                lz as f64 * dz.powi(lz as i32 - 1)
+            };
             let px = dx.powi(lx as i32);
             let py = dy.powi(ly as i32);
             let pz = dz.powi(lz as i32);
@@ -150,6 +162,50 @@ pub fn build_vxc_matrix(
     }
 
     (vxc, exc_total)
+}
+
+/// Spin-polarized V_XC. SVWN uses polarized Slater; PBE uses spin scaling of the
+/// closed-shell kernel on 2ρ_σ.
+pub fn build_vxc_uks(
+    basis: &BasisSet,
+    density_a: &DMatrix<f64>,
+    density_b: &DMatrix<f64>,
+    grid: &MolecularGrid,
+    method: DftMethod,
+) -> (DMatrix<f64>, DMatrix<f64>, f64) {
+    if method == DftMethod::Pbe {
+        let density = density_a + density_b;
+        let (vxc, exc) = build_vxc_matrix(basis, &density, grid, DftMethod::Pbe);
+        return (vxc.clone(), vxc, exc);
+    }
+    let n = basis.functions.len();
+    let mut vxa = DMatrix::zeros(n, n);
+    let mut vxb = DMatrix::zeros(n, n);
+    let mut exc_total = 0.0;
+    for gp in &grid.points {
+        let phi = evaluate_basis_at_point(basis, &gp.xyz);
+        let rho_a = compute_density_at_point(&phi, density_a);
+        let rho_b = compute_density_at_point(&phi, density_b);
+        let rho = rho_a + rho_b;
+        if rho < 1e-20 {
+            continue;
+        }
+        let (exc, va, vb) = svwn::svwn_spin(rho_a, rho_b);
+        exc_total += gp.weight * rho * exc;
+        for mu in 0..n {
+            for nu in mu..n {
+                let ca = gp.weight * va * phi[mu] * phi[nu];
+                let cb = gp.weight * vb * phi[mu] * phi[nu];
+                vxa[(mu, nu)] += ca;
+                vxb[(mu, nu)] += cb;
+                if mu != nu {
+                    vxa[(nu, mu)] += ca;
+                    vxb[(nu, mu)] += cb;
+                }
+            }
+        }
+    }
+    (vxa, vxb, exc_total)
 }
 
 #[cfg(test)]
