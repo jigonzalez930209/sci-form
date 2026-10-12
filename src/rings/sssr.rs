@@ -89,6 +89,77 @@ pub fn compute_sssr(mol: &Molecule) -> SssrResult {
         }
     }
 
+    // Add fundamental cycles of a spanning forest. Horton-style candidate
+    // sets (shortest cycle per edge) can be rank-deficient for highly fused
+    // systems, which used to yield fewer rings than the cycle rank.
+    {
+        let mut visited = vec![false; n];
+        let mut parent: Vec<Option<usize>> = vec![None; n];
+        for root in 0..n {
+            if visited[root] {
+                continue;
+            }
+            let mut queue = VecDeque::new();
+            queue.push_back(root);
+            visited[root] = true;
+            while let Some(u) = queue.pop_front() {
+                for &v in &adj[u] {
+                    if !visited[v] {
+                        visited[v] = true;
+                        parent[v] = Some(u);
+                        queue.push_back(v);
+                    }
+                }
+            }
+        }
+        for &(u, v) in &edges {
+            if parent[u] == Some(v) || parent[v] == Some(u) {
+                continue; // tree edge
+            }
+            let mut path_u = vec![u];
+            let mut x = u;
+            while let Some(p) = parent[x] {
+                path_u.push(p);
+                x = p;
+            }
+            let mut path_v = vec![v];
+            let mut y = v;
+            while let Some(p) = parent[y] {
+                path_v.push(p);
+                y = p;
+            }
+            let set_u: BTreeSet<usize> = path_u.iter().copied().collect();
+            let mut lca = None;
+            for &node in &path_v {
+                if set_u.contains(&node) {
+                    lca = Some(node);
+                    break;
+                }
+            }
+            if let Some(lca) = lca {
+                let mut cycle: Vec<usize> = Vec::new();
+                for &node in path_u.iter() {
+                    cycle.push(node);
+                    if node == lca {
+                        break;
+                    }
+                }
+                let mut tail: Vec<usize> = Vec::new();
+                for &node in path_v.iter() {
+                    if node == lca {
+                        break;
+                    }
+                    tail.push(node);
+                }
+                tail.reverse();
+                cycle.extend(tail);
+                if cycle.len() >= 3 {
+                    ring_candidates.push(cycle);
+                }
+            }
+        }
+    }
+
     // Deduplicate rings: normalize each ring to a canonical form
     let mut unique_rings: Vec<Vec<usize>> = Vec::new();
     let mut seen: BTreeSet<Vec<usize>> = BTreeSet::new();
@@ -478,5 +549,20 @@ mod tests {
         ];
 
         assert_eq!(connected_components(&adj), 2);
+    }
+
+    /// Cross-validation regression (F05): fused systems must yield exactly
+    /// `m - n + 1` independent rings (cubane-like case previously returned 4
+    /// instead of 5).
+    #[test]
+    fn test_sssr_rank_for_fused_systems() {
+        let mol = Molecule::from_smiles("C12C3C4C1C5C3C2C45").unwrap();
+        let result = compute_sssr(&mol);
+        assert_eq!(result.rings.len(), 5, "cycle rank of the cubane-like cage");
+
+        let bicyclo = Molecule::from_smiles("C1CC2CCC1CC2").unwrap();
+        let result = compute_sssr(&bicyclo);
+        assert_eq!(result.rings.len(), 2, "strict SSSR rank");
+        assert!(result.rings.iter().all(|r| r.size == 6));
     }
 }
