@@ -969,15 +969,19 @@ pub fn compute_sasa(
 }
 
 /// Compute Mulliken & Löwdin population analysis from atomic elements and positions.
+///
+/// The result also carries the EHT HOMO/LUMO levels and gap, plus coverage
+/// warnings when an element has no valence model or EHT basis parameters.
 pub fn compute_population(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<population::PopulationResult, String> {
     let eht_result = eht::solve_eht(elements, positions, None)?;
-    Ok(population::compute_population(
+    Ok(population::compute_population_with_orbitals(
         elements,
         positions,
         &eht_result.coefficients,
+        &eht_result.energies,
         eht_result.n_electrons,
     ))
 }
