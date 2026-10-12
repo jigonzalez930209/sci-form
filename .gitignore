@@ -29,3 +29,5 @@ vendor
 dist
 build
 graphify-out/
+__pycache__/
+*.pyc
