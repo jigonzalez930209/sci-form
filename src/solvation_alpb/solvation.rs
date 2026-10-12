@@ -140,8 +140,12 @@ mod tests {
         let config = AlpbConfig::default();
         let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
         // Same Shrake-Rupley implementation as `solvation::compute_nonpolar_solvation`.
-        let shared =
-            crate::surface::sasa::compute_sasa(&elements, &positions, Some(config.probe_radius), None);
+        let shared = crate::surface::sasa::compute_sasa(
+            &elements,
+            &positions,
+            Some(config.probe_radius),
+            None,
+        );
         let expected = config.surface_tension * shared.total_sasa;
         assert!((result.nonpolar_energy - expected).abs() < 1e-12);
     }
