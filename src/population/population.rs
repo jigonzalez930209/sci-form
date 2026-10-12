@@ -59,6 +59,64 @@ pub struct PopulationResult {
     /// Absolute deviation of Mulliken total charge from integer expectation.
     /// Small values (~0) indicate proper charge conservation.
     pub charge_conservation_error: f64,
+    /// HOMO energy in eV, when the caller supplied orbital energies
+    /// (`compute_population_with_orbitals`).
+    pub homo_energy: Option<f64>,
+    /// LUMO energy in eV, when the caller supplied orbital energies.
+    pub lumo_energy: Option<f64>,
+    /// HOMO-LUMO gap in eV, when the caller supplied orbital energies.
+    pub gap: Option<f64>,
+    /// Coverage warnings: elements without a valence model or without EHT
+    /// basis parameters contribute no population and are reported here.
+    pub warnings: Vec<String>,
+}
+
+/// HOMO/LUMO pair for an ascending orbital-energy list and electron count.
+fn homo_lumo_from_orbitals(
+    orbital_energies: &[f64],
+    n_electrons: usize,
+) -> (Option<f64>, Option<f64>) {
+    let n_orbitals = orbital_energies.len();
+    if n_orbitals == 0 {
+        return (None, None);
+    }
+    let n_occupied = n_electrons / 2;
+    let homo_idx = if n_occupied > 0 {
+        (n_occupied - 1).min(n_orbitals - 1)
+    } else {
+        0
+    };
+    let lumo_idx = if n_occupied < n_orbitals {
+        n_occupied
+    } else {
+        homo_idx
+    };
+    (
+        Some(orbital_energies[homo_idx]),
+        Some(orbital_energies[lumo_idx]),
+    )
+}
+
+/// Elements whose population coverage is incomplete.
+fn coverage_warnings(elements: &[u8]) -> Vec<String> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut warnings = Vec::new();
+    for &z in elements {
+        if !seen.insert(z) {
+            continue;
+        }
+        if valence_electrons(z) == 0.0 {
+            warnings.push(format!(
+                "Element Z={z} has no valence-electron model; its charge is not meaningful."
+            ));
+        }
+        if crate::eht::params::get_params(z).is_none() {
+            warnings.push(format!(
+                "Element Z={z} has no EHT basis parameters; its orbitals are omitted from the population."
+            ));
+        }
+    }
+    warnings
 }
 
 /// Build the density matrix P from MO coefficients and occupations.
@@ -322,7 +380,30 @@ pub fn compute_population(
         total_charge_mulliken: total_mulliken,
         total_charge_lowdin: total_lowdin,
         charge_conservation_error: (total_mulliken - total_mulliken.round()).abs(),
+        homo_energy: None,
+        lumo_energy: None,
+        gap: None,
+        warnings: coverage_warnings(elements),
     }
+}
+
+/// Population analysis that also reports the HOMO/LUMO gap.
+///
+/// `orbital_energies` must be sorted ascending (as returned by the EHT
+/// solver); the frontier levels use the same occupancy convention.
+pub fn compute_population_with_orbitals(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    coefficients: &[Vec<f64>],
+    orbital_energies: &[f64],
+    n_electrons: usize,
+) -> PopulationResult {
+    let mut result = compute_population(elements, positions, coefficients, n_electrons);
+    let (homo, lumo) = homo_lumo_from_orbitals(orbital_energies, n_electrons);
+    result.homo_energy = homo;
+    result.lumo_energy = lumo;
+    result.gap = homo.zip(lumo).map(|(h, l)| l - h);
+    result
 }
 
 /// Compute population analysis with parallel matrix operations (rayon).
@@ -380,7 +461,28 @@ pub fn compute_population_parallel(
         total_charge_mulliken: total_mulliken,
         total_charge_lowdin: total_lowdin,
         charge_conservation_error: (total_mulliken - total_mulliken.round()).abs(),
+        homo_energy: None,
+        lumo_energy: None,
+        gap: None,
+        warnings: coverage_warnings(elements),
     }
+}
+
+/// Parallel [`compute_population_with_orbitals`].
+#[cfg(feature = "parallel")]
+pub fn compute_population_parallel_with_orbitals(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    coefficients: &[Vec<f64>],
+    orbital_energies: &[f64],
+    n_electrons: usize,
+) -> PopulationResult {
+    let mut result = compute_population_parallel(elements, positions, coefficients, n_electrons);
+    let (homo, lumo) = homo_lumo_from_orbitals(orbital_energies, n_electrons);
+    result.homo_energy = homo;
+    result.lumo_energy = lumo;
+    result.gap = homo.zip(lumo).map(|(h, l)| l - h);
+    result
 }
 
 /// Compute Wiberg-like and Mayer-like bond orders from an EHT density matrix.
@@ -817,5 +919,43 @@ mod tests {
                 p.mayer
             );
         }
+    }
+
+    #[test]
+    fn test_population_with_orbitals_reports_frontier() {
+        let elems = [8u8, 1, 1];
+        let pos = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let eht = crate::eht::solve_eht(&elems, &pos, None).unwrap();
+        let pop = compute_population_with_orbitals(
+            &elems,
+            &pos,
+            &eht.coefficients,
+            &eht.energies,
+            eht.n_electrons,
+        );
+        assert_eq!(pop.homo_energy, Some(eht.homo_energy));
+        assert_eq!(pop.lumo_energy, Some(eht.lumo_energy));
+        assert!((pop.gap.unwrap() - eht.gap).abs() < 1e-12);
+        assert!(
+            pop.warnings.is_empty(),
+            "unexpected warnings: {:?}",
+            pop.warnings
+        );
+    }
+
+    #[test]
+    fn test_population_reports_coverage_warnings() {
+        // Z=92 has EHT parameters but no valence-electron model.
+        let elems = [92u8];
+        let pos = [[0.0, 0.0, 0.0]];
+        let eht = crate::eht::solve_eht(&elems, &pos, None).unwrap();
+        let pop = compute_population(&elems, &pos, &eht.coefficients, eht.n_electrons);
+        assert!(
+            pop.warnings.iter().any(|w| w.contains("Z=92")),
+            "expected a coverage warning, got {:?}",
+            pop.warnings
+        );
+        assert!(pop.homo_energy.is_none());
+        assert!(pop.gap.is_none());
     }
 }
