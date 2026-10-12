@@ -58,9 +58,10 @@ pub struct AssignmentResult {
 const GROUP_FREQUENCIES: &[GroupFrequency] = &[
     // O-H stretches
     GroupFrequency {
+        // Upper bound covers water vapour nu1/nu3 (NIST: 3657/3756 cm-1).
         group: "O-H (free)",
         freq_min: 3590.0,
-        freq_max: 3650.0,
+        freq_max: 3760.0,
         intensity: "strong",
         vibration_type: "stretch",
     },
@@ -144,6 +145,47 @@ const GROUP_FREQUENCIES: &[GroupFrequency] = &[
         intensity: "medium",
         vibration_type: "stretch",
     },
+    GroupFrequency {
+        // Carbon monoxide fundamental (NIST: 2143 cm-1).
+        group: "C≡O",
+        freq_min: 2110.0,
+        freq_max: 2170.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    // X-H stretches (NIST fundamentals in parentheses).
+    GroupFrequency {
+        // H2S (NIST 2614/2628 cm-1), thiols (~2570 cm-1).
+        group: "S-H",
+        freq_min: 2470.0,
+        freq_max: 2650.0,
+        intensity: "weak",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        // HF fundamental (NIST: 4138 cm-1).
+        group: "H-F",
+        freq_min: 3850.0,
+        freq_max: 4150.0,
+        intensity: "strong",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        // H2 fundamental (NIST: 4401 cm-1; Raman-active).
+        group: "H-H",
+        freq_min: 4150.0,
+        freq_max: 4420.0,
+        intensity: "weak",
+        vibration_type: "stretch",
+    },
+    GroupFrequency {
+        // HCl fundamental (NIST: 2886 cm-1).
+        group: "H-Cl",
+        freq_min: 2790.0,
+        freq_max: 2930.0,
+        intensity: "medium",
+        vibration_type: "stretch",
+    },
     // Double bonds
     GroupFrequency {
         group: "C=O (ketone)",
@@ -153,9 +195,10 @@ const GROUP_FREQUENCIES: &[GroupFrequency] = &[
         vibration_type: "stretch",
     },
     GroupFrequency {
+        // Upper bound covers gas-phase formaldehyde (NIST: 1746 cm-1).
         group: "C=O (aldehyde)",
         freq_min: 1720.0,
-        freq_max: 1740.0,
+        freq_max: 1750.0,
         intensity: "strong",
         vibration_type: "stretch",
     },
@@ -603,6 +646,15 @@ fn group_matches_mode(group: &str, elements: &[u8], mode_displacement: &[[f64; 3
     if group.contains("C-O") {
         return has(6) && has(8);
     }
+    if group.contains("N=C=O") {
+        return has(6) && has(7) && has(8);
+    }
+    if group.contains("C=C=O") {
+        return has(6) && has(8);
+    }
+    if group.contains("N=O") {
+        return has(7) && has(8);
+    }
     if group.contains("C-N") || group.contains("C=N") {
         return has(6) && has(7);
     }
@@ -633,6 +685,21 @@ fn group_matches_mode(group: &str, elements: &[u8], mode_displacement: &[[f64; 3
     if group.contains("C-I") {
         return has(6) && has(53);
     }
+    if group.contains("C≡O") {
+        return has(6) && has(8);
+    }
+    if group.contains("S-H") {
+        return has(16) && has(1);
+    }
+    if group.contains("H-F") {
+        return has(1) && has(9);
+    }
+    if group.contains("H-Cl") {
+        return has(1) && has(17);
+    }
+    if group == "H-H" {
+        return has(1);
+    }
 
     true
 }
@@ -640,6 +707,7 @@ fn group_matches_mode(group: &str, elements: &[u8], mode_displacement: &[[f64; 3
 /// Check if a functional group is possible given the elements present.
 fn group_is_possible(group: &str, elements: &[u8]) -> bool {
     let has = |z: u8| elements.contains(&z);
+    let count = |z: u8| elements.iter().filter(|&&e| e == z).count();
     let has_metal = elements.iter().copied().any(is_metal_atomic_number);
 
     if group.starts_with("M-") || group.starts_with("M=") {
@@ -680,37 +748,70 @@ fn group_is_possible(group: &str, elements: &[u8]) -> bool {
         return true;
     }
 
-    if group.contains("O-H") || group.contains("C-O") || group.contains("C=O") {
-        return has(8); // Oxygen
+    // A bond between A and B requires both elements; a homonuclear or
+    // same-element double/triple bond requires at least two atoms.
+    if group.contains("O-H") || group == "H-O-H bend" {
+        if group.contains("carboxylic") {
+            return has(6) && has(8) && has(1);
+        }
+        return has(8) && has(1);
     }
-    if group.contains("N-H")
-        || group.contains("C-N")
-        || group.contains("C=N")
-        || group.contains("C≡N")
-        || group.contains("N=O")
-    {
-        return has(7); // Nitrogen
+    if group.contains("N-H") {
+        return has(7) && has(1);
     }
-    if group.contains("C-F") {
-        return has(9); // Fluorine
+    if group.contains("N=C=O") {
+        return has(6) && has(7) && has(8);
     }
-    if group.contains("C-Cl") {
-        return has(17); // Chlorine
+    if group.contains("C=C=O") {
+        return count(6) >= 2 && has(8);
     }
-    if group.contains("C-Br") {
-        return has(35); // Bromine
+    if group.contains("N=O") {
+        return has(7) && has(8);
     }
-    if group.contains("C-I") {
-        return has(53); // Iodine
+    if group.contains("C-H") {
+        return has(6) && has(1);
+    }
+    if group.contains("C=O") || group.contains("C-O") {
+        return has(6) && has(8);
+    }
+    if group.contains("C≡O") {
+        return has(6) && has(8);
+    }
+    if group.contains("C-N") || group.contains("C=N") || group.contains("C≡N") {
+        return has(6) && has(7);
+    }
+    if group.contains("C≡C") || group.contains("C=C") {
+        return count(6) >= 2;
     }
     if group.contains("S=O") {
-        return has(16); // Sulfur
+        return has(16) && has(8);
+    }
+    if group.contains("S-H") {
+        return has(16) && has(1);
     }
     if group.contains("P=O") || group.contains("P-O") {
-        return has(15); // Phosphorus
+        return has(15) && has(8);
     }
-    if group.contains("C-H") || group.contains("C=C") || group.contains("C≡C") {
-        return has(6); // Carbon (almost always true)
+    if group.contains("C-F") {
+        return has(6) && has(9);
+    }
+    if group.contains("C-Cl") {
+        return has(6) && has(17);
+    }
+    if group.contains("C-Br") {
+        return has(6) && has(35);
+    }
+    if group.contains("C-I") {
+        return has(6) && has(53);
+    }
+    if group.contains("H-F") {
+        return has(1) && has(9);
+    }
+    if group.contains("H-Cl") {
+        return has(1) && has(17);
+    }
+    if group == "H-H" {
+        return count(1) >= 2;
     }
 
     true // Default: possible
