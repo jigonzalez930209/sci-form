@@ -1244,12 +1244,7 @@ fn assemble_three_fragments_follow_product_coms() {
         5.0, 0.0, 0.0, 5.0, 0.0, 1.1, // frag 1 along +Z
         2.0, 4.0, 1.0, 3.0, 4.0, 1.0, // frag 2 along +X
     ];
-    let assembled = assemble_fragments_at_product_positions(
-        &[r1, r2, r3],
-        &p,
-        &[6; 6],
-        &[6; 6],
-    );
+    let assembled = assemble_fragments_at_product_positions(&[r1, r2, r3], &p, &[6; 6], &[6; 6]);
     assert_eq!(assembled.len(), 18);
 
     let p_coms = [
