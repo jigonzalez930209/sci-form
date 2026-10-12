@@ -26,10 +26,10 @@ mod stda_uvvis;
 pub mod transition_dipoles;
 mod types;
 
+pub use fluorescence::{compute_fluorescence_spectrum, FluorescenceConfig, FluorescenceSpectrum};
 pub use giao_nmr::{
     compute_nmr_shieldings, compute_nmr_shieldings_for_nucleus, shieldings_to_shifts,
 };
-pub use fluorescence::{compute_fluorescence_spectrum, FluorescenceConfig, FluorescenceSpectrum};
 pub use stda_uvvis::{compute_stda, StdaConfig};
 pub use types::{
     NmrShieldingResult, ScfInput, ShieldingTensor, SpectroscopyResult, TransitionInfo,
