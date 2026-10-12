@@ -125,7 +125,6 @@ fn main() {
         } => calc_cmds::cmd_tanimoto(&smiles1, &smiles2, radius, n_bits),
 
         // Experimental commands
-        #[cfg(feature = "experimental-eeq")]
         Commands::Eeq {
             elements,
             coords,
