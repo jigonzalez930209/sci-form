@@ -98,23 +98,23 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ## Tareas Pendientes
 
 ### 1. Core Engine — Rendimiento
-- [ ] Reducir latencia single-conformer de ~106 ms/mol al target de 11 ms/mol
-- [ ] CLI batch stdin: implementar streaming real (hoy materializa toda la entrada antes de procesar)
+- [ ] Reducir latencia single-conformer de ~106 ms/mol al target de 11 ms/mol — pendiente de perfilado dedicado (medir con `benchmark`/`perf`; el batch paralelo ya va a 1–2 ms/mol en moléculas pequeñas)
+- [x] CLI batch stdin: streaming real en chunks de 512 (`embed_cmds::cmd_batch`), JSON/XYZ/SDF incrementales
 
 ### 2. HF / Post-HF
-- [ ] Completar CISD singles-doubles coupling
-- [ ] Reducir coste de memoria GPU para ERI O(N⁴)
-- [ ] Mejorar momentos de transición más allá de la aproximación de monopolo
+- [ ] Completar CISD singles-doubles coupling — dedicado; ruta de validación: `pyscf.ci.cisd` (disponible en el venv) con fixture nuevo
+- [ ] Reducir coste de memoria GPU para ERI O(N⁴) — batching/tiling del tensor (ver plan §14.3: >200 funciones ≈ 3.2 GB en CPU)
+- [ ] Mejorar momentos de transición más allá de la aproximación de monopolo (dipolos de transición con integrales AO, validar vs PySCF)`
 
 ### 3. PM3
-- [ ] Completar parametrización residual: resonance integrals, nuclear repulsion, referencias atómicas para heat of formation
+- [ ] Completar parametrización residual: resonance integrals, nuclear repulsion, referencias atómicas para heat of formation — bloqueado por MOPAC (F42): sin binario no hay árbitro
 - [x] Delimitar claramente PM3 vs PM3(tm) en la superficie pública (`Pm3Method` + `pm3_method`, flag `tm` en la tabla)
 
 ### 4. xTB
 - [x] GFN1-xTB fiel a tblite 0.7.0 (H0 Slater con kpair/kshell/enscale, electrostática shell-resolved con tercer orden, repulsión efectiva, D3-BJ y corrección de halógeno); 8.1e-5 eV vs tblite en 18 moléculas (F44)
 - [x] D3-BJ con interpolación de CN, C8 completo y ATM (validado vs s-dftd3, 2.8e-11 Ha; F46)
-- [ ] UKS/unrestricted para capas abiertas (hoy el SCC de GFN1/GFN2 es restringido)
-- [ ] Decidir el destino de `solve_xtb` legacy (lo usa el Hessiano numérico) tras la promoción de GFN0/GFN2
+- [ ] UKS/unrestricted para capas abiertas — dedicado (spin-resolved SCC con densidad α/β y test vs tblite `uhf`); hoy el SCC de GFN1/GFN2 es restringido
+- [ ] Decidir el destino de `solve_xtb` legacy: conservado solo para el Hessiano numérico y tests de DOS; la batería aromática ya usa GFN0 (F43). Reemplazo completo pendiente de migrar el Hessiano a GFN2
 - [ ] Repulsión dependiente de coordinación más allá del esquema efectivo de tblite (sin referencia externa por ahora)
 
 ### 5. EHT
@@ -147,7 +147,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 11. Materiales
 - [x] Normalización automática de coordenadas fraccionales (el parser CIF envuelve a [0,1) con `UnitCell::wrap_frac`)
-- [ ] Expansión más allá de topologías homogéneas
+- [ ] Expansión más allá de topologías homogéneas (nets con aristas no equivalentes) — requiere más datos RCSR/pormake y ampliar el oráculo F67
 
 ### 12. Force Fields
 - [ ] MMFF94 cobertura completa para metales de transición
@@ -178,9 +178,9 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Frontend: eliminar V-path X-axis fallback (código del frontend, fuera de este repo)
 
 ### 16. Alpha Export Gaps (bindings faltantes)
-- [ ] Render Bridge: 13 funciones faltantes (arrhenius_chart, kpoint_path_chart, band_structure_chart, trajectory_chart, dos_chart, etc.)
-- [ ] Periodic Linear: 10 funciones faltantes (band_structure_eht, fermi_surface_from_bands, kpath_standard, etc.)
-- [ ] Kinetics CLI: 3 funciones faltantes
+- [ ] Render Bridge: 13 funciones faltantes (arrhenius_chart, kpoint_path_chart, band_structure_chart, trajectory_chart, dos_chart, etc.) — dedicado; son wrappers de bindings sobre APIs Rust existentes
+- [ ] Periodic Linear: 10 funciones faltantes (band_structure_eht, fermi_surface_from_bands, kpath_standard, etc.) — dedicado
+- [ ] Kinetics CLI: 3 funciones faltantes — dedicado
 
 ### 17. Validación a Gran Escala (Track G)
 - [x] Banco ≥100 moléculas (180 diversas + 1000 ChEMBL + 400 UFF; guard `track_g_bank_has_enough_molecules`)
