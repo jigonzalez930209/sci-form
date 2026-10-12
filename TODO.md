@@ -166,7 +166,8 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Population: warning de cobertura (elementos sin modelo de valencia / sin parámetros EHT) y homo/lumo/gap expuestos en `PopulationResult` (Rust y binding Python)
 - [ ] Fukui: evaluar Hirshfeld/CM5 para mayor robustez (actualmente basis-set-dependent via Mulliken)
 - [x] Surface: tabla de radios documentada (`VDW_FALLBACK_RADIUS`, `vdw_radius_source`) y evaluación Connolly/SES documentada (diferida hasta que un consumidor necesite la malla)
-- [ ] Optimization: unificar optimizadores entre EHT/materials; variable-cell BFGS
+- [x] Optimization: unificar optimizadores entre EHT/materials (EHT usa el BFGS compartido de `materials::geometry_opt`) y repulsión nuclear incluida en el gradiente EHT
+- [ ] Optimization: variable-cell BFGS — pendiente de un tensor de stress en el modelo periódico (el callback energía/fuerzas no lo expone)
 
 ### 15. Reaction Dynamics 3D (alpha)
 - [ ] Deprecar `dynamics.rs` legacy como assembly primario
