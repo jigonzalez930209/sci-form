@@ -1450,6 +1450,65 @@ pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String
     Ok(energy)
 }
 
+/// Per-term-type UFF energy breakdown (kcal/mol) for a molecule.
+///
+/// Types are `bond`, `angle`, `torsion`, `inversion` and `vdw` (plus any
+/// diagnostics term), in first-seen order; the values sum to
+/// [`compute_uff_energy`].
+pub fn compute_uff_energy_breakdown(
+    smiles: &str,
+    coords: &[f64],
+) -> Result<Vec<(String, f64)>, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    if coords.len() != n * 3 {
+        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+    }
+    let ff = forcefield::builder::build_uff_force_field(&mol);
+    Ok(ff
+        .energy_breakdown_aggregated(coords)
+        .into_iter()
+        .map(|(kind, energy)| (kind.to_string(), energy))
+        .collect())
+}
+
+/// Per-term-type MMFF94 energy breakdown (kcal/mol) for a molecule.
+///
+/// The values sum to [`compute_mmff94_energy`].
+pub fn compute_mmff94_energy_breakdown(
+    smiles: &str,
+    coords: &[f64],
+) -> Result<Vec<(String, f64)>, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    if coords.len() != n * 3 {
+        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+    }
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+        .collect();
+    let bonds: Vec<(usize, usize, u8)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
+            let order = match mol.graph[e].order {
+                graph::BondOrder::Single => 1u8,
+                graph::BondOrder::Double => 2,
+                graph::BondOrder::Triple => 3,
+                graph::BondOrder::Aromatic => 2,
+                graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
+        })
+        .collect();
+    let terms = forcefield::mmff94::Mmff94Builder::build(&elements, &bonds);
+    Ok(forcefield::traits::aggregate_breakdown(&terms, coords)
+        .into_iter()
+        .map(|(kind, energy)| (kind.to_string(), energy))
+        .collect())
+}
+
 /// Run a PM3 semi-empirical calculation.
 ///
 /// `elements`: atomic numbers.
@@ -2785,6 +2844,37 @@ mod tests {
         let result = compute_uff_energy_with_aromatic_heuristics("c1ccccc1", &conf.coords).unwrap();
         assert!(result.aromatic_bond_count >= 6);
         assert!(result.corrected_energy_kcal_mol <= result.raw_energy_kcal_mol);
+    }
+
+    #[test]
+    fn test_uff_energy_breakdown_sums_to_total() {
+        let conf = embed("CCO", 42);
+        assert!(conf.error.is_none());
+        let breakdown = compute_uff_energy_breakdown("CCO", &conf.coords).unwrap();
+        let total = compute_uff_energy("CCO", &conf.coords).unwrap();
+        let sum: f64 = breakdown.iter().map(|(_, e)| e).sum();
+        assert!(
+            (sum - total).abs() < 1e-9,
+            "breakdown {sum} vs total {total}: {breakdown:?}"
+        );
+        let kinds: Vec<&str> = breakdown.iter().map(|(k, _)| k.as_str()).collect();
+        for expected in ["bond", "angle", "torsion", "vdw"] {
+            assert!(kinds.contains(&expected), "missing {expected}: {kinds:?}");
+        }
+    }
+
+    #[test]
+    fn test_mmff94_energy_breakdown_sums_to_total() {
+        let conf = embed("CCO", 42);
+        assert!(conf.error.is_none());
+        let breakdown = compute_mmff94_energy_breakdown("CCO", &conf.coords).unwrap();
+        let total = compute_mmff94_energy("CCO", &conf.coords).unwrap();
+        let sum: f64 = breakdown.iter().map(|(_, e)| e).sum();
+        assert!(
+            (sum - total).abs() < 1e-9,
+            "breakdown {sum} vs total {total}: {breakdown:?}"
+        );
+        assert!(!breakdown.is_empty());
     }
 
     #[test]
