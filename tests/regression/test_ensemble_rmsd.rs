@@ -157,6 +157,7 @@ fn build_mol(m: &EnsembleMolecule) -> sci_form::graph::Molecule {
             _ => sci_form::graph::Hybridization::Unknown,
         };
         nodes.push(mol.add_atom(sci_form::graph::Atom {
+            no_implicit_h: false,
             element: a.element,
             position: nalgebra::Vector3::zeros(),
             charge: 0.0,
