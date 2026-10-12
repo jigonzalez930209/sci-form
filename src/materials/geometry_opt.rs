@@ -157,19 +157,23 @@ fn optimize_steepest_descent(
             energy = new_energy;
             forces = new_forces;
             step_size = (step_size * 1.2).min(config.max_step);
+
+            // History tracks accepted steps only: rejected trials leave the
+            // energy unchanged and must not fake a stall.
+            energy_history.push(energy);
+
+            if energy_history.len() > 1 {
+                let de = (energy_history[energy_history.len() - 2] - energy).abs();
+                if de < config.energy_tol {
+                    // Stalled: stop, but only claim convergence if the forces
+                    // agree (a flat energy is not a minimum by itself).
+                    converged = max_force_magnitude(&forces) < config.force_tol;
+                    break;
+                }
+            }
         } else {
             step_size *= 0.5;
             if step_size < 1e-10 {
-                break;
-            }
-        }
-
-        energy_history.push(energy);
-
-        if energy_history.len() > 1 {
-            let de = (energy_history[energy_history.len() - 2] - energy).abs();
-            if de < config.energy_tol {
-                converged = true;
                 break;
             }
         }
@@ -231,8 +235,8 @@ fn optimize_bfgs(
     let mut converged = false;
     let mut n_iter = 0;
 
-    for iter in 0..config.max_iter {
-        n_iter = iter + 1;
+    for _ in 0..config.max_iter {
+        n_iter += 1;
 
         let max_force = max_force_magnitude(&forces);
         if max_force < config.force_tol {
@@ -240,66 +244,62 @@ fn optimize_bfgs(
             break;
         }
 
-        // Search direction: p = -H_inv * grad
-        let mut p = vec![0.0f64; ndim];
-        for i in 0..ndim {
-            for j in 0..ndim {
-                p[i] -= h_inv[i][j] * grad[j];
-            }
+        // Search direction: p = -H_inv * grad. If the approximate Hessian
+        // got corrupted into a non-descent direction, reset it to identity
+        // (steepest descent) rather than stepping uphill.
+        let mut p = matvec_neg_h(&h_inv, &grad);
+        let mut dd: f64 = p.iter().zip(grad.iter()).map(|(a, b)| a * b).sum();
+        if dd >= 0.0 {
+            reset_inverse_hessian(&mut h_inv, ndim, &config.fixed_atoms);
+            p = grad.iter().map(|g| -g).collect();
+            dd = p.iter().zip(grad.iter()).map(|(a, b)| a * b).sum();
         }
+        limit_step(&mut p, &mut dd, config.max_step);
 
-        // Limit step size
-        let p_norm: f64 = p.iter().map(|x| x * x).sum::<f64>().sqrt();
-        if p_norm > config.max_step {
-            let scale = config.max_step / p_norm;
-            for x in &mut p {
-                *x *= scale;
-            }
-        }
-
-        // Take step with Armijo backtracking line search
-        let directional_deriv: f64 = p.iter().zip(grad.iter()).map(|(a, b)| a * b).sum();
+        // Armijo backtracking. An uphill step is NEVER accepted: if the
+        // BFGS direction cannot produce a decrease, the Hessian is reset
+        // and steepest descent is retried; if that fails too, the loop
+        // stops with converged == false.
         let c_armijo = 1e-4;
-        let mut alpha = 1.0;
-        let mut new_positions;
-        let mut new_energy;
-        let mut new_forces;
-
-        loop {
-            new_positions = positions.clone();
-            for i in 0..n {
-                if config.fixed_atoms.contains(&i) {
-                    continue;
+        let mut accepted: Option<(Vec<[f64; 3]>, f64, Vec<[f64; 3]>, f64)> = None;
+        for _ in 0..2 {
+            let mut a = 1.0;
+            loop {
+                let trial = take_step(&positions, &p, a, n, config);
+                let (e_try, f_try) = energy_force_fn(elements, &trial)?;
+                if e_try <= energy + c_armijo * a * dd {
+                    accepted = Some((trial, e_try, f_try, a));
+                    break;
                 }
-                for d in 0..3 {
-                    new_positions[i][d] += alpha * p[i * 3 + d];
+                a *= 0.5;
+                if a < 1e-12 {
+                    break;
                 }
             }
-
-            if let Some(ref lattice) = config.lattice {
-                apply_pbc(&mut new_positions, lattice);
-            }
-
-            let result = energy_force_fn(elements, &new_positions)?;
-            new_energy = result.0;
-            new_forces = result.1;
-
-            // Armijo condition: f(x + α*p) <= f(x) + c * α * ∇f·p
-            if new_energy <= energy + c_armijo * alpha * directional_deriv || alpha < 0.1 {
+            if accepted.is_some() {
                 break;
             }
-            alpha *= 0.5;
+            reset_inverse_hessian(&mut h_inv, ndim, &config.fixed_atoms);
+            p = grad.iter().map(|g| -g).collect();
+            dd = p.iter().zip(grad.iter()).map(|(a, b)| a * b).sum();
+            limit_step(&mut p, &mut dd, config.max_step);
         }
+        let (new_positions, new_energy, mut new_forces, alpha) = match accepted {
+            Some(t) => t,
+            None => break, // no downhill step available: stop honestly
+        };
 
         zero_fixed_forces(&mut new_forces, &config.fixed_atoms);
 
         let new_grad = flatten_neg_forces(&new_forces);
 
-        // BFGS update of inverse Hessian
-        let s: Vec<f64> = p; // step
+        // BFGS update of the inverse Hessian. s is the ACTUAL step taken
+        // (alpha * p), not the unscaled direction: using p here corrupts
+        // the secant equation whenever backtracking fires.
+        let step: Vec<f64> = p.iter().map(|x| alpha * x).collect();
         let y: Vec<f64> = (0..ndim).map(|i| new_grad[i] - grad[i]).collect();
 
-        let sy: f64 = s.iter().zip(y.iter()).map(|(a, b)| a * b).sum();
+        let sy: f64 = step.iter().zip(y.iter()).map(|(a, b)| a * b).sum();
 
         if sy > 1e-12 {
             // H_inv update: Sherman-Morrison-Woodbury
@@ -315,19 +315,17 @@ fn optimize_bfgs(
 
             for i in 0..ndim {
                 for j in 0..ndim {
-                    h_inv[i][j] +=
-                        rho * ((1.0 + yhy * rho) * s[i] * s[j] - hy[i] * s[j] - s[i] * hy[j]);
+                    h_inv[i][j] += rho
+                        * ((1.0 + yhy * rho) * step[i] * step[j]
+                            - hy[i] * step[j]
+                            - step[i] * hy[j]);
                 }
             }
 
             // Positive-definite check: if any diagonal becomes negative, reset to identity
             let has_negative_diag = (0..ndim).any(|i| h_inv[i][i] <= 0.0);
             if has_negative_diag {
-                for i in 0..ndim {
-                    for j in 0..ndim {
-                        h_inv[i][j] = if i == j { 1.0 } else { 0.0 };
-                    }
-                }
+                reset_inverse_hessian(&mut h_inv, ndim, &config.fixed_atoms);
             }
         }
 
@@ -340,12 +338,13 @@ fn optimize_bfgs(
         if energy_history.len() > 1 {
             let de = (energy_history[energy_history.len() - 2] - energy).abs();
             if de < config.energy_tol {
-                converged = true;
+                // Stalled: stop, but only claim convergence if the forces
+                // agree (a flat energy between two bad steps is not a minimum).
+                converged = max_force_magnitude(&forces) < config.force_tol;
                 break;
             }
         }
     }
-
     let max_force = max_force_magnitude(&forces);
 
     Ok(FrameworkOptResult {
@@ -358,7 +357,6 @@ fn optimize_bfgs(
         energy_history,
     })
 }
-
 fn zero_fixed_forces(forces: &mut [[f64; 3]], fixed: &[usize]) {
     for &idx in fixed {
         if idx < forces.len() {
@@ -372,6 +370,73 @@ fn max_force_magnitude(forces: &[[f64; 3]]) -> f64 {
         .iter()
         .map(|f| (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]).sqrt())
         .fold(0.0f64, f64::max)
+}
+
+/// p = -H * grad for the BFGS search direction.
+fn matvec_neg_h(h_inv: &[Vec<f64>], grad: &[f64]) -> Vec<f64> {
+    let ndim = grad.len();
+    let mut p = vec![0.0f64; ndim];
+    for i in 0..ndim {
+        for j in 0..ndim {
+            p[i] -= h_inv[i][j] * grad[j];
+        }
+    }
+    p
+}
+
+/// Reset the inverse Hessian to identity, keeping fixed-atom rows/columns zero.
+fn reset_inverse_hessian(h_inv: &mut [Vec<f64>], ndim: usize, fixed_atoms: &[usize]) {
+    for i in 0..ndim {
+        for j in 0..ndim {
+            h_inv[i][j] = if i == j { 1.0 } else { 0.0 };
+        }
+    }
+    for &fixed in fixed_atoms {
+        for d in 0..3 {
+            let idx = fixed * 3 + d;
+            if idx < ndim {
+                for j in 0..ndim {
+                    h_inv[idx][j] = 0.0;
+                    h_inv[j][idx] = 0.0;
+                }
+            }
+        }
+    }
+}
+
+/// Cap a step direction at `max_step`, rescaling its directional derivative too.
+fn limit_step(p: &mut [f64], directional_deriv: &mut f64, max_step: f64) {
+    let p_norm: f64 = p.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if p_norm > max_step {
+        let scale = max_step / p_norm;
+        for x in p.iter_mut() {
+            *x *= scale;
+        }
+        *directional_deriv *= scale;
+    }
+}
+
+/// positions + alpha * p for all free atoms, with optional PBC wrapping.
+fn take_step(
+    positions: &[[f64; 3]],
+    p: &[f64],
+    alpha: f64,
+    n: usize,
+    config: &FrameworkOptConfig,
+) -> Vec<[f64; 3]> {
+    let mut out = positions.to_vec();
+    for i in 0..n {
+        if config.fixed_atoms.contains(&i) {
+            continue;
+        }
+        for d in 0..3 {
+            out[i][d] += alpha * p[i * 3 + d];
+        }
+    }
+    if let Some(ref lattice) = config.lattice {
+        apply_pbc(&mut out, lattice);
+    }
+    out
 }
 
 fn flatten_neg_forces(forces: &[[f64; 3]]) -> Vec<f64> {
