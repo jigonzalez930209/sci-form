@@ -20,6 +20,33 @@ pub fn svwn(rho: f64) -> (f64, f64) {
     (ex + ec, vx + vc)
 }
 
+/// Spin-polarized Slater exchange plus unpolarized VWN-5 on the total density.
+///
+/// Returns (ε per particle, v_α, v_β) with E_xc = ∫ ρ ε dV.
+pub fn svwn_spin(rho_a: f64, rho_b: f64) -> (f64, f64, f64) {
+    let rho = rho_a + rho_b;
+    if rho < 1e-20 {
+        return (0.0, 0.0, 0.0);
+    }
+    let c = -(6.0 / PI).powf(1.0 / 3.0);
+    let vx_a = if rho_a > 1e-20 {
+        c * rho_a.powf(1.0 / 3.0)
+    } else {
+        0.0
+    };
+    let vx_b = if rho_b > 1e-20 {
+        c * rho_b.powf(1.0 / 3.0)
+    } else {
+        0.0
+    };
+    let ex_vol = -0.75
+        * (6.0 / PI).powf(1.0 / 3.0)
+        * (rho_a.max(0.0).powf(4.0 / 3.0) + rho_b.max(0.0).powf(4.0 / 3.0));
+    let (_ec, vc) = vwn5_correlation(rho);
+    let exc = ex_vol / rho + _ec;
+    (exc, vx_a + vc, vx_b + vc)
+}
+
 /// Slater (Dirac) exchange for the uniform electron gas.
 ///
 /// εx = -3/4 (3/π)^{1/3} ρ^{1/3}
@@ -58,8 +85,7 @@ fn vwn5_correlation(rho: f64) -> (f64, f64) {
     let ec_real = 0.5
         * a
         * ((x * x / xx).ln() + 2.0 * b / q * atan_term
-            - b * x0 / xx0
-                * (((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
+            - b * x0 / xx0 * (((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
 
     // Numerical derivative for V_c = ε_c - (r_s / 3) dε_c/dr_s
     let delta = 1e-6 * rs.max(1e-10);
@@ -95,8 +121,7 @@ fn vwn5_correlation_energy(rho: f64) -> (f64, f64) {
     let ec = 0.5
         * a
         * ((x * x / xx).ln() + 2.0 * b / q * atan_term
-            - b * x0 / xx0
-                * (((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
+            - b * x0 / xx0 * (((x - x0).powi(2) / xx).ln() + 2.0 * (b + 2.0 * x0) / q * atan_term));
 
     (ec, 0.0)
 }
