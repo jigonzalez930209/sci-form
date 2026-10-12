@@ -99,11 +99,12 @@ pub fn compute_cis_with_dipole(
                 val += orbital_energies[a] - orbital_energies[i];
             }
 
-            // Two-electron integrals in MO basis (using AO ERIs + MO coeffs)
+            // Two-electron integrals in MO basis (using AO ERIs + MO coeffs).
+            // Spin-adapted singlet CIS: H_ia,jb = δ(εa-εi) + 2(ia|jb) - (ij|ab)
             let coulomb = mo_eri(coefficients, eris, n_basis, i, a, j, b);
             let exchange = mo_eri(coefficients, eris, n_basis, i, j, a, b);
 
-            val += coulomb - exchange;
+            val += 2.0 * coulomb - exchange;
 
             h_cis[(ia, jb)] = val;
             h_cis[(jb, ia)] = val;
