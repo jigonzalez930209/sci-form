@@ -164,7 +164,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] EEQ: implementar cEEQ y limpiar restos de experimentalidad en nombres de API
 - [x] Population: warning de cobertura (elementos sin modelo de valencia / sin parámetros EHT) y homo/lumo/gap expuestos en `PopulationResult` (Rust y binding Python)
 - [ ] Fukui: evaluar Hirshfeld/CM5 para mayor robustez (actualmente basis-set-dependent via Mulliken)
-- [ ] Surface: documentar tabla de fallback radii; valorar opción tipo Connolly surface
+- [x] Surface: tabla de radios documentada (`VDW_FALLBACK_RADIUS`, `vdw_radius_source`) y evaluación Connolly/SES documentada (diferida hasta que un consumidor necesite la malla)
 - [ ] Optimization: unificar optimizadores entre EHT/materials; variable-cell BFGS
 
 ### 15. Reaction Dynamics 3D (alpha)
