@@ -140,6 +140,20 @@ static STO3G_3D: [(f64, f64); 3] = [
     (0.286573, 0.331966),
 ];
 
+/// STO-3G contraction for 4d orbitals (Stewart 1970; `(coeff, exponent)`).
+static STO3G_4D: [(f64, f64); 3] = [
+    (0.2308552718, 0.1777717219),
+    (0.6042409177, 0.08040647350),
+    (0.2595768926, 0.03949855551),
+];
+
+/// STO-3G contraction for 5d orbitals (Stewart 1970; `(coeff, exponent)`).
+static STO3G_5D: [(f64, f64); 3] = [
+    (-0.02010175008, 0.4913352950),
+    (0.5899370608, 0.07329090601),
+    (0.4658445960, 0.03594209290),
+];
+
 /// Cartesian angular terms for one AO in the real-harmonic basis.
 ///
 /// Each entry is `(coefficient, [lx, ly, lz])` representing
@@ -202,22 +216,24 @@ pub fn sto3g_expansion(n: u8, l: u8, zeta: f64) -> Vec<GaussianPrimitive> {
         (3, 2) => &STO3G_3D,
         (4, 0) => &STO3G_4SP_INNER,
         (4, 1) => &STO3G_4SP_OUTER,
-        (4, 2) => &STO3G_3D,
+        (4, 2) => &STO3G_4D,
         (5, 0) | (6, 0) | (7, 0) => &STO3G_5SP_INNER,
         (5, 1) | (6, 1) | (7, 1) => &STO3G_5SP_OUTER,
-        (5, 2) | (6, 2) | (7, 2) => &STO3G_3D,
+        (5, 2) => &STO3G_5D,
+        (6, 2) | (7, 2) => &STO3G_5D,
         _ => return vec![],
     };
 
     // Higher principal shells reuse the nearest STO-3G contraction and
     // scale the exponents by (n_ref/n)² so the orbital stays diffuse.
+    // s/p shells reference n_ref = 5, d shells n_ref = 5 (5d).
     let radial_scale = match (n, l) {
         (6, 0 | 1) | (7, 0 | 1) => {
             let ratio = 5.0 / n as f64;
             ratio * ratio
         }
-        (_, 2) if n > 3 => {
-            let ratio = 3.0 / n as f64;
+        (6, 2) | (7, 2) => {
+            let ratio = 5.0 / n as f64;
             ratio * ratio
         }
         _ => 1.0,
@@ -396,6 +412,50 @@ mod tests {
     fn test_sto3g_d_expansion() {
         let gs = sto3g_expansion(3, 2, 1.0);
         assert_eq!(gs.len(), 3);
+    }
+
+    #[test]
+    fn test_sto3g_4d_and_5d_expansions_are_distinct() {
+        let d3 = sto3g_expansion(3, 2, 1.0);
+        let d4 = sto3g_expansion(4, 2, 1.0);
+        let d5 = sto3g_expansion(5, 2, 1.0);
+        assert_eq!(d4.len(), 3);
+        assert_eq!(d5.len(), 3);
+        // 4d/5d must not reuse the 3d contraction.
+        for (a, b) in d3.iter().zip(d4.iter()) {
+            assert!(
+                (a.alpha - b.alpha).abs() > 1e-6 || (a.coeff - b.coeff).abs() > 1e-6,
+                "4d should differ from 3d"
+            );
+        }
+        for (a, b) in d3.iter().zip(d5.iter()) {
+            assert!(
+                (a.alpha - b.alpha).abs() > 1e-6 || (a.coeff - b.coeff).abs() > 1e-6,
+                "5d should differ from 3d"
+            );
+        }
+        // 6d/7d reuse the 5d shape with scaled exponents.
+        let d6 = sto3g_expansion(6, 2, 1.0);
+        let ratio = (5.0f64 / 6.0).powi(2);
+        for (a, b) in d5.iter().zip(d6.iter()) {
+            assert!((b.alpha - a.alpha * ratio).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn test_4d_metal_basis_uses_the_4d_contraction() {
+        // Mo (Z=42) is a 4d element with derived EHT parameters.
+        let elements = [42u8];
+        let positions = [[0.0, 0.0, 0.0]];
+        let basis = build_basis(&elements, &positions);
+        let d_functions: Vec<_> = basis.iter().filter(|b| b.l == 2).collect();
+        assert_eq!(d_functions.len(), 5, "Mo should expose five d functions");
+        let expected = sto3g_expansion(4, 2, d_functions[0].zeta);
+        let actual = &d_functions[0].gaussians;
+        for (a, b) in expected.iter().zip(actual.iter()) {
+            assert!((a.alpha - b.alpha).abs() < 1e-9);
+            assert!((a.coeff - b.coeff).abs() < 1e-9);
+        }
     }
 
     #[test]
