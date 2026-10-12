@@ -75,14 +75,16 @@ fn lineshape(broadening: BroadeningType, x: f64, center: f64, width: f64) -> f64
             let norm = 1.0 / (width * (2.0 * std::f64::consts::PI).sqrt());
             norm * (-0.5 * dx * dx / (width * width)).exp()
         }
-        BroadeningType::Lorentzian => {
-            width / (std::f64::consts::PI * (dx * dx + width * width))
-        }
+        BroadeningType::Lorentzian => width / (std::f64::consts::PI * (dx * dx + width * width)),
     }
 }
 
 /// A (s⁻¹) = 0.667025 n² ν̃² f, ν̃ in cm⁻¹.
-pub fn einstein_a_coefficient(oscillator_strength: f64, energy_ev: f64, refractive_index: f64) -> f64 {
+pub fn einstein_a_coefficient(
+    oscillator_strength: f64,
+    energy_ev: f64,
+    refractive_index: f64,
+) -> f64 {
     if oscillator_strength <= 0.0 || energy_ev <= 0.0 {
         return 0.0;
     }
@@ -91,7 +93,10 @@ pub fn einstein_a_coefficient(oscillator_strength: f64, energy_ev: f64, refracti
     EINSTEIN_A_CM2_PER_S * n * n * nu * nu * oscillator_strength
 }
 
-fn select_emitter(excitations: &[StdaExcitation], dark_threshold: f64) -> Result<(usize, bool), String> {
+fn select_emitter(
+    excitations: &[StdaExcitation],
+    dark_threshold: f64,
+) -> Result<(usize, bool), String> {
     if excitations.is_empty() {
         return Err("No sTDA excitations available for fluorescence".to_string());
     }
@@ -111,9 +116,7 @@ fn select_emitter(excitations: &[StdaExcitation], dark_threshold: f64) -> Result
             return Ok((index, false));
         }
     }
-    Err(
-        "Every sTDA singlet in the window is dark; no fluorescence band is emitted".to_string(),
-    )
+    Err("Every sTDA singlet in the window is dark; no fluorescence band is emitted".to_string())
 }
 
 pub fn compute_fluorescence_spectrum(
@@ -142,7 +145,9 @@ pub fn compute_fluorescence_spectrum(
     let n_points = config.n_points.max(2);
     let span = (config.e_max - config.e_min).max(1e-6);
     let step = span / (n_points as f64 - 1.0);
-    let energies_ev: Vec<f64> = (0..n_points).map(|i| config.e_min + step * i as f64).collect();
+    let energies_ev: Vec<f64> = (0..n_points)
+        .map(|i| config.e_min + step * i as f64)
+        .collect();
     let wavelengths_nm: Vec<f64> = energies_ev
         .iter()
         .map(|&e| if e > 0.01 { EV_TO_NM / e } else { 0.0 })
@@ -170,7 +175,11 @@ pub fn compute_fluorescence_spectrum(
         emission_energy,
         config.refractive_index,
     );
-    let lifetime_ns = if rate > 0.0 { 1.0e9 / rate } else { f64::INFINITY };
+    let lifetime_ns = if rate > 0.0 {
+        1.0e9 / rate
+    } else {
+        f64::INFINITY
+    };
 
     let mut notes = vec![
         "Fluorescence uses the same EHT sTDA singlets as the absorption spectrum.".to_string(),
@@ -239,10 +248,61 @@ mod tests {
         let spectrum = compute_fluorescence_spectrum(&elements, &positions, &config)
             .expect("formaldehyde should have a bright singlet");
         assert!(spectrum.emission_energy_ev < spectrum.absorption_energy_ev);
-        assert!((spectrum.emission_wavelength_nm - EV_TO_NM / spectrum.emission_energy_ev).abs() < 1e-6);
+        assert!(
+            (spectrum.emission_wavelength_nm - EV_TO_NM / spectrum.emission_energy_ev).abs() < 1e-6
+        );
         assert!(spectrum.intensity.iter().any(|v| (*v - 1.0).abs() < 1e-9));
         assert!(spectrum.radiative_rate_hz.is_finite() && spectrum.radiative_rate_hz > 0.0);
         assert!(spectrum.radiative_lifetime_ns.is_finite());
         assert!(spectrum.notes.iter().any(|n| n.contains("Einstein")));
+    }
+
+    fn fake_excitation(energy_ev: f64, oscillator_strength: f64) -> StdaExcitation {
+        StdaExcitation {
+            energy_ev,
+            wavelength_nm: EV_TO_NM / energy_ev,
+            oscillator_strength,
+            from_mo: 0,
+            to_mo: 1,
+            transition_dipole: 0.0,
+        }
+    }
+
+    #[test]
+    fn all_dark_singlets_return_an_error() {
+        let excitations = [fake_excitation(3.0, 1e-6), fake_excitation(4.0, 5e-7)];
+        let err = select_emitter(&excitations, 1e-3).unwrap_err();
+        assert!(err.contains("dark"));
+    }
+
+    #[test]
+    fn dark_s1_selects_the_next_bright_singlet() {
+        let excitations = [fake_excitation(2.5, 1e-6), fake_excitation(3.5, 0.2)];
+        let (index, kasha) = select_emitter(&excitations, 1e-3).unwrap();
+        assert!(!kasha);
+        assert_eq!(index, 1);
+    }
+
+    #[test]
+    fn rejects_negative_stokes_and_subunity_index() {
+        let elements = [1u8, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]];
+        let mut config = FluorescenceConfig::default();
+        config.stokes_ev = -0.1;
+        assert!(compute_fluorescence_spectrum(&elements, &positions, &config).is_err());
+        config.stokes_ev = 0.0;
+        config.refractive_index = 0.9;
+        assert!(compute_fluorescence_spectrum(&elements, &positions, &config).is_err());
+    }
+
+    #[test]
+    fn nickel_carbonyl_hydrogenic_eht_emits_a_band() {
+        let elements = [28u8, 6, 8];
+        let positions = [[0.0, 0.0, 0.0], [1.85, 0.0, 0.0], [3.00, 0.0, 0.0]];
+        let spectrum =
+            compute_fluorescence_spectrum(&elements, &positions, &FluorescenceConfig::default())
+                .expect("NiCO should produce a screening fluorescence band");
+        assert!(spectrum.intensity.iter().any(|v| *v > 0.0));
+        assert!(spectrum.notes.iter().any(|n| n.contains("hydrogenic")));
     }
 }
