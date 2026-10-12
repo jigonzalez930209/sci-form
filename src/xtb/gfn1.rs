@@ -40,8 +40,12 @@ pub struct Gfn1Result {
     pub electronic_energy: f64,
     /// Repulsive energy (eV).
     pub repulsive_energy: f64,
-    /// Dispersion energy (eV) — D3-BJ.
+    /// Dispersion energy (eV) — D3-BJ total.
     pub dispersion_energy: f64,
+    /// Two-body C6 contribution of the D3-BJ dispersion (eV).
+    pub dispersion_e6: f64,
+    /// Two-body C8 contribution of the D3-BJ dispersion (eV).
+    pub dispersion_e8: f64,
     /// Halogen-bond correction energy (eV).
     pub halogen_bond_energy: f64,
     /// Total energy (eV).
@@ -839,6 +843,8 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
         electronic_energy: e_elec * EV_PER_HARTREE,
         repulsive_energy: e_rep * EV_PER_HARTREE,
         dispersion_energy: d3.energy * EV_PER_HARTREE,
+        dispersion_e6: d3.e6 * EV_PER_HARTREE,
+        dispersion_e8: d3.e8 * EV_PER_HARTREE,
         halogen_bond_energy: e_xb * EV_PER_HARTREE,
         total_energy: total_ha * EV_PER_HARTREE,
         n_basis,
@@ -851,4 +857,29 @@ pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result,
         scc_iterations: scc_iter,
         converged,
     })
+}
+
+#[cfg(test)]
+mod decomposition_tests {
+    use super::*;
+
+    fn toluene() -> (Vec<u8>, Vec<[f64; 3]>) {
+        let conf = crate::embed("Cc1ccccc1", 42);
+        let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        (conf.elements, pos)
+    }
+
+    #[test]
+    fn dispersion_components_sum_to_total() {
+        let (elements, positions) = toluene();
+        let result = solve_gfn1(&elements, &positions).unwrap();
+        let sum = result.dispersion_e6 + result.dispersion_e8;
+        assert!(
+            (sum - result.dispersion_energy).abs() < 1e-9,
+            "{} vs {}",
+            sum,
+            result.dispersion_energy
+        );
+        assert!(result.dispersion_e6 <= 0.0 && result.dispersion_e8 <= 0.0);
+    }
 }
