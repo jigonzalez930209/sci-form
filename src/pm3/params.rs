@@ -45,6 +45,9 @@ pub struct Pm3Params {
     ///   ΔE_nuc += Z_A × Z_B × Σ_k a_k × exp(−b_k × (R_AB − c_k)²)
     /// Typically 2 Gaussians per element; empty for elements without corrections.
     pub gaussians: &'static [(f64, f64, f64)],
+    /// Whether the entry comes from the PM3(tm) transition-metal
+    /// parameterization (Cundari et al.) instead of Stewart's PM3.
+    pub tm: bool,
 }
 
 impl Pm3Params {
@@ -94,11 +97,36 @@ pub fn get_pm3_params(z: u8) -> Option<&'static Pm3Params> {
     ALL_PM3_PARAMS.iter().find(|p| p.z == z)
 }
 
+/// Which PM3 parameterization an element uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum Pm3Method {
+    /// Stewart's PM3 parameterization (main-group elements).
+    Pm3,
+    /// PM3(tm) transition-metal parameterization (Cundari et al., 1998).
+    Pm3Tm,
+}
+
+/// Parameterization used for `z`, or `None` when the element is unsupported.
+///
+/// A molecule mixing main-group and transition-metal elements is evaluated
+/// with both sets at once: the NDDO core is shared, but the transition metals
+/// take their integrals from PM3(tm).
+pub fn pm3_method(z: u8) -> Option<Pm3Method> {
+    get_pm3_params(z).map(|p| {
+        if p.tm {
+            Pm3Method::Pm3Tm
+        } else {
+            Pm3Method::Pm3
+        }
+    })
+}
+
 // Stewart, J. J. P. J. Comput. Chem. 10 (1989): 209–220.
 static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Hydrogen
     Pm3Params {
         z: 1,
+        tm: false,
         symbol: "H",
         uss: -13.073321,
         upp: 0.0,
@@ -122,6 +150,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Carbon
     Pm3Params {
         z: 6,
+        tm: false,
         symbol: "C",
         uss: -47.270320,
         upp: -36.266918,
@@ -145,6 +174,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Nitrogen
     Pm3Params {
         z: 7,
+        tm: false,
         symbol: "N",
         uss: -49.335672,
         upp: -47.509736,
@@ -168,6 +198,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Oxygen
     Pm3Params {
         z: 8,
+        tm: false,
         symbol: "O",
         uss: -86.993002,
         upp: -71.879580,
@@ -191,6 +222,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Fluorine
     Pm3Params {
         z: 9,
+        tm: false,
         symbol: "F",
         uss: -110.435303,
         upp: -105.685047,
@@ -214,6 +246,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Phosphorus
     Pm3Params {
         z: 15,
+        tm: false,
         symbol: "P",
         uss: -40.441400,
         upp: -29.593012,
@@ -237,6 +270,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Sulfur
     Pm3Params {
         z: 16,
+        tm: false,
         symbol: "S",
         uss: -49.895371,
         upp: -44.392583,
@@ -260,6 +294,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Chlorine
     Pm3Params {
         z: 17,
+        tm: false,
         symbol: "Cl",
         uss: -100.227166,
         upp: -53.614396,
@@ -283,6 +318,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Bromine
     Pm3Params {
         z: 35,
+        tm: false,
         symbol: "Br",
         uss: -116.618200,
         upp: -74.228400,
@@ -306,6 +342,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Iodine
     Pm3Params {
         z: 53,
+        tm: false,
         symbol: "I",
         uss: -103.553600,
         upp: -74.430400,
@@ -332,6 +369,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Titanium
     Pm3Params {
         z: 22,
+        tm: true,
         symbol: "Ti",
         uss: -20.830,
         upp: -15.430,
@@ -352,6 +390,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Chromium
     Pm3Params {
         z: 24,
+        tm: true,
         symbol: "Cr",
         uss: -17.520,
         upp: -11.660,
@@ -372,6 +411,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Manganese
     Pm3Params {
         z: 25,
+        tm: true,
         symbol: "Mn",
         uss: -22.960,
         upp: -14.560,
@@ -392,6 +432,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Iron
     Pm3Params {
         z: 26,
+        tm: true,
         symbol: "Fe",
         uss: -23.650,
         upp: -15.080,
@@ -412,6 +453,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Cobalt
     Pm3Params {
         z: 27,
+        tm: true,
         symbol: "Co",
         uss: -24.380,
         upp: -15.710,
@@ -432,6 +474,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Nickel
     Pm3Params {
         z: 28,
+        tm: true,
         symbol: "Ni",
         uss: -25.140,
         upp: -16.180,
@@ -452,6 +495,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Copper
     Pm3Params {
         z: 29,
+        tm: true,
         symbol: "Cu",
         uss: -25.710,
         upp: -16.510,
@@ -472,6 +516,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Zinc
     Pm3Params {
         z: 30,
+        tm: true,
         symbol: "Zn",
         uss: -26.260,
         upp: -16.810,
@@ -492,6 +537,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Aluminum (Period 3)
     Pm3Params {
         z: 13,
+        tm: false,
         symbol: "Al",
         uss: -24.353585,
         upp: -18.364360,
@@ -515,6 +561,7 @@ static ALL_PM3_PARAMS: &[Pm3Params] = &[
     // Silicon (already in PM3 as Si)
     Pm3Params {
         z: 14,
+        tm: false,
         symbol: "Si",
         uss: -26.742900,
         upp: -22.544800,
@@ -562,6 +609,26 @@ mod tests {
     fn test_pm3_params_exist() {
         for z in [1, 6, 7, 8, 9, 15, 16, 17, 35, 53] {
             assert!(is_pm3_supported(z), "Missing PM3 params for Z={}", z);
+        }
+    }
+
+    #[test]
+    fn test_pm3_method_delimits_tm_and_main_group() {
+        assert_eq!(pm3_method(6), Some(Pm3Method::Pm3));
+        assert_eq!(pm3_method(17), Some(Pm3Method::Pm3));
+        assert_eq!(pm3_method(26), Some(Pm3Method::Pm3Tm));
+        assert_eq!(pm3_method(30), Some(Pm3Method::Pm3Tm));
+        // Unsupported elements are reported as such.
+        assert_eq!(pm3_method(21), None);
+        assert_eq!(pm3_method(92), None);
+        // The TM flag matches the declared method.
+        for p in ALL_PM3_PARAMS {
+            let expected = if p.tm {
+                Pm3Method::Pm3Tm
+            } else {
+                Pm3Method::Pm3
+            };
+            assert_eq!(pm3_method(p.z), Some(expected), "Z={}", p.z);
         }
     }
 
