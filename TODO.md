@@ -124,7 +124,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ### 6. NMR
 - [ ] Ampliación fuerte de HOSE database
 - [ ] Constantes de Karplus más específicas por entorno químico
-- [ ] Aromaticidad real con SSSR/Hückel para shifts
+- [x] Aromaticidad real con SSSR/Hückel para shifts (percepción antes de HOSE; Kekulé == aromático en los tests)
 - [ ] Salida más allá del supuesto first-order (strong coupling)
 
 ### 7. GPU
