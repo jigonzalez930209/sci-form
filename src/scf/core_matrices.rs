@@ -7,7 +7,7 @@ use nalgebra::DMatrix;
 
 use super::basis::BasisSet;
 use super::kinetic_matrix::build_kinetic_matrix;
-use super::nuclear_matrix::build_nuclear_matrix;
+use super::nuclear_matrix::build_nuclear_matrix_charges;
 use super::overlap_matrix::build_overlap_matrix;
 
 /// All one-electron matrices needed for an SCF calculation.
@@ -30,9 +30,18 @@ impl CoreMatrices {
     ///
     /// Computes S, T, V, and H⁰ = T + V.
     pub fn build(basis: &BasisSet, elements: &[u8], positions_bohr: &[[f64; 3]]) -> Self {
+        let charges: Vec<f64> = elements.iter().map(|&z| z as f64).collect();
+        Self::build_with_charges(basis, &charges, positions_bohr)
+    }
+
+    pub fn build_with_charges(
+        basis: &BasisSet,
+        charges: &[f64],
+        positions_bohr: &[[f64; 3]],
+    ) -> Self {
         let s = build_overlap_matrix(basis);
         let t = build_kinetic_matrix(basis);
-        let v = build_nuclear_matrix(basis, elements, positions_bohr);
+        let v = build_nuclear_matrix_charges(basis, charges, positions_bohr);
         let h_core = &t + &v;
 
         CoreMatrices {
@@ -49,13 +58,18 @@ impl CoreMatrices {
 ///
 /// E_nuc = Σ_{A>B} Z_A · Z_B / |R_A - R_B|
 pub fn nuclear_repulsion_energy(elements: &[u8], positions_bohr: &[[f64; 3]]) -> f64 {
-    let n_atoms = elements.len();
+    let charges: Vec<f64> = elements.iter().map(|&z| z as f64).collect();
+    nuclear_repulsion_energy_charges(&charges, positions_bohr)
+}
+
+pub fn nuclear_repulsion_energy_charges(charges: &[f64], positions_bohr: &[[f64; 3]]) -> f64 {
+    let n_atoms = charges.len();
     let mut e_nuc = 0.0;
 
     for a in 0..n_atoms {
         for b in (a + 1)..n_atoms {
-            let za = elements[a] as f64;
-            let zb = elements[b] as f64;
+            let za = charges[a];
+            let zb = charges[b];
             let dx = positions_bohr[a][0] - positions_bohr[b][0];
             let dy = positions_bohr[a][1] - positions_bohr[b][1];
             let dz = positions_bohr[a][2] - positions_bohr[b][2];
