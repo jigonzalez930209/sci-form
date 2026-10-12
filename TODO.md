@@ -139,7 +139,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 9. SMARTS / SMIRKS
 - [x] Recursive SMARTS (`$()`): parser y matcher implementados y validados contra RDKit (anillos, carbonilos, negaciones y patrones ramificados en `smarts::matcher`)
-- [ ] Endurecer validación de atom maps antes de aplicar transformaciones
+- [x] Endurecer validación de atom maps antes de aplicar transformaciones (mapas duplicados, `:0`, componentes vacíos y patrones SMARTS inválidos en `parse_smirks`; elementos de dos letras `Mg`/`As`/`se` en SMARTS)
 
 ### 10. Solvación
 - [ ] Unificar SASA entre módulo principal y ALPB
