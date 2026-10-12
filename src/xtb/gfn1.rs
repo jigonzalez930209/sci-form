@@ -1,13 +1,35 @@
-//! GFN1-xTB method: improved tight-binding with shell-resolved charges.
+//! GFN1-xTB: faithful port of tblite's native `GFN1-xTB` calculator.
 //!
-//! GFN1-xTB adds shell-resolved charge self-consistency and improved
-//! repulsive potentials compared to GFN0. It provides significantly better
-//! geometries and energetics for organic and organometallic systems.
+//! Term-by-term port of tblite v0.7.0: Slater-basis H0 with the GFN1
+//! kpair/kshell/enscale enhancement, shell-resolved second-order
+//! electrostatics (harmonic-averaged Hubbard hardness, Klopman-Ohno kernel
+//! with `gexp = 2`), atom-resolved onsite third order, effective screened
+//! repulsion, D3(BJ) dispersion with the GFN1 damping parameters and the
+//! classical halogen-bond correction.
 //!
-//! Reference: Grimme, S.; Bannwarth, C.; Shushkov, P. JCTC 13 (2017): 1989.
+//! Units: Hartree/bohr internally, eV in the result. Reference formulas:
+//! `h0.f90` (Hamiltonian), `coulomb/charge/{effective,type}.f90` +
+//! `coulomb/thirdorder.f90` (electrostatics), `repulsion/effective.f90`
+//! (repulsion), `disp/d3.f90` (dispersion), `classical/halogen.f90`
+//! (halogen bond), `basis/ortho.f90` (Schmidt orthogonalization) and
+//! `scf/{iterator,potential}.f90` (SCF driver). Parameter source:
+//! `src/tblite/xtb/gfn1.f90` (LGPL-3.0-or-later), parsed into
+//! `tests/fixtures/validation/gfn1_params.json` and generated into
+//! [`super::gfn1_params`] by `scripts/validation/{parse,gen}_gfn1_params.py`.
+//!
+//! Cross-validation: F44 in `tests/cross_validation.rs` against tblite.
 
+use super::broyden::BroydenMixer;
+use super::gfn0::{BOHR_PER_ANGSTROM, EV_PER_HARTREE, GFN0_ATOMIC_RAD};
+use super::gfn1_params::{get_gfn1_params, GFN1_GLOBALS, GFN1_NVALENCE};
+use super::gfn2::get_fermi_filling;
+use super::sto_overlap::{cart_prim_overlap, sto_table_prims};
+use crate::hf::d3::{compute_d3_energy_with_params, coordination_numbers_exp, D3Params};
 use nalgebra::DMatrix;
 use serde::{Deserialize, Serialize};
+
+/// Electronic temperature in Hartree (tblite default, ≈300 K).
+const ELECTRONIC_KT: f64 = 9.500e-4;
 
 /// GFN1-xTB calculation result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -20,6 +42,8 @@ pub struct Gfn1Result {
     pub repulsive_energy: f64,
     /// Dispersion energy (eV) — D3-BJ.
     pub dispersion_energy: f64,
+    /// Halogen-bond correction energy (eV).
+    pub halogen_bond_energy: f64,
     /// Total energy (eV).
     pub total_energy: f64,
     /// Number of basis functions.
@@ -34,7 +58,7 @@ pub struct Gfn1Result {
     pub gap: f64,
     /// Mulliken charges per atom.
     pub mulliken_charges: Vec<f64>,
-    /// Shell-resolved charges (s, p, d per atom).
+    /// Shell-resolved charges (Δq per atom, indexed s/p/d).
     pub shell_charges: Vec<Vec<f64>>,
     /// SCC iterations.
     pub scc_iterations: usize,
@@ -42,466 +66,789 @@ pub struct Gfn1Result {
     pub converged: bool,
 }
 
-/// GFN1-xTB shell-specific parameters.
-#[derive(Debug, Clone)]
-pub struct Gfn1ShellParams {
-    /// Shell type: 0=s, 1=p, 2=d.
-    pub l: u8,
-    /// On-site energy (eV).
-    pub h_level: f64,
-    /// Slater exponent.
-    pub zeta: f64,
-    /// Chemical hardness for this shell (eV).
-    pub eta: f64,
-    /// Number of electrons in this shell.
-    pub occ: f64,
+/// kshell matrix from tblite's rule: 2.08 for s-p pairs,
+/// (kdiag[k]+kdiag[l])/2 otherwise with kdiag = [1.85, 2.25, 2, 2, 2].
+fn gfn1_kshell(k: u8, l: u8) -> f64 {
+    if (k == 0 && l == 1) || (k == 1 && l == 0) {
+        2.08
+    } else {
+        let kd = GFN1_GLOBALS.kdiag;
+        0.5 * (kd[k as usize] + kd[l as usize])
+    }
 }
 
-/// Solve GFN1-xTB for a molecular system.
-///
-/// Requires element support from the GFN0 parameter set. GFN1 extends
-/// the Hamiltonian with:
-/// - Shell-resolved charge self-consistency (s, p, d treated separately)
-/// - Improved D3-BJ dispersion
-/// - Better repulsive potentials with coordination number dependence
-pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result, String> {
-    use crate::xtb::solver::solve_xtb_with_state;
+/// Transition-metal d-block row (tblite `get_dblock_row`): 1 (3d), 2 (4d),
+/// 3 (5d), 0 otherwise.
+fn dblock_row(z: u8) -> u8 {
+    match z {
+        21..=29 => 1,
+        39..=47 => 2,
+        57..=79 => 3,
+        _ => 0,
+    }
+}
 
-    // Validate element support
+/// Pair parameter (tblite `get_pair_param`): special H/metal pairs,
+/// d-block average, default 1.
+fn gfn1_kpair(zi: u8, zj: u8) -> f64 {
+    if zi == 1 && zj == 1 {
+        return 0.96;
+    }
+    for (x, y, v) in [
+        (5u8, 1u8, 0.95),
+        (7, 1, 1.04),
+        (28, 1, 0.90),
+        (75, 1, 0.80),
+        (78, 1, 0.80),
+        (15, 5, 0.97),
+        (14, 7, 1.01),
+    ] {
+        if (zi == x && zj == y) || (zi == y && zj == x) {
+            return v;
+        }
+    }
+    let kp = [1.1, 1.2, 1.2];
+    let (ti, tj) = (dblock_row(zi), dblock_row(zj));
+    if ti > 0 && tj > 0 {
+        0.5 * (kp[ti as usize - 1] + kp[tj as usize - 1])
+    } else {
+        1.0
+    }
+}
+
+/// First shell of each angular momentum is valence (tblite valence rule).
+fn gfn1_valence(ang: &[u8]) -> Vec<bool> {
+    let mut seen = [false; 5];
+    ang.iter()
+        .map(|&l| {
+            if seen[l as usize] {
+                false
+            } else {
+                seen[l as usize] = true;
+                true
+            }
+        })
+        .collect()
+}
+
+/// Number of SAOs per shell (s=1, p=3, d=5).
+fn nsao(l: u8) -> usize {
+    match l {
+        0 => 1,
+        1 => 3,
+        2 => 5,
+        _ => panic!("GFN1: unsupported shell angular momentum"),
+    }
+}
+
+/// One contracted shell with absolute primitives.
+struct Gfn1Shell {
+    l: u8,
+    prims: Vec<(f64, f64)>,
+}
+
+/// tblite's `slater_to_gauss(..., norm=.true.)` primitive normalization:
+/// `(2α/π)^{3/4} (4α)^{l/2} / sqrt((2l-1)!!)`.
+fn slater_prim_norm(alpha: f64, l: u8) -> f64 {
+    use std::f64::consts::PI;
+    let dfact: f64 = match l {
+        0 | 1 => 1.0,
+        2 => 3.0,
+        _ => panic!("GFN1: unsupported shell angular momentum"),
+    };
+    (2.0 * alpha / PI).powf(0.75) * (4.0 * alpha).powf(l as f64 / 2.0) / dfact.sqrt()
+}
+
+/// Build shell contractions for an atom (tblite `add_basis` / `orthogonalize`).
+///
+/// Repeated-l shells are Schmidt-orthogonalized against the earlier same-l
+/// shell exactly as tblite's `orthogonalize()` does: in the normalized
+/// primitive-coefficient convention of `slater_to_gauss` with the bare
+/// `(π/(a+b))^{3/2}` kernel, followed by a bare renormalization. The result is
+/// converted back to bare coefficients (our overlap machinery applies the
+/// per-primitive normalization itself).
+fn gfn1_atom_shells(z: u8) -> Vec<Gfn1Shell> {
+    use std::f64::consts::PI;
+    let p = get_gfn1_params(z).expect("GFN1 params");
+    let mut seen: Vec<(u8, Vec<(f64, f64)>)> = Vec::new();
+    let mut out = Vec::new();
+    for sh in 0..p.nshell {
+        let l = p.ang_shell[sh];
+        let zeta = p.slater[sh];
+        let table = sto_table_prims(p.pqn[sh], l, p.ngauss[sh]);
+        let mut cprim: Vec<(f64, f64)> = table
+            .iter()
+            .map(|(ar, ca)| {
+                let a = ar * zeta * zeta;
+                (a, ca * slater_prim_norm(a, l))
+            })
+            .collect();
+        if let Some((_, ref prev)) = seen.iter().find(|(ll, _)| *ll == l) {
+            // tblite orthogonalize(): bare-kernel Schmidt + bare renormalization.
+            let mut ov = 0.0;
+            for (ar, ca) in cprim.iter() {
+                for (br, cb) in prev.iter() {
+                    ov += ca * cb * (PI / (ar + br)).powf(1.5);
+                }
+            }
+            let mut combined = cprim.clone();
+            for (br, cb) in prev.iter() {
+                combined.push((*br, -ov * cb));
+            }
+            let mut norm2 = 0.0;
+            for (ar, ca) in combined.iter() {
+                for (br, cb) in combined.iter() {
+                    norm2 += ca * cb * (PI / (ar + br)).powf(1.5);
+                }
+            }
+            let nrm = norm2.sqrt();
+            for (_, c) in combined.iter_mut() {
+                *c /= nrm;
+            }
+            cprim = combined;
+        } else {
+            seen.push((l, cprim.clone()));
+        }
+        let prims: Vec<(f64, f64)> = cprim
+            .iter()
+            .map(|&(a, c)| (a, c / slater_prim_norm(a, l)))
+            .collect();
+        out.push(Gfn1Shell { l, prims });
+    }
+    out
+}
+
+/// Cartesian component for an s/p SAO index.
+fn ca_comps(l: u8, m: usize) -> ((u8, u8, u8), f64) {
+    match l {
+        0 => ((0, 0, 0), 1.0),
+        1 => match m {
+            0 => ((1, 0, 0), 1.0),
+            1 => ((0, 1, 0), 1.0),
+            _ => ((0, 0, 1), 1.0),
+        },
+        _ => panic!("ca_comps: d needs sao_pair"),
+    }
+}
+
+/// Real spherical d orbital as a Cartesian combination (rotation-invariant
+/// energies make the SAO convention irrelevant as long as S and H share it):
+/// 0=dxy, 1=dxz, 2=dyz, 3=dx2-y2, 4=dz2.
+fn sph_d_comp(m: usize) -> Vec<((u8, u8, u8), f64)> {
+    let s3_4 = (3.0f64 / 4.0).sqrt();
+    match m {
+        0 => vec![((1, 1, 0), 1.0)],
+        1 => vec![((1, 0, 1), 1.0)],
+        2 => vec![((0, 1, 1), 1.0)],
+        3 => vec![((2, 0, 0), s3_4), ((0, 2, 0), -s3_4)],
+        _ => vec![((2, 0, 0), -0.5), ((0, 2, 0), -0.5), ((0, 0, 2), 1.0)],
+    }
+}
+
+/// Cartesian expansion lists for an SAO pair.
+type SaoExpansion = Vec<((u8, u8, u8), f64)>;
+
+fn sao_pair(l_a: u8, l_b: u8, ii: usize, jj: usize) -> (SaoExpansion, SaoExpansion) {
+    let la = if l_a == 2 {
+        sph_d_comp(ii)
+    } else {
+        vec![ca_comps(l_a, ii)]
+    };
+    let lb = if l_b == 2 {
+        sph_d_comp(jj)
+    } else {
+        vec![ca_comps(l_b, jj)]
+    };
+    (la, lb)
+}
+
+/// Basis bookkeeping for the GFN1 SAO basis.
+struct Gfn1Basis {
+    /// Contracted shells per atom.
+    atom_shells: Vec<Vec<Gfn1Shell>>,
+    /// (atom, shell, sao index) per basis function.
+    funcs: Vec<(usize, usize, usize)>,
+    /// First basis-function index of each (atom, shell).
+    shell_ao: Vec<Vec<usize>>,
+    /// Number of basis functions.
+    n_basis: usize,
+}
+
+fn build_gfn1_basis(elements: &[u8]) -> Gfn1Basis {
+    let atom_shells: Vec<Vec<Gfn1Shell>> = elements.iter().map(|&z| gfn1_atom_shells(z)).collect();
+    let mut funcs: Vec<(usize, usize, usize)> = Vec::new();
+    let mut shell_ao: Vec<Vec<usize>> = Vec::new();
+    for (at, shells) in atom_shells.iter().enumerate() {
+        let mut offs = Vec::new();
+        for (sh, shell) in shells.iter().enumerate() {
+            offs.push(funcs.len());
+            for m in 0..nsao(shell.l) {
+                funcs.push((at, sh, m));
+            }
+        }
+        shell_ao.push(offs);
+    }
+    let n_basis = funcs.len();
+    Gfn1Basis {
+        atom_shells,
+        funcs,
+        shell_ao,
+        n_basis,
+    }
+}
+
+/// SAO overlap between shell `sh_a` on atom `a` and shell `sh_b` on atom `b`.
+fn shell_overlap(
+    basis: &Gfn1Basis,
+    pos_bohr: &[[f64; 3]],
+    a: usize,
+    sh_a: usize,
+    b: usize,
+    sh_b: usize,
+) -> DMatrix<f64> {
+    let ca = &basis.atom_shells[a][sh_a];
+    let cb = &basis.atom_shells[b][sh_b];
+    let ma = nsao(ca.l);
+    let mb = nsao(cb.l);
+    let mut block = DMatrix::zeros(ma, mb);
+    for ii in 0..ma {
+        for jj in 0..mb {
+            let (la_list, lb_list) = sao_pair(ca.l, cb.l, ii, jj);
+            let mut sij = 0.0;
+            for ((lxa, lya, lza), wa) in &la_list {
+                for ((lxb, lyb, lzb), wb) in &lb_list {
+                    sij += wa
+                        * wb
+                        * cart_prim_overlap(
+                            *lxa,
+                            *lya,
+                            *lza,
+                            &ca.prims,
+                            &pos_bohr[a],
+                            *lxb,
+                            *lyb,
+                            *lzb,
+                            &cb.prims,
+                            &pos_bohr[b],
+                        );
+                }
+            }
+            block[(ii, jj)] = sij;
+        }
+    }
+    block
+}
+
+/// GFN1 overlap and H0 matrices (Hartree), following tblite `get_hamiltonian`.
+fn build_overlap_hamiltonian(
+    basis: &Gfn1Basis,
+    elements: &[u8],
+    pos_bohr: &[[f64; 3]],
+    cn: &[f64],
+) -> (DMatrix<f64>, DMatrix<f64>) {
+    let n = basis.n_basis;
+    let nat = elements.len();
+    let mut s_mat = DMatrix::zeros(n, n);
+    let mut h_mat = DMatrix::zeros(n, n);
+
+    // CN-shifted self energies (Hartree).
+    let se: Vec<Vec<f64>> = elements
+        .iter()
+        .enumerate()
+        .map(|(i, &z)| {
+            let p = get_gfn1_params(z).expect("GFN1 params");
+            (0..p.nshell)
+                .map(|sh| p.selfenergy[sh] - p.kcn[sh] * cn[i])
+                .collect()
+        })
+        .collect();
+    let valence: Vec<Vec<bool>> = elements
+        .iter()
+        .map(|&z| {
+            let p = get_gfn1_params(z).expect("GFN1 params");
+            gfn1_valence(&p.ang_shell[..p.nshell])
+        })
+        .collect();
+
+    // Helper to stamp a shell block (diagonal blocks on the same atom,
+    // off-diagonal blocks between two atoms) into S and H.
+    let stamp = |s_mat: &mut DMatrix<f64>,
+                 h_mat: &mut DMatrix<f64>,
+                 a: usize,
+                 sh_a: usize,
+                 b: usize,
+                 sh_b: usize,
+                 block_s: DMatrix<f64>,
+                 hij: f64| {
+        let ia = basis.shell_ao[a][sh_a];
+        let ib = basis.shell_ao[b][sh_b];
+        let (ma, mb) = (block_s.nrows(), block_s.ncols());
+        for ii in 0..ma {
+            for jj in 0..mb {
+                let v = block_s[(ii, jj)];
+                s_mat[(ia + ii, ib + jj)] = v;
+                s_mat[(ib + jj, ia + ii)] = v;
+                let h = hij * v;
+                h_mat[(ia + ii, ib + jj)] = h;
+                h_mat[(ib + jj, ia + ii)] = h;
+            }
+        }
+    };
+
+    // Onsite blocks: overlap x 0.5*(se_i + se_j) with no shpoly (rr = 0).
+    for a in 0..nat {
+        let nsh = basis.atom_shells[a].len();
+        for sh_a in 0..nsh {
+            for sh_b in 0..nsh {
+                let hij = 0.5 * (se[a][sh_a] + se[a][sh_b]);
+                let block = if sh_a == sh_b {
+                    let mut id = DMatrix::zeros(
+                        nsao(basis.atom_shells[a][sh_a].l),
+                        nsao(basis.atom_shells[a][sh_b].l),
+                    );
+                    for i in 0..id.nrows() {
+                        id[(i, i)] = 1.0;
+                    }
+                    id
+                } else {
+                    shell_overlap(basis, pos_bohr, a, sh_a, a, sh_b)
+                };
+                stamp(&mut s_mat, &mut h_mat, a, sh_a, a, sh_b, block, hij);
+            }
+        }
+    }
+
+    // Interatomic blocks with the full GFN1 enhancement factor.
+    for a in 0..nat {
+        for b in (a + 1)..nat {
+            let pa = get_gfn1_params(elements[a]).expect("GFN1 params");
+            let pb = get_gfn1_params(elements[b]).expect("GFN1 params");
+            let den = crate::xtb::gfn0::pauling_en(elements[a])
+                - crate::xtb::gfn0::pauling_en(elements[b]);
+            let den2 = den * den;
+            let dx = pos_bohr[a][0] - pos_bohr[b][0];
+            let dy = pos_bohr[a][1] - pos_bohr[b][1];
+            let dz = pos_bohr[a][2] - pos_bohr[b][2];
+            let r = (dx * dx + dy * dy + dz * dz).sqrt();
+            let rad_sum = GFN0_ATOMIC_RAD[elements[a] as usize - 1]
+                + GFN0_ATOMIC_RAD[elements[b] as usize - 1];
+            let rr = (r / rad_sum).sqrt();
+            for sh_a in 0..basis.atom_shells[a].len() {
+                let l_a = basis.atom_shells[a][sh_a].l;
+                for sh_b in 0..basis.atom_shells[b].len() {
+                    let l_b = basis.atom_shells[b][sh_b].l;
+                    let km = match (valence[a][sh_a], valence[b][sh_b]) {
+                        (true, true) => {
+                            gfn1_kpair(elements[a], elements[b])
+                                * gfn1_kshell(l_b, l_a)
+                                * (1.0 + GFN1_GLOBALS.enscale * den2)
+                        }
+                        (true, false) => 0.5 * (gfn1_kshell(l_a, l_a) + GFN1_GLOBALS.kdiff),
+                        (false, true) => 0.5 * (gfn1_kshell(l_b, l_b) + GFN1_GLOBALS.kdiff),
+                        (false, false) => GFN1_GLOBALS.kdiff,
+                    };
+                    let shpoly =
+                        (1.0 + pa.shpoly[l_a as usize] * rr) * (1.0 + pb.shpoly[l_b as usize] * rr);
+                    let hij = 0.5 * (se[a][sh_a] + se[b][sh_b]) * km * shpoly;
+                    let block = shell_overlap(basis, pos_bohr, a, sh_a, b, sh_b);
+                    stamp(&mut s_mat, &mut h_mat, a, sh_a, b, sh_b, block, hij);
+                }
+            }
+        }
+    }
+
+    (s_mat, h_mat)
+}
+
+/// GFN1 effective screened repulsion (Hartree), tblite `repulsion/effective.f90`.
+fn compute_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
+    let n = elements.len();
+    let kexp = GFN1_GLOBALS.rep_kexp;
+    let rexp = GFN1_GLOBALS.rep_rexp;
+    let cutoff2 = 25.0f64.powi(2);
+    let mut e_rep = 0.0;
+    for i in 0..n {
+        let pi = get_gfn1_params(elements[i]).expect("GFN1 params");
+        for j in (i + 1)..n {
+            let pj = get_gfn1_params(elements[j]).expect("GFN1 params");
+            let dx = pos_bohr[i][0] - pos_bohr[j][0];
+            let dy = pos_bohr[i][1] - pos_bohr[j][1];
+            let dz = pos_bohr[i][2] - pos_bohr[j][2];
+            let r2 = dx * dx + dy * dy + dz * dz;
+            if r2 > cutoff2 || r2 < 1e-12 {
+                continue;
+            }
+            let r = r2.sqrt();
+            let alpha = (pi.rep_alpha * pj.rep_alpha).sqrt();
+            let zeff = pi.rep_zeff * pj.rep_zeff;
+            e_rep += zeff * (-alpha * r.powf(kexp)).exp() / r.powf(rexp);
+        }
+    }
+    e_rep
+}
+
+/// Classical halogen-bond correction (Hartree), tblite `classical/halogen.f90`.
+fn compute_halogen_bond(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
+    const HALOGENS: [u8; 4] = [17, 35, 53, 85];
+    const ACCEPTORS: [u8; 4] = [7, 8, 15, 16];
+    const CUTOFF: f64 = 20.0;
+    const ALP: f64 = 6.0;
+    const LJ: f64 = 12.0;
+
+    let n = elements.len();
+    if !elements.iter().any(|z| HALOGENS.contains(z))
+        || !elements.iter().any(|z| ACCEPTORS.contains(z))
+    {
+        return 0.0;
+    }
+    let damping = GFN1_GLOBALS.halogen_damping;
+    let rad_scale = GFN1_GLOBALS.halogen_radscale;
+    let rad = |z: u8| GFN0_ATOMIC_RAD[(z - 1) as usize] * rad_scale;
+    let dist2 = |a: usize, b: usize| {
+        let dx = pos_bohr[a][0] - pos_bohr[b][0];
+        let dy = pos_bohr[a][1] - pos_bohr[b][1];
+        let dz = pos_bohr[a][2] - pos_bohr[b][2];
+        dx * dx + dy * dy + dz * dz
+    };
+
+    let mut e_xb = 0.0;
+    for x in 0..n {
+        if !HALOGENS.contains(&elements[x]) {
+            continue;
+        }
+        let cc = get_gfn1_params(elements[x])
+            .expect("GFN1 params")
+            .halogen_bond;
+        // Nearest neighbour of the halogen (tblite `get_xbond_list`).
+        let mut nearest: Option<(usize, f64)> = None;
+        for k in 0..n {
+            if k == x {
+                continue;
+            }
+            let r = dist2(x, k).sqrt();
+            if r > 0.0 && nearest.is_none_or(|(_, d)| r < d) {
+                nearest = Some((k, r));
+            }
+        }
+        let Some((k, rkx)) = nearest else { continue };
+        let d2kx = rkx * rkx;
+        for j in 0..n {
+            if !ACCEPTORS.contains(&elements[j]) {
+                continue;
+            }
+            let d2jx = dist2(x, j);
+            let d2jk = dist2(j, k);
+            let rjx = d2jx.sqrt();
+            if !(1e-18..=CUTOFF).contains(&rjx) {
+                continue;
+            }
+            let term = (d2kx + d2jx - d2jk) / (rkx * rjx);
+            let aterm = (0.5 - 0.25 * term).powf(ALP);
+            let r0jx = rad(elements[x]) + rad(elements[j]);
+            let t13 = r0jx / rjx;
+            let t14 = t13.powf(LJ);
+            e_xb += aterm * cc * (t14 - damping * t13.powf(LJ * 0.5)) / (1.0 + t14);
+        }
+    }
+    e_xb
+}
+
+/// Solve GFN1-xTB for a molecular system (neutral, closed shell).
+pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result, String> {
+    if elements.len() != positions.len() {
+        return Err(format!(
+            "elements ({}) and positions ({}) length mismatch",
+            elements.len(),
+            positions.len()
+        ));
+    }
     for &z in elements {
-        if crate::xtb::params::get_xtb_params(z).is_none() {
+        if get_gfn1_params(z).is_none() {
             return Err(format!("Element Z={} not supported by GFN1-xTB", z));
         }
     }
 
     let n_atoms = elements.len();
-
-    // Solve GFN0 as initial guess — get full SCF state with matrices
-    let (gfn0, state) = solve_xtb_with_state(elements, positions)?;
-
-    let n_basis = state.basis_map.len();
-    let n_electrons = gfn0.n_electrons;
-    let n_occ = state.n_occ;
-
-    // Build shell index map: unique (atom, l) pairs
-    let mut shell_list: Vec<(usize, u8)> = Vec::new();
-    let mut basis_to_shell: Vec<usize> = Vec::with_capacity(n_basis);
-    for &(atom, l, _m) in &state.basis_map {
-        let shell_idx = shell_list
-            .iter()
-            .position(|&s| s == (atom, l))
-            .unwrap_or_else(|| {
-                shell_list.push((atom, l));
-                shell_list.len() - 1
-            });
-        basis_to_shell.push(shell_idx);
-    }
-    let n_shells = shell_list.len();
-
-    // Reference population per shell (neutral atom aufbau distribution)
-    let ref_pop = compute_reference_populations(elements, &shell_list);
-
-    // Shell hardness: atom η with l-dependent scaling
-    let shell_eta: Vec<f64> = shell_list
+    let pos_bohr: Vec<[f64; 3]> = positions
         .iter()
-        .map(|&(atom, l)| {
-            let eta = crate::xtb::params::get_xtb_params(elements[atom])
-                .unwrap()
-                .eta;
-            match l {
-                0 => eta,
-                1 => eta * 0.85,
-                _ => eta * 0.70,
-            }
+        .map(|p| {
+            [
+                p[0] * BOHR_PER_ANGSTROM,
+                p[1] * BOHR_PER_ANGSTROM,
+                p[2] * BOHR_PER_ANGSTROM,
+            ]
         })
         .collect();
 
-    // Build shell-resolved gamma matrix (n_shells × n_shells)
-    let gamma = build_shell_gamma_matrix(positions, &shell_list, &shell_eta);
+    let basis = build_gfn1_basis(elements);
+    let n_basis = basis.n_basis;
+    if n_basis == 0 {
+        return Err("No basis functions for GFN1-xTB".to_string());
+    }
 
-    // Compute initial shell charges from GFN0 density
-    let mut shell_dq = mulliken_shell_charges(
-        &state.density,
-        &state.overlap,
-        &basis_to_shell,
-        &ref_pop,
-        n_shells,
-        n_basis,
-    );
+    let n_electrons: usize = elements
+        .iter()
+        .map(|&z| GFN1_NVALENCE[z as usize - 1] as usize)
+        .sum();
+    let n_occ = n_electrons / 2;
 
-    // Shell-resolved SCC iterations
-    let max_scc = 100;
-    let scc_tol = 1e-6;
+    // Coordination numbers: tblite `cn_count%exp` (kcn = 16, D3 covalent radii).
+    let cn = coordination_numbers_exp(elements, &pos_bohr);
+
+    // Overlap and H0 (Hartree).
+    let (s_mat, h_mat) = build_overlap_hamiltonian(&basis, elements, &pos_bohr, &cn);
+
+    // ── Shell bookkeeping ──
+    struct ShellMeta {
+        atom: usize,
+        l: u8,
+        hardness: f64,
+        ref_occ: f64,
+    }
+    let mut shells: Vec<ShellMeta> = Vec::new();
+    let mut basis_to_shell = vec![0usize; n_basis];
+    for (i, &z) in elements.iter().enumerate() {
+        let p = get_gfn1_params(z).expect("GFN1 params");
+        let val = gfn1_valence(&p.ang_shell[..p.nshell]);
+        for sh in 0..p.nshell {
+            let sh_idx = shells.len();
+            let l = p.ang_shell[sh];
+            shells.push(ShellMeta {
+                atom: i,
+                l,
+                hardness: p.hubbard * p.shell_hubbard[sh],
+                ref_occ: if val[sh] { p.refocc[sh] } else { 0.0 },
+            });
+            for ii in 0..nsao(l) {
+                basis_to_shell[basis.shell_ao[i][sh] + ii] = sh_idx;
+            }
+        }
+    }
+    let n_shells = shells.len();
+
+    // Atom-resolved Hubbard derivatives (third order is atom resolved in GFN1).
+    let hd: Vec<f64> = elements
+        .iter()
+        .map(|&z| get_gfn1_params(z).expect("GFN1 params").hubbard_derivs)
+        .collect();
+
+    // ── Second-order electrostatics kernel ──
+    // gamma_ij = (R_ij^gexp + gam^-gexp)^(-1/gexp) with harmonic-averaged
+    // shell hardness `gam`; same-atom pairs use `gam` directly.
+    let gexp = GFN1_GLOBALS.gexp;
+    let mut gamma = vec![vec![0.0f64; n_shells]; n_shells];
+    for i in 0..n_shells {
+        gamma[i][i] = shells[i].hardness;
+    }
+    for i in 0..n_shells {
+        for j in (i + 1)..n_shells {
+            let gam = 2.0 / (1.0 / shells[i].hardness + 1.0 / shells[j].hardness);
+            let val = if shells[i].atom == shells[j].atom {
+                gam
+            } else {
+                let a = shells[i].atom;
+                let b = shells[j].atom;
+                let dx = pos_bohr[a][0] - pos_bohr[b][0];
+                let dy = pos_bohr[a][1] - pos_bohr[b][1];
+                let dz = pos_bohr[a][2] - pos_bohr[b][2];
+                let r = (dx * dx + dy * dy + dz * dz).sqrt();
+                1.0 / (r.powf(gexp) + gam.powf(-gexp)).powf(1.0 / gexp)
+            };
+            gamma[i][j] = val;
+            gamma[j][i] = val;
+        }
+    }
+
+    // ── Löwdin S^{-1/2} ──
+    let s_eigen = s_mat.clone().symmetric_eigen();
+    let mut s_half_inv = DMatrix::zeros(n_basis, n_basis);
+    for k in 0..n_basis {
+        let val = s_eigen.eigenvalues[k];
+        if val > 1e-8 {
+            let inv_sqrt = 1.0 / val.sqrt();
+            let col = s_eigen.eigenvectors.column(k);
+            for i in 0..n_basis {
+                for j in 0..n_basis {
+                    s_half_inv[(i, j)] += inv_sqrt * col[i] * col[j];
+                }
+            }
+        }
+    }
+
+    // ── SCC loop ──
+    let max_iter = 250;
+    let mut qsh = vec![0.0f64; n_shells];
+    let mut mixer = BroydenMixer::new(n_shells, max_iter, 0.4);
+    let mut orbital_energies = vec![0.0f64; n_basis];
+    let mut coefficients = DMatrix::zeros(n_basis, n_basis);
     let mut converged = false;
     let mut scc_iter = 0;
-    let mut orbital_energies = state.orbital_energies.clone();
-    let mut coefficients = state.coefficients.clone();
-    let mut density = state.density.clone();
-    let mut prev_e_elec = 0.0;
+    let mut e_elec = 0.0f64;
+    let mut prev_e = 0.0f64;
 
-    // Broyden mixer for shell-resolved SCC convergence acceleration
-    let mut mixer = super::broyden::BroydenMixer::new(n_shells, 15, 0.4);
-
-    for iter in 0..max_scc {
+    for iter in 0..max_iter {
         scc_iter = iter + 1;
 
-        // Store current shell charges in mixer before SCC step
-        mixer.set(&shell_dq);
-
-        // Build charge-shifted Hamiltonian: F_μμ = H0_μμ - V_sh(μ)
-        // The potential is subtracted (tblite convention) to stabilize occupied levels.
-        let mut h_scc = state.hamiltonian.clone();
-        for mu in 0..n_basis {
-            let s_mu = basis_to_shell[mu];
-            let mut shift = 0.0;
-            for s in 0..n_shells {
-                shift += gamma[(s_mu, s)] * shell_dq[s];
-            }
-            h_scc[(mu, mu)] -= shift;
+        if iter > 0 {
+            mixer.step().unwrap_or(());
+            let mut mixed = vec![0.0f64; n_shells];
+            mixer.get(&mut mixed);
+            qsh.copy_from_slice(&mixed);
         }
 
-        // Solve HC = SCε via Löwdin orthogonalization
-        let f_prime = &state.s_half_inv * &h_scc * &state.s_half_inv;
-        let eigen = f_prime.symmetric_eigen();
+        // Atom charges and potential shifts.
+        let mut qat = vec![0.0f64; n_atoms];
+        for sh in 0..n_shells {
+            qat[shells[sh].atom] += qsh[sh];
+        }
+        let mut vsh = vec![0.0f64; n_shells];
+        for i in 0..n_shells {
+            let mut acc = 0.0;
+            for j in 0..n_shells {
+                acc += gamma[i][j] * qsh[j];
+            }
+            vsh[i] = acc;
+        }
+        let vat: Vec<f64> = (0..n_atoms).map(|a| qat[a] * qat[a] * hd[a]).collect();
 
+        // F = H0 - 0.5*S*(v_i + v_j)
+        let mut f_mat = DMatrix::zeros(n_basis, n_basis);
+        for i in 0..n_basis {
+            let vi = vsh[basis_to_shell[i]] + vat[basis.funcs[i].0];
+            for j in i..n_basis {
+                let vj = vsh[basis_to_shell[j]] + vat[basis.funcs[j].0];
+                let fij = h_mat[(i, j)] - 0.5 * s_mat[(i, j)] * (vi + vj);
+                f_mat[(i, j)] = fij;
+                if i != j {
+                    f_mat[(j, i)] = fij;
+                }
+            }
+        }
+
+        // Solve FC = SCε via Löwdin orthogonalization.
+        let f_prime = &s_half_inv * &f_mat * &s_half_inv;
+        let eigen = f_prime.symmetric_eigen();
         let mut indices: Vec<usize> = (0..n_basis).collect();
         indices.sort_by(|&a, &b| {
             eigen.eigenvalues[a]
                 .partial_cmp(&eigen.eigenvalues[b])
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-
+        let c_full = &s_half_inv * &eigen.eigenvectors;
         for (new_idx, &old_idx) in indices.iter().enumerate() {
             orbital_energies[new_idx] = eigen.eigenvalues[old_idx];
-        }
-
-        let c_prime = &eigen.eigenvectors;
-        let c_full = &state.s_half_inv * c_prime;
-        for new_idx in 0..n_basis {
-            let old_idx = indices[new_idx];
             for i in 0..n_basis {
                 coefficients[(i, new_idx)] = c_full[(i, old_idx)];
             }
         }
 
-        // Build density matrix
-        density = DMatrix::zeros(n_basis, n_basis);
-        for i in 0..n_basis {
-            for j in 0..n_basis {
-                let mut val = 0.0;
-                for k in 0..n_occ.min(n_basis) {
-                    val += coefficients[(i, k)] * coefficients[(j, k)];
-                }
-                density[(i, j)] = 2.0 * val;
+        // Fermi filling (per spin channel) and density matrix.
+        let nel_per_spin = n_electrons as f64 / 2.0;
+        let (focc, ts) = get_fermi_filling(&orbital_energies, nel_per_spin, ELECTRONIC_KT);
+        let mut cw = coefficients.clone();
+        for k in 0..n_basis {
+            let f = focc[k];
+            for i in 0..n_basis {
+                cw[(i, k)] *= f;
             }
         }
+        let density = (&cw * coefficients.transpose()) * 2.0;
 
-        // New shell charges
-        let new_dq = mulliken_shell_charges(
-            &density,
-            &state.overlap,
-            &basis_to_shell,
-            &ref_pop,
-            n_shells,
-            n_basis,
-        );
-
-        // Electronic energy
-        let mut e_elec = 0.0;
-        for i in 0..n_basis {
-            for j in 0..n_basis {
-                e_elec += 0.5 * density[(i, j)] * (state.hamiltonian[(i, j)] + h_scc[(i, j)]);
-            }
+        // Shell- and atom-resolved Mulliken charges.
+        let ps = &density * &s_mat;
+        let mut new_qsh = vec![0.0f64; n_shells];
+        for sh in 0..n_shells {
+            new_qsh[sh] = shells[sh].ref_occ;
+        }
+        for mu in 0..n_basis {
+            new_qsh[basis_to_shell[mu]] -= ps[(mu, mu)];
+        }
+        let mut new_qat = vec![0.0f64; n_atoms];
+        for sh in 0..n_shells {
+            new_qat[shells[sh].atom] += new_qsh[sh];
         }
 
-        if (e_elec - prev_e_elec).abs() < scc_tol && iter > 0 {
+        // Electronic energy: Tr(P H0) + E2 + E3 + T·S.
+        let mut e_band = 0.0;
+        for i in 0..n_basis {
+            for j in 0..n_basis {
+                e_band += density[(i, j)] * h_mat[(i, j)];
+            }
+        }
+        let mut e2 = 0.0;
+        for i in 0..n_shells {
+            for j in 0..n_shells {
+                e2 += new_qsh[i] * gamma[i][j] * new_qsh[j];
+            }
+        }
+        e2 *= 0.5;
+        let mut e3 = 0.0;
+        for a in 0..n_atoms {
+            e3 += new_qat[a].powi(3) * hd[a];
+        }
+        e3 /= 3.0;
+        e_elec = e_band + e2 + e3 + ts;
+
+        let rms_dq: f64 = {
+            let sum_sq: f64 = qsh
+                .iter()
+                .zip(new_qsh.iter())
+                .map(|(o, n)| (n - o).powi(2))
+                .sum();
+            (sum_sq / n_shells as f64).sqrt()
+        };
+        let e_conv = iter > 0 && (e_elec - prev_e).abs() < 1e-6;
+        if e_conv && rms_dq < 2e-5 {
             converged = true;
-            prev_e_elec = e_elec;
-            shell_dq = new_dq;
+            qsh = new_qsh;
             break;
         }
-        prev_e_elec = e_elec;
+        prev_e = e_elec;
 
-        // Broyden mixing for shell-resolved SCC convergence
-        mixer.diff(&new_dq);
-        if iter > 0 {
-            let _ = mixer.step();
-        }
-        mixer.get(&mut shell_dq);
+        mixer.set(&qsh);
+        mixer.diff(&new_qsh);
     }
 
-    // Atom-level Mulliken charges from final density
-    let ps = &density * &state.overlap;
-    let mut mulliken_charges = Vec::with_capacity(n_atoms);
-    for a in 0..n_atoms {
-        let pa = crate::xtb::params::get_xtb_params(elements[a]).unwrap();
-        let mut pop = 0.0;
-        for mu in 0..n_basis {
-            if state.basis_map[mu].0 == a {
-                pop += ps[(mu, mu)];
-            }
-        }
-        mulliken_charges.push(pa.n_valence as f64 - pop);
+    // Final charges and dispersion/repulsion/halogen terms.
+    let mut atom_charges = vec![0.0f64; n_atoms];
+    let mut atom_shell_charges = vec![vec![0.0f64; 3]; n_atoms];
+    for sh in 0..n_shells {
+        atom_charges[shells[sh].atom] += qsh[sh];
+        atom_shell_charges[shells[sh].atom][shells[sh].l as usize] = qsh[sh];
     }
 
-    // Collect shell charges per atom (s, p, d)
-    let mut atom_shell_charges = vec![vec![0.0; 3]; n_atoms];
-    for (s, &(atom, l)) in shell_list.iter().enumerate() {
-        atom_shell_charges[atom][l as usize] = shell_dq[s];
-    }
+    let e_rep = compute_repulsion(elements, &pos_bohr);
+    let d3 = compute_d3_energy_with_params(elements, &pos_bohr, D3Params::gfn1());
+    let e_xb = compute_halogen_bond(elements, &pos_bohr);
+    let total_ha = e_elec + e_rep + d3.energy + e_xb;
 
-    // Compute D3-BJ dispersion correction
-    let disp_energy = compute_d3bj_correction(elements, positions);
-
-    // Improved repulsive energy with CN-dependence
-    let rep_energy = compute_gfn1_repulsive(elements, positions);
-
-    let e_elec = prev_e_elec;
-    let total_energy = e_elec + rep_energy + disp_energy;
-
-    let homo_energy = if n_occ > 0 && n_occ <= orbital_energies.len() {
-        orbital_energies[n_occ - 1]
+    let orb_ev: Vec<f64> = orbital_energies
+        .iter()
+        .map(|e| e * EV_PER_HARTREE)
+        .collect();
+    let homo_idx = if n_occ > 0 { n_occ - 1 } else { 0 };
+    let homo_energy = orb_ev[homo_idx];
+    let lumo_energy = if n_occ < n_basis {
+        orb_ev[n_occ]
     } else {
-        0.0
-    };
-    let lumo_energy = if n_occ < orbital_energies.len() {
-        orbital_energies[n_occ]
-    } else {
-        0.0
+        homo_energy
     };
 
     Ok(Gfn1Result {
-        orbital_energies,
-        electronic_energy: e_elec,
-        repulsive_energy: rep_energy,
-        dispersion_energy: disp_energy,
-        total_energy,
+        orbital_energies: orb_ev,
+        electronic_energy: e_elec * EV_PER_HARTREE,
+        repulsive_energy: e_rep * EV_PER_HARTREE,
+        dispersion_energy: d3.energy * EV_PER_HARTREE,
+        halogen_bond_energy: e_xb * EV_PER_HARTREE,
+        total_energy: total_ha * EV_PER_HARTREE,
         n_basis,
         n_electrons,
         homo_energy,
         lumo_energy,
         gap: lumo_energy - homo_energy,
-        mulliken_charges,
+        mulliken_charges: atom_charges,
         shell_charges: atom_shell_charges,
         scc_iterations: scc_iter,
         converged,
     })
-}
-
-/// Compute reference (neutral atom) populations per shell using aufbau filling.
-fn compute_reference_populations(elements: &[u8], shell_list: &[(usize, u8)]) -> Vec<f64> {
-    let mut ref_pop = vec![0.0; shell_list.len()];
-    for (idx, &(atom, l)) in shell_list.iter().enumerate() {
-        let params = crate::xtb::params::get_xtb_params(elements[atom]).unwrap();
-        let n_val = params.n_valence as f64;
-        let has_p = params.zeta_p > 0.0;
-        ref_pop[idx] = match l {
-            0 => n_val.clamp(0.0, 2.0),
-            1 => (n_val - 2.0).clamp(0.0, 6.0),
-            _ => {
-                let used = 2.0 + if has_p { 6.0 } else { 0.0 };
-                (n_val - used).clamp(0.0, 10.0)
-            }
-        };
-    }
-    ref_pop
-}
-
-/// Compute shell Mulliken charges: Δq_shell = ref_pop - Σ_{μ∈shell} (PS)_μμ.
-fn mulliken_shell_charges(
-    density: &DMatrix<f64>,
-    overlap: &DMatrix<f64>,
-    basis_to_shell: &[usize],
-    ref_pop: &[f64],
-    n_shells: usize,
-    n_basis: usize,
-) -> Vec<f64> {
-    let ps = density * overlap;
-    let mut pop = vec![0.0; n_shells];
-    for mu in 0..n_basis {
-        pop[basis_to_shell[mu]] += ps[(mu, mu)];
-    }
-    let mut dq = vec![0.0; n_shells];
-    for s in 0..n_shells {
-        dq[s] = ref_pop[s] - pop[s];
-    }
-    dq
-}
-
-/// Build shell-resolved gamma matrix (n_shells × n_shells).
-///
-/// Uses the same Klopman-Ohno-type formula as GFN0 but with
-/// shell-specific chemical hardness values.
-fn build_shell_gamma_matrix(
-    positions: &[[f64; 3]],
-    shell_list: &[(usize, u8)],
-    shell_eta: &[f64],
-) -> DMatrix<f64> {
-    let n = shell_list.len();
-    let mut gamma = DMatrix::zeros(n, n);
-
-    for i in 0..n {
-        let (atom_i, _) = shell_list[i];
-        gamma[(i, i)] = shell_eta[i];
-
-        for j in (i + 1)..n {
-            let (atom_j, _) = shell_list[j];
-
-            let gamma_ij = if atom_i == atom_j {
-                // Same atom, different shells: harmonic-mean-like coupling
-                shell_eta[i] * shell_eta[j] / (shell_eta[i] + shell_eta[j])
-            } else {
-                // Different atoms: Klopman-Ohno damped Coulomb (same form as GFN0)
-                let dx = positions[atom_i][0] - positions[atom_j][0];
-                let dy = positions[atom_i][1] - positions[atom_j][1];
-                let dz = positions[atom_i][2] - positions[atom_j][2];
-                let r_bohr = (dx * dx + dy * dy + dz * dz).sqrt() * 1.889_725_988_6;
-                1.0 / ((1.0 / shell_eta[i] + 1.0 / shell_eta[j]).powi(2) + r_bohr.powi(2)).sqrt()
-            };
-
-            gamma[(i, j)] = gamma_ij;
-            gamma[(j, i)] = gamma_ij;
-        }
-    }
-
-    gamma
-}
-
-/// D3-BJ dispersion correction suitable for GFN1-xTB.
-fn compute_d3bj_correction(elements: &[u8], positions: &[[f64; 3]]) -> f64 {
-    let n = elements.len();
-    let mut e_disp = 0.0;
-
-    // Simplified BJ-damped D3
-    let s6 = 1.0;
-    let s8 = 2.4;
-    let a1 = 0.63;
-    let a2 = 5.0;
-
-    for i in 0..n {
-        for j in (i + 1)..n {
-            let dx = positions[i][0] - positions[j][0];
-            let dy = positions[i][1] - positions[j][1];
-            let dz = positions[i][2] - positions[j][2];
-            let r = (dx * dx + dy * dy + dz * dz).sqrt();
-
-            if !(0.1..=50.0).contains(&r) {
-                continue;
-            }
-
-            let c6 = get_c6(elements[i], elements[j]);
-            // D3-BJ C8 coefficient from perturbation theory:
-            // C8 = 3 × C6 × √(Q_A × Q_B) where Q = <r⁴>/<r²> ratio.
-            // The get_r2r4() returns the square root of Q, so we need to
-            // square the product for the correct C8.
-            let q_ij = get_r2r4(elements[i]) * get_r2r4(elements[j]);
-            let c8 = 3.0 * c6 * q_ij * q_ij;
-
-            let r0 = (c8 / c6).sqrt();
-            let f6 = 1.0 / (r.powi(6) + (a1 * r0 + a2).powi(6));
-            let f8 = 1.0 / (r.powi(8) + (a1 * r0 + a2).powi(8));
-
-            e_disp -= s6 * c6 * f6 + s8 * c8 * f8;
-        }
-    }
-
-    // Convert Hartree to eV
-    e_disp * 27.2114
-}
-
-/// GFN1-improved repulsive energy with coordination number dependence.
-fn compute_gfn1_repulsive(elements: &[u8], positions: &[[f64; 3]]) -> f64 {
-    let n = elements.len();
-    let mut e_rep = 0.0;
-
-    for i in 0..n {
-        let pi = crate::xtb::params::get_xtb_params(elements[i]).unwrap();
-        for j in (i + 1)..n {
-            let pj = crate::xtb::params::get_xtb_params(elements[j]).unwrap();
-            let dx = positions[i][0] - positions[j][0];
-            let dy = positions[i][1] - positions[j][1];
-            let dz = positions[i][2] - positions[j][2];
-            let r = (dx * dx + dy * dy + dz * dz).sqrt();
-
-            if r < 0.1 {
-                continue;
-            }
-
-            let r_ab = pi.r_cov + pj.r_cov;
-            let z_eff_i = pi.n_valence as f64;
-            let z_eff_j = pj.n_valence as f64;
-            let alpha = (z_eff_i * z_eff_j).sqrt();
-
-            e_rep += alpha * (-1.5 * r / r_ab).exp();
-        }
-    }
-
-    e_rep * 27.2114 // Hartree to eV
-}
-
-/// Approximate C6 coefficients (Hartree·Bohr⁶).
-fn get_c6(z1: u8, z2: u8) -> f64 {
-    let c6_1 = atomic_c6(z1);
-    let c6_2 = atomic_c6(z2);
-    (2.0 * c6_1 * c6_2) / (c6_1 + c6_2 + 1e-30)
-}
-
-fn atomic_c6(z: u8) -> f64 {
-    match z {
-        1 => 6.5,
-        6 => 46.6,
-        7 => 24.2,
-        8 => 15.6,
-        9 => 9.52,
-        14 => 305.0,
-        15 => 185.0,
-        16 => 134.0,
-        17 => 94.6,
-        35 => 162.0,
-        22 => 1044.0,
-        24 => 602.0,
-        25 => 552.0,
-        26 => 482.0,
-        27 => 408.0,
-        28 => 373.0,
-        29 => 253.0,
-        30 => 284.0,
-        _ => 50.0,
-    }
-}
-
-fn get_r2r4(z: u8) -> f64 {
-    match z {
-        1 => 2.00,
-        6 => 3.09,
-        7 => 2.71,
-        8 => 2.44,
-        9 => 1.91,
-        14 => 4.17,
-        15 => 3.63,
-        16 => 3.49,
-        17 => 3.01,
-        35 => 3.47,
-        _ => 3.0,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_gfn1_water() {
-        let elements = vec![8u8, 1, 1];
-        let positions = vec![
-            [0.0, 0.0, 0.117],
-            [0.0, 0.757, -0.469],
-            [0.0, -0.757, -0.469],
-        ];
-        let result = solve_gfn1(&elements, &positions);
-        assert!(result.is_ok());
-        let r = result.unwrap();
-        assert!(r.total_energy.is_finite());
-        assert!(r.gap > 0.0);
-    }
 }
