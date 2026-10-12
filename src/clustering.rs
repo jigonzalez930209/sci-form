@@ -113,70 +113,86 @@ pub fn butina_cluster(conformers: &[Vec<f64>], rmsd_cutoff: f64) -> ClusterResul
     #[cfg(not(feature = "parallel"))]
     let rmsd_matrix = compute_rmsd_matrix(conformers);
 
-    // 2. Build neighbor lists
-    let mut neighbor_counts: Vec<(usize, usize)> = (0..n)
+    // 2. Neighbor lists within the cutoff (self included, like RDKit)
+    let neighbor_lists: Vec<Vec<usize>> = (0..n)
         .map(|i| {
-            let count = (0..n)
-                .filter(|&j| j != i && rmsd_matrix[i][j] <= rmsd_cutoff)
-                .count();
-            (i, count)
+            (0..n)
+                .filter(|&j| rmsd_matrix[i][j] <= rmsd_cutoff)
+                .collect()
         })
         .collect();
 
-    // 3. Greedy clustering
+    // 3. Candidate seeds ordered by (neighbor count, index) descending.
+    let mut sorted_indices: Vec<(usize, usize)> =
+        (0..n).map(|i| (neighbor_lists[i].len(), i)).collect();
+    sorted_indices.sort_by(|a, b| b.cmp(a));
+
+    let mut seen = vec![false; n];
     let mut assignments = vec![usize::MAX; n];
     let mut centroid_indices = Vec::new();
     let mut cluster_sizes = Vec::new();
-    let mut assigned = vec![false; n];
 
-    loop {
-        // Sort by neighbor count (descending)
-        neighbor_counts.sort_by(|a, b| b.1.cmp(&a.1));
-
-        // Find the unassigned conformer with the most neighbors
-        let centroid = neighbor_counts
-            .iter()
-            .find(|(idx, _)| !assigned[*idx])
-            .map(|(idx, _)| *idx);
-
-        let centroid = match centroid {
-            Some(c) => c,
-            None => break,
-        };
-
+    // 4. Reordering variant of Taylor-Butina: seeds with at least one real
+    //    neighbor are processed in descending neighbor-count order; after each
+    //    cluster the counts of unassigned affected points are refreshed.
+    while sorted_indices
+        .first()
+        .map(|&(count, _)| count > 1)
+        .unwrap_or(false)
+    {
+        let (_, idx) = sorted_indices.remove(0);
+        if seen[idx] {
+            continue;
+        }
         let cluster_id = centroid_indices.len();
-        centroid_indices.push(centroid);
-        assigned[centroid] = true;
-        assignments[centroid] = cluster_id;
+        centroid_indices.push(idx);
+        seen[idx] = true;
+        assignments[idx] = cluster_id;
         let mut size = 1;
 
-        // Assign all unassigned neighbors to this cluster
-        for j in 0..n {
-            if !assigned[j] && rmsd_matrix[centroid][j] <= rmsd_cutoff {
-                assigned[j] = true;
-                assignments[j] = cluster_id;
+        for &nb in &neighbor_lists[idx] {
+            if !seen[nb] {
+                seen[nb] = true;
+                assignments[nb] = cluster_id;
                 size += 1;
             }
         }
-
         cluster_sizes.push(size);
 
-        // Update neighbor counts for remaining unassigned
-        for entry in &mut neighbor_counts {
-            if assigned[entry.0] {
-                entry.1 = 0;
-            } else {
-                entry.1 = (0..n)
-                    .filter(|&j| {
-                        !assigned[j] && j != entry.0 && rmsd_matrix[entry.0][j] <= rmsd_cutoff
-                    })
-                    .count();
+        // Refresh counts for unassigned points adjacent to this cluster.
+        let members: Vec<usize> = (0..n).filter(|&i| assignments[i] == cluster_id).collect();
+        let mut affected: Vec<usize> = Vec::new();
+        for &m in &members {
+            for &p in &neighbor_lists[m] {
+                if !seen[p] && !affected.contains(&p) {
+                    affected.push(p);
+                }
             }
         }
-
-        if assigned.iter().all(|&a| a) {
-            break;
+        if !affected.is_empty() {
+            for entry in sorted_indices.iter_mut() {
+                if affected.contains(&entry.1) {
+                    entry.0 = neighbor_lists[entry.1]
+                        .iter()
+                        .filter(|&&p| !seen[p])
+                        .count();
+                }
+            }
+            sorted_indices.sort_by(|a, b| b.cmp(a));
         }
+    }
+
+    // 5. Remaining points become singleton clusters.
+    while let Some((_, idx)) = sorted_indices.first().copied() {
+        sorted_indices.remove(0);
+        if seen[idx] {
+            continue;
+        }
+        seen[idx] = true;
+        let cluster_id = centroid_indices.len();
+        centroid_indices.push(idx);
+        assignments[idx] = cluster_id;
+        cluster_sizes.push(1);
     }
 
     ClusterResult {
