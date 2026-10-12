@@ -28,7 +28,6 @@ fn parse_gsm_methods_json(methods: &str) -> Vec<sci_form::alpha::gsm::GsmEnergyB
 }
 
 /// EEQ geometry-dependent charges.
-#[cfg(feature = "experimental-eeq")]
 pub fn cmd_eeq(elements: &str, coords: &str, total_charge: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let config = sci_form::charges_eeq::EeqConfig {
