@@ -1412,7 +1412,7 @@ como *parcial* en la tabla "supported accuracy".
 | F05 | RDKit `GetSSSR` (estricto, Figueras) | casos con mismatch | **0 / 159** | 0 | PASS |
 | F13 | NumPy SVD Kabsch | max abs | **2.2e-15 Å** | 1e-6 | PASS |
 | F14 | RDKit Butina (reordering=True) | casos con mismatch | **0 / 12** | 0 | PASS |
-| F16 | RDKit UFF | max abs (398 moléculas) | **0.0000 kcal/mol** | 0.01 | PASS |
+| F16 | RDKit UFF | max abs (400 moléculas) | **0.0000 kcal/mol** | 0.01 | PASS |
 | F17 | RDKit UFF AtomTyper | etiquetas con mismatch | **0 / 33641** | 0 | PASS |
 | F21 | RDKit Gasteiger nIter=6 | max abs | **8.3e-17 e** | 0.02 | PASS |
 | F23 | PySCF RHF/STO-3G Mulliken | max abs | **8.6e-8 e** | 0.005 | PASS |
@@ -1489,7 +1489,7 @@ están activos (ningún `#[ignore]`).
    vdW con media geométrica y sin escalado 1-4, inversión con coeficientes
    `C0/C1/C2`, `K/3` y tres contribuciones, y tipado `getAtomLabel` (regla `R`
    de sp2 conjugado + flags de valencia S/P). Desviación máxima medida:
-   **0.0000 kcal/mol en 398 moléculas** (antes: mediana 143 kcal/mol en anillos
+   **0.0000 kcal/mol en 400 moléculas** (antes: mediana 143 kcal/mol en anillos
    de 3–4). Bug adicional encontrado en el camino: la convención del segundo
    normal de torsión desplazaba 180° el diedro y rompía las periodicidades
    impares (n=3).
@@ -1634,6 +1634,14 @@ están activos (ningún `#[ignore]`).
     Desviación: **581 eV → 8.1e-5 eV** (18 moléculas, HOMO/LUMO ~4e-5 eV).
     La dispersión D3(BJ) de GFN1 se validó por separado contra dftd3/py
     (1e-10 Ha).
+30. **Aromaticidad Kekulé (F16)** — nueva `rings::perceive_aromaticity`:
+    percepción Hückel 4n+2 sobre los anillos SSSR que reescribe los enlaces del
+    anillo a aromáticos (orden 1.5) y promueve los átomos a sp², replicando la
+    sanitización de RDKit. El builder UFF la aplica sobre una copia antes del
+    tipado. El oráculo F16 dejó de excluir los casos de aromatización:
+    **398 → 400 moléculas, max |ΔE| = 0.0000 kcal/mol**. Verificación directa
+    contra RDKit en 1130 moléculas: la percepción solo toca los casos Kekulé y
+    coincide con los enlaces aromáticos de RDKit.
 11. **Tablas STO-3G y normalización (F36/F37/F23)** — la comparación contra
     PySCF encontró y corrigió:
     - typo en el 2.º primitivo de H (`0.62353014` → `0.62391373`);
@@ -1649,19 +1657,22 @@ están activos (ningún `#[ignore]`).
 
 ### 13.3 Hallazgos pendientes (documentados, no gated)
 
-1. **Aromaticidad de SMILES Kekulé** — sci-form no re-percibe aromaticidad
-   (RDKit sí): `C1=CC=CN1`, `N=C1OC=CO1` se quedan Kekulé. Cuantificado en esta
-   sesión:
-   - afecta a **2 de 398** moléculas del corpus F16 (0.5 %): RDKit las aromatiza
-     antes de construir la UFF y cambia los órdenes de enlace usados
-     (1.5 vs 1/2); el fixture F16 las excluye con contador
-     `skipped_aromaticity_reperception` y este documento las registra;
-   - también puede afectar SMARTS, ECFP e `_R` typing en esos casos;
-   - el fixture F01 compara topología **sin sanitizar** precisamente para no
-     penalizar esta diferencia de diseño.
-   Próximo paso si se quiere paridad total: percepción Hückel de anillos
-   (los anillos ya calculan `is_aromatic` en `rings::compute_sssr`, así que la
-   base está disponible) y propagación a enlaces antes del force field.
+1. **Aromaticidad de SMILES Kekulé** — **CERRADO (percepción)**: la nueva
+   `rings::perceive_aromaticity` aplica Hückel 4n+2 sobre los anillos SSSR y
+   reescribe los enlaces del anillo a aromáticos (orden 1.5) antes del force
+   field, replicando la sanitización de RDKit para C/N/O/P/S (pyrrole/thiophene
+   donors, carbonilos exocíclicos, carbaniones/carbocationes). El corpus F16 se
+   regeneró sin exclusiones: **400/400 moléculas, max |ΔE| = 0.0000 kcal/mol**,
+   incluyendo `N=C1OC=CO1` y `N=C1NC=CO1`. Validación directa contra RDKit:
+   sobre el corpus (1130 moléculas, fragmentos múltiples excluidos) la
+   percepción solo modifica los casos Kekulé y coincide al 100 % con los
+   enlaces aromáticos de RDKit.
+   Límite restante (no gated): la sanitización de RDKit también puede
+   **quitar** aromaticidad (`O=c1[nH]c(=O)c(=O)[nH]c1=O`), algo que sci-form no
+   hace (solo añade marcas); el oráculo F16 lo registra como
+   `skipped_aromaticity_reperception` (1 caso). SMARTS/ECFP siguen leyendo los
+   enlaces tal como los deja el parser (sin percepción); el fixture F01
+   compara topología **sin sanitizar** por diseño.
 2. **Cobertura pendiente del catálogo** — las ~80 fichas restantes siguen
    el formato ya operativo: `scripts/validation/oracle_<tool>.py` → fixture →
    test en `tests/cross_validation.rs` (o suite por dominio) → `collect.py`.
