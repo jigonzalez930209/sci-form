@@ -1,8 +1,11 @@
 //! Embed, batch, parse, info, charges, uff, rmsd command handlers.
 
 use crate::format::{format_sdf, format_xyz};
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, BufReader, Write};
 use std::time::Instant;
+
+/// Molecules per streaming batch (bounded memory for large inputs).
+const BATCH_CHUNK: usize = 512;
 
 pub fn cmd_embed(smiles: &str, seed: u64, format: &str) {
     let result = sci_form::embed(smiles, seed);
@@ -16,6 +19,8 @@ pub fn cmd_embed(smiles: &str, seed: u64, format: &str) {
     }
 }
 
+/// Batch-process SMILES in fixed-size chunks, streaming results as they are
+/// produced instead of materializing the whole input and output first.
 pub fn cmd_batch(
     input: Option<String>,
     output: Option<String>,
@@ -23,32 +28,17 @@ pub fn cmd_batch(
     threads: usize,
     format: &str,
 ) {
-    let lines: Vec<String> = match input {
+    let source_label = input.as_deref().unwrap_or("stdin").to_string();
+    let reader: Box<dyn BufRead> = match input {
         Some(path) => {
             let file = std::fs::File::open(&path).unwrap_or_else(|e| {
                 eprintln!("Error reading {}: {}", path, e);
                 std::process::exit(1);
             });
-            io::BufReader::new(file)
-                .lines()
-                .filter_map(|l| l.ok())
-                .filter(|l| !l.trim().is_empty())
-                .map(|l| l.trim().to_string())
-                .collect()
+            Box::new(BufReader::new(file))
         }
-        None => {
-            let stdin = io::stdin();
-            stdin
-                .lock()
-                .lines()
-                .filter_map(|l| l.ok())
-                .filter(|l| !l.trim().is_empty())
-                .map(|l| l.trim().to_string())
-                .collect()
-        }
+        None => Box::new(io::stdin().lock()),
     };
-    let total = lines.len();
-    let start = Instant::now();
 
     #[cfg(not(feature = "parallel"))]
     if threads > 1 {
@@ -60,8 +50,8 @@ pub fn cmd_batch(
     }
 
     eprintln!(
-        "Processing {} molecules ({} threads)...",
-        total,
+        "Processing molecules from {} ({} threads)...",
+        source_label,
         if threads == 0 {
             "auto".to_string()
         } else {
@@ -69,38 +59,112 @@ pub fn cmd_batch(
         }
     );
 
-    let smiles_refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect();
-    let config = sci_form::ConformerConfig {
-        seed,
-        num_threads: threads,
-    };
-    let results = sci_form::embed_batch(&smiles_refs, &config);
-    let elapsed = start.elapsed();
-
     let mut writer: Box<dyn Write> = match output {
         Some(path) => Box::new(std::fs::File::create(&path).unwrap_or_else(|e| {
             eprintln!("Error creating {}: {}", path, e);
             std::process::exit(1);
         })),
-        None => Box::new(io::stdout()),
+        None => Box::new(io::stdout().lock()),
     };
-    match format {
-        "xyz" => {
-            for r in &results {
-                write!(writer, "{}", format_xyz(r)).unwrap();
+
+    let config = sci_form::ConformerConfig {
+        seed,
+        num_threads: threads,
+    };
+    let start = Instant::now();
+    let json = !matches!(format, "xyz" | "sdf");
+    let mut first_json = true;
+    if json {
+        writer.write_all(b"[").unwrap();
+    }
+
+    let mut total = 0usize;
+    let mut ok = 0usize;
+    let mut fail = 0usize;
+    let mut chunk: Vec<String> = Vec::with_capacity(BATCH_CHUNK);
+
+    let mut flush_chunk = |chunk: &mut Vec<String>,
+                           writer: &mut dyn Write,
+                           total: &mut usize,
+                           ok: &mut usize,
+                           fail: &mut usize,
+                           first_json: &mut bool| {
+        if chunk.is_empty() {
+            return;
+        }
+        let smiles_refs: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
+        let results = sci_form::embed_batch(&smiles_refs, &config);
+        for r in &results {
+            if r.error.is_none() {
+                *ok += 1;
+            } else {
+                *fail += 1;
             }
         }
-        "sdf" => {
-            for r in &results {
-                write!(writer, "{}", format_sdf(r)).unwrap();
+        *total += results.len();
+        match format {
+            "xyz" => {
+                for r in &results {
+                    write!(writer, "{}", format_xyz(r)).unwrap();
+                }
+            }
+            "sdf" => {
+                for r in &results {
+                    write!(writer, "{}", format_sdf(r)).unwrap();
+                }
+            }
+            _ => {
+                for r in &results {
+                    if !*first_json {
+                        writer.write_all(b",").unwrap();
+                    }
+                    *first_json = false;
+                    write!(writer, "{}", serde_json::to_string(r).unwrap()).unwrap();
+                }
             }
         }
-        _ => {
-            writeln!(writer, "{}", serde_json::to_string(&results).unwrap()).unwrap();
+        writer.flush().unwrap();
+        chunk.clear();
+    };
+
+    for line in reader.lines() {
+        let line = match line {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("Error reading input: {}", e);
+                break;
+            }
+        };
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        chunk.push(trimmed.to_string());
+        if chunk.len() >= BATCH_CHUNK {
+            flush_chunk(
+                &mut chunk,
+                &mut *writer,
+                &mut total,
+                &mut ok,
+                &mut fail,
+                &mut first_json,
+            );
         }
     }
-    let ok = results.iter().filter(|r| r.error.is_none()).count();
-    let fail = results.iter().filter(|r| r.error.is_some()).count();
+    flush_chunk(
+        &mut chunk,
+        &mut *writer,
+        &mut total,
+        &mut ok,
+        &mut fail,
+        &mut first_json,
+    );
+    if json {
+        writer.write_all(b"]\n").unwrap();
+        writer.flush().unwrap();
+    }
+
+    let elapsed = start.elapsed();
     let avg_ms = if total > 0 {
         elapsed.as_secs_f64() * 1000.0 / total as f64
     } else {
