@@ -241,13 +241,7 @@ pub fn assemble_fragments_at_product_positions(
             continue;
         }
         let p_frag: Vec<f64> = (atom_off..atom_off + n)
-            .flat_map(|a| {
-                [
-                    p_coords[a * 3],
-                    p_coords[a * 3 + 1],
-                    p_coords[a * 3 + 2],
-                ]
-            })
+            .flat_map(|a| [p_coords[a * 3], p_coords[a * 3 + 1], p_coords[a * 3 + 2]])
             .collect();
         let p_com = com_flat(&p_frag);
         let mut r_frag = conf.coords.clone();
