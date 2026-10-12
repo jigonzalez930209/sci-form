@@ -129,6 +129,41 @@ fn spearman(a: &[f64], b: &[f64]) -> f64 {
 // F01 — SMILES parse invariants + hybridization (RDKit AddHs reference)
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Track G guard: the curated validation bank must stay at >= 100 parsable
+/// molecules (see §14.1 of the validation plan).
+#[test]
+fn track_g_bank_has_enough_molecules() {
+    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join("diverse_molecules.smi");
+    let text = std::fs::read_to_string(&path).expect("diverse_molecules.smi should exist");
+    let mut valid = 0usize;
+    let mut invalid = Vec::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        // The bank file carries tab-separated annotations after the SMILES.
+        let smi = line.split_whitespace().next().unwrap_or("");
+        match sci_form::parse(smi) {
+            Ok(_) => valid += 1,
+            Err(err) => invalid.push(format!("{smi}: {err}")),
+        }
+    }
+    assert!(
+        invalid.is_empty(),
+        "bank contains unparsable SMILES: {:?}",
+        &invalid[..invalid.len().min(5)]
+    );
+    assert!(
+        valid >= 100,
+        "Track G bank should keep >= 100 molecules, got {valid}"
+    );
+}
+
+
 mod f01_parse {
     use super::*;
 
