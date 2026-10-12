@@ -1064,8 +1064,11 @@ mod visualization_comparison {
                 &elements,
                 &positions,
                 &pop.mulliken_charges,
-                0.5,
-                3.0,
+                sci_form::esp::EspGridConfig {
+                    spacing: 0.5,
+                    padding: 3.0,
+                    min_distance: sci_form::esp::DEFAULT_ESP_MIN_DISTANCE,
+                },
             );
             let t_gpu = t0.elapsed();
 
