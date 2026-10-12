@@ -165,6 +165,389 @@ pub fn get_gasteiger_params(z: u8) -> Option<GasteigerParams> {
     }
 }
 
+/// Hybridization/bonding mode used to select PEOE parameters.
+///
+/// Mirrors the mode keys of the canonical Gasteiger parameter table
+/// (`sp`, `sp2`, `sp3`, sulfur `so`/`so2`, hydrogen `*`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GasteigerMode {
+    /// Unknown hybridization: use the element default.
+    Default,
+    /// Hydrogen.
+    Hydrogen,
+    /// sp hybridization.
+    Sp,
+    /// sp2 hybridization.
+    Sp2,
+    /// sp3 hybridization.
+    Sp3,
+    /// Sulfur with a single S=O (used when the hybridization is unknown).
+    So,
+    /// Sulfur with two S=O (used when the hybridization is unknown).
+    So2,
+}
+
+/// Mode-aware Gasteiger parameter lookup.
+///
+/// Values follow the canonical Gasteiger-Marsili table (as also published in
+/// RDKit's `GasteigerParams.cpp`) so the iterative PEOE implementation can be
+/// cross-validated against reference implementations. Elements absent from the
+/// canonical table fall back to the extended table used by
+/// [`get_gasteiger_params`].
+pub fn get_gasteiger_params_mode(z: u8, mode: GasteigerMode) -> Option<GasteigerParams> {
+    match (z, mode) {
+        (1, _) | (_, GasteigerMode::Hydrogen) => Some(GasteigerParams {
+            a: 7.17,
+            b: 6.24,
+            c: -0.56,
+        }),
+        (6, GasteigerMode::Sp) => Some(GasteigerParams {
+            a: 10.39,
+            b: 9.45,
+            c: 0.73,
+        }),
+        (6, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 8.79,
+            b: 9.32,
+            c: 1.51,
+        }),
+        (6, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 7.98,
+            b: 9.18,
+            c: 1.88,
+        }),
+        (7, GasteigerMode::Sp) => Some(GasteigerParams {
+            a: 15.68,
+            b: 11.7,
+            c: -0.27,
+        }),
+        (7, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 12.87,
+            b: 11.15,
+            c: 0.85,
+        }),
+        (7, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 11.54,
+            b: 10.82,
+            c: 1.36,
+        }),
+        (8, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 17.07,
+            b: 13.79,
+            c: 0.47,
+        }),
+        (8, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 14.18,
+            b: 12.92,
+            c: 1.39,
+        }),
+        (15, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 9.665,
+            b: 8.530,
+            c: 0.735,
+        }),
+        (5, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 6.420,
+            b: 6.807,
+            c: 1.322,
+        }),
+        (5, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 5.980,
+            b: 6.820,
+            c: 1.605,
+        }),
+        (14, GasteigerMode::Sp) => Some(GasteigerParams {
+            a: 9.065,
+            b: 7.027,
+            c: -0.002,
+        }),
+        (14, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 7.905,
+            b: 6.748,
+            c: 0.443,
+        }),
+        (14, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 7.300,
+            b: 6.567,
+            c: 0.657,
+        }),
+        (4, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 4.005,
+            b: 6.725,
+            c: 3.035,
+        }),
+        (4, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 3.845,
+            b: 6.755,
+            c: 3.165,
+        }),
+        (12, GasteigerMode::Sp) => Some(GasteigerParams {
+            a: 4.040,
+            b: 5.472,
+            c: 1.823,
+        }),
+        (12, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 3.565,
+            b: 5.572,
+            c: 2.197,
+        }),
+        (12, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 3.300,
+            b: 5.587,
+            c: 2.447,
+        }),
+        (13, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 5.795,
+            b: 5.020,
+            c: 0.695,
+        }),
+        (13, GasteigerMode::Sp3 | GasteigerMode::Default) => Some(GasteigerParams {
+            a: 5.375,
+            b: 4.953,
+            c: 0.867,
+        }),
+        (16, GasteigerMode::Sp2) => Some(GasteigerParams {
+            a: 10.88,
+            b: 9.49,
+            c: 1.33,
+        }),
+        (16, GasteigerMode::Sp3 | GasteigerMode::Default | GasteigerMode::So) => {
+            Some(GasteigerParams {
+                a: 10.14,
+                b: 9.13,
+                c: 1.38,
+            })
+        }
+        (16, GasteigerMode::So2) => Some(GasteigerParams {
+            a: 12.00,
+            b: 10.81,
+            c: 1.20,
+        }),
+        _ => get_gasteiger_params(z),
+    }
+}
+
+/// Constant `ionX` for hydrogen used by the canonical PEOE iteration.
+const IONX_HYDROGEN: f64 = 20.02;
+
+/// True when the bond `(i, j, order)` participates in a conjugated system.
+///
+/// A multiple/aromatic bond is always conjugated; a single bond is conjugated
+/// when either endpoint carries a multiple bond to a heavy atom (the classic
+/// amide/ester/carboxylate case). Multiple bonds on hypervalent centres
+/// (P, S) do not propagate conjugation, matching RDKit's `setConjugation`.
+fn bond_is_conjugated(
+    elements: &[u8],
+    adjacency: &[Vec<(usize, u8)>],
+    i: usize,
+    j: usize,
+    order: u8,
+) -> bool {
+    if order >= 2 {
+        return true;
+    }
+    let has_multiple = |atom: usize| {
+        if elements.get(atom).copied().unwrap_or(0) == 15
+            || elements.get(atom).copied().unwrap_or(0) == 16
+        {
+            return false;
+        }
+        adjacency[atom]
+            .iter()
+            .any(|&(k, o)| o >= 2 && elements.get(k).copied().unwrap_or(1) != 1)
+    };
+    has_multiple(i) || has_multiple(j)
+}
+
+/// Split formal charges evenly across same-element conjugated partners.
+///
+/// Mirrors `Gasteiger::splitChargeConjugated` from the canonical
+/// implementation: for each atom carrying a formal charge, walk two conjugated
+/// bonds; every same-element atom reached receives an equal share of the total
+/// formal charge of the group. This is what turns a carboxylate `C(=O)O⁻` into
+/// two equivalent oxygens with charge −0.5.
+fn split_charge_conjugated(
+    elements: &[u8],
+    bonds: &[(usize, usize, u8)],
+    formal_charges: &[i8],
+    charges: &mut [f64],
+) {
+    let n = elements.len();
+    let mut adjacency: Vec<Vec<(usize, u8)>> = vec![Vec::new(); n];
+    for &(i, j, order) in bonds {
+        if i < n && j < n {
+            adjacency[i].push((j, order));
+            adjacency[j].push((i, order));
+        }
+    }
+
+    for i in 0..n {
+        let formal = formal_charges[i] as f64;
+        if formal.abs() <= 1e-12 || charges[i].abs() > 1e-12 {
+            continue;
+        }
+        let mut marker = vec![i];
+        let mut total = formal;
+        for &(mid, order1) in &adjacency[i] {
+            if !bond_is_conjugated(elements, &adjacency, i, mid, order1) {
+                continue;
+            }
+            for &(other, order2) in &adjacency[mid] {
+                if other == i {
+                    continue;
+                }
+                if !bond_is_conjugated(elements, &adjacency, mid, other, order2) {
+                    continue;
+                }
+                if elements[other] == elements[i] {
+                    total += formal_charges[other] as f64;
+                    marker.push(other);
+                }
+            }
+        }
+        let share = total / marker.len() as f64;
+        for &m in &marker {
+            charges[m] = share;
+        }
+    }
+}
+
+/// Full Gasteiger-Marsili PEOE implementation with per-atom modes and bond orders.
+///
+/// Reproduces the canonical iteration:
+///
+/// - orbital electronegativity `χ_i = a + q·(b + c·q)`
+/// - charge transfer along each bond `dq = (χ_j − χ_i) / ionX`, where `ionX` is
+///   the electronegativity at unit charge of the *less* electronegative atom
+///   (hydrogen uses the constant 20.02)
+/// - damping starts at `config.initial_damping` (0.5) and halves each iteration
+/// - formal charges are split evenly across same-element conjugated partners
+///   before the first iteration
+///
+/// `bonds` carries the bond order (`1` single, `2` double, `3` triple,
+/// `4` aromatic). `modes` optionally gives the per-atom hybridization; when it
+/// is `None` every atom uses its element default (sp3-like), which preserves
+/// the behavior of the simpler `gasteiger_marsili_charges` API.
+pub fn gasteiger_marsili_charges_full(
+    elements: &[u8],
+    bonds: &[(usize, usize, u8)],
+    formal_charges: &[i8],
+    modes: Option<&[GasteigerMode]>,
+    config: &GasteigerConfig,
+) -> Result<ChargeResult, String> {
+    let n = elements.len();
+    if formal_charges.len() != n {
+        return Err(format!(
+            "formal_charges length {} != elements length {}",
+            formal_charges.len(),
+            n
+        ));
+    }
+    if let Some(modes) = modes {
+        if modes.len() != n {
+            return Err(format!(
+                "modes length {} != elements length {}",
+                modes.len(),
+                n
+            ));
+        }
+    }
+    for &(i, j, _) in bonds {
+        if i >= n || j >= n {
+            return Err(format!(
+                "Bond ({}, {}) references atom outside range 0..{}",
+                i, j, n
+            ));
+        }
+    }
+
+    // Per-atom parameters, mirroring the reference mode selection.
+    let mut params = Vec::with_capacity(n);
+    for i in 0..n {
+        let requested = modes.map(|m| m[i]).unwrap_or(GasteigerMode::Default);
+        let mode = if elements[i] == 1 {
+            GasteigerMode::Hydrogen
+        } else if matches!(
+            requested,
+            GasteigerMode::Sp | GasteigerMode::Sp2 | GasteigerMode::Sp3
+        ) {
+            requested
+        } else if elements[i] == 16 && requested == GasteigerMode::Default {
+            let n_oxo = bonds
+                .iter()
+                .filter(|&&(a, b, _)| (a == i && elements[b] == 8) || (b == i && elements[a] == 8))
+                .count();
+            match n_oxo {
+                2 => GasteigerMode::So2,
+                1 => GasteigerMode::So,
+                _ => GasteigerMode::Sp3,
+            }
+        } else {
+            requested
+        };
+        params.push(
+            get_gasteiger_params_mode(elements[i], mode)
+                .ok_or_else(|| format!("No Gasteiger parameters for element Z={}", elements[i]))?,
+        );
+    }
+
+    // ionX: electronegativity at unit charge; hydrogen uses the constant.
+    let ion_x: Vec<f64> = elements
+        .iter()
+        .zip(params.iter())
+        .map(|(&z, p)| {
+            if z == 1 {
+                IONX_HYDROGEN
+            } else {
+                p.a + p.b + p.c
+            }
+        })
+        .collect();
+
+    // Initial charges: formal charges, split across conjugated partners.
+    let mut charges = vec![0.0f64; n];
+    split_charge_conjugated(elements, bonds, formal_charges, &mut charges);
+
+    let mut damping = config.initial_damping;
+    let mut max_delta = 0.0f64;
+    for _ in 0..config.max_iter {
+        let energ: Vec<f64> = (0..n)
+            .map(|i| {
+                let p = params[i];
+                p.a + charges[i] * (p.b + p.c * charges[i])
+            })
+            .collect();
+
+        let mut delta_q = vec![0.0f64; n];
+        for &(i, j, _) in bonds {
+            let dx = energ[j] - energ[i];
+            let divisor = if dx >= 0.0 { ion_x[i] } else { ion_x[j] };
+            if divisor.abs() < 1e-12 {
+                continue;
+            }
+            let transfer = dx / divisor;
+            delta_q[i] += transfer;
+            delta_q[j] -= transfer;
+        }
+
+        max_delta = 0.0;
+        for i in 0..n {
+            charges[i] += damping * delta_q[i];
+            max_delta = max_delta.max((damping * delta_q[i]).abs());
+        }
+        damping *= 0.5;
+    }
+
+    let total_charge: f64 = charges.iter().sum();
+
+    Ok(ChargeResult {
+        charges,
+        iterations: config.max_iter,
+        total_charge,
+        converged: max_delta < config.convergence_threshold,
+    })
+}
+
 /// Result of a Gasteiger-Marsili charge calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChargeResult {
@@ -229,95 +612,9 @@ pub fn gasteiger_marsili_charges_configured(
     formal_charges: &[i8],
     config: &GasteigerConfig,
 ) -> Result<ChargeResult, String> {
-    let n = elements.len();
-    if formal_charges.len() != n {
-        return Err(format!(
-            "formal_charges length {} != elements length {}",
-            formal_charges.len(),
-            n
-        ));
-    }
-
-    // Look up parameters for each atom
-    let params: Vec<GasteigerParams> = elements
-        .iter()
-        .map(|&z| {
-            get_gasteiger_params(z)
-                .ok_or_else(|| format!("No Gasteiger parameters for element Z={}", z))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    // Initialize charges from formal charges
-    let mut charges: Vec<f64> = formal_charges.iter().map(|&fc| fc as f64).collect();
-
-    // Damping factor starts at config value and halves each iteration
-    let mut damping = config.initial_damping;
-
-    let mut actual_iters = 0;
-    let mut did_converge = false;
-    for _iter in 0..config.max_iter {
-        actual_iters += 1;
-
-        // Compute electronegativity for each atom at current charge
-        let chi: Vec<f64> = (0..n).map(|i| params[i].chi(charges[i])).collect();
-
-        // Compute charge transfer along each bond
-        let mut delta_q = vec![0.0f64; n];
-        for &(i, j) in bonds {
-            if i >= n || j >= n {
-                return Err(format!(
-                    "Bond ({}, {}) references atom outside range 0..{}",
-                    i, j, n
-                ));
-            }
-            let chi_diff = chi[j] - chi[i];
-            // Transfer is proportional to electronegativity difference
-            // Normalize by the "hardness" of the receiving atom
-            let dq = if chi_diff > 0.0 {
-                // Charge flows from i to j (j is more electronegative)
-                let divisor = params[j].chi(1.0);
-                if divisor.abs() < 1e-6 {
-                    0.0
-                } else {
-                    damping * chi_diff / divisor.abs()
-                }
-            } else {
-                // Charge flows from j to i
-                let divisor = params[i].chi(1.0);
-                if divisor.abs() < 1e-6 {
-                    0.0
-                } else {
-                    damping * chi_diff / divisor.abs()
-                }
-            };
-            delta_q[i] += dq;
-            delta_q[j] -= dq;
-        }
-
-        // Apply charge transfers
-        let mut max_delta = 0.0f64;
-        for i in 0..n {
-            charges[i] += delta_q[i];
-            max_delta = max_delta.max(delta_q[i].abs());
-        }
-
-        damping *= 0.5;
-
-        // Convergence check
-        if max_delta < config.convergence_threshold {
-            did_converge = true;
-            break;
-        }
-    }
-
-    let total_charge: f64 = charges.iter().sum();
-
-    Ok(ChargeResult {
-        charges,
-        iterations: actual_iters,
-        total_charge,
-        converged: did_converge,
-    })
+    let bonds_with_order: Vec<(usize, usize, u8)> =
+        bonds.iter().map(|&(i, j)| (i, j, 1u8)).collect();
+    gasteiger_marsili_charges_full(elements, &bonds_with_order, formal_charges, None, config)
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
