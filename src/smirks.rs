@@ -82,23 +82,31 @@ pub fn parse_smirks(smirks: &str) -> Result<SmirksTransform, String> {
     let reactant_maps = extract_atom_maps(reactant_part)?;
     let product_maps = extract_atom_maps(product_part)?;
 
-    // Build the atom map (reactant map num → product map num)
+    // Validate atom maps before the transform can be applied:
+    // * map numbers start at 1 and must be unique per side (validated in
+    //   `extract_atom_maps`),
+    // * reactant-only maps mean the atom is removed, product-only maps mean
+    //   the atom is added (e.g. the nitro group of the nitration pattern),
+    // * both sides must be well-formed SMARTS so the transform can actually
+    //   be matched and built.
+    for (label, part) in [("reactant", reactant_part), ("product", product_part)] {
+        for component in part.split('.') {
+            if component.trim().is_empty() {
+                return Err(format!("SMIRKS {label} contains an empty component"));
+            }
+            parse_smarts(component).map_err(|err| {
+                format!("SMIRKS {label} component '{component}' is not valid SMARTS: {err}")
+            })?;
+        }
+    }
+
+    // Build the atom map (reactant map num → product map num) for the shared
+    // atoms; the map number itself is the identity key.
     let mut atom_map = HashMap::new();
     for map_num in reactant_maps.keys() {
         if product_maps.contains_key(map_num) {
             atom_map.insert(*map_num, *map_num);
         }
-    }
-
-    // Validate atom map bijectivity: each mapped atom in reactant must appear
-    // exactly once in product and vice versa
-    let mapped_in_reactant: std::collections::HashSet<usize> = atom_map.keys().copied().collect();
-    let mapped_in_product: std::collections::HashSet<usize> = atom_map.values().copied().collect();
-    if mapped_in_reactant != mapped_in_product {
-        return Err(format!(
-            "SMIRKS atom maps are not bijective: reactant maps {:?} vs product maps {:?}",
-            mapped_in_reactant, mapped_in_product
-        ));
     }
 
     // Detect bond changes
@@ -257,6 +265,12 @@ fn extract_atom_maps(pattern: &str) -> Result<HashMap<usize, usize>, String> {
             if let Some(colon_pos) = bracket_content.rfind(':') {
                 let map_str = &bracket_content[colon_pos + 1..bracket_content.len() - 1];
                 if let Ok(map_num) = map_str.parse::<usize>() {
+                    if map_num == 0 {
+                        return Err(format!(
+                            "atom map :0 is invalid in pattern '{}' (maps start at 1)",
+                            pattern
+                        ));
+                    }
                     if maps.insert(map_num, atom_idx).is_some() {
                         return Err(format!(
                             "duplicate atom map :{} in pattern '{}'",
@@ -372,6 +386,37 @@ mod tests {
     fn test_extract_atom_maps_rejects_duplicates() {
         let err = extract_atom_maps("[C:1][O:1]").unwrap_err();
         assert!(err.contains("duplicate atom map"));
+    }
+
+    #[test]
+    fn test_parse_smirks_allows_map_additions_and_deletions() {
+        // The mapped oxygen disappears (deletion).
+        let transform = parse_smirks("[C:1][O:2]>>[C:1]").unwrap();
+        assert_eq!(transform.atom_map.len(), 1);
+        assert!(transform.atom_map.contains_key(&1));
+
+        // The nitro group is added (product-only maps 3 and 4).
+        let nitration = parse_smirks("[c:1][H:2]>>[c:1][N+:2](=[O:3])[O-:4]");
+        assert!(nitration.is_ok(), "got {:?}", nitration.err());
+    }
+
+    #[test]
+    fn test_parse_smirks_rejects_invalid_patterns() {
+        let err = parse_smirks("[C:1>>[C:1]").unwrap_err();
+        assert!(err.contains("reactant"), "got {err:?}");
+
+        let err = parse_smirks("[C:1]>>[C:1").unwrap_err();
+        assert!(err.contains("product"), "got {err:?}");
+
+        let err = parse_smirks("[C:1]>>[C:1].[O:2]>>[N:2]").unwrap_err();
+        assert!(err.contains("separator"), "got {err:?}");
+    }
+
+    #[test]
+    fn test_parse_smirks_rejects_map_zero() {
+        let err = parse_smirks("[C:0]>>[C:0]").unwrap_err();
+        assert!(err.contains(":0"), "got {err:?}");
+        assert!(err.contains("maps start at 1"), "got {err:?}");
     }
 
     #[test]
