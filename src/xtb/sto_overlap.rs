@@ -1,5 +1,3 @@
-//! STO-nG overlap integrals for tight-binding solvers.
-//!
 //! Expands Slater-type orbitals (STOs) in a small number of Gaussian
 //! primitives (STO-nG), then computes overlap analytically using the
 //! Obara-Saika recursion.  This gives proper angular-momentum–dependent
@@ -8,6 +6,106 @@
 //! STO-3G coefficients from:
 //!   Hehre, Stewart, Pople, JCP 51, 2657 (1969)
 //!   Stewart, JCP 52, 431 (1970)
+
+// STO-nG overlap integrals for tight-binding solvers.
+
+// ── STO-2G expansion coefficients ──
+// From: Robert F. Stewart, J. Chem. Phys. 52, 431-438 (1970), Table I-V
+// (same tables as xtb `slater.f90` pAlpha2/pCoeff2; validation F43).
+// Each entry: (exponent_ratio, contraction_coefficient)
+
+/// 1s STO expanded in 2 Gaussians.
+static STO2G_1S: [(f64, f64); 2] = [
+    (8.518186635e-1, 4.301284983e-1),
+    (1.516232927e-1, 6.789135305e-1),
+];
+
+/// 2s STO expanded in 2 Gaussians.
+static STO2G_2S: [(f64, f64); 2] = [
+    (1.292278611e-1, 7.470867124e-1),
+    (4.908584205e-2, 2.855980556e-1),
+];
+
+/// 2p STO expanded in 2 Gaussians.
+static STO2G_2P: [(f64, f64); 2] = [
+    (4.323908358e-1, 4.522627513e-1),
+    (1.069439065e-1, 6.713122622e-1),
+];
+
+/// 3s STO expanded in 2 Gaussians.
+static STO2G_3S: [(f64, f64); 2] = [
+    (6.694095822e-1, -1.529645716e-1),
+    (5.837135094e-2, 1.051370110e+0),
+];
+
+/// 3p STO expanded in 2 Gaussians.
+static STO2G_3P: [(f64, f64); 2] = [
+    (1.458620964e-1, 5.349653144e-1),
+    (5.664210742e-2, 5.299607212e-1),
+];
+
+/// 3d STO expanded in 2 Gaussians.
+static STO2G_3D: [(f64, f64); 2] = [
+    (2.777427345e-1, 4.666137923e-1),
+    (8.336507714e-2, 6.644706516e-1),
+];
+
+/// 4s STO expanded in 2 Gaussians.
+static STO2G_4S: [(f64, f64); 2] = [
+    (2.441785453e-1, -3.046656896e-1),
+    (4.051097664e-2, 1.146877294e+0),
+];
+
+/// 4p STO expanded in 2 Gaussians.
+static STO2G_4P: [(f64, f64); 2] = [
+    (6.190052680e-2, 8.743116716e-1),
+    (2.648418418e-2, 1.513640136e-1),
+];
+
+/// 4d STO expanded in 2 Gaussians.
+static STO2G_4D: [(f64, f64); 2] = [
+    (1.330958892e-1, 4.932764164e-1),
+    (5.272119659e-2, 5.918727859e-1),
+];
+
+/// 5s STO expanded in 2 Gaussians.
+static STO2G_5S: [(f64, f64); 2] = [
+    (1.213425654e-1, -5.114756049e-1),
+    (3.133152144e-2, 1.307377277e+0),
+];
+
+/// 5p STO expanded in 2 Gaussians.
+static STO2G_5P: [(f64, f64); 2] = [
+    (2.691294194e-1, -1.034227010e-1),
+    (3.980805019e-2, 1.033376384e+0),
+];
+
+/// 5d STO expanded in 2 Gaussians.
+static STO2G_5D: [(f64, f64); 2] = [
+    (6.906014388e-2, 6.539405185e-1),
+    (3.399457714e-2, 3.948945394e-1),
+];
+
+/// Look up STO-2G expansion for given principal quantum number and angular momentum.
+fn sto2g_coefficients(n: u8, l: u8) -> &'static [(f64, f64); 2] {
+    match (n, l) {
+        (1, 0) => &STO2G_1S,
+        (2, 0) => &STO2G_2S,
+        (2, 1) => &STO2G_2P,
+        (3, 0) => &STO2G_3S,
+        (3, 1) => &STO2G_3P,
+        (3, 2) => &STO2G_3D,
+        (4, 0) => &STO2G_4S,
+        (4, 1) => &STO2G_4P,
+        (4, 2) => &STO2G_4D,
+        (5, 0) => &STO2G_5S,
+        (5, 1) => &STO2G_5P,
+        (5, 2) => &STO2G_5D,
+        _ => &STO2G_1S, // fallback
+    }
+}
+
+//
 
 use std::f64::consts::PI;
 
@@ -226,6 +324,130 @@ static STO6G_6P: [(f64, f64); 6] = [
     (1.882221321e-2, 1.091534212e-1),
 ];
 
+// General STO-6G tables for n = 1..5 (s/p/d), from tblite slater.f90
+// `pAlpha6`/`pCoeff6` (Stewart 1970, Tables I-V). GFN1-xTB uses six
+// primitives for the s/p shells of the main-group elements.
+
+/// 1s STO-6G.
+static STO6G_1S: [(f64, f64); 6] = [
+    (2.310303149e+01, 9.163596280e-03),
+    (4.235915534e+00, 4.936149294e-02),
+    (1.185056519e+00, 1.685383049e-01),
+    (4.070988982e-01, 3.705627997e-01),
+    (1.580884151e-01, 4.164915298e-01),
+    (6.510953954e-02, 1.303340841e-01),
+];
+
+/// 2s STO-6G.
+static STO6G_2S: [(f64, f64); 6] = [
+    (2.768496241e+01, -4.151277819e-03),
+    (5.077140627e+00, -2.067024148e-02),
+    (1.426786050e+00, -5.150303337e-02),
+    (2.040335729e-01, 3.346271174e-01),
+    (9.260298399e-02, 5.621061301e-01),
+    (4.416183978e-02, 1.712994697e-01),
+];
+
+/// 3s STO-6G.
+static STO6G_3S: [(f64, f64); 6] = [
+    (3.273031938e+00, -6.775596947e-03),
+    (9.200611311e-01, -5.639325779e-02),
+    (3.593349765e-01, -1.587856086e-01),
+    (8.636686991e-02, 5.534527651e-01),
+    (4.797373812e-02, 5.015351020e-01),
+    (2.724741144e-02, 7.223633674e-02),
+];
+
+/// 4s STO-6G.
+static STO6G_4S: [(f64, f64); 6] = [
+    (3.232838646e+00, 1.374817488e-03),
+    (3.605788802e-01, -8.666390043e-02),
+    (1.717905487e-01, -3.130627309e-01),
+    (5.277666487e-02, 7.812787397e-01),
+    (3.163400284e-02, 4.389247988e-01),
+    (1.874093091e-02, 2.487178756e-02),
+];
+
+/// 5s STO-6G.
+static STO6G_5S: [(f64, f64); 6] = [
+    (1.410128298e+00, 2.695439582e-03),
+    (5.077878915e-01, 1.850157487e-02),
+    (1.847926858e-01, -9.588628125e-02),
+    (1.061070594e-01, -5.200673560e-01),
+    (3.669584901e-02, 1.087619490e+00),
+    (2.213558430e-02, 3.103964343e-01),
+];
+
+/// 2p STO-6G.
+static STO6G_2P: [(f64, f64); 6] = [
+    (5.868285913e+00, 7.924233646e-03),
+    (1.530329631e+00, 5.144104825e-02),
+    (5.475665231e-01, 1.898400060e-01),
+    (2.288932733e-01, 4.049863191e-01),
+    (1.046655969e-01, 4.012362861e-01),
+    (4.948220127e-02, 1.051855189e-01),
+];
+
+/// 3p STO-6G.
+static STO6G_3P: [(f64, f64); 6] = [
+    (5.077973607e+00, -3.329929840e-03),
+    (1.340786940e+00, -1.419488340e-02),
+    (2.248434849e-01, 1.639395770e-01),
+    (1.131741848e-01, 4.485358256e-01),
+    (6.076408893e-02, 3.908813050e-01),
+    (3.315424265e-02, 7.411456232e-02),
+];
+
+/// 4p STO-6G.
+static STO6G_4P: [(f64, f64); 6] = [
+    (2.389722618e+00, -1.665913575e-03),
+    (7.960947826e-01, -1.657464971e-02),
+    (3.415541380e-01, -5.958513378e-02),
+    (8.847434525e-02, 4.053115554e-01),
+    (4.958248334e-02, 5.433958189e-01),
+    (2.816929784e-02, 1.204970491e-01),
+];
+
+/// 5p STO-6G.
+static STO6G_5P: [(f64, f64); 6] = [
+    (3.778623374e+00, 1.163246387e-04),
+    (3.499121109e-01, -2.920771322e-02),
+    (1.683175469e-01, -1.381051233e-01),
+    (5.404070736e-02, 5.706134877e-01),
+    (3.328911801e-02, 4.768808140e-01),
+    (2.063815019e-02, 6.021665516e-02),
+];
+
+/// 3d STO-6G.
+static STO6G_3D: [(f64, f64); 6] = [
+    (2.488296923e+00, 7.283828112e-03),
+    (7.981487853e-01, 5.386799363e-02),
+    (3.311327490e-01, 2.072139149e-01),
+    (1.559114463e-01, 4.266269092e-01),
+    (7.877734732e-02, 3.843100204e-01),
+    (4.058484363e-02, 8.902827546e-02),
+];
+
+/// 4d STO-6G.
+static STO6G_4D: [(f64, f64); 6] = [
+    (4.634239420e+00, -4.749842876e-04),
+    (1.341648295e+00, -3.566777891e-03),
+    (2.209593028e-01, 1.108670481e-01),
+    (1.101467943e-01, 4.159646930e-01),
+    (5.904190370e-02, 4.621672517e-01),
+    (3.232628887e-02, 1.081250196e-01),
+];
+
+/// 5d STO-6G.
+static STO6G_5D: [(f64, f64); 6] = [
+    (8.820520428e-01, -4.097377019e-03),
+    (3.410838409e-01, -2.508271857e-02),
+    (9.204308840e-02, 2.648458555e-01),
+    (5.472831774e-02, 5.097437054e-01),
+    (3.391202830e-02, 2.654483467e-01),
+    (2.108227374e-02, 2.623132212e-02),
+];
+
 /// Look up STO-3G expansion for given principal quantum number and angular momentum.
 fn sto3g_coefficients(n: u8, l: u8) -> &'static [(f64, f64); 3] {
     match (n, l) {
@@ -344,7 +566,7 @@ fn double_factorial(n: i32) -> f64 {
 /// Normalization constant for a Cartesian Gaussian primitive.
 ///
 /// g(r) = N × x^lx × y^ly × z^lz × exp(-α|r-A|²)
-fn gaussian_norm(lx: u8, ly: u8, lz: u8, alpha: f64) -> f64 {
+pub(crate) fn gaussian_norm(lx: u8, ly: u8, lz: u8, alpha: f64) -> f64 {
     let l = (lx + ly + lz) as i32;
     let num = (4.0 * alpha).powi(l) * (2.0 * alpha / PI).powf(1.5);
     let den = double_factorial(2 * lx as i32 - 1)
@@ -404,6 +626,33 @@ fn overlap_1d(la: u8, lb: u8, pa: f64, pb: f64, gamma: f64) -> f64 {
 }
 
 /// Overlap between two normalized Cartesian Gaussian primitives.
+/// Cartesian Gaussian overlap for explicit primitive lists (absolute
+/// exponents/coefficients). Used by the GFN0 basis builder for
+/// Schmidt-orthogonalized shells and Cartesian-d blocks (validation F43).
+#[allow(clippy::too_many_arguments)]
+pub fn cart_prim_overlap(
+    lx_a: u8,
+    ly_a: u8,
+    lz_a: u8,
+    prims_a: &[(f64, f64)],
+    pos_a: &[f64; 3],
+    lx_b: u8,
+    ly_b: u8,
+    lz_b: u8,
+    prims_b: &[(f64, f64)],
+    pos_b: &[f64; 3],
+) -> f64 {
+    let mut s = 0.0;
+    for &(ar, ca) in prims_a.iter() {
+        for &(br, cb) in prims_b.iter() {
+            s += ca
+                * cb
+                * primitive_overlap(lx_a, ly_a, lz_a, ar, pos_a, lx_b, ly_b, lz_b, br, pos_b);
+        }
+    }
+    s
+}
+
 fn primitive_overlap(
     lx_a: u8,
     ly_a: u8,
@@ -488,12 +737,14 @@ pub fn sto_overlap_with_ng(
 
     // Collect primitives for A
     let prims_a: Vec<(f64, f64)> = match ng_a {
+        2 => sto2g_coefficients(n_a, l_a).to_vec(),
         4 => sto4g_coefficients(n_a, l_a).to_vec(),
         6 => sto6g_coefficients(n_a, l_a).to_vec(),
         _ => sto3g_coefficients(n_a, l_a).to_vec(),
     };
     // Collect primitives for B
     let prims_b: Vec<(f64, f64)> = match ng_b {
+        2 => sto2g_coefficients(n_b, l_b).to_vec(),
         4 => sto4g_coefficients(n_b, l_b).to_vec(),
         6 => sto6g_coefficients(n_b, l_b).to_vec(),
         _ => sto3g_coefficients(n_b, l_b).to_vec(),
@@ -523,9 +774,20 @@ pub fn sto_overlap_with_ng(
 /// Look up STO-6G expansion for given principal quantum number and angular momentum.
 fn sto6g_coefficients(n: u8, l: u8) -> Vec<(f64, f64)> {
     match (n, l) {
+        (1, 0) => STO6G_1S.to_vec(),
+        (2, 0) => STO6G_2S.to_vec(),
+        (3, 0) => STO6G_3S.to_vec(),
+        (4, 0) => STO6G_4S.to_vec(),
+        (5, 0) => STO6G_5S.to_vec(),
         (6, 0) => STO6G_6S.to_vec(),
+        (2, 1) => STO6G_2P.to_vec(),
+        (3, 1) => STO6G_3P.to_vec(),
+        (4, 1) => STO6G_4P.to_vec(),
+        (5, 1) => STO6G_5P.to_vec(),
         (6, 1) => STO6G_6P.to_vec(),
-        // For n < 6 or d-shells, use STO-4G as a fallback (these won't normally be called with ng=6)
+        (3, 2) => STO6G_3D.to_vec(),
+        (4, 2) => STO6G_4D.to_vec(),
+        (5, 2) => STO6G_5D.to_vec(),
         _ => sto4g_coefficients(n, l).to_vec(),
     }
 }
@@ -727,11 +989,13 @@ pub fn sto_multipole_with_ng(
     let zeta_b_sq = zeta_b * zeta_b;
 
     let prims_a: Vec<(f64, f64)> = match ng_a {
+        2 => sto2g_coefficients(n_a, l_a).to_vec(),
         4 => sto4g_coefficients(n_a, l_a).to_vec(),
         6 => sto6g_coefficients(n_a, l_a).to_vec(),
         _ => sto3g_coefficients(n_a, l_a).to_vec(),
     };
     let prims_b: Vec<(f64, f64)> = match ng_b {
+        2 => sto2g_coefficients(n_b, l_b).to_vec(),
         4 => sto4g_coefficients(n_b, l_b).to_vec(),
         6 => sto6g_coefficients(n_b, l_b).to_vec(),
         _ => sto3g_coefficients(n_b, l_b).to_vec(),
@@ -1115,5 +1379,17 @@ mod tests {
         println!("Diff primitive_overlap:     {:.3e}", total - expected);
         println!("Diff sto_overlap_with_ng:   {:.3e}", s_func - expected);
         println!("Diff sto_multipole_with_ng: {:.3e}", s_mp - expected);
+    }
+}
+
+/// Raw STO-nG table primitives as (exponent ratio, coefficient) for an
+/// (n, l) shell with ng primitives. Ratios multiply ζ² for absolute
+/// exponents. Used by the GFN0 basis builder (validation F43).
+pub(crate) fn sto_table_prims(n: u8, l: u8, ng: u8) -> Vec<(f64, f64)> {
+    match ng {
+        2 => sto2g_coefficients(n, l).to_vec(),
+        4 => sto4g_coefficients(n, l).to_vec(),
+        6 => sto6g_coefficients(n, l).to_vec(),
+        _ => sto3g_coefficients(n, l).to_vec(),
     }
 }
