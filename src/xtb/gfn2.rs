@@ -112,8 +112,11 @@ pub struct Gfn2Result {
     pub electronic_energy: f64,
     /// Repulsive energy (eV).
     pub repulsive_energy: f64,
-    /// Dispersion energy (eV) — D4.
+    /// Three-body (ATM) D4 dispersion energy (eV).
     pub dispersion_energy: f64,
+    /// Self-consistent two-body D4 dispersion energy (eV); already included
+    /// in `electronic_energy`.
+    pub dispersion_2_body_energy: f64,
     /// Halogen bond correction energy (eV).
     pub halogen_bond_energy: f64,
     /// Total energy (eV).
@@ -634,6 +637,8 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     let mut converged = false;
     let mut scc_iter = 0;
     let mut prev_e_elec = 0.0f64;
+    // Converged two-body SC-D4 energy (part of `electronic_energy`).
+    let mut e_d4_2body_ha = 0.0f64;
     let mut sh_shifts = vec![0.0f64; n_shells];
     // AES multipole moments (per atom)
     let mut dpat = vec![[0.0f64; 3]; n_atoms]; // atomic dipole moments
@@ -994,6 +999,7 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
         let d4_w_energy = d4_model.weight_references(&new_qat);
         let e_d4_sc = d4_model.get_energy(&d4_w_energy);
         let e_elec = e_elec + e_d4_sc;
+        e_d4_2body_ha = e_d4_sc;
 
         if debug_diag {
             let e_total_iter = e_elec + e_rep;
@@ -1088,6 +1094,7 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
         electronic_energy: e_elec_ha * EV_PER_HARTREE,
         repulsive_energy: e_rep * EV_PER_HARTREE,
         dispersion_energy: disp_ha * EV_PER_HARTREE,
+        dispersion_2_body_energy: e_d4_2body_ha * EV_PER_HARTREE,
         halogen_bond_energy: xb_ha * EV_PER_HARTREE,
         total_energy: total_ha * EV_PER_HARTREE,
         n_basis,
@@ -1645,5 +1652,19 @@ mod tests {
             "  HOMO: {:.6} eV, LUMO: {:.6} eV, gap: {:.6} eV",
             r.homo_energy, r.lumo_energy, r.gap
         );
+    }
+
+    #[test]
+    fn dispersion_decomposition_is_reported() {
+        let conf = crate::embed("Cc1ccccc1", 42);
+        let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let r = solve_gfn2(&conf.elements, &pos).unwrap();
+        assert!(r.dispersion_2_body_energy.is_finite());
+        assert!(
+            r.dispersion_2_body_energy <= 0.0,
+            "{}",
+            r.dispersion_2_body_energy
+        );
+        assert!(r.dispersion_energy.is_finite());
     }
 }
