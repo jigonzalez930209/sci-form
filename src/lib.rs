@@ -2428,7 +2428,11 @@ pub fn compute_nonpolar_solvation(
     solvation::compute_nonpolar_solvation(elements, positions, probe_radius)
 }
 
-/// Compute Generalized Born electrostatic + non-polar solvation energy.
+/// Compute Generalized Born (Still-HCT) electrostatic + non-polar solvation.
+///
+/// The non-polar term is `surface_tension · SASA` with the shared
+/// Shrake-Rupley implementation ([`surface::sasa`]). For the ALPB-corrected
+/// variant (xTB-compatible) use [`compute_alpb_solvation`].
 pub fn compute_gb_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -2445,6 +2449,20 @@ pub fn compute_gb_solvation(
         solute_dielectric,
         probe_radius,
     )
+}
+
+/// Compute ALPB (Analytical Linearized Poisson-Boltzmann) solvation energy.
+///
+/// ALPB extends the same Generalized Born electrostatics with the Klamt
+/// correction `(ε-1)/(ε + A·x)` and the shared SASA non-polar term. Use it
+/// instead of [`compute_gb_solvation`] when matching xTB/ALPB references.
+pub fn compute_alpb_solvation(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    charges: &[f64],
+    config: solvation_alpb::AlpbConfig,
+) -> solvation_alpb::AlpbResult {
+    solvation_alpb::compute_alpb_solvation(elements, positions, charges, &config)
 }
 
 // ─── Clustering API ──────────────────────────────────────────────────────────
