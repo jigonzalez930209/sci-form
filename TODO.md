@@ -151,7 +151,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 12. Force Fields
 - [ ] MMFF94 cobertura completa para metales de transición
-- [ ] Detector aromático independiente
+- [x] Detector aromático independiente (Hückel en `rings::perceive_aromaticity`, aplicado antes del force field)
 - [ ] Breakdown por términos energéticos en la API pública
 
 ### 13. Dispersion
