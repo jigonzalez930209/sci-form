@@ -162,7 +162,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] ESP: distancia mínima configurable (`EspGridConfig::min_distance`) y validación estricta de spacing/padding (`compute_esp_grid_with_config`, `compute_esp_with_config`)
 - [ ] Distance Geometry: detectar embeddings 2D/planos y re-perturbar; detección temprana de bounds contradictorios
 - [ ] EEQ: implementar cEEQ y limpiar restos de experimentalidad en nombres de API
-- [ ] Population: emitir warning cuando falte cobertura; exponer homo/lumo/gap en resultado público
+- [x] Population: warning de cobertura (elementos sin modelo de valencia / sin parámetros EHT) y homo/lumo/gap expuestos en `PopulationResult` (Rust y binding Python)
 - [ ] Fukui: evaluar Hirshfeld/CM5 para mayor robustez (actualmente basis-set-dependent via Mulliken)
 - [ ] Surface: documentar tabla de fallback radii; valorar opción tipo Connolly surface
 - [ ] Optimization: unificar optimizadores entre EHT/materials; variable-cell BFGS
