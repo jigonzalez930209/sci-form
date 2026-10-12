@@ -1,6 +1,7 @@
 use crate::graph::{Atom, Bond, BondOrder, BondStereo, ChiralType, Hybridization, Molecule};
 use nalgebra::Vector3;
 use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
 /// Recursive-descent parser that converts a SMILES string into a [`Molecule`] graph.
@@ -14,7 +15,7 @@ use std::collections::HashMap;
 pub struct SmilesParser<'a> {
     input: &'a [u8],
     pos: usize,
-    rings: HashMap<u32, (NodeIndex, BondOrder, BondStereo)>,
+    rings: HashMap<u32, (NodeIndex, BondOrder, BondStereo, bool)>,
     mol: &'a mut Molecule,
 }
 
@@ -50,18 +51,24 @@ impl<'a> SmilesParser<'a> {
     fn parse_chain(&mut self, mut prev_node: Option<NodeIndex>) -> Result<(), String> {
         let mut prev_bond_order = BondOrder::Single;
         let mut prev_bond_stereo = BondStereo::None;
+        let mut prev_bond_explicit = false;
 
-        let get_bond_order =
-            |m: &Molecule, prev: NodeIndex, curr: NodeIndex, order: BondOrder| -> BondOrder {
-                if order == BondOrder::Single
-                    && m.graph[prev].hybridization == Hybridization::SP2
-                    && m.graph[curr].hybridization == Hybridization::SP2
-                {
-                    BondOrder::Aromatic
-                } else {
-                    order
-                }
-            };
+        let get_bond_order = |m: &Molecule,
+                              prev: NodeIndex,
+                              curr: NodeIndex,
+                              order: BondOrder,
+                              explicit: bool|
+         -> BondOrder {
+            if order == BondOrder::Single
+                && !explicit
+                && m.graph[prev].hybridization == Hybridization::SP2
+                && m.graph[curr].hybridization == Hybridization::SP2
+            {
+                BondOrder::Aromatic
+            } else {
+                order
+            }
+        };
 
         while self.pos < self.input.len() {
             let c = self.peek().unwrap();
@@ -81,18 +88,22 @@ impl<'a> SmilesParser<'a> {
                 b'-' => {
                     self.advance();
                     prev_bond_order = BondOrder::Single;
+                    prev_bond_explicit = true;
                 }
                 b'=' => {
                     self.advance();
                     prev_bond_order = BondOrder::Double;
+                    prev_bond_explicit = true;
                 }
                 b'#' => {
                     self.advance();
                     prev_bond_order = BondOrder::Triple;
+                    prev_bond_explicit = true;
                 }
                 b':' => {
                     self.advance();
                     prev_bond_order = BondOrder::Aromatic;
+                    prev_bond_explicit = true;
                 }
                 b'.' => {
                     // Disconnected fragment separator — no bond between previous and next atom
@@ -100,16 +111,19 @@ impl<'a> SmilesParser<'a> {
                     prev_node = None;
                     prev_bond_order = BondOrder::Single;
                     prev_bond_stereo = BondStereo::None;
+                    prev_bond_explicit = false;
                 }
                 b'/' => {
                     self.advance();
                     prev_bond_order = BondOrder::Single;
                     prev_bond_stereo = BondStereo::E;
+                    prev_bond_explicit = true;
                 } // Simplify E/Z for now
                 b'\\' => {
                     self.advance();
                     prev_bond_order = BondOrder::Single;
                     prev_bond_stereo = BondStereo::Z;
+                    prev_bond_explicit = true;
                 }
                 b'%' | b'0'..=b'9' => {
                     let mut ring_num = 0;
@@ -128,13 +142,22 @@ impl<'a> SmilesParser<'a> {
                     }
                     if ring_num > 0 {
                         if let Some(prev) = prev_node {
-                            if let Some((target, order, stereo)) = self.rings.remove(&ring_num) {
+                            if let Some((target, order, stereo, order_explicit)) =
+                                self.rings.remove(&ring_num)
+                            {
                                 let mut final_order = if prev_bond_order != BondOrder::Single {
                                     prev_bond_order
                                 } else {
                                     order
                                 };
-                                final_order = get_bond_order(self.mol, prev, target, final_order);
+                                let final_explicit = prev_bond_explicit || order_explicit;
+                                final_order = get_bond_order(
+                                    self.mol,
+                                    prev,
+                                    target,
+                                    final_order,
+                                    final_explicit,
+                                );
                                 let final_stereo = if prev_bond_stereo != BondStereo::None {
                                     prev_bond_stereo
                                 } else {
@@ -149,12 +172,15 @@ impl<'a> SmilesParser<'a> {
                                     },
                                 );
                             } else {
-                                self.rings
-                                    .insert(ring_num, (prev, prev_bond_order, prev_bond_stereo));
+                                self.rings.insert(
+                                    ring_num,
+                                    (prev, prev_bond_order, prev_bond_stereo, prev_bond_explicit),
+                                );
                             }
                             // Reset bond state after closing/opening ring
                             prev_bond_order = BondOrder::Single;
                             prev_bond_stereo = BondStereo::None;
+                            prev_bond_explicit = false;
                         }
                     }
                 }
@@ -162,7 +188,13 @@ impl<'a> SmilesParser<'a> {
                     self.advance();
                     let node = self.parse_bracket_atom()?;
                     if let Some(prev) = prev_node {
-                        let order = get_bond_order(self.mol, prev, node, prev_bond_order);
+                        let order = get_bond_order(
+                            self.mol,
+                            prev,
+                            node,
+                            prev_bond_order,
+                            prev_bond_explicit,
+                        );
                         self.mol.add_bond(
                             prev,
                             node,
@@ -175,11 +207,18 @@ impl<'a> SmilesParser<'a> {
                     prev_node = Some(node);
                     prev_bond_order = BondOrder::Single;
                     prev_bond_stereo = BondStereo::None;
+                    prev_bond_explicit = false;
                 }
                 _ if c.is_ascii_alphabetic() || c == b'*' => {
                     let node = self.parse_organic_subset()?;
                     if let Some(prev) = prev_node {
-                        let order = get_bond_order(self.mol, prev, node, prev_bond_order);
+                        let order = get_bond_order(
+                            self.mol,
+                            prev,
+                            node,
+                            prev_bond_order,
+                            prev_bond_explicit,
+                        );
                         self.mol.add_bond(
                             prev,
                             node,
@@ -192,6 +231,7 @@ impl<'a> SmilesParser<'a> {
                     prev_node = Some(node);
                     prev_bond_order = BondOrder::Single;
                     prev_bond_stereo = BondStereo::None;
+                    prev_bond_explicit = false;
                 }
                 _ => return Err(format!("Unexpected character: {}", c as char)),
             }
@@ -248,6 +288,7 @@ impl<'a> SmilesParser<'a> {
             },
             chiral_tag: ChiralType::Unspecified,
             explicit_h: 0,
+            no_implicit_h: false,
         };
 
         Ok(self.mol.add_atom(atom))
@@ -471,6 +512,7 @@ impl<'a> SmilesParser<'a> {
             }, // Simplification
             chiral_tag: chiral,
             explicit_h: h_count,
+            no_implicit_h: true,
         };
 
         let node = self.mol.add_atom(atom);
@@ -491,10 +533,13 @@ impl<'a> SmilesParser<'a> {
 
             let mut current_valents = 0;
             let mut double_bonds = 0;
+            let mut double_bonds_to_oxygen = 0;
             let mut triple_bonds = 0;
             let mut aromatic_bonds = 0;
+            let mut degree = 0usize;
 
             for edge in self.mol.graph.edges(ni) {
+                degree += 1;
                 match edge.weight().order {
                     BondOrder::Single => {
                         current_valents += 1;
@@ -502,6 +547,14 @@ impl<'a> SmilesParser<'a> {
                     BondOrder::Double => {
                         current_valents += 2;
                         double_bonds += 1;
+                        let nb = if edge.source() == ni {
+                            edge.target()
+                        } else {
+                            edge.source()
+                        };
+                        if self.mol.graph[nb].element == 8 {
+                            double_bonds_to_oxygen += 1;
+                        }
                     }
                     BondOrder::Triple => {
                         current_valents += 3;
@@ -519,17 +572,46 @@ impl<'a> SmilesParser<'a> {
 
             // Fix hybridization for non-aromatics based on exact bond types
             if aromatic_bonds == 0 {
-                let actual_hybridization = if triple_bonds > 0 || double_bonds > 1 {
+                let elem = atom.element;
+                let actual_hybridization = if elem == 16 || elem == 15 {
+                    // Hypervalent S/P (matches RDKit): X=O systems with more
+                    // than two neighbours (sulfoxide/sulfone/sulfate,
+                    // phosphine oxide/phosphate) are SP3; X with two
+                    // neighbours and X=O bonds is SP2 (SO2); a single
+                    // X=C/X=S double bond is SP2.
+                    if double_bonds_to_oxygen > 0 {
+                        if degree > 2 {
+                            Hybridization::SP3
+                        } else {
+                            Hybridization::SP2
+                        }
+                    } else if double_bonds == 1 {
+                        Hybridization::SP2
+                    } else {
+                        Hybridization::SP3
+                    }
+                } else if elem == 5 {
+                    // Boron: trigonal (three neighbours) is SP2, tetrahedral
+                    // (four neighbours, e.g. BH4-) is SP3.
+                    if degree >= 4 {
+                        Hybridization::SP3
+                    } else {
+                        Hybridization::SP2
+                    }
+                } else if triple_bonds > 0 || double_bonds > 1 {
                     Hybridization::SP
                 } else if double_bonds == 1 {
                     Hybridization::SP2
                 } else {
-                    // Check for conjugation: N or O adjacent to double/aromatic bond → SP2
-                    // Matches RDKit: norbs==4, degree<=3, atomHasConjugatedBond → SP2
-                    let elem = atom.element;
+                    // Lone-pair donors (N, O) adopt SP2 next to a C/N pi system
+                    // (amide N, ester/carboxylate O). Multiple bonds on
+                    // hypervalent centres (P, S) do not propagate conjugation.
                     let is_conjugated = if (elem == 7 || elem == 8) && double_bonds == 0 {
-                        // Check if any neighbor has a double or aromatic bond (conjugation)
                         self.mol.graph.neighbors(ni).any(|nb| {
+                            let nb_elem = self.mol.graph[nb].element;
+                            if nb_elem == 15 || nb_elem == 16 {
+                                return false;
+                            }
                             self.mol.graph.edges(nb).any(|e| {
                                 matches!(e.weight().order, BondOrder::Double | BondOrder::Aromatic)
                             })
@@ -607,14 +689,18 @@ impl<'a> SmilesParser<'a> {
                 h_needed = 0;
             }
 
-            // Calculate total hydrogens to add for this atom in THIS iteration
-            // to maintain exact topological index order!
-            let total_h_for_this_atom = atom.explicit_h as i32
-                + if h_needed - (atom.explicit_h as i32) > 0 {
-                    h_needed - (atom.explicit_h as i32)
-                } else {
-                    0
-                };
+            // Bracket atoms ([...]) carry exactly the hydrogens written inside
+            // the brackets; unbracketed atoms take valence-derived implicit H.
+            let total_h_for_this_atom = if atom.no_implicit_h {
+                atom.explicit_h as i32
+            } else {
+                atom.explicit_h as i32
+                    + if h_needed - (atom.explicit_h as i32) > 0 {
+                        h_needed - (atom.explicit_h as i32)
+                    } else {
+                        0
+                    }
+            };
 
             if total_h_for_this_atom > 0 {
                 to_add.push((ni, total_h_for_this_atom as u8));
@@ -632,6 +718,7 @@ impl<'a> SmilesParser<'a> {
                     hybridization: Hybridization::Unknown,
                     chiral_tag: ChiralType::Unspecified,
                     explicit_h: 0,
+                    no_implicit_h: false,
                 });
                 self.mol.add_bond(
                     parent,
@@ -668,5 +755,65 @@ mod tests {
     fn test_parse_brackets_and_branches() {
         let mol = Molecule::from_smiles("C(C)(C)C").unwrap(); // Isobutane
         assert_eq!(mol.graph.node_count(), 14); // 4 C, 10 H
+    }
+
+    /// Cross-validation regression (F01): an explicit single bond between two
+    /// aromatic atoms (biphenyl) must stay single.
+    #[test]
+    fn test_explicit_single_bond_between_aromatic_atoms() {
+        let mol = Molecule::from_smiles("c1ccc(-c2ccccc2)cc1").unwrap();
+        let aromatic = mol
+            .graph
+            .edge_references()
+            .filter(|e| e.weight().order == crate::graph::BondOrder::Aromatic)
+            .count();
+        let single = mol
+            .graph
+            .edge_references()
+            .filter(|e| e.weight().order == crate::graph::BondOrder::Single)
+            .count();
+        assert_eq!(aromatic, 12, "both rings keep 12 aromatic bonds");
+        // 1 inter-ring C-C single bond + 10 C-H bonds
+        assert_eq!(single, 11);
+    }
+
+    /// Cross-validation regression (F01): bracket atoms carry exactly the
+    /// hydrogens written inside the brackets (`[Si]` -> no H, `[NH4+]` -> 4 H).
+    #[test]
+    fn test_bracket_atoms_have_no_implicit_hydrogens() {
+        let silane = Molecule::from_smiles("[Si](C)(C)C").unwrap();
+        assert_eq!(silane.graph.node_count(), 13); // Si + 3 C + 9 H
+
+        let ammonium = Molecule::from_smiles("[NH4+]").unwrap();
+        assert_eq!(ammonium.graph.node_count(), 5);
+
+        let carbene = Molecule::from_smiles("[CH2]").unwrap();
+        assert_eq!(carbene.graph.node_count(), 3);
+    }
+
+    /// Documented behavior: `Molecule::from_smiles` keeps the largest fragment
+    /// (counterions are dropped), while the raw parser keeps every fragment.
+    #[test]
+    fn test_fragment_handling_keeps_largest_fragment() {
+        let mut raw = Molecule::new("C.Cl");
+        {
+            let mut parser = SmilesParser::new("C.Cl", &mut raw);
+            parser.parse().unwrap();
+        }
+        let cl = raw
+            .graph
+            .node_indices()
+            .filter(|&i| raw.graph[i].element == 17)
+            .count();
+        assert_eq!(cl, 1, "raw parser keeps the counterion fragment");
+
+        let filtered = Molecule::from_smiles("C.Cl").unwrap();
+        assert!(
+            filtered
+                .graph
+                .node_indices()
+                .all(|i| filtered.graph[i].element != 17),
+            "from_smiles drops the smallest fragment by design"
+        );
     }
 }
