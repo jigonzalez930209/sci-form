@@ -128,10 +128,10 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Salida más allá del supuesto first-order (strong coupling)
 
 ### 7. GPU
-- [ ] Fallback CPU transparente cuando GPU no disponible
-- [ ] Tiling/sparse batching para MMFF94
-- [ ] Tuning dinámico de batch/workgroup según device
-- [ ] Mensajes útiles para hardware con poca VRAM
+- [x] Fallback CPU transparente cuando GPU no disponible (`compute_mmff94_nonbonded_with_report` + reportes de backend)
+- [x] Tiling/sparse batching para MMFF94 (`mmff94_row_tiles`, evaluación tiled verificada contra la no tiled)
+- [x] Tuning dinámico de batch/workgroup según device (`optimal_1d_dispatch`/`optimal_grid_dispatch` en MMFF94 y ESP)
+- [x] Mensajes útiles para hardware con poca VRAM (`MemoryError::hint` con acciones sugeridas)
 
 ### 8. Espectroscopía
 - [ ] Prescreening real (Cauchy-Schwarz o similar) para reducir cuello de botella O(N⁴) en sTDA
