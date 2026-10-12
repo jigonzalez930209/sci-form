@@ -29,7 +29,7 @@ const ELECTRONIC_KT: f64 = 9.500e-4;
 /// electrons `nel`, finds the Fermi level and returns fractional occupations
 /// in [0, 1] (per spin-channel; multiply by 2 for total). Also returns the
 /// electronic entropy `ts` in Hartree.
-fn get_fermi_filling(emo: &[f64], nel: f64, kt: f64) -> (Vec<f64>, f64) {
+pub(crate) fn get_fermi_filling(emo: &[f64], nel: f64, kt: f64) -> (Vec<f64>, f64) {
     let nao = emo.len();
     let mut focc = vec![0.0f64; nao];
 
@@ -1112,7 +1112,7 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
 /// with ka=10, kb=20, r_shift=2.0 bohr, cutoff=25.0 bohr.
 /// Covalent radii: Pyykko & Atsumi 2009 scaled by 4/3 and converted to bohr
 /// (same as mctc-lib `covalent_rad_d3`).
-fn compute_coordination_numbers(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Vec<f64> {
+pub(crate) fn compute_coordination_numbers(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Vec<f64> {
     let n = elements.len();
     const KA: f64 = 10.0; // steepness of first counting function
     const KB: f64 = 20.0; // steepness of second counting function
