@@ -14,6 +14,10 @@
 //! ALPB improves on standard GB by applying the Klamt correction factor
 //! that accounts for charge penetration effects in the solute cavity.
 //!
+//! Both the GB and ALPB non-polar terms use the shared Shrake-Rupley SASA
+//! implementation in [`crate::surface::sasa`], so the two methods differ only
+//! in the electrostatic kernel (Still-HCT vs ALPB-corrected).
+//!
 //! ## Reference
 //!
 //! Ehlert, Stahn, Spicher, Grimme, J. Chem. Theory Comput. 17, 4250 (2021).
