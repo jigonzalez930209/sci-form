@@ -1,4 +1,20 @@
 //! Frontier-orbital reactivity descriptors derived from EHT molecular orbitals.
+//!
+//! ## Condensed Fukui partitioning: evaluation (2026-10-12)
+//!
+//! The descriptors use the EHT frontier-orbital atom contributions (Mulliken
+//! partitioning), which are basis-set dependent. Alternatives evaluated:
+//!
+//! * **Hirshfeld/CM5**: need promolecular atomic densities and CM5 reference
+//!   charges, neither available in the crate; not adopted.
+//! * **NPA-condensed Fukui** (`population::npa`): would remove most of the
+//!   basis-set dependence, but requires charged EHT runs (N±1 electrons) and
+//!   `eht::solve_eht` only accepts the Wolfsberg-Helmholtz `k` (no charge
+//!   parameter); would need an occupation-aware EHT entry point first.
+//!
+//! Current decision: keep the Mulliken-based frontier descriptors, documented
+//! as basis-set dependent (validation F47 gates the site ranking, not the
+//! absolute values). Revisit when a charged-EHT path lands.
 
 use serde::{Deserialize, Serialize};
 
