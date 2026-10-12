@@ -115,6 +115,7 @@ fn test_parse_reference_data() {
             };
 
             let new_atom = sci_form::graph::Atom {
+                no_implicit_h: false,
                 element: atom.element,
                 position: nalgebra::Vector3::zeros(), // Ignore RDKit coords when building initial graph
                 charge: 0.0,                          // Not parsed yet
