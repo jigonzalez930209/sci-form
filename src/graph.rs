@@ -90,6 +90,7 @@ impl Atom {
 // Representing Molecule utilizing petgraph
 /// Molecular graph: atoms as nodes, bonds as edges.
 /// Constructed from a SMILES string via [`Molecule::from_smiles`].
+#[derive(Clone)]
 pub struct Molecule {
     pub graph: UnGraph<Atom, Bond>,
     pub name: String,
