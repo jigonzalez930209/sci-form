@@ -12,6 +12,11 @@ pub mod cell;
 pub mod cif;
 pub mod geometry_opt;
 pub mod sbu;
+// Waasmaier-Kirfel coefficients occasionally approximate `1/π` (clippy
+// `approx_constant` is deny-by-default); they are reference data, not math.
+#[allow(clippy::approx_constant)]
+pub mod scattering_factors;
+pub(crate) mod space_group_table;
 pub mod space_groups;
 
 pub use assembly::*;
