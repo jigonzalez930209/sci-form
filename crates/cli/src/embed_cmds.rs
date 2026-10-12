@@ -84,11 +84,11 @@ pub fn cmd_batch(
     let mut chunk: Vec<String> = Vec::with_capacity(BATCH_CHUNK);
 
     let flush_chunk = |chunk: &mut Vec<String>,
-                           writer: &mut dyn Write,
-                           total: &mut usize,
-                           ok: &mut usize,
-                           fail: &mut usize,
-                           first_json: &mut bool| {
+                       writer: &mut dyn Write,
+                       total: &mut usize,
+                       ok: &mut usize,
+                       fail: &mut usize,
+                       first_json: &mut bool| {
         if chunk.is_empty() {
             return;
         }
