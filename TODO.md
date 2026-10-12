@@ -98,7 +98,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ## Tareas Pendientes
 
 ### 1. Core Engine — Rendimiento
-- [ ] Reducir latencia single-conformer de ~106 ms/mol al target de 11 ms/mol — pendiente de perfilado dedicado (medir con `benchmark`/`perf`; el batch paralelo ya va a 1–2 ms/mol en moléculas pequeñas)
+- [ ] Reducir latencia single-conformer al target de 11 ms/mol — medición 2026-10-12 (release, llamada única): CCO 9.4 ms, benceno 5.7 ms, aspirina 15.2 ms, cafeína 25–31 ms (parse 0.05 + bounds 3–6 + embed ~24), colesterol 108 ms. El batch paralelo ya va a ~3.7 ms/mol (cafeína ×50). Perfilado bloqueado en esta máquina (`perf_event_paranoid`); siguiente paso: sesión dedicada con instrumentación por fases del pipeline ETKDG (bounds 15–20 %, embedding+refinamiento 80 %)
 - [x] CLI batch stdin: streaming real en chunks de 512 (`embed_cmds::cmd_batch`), JSON/XYZ/SDF incrementales
 
 ### 2. HF / Post-HF
