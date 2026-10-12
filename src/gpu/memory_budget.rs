@@ -304,6 +304,32 @@ pub enum MemoryError {
     },
 }
 
+impl MemoryError {
+    /// Actionable guidance for low-VRAM / limit failures.
+    pub fn hint(&self) -> &'static str {
+        match self {
+            MemoryError::BufferTooLarge { .. } => {
+                "Split the work into tiles (e.g. `mmff94_row_tiles`) or fall back to the CPU path."
+            }
+            MemoryError::BindingTooLarge { .. } => {
+                "Reduce the per-binding payload, tile the dispatch, or fall back to the CPU path."
+            }
+            MemoryError::TooManyBindings { .. } => {
+                "Pack several arrays into one buffer or split the kernel into passes."
+            }
+            MemoryError::WorkgroupSizeExceeded { .. } => {
+                "Use `GpuMemoryBudget::optimal_1d_dispatch` / `optimal_grid_dispatch` for the device limits."
+            }
+            MemoryError::TooManyInvocations { .. } => {
+                "Shrink the workgroup size (the WebGPU default is 256 invocations)."
+            }
+            MemoryError::TooManyWorkgroups { .. } => {
+                "Split the dispatch into multiple launches; each dimension allows 65535 workgroups by default."
+            }
+        }
+    }
+}
+
 impl std::fmt::Display for MemoryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -336,7 +362,8 @@ impl std::fmt::Display for MemoryError {
                     "Dimension {dimension}: {requested} workgroups exceeds max {max}"
                 )
             }
-        }
+        }?;
+        write!(f, " — {}", self.hint())
     }
 }
 
@@ -414,5 +441,22 @@ mod tests {
         let (wg_size, wg_count) = budget.optimal_1d_dispatch(1000);
         assert_eq!(wg_size, 64);
         assert_eq!(wg_count, 16); // ceil(1000/64)
+    }
+
+    #[test]
+    fn test_memory_errors_carry_actionable_hints() {
+        let budget = GpuMemoryBudget::webgpu_default();
+        let err = budget
+            .check_buffer(budget.limits.max_buffer_size + 1)
+            .unwrap_err();
+        let text = err.to_string();
+        assert!(text.contains("exceeds max"), "got {text:?}");
+        assert!(
+            text.contains("tiles") || text.contains("CPU"),
+            "got {text:?}"
+        );
+
+        let err = budget.check_workgroup([4096, 1, 1], [1, 1, 1]).unwrap_err();
+        assert!(err.hint().contains("optimal"), "got {:?}", err.hint());
     }
 }
