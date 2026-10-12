@@ -152,11 +152,11 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ### 12. Force Fields
 - [ ] MMFF94 cobertura completa para metales de transición
 - [x] Detector aromático independiente (Hückel en `rings::perceive_aromaticity`, aplicado antes del force field)
-- [ ] Breakdown por términos energéticos en la API pública
+- [x] Breakdown por términos energéticos en la API pública (`compute_uff_energy_breakdown`, `compute_mmff94_energy_breakdown`)
 
 ### 13. Dispersion
 - [ ] Completar parametrización/tablas D4 C6 hasta cobertura amplia
-- [ ] Descomposición energética visible cuando se combine con otros métodos
+- [x] Descomposición energética visible cuando se combine con otros métodos (GFN0 2/3-cuerpos, GFN1 e6/e8, GFN2 2-cuerpos vs ATM, D4 standalone e2/e3)
 
 ### 14. Otros Módulos Pendientes Menores
 - [x] ESP: distancia mínima configurable (`EspGridConfig::min_distance`) y validación estricta de spacing/padding (`compute_esp_grid_with_config`, `compute_esp_with_config`)
