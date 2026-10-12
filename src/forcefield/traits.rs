@@ -18,6 +18,27 @@ impl Default for MolecularForceField {
     }
 }
 
+/// Sum the energy of a term list per term type, preserving first-seen order.
+pub fn aggregate_breakdown(
+    terms: &[Box<dyn ForceFieldContribution>],
+    coords: &[f64],
+) -> Vec<(&'static str, f64)> {
+    let mut scratch = vec![0.0f64; coords.len()];
+    let mut kinds: Vec<&'static str> = Vec::new();
+    let mut sums: Vec<f64> = Vec::new();
+    for term in terms {
+        let energy = term.evaluate_energy_and_inject_gradient(coords, &mut scratch);
+        match kinds.iter().position(|&k| k == term.kind()) {
+            Some(idx) => sums[idx] += energy,
+            None => {
+                kinds.push(term.kind());
+                sums.push(energy);
+            }
+        }
+    }
+    kinds.into_iter().zip(sums).collect()
+}
+
 impl MolecularForceField {
     pub fn new() -> Self {
         MolecularForceField {
@@ -27,6 +48,27 @@ impl MolecularForceField {
 
     pub fn insert_dynamic_term(&mut self, term: Box<dyn ForceFieldContribution>) {
         self.iter_terms.push(term);
+    }
+
+    /// Per-term energy breakdown at `coords` (kcal/mol), in registration order.
+    ///
+    /// Each term is evaluated independently (its gradient contribution is
+    /// discarded); use [`MolecularForceField::energy_breakdown_aggregated`]
+    /// for one entry per term type.
+    pub fn energy_breakdown(&self, coords: &[f64]) -> Vec<(&'static str, f64)> {
+        let mut scratch = vec![0.0f64; coords.len()];
+        self.iter_terms
+            .iter()
+            .map(|term| {
+                let energy = term.evaluate_energy_and_inject_gradient(coords, &mut scratch);
+                (term.kind(), energy)
+            })
+            .collect()
+    }
+
+    /// Energy summed per term type (bond/angle/torsion/inversion/vdw/...).
+    pub fn energy_breakdown_aggregated(&self, coords: &[f64]) -> Vec<(&'static str, f64)> {
+        aggregate_breakdown(&self.iter_terms, coords)
     }
 
     /// Evaluate all registered terms for the current geometry.
