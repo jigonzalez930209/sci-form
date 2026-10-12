@@ -1,0 +1,72 @@
+{
+ "reference": "pymatgen 2026.9.24",
+ "generated": "2026-10-12",
+ "cases": [
+  {
+   "name": "NaCl",
+   "cif": "# generated using pymatgen\ndata_NaCl\n_symmetry_space_group_name_H-M   'P 1'\n_cell_length_a   5.64020000\n_cell_length_b   5.64020000\n_cell_length_c   5.64020000\n_cell_angle_alpha   90.00000000\n_cell_angle_beta   90.00000000\n_cell_angle_gamma   90.00000000\n_symmetry_Int_Tables_number   1\n_chemical_formula_structural   NaCl\n_chemical_formula_sum   'Na1 Cl1'\n_cell_volume   179.42523044\n_cell_formula_units_Z   1\nloop_\n _symmetry_equiv_pos_site_id\n _symmetry_equiv_pos_as_xyz\n  1  'x, y, z'\nloop_\n _atom_site_type_symbol\n _atom_site_label\n _atom_site_symmetry_multiplicity\n _atom_site_fract_x\n _atom_site_fract_y\n _atom_site_fract_z\n _atom_site_occupancy\n  Na  Na0  1  0.00000000  0.00000000  0.00000000  1\n  Cl  Cl1  1  0.50000000  0.50000000  0.50000000  1\n",
+   "lattice_params": [
+    5.6402,
+    5.6402,
+    5.6402,
+    90.0,
+    90.0,
+    90.0
+   ],
+   "n_sites": 2,
+   "elements": [
+    "Cl",
+    "Na"
+   ]
+  },
+  {
+   "name": "Si",
+   "cif": "# generated using pymatgen\ndata_Si\n_symmetry_space_group_name_H-M   'P 1'\n_cell_length_a   5.43100000\n_cell_length_b   5.43100000\n_cell_length_c   5.43100000\n_cell_angle_alpha   90.00000000\n_cell_angle_beta   90.00000000\n_cell_angle_gamma   90.00000000\n_symmetry_Int_Tables_number   1\n_chemical_formula_structural   Si\n_chemical_formula_sum   Si8\n_cell_volume   160.19147799\n_cell_formula_units_Z   8\nloop_\n _symmetry_equiv_pos_site_id\n _symmetry_equiv_pos_as_xyz\n  1  'x, y, z'\nloop_\n _atom_site_type_symbol\n _atom_site_label\n _atom_site_symmetry_multiplicity\n _atom_site_fract_x\n _atom_site_fract_y\n _atom_site_fract_z\n _atom_site_occupancy\n  Si  Si0  1  0.00000000  0.00000000  0.00000000  1\n  Si  Si1  1  0.25000000  0.25000000  0.25000000  1\n  Si  Si2  1  0.50000000  0.50000000  0.00000000  1\n  Si  Si3  1  0.25000000  0.75000000  0.75000000  1\n  Si  Si4  1  0.75000000  0.25000000  0.75000000  1\n  Si  Si5  1  0.75000000  0.75000000  0.25000000  1\n  Si  Si6  1  0.00000000  0.50000000  0.50000000  1\n  Si  Si7  1  0.50000000  0.00000000  0.50000000  1\n",
+   "lattice_params": [
+    5.431,
+    5.431,
+    5.431,
+    90.0,
+    90.0,
+    90.0
+   ],
+   "n_sites": 8,
+   "elements": [
+    "Si"
+   ]
+  },
+  {
+   "name": "TiO2 rutile",
+   "cif": "# generated using pymatgen\ndata_TiO2\n_symmetry_space_group_name_H-M   'P 1'\n_cell_length_a   4.59370000\n_cell_length_b   4.59370000\n_cell_length_c   2.95870000\n_cell_angle_alpha   90.00000000\n_cell_angle_beta   90.00000000\n_cell_angle_gamma   90.00000000\n_symmetry_Int_Tables_number   1\n_chemical_formula_structural   TiO2\n_chemical_formula_sum   'Ti2 O4'\n_cell_volume   62.43472318\n_cell_formula_units_Z   2\nloop_\n _symmetry_equiv_pos_site_id\n _symmetry_equiv_pos_as_xyz\n  1  'x, y, z'\nloop_\n _atom_site_type_symbol\n _atom_site_label\n _atom_site_symmetry_multiplicity\n _atom_site_fract_x\n _atom_site_fract_y\n _atom_site_fract_z\n _atom_site_occupancy\n  Ti  Ti0  1  0.00000000  0.00000000  0.00000000  1\n  Ti  Ti1  1  0.50000000  0.50000000  0.50000000  1\n  O  O2  1  0.30470000  0.30470000  0.00000000  1\n  O  O3  1  0.69530000  0.69530000  0.00000000  1\n  O  O4  1  0.19530000  0.80470000  0.50000000  1\n  O  O5  1  0.80470000  0.19530000  0.50000000  1\n",
+   "lattice_params": [
+    4.5937,
+    4.5937,
+    2.9587,
+    90.0,
+    90.0,
+    90.0
+   ],
+   "n_sites": 6,
+   "elements": [
+    "O",
+    "Ti"
+   ]
+  },
+  {
+   "name": "Cu",
+   "cif": "# generated using pymatgen\ndata_Cu\n_symmetry_space_group_name_H-M   'P 1'\n_cell_length_a   3.61490000\n_cell_length_b   3.61490000\n_cell_length_c   3.61490000\n_cell_angle_alpha   90.00000000\n_cell_angle_beta   90.00000000\n_cell_angle_gamma   90.00000000\n_symmetry_Int_Tables_number   1\n_chemical_formula_structural   Cu\n_chemical_formula_sum   Cu1\n_cell_volume   47.23771302\n_cell_formula_units_Z   1\nloop_\n _symmetry_equiv_pos_site_id\n _symmetry_equiv_pos_as_xyz\n  1  'x, y, z'\nloop_\n _atom_site_type_symbol\n _atom_site_label\n _atom_site_symmetry_multiplicity\n _atom_site_fract_x\n _atom_site_fract_y\n _atom_site_fract_z\n _atom_site_occupancy\n  Cu  Cu0  1  0.00000000  0.00000000  0.00000000  1\n",
+   "lattice_params": [
+    3.6149,
+    3.6149,
+    3.6149,
+    90.0,
+    90.0,
+    90.0
+   ],
+   "n_sites": 1,
+   "elements": [
+    "Cu"
+   ]
+  }
+ ]
+}
