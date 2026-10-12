@@ -138,7 +138,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Clasificar excitaciones dark/bright de forma más explícita (fluorescencia: umbral `dark_threshold` y bandera de Kasha)
 
 ### 9. SMARTS / SMIRKS
-- [ ] Recursive SMARTS (`$()`)
+- [x] Recursive SMARTS (`$()`): parser y matcher implementados y validados contra RDKit (anillos, carbonilos, negaciones y patrones ramificados en `smarts::matcher`)
 - [ ] Endurecer validación de atom maps antes de aplicar transformaciones
 
 ### 10. Solvación
