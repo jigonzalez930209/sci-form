@@ -206,6 +206,18 @@ fn compute_s2(
     sz * (sz + 1.0) + n_beta as f64 - overlap_sum
 }
 
+/// Frobenius norm of the SCF gradient (Pulay commutator) ||F P S − S P F||.
+///
+/// Evaluated with the Fock matrix built from `p`, this is zero exactly at a
+/// self-consistent density. It protects the convergence test against DIIS
+/// limit cycles where successive densities change little but are not fixed
+/// points.
+fn scf_gradient_norm(f: &DMatrix<f64>, p: &DMatrix<f64>, s: &DMatrix<f64>) -> f64 {
+    let fps = f * p * s;
+    let spf = s * p * f;
+    (&fps - &spf).norm()
+}
+
 /// RMS change between two density matrices.
 fn density_rms(a: &DMatrix<f64>, b: &DMatrix<f64>) -> f64 {
     let n = a.nrows();
@@ -243,6 +255,155 @@ fn diag_fock(fock: &DMatrix<f64>, x: &DMatrix<f64>, n_basis: usize) -> (DMatrix<
 
     let c = back_transform(&c_ortho, x);
     (c, energies)
+}
+
+/// Outcome of the UHF SCF iterations.
+struct UhfLoopState {
+    c_alpha: DMatrix<f64>,
+    c_beta: DMatrix<f64>,
+    e_alpha: Vec<f64>,
+    e_beta: Vec<f64>,
+    p_alpha: DMatrix<f64>,
+    p_beta: DMatrix<f64>,
+    p_total: DMatrix<f64>,
+    f_alpha: DMatrix<f64>,
+    f_beta: DMatrix<f64>,
+    e_total: f64,
+    converged: bool,
+    iterations: usize,
+}
+
+/// Iterate the UHF SCF equations starting from the H_core guess.
+///
+/// The level shift is applied only to the matrix that is diagonalized: it
+/// must never enter the energy expression or the returned effective Fock
+/// matrix.
+#[allow(clippy::too_many_arguments)]
+fn run_uhf_loop(
+    h_core: &DMatrix<f64>,
+    s: &DMatrix<f64>,
+    x: &DMatrix<f64>,
+    eris: &TwoElectronIntegrals,
+    n_basis: usize,
+    n_alpha: usize,
+    n_beta: usize,
+    e_nuc: f64,
+    config: &UhfConfig,
+) -> UhfLoopState {
+    // Initial guess: diagonalize H_core for both spins
+    let (mut c_alpha, mut e_alpha) = diag_fock(h_core, x, n_basis);
+    let (mut c_beta, mut e_beta) = diag_fock(h_core, x, n_basis);
+
+    let mut p_alpha = build_spin_density(&c_alpha, n_alpha);
+    let mut p_beta = build_spin_density(&c_beta, n_beta);
+    let mut p_total = &p_alpha + &p_beta;
+
+    let mut p_alpha_old = p_alpha.clone();
+    let mut p_beta_old = p_beta.clone();
+
+    let mut diis_alpha = DiisAccelerator::new(config.diis_size);
+    let mut diis_beta = DiisAccelerator::new(config.diis_size);
+    let mut e_total = 0.0;
+    let mut converged = false;
+    let mut scf_iter = 0;
+    let mut f_alpha = h_core.clone();
+    let mut f_beta = h_core.clone();
+
+    for iteration in 0..config.max_iterations {
+        scf_iter = iteration + 1;
+
+        // Build Fock matrices
+        f_alpha = build_uhf_fock(h_core, &p_total, &p_alpha, eris);
+        f_beta = build_uhf_fock(h_core, &p_total, &p_beta, eris);
+
+        // Pulay SCF gradient from the freshly built Fock matrices. It must be
+        // measured before DIIS extrapolation: an extrapolated Fock matrix need
+        // not commute with the density even in a limit cycle.
+        let grad =
+            scf_gradient_norm(&f_alpha, &p_alpha, s).max(scf_gradient_norm(&f_beta, &p_beta, s));
+
+        // DIIS operates on the unshifted Fock matrices.
+        if config.diis_size > 0 {
+            diis_alpha.add_iteration(&f_alpha, &p_alpha, s);
+            diis_beta.add_iteration(&f_beta, &p_beta, s);
+            if let Some(fa) = diis_alpha.extrapolate() {
+                f_alpha = fa;
+            }
+            if let Some(fb) = diis_beta.extrapolate() {
+                f_beta = fb;
+            }
+        }
+
+        // Level shift only affects the diagonalization.
+        let (mut f_alpha_diag, mut f_beta_diag) = (f_alpha.clone(), f_beta.clone());
+        if config.level_shift > 0.0 {
+            for i in 0..n_basis {
+                f_alpha_diag[(i, i)] += config.level_shift;
+                f_beta_diag[(i, i)] += config.level_shift;
+            }
+        }
+
+        // Diagonalize
+        let (ca_new, ea_new) = diag_fock(&f_alpha_diag, x, n_basis);
+        let (cb_new, eb_new) = diag_fock(&f_beta_diag, x, n_basis);
+        c_alpha = ca_new;
+        c_beta = cb_new;
+        e_alpha = ea_new;
+        e_beta = eb_new;
+
+        let pa_new = build_spin_density(&c_alpha, n_alpha);
+        let pb_new = build_spin_density(&c_beta, n_beta);
+
+        if config.damping > 0.0 {
+            p_alpha = &pa_new * (1.0 - config.damping) + &p_alpha_old * config.damping;
+            p_beta = &pb_new * (1.0 - config.damping) + &p_beta_old * config.damping;
+        } else {
+            p_alpha = pa_new;
+            p_beta = pb_new;
+        }
+        p_total = &p_alpha + &p_beta;
+
+        let e_elec = uhf_electronic_energy(&p_alpha, &p_beta, h_core, &f_alpha, &f_beta);
+        let e_new = e_elec + e_nuc;
+
+        let delta_e = (e_new - e_total).abs();
+        let delta_pa = density_rms(&p_alpha, &p_alpha_old);
+        let delta_pb = density_rms(&p_beta, &p_beta_old);
+        let delta_p = delta_pa.max(delta_pb);
+
+        // Tight acceptance: the energy change alone can look converged while
+        // the density is still several 1e-6 Hartree away when convergence is
+        // slow (rho close to 1). The Pulay gradient and a 1e-10 energy change
+        // remove that ambiguity.
+        if delta_e < config.energy_threshold.min(1e-10)
+            && delta_p < config.density_threshold
+            && grad < 1e-7
+            && iteration > 0
+        {
+            converged = true;
+            e_total = e_new;
+            break;
+        }
+
+        e_total = e_new;
+        p_alpha_old = p_alpha.clone();
+        p_beta_old = p_beta.clone();
+    }
+
+    UhfLoopState {
+        c_alpha,
+        c_beta,
+        e_alpha,
+        e_beta,
+        p_alpha,
+        p_beta,
+        p_total,
+        f_alpha,
+        f_beta,
+        e_total,
+        converged,
+        iterations: scf_iter,
+    }
 }
 
 /// Run an Unrestricted Hartree-Fock (UHF) calculation.
@@ -286,92 +447,55 @@ pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> UhfResult {
     // Löwdin orthogonalization
     let (x, _) = lowdin_orthogonalization(s, 1e-8);
 
-    // Initial guess: diagonalize H_core for both spins
-    let (mut c_alpha, mut e_alpha) = diag_fock(h_core, &x, n_basis);
-    let (mut c_beta, mut e_beta) = diag_fock(h_core, &x, n_basis);
-
-    let mut p_alpha = build_spin_density(&c_alpha, n_alpha);
-    let mut p_beta = build_spin_density(&c_beta, n_beta);
-    let mut p_total = &p_alpha + &p_beta;
-
-    let mut p_alpha_old = p_alpha.clone();
-    let mut p_beta_old = p_beta.clone();
-
-    // SCF loop
-    let mut diis_alpha = DiisAccelerator::new(config.diis_size);
-    let mut diis_beta = DiisAccelerator::new(config.diis_size);
-    let mut e_total = 0.0;
-    let mut converged = false;
-    let mut scf_iter = 0;
-    let mut f_alpha = h_core.clone();
-    let mut f_beta = h_core.clone();
-
-    for iteration in 0..config.max_iterations {
-        scf_iter = iteration + 1;
-
-        // Build Fock matrices
-        f_alpha = build_uhf_fock(h_core, &p_total, &p_alpha, &eris);
-        f_beta = build_uhf_fock(h_core, &p_total, &p_beta, &eris);
-
-        // Level shift
-        if config.level_shift > 0.0 {
-            for i in 0..n_basis {
-                f_alpha[(i, i)] += config.level_shift;
-                f_beta[(i, i)] += config.level_shift;
-            }
-        }
-
-        // DIIS
-        if config.diis_size > 0 {
-            diis_alpha.add_iteration(&f_alpha, &p_alpha, s);
-            diis_beta.add_iteration(&f_beta, &p_beta, s);
-            if let Some(fa) = diis_alpha.extrapolate() {
-                f_alpha = fa;
-            }
-            if let Some(fb) = diis_beta.extrapolate() {
-                f_beta = fb;
-            }
-        }
-
-        // Diagonalize
-        let (ca_new, ea_new) = diag_fock(&f_alpha, &x, n_basis);
-        let (cb_new, eb_new) = diag_fock(&f_beta, &x, n_basis);
-        c_alpha = ca_new;
-        c_beta = cb_new;
-        e_alpha = ea_new;
-        e_beta = eb_new;
-
-        let pa_new = build_spin_density(&c_alpha, n_alpha);
-        let pb_new = build_spin_density(&c_beta, n_beta);
-
-        if config.damping > 0.0 {
-            p_alpha = &pa_new * (1.0 - config.damping) + &p_alpha_old * config.damping;
-            p_beta = &pb_new * (1.0 - config.damping) + &p_beta_old * config.damping;
-        } else {
-            p_alpha = pa_new;
-            p_beta = pb_new;
-        }
-        p_total = &p_alpha + &p_beta;
-
-        let e_elec = uhf_electronic_energy(&p_alpha, &p_beta, h_core, &f_alpha, &f_beta);
-        let e_new = e_elec + e_nuc;
-
-        let delta_e = (e_new - e_total).abs();
-        let delta_pa = density_rms(&p_alpha, &p_alpha_old);
-        let delta_pb = density_rms(&p_beta, &p_beta_old);
-        let delta_p = delta_pa.max(delta_pb);
-
-        if delta_e < config.energy_threshold && delta_p < config.density_threshold && iteration > 0
-        {
-            converged = true;
-            e_total = e_new;
+    // The open-shell SCF can fail to converge for a given iteration schedule
+    // (DIIS limit cycles, slow fixed point). Escalate through progressively
+    // more robust schedules, always restarting from the H_core guess.
+    let mut schedules: Vec<UhfConfig> = vec![config.clone()];
+    if config.diis_size > 0 {
+        schedules.push(UhfConfig {
+            diis_size: 0,
+            damping: 0.0,
+            max_iterations: config.max_iterations.max(1024),
+            ..config.clone()
+        });
+        schedules.push(UhfConfig {
+            diis_size: 8,
+            damping: 0.0,
+            max_iterations: config.max_iterations.max(4096),
+            ..config.clone()
+        });
+    }
+    let mut state = run_uhf_loop(
+        h_core,
+        s,
+        &x,
+        &eris,
+        n_basis,
+        n_alpha,
+        n_beta,
+        e_nuc,
+        &schedules[0],
+    );
+    for schedule in schedules.iter().skip(1) {
+        if state.converged {
             break;
         }
-
-        e_total = e_new;
-        p_alpha_old = p_alpha.clone();
-        p_beta_old = p_beta.clone();
+        state = run_uhf_loop(
+            h_core, s, &x, &eris, n_basis, n_alpha, n_beta, e_nuc, schedule,
+        );
     }
+    let mut c_alpha = state.c_alpha;
+    let mut c_beta = state.c_beta;
+    let mut e_alpha = state.e_alpha;
+    let mut e_beta = state.e_beta;
+    let mut p_alpha = state.p_alpha;
+    let mut p_beta = state.p_beta;
+    let mut p_total = state.p_total;
+    let f_alpha = state.f_alpha;
+    let f_beta = state.f_beta;
+    let e_total = state.e_total;
+    let converged = state.converged;
+    let scf_iter = state.iterations;
 
     // ROHF: apply canonical ROHF projection if requested
     if config.rohf {
