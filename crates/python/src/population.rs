@@ -18,6 +18,14 @@ pub(crate) struct PopulationResultPy {
     total_charge_lowdin: f64,
     #[pyo3(get)]
     charge_conservation_error: f64,
+    #[pyo3(get)]
+    homo_energy: Option<f64>,
+    #[pyo3(get)]
+    lumo_energy: Option<f64>,
+    #[pyo3(get)]
+    gap: Option<f64>,
+    #[pyo3(get)]
+    warnings: Vec<String>,
 }
 #[pymethods]
 impl PopulationResultPy {
@@ -97,6 +105,10 @@ fn population(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<PopulationResultP
             total_charge_mulliken: r.total_charge_mulliken,
             total_charge_lowdin: r.total_charge_lowdin,
             charge_conservation_error: r.charge_conservation_error,
+            homo_energy: r.homo_energy,
+            lumo_energy: r.lumo_energy,
+            gap: r.gap,
+            warnings: r.warnings,
         })
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
