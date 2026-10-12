@@ -2,9 +2,9 @@
 
 use super::backend_report::OrbitalGridReport;
 use super::context::{
-    bytes_to_f64_vec_from_f32, ceil_div_u32, f32_slice_to_bytes, pack_uniform_values,
-    pack_vec3_positions_f32, ComputeBindingDescriptor, ComputeBindingKind,
-    ComputeDispatchDescriptor, GpuContext, UniformValue,
+    bytes_to_f64_vec_from_f32, f32_slice_to_bytes, pack_uniform_values, pack_vec3_positions_f32,
+    ComputeBindingDescriptor, ComputeBindingKind, ComputeDispatchDescriptor, GpuContext,
+    UniformValue,
 };
 use crate::esp::{compute_esp_grid, compute_esp_grid_with_config, EspGrid, EspGridConfig};
 
@@ -105,15 +105,18 @@ pub fn compute_esp_grid_gpu(
         UniformValue::F32(0.0),
     ]);
 
+    // Tune the dispatch through the memory budget; the shader declares a fixed
+    // `@workgroup_size(8, 8, 4)`, so the workgroup size must match it.
+    let budget = crate::gpu::memory_budget::GpuMemoryBudget::webgpu_default();
+    let (wg_size, wg_count) =
+        budget.optimal_grid_dispatch([dims[0] as u32, dims[1] as u32, dims[2] as u32]);
+    debug_assert_eq!(wg_size, [8, 8, 4], "ESP shader workgroup size mismatch");
+
     let descriptor = ComputeDispatchDescriptor {
         label: "esp grid".to_string(),
         shader_source: ESP_GRID_SHADER.to_string(),
         entry_point: "main".to_string(),
-        workgroup_count: [
-            ceil_div_u32(dims[0], 8),
-            ceil_div_u32(dims[1], 8),
-            ceil_div_u32(dims[2], 4),
-        ],
+        workgroup_count: wg_count,
         bindings: vec![
             ComputeBindingDescriptor {
                 label: "positions".to_string(),
