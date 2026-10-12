@@ -951,6 +951,9 @@ pub fn predict_chemical_shifts_for_nucleus(
     mol: &Molecule,
     nucleus: NmrNucleus,
 ) -> Vec<ChemicalShift> {
+    let perceived = crate::rings::perceived_aromaticity(mol);
+    let mol: &Molecule = perceived.as_ref().unwrap_or(mol);
+
     let n = mol.graph.node_count();
     let mut shifts = Vec::new();
 
@@ -976,6 +979,11 @@ pub fn predict_chemical_shifts_for_nucleus(
 
 /// Predict chemical shifts for all representative NMR-active nuclei in a molecule.
 pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
+    // Kekulé input: perceive aromaticity so the HOSE codes use the same
+    // aromatic bond symbol ('*') as the reference tables.
+    let perceived = crate::rings::perceived_aromaticity(mol);
+    let mol: &Molecule = perceived.as_ref().unwrap_or(mol);
+
     let n = mol.graph.node_count();
     let mut h_shifts = Vec::new();
     let mut c_shifts = Vec::new();
@@ -1089,6 +1097,31 @@ mod tests {
     }
 
     #[test]
+    fn test_kekule_aromatic_input_matches_aromatic_input() {
+        let aromatic = Molecule::from_smiles("c1ccccc1").unwrap();
+        let kekule = Molecule::from_smiles("C1=CC=CC=C1").unwrap();
+        let a = predict_chemical_shifts(&aromatic);
+        let k = predict_chemical_shifts(&kekule);
+        assert_eq!(a.h_shifts.len(), k.h_shifts.len());
+        assert_eq!(a.c_shifts.len(), k.c_shifts.len());
+        for (x, y) in a.h_shifts.iter().zip(k.h_shifts.iter()) {
+            assert!(
+                (x.shift_ppm - y.shift_ppm).abs() < 1e-9,
+                "H {} vs {}",
+                x.shift_ppm,
+                y.shift_ppm
+            );
+        }
+        for (x, y) in a.c_shifts.iter().zip(k.c_shifts.iter()) {
+            assert!(
+                (x.shift_ppm - y.shift_ppm).abs() < 1e-9,
+                "C {} vs {}",
+                x.shift_ppm,
+                y.shift_ppm
+            );
+        }
+    }
+
     fn test_benzene_h_shifts() {
         let mol = Molecule::from_smiles("c1ccccc1").unwrap();
         let result = predict_chemical_shifts(&mol);
