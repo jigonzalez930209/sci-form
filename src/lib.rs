@@ -893,15 +893,38 @@ pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult,
     let formal_charges: Vec<i8> = (0..n)
         .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].formal_charge)
         .collect();
-    let bonds: Vec<(usize, usize)> = mol
+    let bonds: Vec<(usize, usize, u8)> = mol
         .graph
         .edge_indices()
         .map(|e| {
             let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-            (a.index(), b.index())
+            let order = match mol.graph[e].order {
+                graph::BondOrder::Single => 1u8,
+                graph::BondOrder::Double => 2,
+                graph::BondOrder::Triple => 3,
+                graph::BondOrder::Aromatic => 4,
+                graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
         })
         .collect();
-    charges::gasteiger::gasteiger_marsili_charges(&elements, &bonds, &formal_charges, 6)
+    let modes: Vec<charges::gasteiger::GasteigerMode> = (0..n)
+        .map(
+            |i| match mol.graph[petgraph::graph::NodeIndex::new(i)].hybridization {
+                graph::Hybridization::SP => charges::gasteiger::GasteigerMode::Sp,
+                graph::Hybridization::SP2 => charges::gasteiger::GasteigerMode::Sp2,
+                graph::Hybridization::SP3 => charges::gasteiger::GasteigerMode::Sp3,
+                _ => charges::gasteiger::GasteigerMode::Default,
+            },
+        )
+        .collect();
+    charges::gasteiger::gasteiger_marsili_charges_full(
+        &elements,
+        &bonds,
+        &formal_charges,
+        Some(&modes),
+        &charges::gasteiger::GasteigerConfig::default(),
+    )
 }
 
 /// Compute solvent-accessible surface area from SMILES + 3D coordinates.
@@ -2458,21 +2481,39 @@ pub fn compute_charges_configured(
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
         .collect();
-    let bonds: Vec<(usize, usize)> = mol
+    let bonds: Vec<(usize, usize, u8)> = mol
         .graph
         .edge_indices()
         .map(|e| {
             let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-            (a.index(), b.index())
+            let order = match mol.graph[e].order {
+                graph::BondOrder::Single => 1u8,
+                graph::BondOrder::Double => 2,
+                graph::BondOrder::Triple => 3,
+                graph::BondOrder::Aromatic => 4,
+                graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
         })
         .collect();
     let formal_charges: Vec<i8> = (0..n)
         .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].formal_charge)
         .collect();
-    charges::gasteiger::gasteiger_marsili_charges_configured(
+    let modes: Vec<charges::gasteiger::GasteigerMode> = (0..n)
+        .map(
+            |i| match mol.graph[petgraph::graph::NodeIndex::new(i)].hybridization {
+                graph::Hybridization::SP => charges::gasteiger::GasteigerMode::Sp,
+                graph::Hybridization::SP2 => charges::gasteiger::GasteigerMode::Sp2,
+                graph::Hybridization::SP3 => charges::gasteiger::GasteigerMode::Sp3,
+                _ => charges::gasteiger::GasteigerMode::Default,
+            },
+        )
+        .collect();
+    charges::gasteiger::gasteiger_marsili_charges_full(
         &elements,
         &bonds,
         &formal_charges,
+        Some(&modes),
         config,
     )
 }
@@ -2592,7 +2633,7 @@ mod tests {
 
     #[test]
     fn test_method_plan_reports_unavailable_workflows_for_unsupported_elements() {
-        let plan = get_system_method_plan(&[92]);
+        let plan = get_system_method_plan(&[104]);
 
         assert_eq!(plan.force_field_energy.recommended, None);
         assert_eq!(plan.orbitals.recommended, None);
@@ -2634,7 +2675,7 @@ mod tests {
 
     #[test]
     fn test_compare_methods_reports_unavailable_for_unsupported_elements() {
-        let result = compare_methods("[O]", &[92], &[[0.0, 0.0, 0.0]], true);
+        let result = compare_methods("[O]", &[104], &[[0.0, 0.0, 0.0]], true);
         assert!(result
             .comparisons
             .iter()
