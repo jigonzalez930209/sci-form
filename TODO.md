@@ -150,7 +150,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Expansión más allá de topologías homogéneas (nets con aristas no equivalentes) — requiere más datos RCSR/pormake y ampliar el oráculo F67
 
 ### 12. Force Fields
-- [ ] MMFF94 cobertura completa para metales de transición
+- [x] MMFF94 cobertura para metales de transición: evaluado — el set oficial de MMFF94 no parametriza TMs; los metales se enrutan a UFF/GFN (documentado en el módulo)
 - [x] Detector aromático independiente (Hückel en `rings::perceive_aromaticity`, aplicado antes del force field)
 - [x] Breakdown por términos energéticos en la API pública (`compute_uff_energy_breakdown`, `compute_mmff94_energy_breakdown`)
 
@@ -164,7 +164,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] EEQ: limpiar restos de experimentalidad en nombres de API (comando CLI y bindings WASM sin feature gate)
 - [ ] EEQ: cEEQ/EEQ-BC — bloqueado por falta de referencia (no existe en xtb 6.7.1 ni tblite; requeriría el paper del modelo y sus tablas propias)
 - [x] Population: warning de cobertura (elementos sin modelo de valencia / sin parámetros EHT) y homo/lumo/gap expuestos en `PopulationResult` (Rust y binding Python)
-- [ ] Fukui: evaluar Hirshfeld/CM5 para mayor robustez (actualmente basis-set-dependent via Mulliken)
+- [x] Fukui: Hirshfeld/CM5 evaluado (requieren densidades promoleculares/cargas CM5 ausentes; NPA-condensado requiere EHT con carga, hoy no expuesto) — se mantiene Mulliken con la caveat documentada
 - [x] Surface: tabla de radios documentada (`VDW_FALLBACK_RADIUS`, `vdw_radius_source`) y evaluación Connolly/SES documentada (diferida hasta que un consumidor necesite la malla)
 - [x] Optimization: unificar optimizadores entre EHT/materials (EHT usa el BFGS compartido de `materials::geometry_opt`) y repulsión nuclear incluida en el gradiente EHT
 - [ ] Optimization: variable-cell BFGS — pendiente de un tensor de stress en el modelo periódico (el callback energía/fuerzas no lo expone)
