@@ -11,6 +11,9 @@
 use crate::gpu::context::{
     ComputeBindingDescriptor, ComputeBindingKind, ComputeDispatchDescriptor, GpuContext,
 };
+#[cfg(feature = "experimental-gpu")]
+use crate::gpu::memory_budget::GpuMemoryBudget;
+use crate::gpu::memory_budget::GpuMemoryLimits;
 
 use serde::{Deserialize, Serialize};
 
@@ -113,9 +116,10 @@ pub fn compute_mmff94_nonbonded_gpu(
     let n_output = 2; // [total_vdw, total_elec]
     let output_bytes = vec![0u8; n_output * 4];
 
-    let wg_size = 64u32;
     let n_pairs = n_atoms * (n_atoms - 1) / 2;
-    let wg_count = (n_pairs as u32).div_ceil(wg_size);
+    // Tune the dispatch to the device limits instead of a fixed workgroup size.
+    let (_wg_size, wg_count) =
+        GpuMemoryBudget::webgpu_default().optimal_1d_dispatch(n_pairs as u32);
 
     let descriptor = ComputeDispatchDescriptor {
         label: "MMFF94 non-bonded".to_string(),
@@ -166,6 +170,63 @@ pub fn compute_mmff94_nonbonded_gpu(
     })
 }
 
+/// Buffered-14-7 vdW + screened Coulomb energy for one pair (kcal/mol).
+///
+/// Returns `None` when the pair is out of the interaction window.
+fn mmff94_pair_energy(
+    i: usize,
+    j: usize,
+    coords: &[f64],
+    charges: &[f64],
+    vdw_radii: &[f64],
+    vdw_epsilon: &[f64],
+) -> Option<(f64, f64)> {
+    let dx = coords[i * 3] - coords[j * 3];
+    let dy = coords[i * 3 + 1] - coords[j * 3 + 1];
+    let dz = coords[i * 3 + 2] - coords[j * 3 + 2];
+    let r2 = dx * dx + dy * dy + dz * dz;
+    let r = r2.sqrt();
+    if !(0.1..=15.0).contains(&r) {
+        return None;
+    }
+
+    // MMFF94 Buffered 14-7 van der Waals
+    let r_star = vdw_radii[i] + vdw_radii[j];
+    let eps = (vdw_epsilon[i] * vdw_epsilon[j]).sqrt();
+    let rho = r / r_star;
+    let rho7 = rho.powi(7);
+    let e_vdw = eps * (1.07 / (rho + 0.07)).powi(7) * ((1.12 / (rho7 + 0.12)) - 2.0);
+
+    // Coulomb with dielectric screening
+    let e_elec = 332.0716 * charges[i] * charges[j] / (r + 0.05);
+    Some((e_vdw, e_elec))
+}
+
+/// Row-tile size (atoms per dispatch) so the per-tile exclusion bitmap
+/// (`rows × n_atoms` bits, half of the binding budget) fits in one storage
+/// binding. Larger systems are evaluated in several launches.
+pub fn mmff94_row_tile_size(n_atoms: usize, limits: &GpuMemoryLimits) -> usize {
+    if n_atoms == 0 {
+        return 1;
+    }
+    let budget_bytes = (limits.max_storage_buffer_binding_size / 2) as f64;
+    let rows = (8.0 * budget_bytes / n_atoms as f64).floor() as usize;
+    rows.max(1).min(n_atoms).min(4096)
+}
+
+/// Row tiles `[start, end)` covering every upper-triangle pair `i < j`.
+pub fn mmff94_row_tiles(n_atoms: usize, limits: &GpuMemoryLimits) -> Vec<(usize, usize)> {
+    let tile = mmff94_row_tile_size(n_atoms, limits);
+    let mut tiles = Vec::new();
+    let mut start = 0;
+    while start < n_atoms {
+        let end = (start + tile).min(n_atoms);
+        tiles.push((start, end));
+        start = end;
+    }
+    tiles
+}
+
 /// CPU fallback for MMFF94 non-bonded energy.
 pub fn compute_mmff94_nonbonded_cpu(
     coords: &[f64],
@@ -187,38 +248,17 @@ pub fn compute_mmff94_nonbonded_cpu(
     }
 
     for i in 0..n_atoms {
-        let xi = coords[i * 3];
-        let yi = coords[i * 3 + 1];
-        let zi = coords[i * 3 + 2];
-
         for j in (i + 1)..n_atoms {
             if excl_set.contains(&(i, j)) {
                 continue;
             }
-
-            let dx = xi - coords[j * 3];
-            let dy = yi - coords[j * 3 + 1];
-            let dz = zi - coords[j * 3 + 2];
-            let r2 = dx * dx + dy * dy + dz * dz;
-            let r = r2.sqrt();
-
-            if !(0.1..=15.0).contains(&r) {
-                continue;
+            if let Some((e_vdw, e_elec)) =
+                mmff94_pair_energy(i, j, coords, charges, vdw_radii, vdw_epsilon)
+            {
+                vdw_energy += e_vdw;
+                elec_energy += e_elec;
+                n_pairs += 1;
             }
-
-            // MMFF94 Buffered 14-7 van der Waals
-            let r_star = vdw_radii[i] + vdw_radii[j];
-            let eps = (vdw_epsilon[i] * vdw_epsilon[j]).sqrt();
-            let rho = r / r_star;
-            let rho7 = rho.powi(7);
-            let e_vdw = eps * (1.07 / (rho + 0.07)).powi(7) * ((1.12 / (rho7 + 0.12)) - 2.0);
-            vdw_energy += e_vdw;
-
-            // Coulomb with dielectric screening
-            let e_elec = 332.0716 * charges[i] * charges[j] / (r + 0.05);
-            elec_energy += e_elec;
-
-            n_pairs += 1;
         }
     }
 
@@ -230,6 +270,93 @@ pub fn compute_mmff94_nonbonded_cpu(
         used_gpu: false,
         backend: format!("CPU ({})", note),
     }
+}
+
+/// Tiled CPU evaluation mirroring the GPU row-tile dispatch.
+///
+/// Splits the upper-triangle pair space into row tiles so each dispatch only
+/// needs an exclusion bitmap for `rows × n_atoms` atoms; the accumulated
+/// energy is identical to [`compute_mmff94_nonbonded_cpu`].
+pub fn compute_mmff94_nonbonded_tiled_cpu(
+    coords: &[f64],
+    charges: &[f64],
+    vdw_radii: &[f64],
+    vdw_epsilon: &[f64],
+    exclusions_14: &[(usize, usize)],
+) -> Mmff94GpuResult {
+    let n_atoms = charges.len();
+    let limits = GpuMemoryLimits::default();
+    let tiles = mmff94_row_tiles(n_atoms, &limits);
+
+    let mut excl_set = std::collections::HashSet::new();
+    for &(i, j) in exclusions_14 {
+        excl_set.insert((i.min(j), i.max(j)));
+    }
+
+    let mut vdw_energy = 0.0;
+    let mut elec_energy = 0.0;
+    let mut n_pairs = 0;
+    for (start, end) in tiles {
+        for i in start..end {
+            for j in (i + 1)..n_atoms {
+                if excl_set.contains(&(i, j)) {
+                    continue;
+                }
+                if let Some((e_vdw, e_elec)) =
+                    mmff94_pair_energy(i, j, coords, charges, vdw_radii, vdw_epsilon)
+                {
+                    vdw_energy += e_vdw;
+                    elec_energy += e_elec;
+                    n_pairs += 1;
+                }
+            }
+        }
+    }
+
+    Mmff94GpuResult {
+        total_energy: vdw_energy + elec_energy,
+        vdw_energy,
+        electrostatic_energy: elec_energy,
+        n_pairs,
+        used_gpu: false,
+        backend: format!(
+            "CPU (tiled, {} tile(s))",
+            mmff94_row_tiles(n_atoms, &limits).len()
+        ),
+    }
+}
+
+/// Evaluate MMFF94 non-bonded energy with a transparent GPU → CPU fallback.
+///
+/// Tries the GPU when a device is available (and the system fits), otherwise
+/// evaluates on the CPU and reports why in `backend`.
+#[cfg(feature = "experimental-gpu")]
+pub fn compute_mmff94_nonbonded_with_report(
+    coords: &[f64],
+    charges: &[f64],
+    vdw_radii: &[f64],
+    vdw_epsilon: &[f64],
+    exclusions_14: &[(usize, usize)],
+) -> Mmff94GpuResult {
+    let ctx = GpuContext::best_available();
+    if ctx.is_gpu_available() {
+        if let Ok(result) = compute_mmff94_nonbonded_gpu(
+            &ctx,
+            coords,
+            charges,
+            vdw_radii,
+            vdw_epsilon,
+            exclusions_14,
+        ) {
+            return result;
+        }
+    }
+    let note = if ctx.is_gpu_available() {
+        "GPU dispatch failed"
+    } else {
+        "GPU not available"
+    };
+    compute_mmff94_nonbonded_cpu(coords, charges, vdw_radii, vdw_epsilon, exclusions_14, note)
 }
 
 /// WGSL compute shader for MMFF94 non-bonded interactions.
@@ -340,5 +467,88 @@ mod tests {
         assert!(result.total_energy.is_finite());
         assert!(result.electrostatic_energy < 0.0); // opposite charges attract
         assert!(!result.used_gpu);
+    }
+
+    fn chain(n: usize) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>) {
+        let mut coords = Vec::new();
+        for i in 0..n {
+            coords.extend_from_slice(&[i as f64 * 1.5, 0.0, 0.0]);
+        }
+        let charges: Vec<f64> = (0..n)
+            .map(|i| if i % 2 == 0 { 0.3 } else { -0.3 })
+            .collect();
+        let vdw_radii: Vec<f64> = (0..n).map(|i| 1.5 + 0.05 * (i % 3) as f64).collect();
+        let vdw_epsilon: Vec<f64> = (0..n).map(|i| 0.05 + 0.01 * (i % 2) as f64).collect();
+        (coords, charges, vdw_radii, vdw_epsilon)
+    }
+
+    #[test]
+    fn test_tiled_cpu_matches_untiled() {
+        let (coords, charges, vdw_radii, vdw_epsilon) = chain(24);
+        let exclusions = vec![(0, 1), (2, 3), (5, 9)];
+        let untiled = compute_mmff94_nonbonded_cpu(
+            &coords,
+            &charges,
+            &vdw_radii,
+            &vdw_epsilon,
+            &exclusions,
+            "test",
+        );
+        let tiled = compute_mmff94_nonbonded_tiled_cpu(
+            &coords,
+            &charges,
+            &vdw_radii,
+            &vdw_epsilon,
+            &exclusions,
+        );
+        assert_eq!(tiled.n_pairs, untiled.n_pairs);
+        assert!((tiled.total_energy - untiled.total_energy).abs() < 1e-12);
+        assert!((tiled.vdw_energy - untiled.vdw_energy).abs() < 1e-12);
+        assert!((tiled.electrostatic_energy - untiled.electrostatic_energy).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_row_tiles_cover_every_row_and_respect_limits() {
+        let limits = GpuMemoryLimits::default();
+        for n in [0usize, 1, 7, 64, 4096, 20000] {
+            let tiles = mmff94_row_tiles(n, &limits);
+            // Contiguous cover of 0..n.
+            let mut expected = 0usize;
+            for &(start, end) in &tiles {
+                assert_eq!(start, expected);
+                assert!(end > start);
+                expected = end;
+            }
+            assert_eq!(expected, n);
+            // The per-tile exclusion bitmap fits the binding budget.
+            if n > 0 {
+                let rows = mmff94_row_tile_size(n, &limits);
+                let bitmap_bytes = (rows * n).div_ceil(8) as u64;
+                assert!(
+                    bitmap_bytes <= limits.max_storage_buffer_binding_size,
+                    "n={n}: bitmap {bitmap_bytes} > {}",
+                    limits.max_storage_buffer_binding_size
+                );
+            }
+        }
+    }
+
+    #[cfg(feature = "experimental-gpu")]
+    #[test]
+    fn test_with_report_falls_back_to_cpu() {
+        let (coords, charges, vdw_radii, vdw_epsilon) = chain(8);
+        let result =
+            compute_mmff94_nonbonded_with_report(&coords, &charges, &vdw_radii, &vdw_epsilon, &[]);
+        let reference =
+            compute_mmff94_nonbonded_cpu(&coords, &charges, &vdw_radii, &vdw_epsilon, &[], "ref");
+        assert!((result.total_energy - reference.total_energy).abs() < 1e-12);
+        assert_eq!(result.n_pairs, reference.n_pairs);
+        if !result.used_gpu {
+            assert!(
+                result.backend.contains("GPU") || result.backend.contains("tiled"),
+                "fallback should explain itself, got {:?}",
+                result.backend
+            );
+        }
     }
 }
