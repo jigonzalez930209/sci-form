@@ -133,6 +133,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_alpb_nonpolar_term_uses_shared_sasa() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let charges = [-0.834, 0.417, 0.417];
+        let config = AlpbConfig::default();
+        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        // Same Shrake-Rupley implementation as `solvation::compute_nonpolar_solvation`.
+        let shared =
+            crate::surface::sasa::compute_sasa(&elements, &positions, Some(config.probe_radius), None);
+        let expected = config.surface_tension * shared.total_sasa;
+        assert!((result.nonpolar_energy - expected).abs() < 1e-12);
+    }
+
+    #[test]
     fn test_alpb_water_in_water() {
         let elements = [8, 1, 1];
         let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
