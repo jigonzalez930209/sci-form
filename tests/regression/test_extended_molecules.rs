@@ -532,7 +532,12 @@ mod extended_molecule_battery {
                 .map(|r| r.gap)
                 .unwrap_or(f64::NAN);
             let pm3_gap = solve_pm3(&elems, &pos).map(|r| r.gap).unwrap_or(f64::NAN);
-            let xtb_gap = solve_xtb(&elems, &pos).map(|r| r.gap).unwrap_or(f64::NAN);
+            // Use the validated GFN0-xTB port (F43) for the xTB column: the
+            // legacy `solve_xtb` approximation is slated for replacement and
+            // yields degenerate (gap = 0) frontier orbitals.
+            let xtb_gap = sci_form::xtb::gfn0::solve_gfn0(&elems, &pos, 0.0)
+                .map(|r| r.gap)
+                .unwrap_or(f64::NAN);
             let exp = run_scf(&system, &fast_parallel_scf_config());
             let exp_gap = if exp.converged { exp.gap_ev } else { f64::NAN };
 
