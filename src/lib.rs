@@ -1456,6 +1456,11 @@ pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String
 /// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
 ///
 /// Returns orbital energies, total energy, heat of formation, and Mulliken charges.
+/// Compute PM3 semi-empirical energy and orbital information.
+///
+/// Main-group elements use Stewart's PM3 parameters and transition metals the
+/// PM3(tm) set ([`pm3::pm3_method`] reports which one applies to an element).
+/// MOPAC parity is a documented gap (validation F42).
 pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Result, String> {
     pm3::solve_pm3(elements, positions)
 }
