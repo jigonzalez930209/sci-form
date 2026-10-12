@@ -11,7 +11,10 @@
 pub mod broyden;
 pub mod d4;
 pub mod d4_data;
+pub mod gfn0;
+pub mod gfn0_params;
 pub mod gfn1;
+pub mod gfn1_params;
 pub mod gfn2;
 pub mod gfn2_params;
 #[cfg(feature = "experimental-gpu")]
@@ -21,6 +24,7 @@ pub mod params;
 pub mod solver;
 pub mod sto_overlap;
 
+pub use gfn0::{solve_gfn0, Gfn0Result};
 pub use gfn1::{solve_gfn1, Gfn1Result};
 pub use gfn2::{solve_gfn2, Gfn2Result};
 pub use gradients::{compute_xtb_gradient, XtbGradientResult};
