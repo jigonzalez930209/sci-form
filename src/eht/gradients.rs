@@ -178,11 +178,7 @@ pub fn optimize_geometry_eht(
     // materials optimizer); the EHT gradient provides energy and forces.
     let energy_force = |els: &[u8], pos: &[[f64; 3]]| -> Result<(f64, Vec<[f64; 3]>), String> {
         let g = compute_eht_gradient(els, pos)?;
-        let forces: Vec<[f64; 3]> = g
-            .gradients
-            .iter()
-            .map(|v| [-v[0], -v[1], -v[2]])
-            .collect();
+        let forces: Vec<[f64; 3]> = g.gradients.iter().map(|v| [-v[0], -v[1], -v[2]]).collect();
         Ok((g.energy, forces))
     };
     let fw_config = crate::materials::geometry_opt::FrameworkOptConfig {
