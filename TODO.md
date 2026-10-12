@@ -108,7 +108,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 3. PM3
 - [ ] Completar parametrización residual: resonance integrals, nuclear repulsion, referencias atómicas para heat of formation
-- [ ] Delimitar claramente PM3 vs PM3(tm) en la superficie pública
+- [x] Delimitar claramente PM3 vs PM3(tm) en la superficie pública (`Pm3Method` + `pm3_method`, flag `tm` en la tabla)
 
 ### 4. xTB
 - [x] GFN1-xTB fiel a tblite 0.7.0 (H0 Slater con kpair/kshell/enscale, electrostática shell-resolved con tercer orden, repulsión efectiva, D3-BJ y corrección de halógeno); 8.1e-5 eV vs tblite en 18 moléculas (F44)
