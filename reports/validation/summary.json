@@ -75,13 +75,13 @@
   },
   "units": "kcal/mol",
   "level": "L2",
-  "n_cases": 398,
+  "n_cases": 400,
   "metric": "max_abs",
   "value": 3.979039320256561e-13,
   "tolerance": 0.01,
   "pass": true,
-  "notes": "canonical builder parity validated: angle ka (Z1/r13), order-specific angle terms + 3/4-ring corrections, torsion scaling/special cases, geometric-mean vdW without 1-4 scaling, inversion coefficients, R-typing. Measured max |\u0394E| = 0.0 kcal/mol (2026-10-11).",
-  "timestamp": "2026-10-12T10:27:29",
+  "notes": "canonical builder parity validated: angle ka (Z1/r13), order-specific angle terms + 3/4-ring corrections, torsion scaling/special cases, geometric-mean vdW without 1-4 scaling, inversion coefficients, R-typing; Kekul\u00e9 input is aromatized by rings::perceive_aromaticity before typing (400 cases, no aromaticity exclusions)",
+  "timestamp": "2026-10-12T15:53:03",
   "source": "tests/cross_validation.rs"
  },
  {
