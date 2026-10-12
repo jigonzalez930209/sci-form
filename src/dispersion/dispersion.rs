@@ -2,7 +2,6 @@
 //!
 //! Two-body BJ-damped dispersion with optional three-body ATM term.
 
-use super::params::{c8_from_c6, d4_coordination_number, dynamic_c6, get_d4_params};
 use serde::{Deserialize, Serialize};
 
 /// D4 configuration.
@@ -56,63 +55,34 @@ pub struct D4Result {
 
 /// Compute D4 dispersion energy.
 pub fn compute_d4_energy(elements: &[u8], positions: &[[f64; 3]], config: &D4Config) -> D4Result {
-    let n = elements.len();
-    let cn = d4_coordination_number(elements, positions);
-    let ang_to_bohr = 1.0 / 0.529177;
+    use crate::charges_eeq::compute_eeq2019_charges;
+    use crate::xtb::d4::{D4Damping, D4Model, D4RefSet};
 
-    #[cfg(feature = "parallel")]
-    let e2 = {
-        use rayon::prelude::*;
-        (0..n)
-            .into_par_iter()
-            .map(|i| {
-                ((i + 1)..n)
-                    .map(|j| pair_energy(i, j, elements, positions, &cn, config, ang_to_bohr))
-                    .sum::<f64>()
-            })
-            .sum::<f64>()
+    // Standalone D4 routes through the cross-validated `xtb::d4::D4Model`
+    // engine (validation F46): CN-dependent Gaussian reference weights with
+    // charge-dependent zeta scaling, Casimir-Polder C6, BJ damping and ATM.
+    // `positions` are in Angstrom; the engine works in Bohr.
+    const ANG_TO_BOHR: f64 = 1.0 / 0.529177210903;
+    let pos_bohr: Vec<[f64; 3]> = positions
+        .iter()
+        .map(|p| [p[0] * ANG_TO_BOHR, p[1] * ANG_TO_BOHR, p[2] * ANG_TO_BOHR])
+        .collect();
+
+    let damping = D4Damping {
+        s6: config.s6,
+        s8: config.s8,
+        a1: config.a1,
+        a2: config.a2,
+        s9: config.s9,
     };
-
-    #[cfg(not(feature = "parallel"))]
-    let e2 = (0..n)
-        .map(|i| {
-            ((i + 1)..n)
-                .map(|j| pair_energy(i, j, elements, positions, &cn, config, ang_to_bohr))
-                .sum::<f64>()
-        })
-        .sum::<f64>();
-
-    #[cfg(feature = "parallel")]
-    let e3 = if config.three_body && n >= 3 {
-        use rayon::prelude::*;
-        (0..n)
-            .into_par_iter()
-            .map(|i| {
-                let mut subtotal = 0.0;
-                for j in (i + 1)..n {
-                    for k in (j + 1)..n {
-                        subtotal +=
-                            triple_energy(i, j, k, elements, positions, &cn, config, ang_to_bohr);
-                    }
-                }
-                subtotal
-            })
-            .sum::<f64>()
-    } else {
-        0.0
-    };
-
-    #[cfg(not(feature = "parallel"))]
-    let e3 = if config.three_body && n >= 3 {
-        let mut total = 0.0;
-        for i in 0..n {
-            for j in (i + 1)..n {
-                for k in (j + 1)..n {
-                    total += triple_energy(i, j, k, elements, positions, &cn, config, ang_to_bohr);
-                }
-            }
-        }
-        total
+    let model = D4Model::with_damping_and_refs(elements, &pos_bohr, damping, D4RefSet::Dft);
+    // EEQ2019 charges (exact dftd4 port, F46); positions in Bohr.
+    let charges = compute_eeq2019_charges(elements, &pos_bohr, 0.0)
+        .unwrap_or_else(|| vec![0.0; elements.len()]);
+    let weights = model.weight_references(&charges);
+    let e2 = model.get_energy(&weights);
+    let e3 = if config.three_body {
+        model.get_atm_energy(&pos_bohr)
     } else {
         0.0
     };
@@ -125,93 +95,9 @@ pub fn compute_d4_energy(elements: &[u8], positions: &[[f64; 3]], config: &D4Con
         e3_body: e3,
         total_energy: total,
         total_kcal_mol: total * hartree_to_kcal,
-        coordination_numbers: cn,
+        coordination_numbers: model.cn.clone(),
     }
 }
-
-fn pair_energy(
-    i: usize,
-    j: usize,
-    elements: &[u8],
-    positions: &[[f64; 3]],
-    cn: &[f64],
-    config: &D4Config,
-    ang_to_bohr: f64,
-) -> f64 {
-    let dx = (positions[i][0] - positions[j][0]) * ang_to_bohr;
-    let dy = (positions[i][1] - positions[j][1]) * ang_to_bohr;
-    let dz = (positions[i][2] - positions[j][2]) * ang_to_bohr;
-    let r = (dx * dx + dy * dy + dz * dz).sqrt();
-
-    if r < 1e-10 {
-        return 0.0;
-    }
-
-    let c6 = dynamic_c6(elements[i], elements[j], cn[i], cn[j]);
-    let c8 = c8_from_c6(c6, elements[i], elements[j]);
-    let r0 = if c6 > 1e-10 { (c8 / c6).sqrt() } else { 5.0 };
-    let r_cut = config.a1 * r0 + config.a2;
-
-    let r6 = r.powi(6);
-    let damp6 = r6 / (r6 + r_cut.powi(6));
-    let term6 = -config.s6 * c6 / r6 * damp6;
-
-    let r8 = r.powi(8);
-    let damp8 = r8 / (r8 + r_cut.powi(8));
-    let term8 = -config.s8 * c8 / r8 * damp8;
-
-    term6 + term8
-}
-
-fn triple_energy(
-    i: usize,
-    j: usize,
-    k: usize,
-    elements: &[u8],
-    positions: &[[f64; 3]],
-    cn: &[f64],
-    config: &D4Config,
-    ang_to_bohr: f64,
-) -> f64 {
-    let r_ab = distance_bohr(positions, i, j, ang_to_bohr);
-    let r_bc = distance_bohr(positions, j, k, ang_to_bohr);
-    let r_ca = distance_bohr(positions, k, i, ang_to_bohr);
-
-    if r_ab < 1e-10 || r_bc < 1e-10 || r_ca < 1e-10 {
-        return 0.0;
-    }
-
-    let c6_ab = dynamic_c6(elements[i], elements[j], cn[i], cn[j]);
-    let c6_bc = dynamic_c6(elements[j], elements[k], cn[j], cn[k]);
-    let c6_ca = dynamic_c6(elements[k], elements[i], cn[k], cn[i]);
-
-    // C9 ≈ -sqrt(C6_AB * C6_BC * C6_CA) per Grimme D3 (JCP 132, 154104)
-    let c9 = -(c6_ab * c6_bc * c6_ca).abs().sqrt();
-
-    let cos_a = (r_ab * r_ab + r_ca * r_ca - r_bc * r_bc) / (2.0 * r_ab * r_ca);
-    let cos_b = (r_ab * r_ab + r_bc * r_bc - r_ca * r_ca) / (2.0 * r_ab * r_bc);
-    let cos_c = (r_bc * r_bc + r_ca * r_ca - r_ab * r_ab) / (2.0 * r_bc * r_ca);
-    let angular = 3.0 * cos_a * cos_b * cos_c + 1.0;
-    let r_prod = r_ab * r_bc * r_ca;
-
-    // ATM BJ-like damping per Grimme D3 (JCP 132, 154104, Eq. 6):
-    // f_damp = 1 / (1 + 6 * (R0_ABC / r_mean)^alpha)
-    // where R0_ABC = (4/3)*(R_cov_A + R_cov_B)^(1/3) * ... geometric mean of covalent radii
-    // and alpha = 14 (steep damping exponent)
-    let r_cov_i = get_d4_params(elements[i]).r_cov;
-    let r_cov_j = get_d4_params(elements[j]).r_cov;
-    let r_cov_k = get_d4_params(elements[k]).r_cov;
-    let r0_ab = (4.0 / 3.0) * (r_cov_i + r_cov_j);
-    let r0_bc = (4.0 / 3.0) * (r_cov_j + r_cov_k);
-    let r0_ca = (4.0 / 3.0) * (r_cov_k + r_cov_i);
-    let r0_prod = r0_ab * r0_bc * r0_ca;
-    let r9 = r_prod.powi(3);
-    let r0_9 = r0_prod.powi(3);
-    let fdamp = 1.0 / (1.0 + 6.0 * (r0_9 / r9));
-
-    config.s9 * c9 * angular / r9 * fdamp
-}
-
 /// Compute numerical D4 gradient.
 pub fn compute_d4_gradient(
     elements: &[u8],
@@ -238,14 +124,6 @@ pub fn compute_d4_gradient(
 
     gradient
 }
-
-fn distance_bohr(positions: &[[f64; 3]], i: usize, j: usize, ang_to_bohr: f64) -> f64 {
-    let dx = (positions[i][0] - positions[j][0]) * ang_to_bohr;
-    let dy = (positions[i][1] - positions[j][1]) * ang_to_bohr;
-    let dz = (positions[i][2] - positions[j][2]) * ang_to_bohr;
-    (dx * dx + dy * dy + dz * dz).sqrt()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
