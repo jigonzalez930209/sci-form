@@ -128,6 +128,7 @@ fn test_new_pipeline() {
                 _ => sci_form::graph::Hybridization::Unknown,
             };
             let new_atom = sci_form::graph::Atom {
+                no_implicit_h: false,
                 element: atom.element,
                 position: nalgebra::Vector3::zeros(),
                 charge: 0.0,
