@@ -6,18 +6,17 @@ use super::context::{
     pack_vec3_positions_f32, ComputeBindingDescriptor, ComputeBindingKind,
     ComputeDispatchDescriptor, GpuContext, UniformValue,
 };
-use crate::esp::{compute_esp_grid, EspGrid};
+use crate::esp::{compute_esp_grid, compute_esp_grid_with_config, EspGrid, EspGridConfig};
 
 pub fn compute_esp_grid_with_report(
     elements: &[u8],
     positions: &[[f64; 3]],
     mulliken_charges: &[f64],
-    spacing: f64,
-    padding: f64,
+    config: EspGridConfig,
 ) -> (EspGrid, OrbitalGridReport) {
     let ctx = GpuContext::best_available();
     if ctx.is_gpu_available() {
-        match compute_esp_grid_gpu(&ctx, positions, mulliken_charges, spacing, padding) {
+        match compute_esp_grid_gpu(&ctx, positions, mulliken_charges, config) {
             Ok(grid) => {
                 let n_points = grid.dims[0] * grid.dims[1] * grid.dims[2];
                 return (
@@ -35,7 +34,18 @@ pub fn compute_esp_grid_with_report(
         }
     }
 
-    let grid = compute_esp_grid(elements, positions, mulliken_charges, spacing, padding);
+    let grid = compute_esp_grid_with_config(elements, positions, mulliken_charges, config)
+        .unwrap_or_else(|_| {
+            // The public entry points validate first; keep an infallible
+            // fallback for direct callers of this helper.
+            compute_esp_grid(
+                elements,
+                positions,
+                mulliken_charges,
+                config.spacing,
+                config.padding,
+            )
+        });
     let n_points = grid.dims[0] * grid.dims[1] * grid.dims[2];
     (
         grid,
@@ -57,9 +67,10 @@ pub fn compute_esp_grid_gpu(
     ctx: &GpuContext,
     positions: &[[f64; 3]],
     mulliken_charges: &[f64],
-    spacing: f64,
-    padding: f64,
+    config: EspGridConfig,
 ) -> Result<EspGrid, String> {
+    let spacing = config.spacing;
+    let padding = config.padding;
     if positions.len() != mulliken_charges.len() {
         return Err("positions/charges length mismatch".to_string());
     }
@@ -90,6 +101,8 @@ pub fn compute_esp_grid_gpu(
         UniformValue::U32(dims[1] as u32),
         UniformValue::U32(dims[2] as u32),
         UniformValue::U32(positions.len() as u32),
+        UniformValue::F32(config.min_distance as f32),
+        UniformValue::F32(0.0),
     ]);
 
     let descriptor = ComputeDispatchDescriptor {
@@ -159,6 +172,8 @@ struct GridParams {
     spacing: f32,
     dims_x: u32, dims_y: u32, dims_z: u32,
     n_atoms: u32,
+    min_distance: f32,
+    _pad: f32,
 };
 
 @group(0) @binding(0) var<storage, read> positions: array<AtomPos>;
@@ -188,8 +203,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let dy = ry - pos.y;
         let dz = rz - pos.z;
         let dist = sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist < 0.01) { continue; }
-        phi += charges[atom] / (dist * 1.88972599);
+        // Clamp the nuclear singularity exactly like the CPU path.
+        let dist_clamped = max(dist, params.min_distance);
+        phi += charges[atom] / (dist_clamped * 1.88972599);
     }
     output[flat_idx] = phi;
 }
