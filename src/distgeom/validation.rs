@@ -574,3 +574,46 @@ pub fn perturb_if_planar(coords: &mut DMatrix<f64>, rng: &mut crate::distgeom::M
     }
     false
 }
+
+#[cfg(test)]
+mod planar_perturbation_tests {
+    use super::*;
+    use nalgebra::DMatrix;
+
+    #[test]
+    fn test_perturb_if_planar_moves_2d_embeddings_out_of_plane() {
+        let mut rng = crate::distgeom::MinstdRand::new(7);
+        // Six atoms laid out exactly in the xy plane.
+        let mut coords = DMatrix::<f64>::zeros(6, 3);
+        for i in 0..6 {
+            let a = i as f64 * std::f64::consts::TAU / 6.0;
+            coords[(i, 0)] = 1.5 * a.cos();
+            coords[(i, 1)] = 1.5 * a.sin();
+            coords[(i, 2)] = 0.0;
+        }
+        let z_before = coords.column(2).abs().max();
+        assert!(perturb_if_planar(&mut coords, &mut rng));
+        let z_after = coords.column(2).abs().max();
+        assert!(
+            z_after > z_before,
+            "planar embedding should gain z spread: {z_before} -> {z_after}"
+        );
+    }
+
+    #[test]
+    fn test_perturb_if_planar_keeps_3d_embeddings() {
+        let mut rng = crate::distgeom::MinstdRand::new(7);
+        let mut coords = DMatrix::<f64>::zeros(6, 3);
+        for i in 0..6 {
+            let a = i as f64 * std::f64::consts::TAU / 6.0;
+            coords[(i, 0)] = 1.5 * a.cos();
+            coords[(i, 1)] = 1.5 * a.sin();
+            coords[(i, 2)] = 0.4 * (i as f64) - 1.0;
+        }
+        assert!(!perturb_if_planar(&mut coords, &mut rng));
+
+        // Fewer than four atoms cannot be quasi-planar in a meaningful sense.
+        let mut tiny = DMatrix::<f64>::zeros(3, 3);
+        assert!(!perturb_if_planar(&mut tiny, &mut rng));
+    }
+}
