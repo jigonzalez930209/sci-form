@@ -134,7 +134,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Mensajes útiles para hardware con poca VRAM (`MemoryError::hint` con acciones sugeridas)
 
 ### 8. Espectroscopía
-- [ ] Prescreening real (Cauchy-Schwarz o similar) para reducir cuello de botella O(N⁴) en sTDA
+- [x] Prescreening real (Cauchy-Schwarz sobre normas de cargas de transición + ventanas de espacio activo; test de que el umbral anula el acoplamiento no diagonal)
 - [x] Clasificar excitaciones dark/bright de forma más explícita (fluorescencia: umbral `dark_threshold` y bandera de Kasha)
 
 ### 9. SMARTS / SMIRKS
