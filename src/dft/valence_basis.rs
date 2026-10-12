@@ -5,7 +5,9 @@
 //! An empty valence p shell is kept so the Kohn–Sham problem has virtuals.
 //! This is the all-electron path through Zn. Heavier metals need ECPs.
 
-use crate::scf::basis::{get_sto3g_shells, sto3g_tabulated, BasisSet, ContractedShell, GaussianPrimitive};
+use crate::scf::basis::{
+    get_sto3g_shells, sto3g_tabulated, BasisSet, ContractedShell, GaussianPrimitive,
+};
 
 const S_CORE: [(f64, f64); 3] = [
     (2.227660, 0.15432897),
@@ -23,22 +25,43 @@ const P_VAL: [(f64, f64); 3] = [
     (0.075139, 0.39195739),
 ];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DftBasisKind {
+    #[default]
+    Minimal,
+    /// 3-21G split-valence where tabulated (H, C, O); otherwise the minimal KS basis.
+    SplitValence,
+}
+
 pub fn ks_basis(elements: &[u8], positions_bohr: &[[f64; 3]]) -> Result<BasisSet, String> {
-    if let Some(z) = elements.iter().copied().find(|z| *z > 30) {
-        return Err(format!(
-            "KS-DFT all-electron minimal basis covers Z <= 30 (through Zn). Z={z} needs an ECP, which is the next step of this cycle."
-        ));
+    ks_basis_kind(elements, positions_bohr, DftBasisKind::Minimal)
+}
+
+pub fn ks_basis_kind(
+    elements: &[u8],
+    positions_bohr: &[[f64; 3]],
+    kind: DftBasisKind,
+) -> Result<BasisSet, String> {
+    if kind == DftBasisKind::SplitValence {
+        return split_valence_mixed(elements, positions_bohr);
     }
     let mut shells = Vec::new();
     for (atom_idx, (&z, &center)) in elements.iter().zip(positions_bohr.iter()).enumerate() {
-        if sto3g_tabulated(z) {
+        if z > 30 {
+            shells.extend(super::ecp::ecp_shells(
+                z, atom_idx, center, shell, &S_VAL, &P_VAL,
+            ));
+        } else if sto3g_tabulated(z) {
             shells.extend(get_sto3g_shells(z, atom_idx, center));
         } else {
             shells.extend(slater_shells(z, atom_idx, center));
         }
     }
     let basis = BasisSet::from_shells(shells);
-    let n_electrons: usize = elements.iter().map(|z| *z as usize).sum();
+    let n_electrons: usize = elements
+        .iter()
+        .map(|&z| z as usize - super::ecp::n_core(z) as usize)
+        .sum();
     if basis.n_basis * 2 < n_electrons {
         return Err(format!(
             "minimal basis has {} functions for {} electrons",
@@ -46,6 +69,34 @@ pub fn ks_basis(elements: &[u8], positions_bohr: &[[f64; 3]]) -> Result<BasisSet
         ));
     }
     Ok(basis)
+}
+
+fn split_valence_mixed(elements: &[u8], positions_bohr: &[[f64; 3]]) -> Result<BasisSet, String> {
+    let mut functions = Vec::new();
+    let mut function_to_atom = Vec::new();
+    for (atom_idx, (&z, &center)) in elements.iter().zip(positions_bohr.iter()).enumerate() {
+        let piece = if matches!(z, 1 | 6 | 8) {
+            crate::scf::extended_basis::build_basis_set(
+                crate::scf::extended_basis::BasisSetType::Basis321g,
+                &[z],
+                &[center],
+            )
+        } else {
+            ks_basis_kind(&[z], &[center], DftBasisKind::Minimal)?
+        };
+        for mut bf in piece.functions {
+            bf.atom_index = atom_idx;
+            functions.push(bf);
+            function_to_atom.push(atom_idx);
+        }
+    }
+    let n_basis = functions.len();
+    Ok(BasisSet {
+        functions,
+        shells: vec![],
+        n_basis,
+        function_to_atom,
+    })
 }
 
 fn n_star(n: u8) -> f64 {
@@ -96,7 +147,13 @@ fn zeta(z: u8, shell: u8) -> f64 {
     ((zf - sigma) / n_star(n)).clamp(0.4, 30.0)
 }
 
-fn shell(atom_index: usize, center: [f64; 3], l: u32, zeta: f64, fit: &[(f64, f64)]) -> ContractedShell {
+fn shell(
+    atom_index: usize,
+    center: [f64; 3],
+    l: u32,
+    zeta: f64,
+    fit: &[(f64, f64)],
+) -> ContractedShell {
     let z2 = zeta * zeta;
     ContractedShell {
         atom_index,
@@ -156,8 +213,20 @@ mod tests {
     }
 
     #[test]
-    fn past_zinc_asks_for_an_ecp() {
-        let err = ks_basis(&[31], &[[0.0, 0.0, 0.0]]).unwrap_err();
-        assert!(err.contains("ECP"));
+    fn past_zinc_uses_an_ecp_valence_basis() {
+        let basis = ks_basis(&[35], &[[0.0, 0.0, 0.0]]).unwrap();
+        assert!(basis.n_basis >= 4, "Br ECP valence includes s and p");
+        assert!(basis.n_basis * 2 >= 17);
+    }
+
+    #[test]
+    fn split_valence_h2_has_four_functions() {
+        let basis = ks_basis_kind(
+            &[1, 1],
+            &[[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]],
+            DftBasisKind::SplitValence,
+        )
+        .unwrap();
+        assert_eq!(basis.n_basis, 4);
     }
 }
