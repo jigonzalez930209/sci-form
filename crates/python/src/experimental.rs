@@ -149,8 +149,7 @@ mod alpb_py {
         probe_radius: f64,
     ) -> PyResult<AlpbBornRadiiPy> {
         let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let r =
-            sci_form_core::solvation_alpb::compute_born_radii(&elements, &pos, probe_radius);
+        let r = sci_form_core::solvation_alpb::compute_born_radii(&elements, &pos, probe_radius);
         Ok(AlpbBornRadiiPy {
             radii: r.radii,
             intrinsic: r.intrinsic,
