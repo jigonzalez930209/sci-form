@@ -1,0 +1,570 @@
+[
+ {
+  "ficha": "F01",
+  "observable": "parse_invariants_mismatches",
+  "reference": {
+   "tool": "RDKit 2026.09.1"
+  },
+  "units": "count",
+  "level": "L2",
+  "n_cases": 159,
+  "metric": "mismatched_cases",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "notes": "composition + heavy-atom bond multiset + formal-charge multiset + heavy-atom hybridization sequence must match RDKit/AddHs; skipped 1 multi-fragment (counterion) inputs",
+  "timestamp": "2026-10-12T10:27:29",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F05",
+  "observable": "sssr_multiset_mismatches",
+  "reference": {
+   "tool": "RDKit 2026.09.1"
+  },
+  "units": "count",
+  "level": "L2",
+  "n_cases": 159,
+  "metric": "mismatched_cases",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "notes": "sorted ring-size multiset (SSSR is not unique; multiset is the invariant)",
+  "timestamp": "2026-10-12T10:27:29",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F13",
+  "observable": "kabsch_rmsd_max_abs",
+  "reference": {
+   "tool": "NumPy SVD Kabsch"
+  },
+  "units": "angstrom",
+  "level": "L2",
+  "n_cases": 60,
+  "metric": "max_abs",
+  "value": 2.220446049250313e-15,
+  "tolerance": 1e-06,
+  "pass": true,
+  "notes": "random point clouds, no molecular symmetry/permutation",
+  "timestamp": "2026-10-12T10:27:30",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F14",
+  "observable": "butina_partition_mismatches",
+  "reference": {
+   "tool": "RDKit 2026.09.1 Butina"
+  },
+  "units": "count",
+  "level": "L2",
+  "n_cases": 12,
+  "metric": "mismatched_cases",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "notes": "partition compared up to cluster relabeling (Euclidean point clouds)",
+  "timestamp": "2026-10-12T10:27:30",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F16",
+  "observable": "uff_energy_abs_error",
+  "reference": {
+   "tool": "RDKit 2026.09.1 UFFGetMoleculeForceField"
+  },
+  "units": "kcal/mol",
+  "level": "L2",
+  "n_cases": 398,
+  "metric": "max_abs",
+  "value": 3.979039320256561e-13,
+  "tolerance": 0.01,
+  "pass": true,
+  "notes": "canonical builder parity validated: angle ka (Z1/r13), order-specific angle terms + 3/4-ring corrections, torsion scaling/special cases, geometric-mean vdW without 1-4 scaling, inversion coefficients, R-typing. Measured max |\u0394E| = 0.0 kcal/mol (2026-10-11).",
+  "timestamp": "2026-10-12T10:27:29",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F17",
+  "observable": "uff_atom_type_mismatches",
+  "reference": {
+   "tool": "RDKit 2026.09.1 UFF AtomTyper"
+  },
+  "units": "count",
+  "level": "L2",
+  "n_cases": 33641,
+  "metric": "mismatched_labels",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "notes": "per-atom getAtomLabel port (hybridization + conjugation + valence flags)",
+  "timestamp": "2026-10-12T10:27:30",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F21",
+  "observable": "gasteiger_charges_max_abs",
+  "reference": {
+   "tool": "RDKit 2026.09.1"
+  },
+  "units": "e",
+  "level": "L2",
+  "n_cases": 251,
+  "metric": "max_abs",
+  "value": 8.326672684688674e-17,
+  "tolerance": 0.02,
+  "pass": true,
+  "notes": "sci-form side recomputed by tests/cross_validation.rs::f21_charges",
+  "timestamp": "2026-10-12T10:27:29",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F23",
+  "observable": "mulliken_charges_max_abs",
+  "metric": "max_abs",
+  "value": 8.564493203522261e-08,
+  "tolerance": 0.005,
+  "pass": true,
+  "n_cases": 11,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F26",
+  "observable": "scf_mulliken_dipole_parity_debye",
+  "metric": "max_abs",
+  "value": 1.8288197956017882e-07,
+  "tolerance": 1e-06,
+  "pass": true,
+  "n_cases": 11,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F28",
+  "observable": "sasa_max_rel_error",
+  "reference": {
+   "tool": "FreeSASA python-bindings calcCoord (same radii/probe/npoints)"
+  },
+  "units": "relative",
+  "level": "L2",
+  "n_cases": 60,
+  "metric": "max_rel",
+  "value": 0.0153304192508353,
+  "tolerance": 0.02,
+  "pass": true,
+  "notes": "same Bondi radii + probe 1.4 + 960 points; residual is point-set difference",
+  "timestamp": "2026-10-12T10:27:29",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F36",
+  "observable": "scf_matrices_energy_mulliken",
+  "reference": {
+   "tool": "PySCF 2.14.0"
+  },
+  "units": "hartree / a.u.",
+  "level": "L2",
+  "n_cases": 11,
+  "metric": "max_abs_e_tot",
+  "value": 1.2234920632181456e-08,
+  "tolerance": 1e-07,
+  "pass": true,
+  "notes": "S/T/V tolerance 1e-9 (Boys precision); ERI 1e-10 (F37); E_tot 1e-7 Ha; mo_energies 1e-6 Ha; Mulliken 0.005 e. Measured by tests/cross_validation.rs::{f36_scf, f37_eri}.",
+  "timestamp": "2026-10-12T10:27:31",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F37",
+  "observable": "two_electron_integrals_max_abs",
+  "metric": "max_abs",
+  "value": 2.139111110466274e-11,
+  "tolerance": 1e-10,
+  "pass": true,
+  "n_cases": 13074,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F38",
+  "observable": "uhf_rohf_energy_s2",
+  "reference": {
+   "tool": "PySCF 2.14.0"
+  },
+  "units": "hartree",
+  "level": "L2",
+  "n_cases": 8,
+  "metric": "max_abs_e_tot",
+  "value": 6.501986427043249e-08,
+  "tolerance": 1e-06,
+  "pass": true,
+  "notes": "sci-form's UHF starts from the H_core guess, so the cross-check uses the matching PySCF UHF run (uhf_hcore). Tolerance 1e-6 Ha; <S^2> 1e-6. The default-guess (atom) references are stored too and document the initial-guess dependence for NH2/O2. Measured by tests/cross_validation.rs::f38_uhf_rohf.",
+  "timestamp": "2026-10-12T10:27:32",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F39",
+  "observable": "ao_to_mo_transform_max_abs",
+  "reference": {
+   "tool": "PySCF 2.14.0 ao2mo.full"
+  },
+  "units": "hartree (chemist notation (pq|rs))",
+  "level": "L2",
+  "n_cases": 13058,
+  "metric": "max_abs",
+  "value": 3.0642615842061153e-14,
+  "tolerance": 1e-10,
+  "pass": true,
+  "notes": "Same C and same AO ERIs on both sides; tolerance 1e-10 abs per element. Measured by tests/cross_validation.rs::f39_ao2mo.",
+  "timestamp": "2026-10-12T10:27:32",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F41",
+  "observable": "cis_singlet_excitations_ev",
+  "reference": {
+   "tool": "PySCF 2.14.0 tdscf.TDA (singlets)"
+  },
+  "units": "eV",
+  "level": "L2",
+  "n_cases": 8,
+  "metric": "max_abs",
+  "value": 1.7244915130217363e-06,
+  "tolerance": 0.01,
+  "pass": true,
+  "notes": "CIS/TDA singlet excitation energies, tolerance 0.01 eV per the validation plan. Measured by tests/cross_validation.rs::f41_cis.",
+  "timestamp": "2026-10-12T10:27:33",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F41",
+  "observable": "cis_singlet_excitations_max_abs_ev",
+  "metric": "max_abs",
+  "value": 2.6223579716599943e-06,
+  "tolerance": 0.01,
+  "pass": true,
+  "n_cases": 8,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F42",
+  "observable": "pm3_heat_of_formation_guard",
+  "reference": {
+   "tool": "NIST WebBook gas-phase \u0394Hf\u00b0(298 K)"
+  },
+  "units": "kcal/mol",
+  "level": "L4",
+  "n_cases": 11,
+  "metric": "max_abs_vs_experiment",
+  "value": 4200.554204524276,
+  "tolerance": 5000.0,
+  "pass": true,
+  "notes": "MOPAC cross-check BLOCKED (no binary/toolchain); this guard only trips on gross regressions of the current behavior. Measured by tests/cross_validation.rs::f42_pm3_guard.",
+  "timestamp": "2026-10-12T10:27:39",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F43",
+  "observable": "gfn0_single_point_ev",
+  "reference": {
+   "tool": "xtb GFN0-xTB"
+  },
+  "units": "eV",
+  "level": "L4",
+  "n_cases": 18,
+  "metric": "max_abs",
+  "value": 0.00016503430421721532,
+  "tolerance": 0.01,
+  "pass": true,
+  "notes": "Tolerance 1 kcal/mol (0.0434 eV) per the validation plan. Measured by tests/cross_validation.rs::f43_gfn0.",
+  "timestamp": "2026-10-12T10:27:38",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F44",
+  "observable": "gfn1_gfn2_fixture_provenance",
+  "reference": {
+   "tool": "tblite 0.7.0"
+  },
+  "units": "eV",
+  "level": "L4",
+  "n_cases": 18,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 0.0217,
+  "pass": null,
+  "notes": "Provenance only (tolerances live with the measured rows). F45 (GFN2) is validated to 6.5e-4 eV and F44 (GFN1) to 8.1e-5 eV by tests/cross_validation.rs::{f45_gfn2_matches_tblite, f44_gfn1_matches_tblite}.",
+  "timestamp": "2026-10-12T10:27:38",
+  "status": "tracked"
+ },
+ {
+  "ficha": "F44",
+  "observable": "gfn1_single_point_ev",
+  "metric": "max_abs",
+  "value": 8.063246434630855e-05,
+  "tolerance": 0.01,
+  "pass": true,
+  "n_cases": 18,
+  "source": "tests/cross_validation.rs",
+  "reference": {
+   "tool": "tblite 0.7.0"
+  },
+  "level": "L2",
+  "notes": "faithful GFN1-xTB port (tblite term by term): H0 kpair/kshell/enscale, shell-resolved Klopman-Ohno + atom third order, effective repulsion, D3(BJ) GFN1, halogen correction; HOMO/LUMO max |\u0394| = 4.2e-5 eV",
+  "units": "eV"
+ },
+ {
+  "ficha": "F45",
+  "observable": "gfn2_single_point_max_abs_ev",
+  "metric": "max_abs",
+  "value": 2.252494607546396e-05,
+  "tolerance": 0.0217,
+  "pass": true,
+  "n_cases": 18,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F46",
+  "observable": "d3_hf3c_max_abs_hartree",
+  "metric": "max_abs",
+  "value": 6.771661939519724e-09,
+  "tolerance": 1.5936014376405156e-06,
+  "pass": true,
+  "n_cases": 18,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F46",
+  "observable": "d4_pbe_standalone_max_abs_hartree",
+  "metric": "max_abs",
+  "value": 1.1558713318080005e-10,
+  "tolerance": 1.5936014376405156e-06,
+  "pass": true,
+  "n_cases": 18,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F46",
+  "observable": "d4d3_dispersion_fixture_provenance",
+  "reference": {
+   "tool": "dftd4 4.3.0"
+  },
+  "units": "hartree",
+  "level": "L4",
+  "n_cases": 18,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 1.5936014376405156e-06,
+  "pass": null,
+  "notes": "Provenance only. Both standalone paths are documented gaps (element-level C6 without coordination/charge dependence), tracked by tests/cross_validation.rs::f46_d3_d4_known_gaps_tracked.",
+  "timestamp": "2026-10-12T10:27:38",
+  "status": "tracked"
+ },
+ {
+  "ficha": "F47",
+  "observable": "eas_site_ranking",
+  "reference": {
+   "tool": "EAS textbook orientation rules (DFT-confirmed)"
+  },
+  "units": "rank",
+  "level": "L4",
+  "n_cases": 8,
+  "metric": "fraction_correct",
+  "value": 0.875,
+  "tolerance": 0.8,
+  "pass": true,
+  "notes": "Top-1 f- among ring CH must fall in the expected EAS set in >= 80% of the series (>= 7/8). Measured by tests/cross_validation.rs::f47_fukui.",
+  "timestamp": "2026-10-12T10:27:39",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F48",
+  "observable": "hessian_diagonalization_vs_xtb",
+  "reference": {
+   "tool": "xtb GFN2-xTB vibspectrum"
+  },
+  "units": "cm^-1",
+  "level": "L2",
+  "n_cases": 39,
+  "metric": "max_abs",
+  "value": 0.00891020826793465,
+  "tolerance": 2.0,
+  "pass": true,
+  "notes": "Same Hessian matrix in, same frequencies out: validates mass-weighting, rigid-body projection and cm^-1 conversion. Tolerance 2 cm^-1 per the validation plan. Measured by tests/cross_validation.rs::f48_hessian.",
+  "timestamp": "2026-10-12T10:27:39",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F49",
+  "observable": "ir_group_recall_vs_nist",
+  "metric": "recall",
+  "value": 1.0,
+  "tolerance": 0.9,
+  "pass": true,
+  "n_cases": 10,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F59",
+  "observable": "ecfp_tanimoto_rank_correlation",
+  "reference": {
+   "tool": "RDKit 2026.09.1 Morgan/ECFP4"
+  },
+  "units": "spearman",
+  "level": "L2",
+  "n_cases": 780,
+  "metric": "spearman",
+  "value": 0.7555407529991709,
+  "tolerance": 0.7,
+  "pass": true,
+  "notes": "bit vectors are not identical (different atom invariants by design); validation is on similarity ranking + self-similarity",
+  "timestamp": "2026-10-12T10:27:30",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F65",
+  "observable": "cif_roundtrip_vs_pymatgen",
+  "reference": {
+   "tool": "pymatgen 2026.9.24"
+  },
+  "units": "\u00c5 / degrees",
+  "level": "L2",
+  "n_cases": 4,
+  "metric": "max_abs_lattice_param",
+  "value": null,
+  "tolerance": 1e-06,
+  "pass": null,
+  "notes": "Cell parameters \u2264 1e-6 \u00c5/deg; round-trip stable. Measured by tests/cross_validation.rs::f65_cif.",
+  "timestamp": "2026-10-12T10:27:34",
+  "status": "tracked"
+ },
+ {
+  "ficha": "F66",
+  "observable": "minimum_image_distance_vs_ase",
+  "reference": {
+   "tool": "ASE 3.29.0"
+  },
+  "units": "\u00c5",
+  "level": "L0/L2",
+  "n_cases": 4,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 1e-10,
+  "pass": null,
+  "notes": "Minimum-image distances \u2264 1e-10 \u00c5; supercell/wrap invariants checked in the Rust test. Measured by tests/cross_validation.rs::f66_pbc.",
+  "timestamp": "2026-10-12T10:27:34",
+  "status": "tracked"
+ },
+ {
+  "ficha": "F67",
+  "observable": "mof5_assembly_vs_pormake",
+  "reference": {
+   "tool": "pormake Builder (pcu/N16/E14)"
+  },
+  "units": "atoms/equation",
+  "level": "L2",
+  "n_cases": 1,
+  "metric": "max_abs",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "notes": "Same BB geometries + same cell: atom count, composition and porosity must agree. Topology degrees vs RCSR .cgd coordinations gated in tests/cross_validation.rs::f67_topology. Conventional-cell literature anchor (25.832 A) reported, not gated (assembler takes the cell as input; pormake scaling is +2.55% off experiment).",
+  "timestamp": "2026-10-12T10:27:37",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F67",
+  "observable": "topology_degree_mismatches",
+  "metric": "mismatches",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "n_cases": 16,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F68",
+  "observable": "mof5_porosity_lcd_vs_pyzeo",
+  "metric": "max_abs",
+  "value": 0.0037261324265358553,
+  "tolerance": 0.3,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F68",
+  "observable": "mof5_porosity_pld_vs_pyzeo",
+  "metric": "max_abs",
+  "value": 0.29037257752501944,
+  "tolerance": 0.5,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F68",
+  "observable": "mof5_porosity_vf_vs_pyzeo",
+  "metric": "max_abs",
+  "value": 0.0007768819898305024,
+  "tolerance": 0.01,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F69",
+  "observable": "powder_xrd_vs_pymatgen",
+  "reference": {
+   "tool": "pymatgen 2026.9.24"
+  },
+  "units": "2\u03b8 degrees / relative intensity",
+  "level": "L2",
+  "n_cases": 4,
+  "metric": "max_abs_two_theta",
+  "value": null,
+  "tolerance": 0.01,
+  "pass": null,
+  "notes": "Peak positions tolerance 0.01\u00b0; intensity correlation \u2265 0.95 in the plan. Measured by tests/cross_validation.rs::f69_xrd.",
+  "timestamp": "2026-10-12T10:27:34",
+  "status": "tracked"
+ },
+ {
+  "ficha": "F70",
+  "observable": "uff_opt_energy_vs_rdkit",
+  "reference": {
+   "tool": "RDKit 2025.09 UFFOptimizeMolecule"
+  },
+  "units": "kcal/mol/atom",
+  "level": "L2",
+  "n_cases": 10,
+  "metric": "max_abs",
+  "value": 7.844337031788958e-10,
+  "tolerance": 1e-06,
+  "pass": true,
+  "notes": "Same UFF surface (F16 parity 3.98e-13 kcal/mol), same start: sci-form BFGS vs RDKit minimization. Tolerance 1e-3 kcal/mol/atom (4.3e-8 eV/atom, stricter than the plan's 1e-6 eV/atom: both minimizers land in the same basin). Measured by tests/cross_validation.rs::f70_framework_opt.",
+  "timestamp": "2026-10-12T10:27:30",
+  "source": "tests/cross_validation.rs"
+ }
+]
