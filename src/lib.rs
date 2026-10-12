@@ -1312,19 +1312,40 @@ pub fn compare_methods(
 }
 
 /// Compute ESP grid from atomic elements, positions and Mulliken charges.
+///
+/// Invalid `spacing`/`padding` values are rejected with an error; see
+/// [`compute_esp_with_config`] for explicit evaluation settings.
 pub fn compute_esp(
     elements: &[u8],
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
 ) -> Result<esp::EspGrid, String> {
+    compute_esp_with_config(
+        elements,
+        positions,
+        esp::EspGridConfig {
+            spacing,
+            padding,
+            min_distance: esp::DEFAULT_ESP_MIN_DISTANCE,
+        },
+    )
+}
+
+/// Compute the ESP grid with explicit evaluation settings
+/// (`spacing`, `padding` and the nuclear `min_distance` clamp).
+pub fn compute_esp_with_config(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    config: esp::EspGridConfig,
+) -> Result<esp::EspGrid, String> {
+    config.validate()?;
     let pop = compute_population(elements, positions)?;
     let (grid, _report) = gpu::esp_grid_gpu::compute_esp_grid_with_report(
         elements,
         positions,
         &pop.mulliken_charges,
-        spacing,
-        padding,
+        config,
     );
     Ok(grid)
 }
