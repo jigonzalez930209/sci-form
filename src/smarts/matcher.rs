@@ -596,4 +596,72 @@ mod tests {
         assert!(has_substruct_match(&mol, &pattern));
         assert!(!has_substruct_match(&mol, &inverse));
     }
+
+    /// Normalized match sets (sorted atoms per match, deduplicated).
+    fn match_sets(smiles: &str, smarts: &str) -> Vec<Vec<usize>> {
+        let mol = Molecule::from_smiles(smiles).unwrap();
+        let pattern = parse_smarts(smarts).unwrap();
+        let mut sets: Vec<Vec<usize>> = substruct_match(&mol, &pattern)
+            .into_iter()
+            .map(|mut m| {
+                m.sort_unstable();
+                m
+            })
+            .collect();
+        sets.sort();
+        sets.dedup();
+        sets
+    }
+
+    // The recursive SMARTS cases below were verified against RDKit 2026.09.1
+    // (`GetSubstructMatches` on `AddHs(MolFromSmiles(...))`, so the explicit
+    // hydrogens of our graph are part of the comparison).
+    #[test]
+    fn test_recursive_smarts_ring_membership() {
+        assert_eq!(
+            match_sets("c1ccccc1", "[$(c1ccccc1)]"),
+            vec![vec![0], vec![1], vec![2], vec![3], vec![4], vec![5]]
+        );
+        // Toluene: only the ring carbons match, not the methyl carbon.
+        assert_eq!(
+            match_sets("Cc1ccccc1", "[$(c1ccccc1)]"),
+            vec![vec![1], vec![2], vec![3], vec![4], vec![5], vec![6]]
+        );
+    }
+
+    #[test]
+    fn test_recursive_smarts_carbonyl_and_negation() {
+        assert_eq!(match_sets("CC(=O)C", "[$([#6]=[#8])]"), vec![vec![1]]);
+        // `[!$(C=O)]` matches every atom except the carbonyl carbon; with
+        // explicit hydrogens that includes the methyl hydrogens (atoms 4..9).
+        assert_eq!(
+            match_sets("CC(=O)C", "[!$([#6]=[#8])]"),
+            vec![
+                vec![0],
+                vec![2],
+                vec![3],
+                vec![4],
+                vec![5],
+                vec![6],
+                vec![7],
+                vec![8],
+                vec![9]
+            ]
+        );
+    }
+
+    #[test]
+    fn test_recursive_smarts_amide_pattern() {
+        // Four-atom recursive pattern over acetanilide: two ring-substituted
+        // matches (ortho positions 5 and 9 of the phenyl ring).
+        assert_eq!(
+            match_sets("CC(=O)Nc1ccccc1", "[$([CX3]=O):1][NX3H1:2]!@;-[c:3][cH1:4]"),
+            vec![vec![1, 3, 4, 5], vec![1, 3, 4, 9]]
+        );
+    }
+
+    #[test]
+    fn test_recursive_smarts_branched_atom() {
+        assert_eq!(match_sets("CC(C)(C)C", "[$(C(C)(C)C)]"), vec![vec![1]]);
+    }
 }
