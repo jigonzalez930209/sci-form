@@ -2,6 +2,10 @@
 pub trait ForceFieldContribution: Send + Sync {
     /// Evaluate the energy term and accumulate its Cartesian gradient contribution.
     fn evaluate_energy_and_inject_gradient(&self, coords: &[f64], grad: &mut [f64]) -> f64;
+    /// Short term-type label for diagnostics (validation F70).
+    fn kind(&self) -> &'static str {
+        "unknown"
+    }
 }
 
 pub struct MolecularForceField {
