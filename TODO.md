@@ -146,7 +146,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Separación clara entre GB y ALPB en la API
 
 ### 11. Materiales
-- [ ] Normalización automática de coordenadas fraccionales
+- [x] Normalización automática de coordenadas fraccionales (el parser CIF envuelve a [0,1) con `UnitCell::wrap_frac`)
 - [ ] Expansión más allá de topologías homogéneas
 
 ### 12. Force Fields
