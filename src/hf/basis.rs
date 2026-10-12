@@ -87,6 +87,49 @@ impl BasisSet {
     }
 }
 
+/// Convert an HF-3c basis to the equivalent `scf` basis set.
+///
+/// The `scf` integral engine is cross-validated against PySCF
+/// (docs/validation/cross-library-validation.es.md, fichas F36/F37), so the
+/// HF-3c paths reuse it instead of the legacy local Obara-Saika code.
+///
+/// HF-3c contraction coefficients already include the primitive
+/// normalization factors; the `scf` convention expects bare contraction
+/// coefficients (the primitive normalization is applied when evaluating
+/// integrals), so those factors are divided out here.
+pub(crate) fn to_scf_basis(basis: &BasisSet) -> crate::scf::basis::BasisSet {
+    use crate::scf::basis::{
+        BasisFunction, BasisSet as ScfBasisSet, ContractedShell, GaussianPrimitive,
+    };
+
+    let mut shells = Vec::with_capacity(basis.shells.len());
+    for shell in &basis.shells {
+        let (l, lx, ly, lz) = match shell.shell_type {
+            ShellType::S => (0u32, 0u32, 0u32, 0u32),
+            ShellType::P => (1u32, 1u32, 0u32, 0u32),
+        };
+        let primitives = shell
+            .exponents
+            .iter()
+            .zip(shell.coefficients.iter())
+            .map(|(&alpha, &coefficient)| {
+                let norm = BasisFunction::normalization(alpha, lx, ly, lz);
+                GaussianPrimitive {
+                    alpha,
+                    coefficient: coefficient / norm,
+                }
+            })
+            .collect();
+        shells.push(ContractedShell {
+            atom_index: shell.center_idx,
+            center: shell.center,
+            l,
+            primitives,
+        });
+    }
+    ScfBasisSet::from_shells(shells)
+}
+
 /// Map each AO index to its parent atom index.
 pub fn ao_to_atom_map(basis: &BasisSet) -> Vec<usize> {
     let mut map = Vec::with_capacity(basis.n_basis());
@@ -125,215 +168,280 @@ fn sto3g_shells(z: u8, center_idx: usize, center: [f64; 3]) -> Vec<Shell> {
             center_idx,
             center,
             shell_type: ShellType::S,
-            exponents: vec![3.42525091, 0.62391373, 0.16885540],
-            coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+            exponents: vec![3.4252509099999999, 0.62391373000000006, 0.16885539999999999],
+            coefficients: vec![
+                0.15432897000000001,
+                0.53532813999999995,
+                0.44463454000000002,
+            ],
         }],
+
         6 => vec![
-            // 1s core
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![71.6168370, 13.0450960, 3.5305122],
-                coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+                exponents: vec![71.616837000000004, 13.045095999999999, 3.5305122],
+                coefficients: vec![
+                    0.15432897000000001,
+                    0.53532813999999995,
+                    0.44463454000000002,
+                ],
             },
-            // 2s valence
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![2.9412494, 0.6834831, 0.2222899],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
+                exponents: vec![2.9412493999999998, 0.68348310000000001, 0.22228990000000001],
+                coefficients: vec![
+                    -0.099967230000000004,
+                    0.39951282999999999,
+                    0.70011546999999996,
+                ],
             },
-            // 2p valence
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::P,
-                exponents: vec![2.9412494, 0.6834831, 0.2222899],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![2.9412493999999998, 0.68348310000000001, 0.22228990000000001],
+                coefficients: vec![0.15591627, 0.60768372000000004, 0.39195739000000002],
             },
         ],
+
         7 => vec![
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![99.1061690, 18.0523120, 4.8856602],
-                coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+                exponents: vec![99.106168999999994, 18.052312000000001, 4.8856602000000002],
+                coefficients: vec![
+                    0.15432897000000001,
+                    0.53532813999999995,
+                    0.44463454000000002,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![3.7804559, 0.8784966, 0.2857144],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
+                exponents: vec![3.7804559000000002, 0.87849659999999996, 0.28571439999999998],
+                coefficients: vec![
+                    -0.099967230000000004,
+                    0.39951282999999999,
+                    0.70011546999999996,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::P,
-                exponents: vec![3.7804559, 0.8784966, 0.2857144],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![3.7804559000000002, 0.87849659999999996, 0.28571439999999998],
+                coefficients: vec![0.15591627, 0.60768372000000004, 0.39195739000000002],
             },
         ],
+
         8 => vec![
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![130.7093200, 23.8088610, 6.4436083],
-                coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+                exponents: vec![130.70931999999999, 23.808861, 6.4436083000000002],
+                coefficients: vec![
+                    0.15432897000000001,
+                    0.53532813999999995,
+                    0.44463454000000002,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![5.0331513, 1.1695961, 0.3803890],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
+                exponents: vec![5.0331513000000001, 1.1695960999999999, 0.38038899999999998],
+                coefficients: vec![
+                    -0.099967230000000004,
+                    0.39951282999999999,
+                    0.70011546999999996,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::P,
-                exponents: vec![5.0331513, 1.1695961, 0.3803890],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![5.0331513000000001, 1.1695960999999999, 0.38038899999999998],
+                coefficients: vec![0.15591627, 0.60768372000000004, 0.39195739000000002],
             },
         ],
+
         9 => vec![
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![166.6791300, 30.3608120, 8.2168207],
-                coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+                exponents: vec![166.67912999999999, 30.360811999999999, 8.2168206999999995],
+                coefficients: vec![
+                    0.15432897000000001,
+                    0.53532813999999995,
+                    0.44463454000000002,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![6.4648032, 1.5022812, 0.4885885],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
+                exponents: vec![6.4648032000000004, 1.5022812000000001, 0.48858849999999998],
+                coefficients: vec![
+                    -0.099967230000000004,
+                    0.39951282999999999,
+                    0.70011546999999996,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::P,
-                exponents: vec![6.4648032, 1.5022812, 0.4885885],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![6.4648032000000004, 1.5022812000000001, 0.48858849999999998],
+                coefficients: vec![0.15591627, 0.60768372000000004, 0.39195739000000002],
             },
         ],
+
         15 => vec![
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![508.291310, 92.5891370, 25.0571730],
-                coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+                exponents: vec![468.3656378, 85.313385589999996, 23.089131559999998],
+                coefficients: vec![
+                    0.15432896730000001,
+                    0.53532814230000003,
+                    0.44463454219999998,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![18.5172490, 4.30422160, 1.39999670],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
-            },
-            Shell {
-                center_idx,
-                center,
-                shell_type: ShellType::P,
-                exponents: vec![18.5172490, 4.30422160, 1.39999670],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![28.032639580000001, 6.5141825769999997, 2.1186143519999998],
+                coefficients: vec![-0.099967229190000007, 0.3995128261, 0.70011546889999998],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![1.56367880, 0.36368650, 0.11828520],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
+                exponents: vec![1.7431032310000001, 0.48632137710000001, 0.19034289090000001],
+                coefficients: vec![
+                    -0.21962036900000001,
+                    0.22559543360000001,
+                    0.90039842599999997,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::P,
-                exponents: vec![1.56367880, 0.36368650, 0.11828520],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![28.032639580000001, 6.5141825769999997, 2.1186143519999998],
+                coefficients: vec![0.15591627499999999, 0.60768371860000003, 0.3919573931],
+            },
+            Shell {
+                center_idx,
+                center,
+                shell_type: ShellType::P,
+                exponents: vec![1.7431032310000001, 0.48632137710000001, 0.19034289090000001],
+                coefficients: vec![0.01058760429, 0.5951670053, 0.46200101199999999],
             },
         ],
+
         16 => vec![
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![598.642680, 109.046680, 29.5121090],
-                coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+                exponents: vec![533.1257359, 97.109518300000005, 26.281625420000001],
+                coefficients: vec![
+                    0.15432896730000001,
+                    0.53532814230000003,
+                    0.44463454219999998,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![22.1564680, 5.14855900, 1.67441430],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
-            },
-            Shell {
-                center_idx,
-                center,
-                shell_type: ShellType::P,
-                exponents: vec![22.1564680, 5.14855900, 1.67441430],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![33.329751729999998, 7.7451175210000001, 2.5189525989999999],
+                coefficients: vec![-0.099967229190000007, 0.3995128261, 0.70011546889999998],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![1.80579080, 0.41988400, 0.13655330],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
+                exponents: vec![2.029194274, 0.56614005180000004, 0.22158337920000001],
+                coefficients: vec![
+                    -0.21962036900000001,
+                    0.22559543360000001,
+                    0.90039842599999997,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::P,
-                exponents: vec![1.80579080, 0.41988400, 0.13655330],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![33.329751729999998, 7.7451175210000001, 2.5189525989999999],
+                coefficients: vec![0.15591627499999999, 0.60768371860000003, 0.3919573931],
+            },
+            Shell {
+                center_idx,
+                center,
+                shell_type: ShellType::P,
+                exponents: vec![2.029194274, 0.56614005180000004, 0.22158337920000001],
+                coefficients: vec![0.01058760429, 0.5951670053, 0.46200101199999999],
             },
         ],
+
         17 => vec![
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![696.408520, 126.888800, 34.3399080],
-                coefficients: vec![0.15432897, 0.53532814, 0.44463454],
+                exponents: vec![601.34561359999998, 109.5358542, 29.644676860000001],
+                coefficients: vec![
+                    0.15432896730000001,
+                    0.53532814230000003,
+                    0.44463454219999998,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![25.9670530, 6.03406090, 1.96235810],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
-            },
-            Shell {
-                center_idx,
-                center,
-                shell_type: ShellType::P,
-                exponents: vec![25.9670530, 6.03406090, 1.96235810],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![38.96041889, 9.0535634770000009, 2.9444998340000001],
+                coefficients: vec![-0.099967229190000007, 0.3995128261, 0.70011546889999998],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::S,
-                exponents: vec![2.14407210, 0.49841410, 0.16208590],
-                coefficients: vec![-0.09996723, 0.39951283, 0.70011547],
+                exponents: vec![2.1293864949999999, 0.59409342740000004, 0.23252414099999999],
+                coefficients: vec![
+                    -0.21962036900000001,
+                    0.22559543360000001,
+                    0.90039842599999997,
+                ],
             },
             Shell {
                 center_idx,
                 center,
                 shell_type: ShellType::P,
-                exponents: vec![2.14407210, 0.49841410, 0.16208590],
-                coefficients: vec![0.15591627, 0.60768372, 0.39195739],
+                exponents: vec![38.96041889, 9.0535634770000009, 2.9444998340000001],
+                coefficients: vec![0.15591627499999999, 0.60768371860000003, 0.3919573931],
+            },
+            Shell {
+                center_idx,
+                center,
+                shell_type: ShellType::P,
+                exponents: vec![2.1293864949999999, 0.59409342740000004, 0.23252414099999999],
+                coefficients: vec![0.01058760429, 0.5951670053, 0.46200101199999999],
             },
         ],
+
         _ => {
             // Fallback: hydrogen-like 1s with scaled exponent
             vec![Shell {
