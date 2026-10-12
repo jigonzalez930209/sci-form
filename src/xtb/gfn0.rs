@@ -37,8 +37,12 @@ pub struct Gfn0Result {
     pub repulsive_energy: f64,
     /// Short-range bond correction (eV).
     pub srb_energy: f64,
-    /// D4 dispersion energy (eV).
+    /// D4 dispersion energy (eV) — two-body + three-body total.
     pub dispersion_energy: f64,
+    /// Two-body D4 dispersion energy (eV).
+    pub dispersion_2_body: f64,
+    /// Three-body (ATM) D4 dispersion energy (eV).
+    pub dispersion_3_body: f64,
     /// Total energy (eV).
     pub total_energy: f64,
     /// Number of basis functions.
@@ -983,6 +987,8 @@ pub fn solve_gfn0(
         repulsive_energy: e_rep_ha * EV_PER_HARTREE,
         srb_energy: e_srb_ha * EV_PER_HARTREE,
         dispersion_energy: e_disp_ha * EV_PER_HARTREE,
+        dispersion_2_body: d4.e2_body * EV_PER_HARTREE,
+        dispersion_3_body: d4.e3_body * EV_PER_HARTREE,
         total_energy: total_ev,
         n_basis: bmap.funcs.len(),
         n_electrons,
@@ -991,4 +997,29 @@ pub fn solve_gfn0(
         gap,
         charges,
     })
+}
+
+#[cfg(test)]
+mod decomposition_tests {
+    use super::*;
+
+    fn toluene() -> (Vec<u8>, Vec<[f64; 3]>) {
+        let conf = crate::embed("Cc1ccccc1", 42);
+        let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        (conf.elements, pos)
+    }
+
+    #[test]
+    fn dispersion_components_sum_to_total() {
+        let (elements, positions) = toluene();
+        let result = solve_gfn0(&elements, &positions, 0.0).unwrap();
+        let sum = result.dispersion_2_body + result.dispersion_3_body;
+        assert!(
+            (sum - result.dispersion_energy).abs() < 1e-9,
+            "{} vs {}",
+            sum,
+            result.dispersion_energy
+        );
+        assert!(result.dispersion_2_body <= 0.0);
+    }
 }
