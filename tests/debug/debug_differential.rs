@@ -51,6 +51,7 @@ fn test_bounds_matrix() {
             hybridization: Hybridization::Unknown,
             chiral_tag: ChiralType::Unspecified,
             explicit_h: 0,
+            no_implicit_h: false,
         };
         node_indices.push(our_mol.add_atom(new_atom));
     }
