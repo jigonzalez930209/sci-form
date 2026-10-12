@@ -16,7 +16,6 @@ use crate::webgpu::{self, WasmExecutionMode};
 /// Compute EEQ geometry-dependent charges.
 ///
 /// Returns JSON `{charges, coordination_numbers, total_charge}`.
-#[cfg(feature = "experimental-eeq")]
 #[wasm_bindgen]
 pub fn compute_eeq_charges(elements: &str, coords_flat: &str, total_charge: f64) -> String {
     let (elems, pos) = match parse_elements_and_positions(elements, coords_flat) {
@@ -39,7 +38,6 @@ pub fn compute_eeq_charges(elements: &str, coords_flat: &str, total_charge: f64)
 /// Compute EEQ electrostatic energy.
 ///
 /// Returns JSON `{electrostatic_energy, charges, coordination_numbers}`.
-#[cfg(feature = "experimental-eeq")]
 #[wasm_bindgen]
 pub fn compute_eeq_energy(elements: &str, coords_flat: &str, total_charge: f64) -> String {
     let (elems, pos) = match parse_elements_and_positions(elements, coords_flat) {
@@ -223,11 +221,7 @@ pub fn compute_cpm_surface(
 
 // ─── Async WebGPU / hybrid paths for WASM ──────────────────────────────────
 
-#[cfg(all(
-    feature = "experimental-gpu",
-    feature = "experimental-eeq",
-    target_arch = "wasm32"
-))]
+#[cfg(all(feature = "experimental-gpu", target_arch = "wasm32"))]
 #[wasm_bindgen]
 pub async fn compute_eeq_charges_accelerated(
     elements: &str,
