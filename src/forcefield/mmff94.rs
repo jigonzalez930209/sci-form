@@ -2,6 +2,16 @@
 //!
 //! Implements the 75-type classification and energy evaluation described in
 //! Halgren, J. Comput. Chem. 1996, 17, 490–519.
+//!
+//! ## Transition metals
+//!
+//! MMFF94 is parametrized for organic and common main-group chemistry: its
+//! published type/parameter set does not cover transition metals (and MMFF94s
+//! only adds a few special cases). "Complete TM coverage" is therefore not a
+//! meaningful MMFF94 goal; molecules with transition metals are routed to the
+//! UFF or xTB/GFN paths instead (see `forcefield::builder` / the method plan).
+//! Unlisted elements in the bond-parameter fallback use a covalent-radius sum
+//! with `kb = 5.0`, which is a placeholder rather than a fitted value.
 
 use super::traits::ForceFieldContribution;
 use petgraph::visit::EdgeRef;
