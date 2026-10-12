@@ -14,6 +14,60 @@ const D4_A1: f64 = 0.52;
 const D4_A2: f64 = 5.0;
 const D4_S9: f64 = 5.0;
 
+/// D4 BJ-damping parameters (functional-specific).
+#[derive(Debug, Clone, Copy)]
+pub struct D4Damping {
+    /// s6 scaling (usually 1.0).
+    pub s6: f64,
+    /// s8 scaling.
+    pub s8: f64,
+    /// BJ a1.
+    pub a1: f64,
+    /// BJ a2 (Bohr).
+    pub a2: f64,
+    /// ATM s9 scaling.
+    pub s9: f64,
+}
+
+impl Default for D4Damping {
+    /// Defaults matching the historical constants below (GFN2-xTB path).
+    fn default() -> Self {
+        Self {
+            s6: D4_S6,
+            s8: D4_S8,
+            a1: D4_A1,
+            a2: D4_A2,
+            s9: D4_S9,
+        }
+    }
+}
+
+/// Reference-data selector: GFN2-xTB tables vs standalone DFT tables.
+///
+/// The GFN2 path must keep using its own reference charges/hydrogen counts
+/// (`REFQ_GFN2`/`REFH`); the standalone D4 path uses the DFT tables
+/// (`REFQ_DFT`/`REFH_DFT`, dftd4 reference). Validation F46.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum D4RefSet {
+    /// GFN2-xTB reference data (default; validated by F45).
+    Gfn2,
+    /// Standalone DFT reference data (dftd4 parity; validated by F46).
+    Dft,
+}
+
+impl D4Damping {
+    /// Official PBE-D4 BJ parameters (dftd4 reference).
+    pub fn pbe() -> Self {
+        Self {
+            s6: 1.0,
+            s8: 0.95948085,
+            a1: 0.38574991,
+            a2: 4.80688534,
+            s9: 1.0,
+        }
+    }
+}
+
 /// Gaussian weighting factor.
 const D4_WF: f64 = 6.0;
 
@@ -55,6 +109,10 @@ pub struct D4Model {
     elem_types: Vec<u8>,
     /// Map from atom index to element type index.
     atom_to_type: Vec<usize>,
+    /// BJ-damping parameters used to build the dispersion matrix.
+    damping: D4Damping,
+    /// Reference-data selector (GFN2 vs DFT tables).
+    refset: D4RefSet,
 }
 
 /// Result of weight_references: Gaussian-weighted reference coefficients.
@@ -71,6 +129,23 @@ impl D4Model {
     /// Computes D4 coordination numbers, scaled reference polarizabilities,
     /// reference C6 coefficients, and the BJ-damped dispersion matrix.
     pub fn new(elements: &[u8], positions: &[[f64; 3]]) -> Self {
+        Self::with_damping(elements, positions, D4Damping::default())
+    }
+
+    /// Create a D4 model with explicit damping parameters.
+    ///
+    /// `positions` must be in Bohr (same convention as [`D4Model::new`]).
+    pub fn with_damping(elements: &[u8], positions: &[[f64; 3]], damping: D4Damping) -> Self {
+        Self::with_damping_and_refs(elements, positions, damping, D4RefSet::Gfn2)
+    }
+
+    /// Create a D4 model with explicit damping parameters and reference set.
+    pub fn with_damping_and_refs(
+        elements: &[u8],
+        positions: &[[f64; 3]],
+        damping: D4Damping,
+        refset: D4RefSet,
+    ) -> Self {
         let nat = elements.len();
         let mref = MAX_REF;
 
@@ -90,7 +165,7 @@ impl D4Model {
         }
 
         // 3. Compute scaled reference polarizabilities (set_refalpha_gfn2)
-        let scaled_alpha = compute_scaled_alpha(elements);
+        let scaled_alpha = compute_scaled_alpha(elements, refset);
 
         // 4. Compute reference C6 via Casimir-Polder integration
         let n_types = elem_types.len();
@@ -145,10 +220,10 @@ impl D4Model {
                 }
 
                 let rrij = 3.0 * R4R2[iz as usize - 1] * R4R2[jz as usize - 1];
-                let r0ij = D4_A1 * rrij.sqrt() + D4_A2;
+                let r0ij = damping.a1 * rrij.sqrt() + damping.a2;
                 let t6 = 1.0 / (r2.powi(3) + r0ij.powi(6));
                 let t8 = 1.0 / (r2.powi(4) + r0ij.powi(8));
-                let de = -(D4_S6 * t6 + D4_S8 * rrij * t8);
+                let de = -(damping.s6 * t6 + damping.s8 * rrij * t8);
 
                 for iref in 0..nref_i {
                     for jref in 0..nref_j {
@@ -175,6 +250,8 @@ impl D4Model {
             c6_ref_flat,
             elem_types,
             atom_to_type,
+            damping,
+            refset,
         }
     }
 
@@ -230,7 +307,7 @@ impl D4Model {
             let mut refq = vec![0.0f64; nref];
             for iref in 0..nref {
                 covcn[iref] = get_refcovcn(z, iref);
-                refq[iref] = get_refq(z, iref);
+                refq[iref] = get_refq_in(z, iref, self.refset);
             }
 
             // Compute normalization
@@ -344,7 +421,7 @@ impl D4Model {
     /// evaluated with zero charges.
     pub fn get_atm_energy(&self, positions: &[[f64; 3]]) -> f64 {
         let nat = self.nat;
-        if nat < 3 || D4_S9.abs() < 1e-15 {
+        if nat < 3 || self.damping.s9.abs() < 1e-15 {
             return 0.0;
         }
 
@@ -362,7 +439,8 @@ impl D4Model {
             for jat in 0..iat {
                 let jz = self.elements[jat] as usize;
                 let c6ij = c6[jat * nat + iat];
-                let r0ij = D4_A1 * (3.0 * R4R2[iz - 1] * R4R2[jz - 1]).sqrt() + D4_A2;
+                let r0ij =
+                    self.damping.a1 * (3.0 * R4R2[iz - 1] * R4R2[jz - 1]).sqrt() + self.damping.a2;
 
                 let vij = [
                     positions[jat][0] - positions[iat][0],
@@ -378,10 +456,12 @@ impl D4Model {
                     let kz = self.elements[kat] as usize;
                     let c6ik = c6[kat * nat + iat];
                     let c6jk = c6[kat * nat + jat];
-                    let c9 = -D4_S9 * (c6ij * c6ik * c6jk).abs().sqrt();
+                    let c9 = -self.damping.s9 * (c6ij * c6ik * c6jk).abs().sqrt();
 
-                    let r0ik = D4_A1 * (3.0 * R4R2[kz - 1] * R4R2[iz - 1]).sqrt() + D4_A2;
-                    let r0jk = D4_A1 * (3.0 * R4R2[kz - 1] * R4R2[jz - 1]).sqrt() + D4_A2;
+                    let r0ik = self.damping.a1 * (3.0 * R4R2[kz - 1] * R4R2[iz - 1]).sqrt()
+                        + self.damping.a2;
+                    let r0jk = self.damping.a1 * (3.0 * R4R2[kz - 1] * R4R2[jz - 1]).sqrt()
+                        + self.damping.a2;
                     let r0 = r0ij * r0ik * r0jk;
 
                     // triple_scale: all different atoms -> 1.0
@@ -486,13 +566,16 @@ fn get_refcovcn(z: u8, iref: usize) -> f64 {
     REFCOVCN[(zi - 1) * MAX_REF + iref]
 }
 
-/// Get reference charge (GFN2) for element Z, reference index iref (0-indexed).
-fn get_refq(z: u8, iref: usize) -> f64 {
+fn get_refq_in(z: u8, iref: usize, refset: D4RefSet) -> f64 {
+    use super::d4_data::{REFQ_DFT, REFQ_GFN2};
     let zi = z as usize;
     if zi == 0 || zi > MAX_ELEM {
         return 0.0;
     }
-    REFQ_GFN2[(zi - 1) * MAX_REF + iref]
+    match refset {
+        D4RefSet::Gfn2 => REFQ_GFN2[(zi - 1) * MAX_REF + iref],
+        D4RefSet::Dft => REFQ_DFT[(zi - 1) * MAX_REF + iref],
+    }
 }
 
 /// Gaussian CN weighting: exp(-wf * (cn - cnref)²).
@@ -540,6 +623,21 @@ fn triple_scale(ii: usize, jj: usize, kk: usize) -> f64 {
 /// Uses the DFT-D4 erf CN: cn = 0.5 * (1 + erf(-ka * (r/rcov - 1)))
 /// with ka = 7.5 and D3-type covalent radii. No EN weighting.
 /// Same as `cn_count%dftd4` / `ncoord_dftd4` in tblite.
+/// EN-dependent CN counting prefactor (dftd4 reference constants, F46).
+const CN_EN_K4: f64 = 4.10451;
+const CN_EN_K5: f64 = 19.08857;
+const CN_EN_K6: f64 = 2.0 * 11.28174 * 11.28174;
+
+fn en_factor(zi: u8, zj: u8) -> f64 {
+    use super::d4_data::PAULING_EN;
+    let (i, j) = (zi as usize, zj as usize);
+    if i == 0 || i > PAULING_EN.len() || j == 0 || j > PAULING_EN.len() {
+        return 1.0;
+    }
+    let den = (PAULING_EN[i - 1] - PAULING_EN[j - 1]).abs() + CN_EN_K5;
+    CN_EN_K4 * (-den * den / CN_EN_K6).exp()
+}
+
 fn compute_d4_cn(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
     let nat = elements.len();
     let mut cn = vec![0.0f64; nat];
@@ -577,9 +675,12 @@ fn compute_d4_cn(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
             let r = r2.sqrt();
             let rcov_sum = rcov_i + rcov_j;
 
-            // erf counting function: 0.5 * (1 + erf(-ka * (r/rcov - 1)))
+            // erf counting function with EN-dependent prefactor
+            // (dftd4/mctc `cn_count%dftd4`; validation F46):
+            //   count_AB = en_factor * 0.5 * (1 + erf(-ka * (r - rc) / rc))
+            //   en_factor = k4 * exp(-(|EN_A - EN_B| + k5)^2 / k6)
             let cn_val = 0.5 * erf(-ka * (r / rcov_sum - 1.0));
-            cn[iat] += cn_val + 0.5;
+            cn[iat] += en_factor(zi as u8, zj as u8) * (cn_val + 0.5);
         }
     }
 
@@ -604,7 +705,7 @@ fn erf(x: f64) -> f64 {
 ///
 /// For each element type and reference:
 ///   alpha_scaled = max(ascale * (alphaiw - hcount * sscale * secaiw * zeta_sec), 0)
-fn compute_scaled_alpha(elements: &[u8]) -> Vec<Vec<Vec<f64>>> {
+fn compute_scaled_alpha(elements: &[u8], refset: D4RefSet) -> Vec<Vec<Vec<f64>>> {
     // Get unique element types
     let mut elem_types: Vec<u8> = Vec::new();
     for &z in elements {
@@ -625,7 +726,10 @@ fn compute_scaled_alpha(elements: &[u8]) -> Vec<Vec<Vec<f64>>> {
             let is_sys = REFSYS[base_idx]; // 1-indexed system ID, 0 = none
             let hc = HCOUNT[base_idx];
             let asc = ASCALE[base_idx];
-            let rh = REFH[base_idx];
+            let rh = match refset {
+                D4RefSet::Gfn2 => REFH[base_idx],
+                D4RefSet::Dft => super::d4_data::REFH_DFT[base_idx],
+            };
 
             if is_sys == 0 {
                 // No SEC correction, just scale raw alpha
