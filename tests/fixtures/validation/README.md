@@ -11,7 +11,7 @@ file has a deterministic generator and a Rust consumer in
 | `sssr_rdkit.json` | F05 | `oracle_rdkit.py sssr` | strict SSSR (Figueras) ring-size multisets |
 | `sasa_rdkit.json` | F28 | `oracle_rdkit.py sasa` | FreeSASA Shrake-Rupley areas with sci-form's radii table |
 | `uff_opt.json` | F70 | `oracle_uffopt.py` | RDKit UFF-opt (ETKDG seed 42 → `UFFOptimizeMolecule`): geometrías inicial/final + E (10 moléculas) |
-| `uff_rdkit.json` | F16 | `oracle_rdkit.py uff` | RDKit UFF energies on fixture geometries (398 cases; 2 Kekulé inputs skipped, see `skipped_aromaticity_reperception`) |
+| `uff_rdkit.json` | F16 | `oracle_rdkit.py uff` | RDKit UFF energies on fixture geometries (400 cases; Kekulé input is aromatized by `rings::perceive_aromaticity` before typing) |
 | `uff_labels_rdkit.json` | F17 | `oracle_rdkit.py labels` | RDKit `getAtomLabel` UFF types (298 molecules, 33 641 labels) |
 | `pyscf_scf.json` | F36/F37/F23/F26 | `oracle_pyscf.py` | PySCF RHF/STO-3G: S/T/V, ERIs (4 molecules/13 074), E_tot, MO energies, Mulliken (11 molecules) |
 | `pyscf_uhf.json` | F38 | `oracle_pyscf.py uhf` | PySCF UHF/ROHF: E_tot y ⟨S²⟩ con conjetura `hcore` y por defecto (8 casos abiertos) |
