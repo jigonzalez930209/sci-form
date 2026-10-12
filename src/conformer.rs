@@ -284,6 +284,12 @@ pub fn generate_3d_conformer_restrained(
         if !check_double_bond_geometry(mol, &refined) {
             continue;
         }
+        // Global quasi-planar embeddings (2D) are perturbed out of the plane
+        // and re-minimised so downstream 3D consumers get a real conformer.
+        let mut refined = refined;
+        if crate::distgeom::validation::perturb_if_planar(&mut refined, &mut rng) {
+            refined = minimize_etkdg_3d_bfgs(mol, &refined, &ff, 200, FORCE_TOL);
+        }
         return Ok(refined.map(|v| v as f32));
     }
 
@@ -650,6 +656,12 @@ pub fn generate_3d_conformer_with_torsions(
             eprintln!("  attempt {} → SUCCESS", _iter);
         }
 
+        // Global quasi-planar embeddings (2D) are perturbed out of the plane
+        // and re-minimised so downstream 3D consumers get a real conformer.
+        let mut refined = refined;
+        if crate::distgeom::validation::perturb_if_planar(&mut refined, &mut rng) {
+            refined = minimize_etkdg_3d_bfgs(mol, &refined, &ff, 200, FORCE_TOL);
+        }
         let refined_f32 = refined.map(|v| v as f32);
         return Ok(refined_f32);
     }
