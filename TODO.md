@@ -122,10 +122,10 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Revisión de parámetros provisionales para metales de transición
 
 ### 6. NMR
-- [ ] Ampliación fuerte de HOSE database
-- [ ] Constantes de Karplus más específicas por entorno químico
+- [ ] Ampliación fuerte de HOSE database — bloqueado: requiere una base externa de shifts (NMRShiftDB/SDBS) con licencia y validación
+- [ ] Constantes de Karplus más específicas por entorno — bloqueado: requiere implementar Haasnoot-de Leeuw-Altona y un set experimental de ³J para validar (hoy hay Karplus estándar por camino C-C/C-N/C-O/C-S, con tests cualitativos)
 - [x] Aromaticidad real con SSSR/Hückel para shifts (percepción antes de HOSE; Kekulé == aromático en los tests)
-- [ ] Salida más allá del supuesto first-order (strong coupling)
+- [ ] Salida más allá del supuesto first-order (strong coupling) — requiere formalismo de segundo orden y espectros de referencia para gate
 
 ### 7. GPU
 - [x] Fallback CPU transparente cuando GPU no disponible (`compute_mmff94_nonbonded_with_report` + reportes de backend)
