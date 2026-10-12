@@ -461,6 +461,63 @@ mod tests {
     }
 
     #[test]
+    fn test_stda_prescreening_removes_off_diagonal_coupling() {
+        let n_basis = 4;
+        let scf = ScfInput {
+            orbital_energies: vec![-0.8, -0.3, 0.1, 0.5],
+            mo_coefficients: DMatrix::identity(n_basis, n_basis),
+            density_matrix: DMatrix::zeros(n_basis, n_basis),
+            overlap_matrix: DMatrix::identity(n_basis, n_basis),
+            n_basis,
+            n_electrons: 4,
+        };
+        let positions = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]];
+        let basis_to_atom = [0, 0, 1, 1];
+
+        let unscreened = compute_stda(
+            &scf,
+            &basis_to_atom,
+            &positions,
+            &StdaConfig {
+                threshold: 0.0,
+                ..Default::default()
+            },
+        );
+        // With every pair screened the A matrix is diagonal: the transition
+        // energies are exactly the bare active-space orbital differences.
+        let screened = compute_stda(
+            &scf,
+            &basis_to_atom,
+            &positions,
+            &StdaConfig {
+                threshold: f64::MAX,
+                ..Default::default()
+            },
+        );
+        assert!(!unscreened.transitions.is_empty());
+        assert!(!screened.transitions.is_empty());
+
+        let active = select_active_space(&scf, &StdaConfig::default());
+        let mut expected: Vec<f64> = iproduct(active.n_occ, active.n_virt)
+            .map(|(i_l, a_l)| {
+                (scf.orbital_energies[active.virt_indices[a_l]]
+                    - scf.orbital_energies[active.occ_indices[i_l]])
+                    * HARTREE_TO_EV
+            })
+            .filter(|e| *e >= 0.0)
+            .collect();
+        expected.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        for (t, e) in screened.transitions.iter().zip(expected.iter()) {
+            assert!(
+                (t.energy_ev - e).abs() < 1e-9,
+                "screened transition {} != diagonal {}",
+                t.energy_ev,
+                e
+            );
+        }
+    }
+
+    #[test]
     fn test_iproduct() {
         let pairs: Vec<_> = iproduct(2, 3).collect();
         assert_eq!(pairs.len(), 6);
