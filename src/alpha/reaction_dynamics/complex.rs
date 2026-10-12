@@ -388,6 +388,121 @@ pub fn optimize_reactive_complex(
     Ok(x)
 }
 
+/// Global orientation search for the reactive complex.
+///
+/// Generates `n_trials` candidate assemblies — the product-guided Kabsch
+/// placement plus random rotations of each fragment about its centre of mass
+/// — relaxes every candidate with [`optimize_reactive_complex`] and returns the
+/// lowest-energy geometry (and its energy).
+///
+/// `n_trials = 1` reproduces the product-guided placement alone, so the result
+/// is never worse than the single-orientation assembly.
+#[allow(clippy::too_many_arguments)]
+pub fn optimize_reactive_complex_global(
+    smiles: &str,
+    r_confs: &[crate::ConformerResult],
+    p_coords: &[f64],
+    p_elements: &[u8],
+    r_elements: &[u8],
+    n_trials: usize,
+    max_steps: usize,
+    method: &str,
+) -> Result<(Vec<f64>, f64), String> {
+    let backend = crate::dynamics::NebBackend::from_method(method)?;
+    let mol = crate::graph::Molecule::from_smiles(smiles)?;
+    let elements: Vec<u8> = if r_elements.len() == mol.graph.node_count() {
+        r_elements.to_vec()
+    } else {
+        r_confs.iter().flat_map(|c| c.elements.clone()).collect()
+    };
+    if elements.len() != mol.graph.node_count() {
+        return Err(format!(
+            "elements ({}) do not match the complex ({} atoms)",
+            elements.len(),
+            mol.graph.node_count()
+        ));
+    }
+
+    let base = assemble_fragments_at_product_positions(r_confs, p_coords, p_elements, r_elements);
+    if base.is_empty() {
+        return Err("empty fragment assembly".to_string());
+    }
+
+    let mut rng = crate::distgeom::MinstdRand::new(0xA11CE);
+    let mut best: Option<(Vec<f64>, f64)> = None;
+
+    for trial in 0..n_trials.max(1) {
+        let mut start = base.clone();
+        if trial > 0 {
+            rotate_fragments(&mut start, r_confs, &mut rng);
+        }
+        let relaxed = optimize_reactive_complex(smiles, &start, &elements, max_steps, method)?;
+        let mut grad = vec![0.0f64; relaxed.len()];
+        let energy = crate::dynamics::neb_energy_and_gradient(
+            backend, smiles, &elements, &mol, &relaxed, &mut grad,
+        )?;
+        if energy.is_finite() && best.as_ref().is_none_or(|(_, e)| energy < *e) {
+            best = Some((relaxed, energy));
+        }
+    }
+
+    best.ok_or_else(|| "global orientation search produced no finite candidate".to_string())
+}
+
+/// Rotate each fragment about its centre of mass by a random rotation.
+fn rotate_fragments(
+    coords: &mut [f64],
+    r_confs: &[crate::ConformerResult],
+    rng: &mut crate::distgeom::MinstdRand,
+) {
+    let mut off = 0usize;
+    for conf in r_confs {
+        let n = conf.num_atoms;
+        if n == 0 {
+            continue;
+        }
+        let rot = random_rotation(rng);
+        let com = com_flat(&coords[off * 3..(off + n) * 3]);
+        for a in 0..n {
+            let i = (off + a) * 3;
+            let x = coords[i] - com[0];
+            let y = coords[i + 1] - com[1];
+            let z = coords[i + 2] - com[2];
+            coords[i] = rot[0][0] * x + rot[0][1] * y + rot[0][2] * z + com[0];
+            coords[i + 1] = rot[1][0] * x + rot[1][1] * y + rot[1][2] * z + com[1];
+            coords[i + 2] = rot[2][0] * x + rot[2][1] * y + rot[2][2] * z + com[2];
+        }
+        off += n;
+    }
+}
+
+/// Uniform random rotation matrix (axis-angle, Rodrigues).
+fn random_rotation(rng: &mut crate::distgeom::MinstdRand) -> [[f64; 3]; 3] {
+    // Uniform unit vector.
+    let mut axis = [0.0f64; 3];
+    loop {
+        let v = [
+            rng.next_double() * 2.0 - 1.0,
+            rng.next_double() * 2.0 - 1.0,
+            rng.next_double() * 2.0 - 1.0,
+        ];
+        let norm = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        if norm > 1e-6 {
+            axis = [v[0] / norm, v[1] / norm, v[2] / norm];
+            break;
+        }
+    }
+    let theta = rng.next_double() * std::f64::consts::TAU;
+    let (s, c) = theta.sin_cos();
+    let t = 1.0 - c;
+    let [x, y, z] = axis;
+    [
+        [t * x * x + c, t * x * y - s * z, t * x * z + s * y],
+        [t * x * y + s * z, t * y * y + c, t * y * z - s * x],
+        [t * x * z - s * y, t * y * z + s * x, t * z * z + c],
+    ]
+}
+
 // ─── Helper functions ───────────────────────────────────────────────────────
 
 fn com_flat(coords: &[f64]) -> [f64; 3] {
@@ -459,5 +574,80 @@ fn rotate_to_align_3d(coords: &mut [f64], from: [f64; 3], to: [f64; 3]) {
         coords[i] = x * c + (nky * z - nkz * y) * s + nkx * dot * t1;
         coords[i + 1] = y * c + (nkz * x - nkx * z) * s + nky * dot * t1;
         coords[i + 2] = z * c + (nkx * y - nky * x) * s + nkz * dot * t1;
+    }
+}
+
+#[cfg(test)]
+mod global_orientation_tests {
+    use super::*;
+
+    fn relaxed_energy(smiles: &str, coords: &[f64], elements: &[u8]) -> f64 {
+        let backend = crate::dynamics::NebBackend::from_method("uff").unwrap();
+        let mol = crate::graph::Molecule::from_smiles(smiles).unwrap();
+        let relaxed = optimize_reactive_complex(smiles, coords, elements, 20, "uff").unwrap();
+        let mut grad = vec![0.0f64; relaxed.len()];
+        crate::dynamics::neb_energy_and_gradient(
+            backend, smiles, elements, &mol, &relaxed, &mut grad,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_global_orientation_never_worse_than_kabsch_placement() {
+        let conf = crate::embed("CO", 42);
+        assert!(conf.error.is_none(), "embed failed: {:?}", conf.error);
+        let fragments = [conf.clone()];
+
+        let base = assemble_fragments_at_product_positions(
+            &fragments,
+            &conf.coords,
+            &conf.elements,
+            &conf.elements,
+        );
+        let base_energy = relaxed_energy("CO", &base, &conf.elements);
+
+        let (_, best_energy) = optimize_reactive_complex_global(
+            "CO",
+            &fragments,
+            &conf.coords,
+            &conf.elements,
+            &conf.elements,
+            4,
+            20,
+            "uff",
+        )
+        .unwrap();
+
+        assert!(best_energy.is_finite());
+        assert!(
+            best_energy <= base_energy + 1e-9,
+            "global search {best_energy} should not be worse than Kabsch-only {base_energy}"
+        );
+    }
+
+    #[test]
+    fn test_global_orientation_single_trial_reproduces_base() {
+        let conf = crate::embed("CO", 7);
+        assert!(conf.error.is_none());
+        let fragments = [conf.clone()];
+        let (_, e1) = optimize_reactive_complex_global(
+            "CO",
+            &fragments,
+            &conf.coords,
+            &conf.elements,
+            &conf.elements,
+            1,
+            20,
+            "uff",
+        )
+        .unwrap();
+        let base = assemble_fragments_at_product_positions(
+            &fragments,
+            &conf.coords,
+            &conf.elements,
+            &conf.elements,
+        );
+        let e_base = relaxed_energy("CO", &base, &conf.elements);
+        assert!((e1 - e_base).abs() < 1e-9, "{e1} vs {e_base}");
     }
 }
