@@ -189,9 +189,9 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Límites de escalado documentados (plan §14.3: tiempos por método y memoria ERI O(N⁴))
 
 ### 18. Experimental Tracks Pendientes de Validación para Promoción
-- [ ] Validación cuantitativa por submódulo (alpha + beta)
-- [ ] Benchmarking frente a rutas estables
-- [ ] Criterios claros de promoción experimental → producción
+- [ ] Validación cuantitativa por submódulo (alpha + beta) — parcial: los promovidos tienen fichas (EEQ/D4/ALPB/sTDA); E1–E11 siguen con evidencia parcial
+- [ ] Benchmarking frente a rutas estables (KPM vs diagonalización, GSM vs NEB, SDR vs Butina)
+- [x] Criterios claros de promoción experimental → producción (`src/experimental_status.rs`, actualizado con la evidencia actual)
 - [ ] Tests de integración más representativos para beta
 
 ---
