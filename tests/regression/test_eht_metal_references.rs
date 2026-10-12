@@ -14,7 +14,11 @@ struct MetalReference {
 }
 
 fn relative_error_percent(predicted: f64, reference: f64) -> Option<f64> {
-    if reference.abs() < 1e-6 {
+    // Percent variation is only meaningful when the reference itself is not
+    // near zero: the frontier orbitals of the metal references can be
+    // degenerate (gaps of 1e-4..1e-14 eV), where the absolute `tolerance`
+    // is the only sound criterion.
+    if reference.abs() < 0.1 {
         return None;
     }
     Some(((predicted - reference).abs() / reference.abs()) * 100.0)
