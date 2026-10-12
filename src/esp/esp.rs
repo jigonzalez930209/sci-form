@@ -246,6 +246,7 @@ pub fn compute_esp_grid_parallel(
     spacing: f64,
     padding: f64,
 ) -> EspGrid {
+    let _ = elements;
     let spacing = if spacing.is_finite() && spacing > 0.0 {
         spacing
     } else {
