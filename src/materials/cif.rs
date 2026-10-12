@@ -130,12 +130,16 @@ pub fn parse_cif(input: &str) -> Result<CifStructure, String> {
 
         // Atom site loop
         if line == "loop_" {
-            // Check if next lines define atom_site columns
+            // Collect every tag column: real-world loops mix `_atom_site_*`
+            // with other tags (e.g. pormake appends
+            // `_atom_type_partial_charge`). Filtering on `_atom_site_`
+            // here used to abort row reading at the first foreign tag
+            // (found by F68 validation: 0/53 sites parsed).
             let mut col_names = Vec::new();
             let mut j = i + 1;
             while j < lines.len() {
                 let col_line = lines[j].trim();
-                if col_line.starts_with("_atom_site_") {
+                if col_line.starts_with("_") {
                     col_names.push(col_line.to_string());
                     j += 1;
                 } else {
@@ -157,6 +161,13 @@ pub fn parse_cif(input: &str) -> Result<CifStructure, String> {
 
                 let has_frac = fx_col.is_some() && fy_col.is_some() && fz_col.is_some();
                 let has_cart = cx_col.is_some() && cy_col.is_some() && cz_col.is_some();
+
+                if !has_frac && !has_cart {
+                    // Tag loop without coordinates (e.g. symmetry
+                    // equivalents): not atom sites.
+                    i = j;
+                    continue;
+                }
 
                 // Read data rows
                 while j < lines.len() {
@@ -559,6 +570,40 @@ Cl1      Cl   0.500000 0.500000 0.500000 1.0000
         assert_eq!(structure.atom_sites[1].type_symbol, "Cl");
         assert_eq!(structure.atom_sites[1].atomic_number, 17);
         assert!((structure.atom_sites[1].frac_x - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_parse_mixed_tag_loop() {
+        // pormake appends `_atom_type_partial_charge` inside the atom-site
+        // loop; the parser used to stop row reading at the first foreign
+        // tag and return 0 sites (found by F68 validation).
+        let cif = r#"
+data_pormake_like
+_symmetry_space_group_name_H-M    P1
+loop_
+_symmetry_equiv_pos_as_xyz
+'x, y, z'
+_cell_length_a     13.246
+_cell_length_b     13.246
+_cell_length_c     13.246
+_cell_angle_alpha  90.000
+_cell_angle_beta   90.000
+_cell_angle_gamma  90.000
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_type_partial_charge
+Zn0 Zn 0.08475 0.08475 0.08475 0.00000
+O4 O 0.00010 0.00010 0.00010 0.00000
+"#;
+        let structure = parse_cif(cif).unwrap();
+        assert_eq!(structure.atom_sites.len(), 2);
+        assert_eq!(structure.atom_sites[0].atomic_number, 30);
+        assert!((structure.atom_sites[0].frac_x - 0.08475).abs() < 1e-6);
+        assert_eq!(structure.atom_sites[1].atomic_number, 8);
     }
 
     #[test]
