@@ -7,11 +7,16 @@
 //!
 //! | Module | Core path | Justification |
 //! |--------|-----------|---------------|
-//! | EEQ charges | `charges_eeq` | Topology-free partial charges, O(N²), validated vs Gasteiger |
-//! | D4 dispersion | `dispersion` | BJ-damped DFT-D4 energy, complements UFF/MMFF94 |
-//! | ALPB solvation | `solvation_alpb` | Klamt-corrected solvation, improves over plain GB |
-//! | sTDA UV-Vis | `spectroscopy::stda_uvvis` | CIS-like excitations from monopole charges, ~1000× faster than full CI |
+//! | EEQ charges | `charges_eeq` | Topology-free partial charges, O(N²); EEQ2019 ported for D4 and validated vs dftd4 (F46) |
+//! | D4 dispersion | `dispersion` | BJ-damped DFT-D4 energy, complements UFF/MMFF94; validated vs dftd4 (1.2e-10 Ha, F46) |
+//! | ALPB solvation | `solvation_alpb` | Klamt-corrected solvation, improves over plain GB; shares the SASA implementation with the core (test) |
+//! | sTDA UV-Vis | `spectroscopy::stda_uvvis` | CIS-like excitations from monopole charges, ~1000× faster than full CI; Cauchy-Schwarz prescreening tested |
 //! | GIAO NMR | `spectroscopy::giao_nmr` | Multi-nucleus NMR shieldings, complements empirical HOSE |
+//!
+//! The promotion criteria below follow the validation culture of the repo:
+//! a module is promoted when a cross-library ficha (or a documented external
+//! benchmark) gates its observable, plus integration tests through the public
+//! API. See `docs/validation/cross-library-validation.es.md` §13–§14.
 //!
 //! ---
 //!
@@ -28,7 +33,8 @@
 //!
 //! - Adaptive polynomial order selection
 //! - Sparse-matrix backend for O(N) scaling
-//! - Benchmarks against direct diagonalization for <500 atoms
+//! - Benchmarks against direct diagonalization for <500 atoms (todo: gate
+//!   spectral accuracy vs exact diagonalization for N > 100)
 //!
 //! **Promotion criteria:**
 //! 1. Demonstrate wall-clock advantage over direct DOS for >2000 atoms
@@ -64,7 +70,7 @@
 //! **Current limitations:**
 //! - Rank selection requires manual tuning
 //! - No automatic accuracy estimation
-//! - Not yet wired into SCF or EHT solvers
+//! - Not yet wired into SCF or EHT solvers (todo: scale benchmarks)
 //!
 //! **Promotion criteria:**
 //! 1. Wire into EHT/SCF as optional backend with feature flag
@@ -82,7 +88,7 @@
 //! **Current limitations:**
 //! - Kernel bandwidth selection is fixed
 //! - No out-of-sample extension (Nyström embedding)
-//! - Limited to datasets fitting in memory
+//! - Limited to datasets fitting in memory (todo: 10K-molecule benchmark)
 //!
 //! **Promotion criteria:**
 //! 1. Validate embeddings preserve known SAR relationships
@@ -121,10 +127,12 @@
 //! - String convergence criteria incomplete
 //! - Saddle point refinement not validated
 //!
+//! **Status update:** gradient coupling is implemented — `alpha::gsm::backend`
+//! drives the string with UFF, MMFF94, PM3, xTB, GFN1, GFN2 and HF-3c.
 //! **Promotion criteria:**
-//! 1. Couple with PM3 or xTB gradient evaluation
+//! 1. ~~Couple with PM3 or xTB gradient evaluation~~ (done: multi-backend)
 //! 2. Reproduce known barrier heights (SN2, Diels-Alder)
-//! 3. Compare path energy profiles vs NEB reference
+//! 3. Compare path energy profiles vs NEB reference in 5+ reactions
 //!
 //! ### EXP-205c: Continuous Phase Methods (CPM)
 //!
