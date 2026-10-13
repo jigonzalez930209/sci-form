@@ -12,12 +12,23 @@
 //! References: Stewart, J. J. P. "Optimization of Parameters for Semiempirical Methods I.
 //! Method," J. Comput. Chem. 10 (1989): 209–220; Cundari et al. (1998).
 
+pub mod faithful;
 #[cfg(feature = "experimental-gpu")]
 pub mod gpu;
 pub mod gradients;
 pub mod params;
+mod params_table;
 pub mod solver;
 
 pub use gradients::{compute_pm3_gradient, Pm3GradientResult};
 pub use params::{get_pm3_params, is_pm3_supported, pm3_method, Pm3Method, Pm3Params};
 pub use solver::{solve_pm3, Pm3Result};
+
+/// Temporary probe for the faithful PM3 solver (validation harness).
+#[doc(hidden)]
+pub fn faithful_probe(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<faithful::FaithfulResult, String> {
+    faithful::solve(elements, positions)
+}
