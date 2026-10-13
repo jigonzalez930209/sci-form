@@ -378,6 +378,19 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Procedimiento: nuevo `scripts/compare_eeq_xtb.py` (invoca `xtb --sp` con `--verbose` y extrae cargas); test `tests/experimental/test_eeq.rs` (existe) + `test_eeq_cross`.
 - Estado en el repo: `src/charges_eeq/*`, `tests/experimental/test_eeq.rs`, `tests/regression/test_session_algorithms.rs` (§10).
 - Criterio: carga por átomo ≤ 0.005 e; suma ≤ 1e-6; energía EEQ ≤ 0.1 kcal/mol.
+- **Extensión EEQ-BC (2026-10-13)**: port término a término del modelo *bond
+  capacitor* 2025 (`charges_eeq::compute_eeqbc_charges`, Froitzheim et al.,
+  J. Chem. Phys. 162, 214109) con tablas generadas por
+  `scripts/validation/gen_eeqbc_params.py` (multicharge `eeqbc2025` + mctc-lib
+  vdW/Pauling). Oráculo **directo**: CLI de multicharge (`--model eeqbc`, build
+  meson/ninja), fixture `tests/fixtures/validation/eeqbc_charges.json` (23
+  moléculas: orgánicas, iones, metales 3d/4d/5d, lantánidos/actínidos, XeF2,
+  ferroceno) vía `scripts/validation/oracle_eeqbc.py`; gate
+  `f22_eeqbc_matches_multicharge` con tolerancia 1e-10 e (medido 6.9e-12 e en
+  cargas y 1.9e-11 en CN). Nota de fidelidad: `new_eeqbc2025_model` multiplica
+  la tabla vdW de mctc-lib por `aatoau` y luego por `autoaa`, de modo que los
+  dos factores se cancelan y el modelo recibe el valor crudo de la tabla
+  (número en Å) contra coordenadas en Bohr — reproducido literalmente.
 
 **F23 · Análisis de población Mulliken/Löwdin (`population::mulliken_analysis`, `lowdin_analysis`, `compute_population`)**
 - Referencia probada: **YAeHMOP** (EHT canónico con poblaciones Mulliken; SourceForge) para el camino EHT; **PySCF** (`mf.mulliken_pop`, `mf.mulliken_meta`; Löwdin vía `scf.hf.SCF` + `pyscf.lo` o manual `S^{1/2}`) para HF/STO-3G; **Multiwfn** para análisis equivalente sobre wfn/molden.
@@ -1203,7 +1216,7 @@ Leyenda: **Actual** = suite que ya existe en el repo; **Nuevo** = artefacto a cr
 | # | Funcionalidad | Actual | Nuevo | Referencia / dataset |
 |---|---|---|---|---|
 | F21 | Gasteiger | `test_charges.rs`, `generate_charges_reference.py` | gen `compare_gasteiger_rdkit.py` → test | RDKit `ComputeGasteigerCharges` |
-| F22 | EEQ | `test_eeq.rs`, `test_session_algorithms.rs` §10 | gen `compare_eeq_xtb.py` → fix | xtb/tblite EEQ |
+| F22 | EEQ (+EEQ-BC) | `test_eeq.rs`, `test_session_algorithms.rs` §10, `cross_validation.rs` (f22_eeqbc) | gen `compare_eeq_xtb.py` → fix; `oracle_eeqbc.py` (multicharge CLI) | xtb/tblite EEQ; multicharge `--model eeqbc` |
 | F23 | Mulliken/Löwdin | `test_eht.rs`, `test_phase_c.rs`, `generate_population_reference.py` | gen `compare_population_ref.py` → fix | YAeHMOP; PySCF |
 | F24 | NBO/NPA | `src/population/npa.rs` | gen `janpa_reference.py` → fix → test `test_npa_cross` | JANPA; NBO7 |
 | F25 | Wiberg/Mayer | `test_session_algorithms.rs` (parallel=serial) | gen `generate_bond_orders_reference.py` | Multiwfn; PySCF |
@@ -1818,6 +1831,13 @@ están activos (ningún `#[ignore]`).
   stress ≈ 0).
 - **Topologías**: 6 nets RCSR importados (aristas no equivalentes en
   afw/xah/tfy) y gate F67 contra pormake.
+- **EEQ-BC 2025 (2026-10-13)**: port término a término del modelo bond-capacitor
+  (`charges_eeq::compute_eeqbc_charges`) validado contra el CLI de multicharge
+  (oráculo directo, `--model eeqbc`): F22 con 23 moléculas (incluye PbI₂, HgCl₂,
+  Au₂, SnF₄, XeF₂, WO₃, UF₆, AmCl₃, ferroceno) — cargas a 6.9e-12 e y CN a
+  1.9e-11 (tolerancia 1e-10). Hallazgo de fidelidad: la distancia vdW que
+  entra al capacitor es el valor crudo de la tabla mctc-lib (Å) porque
+  `aatoau`/`autoaa` se cancelan.
 
 
 
