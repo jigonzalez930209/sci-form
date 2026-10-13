@@ -25,13 +25,28 @@ Minimizing with respect to charges $\{q_i\}$ yields the equilibrium charge distr
 
 ### Charge Equilibration at Fixed $\mu$
 
-The SCF iteration solves:
+The CPM equations are linear:
 
-$$q_i^{(n+1)} = \frac{\mu - \chi_i - \sum_{j \neq i} J_{ij} q_j^{(n)}}{\eta_i}$$
+$$q_i = \frac{\mu_i - \chi_i - \sum_{j \neq i} J_{ij} q_j}{\eta_i}
+\iff \sum_j M_{ij} q_j = \mu_i - \chi_i,
+\quad M_{ii} = \eta_i,\; M_{ij} = J_{ij}$$
 
-with damped update (50/50 mixing) and Coulomb interaction:
+with Coulomb interaction:
 
 $$J_{ij} = \frac{14.3996}{\varepsilon \cdot r_{ij}} \quad \text{(kcal/mol per e²)}$$
+
+The solver inverts $M$ directly (LU). The damped fixed-point iteration
+($q \leftarrow (q + q_\text{new})/2$) was removed in 2026-10-13: it diverges
+for electrode-sized conducting systems (charges blow up to 1e157 on a
+graphene bilayer — spectral radius of $J/\eta$ exceeds 1). LAMMPS
+`electrode/conp` likewise inverts the elastance matrix (`mat_inv`).
+
+### Multi-Electrode Setups
+
+`CpmConfig::mu_per_atom` (optional, `None` = uniform `mu_ev`) assigns one
+applied potential per atom — e.g. plate A at $+V/2$, plate B at $-V/2$, as in
+LAMMPS `fix electrode/conp ... couple`. The grand potential generalizes to
+$\Omega = E_\text{elec} - \sum_i \mu_i q_i$.
 
 ### Electrochemical Energy Surface
 
@@ -54,6 +69,7 @@ let config = CpmConfig {
     dielectric: 78.5,       // water
     max_iter: 100,
     charge_tol: 1e-6,
+    mu_per_atom: None,      // Some(vec) for multi-electrode setups
 };
 let result = compute_cpm_charges(&elements, &positions, &config);
 // result.charges: Vec<f64>
@@ -99,3 +115,24 @@ cargo test --features experimental-cpm --test regression -- test_cpm
 ```
 
 8 integration tests covering: charge equilibration convergence, total charge response to potential, monotonic charge-potential relationship, grand potential computation, capacitance positivity, electrochemical surface scanning, solvent dielectric effects, and multi-element systems.
+
+## Validation vs LAMMPS (F95, 2026-10-13)
+
+Oracle `scripts/validation/oracle_cpm_lammps.py` + fixture
+`tests/fixtures/validation/cpm_lammps.json` + gate
+`test_cpm_bilayer_matches_lammps`: graphene bilayer capacitor (two 3×3-cell
+flakes, AB @ 3.35 Å) at V = ±0.5/1/2 V vs LAMMPS `fix electrode/conp`
+($\eta = 1.979$). Compared on voltage-induced charges
+($\Delta Q = Q(V) - Q(0)$, where $\chi$ cancels exactly): both exactly linear
+and antisymmetric; plate-Q scale 1.76x, per-atom pattern cosine similarity
+0.44 (tolerances 2.5x / 0.3).
+
+Model gap (documented): our point-charge hardness ($\eta_C = 5.0$ eV) vs the
+Gaussian self-energy (~22 eV) — ours over-polarizes dense conductors
+(onsite too soft, edge oscillations). Path forward: Gaussian smearing in $J$
+(ELECTRODE-style) and/or retuned onsite hardness.
+
+LAMMPS recipe notes: `atom_modify map yes`, `kspace_modify gewald` for
+uncharged starts, `pair_coeff` after `read_data`, two plates with `couple`
+(a lone electrode group stays neutral), charges solve while stepping
+(`run 1`), dump per-atom `q`.
