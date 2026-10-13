@@ -752,6 +752,32 @@ pub(crate) fn solve_pm3_with_state(
 
 /// Run PM3 calculation on a molecule.
 pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, String> {
+    // Faithful MOPAC port for the sp elements (Z <= 17), validated against
+    // MOPAC 23.2.5 (validation F42): exact SCF/H-matrix/core-core energies.
+    if elements.iter().all(|&z| z <= 17) {
+        if let Ok(r) = crate::pm3::faithful::solve(elements, positions) {
+            return Ok(Pm3Result {
+                orbital_energies: r.orbital_energies,
+                electronic_energy: r.electronic_energy,
+                nuclear_repulsion: r.nuclear_repulsion,
+                total_energy: r.total_energy,
+                heat_of_formation: r.heat_of_formation,
+                n_basis: r.n_basis,
+                n_electrons: r.n_electrons,
+                homo_energy: r.homo_energy,
+                lumo_energy: r.lumo_energy,
+                gap: r.gap,
+                mulliken_charges: r.mulliken_charges,
+                scf_iterations: r.scf_iterations,
+                converged: r.converged,
+            });
+        }
+    }
+    solve_pm3_legacy(elements, positions)
+}
+
+/// Legacy NDDO path (transition metals and elements above Cl).
+fn solve_pm3_legacy(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, String> {
     solve_pm3_with_state(elements, positions).map(|(r, _)| r)
 }
 
