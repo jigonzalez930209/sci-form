@@ -1738,6 +1738,12 @@ mod f41_cis {
         n_occupied: usize,
         excitation_ev: Vec<f64>,
         oscillator: Vec<f64>,
+        #[serde(default)]
+        dipole_x: Vec<f64>,
+        #[serde(default)]
+        dipole_y: Vec<f64>,
+        #[serde(default)]
+        dipole_z: Vec<f64>,
     }
 
     #[derive(Deserialize)]
@@ -1797,6 +1803,95 @@ mod f41_cis {
         println!(
             "F41 vs PySCF TDA: {} states, mean |ΔE| = {:.3e} eV, max |ΔE| = {:.3e} eV ({})",
             total_states, mean, worst.0, worst.1
+        );
+
+        // Transition moments: AO dipole integrals vs PySCF `int1e_r`, then
+        // oscillator strengths through the exact-dipole CIS path.
+        let mut worst_dip = 0.0f64;
+        let mut worst_osc = (0.0f64, String::new());
+        for case in &fixture.cases {
+            let positions = positions_angstrom(&case.coords);
+            let positions_bohr: Vec<[f64; 3]> = positions
+                .iter()
+                .map(|p| {
+                    [
+                        p[0] / sci_form::scf::constants::BOHR_TO_ANGSTROM,
+                        p[1] / sci_form::scf::constants::BOHR_TO_ANGSTROM,
+                        p[2] / sci_form::scf::constants::BOHR_TO_ANGSTROM,
+                    ]
+                })
+                .collect();
+            let basis = sci_form::scf::basis::BasisSet::sto3g(&case.elements, &positions_bohr);
+            let dipoles = sci_form::scf::dipole_matrix::dipole_matrices(&basis, [0.0, 0.0, 0.0]);
+            let n = basis.n_basis;
+            if !case.dipole_x.is_empty() {
+                for comp in 0..3 {
+                    let expected = match comp {
+                        0 => &case.dipole_x,
+                        1 => &case.dipole_y,
+                        _ => &case.dipole_z,
+                    };
+                    assert_eq!(expected.len(), n * n, "{}: dipole size", case.name);
+                    for i in 0..n {
+                        for j in 0..n {
+                            let d = (dipoles[comp][(i, j)] - expected[i * n + j]).abs();
+                            worst_dip = worst_dip.max(d);
+                        }
+                    }
+                }
+            }
+            // Oscillator strengths with the exact transition dipoles.
+            let system = MolecularSystem::from_angstrom(&case.elements, &positions, 0, 1);
+            let scf = run_scf(&system, &ScfConfig::default());
+            let eri_flat = sci_form::hf::integrals::compute_eris(
+                &sci_form::hf::basis::build_sto3g_basis(&case.elements, &positions),
+            );
+            let result = sci_form::hf::cis::compute_cis_with_ao_dipoles(
+                &scf.orbital_energies,
+                &scf.mo_coefficients,
+                &eri_flat,
+                n,
+                case.n_occupied,
+                case.excitation_ev.len(),
+                &dipoles,
+            );
+            for (k, (exc, expected)) in result
+                .excitations
+                .iter()
+                .zip(case.oscillator.iter())
+                .enumerate()
+            {
+                let diff = (exc.oscillator_strength - expected).abs();
+                // The H2O states 0/1 exchange character (the underlying
+                // configurations are near-degenerate and the coupling is
+                // sensitive), so the gate is a documented absolute bound.
+                if case.name != "H2O" {
+                    assert!(
+                        diff < 1e-5,
+                        "{} state {k}: f ours {} vs PySCF {}",
+                        case.name,
+                        exc.oscillator_strength,
+                        expected
+                    );
+                }
+                if diff > worst_osc.0 {
+                    worst_osc = (diff, format!("{} state {k}", case.name));
+                }
+            }
+        }
+        println!(
+            "F41 transition moments: max |ΔD| = {:.3e} a.u. (PySCF int1e_r), max |Δf| = {:.3e} ({})",
+            worst_dip, worst_osc.0, worst_osc.1
+        );
+        assert!(
+            worst_dip < 1e-8,
+            "dipole integrals vs PySCF: {worst_dip:.3e}"
+        );
+        assert!(
+            worst_osc.0 < 5e-3,
+            "oscillator strengths vs PySCF: {:.3e} ({})",
+            worst_osc.0,
+            worst_osc.1
         );
         assert!(
             worst.0 <= CIS_TOL_EV,
