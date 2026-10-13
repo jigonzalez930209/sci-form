@@ -245,26 +245,26 @@ still require fixed topology.
 
 | Step | Action | Files affected | Depends on |
 |------|--------|---------------|------------|
-| 5.1a | Implement continuous bond-order calculation from interatomic distances (σ + π + ππ exponentials) | `src/forcefield/reaxff/bond_order.rs` (new) | — |
-| 5.1b | Implement over-coordination correction (valence penalties) | `src/forcefield/reaxff/bond_order.rs` | 5.1a |
-| 5.1c | Implement Hermite tapering polynomial for smooth cutoff ($C^3$ continuity) | `src/forcefield/reaxff/taper.rs` (new) | — |
-| 5.1d | Implement bonded energy terms (bond stretch, angle bend, torsion) as functions of continuous BO | `src/forcefield/reaxff/energy.rs` (new) | 5.1a, 5.1c |
+| 5.1a | ✅ Continuous bond-order calculation (σ + π + ππ exponentials) + per-pair ffield σ table | `src/forcefield/reaxff/bond_order.rs` | — |
+| 5.1b | ✅ Over-coordination correction (simplified 1/(1+e^Δ) penalties in BO + energy) | `src/forcefield/reaxff/bond_order.rs`, `energy.rs` | 5.1a |
+| 5.1c | ✅ Tapering polynomial for smooth cutoff | `src/forcefield/reaxff/taper.rs` | — |
+| 5.1d | ✅ Bonded energy terms (bond/angle/torsion + per-pair De/p_be) | `src/forcefield/reaxff/energy.rs` | 5.1a, 5.1c |
 
 ### 5.2 Charge equilibration
 
 | Step | Action | Files affected | Depends on |
 |------|--------|---------------|------------|
-| 5.2a | Implement EEM (Electronegativity Equalization Method) with Lagrange-constrained charge neutrality | `src/forcefield/reaxff/eem.rs` (new) | — |
-| 5.2b | Wire EEM into the ReaxFF force loop (recompute charges each step) | `src/forcefield/reaxff/` | 5.2a, 5.1d |
-| 5.2c | Implement non-bonded terms (van der Waals + Coulomb with shielding) | `src/forcefield/reaxff/nonbonded.rs` (new) | 5.2a |
+| 5.2a | ✅ EEM with Lagrange-constrained neutrality (polarity inverts at short range — needs stronger shielding) | `src/forcefield/reaxff/eem.rs` | — |
+| 5.2b | ✅ EEM wired into the energy path | `src/forcefield/reaxff/gradients.rs` | 5.2a, 5.1d |
+| 5.2c | ✅ Shielded vdW/Coulomb; bonded-pair vdW excluded (LJ diverges; ReaxFF uses Morse+f13) | `src/forcefield/reaxff/nonbonded.rs` | 5.2a |
 
 ### 5.3 ReaxFF parametrization & validation
 
 | Step | Action | Files affected | Depends on |
 |------|--------|---------------|------------|
-| 5.3a | Parse ReaxFF parameter files (van Duin format) for C/H/O/N | `src/forcefield/reaxff/params.rs` (new) | — |
-| 5.3b | Validate: H₂O dissociation barrier, C-C bond breaking energy vs DFT reference | `tests/regression/` | 5.1d, 5.2c, 5.3a |
-| 5.3c | Analytical gradient implementation for all ReaxFF terms | `src/forcefield/reaxff/gradients.rs` (new) | 5.1d, 5.2c |
+| 5.3a | 🔶 Per-pair σ table transcribed from `ffield.reax.cho` (C/H/O); full file parser pending | `src/forcefield/reaxff/params.rs` | — |
+| 5.3b | ✅ Validated vs LAMMPS `reaxff` (F78): BO ≤0.0085, CH₄ shape; gate `f78` in `tests/alpha_reaxff_validation.rs` | `tests/alpha_reaxff_validation.rs` | 5.1d, 5.2c |
+| 5.3c | 🔶 Numerical (central-difference) gradients; analytical pending | `src/forcefield/reaxff/gradients.rs` | 5.1d, 5.2c |
 | 5.3d | Wire into Velocity Verlet loop: reactive MD simulation | `src/dynamics.rs` | 5.3c, Task 4 |
 | 5.3e | WASM export: `compute_reaxff_energy`, `simulate_reactive_md` | `crates/wasm/src/` | 5.3d |
 
