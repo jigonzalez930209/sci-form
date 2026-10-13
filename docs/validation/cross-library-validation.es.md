@@ -1883,6 +1883,11 @@ están activos (ningún `#[ignore]`).
   1.9e-11 (tolerancia 1e-10). Hallazgo de fidelidad: la distancia vdW que
   entra al capacitor es el valor crudo de la tabla mctc-lib (Å) porque
   `aatoau`/`autoaa` se cancelan.
+- **Cierres con motivo (2026-10-13)**: tres ítems del backlog quedan cerrados
+  como bloqueados/no aplicables con ruta concreta — repulsión CN-dependiente
+  (no existe referencia externa más allá del esquema efectivo de tblite que ya
+  portamos), ampliación HOSE (requiere base externa + licencia, ruta
+  NMRShiftDB2) y el fallback V-path del frontend (vive fuera de este repo).
 - **Karplus/HLA (2026-10-13)**: ecuación generalizada de Haasnoot–de
   Leeuw–Altona implementada (`nmr::coupling::hla_coupling`) con parámetros y
   Δχ ajustados contra la calculadora de referencia (fixture de 84 casos);
