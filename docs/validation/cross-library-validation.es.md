@@ -679,6 +679,20 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Procedimiento: `tests/regression/test_session_algorithms.rs` §7 (naphthalene peri-H 5J, existente) + `scripts/compare_j_couplings_nmrshiftdb.py`.
 - Estado en el repo: `src/nmr/coupling.rs` (aprox.), test §7.
 - Criterio: ³J ≤ 1 Hz vs experimento en moléculas rígidas; forma de la curva Karplus correcta (máx ~0°/180°, mín ~90°).
+- **Extensión HLA (2026-10-13)**: ecuación generalizada de Haasnoot–de
+  Leeuw–Altona (`nmr::coupling::{hla_coupling, huggins_dchi}`):
+  `³J = P1cos²φ + P2cosφ + P3 + Σ Δχ_i[P4 + P5cos²(ξ_iφ + P6|Δχ_i|)]` con
+  parámetros y Δχ ajustados contra la implementación de referencia
+  (calculadora HLA de R. Stenutz, que implementa Haasnoot et al., Tetrahedron
+  36 (1980) 2783) vía `scripts/validation/oracle_hla.py` (fixture
+  `hla_couplings.json`, 84 casos). Convención ξ calibrada (S1/S3 → +1,
+  S2/S4 → −1; RMS 0.05 Hz vs 0.14 Hz con el intercambio). Gate
+  `f54_hla_matches_reference_calculator`: base (7 casos) a 4e-3 Hz y
+  sustituyentes C/S/N/Cl (49 casos) a 0.42 Hz (tolerancia 0.5). Límite: O, F,
+  Si, Br, I y P quedan fuera del gate porque la referencia conmuta a sus
+  ecuaciones específicas por patrón (C/D/E) y la forma general no las
+  reproduce (0.7–1.7 Hz); la validación contra un set *experimental* de ³J
+  sigue pendiente.
 
 **F55 · Espectro NMR ensanchado, formato y multi-núcleo (`nmr::compute_nmr_spectrum*`)**
 - Referencia probada: **nmrglue** (procesado/simulación de espectros, MIT-license) para verificar el formato de la forma de línea; **TopSpin**/MestReNova para comparación de visor; la práctica estándar IUPAC para referenciación (TMS 0 ppm, unfolding de acoplamientos).
@@ -1869,6 +1883,11 @@ están activos (ningún `#[ignore]`).
   1.9e-11 (tolerancia 1e-10). Hallazgo de fidelidad: la distancia vdW que
   entra al capacitor es el valor crudo de la tabla mctc-lib (Å) porque
   `aatoau`/`autoaa` se cancelan.
+- **Karplus/HLA (2026-10-13)**: ecuación generalizada de Haasnoot–de
+  Leeuw–Altona implementada (`nmr::coupling::hla_coupling`) con parámetros y
+  Δχ ajustados contra la calculadora de referencia (fixture de 84 casos);
+  gate F54 con base a 4e-3 Hz y C/S/N/Cl a 0.42 Hz; O/F/Si/Br/I/P documentados
+  como fuera de la forma general.
 - **EHT metales (2026-10-13)**: benchmark de la tabla d-block contra YAeHMOP
   3.0.3 (Alvarez 1993); 33 valores corregidos (ζ de 4d/5d, VSIP de Ni/Zr/Tc/Cd)
   y gate F31 con Δ = 0 en 76 filas; Y/Ag/Hf documentados como referencia
