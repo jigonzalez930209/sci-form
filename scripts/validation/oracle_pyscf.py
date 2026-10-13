@@ -480,6 +480,9 @@ def run_tda(nstates: int = 4) -> Report:
             osc = [float(x) for x in td.oscillator_strength()]
         except Exception:
             osc = []
+        # AO dipole integrals (origin at 0) for the transition-moment gate.
+        int1e_r = mol.intor("int1e_r")
+        dipole = [[float(v) for v in int1e_r[comp].ravel()] for comp in range(3)]
         cases.append(
             {
                 "name": case["name"],
@@ -490,6 +493,9 @@ def run_tda(nstates: int = 4) -> Report:
                 "e_tot": e_hf,
                 "excitation_ev": energies_ev,
                 "oscillator": osc,
+                "dipole_x": dipole[0],
+                "dipole_y": dipole[1],
+                "dipole_z": dipole[2],
             }
         )
 
