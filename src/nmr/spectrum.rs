@@ -401,8 +401,38 @@ pub fn compute_nmr_spectrum_for_shifts(
         ),
         "Chemical shifts come from the fast empirical inference layer. ¹H uses explicit vicinal J-coupling splitting; other nuclei are rendered as screening-level singlets unless a dedicated model is available.".to_string(),
         "Equivalent nuclei are grouped before rendering, and exchangeable O-H/N-H/S-H couplings are suppressed in the default 1H spectrum.".to_string(),
-        "First-order splitting uses explicit coupling groups; higher-order effects (roofing, strong coupling) are not modeled.".to_string(),
+        "First-order splitting uses explicit coupling groups; strongly coupled pairs (|Δν|/|J| < 10) are flagged below and their exact second-order spectrum is available through `nmr::SpinSystem`.".to_string(),
     ];
+
+    // Second-order diagnostic: flag strongly coupled proton pairs.
+    if matches!(nucleus, NmrNucleus::H1) && (2..=6).contains(&shift_groups.len()) {
+        let shifts_hz: Vec<f64> = shift_groups
+            .iter()
+            .map(|g| g.shift_ppm * spectrometer_frequency_mhz)
+            .collect();
+        let n_groups = shift_groups.len();
+        let mut j_matrix = vec![vec![0.0f64; n_groups]; n_groups];
+        for coupling in couplings {
+            let g1 = shift_groups
+                .iter()
+                .position(|g| g.atom_indices.contains(&coupling.h1_index));
+            let g2 = shift_groups
+                .iter()
+                .position(|g| g.atom_indices.contains(&coupling.h2_index));
+            if let (Some(a), Some(b)) = (g1, g2) {
+                if a != b {
+                    j_matrix[a][b] += coupling.j_hz;
+                    j_matrix[b][a] += coupling.j_hz;
+                }
+            }
+        }
+        let system = super::second_order::SpinSystem::new(shifts_hz, j_matrix);
+        for pair in system.strong_coupling_report() {
+            if pair.strongly_coupled {
+                notes.push(super::second_order::strong_coupling_note(&pair));
+            }
+        }
+    }
     if nucleus.is_quadrupolar() {
         notes.push(
             "Quadrupolar nucleus selected: linewidths and positions are approximate relative indicators, not quantitative simulations of relaxation or isotope abundance.".to_string(),
@@ -517,6 +547,50 @@ mod tests {
         assert_eq!(pascal_row(1), vec![1.0, 1.0]);
         assert_eq!(pascal_row(2), vec![1.0, 2.0, 1.0]);
         assert_eq!(pascal_row(3), vec![1.0, 3.0, 3.0, 1.0]);
+    }
+
+    #[test]
+    fn test_strong_coupling_note_emitted() {
+        // Two protons 0.2 ppm apart at 400 MHz (Δν = 80 Hz) with J = 10 Hz:
+        // |Δν|/|J| = 8 < 10 ⇒ strongly coupled and flagged.
+        use super::super::shifts::ChemicalShift;
+        let shifts = vec![
+            ChemicalShift {
+                atom_index: 0,
+                shift_ppm: 3.2,
+                environment: "test".to_string(),
+                confidence: 1.0,
+                element: 1,
+            },
+            ChemicalShift {
+                atom_index: 1,
+                shift_ppm: 3.0,
+                environment: "test".to_string(),
+                confidence: 1.0,
+                element: 1,
+            },
+        ];
+        let couplings = vec![super::super::coupling::JCoupling {
+            h1_index: 0,
+            h2_index: 1,
+            j_hz: 10.0,
+            n_bonds: 3,
+            coupling_type: "vicinal_3J".to_string(),
+        }];
+        let spectrum = compute_nmr_spectrum_for_shifts(
+            &shifts,
+            &couplings,
+            NmrNucleus::H1,
+            0.02,
+            0.0,
+            12.0,
+            500,
+        );
+        assert!(
+            spectrum.notes.iter().any(|n| n.contains("strong coupling")),
+            "notes: {:?}",
+            spectrum.notes
+        );
     }
 
     #[test]
