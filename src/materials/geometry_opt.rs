@@ -85,12 +85,15 @@ pub type EnergyForceFn = dyn Fn(&[u8], &[[f64; 3]]) -> Result<(f64, Vec<[f64; 3]
 /// * `initial_positions` - Starting coordinates (Å)
 /// * `energy_force_fn` - Function computing energy and forces
 /// * `config` - Optimization configuration
-pub fn optimize_framework(
+pub fn optimize_framework<F>(
     elements: &[u8],
     initial_positions: &[[f64; 3]],
-    energy_force_fn: &EnergyForceFn,
+    energy_force_fn: &F,
     config: &FrameworkOptConfig,
-) -> Result<FrameworkOptResult, String> {
+) -> Result<FrameworkOptResult, String>
+where
+    F: Fn(&[u8], &[[f64; 3]]) -> Result<(f64, Vec<[f64; 3]>), String>,
+{
     match config.method {
         OptMethod::SteepestDescent => {
             optimize_steepest_descent(elements, initial_positions, energy_force_fn, config)
@@ -100,12 +103,15 @@ pub fn optimize_framework(
 }
 
 /// Steepest descent optimizer.
-fn optimize_steepest_descent(
+fn optimize_steepest_descent<F>(
     elements: &[u8],
     initial_positions: &[[f64; 3]],
-    energy_force_fn: &EnergyForceFn,
+    energy_force_fn: &F,
     config: &FrameworkOptConfig,
-) -> Result<FrameworkOptResult, String> {
+) -> Result<FrameworkOptResult, String>
+where
+    F: Fn(&[u8], &[[f64; 3]]) -> Result<(f64, Vec<[f64; 3]>), String>,
+{
     let n = elements.len();
     let mut positions: Vec<[f64; 3]> = initial_positions.to_vec();
     let mut energy_history = Vec::new();
@@ -194,12 +200,15 @@ fn optimize_steepest_descent(
 }
 
 /// BFGS quasi-Newton optimizer with approximate inverse Hessian.
-fn optimize_bfgs(
+fn optimize_bfgs<F>(
     elements: &[u8],
     initial_positions: &[[f64; 3]],
-    energy_force_fn: &EnergyForceFn,
+    energy_force_fn: &F,
     config: &FrameworkOptConfig,
-) -> Result<FrameworkOptResult, String> {
+) -> Result<FrameworkOptResult, String>
+where
+    F: Fn(&[u8], &[[f64; 3]]) -> Result<(f64, Vec<[f64; 3]>), String>,
+{
     let n = elements.len();
     let ndim = n * 3;
     let mut positions: Vec<[f64; 3]> = initial_positions.to_vec();
