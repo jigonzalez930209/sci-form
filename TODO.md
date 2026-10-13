@@ -104,7 +104,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ### 2. HF / Post-HF
 - [ ] Completar CISD singles-doubles coupling — dedicado; ruta de validación: `pyscf.ci.cisd` (disponible en el venv) con fixture nuevo
 - [ ] Reducir coste de memoria GPU para ERI O(N⁴) — batching/tiling del tensor (ver plan §14.3: >200 funciones ≈ 3.2 GB en CPU)
-- [ ] Mejorar momentos de transición más allá de la aproximación de monopolo: el fixture F41 (`pyscf_tda.json`) ya trae las fuerzas de oscilador de PySCF y el test las ignora (campo `oscillator` sin leer), así que el gate está listo; falta añadir integrales de dipolo AO al módulo `scf` (hoy no existen) y usarlas en `transition_dipole_from_ci``
+- [x] Momentos de transición con integrales de dipolo AO: `scf::dipole_matrix` (recursión 1D), camino exacto en `hf::cis::compute_cis_with_ao_dipoles` y en `spectroscopy::compute_stda_with_dipoles`; gate F41 extendido: |ΔD| = 1.1e-9 a.u. vs `int1e_r` de PySCF y |Δf| < 1e-5 en 27/29 estados (H2O 0/1 documentado: intercambio de carácter entre configuraciones casi degeneradas)`
 
 ### 3. PM3
 - [x] MOPAC 23.2.5 descargado y usado como árbitro de F42 (fixture `tests/fixtures/validation/mopac_pm3.json`, 24 moléculas)
