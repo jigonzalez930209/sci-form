@@ -107,7 +107,9 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Mejorar momentos de transición más allá de la aproximación de monopolo: el fixture F41 (`pyscf_tda.json`) ya trae las fuerzas de oscilador de PySCF y el test las ignora (campo `oscillator` sin leer), así que el gate está listo; falta añadir integrales de dipolo AO al módulo `scf` (hoy no existen) y usarlas en `transition_dipole_from_ci``
 
 ### 3. PM3
-- [ ] Completar parametrización residual: resonance integrals, nuclear repulsion, referencias atómicas para heat of formation — bloqueado por MOPAC (F42): sin binario no hay árbitro
+- [x] MOPAC 23.2.5 descargado y usado como árbitro de F42 (fixture `tests/fixtures/validation/mopac_pm3.json`, 24 moléculas)
+- [x] Núcleo PM3 fiel (port de MOPAC): tabla de parámetros de la fuente (42 elementos + eisol), overlaps analíticos `diat2` (casos 1–6), `reppd`/`rotmat`/`spcore`/`ccrep` (con la corrección N–H/O–H), `fock1`/`fock2` y HoF con eisol. Validado exacto (<0.02 kcal/mol) en hidruros X–H (C/N/O/F/Si/P/S/Cl), matriz H de agua y etileno (1e-4 eV), SCF de agua (eigenvalores y cargas exactos) y E_nuc por par (1e-4 eV)
+- [ ] PM3 residual documentado: las integrales 2e "polares" (π) de la rotación `tx`/`rotatd` salen con el signo opuesto a MOPAC (error hasta ~130 kcal/mol en sistemas π: benceno, aromáticos). Siguiente paso: depurar contra el dump `HCORE` de MOPAC usando el bloque C–C alineado en z
 - [x] Delimitar claramente PM3 vs PM3(tm) en la superficie pública (`Pm3Method` + `pm3_method`, flag `tm` en la tabla)
 
 ### 4. xTB
