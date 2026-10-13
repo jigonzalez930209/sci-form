@@ -127,7 +127,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] Ampliación fuerte de HOSE database — bloqueado: requiere una base externa de shifts (NMRShiftDB/SDBS) con licencia y validación
 - [ ] Constantes de Karplus más específicas por entorno — bloqueado: requiere implementar Haasnoot-de Leeuw-Altona y un set experimental de ³J para validar (hoy hay Karplus estándar por camino C-C/C-N/C-O/C-S, con tests cualitativos)
 - [x] Aromaticidad real con SSSR/Hückel para shifts (percepción antes de HOSE; Kekulé == aromático en los tests)
-- [ ] Salida más allá del supuesto first-order (strong coupling) — requiere formalismo de segundo orden y espectros de referencia para gate
+- [x] Salida más allá del supuesto first-order: `nmr::second_order::SpinSystem` diagonaliza el Hamiltoniano de espín (base producto, hasta 6 espines) y da el espectro exacto de líneas; `strong_coupling_report` marca pares con |Δν|/|J| < 10 y `compute_nmr_spectrum` los anota. Gate: solución analítica AB (posiciones ν_c ± (C±|J|)/2 e intensidades 1 ± sin2θ) a 1e-8, límite débil (dobletes 1:1), A2 (singlete) y roof effect. La fórmula de referencia se corrigió contra la diagonalización (intensidades 1 ± J/C, no 1 ± Δν/C)
 
 ### 7. GPU
 - [x] Fallback CPU transparente cuando GPU no disponible (`compute_mmff94_nonbonded_with_report` + reportes de backend)
