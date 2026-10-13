@@ -1,0 +1,40 @@
+{
+  "reference": "Experimental gas-phase barriers (literature consensus values)",
+  "generated": "hand-curated for tests/literature_barriers.rs (item 179)",
+  "tolerance_kcal_mol": 2.5,
+  "cases": [
+    {
+      "name": "ethane_torsion",
+      "smiles": "CC",
+      "coordinate": "C-C dihedral, staggered (0 deg) -> eclipsed (60 deg) -> staggered (120 deg)",
+      "literature_barrier_kcal_mol": 2.93,
+      "source": "Microwave/electron-diffraction consensus, ~12.3 kJ/mol",
+      "backends": ["uff", "gfn2"]
+    },
+    {
+      "name": "methanol_torsion",
+      "smiles": "CO",
+      "coordinate": "C-O dihedral, staggered -> eclipsed -> staggered (120 deg window)",
+      "literature_barrier_kcal_mol": 1.07,
+      "source": "Microwave V3 = 373.6 cm-1 (Lees & Baker)",
+      "backends": ["uff", "gfn2"]
+    },
+    {
+      "name": "ammonia_inversion",
+      "smiles": "N",
+      "coordinate": "Umbrella: N mirrored through the H3 plane (+d0 -> planar -> -d0)",
+      "literature_barrier_kcal_mol": 5.79,
+      "source": "Inversion barrier 2023 cm-1 (high-resolution spectroscopy)",
+      "backends": ["gfn2"],
+      "backend_notes": {
+        "uff": "excluded: UFF inversion term far too stiff on the rigid path (10.9 vs 5.79); a relaxed path needs a method-specific optimizer"
+      }
+    }
+  ],
+  "method_notes": [
+    "Rigid scans (exact-symmetry endpoints): methyl torsions rotate one top by 0..120 deg in 20-deg steps; ammonia translates N between exact mirror images (planar midpoint sampled).",
+    "Rigid profiles are upper bounds to the relaxed MEP; endpoints are seed-42 embeddings (method-agnostic).",
+    "The legacy PM3 NEB backend is excluded: it uses the unvalidated legacy PM3 engine, not the faithful F42 port.",
+    "Simplified Cartesian NEB is unsuitable for >30 deg torsions (chord collapse) and collapses with over-relaxation; the experimental CI-NEB diverged on these paths. Documented, not used for numbers."
+  ]
+}
