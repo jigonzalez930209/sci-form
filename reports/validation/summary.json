@@ -436,23 +436,6 @@
  },
  {
   "ficha": "F67",
-  "observable": "mof5_assembly_vs_pormake",
-  "reference": {
-   "tool": "pormake Builder (pcu/N16/E14)"
-  },
-  "units": "atoms/equation",
-  "level": "L2",
-  "n_cases": 1,
-  "metric": "max_abs",
-  "value": 0.0,
-  "tolerance": 0.0,
-  "pass": true,
-  "notes": "Same BB geometries + same cell: atom count, composition and porosity must agree. Topology degrees vs RCSR .cgd coordinations gated in tests/cross_validation.rs::f67_topology. Conventional-cell literature anchor (25.832 A) reported, not gated (assembler takes the cell as input; pormake scaling is +2.55% off experiment).",
-  "timestamp": "2026-10-12T10:27:37",
-  "source": "tests/cross_validation.rs"
- },
- {
-  "ficha": "F67",
   "observable": "topology_degree_mismatches",
   "metric": "mismatches",
   "value": 0.0,
@@ -564,5 +547,21 @@
   "pass": false,
   "notes": "Provenance only. Both standalone paths are documented gaps (element-level C6 without coordination/charge dependence), tracked by tests/cross_validation.rs::f46_d3_d4_known_gaps_tracked.",
   "timestamp": "2026-10-12T22:08:09"
+ },
+ {
+  "ficha": "F67",
+  "observable": "mof5_assembly_vs_pormake",
+  "reference": {
+   "tool": "pormake Builder (pcu/N16/E14)"
+  },
+  "units": "atoms/equation",
+  "level": "L2",
+  "n_cases": 1,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 0.0,
+  "pass": false,
+  "notes": "Same BB geometries + same cell: atom count, composition and porosity must agree. Topology degrees vs RCSR .cgd coordinations gated in tests/cross_validation.rs::f67_topology. Conventional-cell literature anchor (25.832 A) reported, not gated (assembler takes the cell as input; pormake scaling is +2.55% off experiment).",
+  "timestamp": "2026-10-12T22:36:23"
  }
 ]
