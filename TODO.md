@@ -102,7 +102,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] CLI batch stdin: streaming real en chunks de 512 (`embed_cmds::cmd_batch`), JSON/XYZ/SDF incrementales
 
 ### 2. HF / Post-HF
-- [ ] Completar CISD singles-doubles coupling — dedicado; ruta de validación: `pyscf.ci.cisd` (disponible en el venv) con fixture nuevo
+- [ ] Completar CISD: el bloque S–D existe pero el CI está incompleto — faltan los dobles de mismo orbital (i²→a², que para H2/STO-3G es el determinante dominante) y el acoplamiento con la referencia, y la "correlation energy" actual toma el menor autovalor CIS (no es la energía de correlación). Referencias PySCF `ci.CISD` ya medidas para el fixture: H2 −0.02052453, H2O −0.04878791, LiH −0.02044622 Ha
 - [ ] Reducir coste de memoria GPU para ERI O(N⁴) — batching/tiling del tensor (ver plan §14.3: >200 funciones ≈ 3.2 GB en CPU)
 - [x] Momentos de transición con integrales de dipolo AO: `scf::dipole_matrix` (recursión 1D), camino exacto en `hf::cis::compute_cis_with_ao_dipoles` y en `spectroscopy::compute_stda_with_dipoles`; gate F41 extendido: |ΔD| = 1.1e-9 a.u. vs `int1e_r` de PySCF y |Δf| < 1e-5 en 27/29 estados (H2O 0/1 documentado: intercambio de carácter entre configuraciones casi degeneradas)`
 
