@@ -1509,11 +1509,14 @@ como *parcial* en la tabla "supported accuracy".
 | F41 (ext.) | PySCF `ci.cisd`/`ci.ucisd` | energía de correlación CISD (8 moléculas STO-3G) | **2.1e-8 Ha** | 1e-6 | PASS |
 | F31 (ext.) | YAeHMOP 3.0.3 (Alvarez 1993) | parámetros EHT de metales d (76 filas) | **Δ = 0** | 0.02 eV / 0.02 bohr⁻¹ | PASS |
 | F54 (ext.) | calculadora HLA de referencia | ³J con corrección de sustituyentes: base (7) + C/S/N/Cl (49) | **4e-3 Hz**; sustituidos 0.42 Hz | 0.01 / 0.5 | PASS |
+| F78 | LAMMPS `reaxff` (ffield.reax.cho) | BO σ en pulls C–H/O–H + forma de disociación CH₄ | **ΔBO ≤ 0.0085**; min 1.2 vs 1.09 Å; De 100 vs 117 | 0.05 / 0.2 Å / 30 kcal | PASS |
+| F95 | LAMMPS `fix electrode/conp` | capacitor bilayer grafeno: ΔQ inducida, patrón por átomo | **escala 1.76x**; similitud 0.44; linealidad/antisimetría exactas | 2.5x / 0.3 | PASS |
+| F89 (ext.) | literatura experimental | barreras torsión etano/metanol + inversión NH₃ (UFF/GFN2) | **Δ ≤ 1.69 kcal/mol** (etano ≤0.05) | 2.5 kcal/mol | PASS |
 
 Fixtures: `tests/fixtures/validation/` (README con procedencia). Versiones de
 referencia: `validation/refs.lock.json` (RDKit 2026.09.1, PySCF 2.14.0, NumPy 2.5.4,
 SciPy 1.18.1, FreeSASA python-bindings, tblite 0.7.0, dftd4 4.3.0, s-dftd3 1.6.0), pymatgen 2026.9.24, ASE 3.29.0, spglib 2.8.0).
-Los 35 tests de `tests/cross_validation.rs`
+Los 38 tests de `tests/cross_validation.rs`
 están activos (ningún `#[ignore]`); los dos espacios CISD mayores (CH2O/C2H4)
 solo se ejercitan en `--release`.
 
@@ -1868,7 +1871,7 @@ solo se ejercitan en `--release`.
 | Runner end-to-end | `scripts/run_validation.sh` |
 | Fixtures + procedencia | `tests/fixtures/validation/` |
 | Versiones de referencia | `validation/refs.lock.json` |
-| Tests de validación cruzada | `tests/cross_validation.rs` (35 tests activos: F01, F05, F13, F14, F16, F17, F21, F22-EEQBC, F23+F26, F28, F31-EHT, F36–F39, F41 (CIS+CISD), F43–F49, F54-HLA, F59, F64–F70) |
+| Tests de validación cruzada | `tests/cross_validation.rs` (38 tests activos: F01, F05, F13, F14, F16, F17, F21, F22-EEQBC, F23+F26, F28, F31-EHT, F36–F39, F41 (CIS+CISD), F42 (24/24), F43–F49, F44-UKS, F45-UKS, F54-HLA, F59, F64–F70) |
 | Reporte | `reports/validation/summary.json` |
 
 ---
@@ -1906,6 +1909,22 @@ solo se ejercitan en `--release`.
   (su `uhf` solo desdobla ocupaciones; además su Python espera Bohr, no Å).
   Gates F44-UKS/F45-UKS: `E_uks − E_spin` vs `tblite uhf` a ≤3.5e-2 eV en
   OH/CH₃/NO/O₂, uhf=0 ≡ restringido, Σm = uhf exacto, E_spin < 0.
+- **F95/CPM vs LAMMPS (2026-10-13)**: `fix electrode/conp` sobre un
+  capacitor bilayer de grafeno (oráculo + fixture `cpm_lammps.json`, gate en
+  `test_cpm.rs`). Requirió μ por átomo y solver LU directo (el SCF amortiguado
+  divergía a 1e157 en electrodos). Gap cuantificado: escala 1.76x y patrón
+  0.44 (onsite 5 eV blando vs self gaussiano).
+- **F78/ReaxFF vs LAMMPS (2026-10-13)**: `pair_style reaxff` con
+  `ffield.reax.cho` sobre pulls C–H/O–H (oráculo + fixture
+  `reaxff_lammps.json`, gate `f78` en `alpha_reaxff_validation.rs`). Requirió
+  tabla de pares ffield (BO a 0.0085) y exclusión vdW de pares enlazados (el LJ
+  divergía y no había mínimo). Gaps: sin correcciones BO, LJ en vez de
+  Morse+f13, EEM invertido a corta distancia.
+- **Barreras vs literatura (2026-10-13)**: fixture `literature_barriers.json`
+  (etano 2.93, metanol 1.07, NH₃ 5.79) y gate `barriers_match_literature`
+  (scans rígidos UFF/GFN2, todo a ≤1.69 kcal/mol). Hallazgos: NEB cartesiano
+  inservible en torsiones, CI-NEB experimental diverge, backend PM3 del NEB es
+  el motor legacy.
 - **LAMMPS con REAXFF (2026-10-13)**: build desde fuente funcional
   (`git clone --branch stable_29Aug2024_update2`, `cmake -S cmake -B build -G
   Ninja -DPKG_REAXFF=on -DBUILD_MPI=off -DCMAKE_DISABLE_FIND_PACKAGE_MPI=ON`,
