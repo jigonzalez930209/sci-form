@@ -119,6 +119,30 @@
   "source": "tests/cross_validation.rs"
  },
  {
+  "ficha": "F22",
+  "observable": "eeqbc_charges_vs_multicharge",
+  "metric": "max_abs",
+  "value": 6.902013682807962e-12,
+  "tolerance": 1e-10,
+  "pass": true,
+  "n_cases": 23,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F22",
+  "observable": "eeqbc_cn_vs_multicharge",
+  "metric": "max_abs",
+  "value": 1.9084067659491666e-11,
+  "tolerance": 1e-10,
+  "pass": true,
+  "n_cases": 23,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
   "ficha": "F23",
   "observable": "mulliken_charges_max_abs",
   "metric": "max_abs",
@@ -224,10 +248,63 @@
  },
  {
   "ficha": "F41",
+  "observable": "ao_dipole_integrals_max_abs_au",
+  "metric": "max_abs",
+  "value": 1.099976554286286e-09,
+  "tolerance": 1e-08,
+  "pass": true,
+  "n_cases": 8,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F41",
+  "observable": "cis_oscillator_strength_max_abs",
+  "metric": "max_abs",
+  "value": 0.004067995484100969,
+  "tolerance": 0.005,
+  "pass": true,
+  "n_cases": 8,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F41",
+  "observable": "cis_singlet_excitations_ev",
+  "reference": {
+   "tool": "PySCF 2.14.0 tdscf.TDA (singlets)"
+  },
+  "units": "eV",
+  "level": "L2",
+  "n_cases": 8,
+  "metric": "max_abs",
+  "value": 1.72449134481912e-06,
+  "tolerance": 0.01,
+  "pass": true,
+  "notes": "CIS/TDA singlet excitation energies, tolerance 0.01 eV per the validation plan. Measured by tests/cross_validation.rs::f41_cis.",
+  "timestamp": "2026-10-13T09:36:53",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F41",
   "observable": "cis_singlet_excitations_max_abs_ev",
   "metric": "max_abs",
-  "value": 2.6223579716599943e-06,
+  "value": 2.622358728388008e-06,
   "tolerance": 0.01,
+  "pass": true,
+  "n_cases": 8,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F41",
+  "observable": "cisd_correlation_vs_pyscf",
+  "metric": "max_abs",
+  "value": 2.0727322080915656e-08,
+  "tolerance": 1e-06,
   "pass": true,
   "n_cases": 8,
   "source": "tests/cross_validation.rs",
@@ -244,7 +321,7 @@
   "level": "L4",
   "n_cases": 11,
   "metric": "max_abs_vs_experiment",
-  "value": 4200.554204524276,
+  "value": 111.60434952999621,
   "tolerance": 5000.0,
   "pass": true,
   "notes": "MOPAC cross-check BLOCKED (no binary/toolchain); this guard only trips on gross regressions of the current behavior. Measured by tests/cross_validation.rs::f42_pm3_guard.",
@@ -261,7 +338,7 @@
   "level": "L4",
   "n_cases": 18,
   "metric": "max_abs",
-  "value": 0.00016503430421721532,
+  "value": 0.00016503645365162356,
   "tolerance": 0.01,
   "pass": true,
   "notes": "Tolerance 1 kcal/mol (0.0434 eV) per the validation plan. Measured by tests/cross_validation.rs::f43_gfn0.",
@@ -305,7 +382,7 @@
   "ficha": "F45",
   "observable": "gfn2_single_point_max_abs_ev",
   "metric": "max_abs",
-  "value": 2.252494607546396e-05,
+  "value": 2.252509023037419e-05,
   "tolerance": 0.0217,
   "pass": true,
   "n_cases": 18,
@@ -320,7 +397,7 @@
   "value": 6.771661939519724e-09,
   "tolerance": 1.5936014376405156e-06,
   "pass": true,
-  "n_cases": 18,
+  "n_cases": 25,
   "source": "tests/cross_validation.rs",
   "reference": {},
   "level": "L2"
@@ -329,13 +406,30 @@
   "ficha": "F46",
   "observable": "d4_pbe_standalone_max_abs_hartree",
   "metric": "max_abs",
-  "value": 1.1558713318080005e-10,
+  "value": 6.197625954107444e-10,
   "tolerance": 1.5936014376405156e-06,
   "pass": true,
-  "n_cases": 18,
+  "n_cases": 25,
   "source": "tests/cross_validation.rs",
   "reference": {},
   "level": "L2"
+ },
+ {
+  "ficha": "F46",
+  "observable": "d4d3_dispersion_fixture_provenance",
+  "reference": {
+   "tool": "dftd4 4.3.0"
+  },
+  "units": "hartree",
+  "level": "L4",
+  "n_cases": 25,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 1.5936014376405156e-06,
+  "pass": null,
+  "notes": "Provenance only. Both standalone paths are documented gaps (element-level C6 without coordination/charge dependence), tracked by tests/cross_validation.rs::f46_d3_d4_known_gaps_tracked.",
+  "timestamp": "2026-10-12T22:08:09",
+  "status": "tracked"
  },
  {
   "ficha": "F47",
@@ -436,6 +530,23 @@
  },
  {
   "ficha": "F67",
+  "observable": "mof5_assembly_vs_pormake",
+  "reference": {
+   "tool": "pormake Builder (pcu/N16/E14)"
+  },
+  "units": "atoms/equation",
+  "level": "L2",
+  "n_cases": 1,
+  "metric": "max_abs",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "notes": "Same BB geometries + same cell: atom count, composition and porosity must agree. Topology degrees vs RCSR .cgd coordinations gated in tests/cross_validation.rs::f67_topology. Conventional-cell literature anchor (25.832 A) reported, not gated (assembler takes the cell as input; pormake scaling is +2.55% off experiment).",
+  "timestamp": "2026-10-12T22:36:23",
+  "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F67",
   "observable": "topology_degree_mismatches",
   "metric": "mismatches",
   "value": 0.0,
@@ -515,53 +626,5 @@
   "notes": "Same UFF surface (F16 parity 3.98e-13 kcal/mol), same start: sci-form BFGS vs RDKit minimization. Tolerance 1e-3 kcal/mol/atom (4.3e-8 eV/atom, stricter than the plan's 1e-6 eV/atom: both minimizers land in the same basin). Measured by tests/cross_validation.rs::f70_framework_opt.",
   "timestamp": "2026-10-12T10:27:30",
   "source": "tests/cross_validation.rs"
- },
- {
-  "ficha": "F41",
-  "observable": "cis_singlet_excitations_ev",
-  "reference": {
-   "tool": "PySCF 2.14.0 tdscf.TDA (singlets)"
-  },
-  "units": "eV",
-  "level": "L2",
-  "n_cases": 8,
-  "metric": "max_abs",
-  "value": null,
-  "tolerance": 0.01,
-  "pass": false,
-  "notes": "CIS/TDA singlet excitation energies, tolerance 0.01 eV per the validation plan. Measured by tests/cross_validation.rs::f41_cis.",
-  "timestamp": "2026-10-12T21:24:56"
- },
- {
-  "ficha": "F46",
-  "observable": "d4d3_dispersion_fixture_provenance",
-  "reference": {
-   "tool": "dftd4 4.3.0"
-  },
-  "units": "hartree",
-  "level": "L4",
-  "n_cases": 25,
-  "metric": "max_abs",
-  "value": null,
-  "tolerance": 1.5936014376405156e-06,
-  "pass": false,
-  "notes": "Provenance only. Both standalone paths are documented gaps (element-level C6 without coordination/charge dependence), tracked by tests/cross_validation.rs::f46_d3_d4_known_gaps_tracked.",
-  "timestamp": "2026-10-12T22:08:09"
- },
- {
-  "ficha": "F67",
-  "observable": "mof5_assembly_vs_pormake",
-  "reference": {
-   "tool": "pormake Builder (pcu/N16/E14)"
-  },
-  "units": "atoms/equation",
-  "level": "L2",
-  "n_cases": 1,
-  "metric": "max_abs",
-  "value": null,
-  "tolerance": 0.0,
-  "pass": false,
-  "notes": "Same BB geometries + same cell: atom count, composition and porosity must agree. Topology degrees vs RCSR .cgd coordinations gated in tests/cross_validation.rs::f67_topology. Conventional-cell literature anchor (25.832 A) reported, not gated (assembler takes the cell as input; pormake scaling is +2.55% off experiment).",
-  "timestamp": "2026-10-12T22:36:23"
  }
 ]

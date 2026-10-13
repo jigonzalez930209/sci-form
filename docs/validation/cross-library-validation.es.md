@@ -545,6 +545,22 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Procedimiento: `test_experimental_comparison.rs` (spectroscopy_comparison, 5 tests) + `scripts/generate_tda_reference.py` (PySCF TDA).
 - Estado en el repo: `src/hf/cis.rs`(aprox.), tests bloque spectroscopy.
 - Criterio: ΔE ≤ 0.01 eV vs PySCF misma base; orden de estados del bloque de valencia correcto.
+- **Extensión CISD (2026-10-13)**: `hf::cisd::compute_cisd` reescrito como CISD
+  determinantal (orbitales de espín) sobre la referencia RHF: espacio con
+  dobles de mismo orbital (`(iα iβ)→(aα aβ)`, el determinante dominante en
+  bases mínimas), reglas de Slater–Condon con las integrales monoelectrónicas
+  recuperadas de la condición de Fock canónica
+  (`h_pq = ε_p δ_pq − Σ_j (2(pq|jj) − (pj|jq))`) y energía de correlación
+  `λ_min − E_ref` (antes: el menor autovalor CIS, que no es una energía de
+  correlación). El espacio coincide exactamente con el de `pyscf.ci.UCISD`
+  (141/561/610/1425/3241 determinantes para H2O/CH4/CO/CH2O/C2H4) y el gate
+  `f41_cisd_matches_pyscf` reproduce las correlaciones de `pyscf.ci.cisd.CISD`
+  a ≤ 2.1e-8 Ha (H2, H2O, CH4, NH3, HF, CO, C2H4, CH2O; tolerancia 1e-6); los
+  dos espacios mayores (CH2O/C2H4) solo se ejercitan en `--release` porque el
+  build de la matriz en debug es ~50× más lento.
+  La matriz se verifica además contra una referencia de segunda cuantización
+  explícita (`tests/cisd_brute.rs`, diferencia máxima 5e-15). Camino
+  perturbativo (CIS+MP2) validado contra `pyscf.mp.MP2` (H2O −0.0355456516 Ha).
 
 **F42 · PM3 (`pm3::solve_pm3`, `compute_pm3_gradient`, `is_pm3_supported`)**
 - Referencia probada: **OpenMOPAC/MOPAC2016** (PM3 original de Stewart; `PM3` keyword) — la implementación canónica; **PubChemQC PM6** (200M+ compuestos calculados con PM6) como dataset masivo de calibración indirecta; **Antechamber** como tercer voto.
@@ -559,7 +575,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: misma geometría → energía total, HOMO/LUMO, cargas Mulliken, gradiente numérico vs analítico, y optimización (comparar geometrías); convertir unidades (sci-form eV vs xtb Ha/eV según salida).
 - Datasets: `xtb/test` (repo), S66/WATER27 (interacciones no covalentes), moléculas de `test_experimental_comparison.rs`; tmQM para TMs.
 - Procedimiento: `scripts/compare_xtb_tblite.py` (nuevo) o invocación directa `xtb --sp`; tests `test_extended_molecules.rs`, `test_session_algorithms.rs` §6 (Broyden).
-- Estado en el repo: `src/xtb/{solver,broyden}.rs`, tests existentes; documentación advierte que `solve_xtb` es GFN0-style SCC.
+- Estado en el repo: `src/xtb/{solver,broyden}.rs`, tests existentes; documentación advierte que `solve_xtb` es GFN0-style SCC. Desde 2026-10-13 el solver validado es `xtb::gfn0::solve_gfn0` (port término a término, ver §14); `solve_xtb` sobrevive únicamente como proveedor del gradiente analítico de los backends de fuerza `"xtb"` (NEB/MD, `compute_xtb_gradient`) hasta que existan gradientes GFN0/GFN2 analíticos.
 - Criterio: E ≤ 1 kcal/mol vs xtb GFN0; gradiente ≤ 1e-3 eV/Å; convergencia determinista.
 
 **F44 · GFN1-xTB (`xtb::solve_gfn1`)**
@@ -1735,8 +1751,12 @@ están activos (ningún `#[ignore]`).
      fitted de approxrab (6 decimales);
    - el oráculo relee la energía con un FF fresco (`calcEnergy`
      post-`UFFOptimizeMolecule` va rancio; esto era F70).
-   La aproximación vieja (`solve_xtb`) se conserva para el Hessiano
-   numérico (F48 documenta sus límites).
+   La aproximación vieja (`solve_xtb`) queda **solo** como proveedor del
+   gradiente analítico de los backends de fuerza `"xtb"` (NEB/MD en
+   `dynamics.rs`, `compute_xtb_gradient` público): los consumidores de
+   energía (Hessiano numérico → GFN2, DOS/mesh → GFN2, dipolo → GFN2,
+   backends GSM → `compute_xtb` = GFN2) ya usan los solvers validados
+   (2026-10-13).
 5. **GFN1-xTB (F44)** — **CERRADO**: `xtb::gfn1::solve_gfn1` es un port
    término a término del calculador nativo de tblite 0.7.0
    (`h0.f90`, `coulomb/charge/{effective,type}.f90`,
@@ -1838,6 +1858,23 @@ están activos (ningún `#[ignore]`).
   1.9e-11 (tolerancia 1e-10). Hallazgo de fidelidad: la distancia vdW que
   entra al capacitor es el valor crudo de la tabla mctc-lib (Å) porque
   `aatoau`/`autoaa` se cancelan.
+- **CISD (2026-10-13)**: `hf::cisd` reescrito como CI determinantal completo
+  (dobles de mismo orbital + acoplamiento con la referencia + energía de
+  correlación real). Gate F41-CISD contra PySCF `ci.cisd`/`ci.ucisd`: 8
+  moléculas STO-3G a ≤ 2.1e-8 Ha; matriz verificada contra una referencia de
+  segunda cuantización explícita (`tests/cisd_brute.rs`, 0 discrepancias por
+  encima de 1e-9 en un sistema sintético de 361 determinantes). Hallazgo: el
+  signo de Slater–Condon exige aplicar las creaciones en orden descendente
+  (`a†_a a†_b a_j a_i`), no ascendente; el error era invisible para el estado
+  fundamental de H2O pero corrompía CH2O/C2H4 (8.5e-3 Ha).
+- **Destino de `solve_xtb` legacy (2026-10-13)**: los consumidores de energía
+  se migraron a los solvers validados — `HessianMethod::Xtb` y el dipolo
+  vibracional → GFN2 (`solve_gfn2`, coherente con el `compute_xtb` público y
+  con los Hessianos de referencia F48 "xtb 6.7.1 GFN2-xTB"), `DosMethod::Xtb`
+  y el mesh orbital → GFN2. El solver legacy se conserva **solo** como
+  proveedor del gradiente analítico de los backends de fuerza `"xtb"`
+  (NEB/MD + `compute_xtb_gradient` público); su eliminación queda pendiente de
+  gradientes GFN0/GFN2 analíticos.
 
 
 

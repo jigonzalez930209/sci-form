@@ -40,6 +40,7 @@ What this table tells us:
 - The repo already exposes a reproducible compact comparison surface for PM3 and the current xTB path.
 - The current `xTB` regression output is GFN0-style SCC from `solve_xtb`, not GFN1 or GFN2.
 - These values are useful for trend monitoring, but they are not directly comparable to STO-3G HF total energies because they are different observables.
+- **Nota (2026-10-13)**: `solve_xtb` dejó de ser el solver público de xTB — `compute_xtb` y `compute_xtb_gradient`-consumers ya usan GFN2, y el Hessiano/DOS/mesh migraron a `solve_gfn2`; `solve_xtb` se conserva únicamente como proveedor del gradiente analítico de los backends de fuerza `"xtb"` (NEB/MD). La tabla de arriba es un snapshot histórico (2026-03-24) del módulo `legacy_vs_experimental_*`, que sigue ejercitando deliberadamente el camino legacy.
 
 ### Current HF-3c energy comparison snapshot
 
