@@ -149,7 +149,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 11. Materiales
 - [x] Normalización automática de coordenadas fraccionales (el parser CIF envuelve a [0,1) con `UnitCell::wrap_frac`)
-- [ ] Expansión más allá de topologías homogéneas (nets con aristas no equivalentes) — requiere más datos RCSR/pormake y ampliar el oráculo F67
+- [x] Topologías más allá de las homogéneas: `materials::topology_data` importa 6 nets de la base RCSR/pormake (acs, afw, sod, pts, xah, tfy) con tipos de nodo y — el punto del ítem — **aristas no equivalentes** (afw/xah/tfy con 2 tipos de arista, vía `# EDGE_CENTER`), generadas con `gen_topologies.py` desde los `.cgd`. Oráculo F67 ampliado (fixture con 15 nets) y gate nuevo `f67_extended_nets_match_pormake` (nodos, coordinaciones, coordenadas y tipos de arista vs pormake). Pendiente: que `assemble_framework` consuma nets con múltiples tipos de arista (hoy el ensamblado usa los 4 built-ins homogéneos)
 
 ### 12. Force Fields
 - [x] MMFF94 cobertura para metales de transición: evaluado — el set oficial de MMFF94 no parametriza TMs; los metales se enrutan a UFF/GFN (documentado en el módulo)
@@ -164,7 +164,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] ESP: distancia mínima configurable (`EspGridConfig::min_distance`) y validación estricta de spacing/padding (`compute_esp_grid_with_config`, `compute_esp_with_config`)
 - [x] Distance Geometry: embeddings 2D/planos se re-perturban y re-minimizan en el pipeline; bounds contradictorios detectados por `triangle_smooth_tol` (escalera de reintentos + tests)
 - [x] EEQ: limpiar restos de experimentalidad en nombres de API (comando CLI y bindings WASM sin feature gate)
-- [ ] EEQ: cEEQ/EEQ-BC — bloqueado por falta de referencia (no existe en xtb 6.7.1 ni tblite; requeriría el paper del modelo y sus tablas propias)
+- [ ] EEQ: cEEQ/EEQ-BC — desbloqueable: multicharge (dependencia de dftd4 4.3.0) ya trae el modelo (`src/multicharge/model/eeqbc.f90`) y sus tablas (`param/eeqbc2025.f90`); falta portarlo y validarlo (referencia indirecta vía dftd4 4.3.0, que lo usa para las cargas D4 de Z>103)
 - [x] Population: warning de cobertura (elementos sin modelo de valencia / sin parámetros EHT) y homo/lumo/gap expuestos en `PopulationResult` (Rust y binding Python)
 - [x] Fukui: Hirshfeld/CM5 evaluado (requieren densidades promoleculares/cargas CM5 ausentes; NPA-condensado requiere EHT con carga, hoy no expuesto) — se mantiene Mulliken con la caveat documentada
 - [x] Surface: tabla de radios documentada (`VDW_FALLBACK_RADIUS`, `vdw_radius_source`) y evaluación Connolly/SES documentada (diferida hasta que un consumidor necesite la malla)
