@@ -329,8 +329,10 @@ fn test_pm3_gaussians_present_for_main_group() {
 
 #[test]
 fn test_pm3_gaussians_empty_for_transition_metals() {
-    // PM3(tm) transition metals should have no Gaussian corrections
-    let tms = [22u8, 24, 25, 26, 27, 28, 29, 30];
+    // PM3(tm) transition metals should have no Gaussian corrections.
+    // Zn (30) is a main-group PM3 element in MOPAC's table (with Gaussians),
+    // so it is not part of the PM3(tm) set any more.
+    let tms = [22u8, 24, 25, 26, 27, 28, 29];
     for &z in &tms {
         let p = sci_form::pm3::params::get_pm3_params(z).unwrap();
         assert!(
