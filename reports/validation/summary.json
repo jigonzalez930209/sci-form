@@ -338,23 +338,6 @@
   "level": "L2"
  },
  {
-  "ficha": "F46",
-  "observable": "d4d3_dispersion_fixture_provenance",
-  "reference": {
-   "tool": "dftd4 4.3.0"
-  },
-  "units": "hartree",
-  "level": "L4",
-  "n_cases": 18,
-  "metric": "max_abs",
-  "value": null,
-  "tolerance": 1.5936014376405156e-06,
-  "pass": null,
-  "notes": "Provenance only. Both standalone paths are documented gaps (element-level C6 without coordination/charge dependence), tracked by tests/cross_validation.rs::f46_d3_d4_known_gaps_tracked.",
-  "timestamp": "2026-10-12T10:27:38",
-  "status": "tracked"
- },
- {
   "ficha": "F47",
   "observable": "eas_site_ranking",
   "reference": {
@@ -565,5 +548,21 @@
   "pass": false,
   "notes": "CIS/TDA singlet excitation energies, tolerance 0.01 eV per the validation plan. Measured by tests/cross_validation.rs::f41_cis.",
   "timestamp": "2026-10-12T21:24:56"
+ },
+ {
+  "ficha": "F46",
+  "observable": "d4d3_dispersion_fixture_provenance",
+  "reference": {
+   "tool": "dftd4 4.3.0"
+  },
+  "units": "hartree",
+  "level": "L4",
+  "n_cases": 25,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 1.5936014376405156e-06,
+  "pass": false,
+  "notes": "Provenance only. Both standalone paths are documented gaps (element-level C6 without coordination/charge dependence), tracked by tests/cross_validation.rs::f46_d3_d4_known_gaps_tracked.",
+  "timestamp": "2026-10-12T22:08:09"
  }
 ]
