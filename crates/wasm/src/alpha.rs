@@ -954,3 +954,107 @@ pub fn alpha_render_verify_chart_round_trip(chart_json: &str, tol: f64) -> bool 
         Err(_) => false,
     }
 }
+
+// ─── PERIODIC LINEAR (K-meshes, BZ integration, EHT band structure) ────────
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn alpha_periodic_monkhorst_pack(config_json: &str) -> String {
+    use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
+    match serde_json::from_str::<KMeshConfig>(config_json) {
+        Ok(config) => match monkhorst_pack_mesh(&config) {
+            Ok(mesh) => serde_json::to_string(&mesh).unwrap_or_else(|e| json_error(&e.to_string())),
+            Err(e) => json_error(&e),
+        },
+        Err(e) => json_error(&format!("invalid KMeshConfig JSON: {e}")),
+    }
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn alpha_periodic_bloch_phase(k_fractional_json: &str, translation_json: &str) -> String {
+    use sci_form::alpha::periodic_linear::bloch_phase;
+    let k: [f64; 3] = match serde_json::from_str(k_fractional_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("invalid k-point JSON: {e}")),
+    };
+    let r: [i32; 3] = match serde_json::from_str(translation_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("invalid translation JSON: {e}")),
+    };
+    let (re, im) = bloch_phase(k, r);
+    serde_json::json!({ "re": re, "im": im }).to_string()
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn alpha_periodic_bz_integrate_scalar(values_json: &str, weights_json: &str) -> f64 {
+    use sci_form::alpha::periodic_linear::bz_integrate_scalar;
+    let values: Vec<f64> = serde_json::from_str(values_json).unwrap_or_default();
+    let weights: Vec<f64> = serde_json::from_str(weights_json).unwrap_or_default();
+    bz_integrate_scalar(&values, &weights)
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn alpha_periodic_bz_integrate_vector(vectors_json: &str, weights_json: &str) -> String {
+    use sci_form::alpha::periodic_linear::bz_integrate_vector;
+    let vectors: Vec<Vec<f64>> = serde_json::from_str(vectors_json).unwrap_or_default();
+    let weights: Vec<f64> = serde_json::from_str(weights_json).unwrap_or_default();
+    serde_json::to_string(&bz_integrate_vector(&vectors, &weights))
+        .unwrap_or_else(|e| json_error(&e.to_string()))
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn alpha_periodic_validate_kmesh_weights(kmesh_json: &str, tol: f64) -> bool {
+    use sci_form::alpha::periodic_linear::{validate_kmesh_weights, KMesh};
+    match serde_json::from_str::<KMesh>(kmesh_json) {
+        Ok(mesh) => validate_kmesh_weights(&mesh, tol),
+        Err(_) => false,
+    }
+}
+
+/// EHT band structure along a k-path (`eht::band_structure::compute_band_structure`).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn alpha_periodic_band_structure_eht(
+    elements_json: &str,
+    coords_flat_json: &str,
+    lattice_json: &str,
+    config_json: &str,
+    n_electrons: usize,
+) -> String {
+    use sci_form::eht::band_structure::{compute_band_structure, BandStructureConfig};
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return e,
+    };
+    let lattice: [[f64; 3]; 3] = match serde_json::from_str(lattice_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("invalid lattice JSON: {e}")),
+    };
+    let config: BandStructureConfig = match serde_json::from_str(config_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("invalid BandStructureConfig JSON: {e}")),
+    };
+    match compute_band_structure(&elements, &positions, &lattice, &config, n_electrons) {
+        Ok(bs) => serde_json::to_string(&bs).unwrap_or_else(|e| json_error(&e.to_string())),
+        Err(e) => json_error(&e),
+    }
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn alpha_periodic_validate_electron_count(
+    dos_json: &str,
+    fermi_energy_ev: f64,
+    expected_electrons: f64,
+) -> f64 {
+    use sci_form::alpha::periodic_linear::{validate_electron_count, PeriodicKpmDosResult};
+    match serde_json::from_str::<PeriodicKpmDosResult>(dos_json) {
+        Ok(dos) => validate_electron_count(&dos, fermi_energy_ev, expected_electrons),
+        Err(_) => f64::NAN,
+    }
+}
