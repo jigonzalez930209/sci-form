@@ -273,8 +273,8 @@ The repository now includes an isolated experimental quantum-chemistry stack und
 - Stable production APIs remain unchanged; the experimental work is isolated behind `experimental_*` feature flags
 - Real acceleration today is CPU parallelism via rayon in the ERI build path
 - GPU execution is available through the `experimental-gpu` feature (wgpu/Vulkan with a CPU fallback); the numerical paths stay gated against the CPU reference
-- The cross-library validation campaign gates the quantum-chemistry stack against external references (RDKit, PySCF, tblite, xtb, dftd4/s-dftd3, multicharge, pormake, YAeHMOP, LAMMPS): 35 active tests in `tests/cross_validation.rs`, all green (`lib` 711/711, `regression` 429/429 in release)
-- Known documented limitations: PM3 π residual (F42, residual 2e integrals), PM3 convergence on long alkanes, CISD excited states are not size-consistent, transition-metal EHT parameters are validated against the literature table but not against experiment, HLA J-couplings cover C/S/N/Cl substituents in the general form
+- The cross-library validation campaign gates the quantum-chemistry stack against external references (RDKit, PySCF, tblite, xtb, dftd4/s-dftd3, multicharge, pormake, YAeHMOP, MOPAC, LAMMPS): 38 active tests in `tests/cross_validation.rs`, all green (`lib` 712/712, `regression` 429/429 in release). Completed 2026-10-13: PM3 exact on 24/24 MOPAC molecules, unrestricted GFN1/GFN2 (UKS) vs tblite `uhf`, torsional/inversion barriers vs literature, CPM vs LAMMPS `electrode/conp`, ReaxFF bond orders vs LAMMPS `reaxff`
+- Known documented limitations: PM3 convergence on long alkanes, CISD excited states are not size-consistent, transition-metal EHT parameters are validated against the literature table but not against experiment, HLA J-couplings cover C/S/N/Cl substituents in the general form, CPM electrode response is within 2.5x of LAMMPS (point-charge hardness vs Gaussian self-energy), ReaxFF total energies exclude H2O shapes (EEM polarity inverts at short range) and use LJ instead of Morse+f13 nonbonded
 
 ### Validation Snapshot
 
