@@ -1,8 +1,7 @@
-//! Integration tests for E10: Constant Potential Method
+//! Integration tests for E10: Constant Potential Method (core `sci_form::cpm`).
 
-#[cfg(feature = "experimental-cpm")]
 mod cpm_tests {
-    use sci_form::beta::cpm::*;
+    use sci_form::cpm::*;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (

@@ -5,8 +5,8 @@ use super::context::{
     ComputeBindingDescriptor, ComputeBindingKind, ComputeDispatchDescriptor, GpuContext,
     UniformValue,
 };
-use crate::beta::cpm::grand_potential::{chi_element, eta_element};
-use crate::beta::cpm::{CpmConfig, CpmResult};
+use crate::cpm::grand_potential::{chi_element, eta_element};
+use crate::cpm::{CpmConfig, CpmResult};
 
 const EV_PER_ANGSTROM: f64 = 14.3996;
 

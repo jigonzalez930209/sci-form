@@ -95,7 +95,6 @@ mod test_sdr;
 #[path = "experimental/test_mbh.rs"]
 mod test_mbh;
 
-#[cfg(feature = "beta-cpm")]
 #[path = "experimental/test_cpm.rs"]
 mod test_cpm;
 

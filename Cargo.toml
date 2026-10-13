@@ -45,6 +45,8 @@ experimental-mbh = ["beta-mbh"]
 experimental-cpm = ["beta-cpm"]
 experimental-gsm = ["alpha-gsm"]
 # Alpha — early research, proof-of-concept
+# (alpha-reaxff is a legacy no-op: ReaxFF is core since F78; kept so existing
+# feature flags and cfg gates keep resolving)
 alpha-cga = []
 alpha-gsm = []
 alpha-sdr = []

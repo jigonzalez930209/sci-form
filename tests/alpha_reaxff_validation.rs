@@ -7,8 +7,9 @@
 //! - EEM charges are neutral for neutral molecules
 //! - Numerical gradients are symmetric by Newton's third law
 //! - Energy components are self-consistent
-
-#![cfg(feature = "alpha-reaxff")]
+//!
+//! Core module (`sci_form::forcefield::reaxff`); the F78 LAMMPS gate runs
+//! unconditionally.
 
 use sci_form::forcefield::reaxff::bond_order::compute_bond_orders;
 use sci_form::forcefield::reaxff::eem::{default_eem_params, solve_eem};

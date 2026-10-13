@@ -12,6 +12,8 @@
 //! - [`etkdg_3d`] — ETKDG 3D refinement with torsion terms.
 //! - [`dg_terms`] — Distance-geometry specific energy contributions.
 //! - [`torsion_scan`] — Systematic torsion angle scanning.
+//! - [`reaxff`] — Reactive force field (bond orders, EEM, shielded nonbonded;
+//!   validated vs LAMMPS `reaxff`, F78).
 
 pub mod atom_typer;
 pub mod bounds_ff;
@@ -24,12 +26,10 @@ pub mod gradients;
 pub mod minimizer;
 pub mod mmff94;
 pub mod params;
+pub mod reaxff;
 pub mod torsion_scan;
 pub mod traits;
 pub mod uff;
-
-#[cfg(feature = "alpha-reaxff")]
-pub mod reaxff;
 
 pub use bounds_ff::*;
 pub use dg_terms::*;
