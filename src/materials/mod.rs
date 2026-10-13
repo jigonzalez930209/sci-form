@@ -18,6 +18,7 @@ pub mod sbu;
 pub mod scattering_factors;
 pub(crate) mod space_group_table;
 pub mod space_groups;
+pub mod variable_cell;
 
 pub use assembly::*;
 pub use cell::*;
