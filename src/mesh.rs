@@ -127,7 +127,7 @@ fn compute_xtb_mesh(
     padding: f64,
     isovalue: f32,
 ) -> Result<OrbitalMeshResult, String> {
-    let xtb = crate::xtb::solve_xtb(elements, positions)?;
+    let xtb = crate::xtb::gfn2::solve_gfn2(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     let basis = eht::basis::build_basis(elements, positions);
     let grid = eht::evaluate_orbital_on_grid(
