@@ -72,6 +72,58 @@ pub fn compute_cis_with_dipole(
     positions_bohr: Option<&[[f64; 3]]>,
     basis_to_atom: Option<&[usize]>,
 ) -> CisResult {
+    compute_cis_inner(
+        orbital_energies,
+        coefficients,
+        eris,
+        n_basis,
+        n_occupied,
+        n_states,
+        positions_bohr,
+        basis_to_atom,
+        None,
+    )
+}
+
+/// CIS with AO dipole integrals: exact transition dipoles (no monopole
+/// approximation) for the oscillator strengths.
+///
+/// `ao_dipoles` are the `[D^x, D^y, D^z]` matrices in the AO basis (Bohr),
+/// e.g. from [`crate::scf::dipole_matrix::dipole_matrices`].
+pub fn compute_cis_with_ao_dipoles(
+    orbital_energies: &[f64],
+    coefficients: &DMatrix<f64>,
+    eris: &[f64],
+    n_basis: usize,
+    n_occupied: usize,
+    n_states: usize,
+    ao_dipoles: &[DMatrix<f64>; 3],
+) -> CisResult {
+    compute_cis_inner(
+        orbital_energies,
+        coefficients,
+        eris,
+        n_basis,
+        n_occupied,
+        n_states,
+        None,
+        None,
+        Some(ao_dipoles),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn compute_cis_inner(
+    orbital_energies: &[f64],
+    coefficients: &DMatrix<f64>,
+    eris: &[f64],
+    n_basis: usize,
+    n_occupied: usize,
+    n_states: usize,
+    positions_bohr: Option<&[[f64; 3]]>,
+    basis_to_atom: Option<&[usize]>,
+    ao_dipoles: Option<&[DMatrix<f64>; 3]>,
+) -> CisResult {
     let n_virtual = n_basis - n_occupied;
     let n_singles = n_occupied * n_virtual;
 
@@ -145,44 +197,78 @@ pub fn compute_cis_with_dipole(
         let dom_a = dom_idx % n_virtual + n_occupied;
 
         // Oscillator strength via transition dipole moment
-        let f_osc = match (positions_bohr, basis_to_atom) {
-            (Some(pos), Some(b2a)) => {
-                // Monopole approximation: μ_0k = √2 Σ_ia X_ia Σ_A q_ia(A) R_A
-                let mut tdm = [0.0f64; 3];
-                for single in 0..n_singles {
-                    let i_s = single / n_virtual;
-                    let a_s = single % n_virtual + n_occupied;
-                    let x_ia = col[single];
-                    if x_ia.abs() < 1e-12 {
+        let f_osc = if let Some(dips) = ao_dipoles {
+            // Exact AO transition dipole: μ_0k = -√2 Σ_ia X_ia Σ_μν c_μi c_νa D_μν
+            // (electronic sign convention; the oscillator strength uses |μ|²).
+            let mut tdm = [0.0f64; 3];
+            for single in 0..n_singles {
+                let i_s = single / n_virtual;
+                let a_s = single % n_virtual + n_occupied;
+                let x_ia = col[single];
+                if x_ia.abs() < 1e-12 {
+                    continue;
+                }
+                for mu in 0..n_basis {
+                    let c_mu = coefficients[(mu, i_s)];
+                    if c_mu.abs() < 1e-12 {
                         continue;
                     }
-                    // Compute transition charge on each atom
-                    let n_atoms = pos.len();
-                    let mut q_atom = vec![0.0f64; n_atoms];
-                    for mu in 0..n_basis {
-                        let atom = b2a[mu];
-                        let mut s_contrib = 0.0;
-                        for nu in 0..n_basis {
-                            s_contrib += coefficients[(nu, a_s)] * if mu == nu { 1.0 } else { 0.0 };
+                    for nu in 0..n_basis {
+                        let c_nu = coefficients[(nu, a_s)];
+                        if c_nu.abs() < 1e-12 {
+                            continue;
                         }
-                        q_atom[atom] += coefficients[(mu, i_s)] * s_contrib;
-                    }
-                    for atom in 0..n_atoms {
-                        tdm[0] += x_ia * q_atom[atom] * pos[atom][0];
-                        tdm[1] += x_ia * q_atom[atom] * pos[atom][1];
-                        tdm[2] += x_ia * q_atom[atom] * pos[atom][2];
+                        let weight = x_ia * c_mu * c_nu;
+                        tdm[0] += weight * dips[0][(mu, nu)];
+                        tdm[1] += weight * dips[1][(mu, nu)];
+                        tdm[2] += weight * dips[2][(mu, nu)];
                     }
                 }
-                let sqrt2 = std::f64::consts::SQRT_2;
-                tdm[0] *= sqrt2;
-                tdm[1] *= sqrt2;
-                tdm[2] *= sqrt2;
-                let tdm_sq = tdm[0] * tdm[0] + tdm[1] * tdm[1] + tdm[2] * tdm[2];
-                2.0 / 3.0 * energy * tdm_sq
             }
-            _ => {
-                // Fallback: rough estimate using CI vector norm (always ~2/3 * E)
-                2.0 / 3.0 * energy * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual)
+            let sqrt2 = std::f64::consts::SQRT_2;
+            let tdm_sq = tdm.iter().map(|v| (sqrt2 * v).powi(2)).sum::<f64>();
+            2.0 / 3.0 * energy * tdm_sq
+        } else {
+            match (positions_bohr, basis_to_atom) {
+                (Some(pos), Some(b2a)) => {
+                    // Monopole approximation: μ_0k = √2 Σ_ia X_ia Σ_A q_ia(A) R_A
+                    let mut tdm = [0.0f64; 3];
+                    for single in 0..n_singles {
+                        let i_s = single / n_virtual;
+                        let a_s = single % n_virtual + n_occupied;
+                        let x_ia = col[single];
+                        if x_ia.abs() < 1e-12 {
+                            continue;
+                        }
+                        // Compute transition charge on each atom
+                        let n_atoms = pos.len();
+                        let mut q_atom = vec![0.0f64; n_atoms];
+                        for mu in 0..n_basis {
+                            let atom = b2a[mu];
+                            let mut s_contrib = 0.0;
+                            for nu in 0..n_basis {
+                                s_contrib +=
+                                    coefficients[(nu, a_s)] * if mu == nu { 1.0 } else { 0.0 };
+                            }
+                            q_atom[atom] += coefficients[(mu, i_s)] * s_contrib;
+                        }
+                        for atom in 0..n_atoms {
+                            tdm[0] += x_ia * q_atom[atom] * pos[atom][0];
+                            tdm[1] += x_ia * q_atom[atom] * pos[atom][1];
+                            tdm[2] += x_ia * q_atom[atom] * pos[atom][2];
+                        }
+                    }
+                    let sqrt2 = std::f64::consts::SQRT_2;
+                    tdm[0] *= sqrt2;
+                    tdm[1] *= sqrt2;
+                    tdm[2] *= sqrt2;
+                    let tdm_sq = tdm[0] * tdm[0] + tdm[1] * tdm[1] + tdm[2] * tdm[2];
+                    2.0 / 3.0 * energy * tdm_sq
+                }
+                _ => {
+                    // Fallback: rough estimate using CI vector norm (always ~2/3 * E)
+                    2.0 / 3.0 * energy * transition_dipole_sq(col.as_slice(), n_occupied, n_virtual)
+                }
             }
         };
 
