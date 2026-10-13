@@ -10,6 +10,7 @@
 use super::context::{
     ComputeBindingDescriptor, ComputeBindingKind, ComputeDispatchDescriptor, GpuContext,
 };
+use super::memory_budget::GpuMemoryLimits;
 use crate::scf::basis::BasisSet;
 use crate::scf::two_electron::TwoElectronIntegrals;
 
@@ -104,86 +105,148 @@ pub fn compute_eris_gpu(
     ctx: &GpuContext,
     basis: &BasisSet,
 ) -> Result<TwoElectronIntegrals, String> {
+    compute_eris_gpu_tiled(ctx, basis, &GpuMemoryLimits::default())
+}
+
+/// Split the unique-quartet list into tiles that fit the GPU buffer limits.
+///
+/// Each quartet contributes one `f32` to the packed output buffer, so a tile
+/// `[start, end)` needs `(end - start) * 4` bytes. The planner is exposed for
+/// tests and for callers that want to stream the ERI computation.
+pub fn eri_quartet_tiles(n_quartets: usize, limits: &GpuMemoryLimits) -> Vec<(usize, usize)> {
+    let budget = limits
+        .max_storage_buffer_binding_size
+        .min(limits.max_buffer_size)
+        .max(4) as usize;
+    let per_tile = (budget / 4).max(1);
+    let mut tiles = Vec::new();
+    let mut start = 0usize;
+    while start < n_quartets {
+        let end = (start + per_tile).min(n_quartets);
+        tiles.push((start, end));
+        start = end;
+    }
+    if tiles.is_empty() {
+        tiles.push((0, 0));
+    }
+    tiles
+}
+
+/// Write one quartet value into the full symmetrized ERI tensor (8-fold).
+fn unpack_quartet(
+    value: f64,
+    (i, j, k, l): (usize, usize, usize, usize),
+    n: usize,
+    data: &mut [f64],
+) {
+    let n2 = n * n;
+    data[i * n * n2 + j * n2 + k * n + l] = value;
+    data[j * n * n2 + i * n2 + k * n + l] = value;
+    data[i * n * n2 + j * n2 + l * n + k] = value;
+    data[j * n * n2 + i * n2 + l * n + k] = value;
+    data[k * n * n2 + l * n2 + i * n + j] = value;
+    data[l * n * n2 + k * n2 + i * n + j] = value;
+    data[k * n * n2 + l * n2 + j * n + i] = value;
+    data[l * n * n2 + k * n2 + j * n + i] = value;
+}
+
+/// Compute two-electron integrals on the GPU with memory-bounded tiling.
+///
+/// The unique-quartet space is processed in tiles whose packed output fits
+/// `limits`, so basis sets whose full tensor exceeds a single buffer can still
+/// be handled. Returns the full symmetrized tensor.
+pub fn compute_eris_gpu_tiled(
+    ctx: &GpuContext,
+    basis: &BasisSet,
+    limits: &GpuMemoryLimits,
+) -> Result<TwoElectronIntegrals, String> {
     let n = basis.n_basis;
 
     if n < GPU_DISPATCH_THRESHOLD {
         return Err("Basis too small for GPU dispatch".to_string());
     }
 
-    // Check memory: output is n⁴ × 4 bytes (f32)
-    let output_size = (n * n * n * n * 4) as u64;
-    if output_size > ctx.capabilities.max_storage_buffer_size {
-        return Err(format!(
-            "ERI tensor ({} bytes) exceeds GPU storage limit ({} bytes)",
-            output_size, ctx.capabilities.max_storage_buffer_size
-        ));
-    }
-
     let (basis_bytes, prim_bytes) = pack_basis_eri(basis);
     let (n_quartets, quartet_bytes) = enumerate_unique_quartets(n);
+    let tiles = eri_quartet_tiles(n_quartets, limits);
 
-    // Params uniform: [n_basis: u32, n_quartets: u32, pad: u32, pad: u32] = 16 bytes
-    let mut params = Vec::with_capacity(16);
-    params.extend_from_slice(&(n as u32).to_ne_bytes());
-    params.extend_from_slice(&(n_quartets as u32).to_ne_bytes());
-    params.extend_from_slice(&0u32.to_ne_bytes());
-    params.extend_from_slice(&0u32.to_ne_bytes());
+    let mut data = vec![0.0f64; n * n * n * n];
 
-    // Output buffer (f32, n⁴ elements)
-    let output_seed = vec![0u8; n * n * n * n * 4];
+    for (start, end) in tiles {
+        let count = end - start;
+        if count == 0 {
+            continue;
+        }
+        let quartets_slice = quartet_bytes[start * 16..end * 16].to_vec();
 
-    let workgroup_count = [(n_quartets as u32).div_ceil(64), 1, 1];
+        // Params uniform: [n_basis, n_quartets(tile), pad, pad] = 16 bytes
+        let mut params = Vec::with_capacity(16);
+        params.extend_from_slice(&(n as u32).to_ne_bytes());
+        params.extend_from_slice(&(count as u32).to_ne_bytes());
+        params.extend_from_slice(&0u32.to_ne_bytes());
+        params.extend_from_slice(&0u32.to_ne_bytes());
 
-    let descriptor = ComputeDispatchDescriptor {
-        label: "two-electron ERI".to_string(),
-        shader_source: TWO_ELECTRON_SHADER.to_string(),
-        entry_point: "main".to_string(),
-        workgroup_count,
-        bindings: vec![
-            ComputeBindingDescriptor {
-                label: "basis".to_string(),
-                kind: ComputeBindingKind::StorageReadOnly,
-                bytes: basis_bytes,
-            },
-            ComputeBindingDescriptor {
-                label: "primitives".to_string(),
-                kind: ComputeBindingKind::StorageReadOnly,
-                bytes: prim_bytes,
-            },
-            ComputeBindingDescriptor {
-                label: "quartets".to_string(),
-                kind: ComputeBindingKind::StorageReadOnly,
-                bytes: quartet_bytes,
-            },
-            ComputeBindingDescriptor {
-                label: "params".to_string(),
-                kind: ComputeBindingKind::Uniform,
-                bytes: params,
-            },
-            ComputeBindingDescriptor {
-                label: "output".to_string(),
-                kind: ComputeBindingKind::StorageReadWrite,
-                bytes: output_seed,
-            },
-        ],
-    };
+        let output_seed = vec![0u8; count * 4];
+        let workgroup_count = [(count as u32).div_ceil(64), 1, 1];
 
-    let mut result = ctx.run_compute(&descriptor)?;
-    let bytes = result.outputs.pop().ok_or("No output from ERI kernel")?;
+        let descriptor = ComputeDispatchDescriptor {
+            label: format!("two-electron ERI tile [{start}, {end})"),
+            shader_source: TWO_ELECTRON_SHADER.to_string(),
+            entry_point: "main".to_string(),
+            workgroup_count,
+            bindings: vec![
+                ComputeBindingDescriptor {
+                    label: "basis".to_string(),
+                    kind: ComputeBindingKind::StorageReadOnly,
+                    bytes: basis_bytes.clone(),
+                },
+                ComputeBindingDescriptor {
+                    label: "primitives".to_string(),
+                    kind: ComputeBindingKind::StorageReadOnly,
+                    bytes: prim_bytes.clone(),
+                },
+                ComputeBindingDescriptor {
+                    label: "quartets".to_string(),
+                    kind: ComputeBindingKind::StorageReadOnly,
+                    bytes: quartets_slice,
+                },
+                ComputeBindingDescriptor {
+                    label: "params".to_string(),
+                    kind: ComputeBindingKind::Uniform,
+                    bytes: params,
+                },
+                ComputeBindingDescriptor {
+                    label: "output".to_string(),
+                    kind: ComputeBindingKind::StorageReadWrite,
+                    bytes: output_seed,
+                },
+            ],
+        };
 
-    // Convert f32 output to f64
-    if bytes.len() != n * n * n * n * 4 {
-        return Err(format!(
-            "ERI output size mismatch: expected {}, got {}",
-            n * n * n * n * 4,
-            bytes.len()
-        ));
+        let mut result = ctx.run_compute(&descriptor)?;
+        let bytes = result.outputs.pop().ok_or("No output from ERI kernel")?;
+        if bytes.len() != count * 4 {
+            return Err(format!(
+                "ERI tile output size mismatch: expected {}, got {}",
+                count * 4,
+                bytes.len()
+            ));
+        }
+
+        for (t, chunk) in bytes.chunks_exact(4).enumerate() {
+            let value = f32::from_ne_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as f64;
+            let base = (start + t) * 16;
+            let read = |o: usize| {
+                u32::from_ne_bytes([
+                    quartet_bytes[base + o],
+                    quartet_bytes[base + o + 1],
+                    quartet_bytes[base + o + 2],
+                    quartet_bytes[base + o + 3],
+                ]) as usize
+            };
+            unpack_quartet(value, (read(0), read(4), read(8), read(12)), n, &mut data);
+        }
     }
-
-    let data: Vec<f64> = bytes
-        .chunks_exact(4)
-        .map(|c| f32::from_ne_bytes([c[0], c[1], c[2], c[3]]) as f64)
-        .collect();
 
     Ok(TwoElectronIntegrals::from_raw(data, n))
 }
@@ -312,18 +375,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
     }
 
-    let n = params.n_basis;
-    let n2 = n * n;
-
-    // Store with 8-fold symmetry
-    output[i * n * n2 + j * n2 + k * n + l] = eri;
-    output[j * n * n2 + i * n2 + k * n + l] = eri;
-    output[i * n * n2 + j * n2 + l * n + k] = eri;
-    output[j * n * n2 + i * n2 + l * n + k] = eri;
-    output[k * n * n2 + l * n2 + i * n + j] = eri;
-    output[l * n * n2 + k * n2 + i * n + j] = eri;
-    output[k * n * n2 + l * n2 + j * n + i] = eri;
-    output[l * n * n2 + k * n2 + j * n + i] = eri;
+    // Packed output: one f32 per unique quartet. The host unpacks the eight
+    // symmetry-related tensor elements, which keeps every GPU buffer bounded
+    // by the tile size (see `eri_quartet_tiles`).
+    output[idx] = eri;
 }
 "#;
 
@@ -344,6 +399,98 @@ mod tests {
         // 1 basis function → exactly 1 quartet: (0,0,0,0)
         let (count, _) = enumerate_unique_quartets(1);
         assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_eri_tiling_planner_covers_quartets() {
+        let limits = GpuMemoryLimits {
+            max_storage_buffer_binding_size: 4096, // 1024 quartets per tile
+            ..GpuMemoryLimits::default()
+        };
+        let (n_quartets, _) = enumerate_unique_quartets(12);
+        let tiles = eri_quartet_tiles(n_quartets, &limits);
+        assert!(!tiles.is_empty());
+        assert_eq!(tiles[0].0, 0);
+        assert_eq!(tiles.last().unwrap().1, n_quartets);
+        let mut expected_start = 0;
+        for (start, end) in &tiles {
+            assert_eq!(*start, expected_start, "tiles must be contiguous");
+            assert!(end > start);
+            assert!(
+                (end - start) * 4 <= 4096,
+                "tile [{start}, {end}) exceeds the buffer limit"
+            );
+            expected_start = *end;
+        }
+        // Larger limits ⇒ fewer tiles.
+        let big = GpuMemoryLimits {
+            max_storage_buffer_binding_size: 1 << 30,
+            max_buffer_size: 1 << 31,
+            ..GpuMemoryLimits::default()
+        };
+        let one = eri_quartet_tiles(n_quartets, &big);
+        assert_eq!(one.len(), 1);
+        assert_eq!(one[0], (0, n_quartets));
+    }
+
+    #[test]
+    fn test_eri_packing_round_trip_matches_cpu() {
+        // The GPU path writes one f32 per unique quartet; the host unpacks the
+        // eight symmetry copies. Validate the packing/unpacking against the
+        // CPU tensor for water.
+        let basis = crate::scf::basis::BasisSet::sto3g(
+            &[8, 1, 1],
+            &[[0.0, 0.0, 0.0], [1.43, 1.11, 0.0], [-1.43, 1.11, 0.0]],
+        );
+        let n = basis.n_basis;
+        let cpu = TwoElectronIntegrals::compute(&basis);
+        let (n_quartets, quartet_bytes) = enumerate_unique_quartets(n);
+        let mut packed = vec![0.0f64; n_quartets];
+        for q in 0..n_quartets {
+            let base = q * 16;
+            let read = |o: usize| {
+                u32::from_ne_bytes([
+                    quartet_bytes[base + o],
+                    quartet_bytes[base + o + 1],
+                    quartet_bytes[base + o + 2],
+                    quartet_bytes[base + o + 3],
+                ]) as usize
+            };
+            let (i, j, k, l) = (read(0), read(4), read(8), read(12));
+            packed[q] = cpu.get(i, j, k, l);
+        }
+        // Unpack back into a fresh tensor.
+        let mut rebuilt = vec![0.0f64; n * n * n * n];
+        for q in 0..n_quartets {
+            let base = q * 16;
+            let read = |o: usize| {
+                u32::from_ne_bytes([
+                    quartet_bytes[base + o],
+                    quartet_bytes[base + o + 1],
+                    quartet_bytes[base + o + 2],
+                    quartet_bytes[base + o + 3],
+                ]) as usize
+            };
+            unpack_quartet(
+                packed[q],
+                (read(0), read(4), read(8), read(12)),
+                n,
+                &mut rebuilt,
+            );
+        }
+        for i in 0..n {
+            for j in 0..n {
+                for k in 0..n {
+                    for l in 0..n {
+                        let idx = i * n * n * n + j * n * n + k * n + l;
+                        assert!(
+                            (rebuilt[idx] - cpu.get(i, j, k, l)).abs() < 1e-12,
+                            "mismatch at ({i},{j},{k},{l})"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]
