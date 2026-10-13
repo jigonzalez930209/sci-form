@@ -711,25 +711,31 @@ fn reppd(
         arg[50] = (r + qa + qb).powi(2) + aqq;
         arg[51] = (r - qa - qb).powi(2) + aqq;
         arg[52] = (r - qa + qb).powi(2) + aqq;
-        arg[53] = (da_ - qb).powi(2) + (r - qb).powi(2) + adq;
-        arg[54] = (da_ - qb).powi(2) + (r + qb).powi(2) + adq;
-        arg[55] = (da_ + qb).powi(2) + (r - qb).powi(2) + adq;
-        arg[56] = (da_ + qb).powi(2) + (r + qb).powi(2) + adq;
-        arg[57] = (r + qa).powi(2) + (qa - db_).powi(2) + aqd;
-        arg[58] = (r - qa).powi(2) + (qa - db_).powi(2) + aqd;
-        arg[59] = (r + qa).powi(2) + (qa + db_).powi(2) + aqd;
-        arg[60] = (r - qa).powi(2) + (qa + db_).powi(2) + aqd;
-        arg[61] = arg[35] + 2.0 * (qa - qb).powi(2);
-        arg[62] = arg[35] + 2.0 * (qa + qb).powi(2);
-        arg[63] = arg[35] + 2.0 * (qa * qa + qb * qb);
-        arg[64] = (r + qa - qb).powi(2) + (qa - qb).powi(2) + aqq;
-        arg[65] = (r + qa - qb).powi(2) + (qa + qb).powi(2) + aqq;
-        arg[66] = (r + qa + qb).powi(2) + (qa - qb).powi(2) + aqq;
-        arg[67] = (r + qa + qb).powi(2) + (qa + qb).powi(2) + aqq;
-        arg[68] = (r - qa - qb).powi(2) + (qa - qb).powi(2) + aqq;
-        arg[69] = (r - qa - qb).powi(2) + (qa + qb).powi(2) + aqq;
-        arg[70] = (r - qa + qb).powi(2) + (qa - qb).powi(2) + aqq;
-        arg[71] = (r - qa + qb).powi(2) + (qa + qb).powi(2) + aqq;
+        // MOPAC `reppd` reassigns qa/qb to the *single* quadrupole
+        // separations here (`qa = qq(ni); qb = qq(nj)`); the doubled values
+        // above apply only to arg(1..53). Using the doubled values below
+        // corrupts exactly the polar integrals (dxqxz/qxzdx/qxzqxz).
+        let qa_s = da.qq;
+        let qb_s = db.qq;
+        arg[53] = (da_ - qb_s).powi(2) + (r - qb_s).powi(2) + adq;
+        arg[54] = (da_ - qb_s).powi(2) + (r + qb_s).powi(2) + adq;
+        arg[55] = (da_ + qb_s).powi(2) + (r - qb_s).powi(2) + adq;
+        arg[56] = (da_ + qb_s).powi(2) + (r + qb_s).powi(2) + adq;
+        arg[57] = (r + qa_s).powi(2) + (qa_s - db_).powi(2) + aqd;
+        arg[58] = (r - qa_s).powi(2) + (qa_s - db_).powi(2) + aqd;
+        arg[59] = (r + qa_s).powi(2) + (qa_s + db_).powi(2) + aqd;
+        arg[60] = (r - qa_s).powi(2) + (qa_s + db_).powi(2) + aqd;
+        arg[61] = arg[35] + 2.0 * (qa_s - qb_s).powi(2);
+        arg[62] = arg[35] + 2.0 * (qa_s + qb_s).powi(2);
+        arg[63] = arg[35] + 2.0 * (qa_s * qa_s + qb_s * qb_s);
+        arg[64] = (r + qa_s - qb_s).powi(2) + (qa_s - qb_s).powi(2) + aqq;
+        arg[65] = (r + qa_s - qb_s).powi(2) + (qa_s + qb_s).powi(2) + aqq;
+        arg[66] = (r + qa_s + qb_s).powi(2) + (qa_s - qb_s).powi(2) + aqq;
+        arg[67] = (r + qa_s + qb_s).powi(2) + (qa_s + qb_s).powi(2) + aqq;
+        arg[68] = (r - qa_s - qb_s).powi(2) + (qa_s - qb_s).powi(2) + aqq;
+        arg[69] = (r - qa_s - qb_s).powi(2) + (qa_s + qb_s).powi(2) + aqq;
+        arg[70] = (r - qa_s + qb_s).powi(2) + (qa_s - qb_s).powi(2) + aqq;
+        arg[71] = (r - qa_s + qb_s).powi(2) + (qa_s + qb_s).powi(2) + aqq;
         let sqr: Vec<f64> = arg.iter().map(|x| x.sqrt()).collect();
         let ee = EV / sqr[0];
         let dze = -ev1 / sqr[1] + ev1 / sqr[2];
