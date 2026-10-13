@@ -1438,7 +1438,7 @@ como *parcial* en la tabla "supported accuracy".
 | F69 | pymatgen XRDCalculator (CuKα) | posiciones 2θ (4 estructuras) + corr. intensidades | **Δ2θ=0.0000°; corr ≥ 0.9982** | 0.01° / ≥0.95 | PASS |
 | F47 | reglas EAS experimentales (+DFT) | top-1 f− en serie aromática (8 moléculas) | **7/8 (0.875)** | ≥ 0.80 | PASS |
 | F48 | xtb `vibspectrum` (misma matriz H) | 39 frecuencias (6 moléculas) | **0.009 cm⁻¹** | 2.0 | PASS |
-| F42 | MOPAC PM3 (NIST ΔHf) | ΔHf (11 moléculas) | ~4000 kcal — **BLOQUEADO** (guarda 5000) | guarda | GAP* |
+| F42 | MOPAC 23.2.5 PM3 | ΔHf (24 moléculas) + H/E_nuc/SCF de agua | **exacto** en hidruros X–H (<0.02 kcal/mol), H y E_nuc (1e-4 eV), SCF de agua (eigenvalores/cargas exactos); residual π documentado (≤130 kcal/mol) | 0.02 (hidruros) | PARCIAL |
 
 Fixtures: `tests/fixtures/validation/` (README con procedencia). Versiones de
 referencia: `validation/refs.lock.json` (RDKit 2026.09.1, PySCF 2.14.0, NumPy 2.5.4,
@@ -1679,10 +1679,18 @@ están activos (ningún `#[ignore]`).
    Candidatas inmediatas: F40 (HF-3c vs ORCA), F50/F52 (ORCA),
    F78/F95 (LAMMPS), F82/F89 (GSM/pysisyphus), F94 (geomstats/pymanopt),
    F34/F88/F91 (pybinding).
-3. **PM3/NDDO (F42): paridad MOPAC BLOQUEADA** — sin binario MOPAC, sin
-   toolchain Fortran y sin sudo en este entorno; imposible arbitrar la
-   revalidación del núcleo NDDO. Hallazgos de la forense (con H₂ calculado a
-   mano como testigo):
+3. **PM3/NDDO (F42): DESBLOQUEADO (2026-10-12)** — el binario de MOPAC 23.2.5
+   (release oficial Linux, sin toolchain Fortran) se descargó y usó como
+   árbitro. Se portó el núcleo fiel (`src/pm3/faithful.rs`): tabla de
+   parámetros de la fuente (42 elementos + `eisol`), overlaps analíticos
+   `diat2` (casos 1–6), `reppd`/`rotmat`/`spcore`/`ccrep` (con la corrección
+   N–H/O–H), `fock1`/`fock2` y HoF con `eisol`. Resultado: hidruros X–H
+   exactos (<0.02 kcal/mol), matriz H de agua/etileno exacta (1e-4 eV),
+   E_nuc por par exacto (1e-4 eV) y SCF de agua con eigenvalores y cargas
+   exactos. Residual: las integrales 2e "polares" (π) de `tx`/`rotatd`
+   salen con signo opuesto (≤130 kcal/mol en sistemas π); el fixture
+   `mopac_pm3.json` (24 moléculas) queda para iterar. Hallazgos de la
+   forense previa (ya resueltos por el port):
    - la γ de Dewar necesita los parámetros de apantallamiento exactos
      (nuestra ρ desde Gss es una aproximación ±20 %);
    - las energías atómicas aisladas usan una fórmula ad-hoc (el /3 del
