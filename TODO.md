@@ -182,7 +182,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ### 16. Alpha Export Gaps (bindings faltantes)
 - [ ] Render Bridge: 13 funciones faltantes (arrhenius_chart, kpoint_path_chart, band_structure_chart, trajectory_chart, dos_chart, etc.) — dedicado; son wrappers de bindings sobre APIs Rust existentes
 - [ ] Periodic Linear: 10 funciones faltantes (band_structure_eht, fermi_surface_from_bands, kpath_standard, etc.) — dedicado
-- [ ] Kinetics CLI: 3 funciones faltantes — dedicado
+- [x] Kinetics CLI: los 3 comandos eran stubs con JSON hardcodeado (y el feature `alpha-kinetics` no compilaba: `limitations` sin `mut` en `alpha/gsm/backend.rs`). Ahora `extract-kinetics-diagnostics`, `solve-microkinetic-network` y `solve-microkinetic-steady-state` aceptan `--network <JSON|ruta>` (con red demo integrada) y llaman a las APIs reales. Hallazgo colateral corregido: el solver explícito de Euler era inestable en redes stiff (barrera 0.3 eV a 350 K → k ≈ 3.6e8 s⁻¹ → poblaciones no finitas con 0.01 s); ahora el sub-stepping se elige por la tasa máxima (`k·Δt ≲ 0.1`) y hay guarda de finitud, con test de regresión
 
 ### 17. Validación a Gran Escala (Track G)
 - [x] Banco ≥100 moléculas (180 diversas + 1000 ChEMBL + 400 UFF; guard `track_g_bank_has_enough_molecules`)
