@@ -412,13 +412,23 @@ pub enum Commands {
     },
 
     // ─── KINETICS COMMANDS ────────────────────
-    /// [experimental-alpha] Extract kinetics diagnostics
+    /// [experimental-alpha] Extract kinetics diagnostics from a microkinetic trace
     #[cfg(feature = "alpha-kinetics")]
-    ExtractKineticsDiagnostics,
+    ExtractKineticsDiagnostics {
+        /// `MicrokineticNetworkConfig` as JSON (file path or inline). Omit for
+        /// the built-in demo network.
+        #[arg(long)]
+        network: Option<String>,
+    },
 
     /// [experimental-alpha] Solve microkinetic network
     #[cfg(feature = "alpha-kinetics")]
     SolveMicrokineticNetwork {
+        /// `MicrokineticNetworkConfig` as JSON (file path or inline). Omit for
+        /// the built-in demo network.
+        #[arg(long)]
+        network: Option<String>,
+        /// Number of integration frames.
         #[arg(long, default_value_t = 5)]
         n_steps: usize,
     },
@@ -426,8 +436,16 @@ pub enum Commands {
     /// [experimental-alpha] Solve microkinetic steady state
     #[cfg(feature = "alpha-kinetics")]
     SolveMicrokineticSteadyState {
+        /// `MicrokineticNetworkConfig` as JSON (file path or inline). Omit for
+        /// the built-in demo network.
+        #[arg(long)]
+        network: Option<String>,
+        /// Number of integration frames.
         #[arg(long, default_value_t = 5)]
         n_steps: usize,
+        /// Convergence tolerance on the population change.
+        #[arg(long, default_value_t = 1e-10)]
+        tol: f64,
     },
 
     /// [experimental-alpha] Analyze GSM+MBH+HTST step

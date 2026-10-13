@@ -243,18 +243,22 @@ fn main() {
 
         // ─── KINETICS ──────────
         #[cfg(feature = "alpha-kinetics")]
-        Commands::ExtractKineticsDiagnostics => {
-            experimental_cmds::cmd_extract_kinetics_diagnostics()
+        Commands::ExtractKineticsDiagnostics { network } => {
+            experimental_cmds::cmd_extract_kinetics_diagnostics(network.as_deref())
         }
 
         #[cfg(feature = "alpha-kinetics")]
-        Commands::SolveMicrokineticNetwork { n_steps } => {
-            experimental_cmds::cmd_solve_microkinetic_network(n_steps)
+        Commands::SolveMicrokineticNetwork { network, n_steps } => {
+            experimental_cmds::cmd_solve_microkinetic_network(network.as_deref(), n_steps)
         }
 
         #[cfg(feature = "alpha-kinetics")]
-        Commands::SolveMicrokineticSteadyState { n_steps } => {
-            experimental_cmds::cmd_solve_microkinetic_steady_state(n_steps)
+        Commands::SolveMicrokineticSteadyState {
+            network,
+            n_steps,
+            tol,
+        } => {
+            experimental_cmds::cmd_solve_microkinetic_steady_state(network.as_deref(), n_steps, tol)
         }
 
         #[cfg(feature = "alpha-kinetics")]
