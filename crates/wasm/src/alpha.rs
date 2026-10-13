@@ -832,3 +832,125 @@ pub fn compute_approach_dynamics(reactant_smiles_json: &str, config_json: &str) 
         Err(e) => json_error(&e),
     }
 }
+
+// ─── RENDER BRIDGE (charts / trajectories / transport) ─────────────────────
+//
+// Thin JSON wrappers over the Rust chart generators in
+// `sci_form::alpha::render_bridge`. Each one is gated on the feature that
+// provides its input type, mirroring the Rust-side `cfg`s.
+
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
+#[wasm_bindgen]
+pub fn alpha_render_edl_profile_chart(profile_json: &str) -> String {
+    use sci_form::alpha::edl::EdlProfileResult;
+    match serde_json::from_str::<EdlProfileResult>(profile_json) {
+        Ok(profile) => {
+            let chart = sci_form::alpha::render_bridge::edl_profile_chart(&profile);
+            serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
+        }
+        Err(e) => json_error(&format!("invalid EdlProfileResult JSON: {e}")),
+    }
+}
+
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
+#[wasm_bindgen]
+pub fn alpha_render_capacitance_scan_chart(scan_json: &str) -> String {
+    use sci_form::alpha::edl::CpmEdlScanResult;
+    match serde_json::from_str::<CpmEdlScanResult>(scan_json) {
+        Ok(scan) => {
+            let chart = sci_form::alpha::render_bridge::capacitance_scan_chart(&scan);
+            serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
+        }
+        Err(e) => json_error(&format!("invalid CpmEdlScanResult JSON: {e}")),
+    }
+}
+
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+#[wasm_bindgen]
+pub fn alpha_render_periodic_dos_chart(dos_json: &str) -> String {
+    use sci_form::alpha::periodic_linear::PeriodicKpmDosResult;
+    match serde_json::from_str::<PeriodicKpmDosResult>(dos_json) {
+        Ok(dos) => {
+            let chart = sci_form::alpha::render_bridge::periodic_dos_chart(&dos);
+            serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
+        }
+        Err(e) => json_error(&format!("invalid PeriodicKpmDosResult JSON: {e}")),
+    }
+}
+
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+#[wasm_bindgen]
+pub fn alpha_render_band_structure_chart(bs_json: &str) -> String {
+    use sci_form::alpha::periodic_linear::BandStructureAdapterResult;
+    match serde_json::from_str::<BandStructureAdapterResult>(bs_json) {
+        Ok(bs) => {
+            let chart = sci_form::alpha::render_bridge::band_structure_chart(&bs);
+            serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
+        }
+        Err(e) => json_error(&format!("invalid BandStructureAdapterResult JSON: {e}")),
+    }
+}
+
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+#[wasm_bindgen]
+pub fn alpha_render_microkinetic_population_chart(trace_json: &str) -> String {
+    use sci_form::alpha::kinetics::MicrokineticTrace;
+    match serde_json::from_str::<MicrokineticTrace>(trace_json) {
+        Ok(trace) => {
+            let chart = sci_form::alpha::render_bridge::microkinetic_population_chart(&trace);
+            serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
+        }
+        Err(e) => json_error(&format!("invalid MicrokineticTrace JSON: {e}")),
+    }
+}
+
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+#[wasm_bindgen]
+pub fn alpha_render_arrhenius_chart(results_json: &str) -> String {
+    use sci_form::alpha::kinetics::ElementaryRateResult;
+    match serde_json::from_str::<Vec<ElementaryRateResult>>(results_json) {
+        Ok(results) => {
+            let chart = sci_form::alpha::render_bridge::arrhenius_chart(&results);
+            serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
+        }
+        Err(e) => json_error(&format!("invalid ElementaryRateResult JSON: {e}")),
+    }
+}
+
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+#[wasm_bindgen]
+pub fn alpha_render_gsm_path_trajectory(coords_json: &str, energies_json: &str) -> String {
+    let coords: Vec<Vec<f64>> = match serde_json::from_str(coords_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("invalid coords JSON: {e}")),
+    };
+    let energies: Vec<f64> = match serde_json::from_str(energies_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("invalid energies JSON: {e}")),
+    };
+    let frames = sci_form::alpha::render_bridge::gsm_path_trajectory(&coords, &energies);
+    serde_json::to_string(&frames).unwrap_or_else(|e| json_error(&e.to_string()))
+}
+
+#[cfg(feature = "alpha-render-bridge")]
+#[wasm_bindgen]
+pub fn alpha_render_pack_chart_payload(chart_json: &str) -> String {
+    use sci_form::alpha::render_bridge::ChartPayload;
+    match serde_json::from_str::<ChartPayload>(chart_json) {
+        Ok(chart) => {
+            let batch = sci_form::alpha::render_bridge::pack_chart_payload(&chart);
+            serde_json::to_string(&batch).unwrap_or_else(|e| json_error(&e.to_string()))
+        }
+        Err(e) => json_error(&format!("invalid ChartPayload JSON: {e}")),
+    }
+}
+
+#[cfg(feature = "alpha-render-bridge")]
+#[wasm_bindgen]
+pub fn alpha_render_verify_chart_round_trip(chart_json: &str, tol: f64) -> bool {
+    use sci_form::alpha::render_bridge::ChartPayload;
+    match serde_json::from_str::<ChartPayload>(chart_json) {
+        Ok(chart) => sci_form::alpha::render_bridge::verify_chart_round_trip(&chart, tol),
+        Err(_) => false,
+    }
+}
