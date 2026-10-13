@@ -80,7 +80,7 @@ fn eeq2019_cn(elements: &[u8], positions_bohr: &[[f64; 3]]) -> Vec<f64> {
     cn.iter().map(|&c| log_cn_cut(c, EEQ_CN_MAX)).collect()
 }
 
-fn eeq_param(table: &[f64; 86], z: u8) -> Option<f64> {
+fn eeq_param(table: &[f64], z: u8) -> Option<f64> {
     let zi = z as usize;
     if zi == 0 || zi > table.len() {
         return None;
