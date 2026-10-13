@@ -169,7 +169,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Fukui: Hirshfeld/CM5 evaluado (requieren densidades promoleculares/cargas CM5 ausentes; NPA-condensado requiere EHT con carga, hoy no expuesto) — se mantiene Mulliken con la caveat documentada
 - [x] Surface: tabla de radios documentada (`VDW_FALLBACK_RADIUS`, `vdw_radius_source`) y evaluación Connolly/SES documentada (diferida hasta que un consumidor necesite la malla)
 - [x] Optimization: unificar optimizadores entre EHT/materials (EHT usa el BFGS compartido de `materials::geometry_opt`) y repulsión nuclear incluida en el gradiente EHT
-- [ ] Optimization: variable-cell BFGS — pendiente de un tensor de stress en el modelo periódico (el callback energía/fuerzas no lo expone)
+- [x] Variable-cell BFGS: `materials::variable_cell` con stress numérico por diferencias centrales de la energía bajo deformación afín (σ = (1/V)∂E/∂ε, convención tracción-positiva), relajación alternada posiciones (BFGS de `optimize_framework`, ahora genérico sobre el callback) + celda con line search que solo acepta pasos que bajan la energía. Gate autocontenido: modelo LJ en celda cúbica simple (mínimo de E(a) por búsqueda dorada) — stress ≈ 0 en el equilibrio (<1e-4 eV/Å³), signos correctos, y la relajación recupera a_eq desde 1.12·a_eq
 
 ### 15. Reaction Dynamics 3D (alpha)
 - [x] Deprecar `dynamics.rs` legacy como assembly primario — `dynamics.rs` conserva solo energía/NEB; el assembly vive en `alpha::reaction_dynamics::complex` (documentado en la cabecera del módulo)
