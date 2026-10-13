@@ -40,10 +40,19 @@ pub fn compute_bonded_energy(
             }
 
             // E_bond = -D_e * BO_σ * exp(p_be1 * (1 - BO_σ^p_be2))
-            // Using simplified parameters
-            let de = params.get_bond_de(i, j);
-            let e_bond =
-                -de * bo.sigma * (params.p_be1 * (1.0 - bo.sigma.powf(params.p_be2))).exp();
+            // Per-pair (De, p_be) from the ffield table when available;
+            // elements read from the aligned atom_params.
+            let (de, be1, be2) = if i < params.atom_params.len() && j < params.atom_params.len() {
+                let zi = params.atom_params[i].element;
+                let zj = params.atom_params[j].element;
+                match params.pair_params(zi, zj) {
+                    Some(pp) => (pp.de_sigma, pp.p_be1, pp.p_be2),
+                    None => (params.get_bond_de(i, j), params.p_be1, params.p_be2),
+                }
+            } else {
+                (params.get_bond_de(i, j), params.p_be1, params.p_be2)
+            };
+            let e_bond = -de * bo.sigma * (be1 * (1.0 - bo.sigma.powf(be2))).exp();
             result.bond_energy += e_bond;
         }
     }
@@ -168,6 +177,7 @@ mod tests {
             equilibrium_angles: vec![109.47_f64.to_radians(); 10],
             angle_force_constants: vec![50.0; 10],
             cutoff: 10.0,
+            pair_table: vec![],
         }
     }
 

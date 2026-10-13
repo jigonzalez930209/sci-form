@@ -4,10 +4,10 @@
 //! during alpha development. Will be replaced with analytical gradients
 //! once the energy terms are validated.
 
-use super::bond_order::compute_bond_orders;
+use super::bond_order::compute_bond_orders_pairs;
 use super::eem::{default_eem_params, solve_eem};
 use super::energy::compute_bonded_energy;
-use super::nonbonded::compute_nonbonded_energy;
+use super::nonbonded::compute_nonbonded_energy_excluding;
 use super::params::ReaxffParams;
 
 /// Compute ReaxFF energy and gradient (numerical, central differences).
@@ -84,7 +84,7 @@ fn total_reaxff_energy(
     params: &ReaxffParams,
 ) -> Result<f64, String> {
     // Compute bond orders using per-atom params (sized to match atom count)
-    let bo = compute_bond_orders(positions_flat, atom_params, params.cutoff);
+    let bo = compute_bond_orders_pairs(positions_flat, atom_params, params, params.cutoff);
 
     // Build a local params copy whose atom_params matches the actual atom count
     // so that compute_bonded_energy iterates over the correct range.
@@ -116,9 +116,20 @@ fn total_reaxff_energy(
     let eem_params: Vec<_> = elements.iter().map(|&z| default_eem_params(z)).collect();
     let charges = solve_eem(positions_flat, &eem_params, 0.0)?;
 
-    // Compute non-bonded energy
-    let (e_vdw, e_coul) =
-        compute_nonbonded_energy(positions_flat, &charges, elements, params.cutoff);
+    // Compute non-bonded energy (vdW excludes strongly bonded pairs;
+    // see compute_nonbonded_energy_excluding).
+    let bo_sigma: Vec<Vec<f64>> = bo
+        .iter()
+        .map(|row| row.iter().map(|b| b.sigma).collect())
+        .collect();
+    let (e_vdw, e_coul) = super::nonbonded::compute_nonbonded_energy_excluding(
+        positions_flat,
+        &charges,
+        elements,
+        params.cutoff,
+        &bo_sigma,
+        0.3,
+    );
 
     Ok(bonded.total + e_vdw + e_coul)
 }

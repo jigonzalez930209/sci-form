@@ -55,6 +55,75 @@ pub fn compute_nonbonded_energy(
     (e_vdw, e_coul)
 }
 
+/// Compute non-bonded energy skipping strongly bonded pairs.
+///
+/// ReaxFF shields (Morse+f13) rather than excluding, but our LJ form diverges
+/// as r→0, so pairs with σ bond order above `bo_cut` interact through the
+/// bond terms only (Coulomb is kept for all pairs: it is shielded and stays
+/// finite). Without this, bonded C–H pairs at 1.09 Å contribute ~+25 000
+/// kcal/mol each and no minimum exists (found vs LAMMPS `reaxff`, F78).
+pub fn compute_nonbonded_energy_excluding(
+    positions_flat: &[f64],
+    charges: &[f64],
+    elements: &[u8],
+    cutoff: f64,
+    bo_sigma: &[Vec<f64>],
+    bo_cut: f64,
+) -> (f64, f64) {
+    let n = elements.len();
+    let mut e_vdw = 0.0;
+    let mut e_coul = 0.0;
+
+    for i in 0..n {
+        let xi = positions_flat[3 * i];
+        let yi = positions_flat[3 * i + 1];
+        let zi = positions_flat[3 * i + 2];
+
+        for j in (i + 1)..n {
+            let dx = xi - positions_flat[3 * j];
+            let dy = yi - positions_flat[3 * j + 1];
+            let dz = zi - positions_flat[3 * j + 2];
+            let r = (dx * dx + dy * dy + dz * dz).sqrt();
+
+            if r > cutoff || r < 0.01 {
+                continue;
+            }
+
+            let tap = taper_function(r, cutoff);
+            let bonded = bo_sigma
+                .get(i)
+                .and_then(|row| row.get(j))
+                .copied()
+                .unwrap_or(0.0)
+                > bo_cut;
+
+            // Shielded Coulomb (all pairs).
+            let gamma_q: f64 = 0.5; // Å (shielding parameter)
+            let r_shield_coul = (r.powi(3) + gamma_q.powi(3)).powf(1.0 / 3.0);
+            // 332.0638 converts e²/Å to kcal/mol
+            let e_coulomb = 332.0638 * charges[i] * charges[j] / r_shield_coul;
+            e_coul += tap * e_coulomb;
+
+            if bonded {
+                continue;
+            }
+
+            // van der Waals (Morse-type with shielding)
+            let (eps, r0, gamma_w) = vdw_params(elements[i], elements[j]);
+            let r_shielded = (r.powi(7) + gamma_w.powi(7)).powf(1.0 / 7.0);
+            let rho = r_shielded / r0;
+            let _e_morse = eps * (rho.powf(-2.0 * 13.0) - 2.0 * rho.powf(-13.0));
+            // Simplified: use standard LJ form
+            let sigma = r0 / 2.0f64.powf(1.0 / 6.0);
+            let sr6 = (sigma / r_shielded).powi(6);
+            let e_lj = 4.0 * eps * (sr6 * sr6 - sr6);
+            e_vdw += tap * e_lj;
+        }
+    }
+
+    (e_vdw, e_coul)
+}
+
 /// Get van der Waals parameters for a pair of element types.
 /// Returns (epsilon kcal/mol, r0 Å, gamma shielding Å).
 fn vdw_params(z1: u8, z2: u8) -> (f64, f64, f64) {

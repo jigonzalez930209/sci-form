@@ -10,7 +10,7 @@
 //! BO_π  = exp(p_bo3 · (r_ij / r0_π)^p_bo4)
 //! BO_ππ = exp(p_bo5 · (r_ij / r0_ππ)^p_bo6)
 
-use super::params::ReaxffAtomParams;
+use super::params::{ReaxffAtomParams, ReaxffParams};
 use super::taper::taper_function;
 
 /// Bond order between two atoms.
@@ -72,8 +72,7 @@ pub fn compute_bond_orders(
             let pi = &atom_params[i];
             let pj = &atom_params[j];
 
-            let r0_sigma = (pi.r_sigma + pj.r_sigma) / 2.0;
-            let r0_pi = (pi.r_pi + pj.r_pi) / 2.0;
+            let r0_sigma = (pi.r_sigma + pj.r_sigma) / 2.0;            let r0_pi = (pi.r_pi + pj.r_pi) / 2.0;
             let r0_pipi = (pi.r_pipi + pj.r_pipi) / 2.0;
 
             // Bond order components
@@ -111,6 +110,94 @@ pub fn compute_bond_orders(
     }
 
     // Apply over-coordination correction
+    apply_overcorrection(&mut bo, atom_params);
+
+    bo
+}
+
+/// Compute bond orders preferring the per-pair σ table (`pair_table`) with
+/// fallback to the atom-averaged rules of [`compute_bond_orders`].
+///
+/// Pair entries use the symmetric ffield values (`r_sigma`, `p_bo1/2`);
+/// π/ππ components keep the atom rules. `params` supplies the table;
+/// `atom_params[i].element` identifies each atom.
+pub fn compute_bond_orders_pairs(
+    positions_flat: &[f64],
+    atom_params: &[ReaxffAtomParams],
+    params: &ReaxffParams,
+    cutoff: f64,
+) -> Vec<Vec<BondOrder>> {
+    let n = atom_params.len();
+    let mut bo = vec![
+        vec![
+            BondOrder {
+                total: 0.0,
+                sigma: 0.0,
+                pi: 0.0,
+                pipi: 0.0,
+                distance: 0.0
+            };
+            n
+        ];
+        n
+    ];
+
+    for i in 0..n {
+        let xi = positions_flat[3 * i];
+        let yi = positions_flat[3 * i + 1];
+        let zi = positions_flat[3 * i + 2];
+
+        for j in (i + 1)..n {
+            let dx = xi - positions_flat[3 * j];
+            let dy = yi - positions_flat[3 * j + 1];
+            let dz = zi - positions_flat[3 * j + 2];
+            let r = (dx * dx + dy * dy + dz * dz).sqrt();
+
+            if r > cutoff || r < 0.01 {
+                continue;
+            }
+
+            let tap = taper_function(r, cutoff);
+            let pi = &atom_params[i];
+            let pj = &atom_params[j];
+
+            // σ component: pair table first (symmetric, ffield values).
+            let (r0_sigma, b1, b2) = match params.pair_params(pi.element, pj.element) {
+                Some(pp) => (pp.r_sigma, pp.p_bo1, pp.p_bo2),
+                None => ((pi.r_sigma + pj.r_sigma) / 2.0, pi.p_bo1, pi.p_bo2),
+            };
+            let bo_sigma = if r0_sigma > 0.01 {
+                (b1 * (r / r0_sigma).powf(b2)).exp()
+            } else {
+                0.0
+            };
+
+            let r0_pi = (pi.r_pi + pj.r_pi) / 2.0;
+            let r0_pipi = (pi.r_pipi + pj.r_pipi) / 2.0;
+            let bo_pi = if r0_pi > 0.01 {
+                (pi.p_bo3 * (r / r0_pi).powf(pi.p_bo4)).exp()
+            } else {
+                0.0
+            };
+            let bo_pipi = if r0_pipi > 0.01 {
+                (pi.p_bo5 * (r / r0_pipi).powf(pi.p_bo6)).exp()
+            } else {
+                0.0
+            };
+
+            let total = (bo_sigma + bo_pi + bo_pipi) * tap;
+            let entry = BondOrder {
+                total,
+                sigma: bo_sigma * tap,
+                pi: bo_pi * tap,
+                pipi: bo_pipi * tap,
+                distance: r,
+            };
+            bo[i][j] = entry;
+            bo[j][i] = entry;
+        }
+    }
+
     apply_overcorrection(&mut bo, atom_params);
 
     bo
