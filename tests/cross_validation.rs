@@ -1917,6 +1917,24 @@ mod f41_cis {
             worst.0 <= CIS_TOL_EV,
             fixture.cases.len(),
         );
+        record(
+            "F41",
+            "ao_dipole_integrals_max_abs_au",
+            "max_abs",
+            worst_dip,
+            1e-8,
+            worst_dip < 1e-8,
+            fixture.cases.len(),
+        );
+        record(
+            "F41",
+            "cis_oscillator_strength_max_abs",
+            "max_abs",
+            worst_osc.0,
+            5e-3,
+            worst_osc.0 < 5e-3,
+            fixture.cases.len(),
+        );
     }
 }
 
