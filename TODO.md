@@ -157,7 +157,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Breakdown por términos energéticos en la API pública (`compute_uff_energy_breakdown`, `compute_mmff94_energy_breakdown`)
 
 ### 13. Dispersion
-- [ ] Completar parametrización/tablas D4 C6 hasta cobertura amplia
+- [x] D4 C6 hasta cobertura amplia: tablas regeneradas desde dftd4 v4.3.0 (`reference.inc` + `data/*.f90`) hasta Z=118 (`gen_d4_refs.py`, verificando 1–86 contra la tabla previa) y EEQ2019 extendida a Z=103 desde multicharge (`gen_eeq2019_params.py`). Gate F46 ampliado con 7 casos pesados (PbI2, Au2, HgCl2, LaH3, Rn2, UO2, LrH): exactos vs dftd4 (≤1e-9 Ha). Límite documentado: Z=104–111 no soportado por dftd4 (nosotros devolvemos 0) y Z=112–118 usan el modelo de carga nuevo de dftd4 (EEQ-BC, fuera de alcance)
 - [x] Descomposición energética visible cuando se combine con otros métodos (GFN0 2/3-cuerpos, GFN1 e6/e8, GFN2 2-cuerpos vs ATM, D4 standalone e2/e3)
 
 ### 14. Otros Módulos Pendientes Menores
