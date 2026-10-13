@@ -1883,6 +1883,17 @@ están activos (ningún `#[ignore]`).
   1.9e-11 (tolerancia 1e-10). Hallazgo de fidelidad: la distancia vdW que
   entra al capacitor es el valor crudo de la tabla mctc-lib (Å) porque
   `aatoau`/`autoaa` se cancelan.
+- **LAMMPS con REAXFF (2026-10-13)**: build desde fuente funcional
+  (`git clone --branch stable_29Aug2024_update2`, `cmake -S cmake -B build -G
+  Ninja -DPKG_REAXFF=on -DBUILD_MPI=off -DCMAKE_DISABLE_FIND_PACKAGE_MPI=ON`,
+  `ninja -C build lmp`) — **el configure falla en `FindMPI` si no se desactiva
+  la búsqueda de MPI**, aunque `BUILD_MPI=off`. Binario con `reaxff` y
+  `fix electrode/*` (ELECTRODE) en `/tmp/opencode/lammps-src/build/lmp`.
+  Esto desbloquea **F78 (ReaxFF/EEM)**: nuestro módulo ya parsea ficheros
+  ffield (`forcefield::reaxff::params`), así que el oráculo es directo —
+  `ffield.reax.cho` (en `potentials/` del repo de LAMMPS) + `pair_style
+  reaxff` sobre una geometría CHON pequeña vs `compute_reaxff_energy` con el
+  mismo ffield. F95 (CPM) sigue cubierto por el LAMMPS de apt (ELECTRODE).
 - **Cierres con motivo (2026-10-13)**: tres ítems del backlog quedan cerrados
   como bloqueados/no aplicables con ruta concreta — repulsión CN-dependiente
   (no existe referencia externa más allá del esquema efectivo de tblite que ya

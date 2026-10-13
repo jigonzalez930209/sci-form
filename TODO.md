@@ -219,3 +219,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ## Módulos Cerrados (sin deuda relevante)
 
 Alignment, ANI, Dipole, DOS, ML descriptors, Rings/SSSR, Transport, SCF (UHF/ROHF), CIF, AO→MO transform, EEQ damping Z=86, Population Z=86+parallel, NMR 5J coupling, SMIRKS multi-component, PM3 Gaussian corrections, xTB Broyden mixing, GFN1-xTB (F44), D3-BJ (F46), tablas STO-6G completas.
+
+### 17. LAMMPS (oráculos)
+- [ ] F78/ReaxFF: **desbloqueado** — build con REAXFF funcional (`cmake ... -DCMAKE_DISABLE_FIND_PACKAGE_MPI=ON`; ver §14.0 del doc de validación). Siguiente paso: `scripts/validation/oracle_reaxff_lammps.py` con `ffield.reax.cho` + `pair_style reaxff` vs `compute_reaxff_energy`, fixture y gate en `alpha_reaxff_validation.rs`
+- [ ] F95/CPM: LAMMPS de apt ya trae ELECTRODE; falta `scripts/validation/oracle_cpm_lammps.py` (`fix electrode/conp`)
