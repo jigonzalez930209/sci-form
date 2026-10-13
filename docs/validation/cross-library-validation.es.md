@@ -1439,6 +1439,10 @@ como *parcial* en la tabla "supported accuracy".
 | F47 | reglas EAS experimentales (+DFT) | top-1 f− en serie aromática (8 moléculas) | **7/8 (0.875)** | ≥ 0.80 | PASS |
 | F48 | xtb `vibspectrum` (misma matriz H) | 39 frecuencias (6 moléculas) | **0.009 cm⁻¹** | 2.0 | PASS |
 | F42 | MOPAC 23.2.5 PM3 | ΔHf (24 moléculas) + H/E_nuc/SCF de agua | **exacto** en hidruros X–H (<0.02 kcal/mol), H y E_nuc (1e-4 eV), SCF de agua (eigenvalores/cargas exactos); residual π documentado (≤130 kcal/mol) | 0.02 (hidruros) | PARCIAL |
+| F41 (ext.) | PySCF `int1e_r` | integrales de dipolo AO (8 moléculas) | **1.1e-9 a.u.** | 1e-8 | PASS |
+| F41 (ext.) | PySCF TDA osciladores | fuerzas de oscilador con dipolos exactos | **<1e-5 en 27/29 estados** (H2O 0/1 documentado) | 5e-3 | PASS |
+| F46 (ext.) | dftd4 4.3.0 | 7 casos pesados (PbI2…LrH, UO2) | **6.2e-10 Ha** | 1.6e-6 | PASS |
+| F67 (ext.) | pormake `.cgd` | 6 nets RCSR con aristas no equivalentes | **nodos/CN/tipos exactos** | exacto | PASS |
 
 Fixtures: `tests/fixtures/validation/` (README con procedencia). Versiones de
 referencia: `validation/refs.lock.json` (RDKit 2026.09.1, PySCF 2.14.0, NumPy 2.5.4,
@@ -1795,6 +1799,27 @@ están activos (ningún `#[ignore]`).
 ---
 
 ## 14. Track G — banco de validación, umbrales y escalado
+
+### 14.0 Gates nuevos (2026-10-12, sesión "próximos 10")
+
+- **Strong coupling (NMR)**: `nmr::second_order::SpinSystem` diagonaliza el
+  Hamiltoniano de espín (base producto, n ≤ 6) y da el espectro exacto de
+  líneas; gate contra la solución analítica AB (posiciones y intensidades
+  `1 ± sin2θ`) a 1e-8, límite débil (dobletes 1:1) y A2 (singlete).
+  `compute_nmr_spectrum` anota los pares con |Δν|/|J| < 10.
+- **Beta**: `tests/beta_benchmarks.rs` (feature-gated) compara KPM vs
+  diagonalización (DOS integrada 40.17/40, centro 1e-4, corr 0.86 con kernel
+  Jackson), Nyström vs SVD exacta (error ≤ 2× el mejor rank-k) y MBH vs el
+  Hessiano analítico proyectado (desviación máxima 2.6 %).
+- **D4/EEQ**: tablas regeneradas desde dftd4 4.3.0 hasta Z=118 y EEQ2019 hasta
+  Z=103 (multicharge); F46 con 7 casos pesados exactos a 6e-10 Ha.
+- **Variable-cell**: stress numérico (σ = (1/V)∂E/∂ε) + relajación
+  posiciones/celda; gate autocontenido con un modelo LJ (recupera a_eq y
+  stress ≈ 0).
+- **Topologías**: 6 nets RCSR importados (aristas no equivalentes en
+  afw/xah/tfy) y gate F67 contra pormake.
+
+
 
 > Medido el 2026-10-12 en la misma máquina de referencia (Intel i5-10500H,
 > 12 hilos lógicos), build `--release`.
