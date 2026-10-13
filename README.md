@@ -270,10 +270,11 @@ The repository now includes an isolated experimental quantum-chemistry stack und
 
 ### Current Practical Status
 
-- Stable production APIs remain unchanged; the experimental work is isolated in `experimental_2`
+- Stable production APIs remain unchanged; the experimental work is isolated behind `experimental_*` feature flags
 - Real acceleration today is CPU parallelism via rayon in the ERI build path
-- GPU execution is not enabled yet; `phase1_gpu_infrastructure` currently exposes a CPU fallback plus WGSL-ready interfaces
-- The main known scientific limitation is absolute RHF/STO-3G total energy scaling in the experimental engine; comparative gaps and regression behavior are the primary validation target today
+- GPU execution is available through the `experimental-gpu` feature (wgpu/Vulkan with a CPU fallback); the numerical paths stay gated against the CPU reference
+- The cross-library validation campaign gates the quantum-chemistry stack against external references (RDKit, PySCF, tblite, xtb, dftd4/s-dftd3, multicharge, pormake, YAeHMOP, LAMMPS): 35 active tests in `tests/cross_validation.rs`, all green (`lib` 711/711, `regression` 429/429 in release)
+- Known documented limitations: PM3 π residual (F42, residual 2e integrals), PM3 convergence on long alkanes, CISD excited states are not size-consistent, transition-metal EHT parameters are validated against the literature table but not against experiment, HLA J-couplings cover C/S/N/Cl substituents in the general form
 
 ### Validation Snapshot
 
