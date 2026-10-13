@@ -456,7 +456,7 @@ TDA_MOLECULES = [m for m in MOLECULES if m["name"] in ("H2", "H2O", "CH4", "NH3"
 
 
 def run_tda(nstates: int = 4) -> Report:
-    from pyscf import tdscf
+    from pyscf import tdscf, ci
 
     cases = []
     for case in TDA_MOLECULES:
@@ -483,6 +483,10 @@ def run_tda(nstates: int = 4) -> Report:
         # AO dipole integrals (origin at 0) for the transition-moment gate.
         int1e_r = mol.intor("int1e_r")
         dipole = [[float(v) for v in int1e_r[comp].ravel()] for comp in range(3)]
+        # CISD correlation energy (F41 extension, determinant-based space).
+        cisd = ci.cisd.CISD(mf)
+        cisd.conv_tol = 1e-10
+        e_corr_cisd = float(cisd.kernel()[0])
         cases.append(
             {
                 "name": case["name"],
@@ -496,6 +500,7 @@ def run_tda(nstates: int = 4) -> Report:
                 "dipole_x": dipole[0],
                 "dipole_y": dipole[1],
                 "dipole_z": dipole[2],
+                "cisd_correlation_hartree": e_corr_cisd,
             }
         )
 
