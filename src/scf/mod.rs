@@ -22,6 +22,7 @@ pub mod constants;
 pub mod core_matrices;
 pub mod density_matrix;
 pub mod diis;
+pub mod dipole_matrix;
 pub mod energy;
 pub mod extended_basis;
 pub mod fock_matrix;
