@@ -1,5 +1,12 @@
 # sci-form — Estado del Proyecto y Tareas Pendientes
 
+> **Campaña de validación cruzada COMPLETA (2026-10-13)**: los 24 pendientes
+> están cerrados — PM3 exacto 24/24 (fix `reppd` qa/qb), UKS GFN1/GFN2 vs
+> tblite `uhf`, barreras vs literatura (etano/metanol/NH₃), CPM vs LAMMPS
+> `electrode/conp`, ReaxFF vs LAMMPS `reaxff`. Suites: `lib` 712/712,
+> `cross_validation` 38/38, `regression` 429/429 (release). Detalle por ficha
+> en `docs/validation/cross-library-validation.es.md` (§13–§14).
+
 ## Ciclo actual — Kohn–Sham DFT en la librería
 
 El DFT no se importa de otro paquete. El solver es `src/dft/` (`alpha-dft`): F = H + J + Vxc, SVWN y PBE, grilla de Becke.
