@@ -180,22 +180,17 @@ mod f42_mopac_pm3 {
 
     /// F42: PM3 vs MOPAC 23.2.5 (the arbiter that unblocked this ficha).
     ///
-    /// The faithful port (`src/pm3/faithful.rs`) reproduces MOPAC exactly for
-    /// the hydride subset (H/C/N/O/F/Si/P/S/Cl single bonds); molecules with
-    /// pi/polar two-center integrals carry a documented residual, so they are
-    /// only gated as a regression bound.
+    /// The faithful port (`src/pm3/faithful.rs`) reproduces MOPAC to
+    /// <0.02 kcal/mol on all 24 fixture molecules (single point, `PM3 1SCF`
+    /// on the seed-42 embedding). Key fix (2026-10-13): the heavy-heavy
+    /// `reppd` branch must reassign `qa`/`qb` to the *single* quadrupole
+    /// separations before `arg(54..72)` (MOPAC `qa = qq(ni); qb = qq(nj)`);
+    /// the doubled values corrupted exactly the polar integrals
+    /// (dxqxz/qxzdx/qxzqxz) and cost up to ~130 kcal/mol in pi systems.
     #[test]
     fn f42_mopac_pm3() {
         let fixture: Pm3Fixture = load("mopac_pm3.json");
         assert!(fixture.cases.len() >= 20);
-        let exact = [
-            "water",
-            "methane",
-            "ammonia",
-            "silane",
-            "phosphine",
-            "hydrogen_sulfide",
-        ];
         let mut max_err = 0.0f64;
         for case in &fixture.cases {
             let conf = sci_form::embed(&case.smiles, 42);
@@ -204,20 +199,16 @@ mod f42_mopac_pm3 {
             let r = sci_form::compute_pm3(&conf.elements, &pos)
                 .unwrap_or_else(|e| panic!("{}: {e}", case.name));
             let err = (r.heat_of_formation - case.mopac_hof_kcal).abs();
-            if exact.contains(&case.name.as_str()) {
-                assert!(
-                    err < 0.02,
-                    "{}: ours {} vs MOPAC {}",
-                    case.name,
-                    r.heat_of_formation,
-                    case.mopac_hof_kcal
-                );
-            }
+            assert!(
+                err < 0.02,
+                "{}: ours {} vs MOPAC {}",
+                case.name,
+                r.heat_of_formation,
+                case.mopac_hof_kcal
+            );
             max_err = max_err.max(err);
         }
-        // Regression bound for the documented pi/polar residual.
-        assert!(max_err < 130.0, "max PM3 error {max_err} kcal/mol");
-        eprintln!("F42: max |dHoF| = {max_err:.3} kcal/mol (hydrides exact)");
+        eprintln!("F42: max |dHoF| = {max_err:.3} kcal/mol over all 24 (tolerance 0.02)");
     }
 }
 

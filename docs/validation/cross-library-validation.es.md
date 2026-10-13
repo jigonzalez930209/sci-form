@@ -1498,7 +1498,7 @@ como *parcial* en la tabla "supported accuracy".
 | F69 | pymatgen XRDCalculator (CuKα) | posiciones 2θ (4 estructuras) + corr. intensidades | **Δ2θ=0.0000°; corr ≥ 0.9982** | 0.01° / ≥0.95 | PASS |
 | F47 | reglas EAS experimentales (+DFT) | top-1 f− en serie aromática (8 moléculas) | **7/8 (0.875)** | ≥ 0.80 | PASS |
 | F48 | xtb `vibspectrum` (misma matriz H) | 39 frecuencias (6 moléculas) | **0.009 cm⁻¹** | 2.0 | PASS |
-| F42 | MOPAC 23.2.5 PM3 | ΔHf (24 moléculas) + H/E_nuc/SCF de agua | **exacto** en hidruros X–H (<0.02 kcal/mol), H y E_nuc (1e-4 eV), SCF de agua (eigenvalores/cargas exactos); residual π documentado (≤130 kcal/mol) | 0.02 (hidruros) | PARCIAL |
+| F42 | MOPAC 23.2.5 PM3 | ΔHf (24 moléculas) + H/E_nuc/SCF de agua | **las 24 a <0.02 kcal/mol** (máx 8.4e-3; hidruros, H y E_nuc exactos como antes) | 0.02 | PASS |
 | F41 (ext.) | PySCF `int1e_r` | integrales de dipolo AO (8 moléculas) | **1.1e-9 a.u.** | 1e-8 | PASS |
 | F41 (ext.) | PySCF TDA osciladores | fuerzas de oscilador con dipolos exactos | **<1e-5 en 27/29 estados** (H2O 0/1 documentado) | 5e-3 | PASS |
 | F46 (ext.) | dftd4 4.3.0 | 7 casos pesados (PbI2…LrH, UO2) | **6.2e-10 Ha** | 1.6e-6 | PASS |
@@ -1758,7 +1758,11 @@ solo se ejercitan en `--release`.
    E_nuc por par exacto (1e-4 eV) y SCF de agua con eigenvalores y cargas
    exactos. Residual: las integrales 2e "polares" (π) de `tx`/`rotatd`
    salen con signo opuesto (≤130 kcal/mol en sistemas π); el fixture
-   `mopac_pm3.json` (24 moléculas) queda para iterar. Hallazgos de la
+   `mopac_pm3.json` (24 moléculas) queda para iterar. **Resuelto 2026-10-13**:
+   la rama heavy–heavy de `reppd` no reasignaba `qa`/`qb` a las separaciones
+   simples antes de `arg(54..72)` (MOPAC `qa = qq(ni); qb = qq(nj)`); con el
+   fix las 24 moléculas quedan a <0.02 kcal/mol (máx 8.4e-3) y el gate
+   `f42_mopac_pm3` cubre todas. Hallazgos de la
    forense previa (ya resueltos por el port):
    - la γ de Dewar necesita los parámetros de apantallamiento exactos
      (nuestra ρ desde Gss es una aproximación ±20 %);

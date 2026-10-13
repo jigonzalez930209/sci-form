@@ -109,7 +109,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 ### 3. PM3
 - [x] MOPAC 23.2.5 descargado y usado como árbitro de F42 (fixture `tests/fixtures/validation/mopac_pm3.json`, 24 moléculas)
 - [x] Núcleo PM3 fiel (port de MOPAC): tabla de parámetros de la fuente (42 elementos + eisol), overlaps analíticos `diat2` (casos 1–6), `reppd`/`rotmat`/`spcore`/`ccrep` (con la corrección N–H/O–H), `fock1`/`fock2` y HoF con eisol. Validado exacto (<0.02 kcal/mol) en hidruros X–H (C/N/O/F/Si/P/S/Cl), matriz H de agua y etileno (1e-4 eV), SCF de agua (eigenvalores y cargas exactos) y E_nuc por par (1e-4 eV)
-- [ ] PM3 residual documentado: las integrales 2e "polares" (π) de la rotación `tx`/`rotatd` salen con el signo opuesto a MOPAC (error hasta ~130 kcal/mol en sistemas π: benceno, aromáticos). Siguiente paso: depurar contra el dump `HCORE` de MOPAC usando el bloque C–C alineado en z
+- [x] PM3 residual π — **resuelto** (2026-10-13): la rama heavy–heavy de `reppd` no reasignaba `qa`/`qb` a las separaciones cuadrupolares *simples* antes de `arg(54..72)` (MOPAC `reppd`: `qa = qq(ni); qb = qq(nj)`); los valores doblados corrompían exactamente las integrales polares (dxqxz/qxzdx/qxzqxz, `ri(10/15/20)`). Gate `f42_mopac_pm3` endurecido: las 24 moléculas del fixture a <0.02 kcal/mol (máx 8.4e-3, antes cota 130)
 - [x] Delimitar claramente PM3 vs PM3(tm) en la superficie pública (`Pm3Method` + `pm3_method`, flag `tm` en la tabla)
 
 ### 4. xTB
