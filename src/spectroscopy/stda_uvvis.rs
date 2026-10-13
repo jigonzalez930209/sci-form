@@ -123,6 +123,21 @@ pub fn compute_stda(
     positions_bohr: &[[f64; 3]],
     config: &StdaConfig,
 ) -> SpectroscopyResult {
+    compute_stda_with_dipoles(scf, basis_to_atom, positions_bohr, config, None)
+}
+
+/// sTDA with AO dipole integrals: exact transition dipoles (instead of the
+/// monopole approximation) for the oscillator strengths.
+///
+/// `ao_dipoles` are the `[D^x, D^y, D^z]` matrices in the AO basis (Bohr),
+/// e.g. from [`crate::scf::dipole_matrix::dipole_matrices`].
+pub fn compute_stda_with_dipoles(
+    scf: &ScfInput,
+    basis_to_atom: &[usize],
+    positions_bohr: &[[f64; 3]],
+    config: &StdaConfig,
+    ao_dipoles: Option<&[DMatrix<f64>; 3]>,
+) -> SpectroscopyResult {
     let active = select_active_space(scf, config);
     let n_active_occ = active.n_occ;
     let n_active_virt = active.n_virt;
@@ -285,6 +300,8 @@ pub fn compute_stda(
             positions_bohr,
             n_occ_total,
             energy_hartree,
+            scf,
+            ao_dipoles,
         );
 
         transitions.push(TransitionInfo {
@@ -305,6 +322,7 @@ pub fn compute_stda(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn transition_dipole_from_ci(
     ci: &nalgebra::DVectorView<f64>,
     active: &ActiveSpace,
@@ -312,7 +330,43 @@ fn transition_dipole_from_ci(
     positions_bohr: &[[f64; 3]],
     n_occ_total: usize,
     energy_hartree: f64,
+    scf: &ScfInput,
+    ao_dipoles: Option<&[DMatrix<f64>; 3]>,
 ) -> ([f64; 3], f64) {
+    if let Some(dips) = ao_dipoles {
+        // Exact AO transition dipole: μ_0k = √2 Σ_ia X_ia Σ_μν c_μi c_νa D_μν
+        let mut tdm = [0.0f64; 3];
+        for (idx, (i_l, a_l)) in iproduct(active.n_occ, active.n_virt).enumerate() {
+            let i = active.occ_indices[i_l];
+            let a = active.virt_indices[a_l];
+            let x_ia = ci[idx];
+            if x_ia.abs() < 1e-12 {
+                continue;
+            }
+            for mu in 0..scf.n_basis {
+                let c_mu = scf.mo_coefficients[(mu, i)];
+                if c_mu.abs() < 1e-12 {
+                    continue;
+                }
+                for nu in 0..scf.n_basis {
+                    let c_nu = scf.mo_coefficients[(nu, a)];
+                    if c_nu.abs() < 1e-12 {
+                        continue;
+                    }
+                    let weight = x_ia * c_mu * c_nu;
+                    tdm[0] += weight * dips[0][(mu, nu)];
+                    tdm[1] += weight * dips[1][(mu, nu)];
+                    tdm[2] += weight * dips[2][(mu, nu)];
+                }
+            }
+        }
+        let sqrt2 = std::f64::consts::SQRT_2;
+        let tdm = [tdm[0] * sqrt2, tdm[1] * sqrt2, tdm[2] * sqrt2];
+        let tdm_sq = tdm.iter().map(|v| v * v).sum::<f64>();
+        let osc = (2.0 / 3.0) * energy_hartree * tdm_sq;
+        return (tdm, osc);
+    }
+
     let n_atoms = positions_bohr.len();
     let mut tdm = [0.0f64; 3];
 
@@ -458,6 +512,47 @@ mod tests {
             assert!(t.energy_ev > 0.0);
             assert!(t.wavelength_nm > 0.0);
         }
+    }
+
+    #[test]
+    fn test_stda_ao_dipoles_change_oscillator_strength() {
+        let n_basis = 4;
+        let scf = ScfInput {
+            orbital_energies: vec![-0.8, -0.3, -0.25, -0.2],
+            mo_coefficients: DMatrix::identity(n_basis, n_basis),
+            density_matrix: DMatrix::zeros(n_basis, n_basis),
+            overlap_matrix: DMatrix::identity(n_basis, n_basis),
+            n_basis,
+            n_electrons: 2,
+        };
+        let positions = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]];
+        let basis_to_atom = [0, 0, 1, 1];
+        let config = StdaConfig::default();
+        let monopole = compute_stda(&scf, &basis_to_atom, &positions, &config);
+
+        let mut dips = [
+            DMatrix::zeros(n_basis, n_basis),
+            DMatrix::zeros(n_basis, n_basis),
+            DMatrix::zeros(n_basis, n_basis),
+        ];
+        dips[0][(0, 2)] = 1.0;
+        dips[0][(2, 0)] = 1.0;
+        let exact =
+            compute_stda_with_dipoles(&scf, &basis_to_atom, &positions, &config, Some(&dips));
+        assert_eq!(monopole.transitions.len(), exact.transitions.len());
+        assert!(exact
+            .transitions
+            .iter()
+            .all(|t| t.oscillator_strength.is_finite()));
+        let changed = monopole
+            .transitions
+            .iter()
+            .zip(exact.transitions.iter())
+            .any(|(a, b)| (a.oscillator_strength - b.oscillator_strength).abs() > 1e-6);
+        assert!(
+            changed,
+            "the AO dipole path should change the oscillator strengths"
+        );
     }
 
     #[test]
