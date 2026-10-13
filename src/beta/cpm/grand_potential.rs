@@ -17,6 +17,11 @@ pub struct CpmConfig {
     pub max_iter: usize,
     /// Convergence threshold for charge changes.
     pub charge_tol: f64,
+    /// Optional per-atom applied potential in eV (multi-electrode setups:
+    /// plate A at +V/2, plate B at −V/2, as in LAMMPS `fix electrode/conp`
+    /// with `couple`). Overrides `mu_ev` where present (must match natoms).
+    #[serde(default)]
+    pub mu_per_atom: Option<Vec<f64>>,
 }
 
 impl Default for CpmConfig {
@@ -26,6 +31,7 @@ impl Default for CpmConfig {
             dielectric: 78.5, // water
             max_iter: 100,
             charge_tol: 1e-6,
+            mu_per_atom: None,
         }
     }
 }
@@ -103,7 +109,6 @@ pub fn compute_cpm_charges(
     let n = elements.len();
     let mut charges = vec![0.0; n];
     let mut converged = false;
-    let mut iter = 0;
 
     // Precompute Coulomb coupling matrix J_ij
     // Screened by dielectric: J_ij = 1 / (ε · r_ij) in eV (with conversion)
@@ -123,35 +128,91 @@ pub fn compute_cpm_charges(
         }
     }
 
-    // Iterative SCF: q_i = (μ - χ_i - Σ J_ij·q_j) / η_i
-    for it in 0..config.max_iter {
-        iter = it + 1;
-        let mut max_change = 0.0;
-
-        for i in 0..n {
-            let chi = chi_element(elements[i]);
-            let eta = eta_element(elements[i]);
-
-            let mut coupling = 0.0;
-            for j in 0..n {
-                if j != i {
-                    coupling += j_mat[i][j] * charges[j];
-                }
-            }
-
-            let new_q = (config.mu_ev - chi - coupling) / eta;
-            let change = (new_q - charges[i]).abs();
-            if change > max_change {
-                max_change = change;
-            }
-
-            // Damped update for stability
-            charges[i] = 0.5 * charges[i] + 0.5 * new_q;
+    // (μ_i = mu_ev, or mu_per_atom[i] for multi-electrode setups).
+    let mus: Vec<f64> = match &config.mu_per_atom {
+        Some(v) => {
+            assert!(
+                v.len() == n,
+                "mu_per_atom length {} != natoms {}",
+                v.len(),
+                n
+            );
+            v.clone()
         }
-
-        if max_change < config.charge_tol {
-            converged = true;
-            break;
+        None => vec![config.mu_ev; n],
+    };
+    // Direct solve of the linear CPM equations:
+    //   q_i = (μ_i − χ_i − Σ_{j≠i} J_ij q_j) / η_i
+    //   ⟺ Σ_j M_ij q_j = μ_i − χ_i,  M_ii = η_i, M_ij = J_ij (i≠j).
+    // The damped fixed-point iteration diverges for electrode-sized
+    // conducting systems (spectral radius of J/η exceeds 1: graphene
+    // bilayer charges blow up to 1e157); the system is linear, so an LU
+    // solve is exact and robust. (LAMMPS `electrode/conp` likewise inverts
+    // the elastance matrix with `mat_inv`.)
+    let n_f = n as f64;
+    let mut m_mat = nalgebra::DMatrix::<f64>::zeros(n, n);
+    let mut rhs = nalgebra::DVector::<f64>::zeros(n);
+    for i in 0..n {
+        m_mat[(i, i)] = eta_element(elements[i]);
+        rhs[i] = mus[i] - chi_element(elements[i]);
+        for j in 0..n {
+            if j != i {
+                m_mat[(i, j)] = j_mat[i][j];
+            }
+        }
+    }
+    let lu = m_mat.clone().lu();
+    let sol = lu.solve(&rhs);
+    let mut converged = false;
+    let iter: usize = 1;
+    match sol {
+        Some(v) => {
+            for i in 0..n {
+                charges[i] = v[i];
+            }
+            // Residual check: ||M q − rhs||_∞ per atom.
+            let mut max_res = 0.0f64;
+            for i in 0..n {
+                let mut acc = m_mat[(i, i)] * charges[i];
+                for j in 0..n {
+                    if j != i {
+                        acc += m_mat[(i, j)] * charges[j];
+                    }
+                }
+                max_res = max_res.max((acc - rhs[i]).abs());
+            }
+            // Charge tolerance scaled to a residual (eV·e).
+            converged = max_res < config.charge_tol * n_f.max(1.0) * 10.0;
+        }
+        None => {
+            // Singular matrix: fall back to damped fixed-point iteration.
+            for it in 0..config.max_iter {
+                let mut max_change = 0.0;
+                for i in 0..n {
+                    let chi = chi_element(elements[i]);
+                    let eta = eta_element(elements[i]);
+                    let mut coupling = 0.0;
+                    for j in 0..n {
+                        if j != i {
+                            coupling += j_mat[i][j] * charges[j];
+                        }
+                    }
+                    let new_q = (mus[i] - chi - coupling) / eta;
+                    let change = (new_q - charges[i]).abs();
+                    if change > max_change {
+                        max_change = change;
+                    }
+                    charges[i] = 0.5 * charges[i] + 0.5 * new_q;
+                    if !charges[i].is_finite() {
+                        break;
+                    }
+                }
+                if max_change < config.charge_tol {
+                    converged = true;
+                    break;
+                }
+                let _ = it;
+            }
         }
     }
 
@@ -169,7 +230,7 @@ pub fn compute_cpm_charges(
         }
     }
 
-    let grand_potential = e_elec - config.mu_ev * total_charge;
+    let grand_potential = e_elec - mus.iter().zip(charges.iter()).map(|(m, q)| m * q).sum::<f64>();
 
     CpmResult {
         charges,

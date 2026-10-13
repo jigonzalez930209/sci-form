@@ -153,4 +153,133 @@ mod cpm_tests {
             "Dielectric should affect charges"
         );
     }
+
+    // ── F95: bilayer capacitor vs LAMMPS `fix electrode/conp` ──────────
+    #[derive(serde::Deserialize)]
+    struct CpmLammpsVoltage {
+        voltage: f64,
+        lammps_qbot: f64,
+        lammps_qtop: f64,
+        lammps_charges: Vec<f64>,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct CpmLammpsFixture {
+        elements: Vec<u8>,
+        coords: Vec<f64>,
+        nplate: usize,
+        voltages: Vec<CpmLammpsVoltage>,
+    }
+
+    fn load_cpm_lammps() -> CpmLammpsFixture {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/validation/cpm_lammps.json"
+        );
+        let text = std::fs::read_to_string(path).expect("cpm_lammps.json");
+        serde_json::from_str(&text).expect("parse cpm fixture")
+    }
+
+    fn cpm_run(elements: &[u8], pos: &[[f64; 3]], mus: Vec<f64>) -> Vec<f64> {
+        compute_cpm_charges(
+            elements,
+            pos,
+            &CpmConfig {
+                mu_ev: 0.0,
+                dielectric: 1.0,
+                max_iter: 200,
+                charge_tol: 1e-9,
+                mu_per_atom: Some(mus),
+            },
+        )
+        .charges
+    }
+
+    /// F95: our CPM (per-atom μ, direct LU solve) against LAMMPS conp on a
+    /// graphene bilayer capacitor. Our model is point-charge + hardness
+    /// while LAMMPS uses Gaussian-smeared Ewald electrostatics (no χ/η),
+    /// so the gate compares the voltage-INDUCED charges
+    /// (ΔQ = Q(±V) − Q(0), where χ cancels exactly by linearity) and locks
+    /// in the quantified model gap: totals within 2.5x, pattern cosine
+    /// similarity ≥ 0.3, exact antisymmetry/neutrality. Measured at V=±1:
+    /// ours ΔQ = ±0.666e vs LAMMPS ±0.379e (1.76x), similarity 0.44.
+    /// Path forward: Gaussian smearing in our J (ELECTRODE-style) and/or
+    /// retuned onsite hardness (ours 5.0 eV vs Gaussian self ~22 eV).
+    #[test]
+    fn test_cpm_bilayer_matches_lammps() {
+        let fix = load_cpm_lammps();
+        assert!(fix.voltages.len() >= 3);
+        let pos: Vec<[f64; 3]> = fix.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let n = pos.len();
+        let np = fix.nplate;
+
+        // Fixture quality: LAMMPS response is exactly linear; cell neutral.
+        let caps: Vec<f64> = fix
+            .voltages
+            .iter()
+            .map(|v| v.lammps_qtop / v.voltage)
+            .collect();
+        for c in &caps {
+            assert!(
+                (c - caps[0]).abs() / caps[0] < 0.01,
+                "LAMMPS Q(V) not linear: {caps:?}"
+            );
+        }
+        for v in &fix.voltages {
+            assert!(
+                (v.lammps_qbot + v.lammps_qtop).abs() < 1e-8,
+                "LAMMPS cell not neutral at V={}",
+                v.voltage
+            );
+        }
+
+        let q0 = cpm_run(&fix.elements, &pos, vec![0.0; n]);
+        let mut worst_ratio = 0.0f64;
+        let mut worst_sim = 1.0f64;
+        for v in &fix.voltages {
+            let mut mus = vec![0.0; n];
+            for i in 0..np {
+                mus[i] = -v.voltage;
+            }
+            for i in np..n {
+                mus[i] = v.voltage;
+            }
+            let qv = cpm_run(&fix.elements, &pos, mus);
+            let ind: Vec<f64> =
+                qv.iter().zip(q0.iter()).map(|(a, b)| a - b).collect();
+            let qb: f64 = ind[..np].iter().sum();
+            let qt: f64 = ind[np..].iter().sum();
+            // Exact antisymmetry (symmetric plates, uniform χ).
+            assert!(
+                (qb + qt).abs() < 1e-8,
+                "ours not antisymmetric at V={}: {qb} {qt}",
+                v.voltage
+            );
+            // Scale: documented model gap (Gaussian self vs hardness).
+            let ratio = (qb / v.lammps_qbot).abs();
+            worst_ratio = worst_ratio.max(ratio.max(1.0 / ratio));
+            // Pattern: cosine similarity of induced per-atom charges.
+            let dot: f64 = ind
+                .iter()
+                .zip(v.lammps_charges.iter())
+                .map(|(a, b)| a * b)
+                .sum();
+            let no: f64 = ind.iter().map(|a| a * a).sum::<f64>().sqrt();
+            let nl: f64 = v.lammps_charges.iter().map(|a| a * a).sum::<f64>().sqrt();
+            let sim = dot / (no * nl);
+            worst_sim = worst_sim.min(sim);
+            eprintln!(
+                "F95 V=±{}: ours ΔQ={:+.4}/{:+.4} LAMMPS {:+.4}/{:+.4} ratio={:.3} sim={:.3}",
+                v.voltage, qb, qt, v.lammps_qbot, v.lammps_qtop, ratio, sim
+            );
+        }
+        assert!(
+            worst_ratio <= 2.5,
+            "plate-Q scale ratio {worst_ratio:.3} exceeds 2.5"
+        );
+        assert!(
+            worst_sim >= 0.3,
+            "pattern similarity {worst_sim:.3} below 0.3"
+        );
+    }
 }
