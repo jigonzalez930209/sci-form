@@ -184,6 +184,18 @@
   "source": "tests/cross_validation.rs"
  },
  {
+  "ficha": "F31",
+  "observable": "eht_metal_params_vs_yaehmop",
+  "metric": "max_abs",
+  "value": 0.0,
+  "tolerance": 0.02,
+  "pass": true,
+  "n_cases": 76,
+  "source": "tests/cross_validation.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
   "ficha": "F36",
   "observable": "scf_matrices_energy_mulliken",
   "reference": {
