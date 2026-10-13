@@ -224,23 +224,6 @@
  },
  {
   "ficha": "F41",
-  "observable": "cis_singlet_excitations_ev",
-  "reference": {
-   "tool": "PySCF 2.14.0 tdscf.TDA (singlets)"
-  },
-  "units": "eV",
-  "level": "L2",
-  "n_cases": 8,
-  "metric": "max_abs",
-  "value": 1.7244915130217363e-06,
-  "tolerance": 0.01,
-  "pass": true,
-  "notes": "CIS/TDA singlet excitation energies, tolerance 0.01 eV per the validation plan. Measured by tests/cross_validation.rs::f41_cis.",
-  "timestamp": "2026-10-12T10:27:33",
-  "source": "tests/cross_validation.rs"
- },
- {
-  "ficha": "F41",
   "observable": "cis_singlet_excitations_max_abs_ev",
   "metric": "max_abs",
   "value": 2.6223579716599943e-06,
@@ -566,5 +549,21 @@
   "notes": "Same UFF surface (F16 parity 3.98e-13 kcal/mol), same start: sci-form BFGS vs RDKit minimization. Tolerance 1e-3 kcal/mol/atom (4.3e-8 eV/atom, stricter than the plan's 1e-6 eV/atom: both minimizers land in the same basin). Measured by tests/cross_validation.rs::f70_framework_opt.",
   "timestamp": "2026-10-12T10:27:30",
   "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F41",
+  "observable": "cis_singlet_excitations_ev",
+  "reference": {
+   "tool": "PySCF 2.14.0 tdscf.TDA (singlets)"
+  },
+  "units": "eV",
+  "level": "L2",
+  "n_cases": 8,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 0.01,
+  "pass": false,
+  "notes": "CIS/TDA singlet excitation energies, tolerance 0.01 eV per the validation plan. Measured by tests/cross_validation.rs::f41_cis.",
+  "timestamp": "2026-10-12T21:24:56"
  }
 ]
