@@ -144,7 +144,7 @@ pub struct Gfn2Result {
 }
 
 /// Build basis map using GFN2 shell structure: (atom_idx, shell_idx, l, m).
-fn build_gfn2_basis_map(elements: &[u8]) -> Vec<(usize, usize, u8, u8)> {
+pub(crate) fn build_gfn2_basis_map(elements: &[u8]) -> Vec<(usize, usize, u8, u8)> {
     let mut basis = Vec::new();
     for (i, &z) in elements.iter().enumerate() {
         if let Some(p) = gfn2_params::get_gfn2_params(z) {
@@ -1218,7 +1218,7 @@ fn build_gfn2_gamma(elements: &[u8], positions: &[[f64; 3]]) -> Vec<Vec<f64>> {
 /// GFN2-xTB repulsion energy (Hartree).
 ///
 /// V = Σ_{A>B} Z_eff_A × Z_eff_B / R × exp(−(α_A·α_B·R)^(kexp/2))
-fn compute_gfn2_repulsion(elements: &[u8], positions: &[[f64; 3]]) -> f64 {
+pub(crate) fn compute_gfn2_repulsion(elements: &[u8], positions: &[[f64; 3]]) -> f64 {
     let n = elements.len();
     let mut e_rep = 0.0;
     for i in 0..n {
@@ -1290,7 +1290,7 @@ fn compute_d4_dispersion(elements: &[u8], positions: &[[f64; 3]], charges: &[f64
 }
 
 /// Halogen bond correction (returns Hartree).
-fn compute_halogen_bond_correction(elements: &[u8], positions: &[[f64; 3]]) -> f64 {
+pub(crate) fn compute_halogen_bond_correction(elements: &[u8], positions: &[[f64; 3]]) -> f64 {
     let n = elements.len();
     let mut e_xb = 0.0;
 

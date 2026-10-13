@@ -22,7 +22,9 @@ pub mod gpu;
 pub mod gradients;
 pub mod params;
 pub mod solver;
+pub mod spin_params;
 pub mod sto_overlap;
+pub mod uks;
 
 pub use gfn0::{solve_gfn0, Gfn0Result};
 pub use gfn1::{solve_gfn1, Gfn1Result};
@@ -30,3 +32,4 @@ pub use gfn2::{solve_gfn2, Gfn2Result};
 pub use gradients::{compute_xtb_gradient, XtbGradientResult};
 pub use params::{get_xtb_params, is_xtb_supported, XtbParams};
 pub use solver::{solve_xtb, XtbResult};
+pub use uks::{solve_gfn1_unrestricted, solve_gfn2_unrestricted, Gfn1UksResult, UksResult};

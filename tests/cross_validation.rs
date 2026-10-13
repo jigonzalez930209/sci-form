@@ -1511,6 +1511,192 @@ mod f45_gfn2 {
     }
 }
 
+mod f45_uks {
+    use super::gfn_support::*;
+    use super::*;
+
+    #[derive(serde::Deserialize)]
+    struct UksCase {
+        name: String,
+        uhf: u32,
+        elements: Vec<u8>,
+        coords: Vec<f64>,
+        tblite_energy_hartree: f64,
+        tblite_gfn1_energy_hartree: f64,
+    }
+
+    #[derive(serde::Deserialize)]
+    struct UksFixture {
+        cases: Vec<UksCase>,
+    }
+
+    /// Unrestricted GFN2-xTB vs tblite 0.7.0 `uhf`.
+    ///
+    /// tblite 0.7.0 wires no spin-polarization container for GFN2 (`uhf`
+    /// only splits alpha/beta occupations); our UKS adds the on-site spin
+    /// interaction of tblite's own `spin.f90`/`data/spin.f90`
+    /// (E_spin = +½ΣmWm, W < 0). The gate therefore compares the NON-spin
+    /// part `E_uks − E_spin` against tblite: all remaining physics
+    /// (occupations, Coulomb, AES, D4) must match up to second-order spin
+    /// relaxation (<0.05 eV; measured ≤0.035 eV). The spin extension itself
+    /// is guarded by exact magnetization conservation, E_spin < 0, and the
+    /// uhf=0 ≡ restricted identity below.
+    const NO_SPIN_TOL_EV: f64 = 0.05;
+    const HA_TO_EV: f64 = 27.211_386_245_988;
+
+    #[test]
+    fn f45_uks_matches_tblite_uhf() {
+        let fixture: UksFixture = load("uks_tblite.json");
+        assert!(fixture.cases.len() >= 4);
+        let mut worst = (0.0f64, String::new());
+        for case in &fixture.cases {
+            if case.uhf == 0 {
+                continue;
+            }
+            let positions = positions(&case.coords);
+            let u = sci_form::xtb::uks::solve_gfn2_unrestricted(
+                &case.elements,
+                &positions,
+                case.uhf,
+            )
+            .unwrap_or_else(|err| panic!("{}: UKS failed: {err}", case.name));
+            assert!(u.converged, "{}: UKS SCC did not converge", case.name);
+            // Exact magnetization conservation: Σm = Nα − Nβ.
+            let mtot: f64 = u.spin_moments.iter().sum();
+            assert!(
+                (mtot - case.uhf as f64).abs() < 1e-8,
+                "{}: Σm = {mtot} != uhf {}",
+                case.name,
+                case.uhf
+            );
+            // Spin polarization stabilizes (W < 0).
+            assert!(
+                u.spin_energy < 0.0,
+                "{}: E_spin = {} >= 0",
+                case.name,
+                u.spin_energy
+            );
+            // Non-spin physics vs the external reference.
+            let e_nospin = u.total_energy - u.spin_energy;
+            let e_ref = case.tblite_energy_hartree * HA_TO_EV;
+            let d = (e_nospin - e_ref).abs();
+            if d > worst.0 {
+                worst = (d, case.name.clone());
+            }
+        }
+        println!(
+            "F45-UKS vs tblite uhf: n={} max |(E_uks−E_spin)−E_tblite| = {:.3e} eV ({})",
+            fixture.cases.len(),
+            worst.0,
+            worst.1
+        );
+        assert!(
+            worst.0 <= NO_SPIN_TOL_EV,
+            "UKS non-spin max error {:.4} eV for {} (tolerance {})",
+            worst.0,
+            worst.1,
+            NO_SPIN_TOL_EV
+        );
+        record(
+            "F45-UKS",
+            "uks_nospin_vs_tblite_uhf_max_abs_ev",
+            "max_abs",
+            worst.0,
+            NO_SPIN_TOL_EV,
+            worst.0 <= NO_SPIN_TOL_EV,
+            fixture.cases.len(),
+        );
+    }
+
+    /// uhf=0 reproduces the restricted solver (same H0/S/CN/γ/AES/D4
+    /// machinery; spin shifts vanish exactly).
+    #[test]
+    fn uks_uhf0_matches_restricted() {
+        let fixture: UksFixture = load("uks_tblite.json");
+        let case = fixture
+            .cases
+            .iter()
+            .find(|c| c.name == "H2O")
+            .expect("H2O control case");
+        let positions = positions(&case.coords);
+        let r = sci_form::xtb::gfn2::solve_gfn2(&case.elements, &positions)
+            .expect("restricted GFN2 failed");
+        let u = sci_form::xtb::uks::solve_gfn2_unrestricted(&case.elements, &positions, 0)
+            .expect("UKS uhf=0 failed");
+        assert!(u.converged);
+        let de = (u.total_energy - r.total_energy).abs();
+        println!("UKS uhf=0 vs restricted H2O: |ΔE| = {de:.3e} eV");
+        // 1e-4 eV: guards structural divergence (same-run diff is ~1e-14 eV;
+        // cross-process fp noise from map ordering reaches ~1e-5 eV).
+        assert!(de < 1e-4, "uhf=0 diverges from restricted: {de} eV");
+        assert!(u.spin_moments.iter().all(|&m| m == 0.0));
+    }
+
+    /// Unrestricted GFN1-xTB: same spin model over GFN1 electrostatics.
+    /// uhf=0 ≡ restricted GFN1; otherwise E_uks − E_spin vs tblite GFN1 uhf.
+    #[test]
+    fn f44_uks_matches_tblite_uhf() {
+        let fixture: UksFixture = load("uks_tblite.json");
+        let mut worst = (0.0f64, String::new());
+        for case in &fixture.cases {
+            let positions = positions(&case.coords);
+            let u = sci_form::xtb::uks::solve_gfn1_unrestricted(
+                &case.elements,
+                &positions,
+                case.uhf,
+            )
+            .unwrap_or_else(|err| panic!("{}: GFN1-UKS failed: {err}", case.name));
+            assert!(u.converged, "{}: GFN1-UKS SCC did not converge", case.name);
+            let mtot: f64 = u.spin_moments.iter().sum();
+            assert!(
+                (mtot - case.uhf as f64).abs() < 1e-8,
+                "{}: Σm = {mtot} != uhf {}",
+                case.name,
+                case.uhf
+            );
+            if case.uhf == 0 {
+                let r = sci_form::xtb::gfn1::solve_gfn1(&case.elements, &positions)
+                    .expect("restricted GFN1 failed");
+                let de = (u.total_energy - r.total_energy).abs();
+                assert!(de < 1e-4, "GFN1 uhf=0 diverges: {de} eV");
+                continue;
+            }
+            assert!(
+                u.spin_energy < 0.0,
+                "{}: E_spin = {} >= 0",
+                case.name,
+                u.spin_energy
+            );
+            let e_nospin = u.total_energy - u.spin_energy;
+            let e_ref = case.tblite_gfn1_energy_hartree * HA_TO_EV;
+            let d = (e_nospin - e_ref).abs();
+            if d > worst.0 {
+                worst = (d, case.name.clone());
+            }
+        }
+        println!(
+            "F44-UKS vs tblite GFN1 uhf: max |(E_uks−E_spin)−E_tblite| = {:.3e} eV ({})",
+            worst.0, worst.1
+        );
+        assert!(
+            worst.0 <= NO_SPIN_TOL_EV,
+            "GFN1-UKS non-spin max error {:.4} eV for {} (tolerance {})",
+            worst.0,
+            worst.1,
+            NO_SPIN_TOL_EV
+        );
+        record(
+            "F44-UKS",
+            "uks_gfn1_nospin_vs_tblite_uhf_max_abs_ev",
+            "max_abs",
+            worst.0,
+            NO_SPIN_TOL_EV,
+            worst.0 <= NO_SPIN_TOL_EV,
+            fixture.cases.len(),
+        );
+    }
+}
+
 mod f44_gfn1 {
     use super::gfn_support::*;
     use super::*;

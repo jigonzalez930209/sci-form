@@ -1,0 +1,108 @@
+{
+  "reference": "tblite 0.7.0 Calculator GFN2-xTB uhf=N (positions converted A->bohr)",
+  "generated": "scripts/validation/oracle_uks_tblite.py",
+  "cases": [
+    {
+      "name": "OH",
+      "uhf": 1,
+      "elements": [
+        8,
+        1
+      ],
+      "coords": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.97
+      ],
+      "tblite_energy_hartree": -4.428339109629361,
+      "tblite_gfn1_energy_hartree": -5.068660234422471
+    },
+    {
+      "name": "CH3",
+      "uhf": 1,
+      "elements": [
+        6,
+        1,
+        1,
+        1
+      ],
+      "coords": [
+        0.0,
+        0.0,
+        0.0,
+        1.09,
+        0.0,
+        0.0,
+        -0.545,
+        0.944,
+        0.0,
+        -0.545,
+        -0.944,
+        0.0
+      ],
+      "tblite_energy_hartree": -3.5619856578975417,
+      "tblite_gfn1_energy_hartree": -3.6310170203229237
+    },
+    {
+      "name": "NO",
+      "uhf": 1,
+      "elements": [
+        7,
+        8
+      ],
+      "coords": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.15
+      ],
+      "tblite_energy_hartree": -6.828283315861634,
+      "tblite_gfn1_energy_hartree": -7.735746755072709
+    },
+    {
+      "name": "O2",
+      "uhf": 2,
+      "elements": [
+        8,
+        8
+      ],
+      "coords": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.21
+      ],
+      "tblite_energy_hartree": -7.904118279644994,
+      "tblite_gfn1_energy_hartree": -9.117703916420787
+    },
+    {
+      "name": "H2O",
+      "uhf": 0,
+      "elements": [
+        8,
+        1,
+        1
+      ],
+      "coords": [
+        0.0,
+        0.0,
+        0.1173,
+        0.0,
+        0.7572,
+        -0.4692,
+        0.0,
+        -0.7572,
+        -0.4692
+      ],
+      "tblite_energy_hartree": -5.070370764538953,
+      "tblite_gfn1_energy_hartree": -5.768640579697155
+    }
+  ]
+}
