@@ -795,41 +795,126 @@ pub fn cmd_validate_electron_count(n_electrons: usize, n_bands: usize, n_kpoints
 
 // ─── KINETICS COMMANDS ────────────────────────────────────────────
 
+/// Parse a `MicrokineticNetworkConfig` from a file path or inline JSON, or
+/// fall back to a small built-in demo network (A ⇌ B with a 0.5 eV barrier).
 #[cfg(feature = "alpha-kinetics")]
-pub fn cmd_extract_kinetics_diagnostics() {
-    println!(
-        "{}",
-        serde_json::json!({
-            "max_population": 1.0,
-            "total_population": 1.0,
-            "mass_conservation_error": 0.0,
-            "is_steady_state": false
-        })
-    );
+fn microkinetic_config(
+    network: Option<&str>,
+    n_steps: usize,
+) -> sci_form::alpha::kinetics::MicrokineticNetworkConfig {
+    use sci_form::alpha::kinetics::{ElementaryStep, MicrokineticNetworkConfig};
+    if let Some(spec) = network {
+        let text = if std::path::Path::new(spec).is_file() {
+            std::fs::read_to_string(spec).unwrap_or_else(|e| {
+                eprintln!("cannot read network file {spec}: {e}");
+                std::process::exit(1);
+            })
+        } else {
+            spec.to_string()
+        };
+        match serde_json::from_str::<MicrokineticNetworkConfig>(&text) {
+            Ok(mut cfg) => {
+                if cfg.n_frames < 2 {
+                    cfg.n_frames = n_steps.max(2);
+                }
+                cfg
+            }
+            Err(e) => {
+                eprintln!("invalid network JSON: {e}");
+                std::process::exit(1);
+            }
+        }
+    } else {
+        MicrokineticNetworkConfig {
+            species: vec!["A".into(), "B".into()],
+            steps: vec![ElementaryStep {
+                step_id: "A->B".into(),
+                activation_free_energy_ev: 0.5,
+                reaction_free_energy_ev: -0.1,
+                prefactor_s_inv: None,
+            }],
+            stoichiometry: vec![vec![(0, -1.0), (1, 1.0)]],
+            initial_populations: vec![1.0, 0.0],
+            total_time_s: 1e-3,
+            n_frames: n_steps.max(2),
+            state: sci_form::alpha::kinetics::ThermodynamicState {
+                temperature_k: 298.15,
+                pressure_bar: 1.0,
+            },
+        }
+    }
 }
 
 #[cfg(feature = "alpha-kinetics")]
-pub fn cmd_solve_microkinetic_network(n_steps: usize) {
-    println!(
-        "{}",
-        serde_json::json!({
-            "n_steps": n_steps,
-            "converged": true,
-            "final_time_s": 1e-6
-        })
-    );
+pub fn cmd_extract_kinetics_diagnostics(network: Option<&str>) {
+    let config = microkinetic_config(network, 20);
+    match sci_form::alpha::kinetics::solve_microkinetic_network(&config) {
+        Ok(trace) => {
+            let diag = sci_form::alpha::kinetics::extract_kinetics_diagnostics(&trace);
+            println!(
+                "{}",
+                serde_json::to_value(&diag).unwrap_or_else(|_| serde_json::json!({}))
+            );
+        }
+        Err(e) => {
+            eprintln!("microkinetic solve failed: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
 #[cfg(feature = "alpha-kinetics")]
-pub fn cmd_solve_microkinetic_steady_state(n_steps: usize) {
-    println!(
-        "{}",
-        serde_json::json!({
-            "n_steps": n_steps,
-            "converged": true,
-            "residual": 1e-12
-        })
-    );
+pub fn cmd_solve_microkinetic_network(network: Option<&str>, n_steps: usize) {
+    let config = microkinetic_config(network, n_steps);
+    match sci_form::alpha::kinetics::solve_microkinetic_network(&config) {
+        Ok(trace) => {
+            let diag = sci_form::alpha::kinetics::extract_kinetics_diagnostics(&trace);
+            let last = trace.frames.last();
+            println!(
+                "{}",
+                serde_json::json!({
+                    "n_steps": trace.frames.len(),
+                    "n_steps_requested": n_steps,
+                    "n_rates": trace.rates.len(),
+                    "converged": diag.is_steady_state,
+                    "final_time_s": last.map(|f| f.time_s).unwrap_or(0.0),
+                    "final_populations": last.map(|f| f.species.iter().map(|s| s.population).collect::<Vec<_>>()).unwrap_or_default(),
+                    "diagnostics": serde_json::to_value(&diag).unwrap_or_else(|_| serde_json::json!({})),
+                })
+            );
+        }
+        Err(e) => {
+            eprintln!("microkinetic solve failed: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+#[cfg(feature = "alpha-kinetics")]
+pub fn cmd_solve_microkinetic_steady_state(network: Option<&str>, n_steps: usize, tol: f64) {
+    let config = microkinetic_config(network, n_steps);
+    match sci_form::alpha::kinetics::solve_microkinetic_steady_state(&config, tol) {
+        Ok(trace) => {
+            let diag = sci_form::alpha::kinetics::extract_kinetics_diagnostics(&trace);
+            let last = trace.frames.last();
+            println!(
+                "{}",
+                serde_json::json!({
+                    "n_steps": trace.frames.len(),
+                    "n_steps_requested": n_steps,
+                    "converged": diag.is_steady_state,
+                    "residual": diag.max_rate_of_change,
+                    "tol": tol,
+                    "final_populations": last.map(|f| f.species.iter().map(|s| s.population).collect::<Vec<_>>()).unwrap_or_default(),
+                    "diagnostics": serde_json::to_value(&diag).unwrap_or_else(|_| serde_json::json!({})),
+                })
+            );
+        }
+        Err(e) => {
+            eprintln!("microkinetic steady-state solve failed: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
 #[cfg(feature = "alpha-kinetics")]
