@@ -50,6 +50,14 @@ NET_MAP = {
     "kgm": "kag",  # RCSR kagome; NOTE below
     "hxl": None,  # RCSR hex.cgd is the 8-c net, not hxl (6-c)
     "pillared_sql": None,  # derived net, no RCSR entry
+    # Extended set: multiple node types and nets with inequivalent edges
+    # (validation F67 extension).
+    "acs": "acs",
+    "afw": "afw",
+    "sod": "sod",
+    "pts": "pts",
+    "xah": "xah",
+    "tfy": "tfy",
 }
 
 # sci-form's vdW table (src/materials/cell.rs) for the pyzeo .rad file.
@@ -63,16 +71,25 @@ MOF5_A_CONV_LIT = 25.832
 
 
 def parse_cgd(path: Path) -> dict:
-    nodes, edges = [], []
-    for line in path.read_text().splitlines():
-        line = line.strip()
+    nodes, edges, centres = [], [], []
+    for raw in path.read_text().splitlines():
+        line = raw.strip()
+        if line.startswith("#"):
+            line = line.lstrip("#").strip()
         if line.startswith("NODE"):
             t = line.split()
             nodes.append({"cn": int(t[2]), "frac": [float(x) for x in t[3:6]]})
+        elif line.startswith("EDGE_CENTER"):
+            centres.append([float(x) for x in line.split()[1:4]])
         elif line.startswith("EDGE"):
             t = [float(x) for x in line.split()[1:]]
             edges.append(t)
-    return {"nodes": nodes, "n_edges": len(edges)}
+    return {
+        "nodes": nodes,
+        "n_edges": len(edges),
+        "n_edge_centres": len(centres),
+        "n_edge_types": len(centres),
+    }
 
 
 def read_bb(name: str):

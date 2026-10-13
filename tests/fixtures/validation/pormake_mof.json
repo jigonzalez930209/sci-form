@@ -13,7 +13,9 @@
      ]
     }
    ],
-   "n_edges": 1
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
   },
   "dia": {
    "cgd": "dia",
@@ -27,7 +29,9 @@
      ]
     }
    ],
-   "n_edges": 1
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
   },
   "sql": {
    "cgd": null
@@ -44,7 +48,9 @@
      ]
     }
    ],
-   "n_edges": 1
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
   },
   "fcu": {
    "cgd": "fcu",
@@ -58,7 +64,9 @@
      ]
     }
    ],
-   "n_edges": 1
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
   },
   "nbo": {
    "cgd": "nbo",
@@ -72,7 +80,9 @@
      ]
     }
    ],
-   "n_edges": 1
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
   },
   "pts": {
    "cgd": "pts",
@@ -94,7 +104,9 @@
      ]
     }
    ],
-   "n_edges": 1
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
   },
   "kgm": {
    "cgd": "kag",
@@ -108,13 +120,119 @@
      ]
     }
    ],
-   "n_edges": 2
+   "n_edges": 2,
+   "n_edge_centres": 2,
+   "n_edge_types": 2
   },
   "hxl": {
    "cgd": null
   },
   "pillared_sql": {
    "cgd": null
+  },
+  "acs": {
+   "cgd": "acs",
+   "nodes": [
+    {
+     "cn": 6,
+     "frac": [
+      0.66667,
+      0.33333,
+      0.25
+     ]
+    }
+   ],
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
+  },
+  "afw": {
+   "cgd": "afw",
+   "nodes": [
+    {
+     "cn": 4,
+     "frac": [
+      0.0,
+      0.19995,
+      0.0
+     ]
+    }
+   ],
+   "n_edges": 2,
+   "n_edge_centres": 2,
+   "n_edge_types": 2
+  },
+  "sod": {
+   "cgd": "sod",
+   "nodes": [
+    {
+     "cn": 4,
+     "frac": [
+      0.0,
+      0.25,
+      0.5
+     ]
+    }
+   ],
+   "n_edges": 1,
+   "n_edge_centres": 1,
+   "n_edge_types": 1
+  },
+  "xah": {
+   "cgd": "xah",
+   "nodes": [
+    {
+     "cn": 5,
+     "frac": [
+      0.0,
+      0.0,
+      0.26747
+     ]
+    },
+    {
+     "cn": 4,
+     "frac": [
+      0.0,
+      0.5,
+      0.5
+     ]
+    }
+   ],
+   "n_edges": 2,
+   "n_edge_centres": 2,
+   "n_edge_types": 2
+  },
+  "tfy": {
+   "cgd": "tfy",
+   "nodes": [
+    {
+     "cn": 4,
+     "frac": [
+      0.0,
+      0.0,
+      0.25
+     ]
+    },
+    {
+     "cn": 3,
+     "frac": [
+      0.0,
+      0.03237,
+      0.14627
+     ]
+    },
+    {
+     "cn": 3,
+     "frac": [
+      0.0596,
+      0.0596,
+      0.0596
+     ]
+    }
+   ],
+   "n_edges": 2,
+   "n_edge_centres": 2,
+   "n_edge_types": 2
   }
  },
  "mof5": {
