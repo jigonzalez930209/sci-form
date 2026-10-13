@@ -465,6 +465,17 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Procedimiento: ya descrito en TESTING.md §9 (`scripts/generate_eht_reference.py`, tests `regression/test_eht.rs`, `test_eht_metal_references.rs`); añadir comparación con YAeHMOP (`yaehmop -eig` o `eht`) sobre metano/etano/benceno/ferroceno.
 - Estado en el repo: `src/eht/{overlap,hamiltonian,solver,params,basis}.rs`; suite `test_eht.rs`; `eht_metal_reference.json`.
 - Criterio: S ≤ 1e-5 rel; H ≤ 1e-5 (misma tabla); HOMO/LUMO ≤ 1e-4 eV; coeficientes |Δ| ≤ 1e-4.
+- **Benchmark de metales de transición (2026-10-13)**: revisión de la tabla
+  d-block contra la tabla de referencia de **YAeHMOP 3.0.3**
+  (`tightbind/eht_parms.dat`, compilación de Alvarez 1993 y los papers del
+  grupo Hoffmann) mediante `scripts/validation/check_eht_metal_params.py`.
+  Hallazgo: 33 valores (ζ de 4d/5d y algunos VSIP: Ni 3d, Zr, Tc, Cd) no
+  coincidían con la fuente citada en la cabecera — corregidos (62 entradas
+  normalizadas, 33 con cambio de valor). Gate `f31_metal_params_match_yaehmop`:
+  76 filas comparadas con **Δ = 0** (tolerancia 0.02 eV / 0.02 bohr⁻¹).
+  Límites documentados: Y, Ag y Hf tienen filas incompletas (placeholders 0) en
+  YAeHMOP y conservan nuestros valores; la base es single-zeta, así que se usa
+  el primer exponente de las funciones d double-zeta de la referencia.
 
 **F32 · Gradiente EHT y optimización de geometría (`eht::compute_eht_gradient`, `optimize_geometry_eht`)**
 - Referencia probada: no hay gradiente EHT estándar en librerías; la referencia es L0 (diferencias finitas) + comparación de geometría optimizada con resultados EHT publicados y con geometrías de referencia ETKDG/DFT.
@@ -1858,6 +1869,10 @@ están activos (ningún `#[ignore]`).
   1.9e-11 (tolerancia 1e-10). Hallazgo de fidelidad: la distancia vdW que
   entra al capacitor es el valor crudo de la tabla mctc-lib (Å) porque
   `aatoau`/`autoaa` se cancelan.
+- **EHT metales (2026-10-13)**: benchmark de la tabla d-block contra YAeHMOP
+  3.0.3 (Alvarez 1993); 33 valores corregidos (ζ de 4d/5d, VSIP de Ni/Zr/Tc/Cd)
+  y gate F31 con Δ = 0 en 76 filas; Y/Ag/Hf documentados como referencia
+  incompleta.
 - **CISD (2026-10-13)**: `hf::cisd` reescrito como CI determinantal completo
   (dobles de mismo orbital + acoplamiento con la referencia + energía de
   correlación real). Gate F41-CISD contra PySCF `ci.cisd`/`ci.ucisd`: 8

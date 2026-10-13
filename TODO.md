@@ -121,7 +121,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 5. EHT
 - [x] Soporte real de orbitales 4d/5d (contracciones STO-3G propias 4d/5d en `eht::basis`, tests de forma y de Mo)
-- [ ] Revisión de parámetros provisionales para metales de transición — pendiente de un benchmark contra tablas EHT de literatura (hoy: tabla d-block + fallback hydrogenic con warnings, ζ vs IP testeado)
+- [x] Revisión de parámetros para metales de transición — **benchmark hecho** contra la tabla de referencia de YAeHMOP 3.0.3 (`tightbind/eht_parms.dat`, compilación de Alvarez 1993) con `scripts/validation/check_eht_metal_params.py`: 33 valores no coincidían con la fuente citada (ζ de 4d/5d en Zr/Nb/Mo/Tc/Ru/W/Re/Os/Ta/Ir/Cd, VSIP de Ni 3d, Zr, Tc, Cd, ζ de Mn/Zn) y se corrigieron a la literatura; gate `f31_metal_params_match_yaehmop` con Δ = 0 en 76 filas (tolerancia 0.02). Límites: Y/Ag/Hf conservan nuestros valores (filas incompletas en la referencia) y la base sigue siendo single-zeta (primer exponente de las d double-zeta). Siguen siendo «provisional» en el sentido de que el *rendimiento* químico no está validado contra datos experimentales, solo los parámetros contra la tabla
 
 ### 6. NMR
 - [ ] Ampliación fuerte de HOSE database — bloqueado: requiere una base externa de shifts (NMRShiftDB/SDBS) con licencia y validación
