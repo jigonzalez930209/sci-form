@@ -44,6 +44,83 @@ impl KarplusParams {
     }
 }
 
+// ─── Haasnoot–de Leeuw–Altona (HLA) refinement ──────────────────────────────
+//
+// Generalized Karplus equation for H-C-C-H:
+//
+//   ³J = P1 cos²φ + P2 cosφ + P3
+//        + Σ_i Δχ_i [P4 + P5 cos²(ξ_i φ + P6 |Δχ_i|)]
+//
+// where Δχ_i are Huggins-scale electronegativity differences (relative to H)
+// and ξ_i = +1 for a substituent anti to the coupled proton, −1 for gauche.
+//
+// Parameters fitted to the reference implementation (R. Stenutz's HLA
+// calculator, implementing Haasnoot, de Leeuw, Altona, Tetrahedron 36 (1980)
+// 2783) via `scripts/validation/oracle_hla.py`: the all-H baseline
+// reproduces the reference curve to 3e-3 Hz and the single-substituent
+// corrections to 0.5 Hz RMS (the reference switches to its pattern-specific
+// equations C/D/E, whose difference from the general form is documented as
+// small by the same source). The Δχ values recover the Huggins ordering
+// (Si 0.0 < C/S 0.59 < N 1.26 < Cl 1.40 < O 1.92 < F 2.0).
+
+/// HLA base coefficients (P1, P2, P3), fitted to the reference all-H curve.
+pub const HLA_P1: f64 = 13.893;
+pub const HLA_P2: f64 = -0.981;
+pub const HLA_P3: f64 = 0.0;
+/// HLA substituent coefficients (P4, P5) and phase scale (P6, degrees).
+pub const HLA_P4: f64 = 0.637;
+pub const HLA_P5: f64 = -2.243;
+pub const HLA_P6: f64 = 5.0;
+
+/// Huggins-scale electronegativity difference Δχ relative to hydrogen.
+///
+/// Values fitted to the reference HLA implementation; elements outside the
+/// table contribute 0 (no refinement).
+pub fn huggins_dchi(z: u8) -> f64 {
+    match z {
+        1 => 0.0,       // H
+        6 | 16 => 0.59, // C, S
+        7 => 1.26,      // N
+        8 => 1.92,      // O
+        9 => 2.0,       // F
+        14 => 0.0,      // Si
+        17 => 1.40,     // Cl
+        _ => 0.0,
+    }
+}
+
+/// HLA substituent correction (Hz) for a set of `(Δχ, ξ)` pairs.
+pub fn hla_substituent_correction(substituents: &[(f64, f64)]) -> f64 {
+    let mut sum = 0.0;
+    for &(dchi, xi) in substituents {
+        if dchi == 0.0 {
+            continue;
+        }
+        let arg = (xi * 180.0 + HLA_P6 * dchi.abs()).to_radians();
+        sum += dchi * (HLA_P4 + HLA_P5 * arg.cos().powi(2));
+    }
+    sum
+}
+
+/// HLA ³J(H,H) for H-C-C-H with substituent electronegativity corrections.
+///
+/// `phi_rad` is the H-C-C-H dihedral; `substituents` are the `(Δχ, ξ)` pairs
+/// of the remaining substituents (use [`huggins_dchi`] for Δχ and +1 for
+/// anti / −1 for gauche).
+pub fn hla_coupling(phi_rad: f64, substituents: &[(f64, f64)]) -> f64 {
+    let cos_phi = phi_rad.cos();
+    let mut j = HLA_P1 * cos_phi * cos_phi + HLA_P2 * cos_phi + HLA_P3;
+    for &(dchi, xi) in substituents {
+        if dchi == 0.0 {
+            continue;
+        }
+        let phi_deg = phi_rad.to_degrees();
+        let arg = (xi * phi_deg + HLA_P6 * dchi.abs()).to_radians();
+        j += dchi * (HLA_P4 + HLA_P5 * arg.cos().powi(2));
+    }
+    j
+}
+
 /// Get Karplus parameters based on the coupled pathway atoms.
 /// Returns pathway-specific parameters for H-X-Y-H coupling.
 fn get_karplus_params(x_elem: u8, y_elem: u8) -> KarplusParams {
