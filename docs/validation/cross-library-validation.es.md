@@ -1352,6 +1352,11 @@ Leyenda: **Actual** = suite que ya existe en el repo; **Nuevo** = artefacto a cr
 | F94 | Riemannian PSD | `test_riemannian.rs` | gen `compare_riemannian_geomstats.py` | geomstats; pymanopt |
 | F95 | CPM | `test_cpm.rs` | gen `compare_cpm_lammps.py` | LAMMPS `fix electrode/conp` |
 
+**Estado LAMMPS (2026-10-13)**: build desde fuente con `PKG_REAXFF` + ELECTRODE
+operativo (`-DCMAKE_DISABLE_FIND_PACKAGE_MPI=ON` es obligatorio, ver §14.0);
+el LAMMPS de apt ya trae ELECTRODE. Ambos oráculos (F78 con `ffield.reax.cho`,
+F95 con `fix electrode/conp`) quedan listos para implementar.
+
 ---
 
 ## 10. Plan de ejecución por fases
@@ -1454,7 +1459,8 @@ como *parcial* en la tabla "supported accuracy".
 
 ## 13. Estado de implementación
 
-> Actualizado: **2026-10-12** (GFN1-xTB fiel, F44). Ejecutar
+> Actualizado: **2026-10-13** (campaña de pendientes: EEQ-BC, CISD determinantal,
+> EHT metales, Karplus/HLA; F78/F95 desbloqueados con LAMMPS). Ejecutar
 > `VALIDATION_PYTHON=<venv>/bin/python scripts/run_validation.sh` para reproducir
 > toda la tabla. Reporte generado: `reports/validation/summary.json`.
 
@@ -1497,12 +1503,17 @@ como *parcial* en la tabla "supported accuracy".
 | F41 (ext.) | PySCF TDA osciladores | fuerzas de oscilador con dipolos exactos | **<1e-5 en 27/29 estados** (H2O 0/1 documentado) | 5e-3 | PASS |
 | F46 (ext.) | dftd4 4.3.0 | 7 casos pesados (PbI2…LrH, UO2) | **6.2e-10 Ha** | 1.6e-6 | PASS |
 | F67 (ext.) | pormake `.cgd` | 6 nets RCSR con aristas no equivalentes | **nodos/CN/tipos exactos** | exacto | PASS |
+| F22 (ext.) | multicharge CLI `--model eeqbc` | cargas EEQ-BC (23 moléculas: PbI₂, HgCl₂, Au₂, SnF₄, XeF₂, WO₃, UF₆, AmCl₃, ferroceno) | **6.9e-12 e**; CN 1.9e-11 | 1e-10 | PASS |
+| F41 (ext.) | PySCF `ci.cisd`/`ci.ucisd` | energía de correlación CISD (8 moléculas STO-3G) | **2.1e-8 Ha** | 1e-6 | PASS |
+| F31 (ext.) | YAeHMOP 3.0.3 (Alvarez 1993) | parámetros EHT de metales d (76 filas) | **Δ = 0** | 0.02 eV / 0.02 bohr⁻¹ | PASS |
+| F54 (ext.) | calculadora HLA de referencia | ³J con corrección de sustituyentes: base (7) + C/S/N/Cl (49) | **4e-3 Hz**; sustituidos 0.42 Hz | 0.01 / 0.5 | PASS |
 
 Fixtures: `tests/fixtures/validation/` (README con procedencia). Versiones de
 referencia: `validation/refs.lock.json` (RDKit 2026.09.1, PySCF 2.14.0, NumPy 2.5.4,
 SciPy 1.18.1, FreeSASA python-bindings, tblite 0.7.0, dftd4 4.3.0, s-dftd3 1.6.0), pymatgen 2026.9.24, ASE 3.29.0, spglib 2.8.0).
-Los 28 tests de `tests/cross_validation.rs`
-están activos (ningún `#[ignore]`).
+Los 35 tests de `tests/cross_validation.rs`
+están activos (ningún `#[ignore]`); los dos espacios CISD mayores (CH2O/C2H4)
+solo se ejercitan en `--release`.
 
 ### 13.2 Correcciones aplicadas gracias a la comparación (todo con test)
 
@@ -1734,9 +1745,9 @@ están activos (ningún `#[ignore]`).
 2. **Cobertura pendiente del catálogo** — las ~80 fichas restantes siguen
    el formato ya operativo: `scripts/validation/oracle_<tool>.py` → fixture →
    test en `tests/cross_validation.rs` (o suite por dominio) → `collect.py`.
-   Candidatas inmediatas: F40 (HF-3c vs ORCA), F50/F52 (ORCA),
-   F78/F95 (LAMMPS), F82/F89 (GSM/pysisyphus), F94 (geomstats/pymanopt),
-   F34/F88/F91 (pybinding).
+   Candidatas inmediatas: **F78/F95 (LAMMPS: binarios ya operativos)**,
+   F40 (HF-3c vs ORCA), F50/F52 (ORCA), F82/F89 (GSM/pysisyphus),
+   F94 (geomstats/pymanopt), F34/F88/F91 (pybinding).
 3. **PM3/NDDO (F42): DESBLOQUEADO (2026-10-12)** — el binario de MOPAC 23.2.5
    (release oficial Linux, sin toolchain Fortran) se descargó y usó como
    árbitro. Se portó el núcleo fiel (`src/pm3/faithful.rs`): tabla de
@@ -1851,7 +1862,7 @@ están activos (ningún `#[ignore]`).
 | Runner end-to-end | `scripts/run_validation.sh` |
 | Fixtures + procedencia | `tests/fixtures/validation/` |
 | Versiones de referencia | `validation/refs.lock.json` |
-| Tests de validación cruzada | `tests/cross_validation.rs` (28 tests activos: F01, F05, F13, F14, F16, F17, F21, F23+F26, F28, F36–F39, F41, F43–F49, F59, F64–F70) |
+| Tests de validación cruzada | `tests/cross_validation.rs` (35 tests activos: F01, F05, F13, F14, F16, F17, F21, F22-EEQBC, F23+F26, F28, F31-EHT, F36–F39, F41 (CIS+CISD), F43–F49, F54-HLA, F59, F64–F70) |
 | Reporte | `reports/validation/summary.json` |
 
 ---
@@ -1958,7 +1969,9 @@ externa; los gated van muy por debajo:
 | E_tot RHF/STO-3G | PySCF | 1.2e-8 Ha (11) | 1e-7 Ha |
 | ERI AO | PySCF | 2.1e-11 a.u. (13 074) | 1e-10 |
 | ERI AO→MO | PySCF | 1.9e-14 a.u. | 1e-10 |
-| Gaps EHT metales | fixture propio | <0.1 % o tolerancia absoluta | — |
+| Parámetros EHT metales | YAeHMOP 3.0.3 (Alvarez 1993) | Δ = 0 en 76 filas | 0.02 eV / 0.02 bohr⁻¹ |
+| Correlación CISD | PySCF `ci.cisd` | 2.1e-8 Ha (8) | 1e-6 Ha |
+| Cargas EEQ-BC | multicharge `--model eeqbc` | 6.9e-12 e (23) | 1e-10 e |
 | ΔHf PM3 | NIST | gap documentado (F42) | — |
 
 ### 14.3 Límites de escalado (single point, alkanos lineales)
