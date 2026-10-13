@@ -1,0 +1,934 @@
+{
+ "source": "R. Stenutz HLA calculator (stenutz.eu/conf/haasnoot.php), implementing Haasnoot, de Leeuw, Altona, Tetrahedron 36 (1980) 2783",
+ "units": {
+  "angle": "degrees",
+  "j": "Hz"
+ },
+ "note": "Substituent slots S1/S2/S3 (near carbon) and S4 (far carbon) per the calculator's trans/gauche schemes; the others are H.",
+ "cases": [
+  {
+   "name": "all_H",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 12.91
+  },
+  {
+   "name": "all_H",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 9.57
+  },
+  {
+   "name": "all_H",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 2.98
+  },
+  {
+   "name": "all_H",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.0
+  },
+  {
+   "name": "all_H",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.96
+  },
+  {
+   "name": "all_H",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 11.27
+  },
+  {
+   "name": "all_H",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 14.87
+  },
+  {
+   "name": "s1_C",
+   "substituents": [
+    "C",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 11.97
+  },
+  {
+   "name": "s1_C",
+   "substituents": [
+    "C",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 9.09
+  },
+  {
+   "name": "s1_C",
+   "substituents": [
+    "C",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 3.16
+  },
+  {
+   "name": "s1_C",
+   "substituents": [
+    "C",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.39
+  },
+  {
+   "name": "s1_C",
+   "substituents": [
+    "C",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.9
+  },
+  {
+   "name": "s1_C",
+   "substituents": [
+    "C",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 10.54
+  },
+  {
+   "name": "s1_C",
+   "substituents": [
+    "C",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 13.93
+  },
+  {
+   "name": "s2_C",
+   "substituents": [
+    "H",
+    "C",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 11.97
+  },
+  {
+   "name": "s2_C",
+   "substituents": [
+    "H",
+    "C",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 8.84
+  },
+  {
+   "name": "s2_C",
+   "substituents": [
+    "H",
+    "C",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 2.92
+  },
+  {
+   "name": "s2_C",
+   "substituents": [
+    "H",
+    "C",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.39
+  },
+  {
+   "name": "s2_C",
+   "substituents": [
+    "H",
+    "C",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 4.14
+  },
+  {
+   "name": "s2_C",
+   "substituents": [
+    "H",
+    "C",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 10.78
+  },
+  {
+   "name": "s2_C",
+   "substituents": [
+    "H",
+    "C",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 13.93
+  },
+  {
+   "name": "s3_C",
+   "substituents": [
+    "H",
+    "H",
+    "C",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 11.97
+  },
+  {
+   "name": "s3_C",
+   "substituents": [
+    "H",
+    "H",
+    "C",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 9.09
+  },
+  {
+   "name": "s3_C",
+   "substituents": [
+    "H",
+    "H",
+    "C",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 3.16
+  },
+  {
+   "name": "s3_C",
+   "substituents": [
+    "H",
+    "H",
+    "C",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.39
+  },
+  {
+   "name": "s3_C",
+   "substituents": [
+    "H",
+    "H",
+    "C",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.9
+  },
+  {
+   "name": "s3_C",
+   "substituents": [
+    "H",
+    "H",
+    "C",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 10.54
+  },
+  {
+   "name": "s3_C",
+   "substituents": [
+    "H",
+    "H",
+    "C",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 13.93
+  },
+  {
+   "name": "s4_C",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "C"
+   ],
+   "angle_deg": 0,
+   "j_hz": 11.97
+  },
+  {
+   "name": "s4_C",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "C"
+   ],
+   "angle_deg": 30,
+   "j_hz": 8.84
+  },
+  {
+   "name": "s4_C",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "C"
+   ],
+   "angle_deg": 60,
+   "j_hz": 2.92
+  },
+  {
+   "name": "s4_C",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "C"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.39
+  },
+  {
+   "name": "s4_C",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "C"
+   ],
+   "angle_deg": 120,
+   "j_hz": 4.14
+  },
+  {
+   "name": "s4_C",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "C"
+   ],
+   "angle_deg": 150,
+   "j_hz": 10.78
+  },
+  {
+   "name": "s4_C",
+   "substituents": [
+    "H",
+    "H",
+    "H",
+    "C"
+   ],
+   "angle_deg": 180,
+   "j_hz": 13.93
+  },
+  {
+   "name": "s1_O",
+   "substituents": [
+    "O",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 10.3
+  },
+  {
+   "name": "s1_O",
+   "substituents": [
+    "O",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 9.02
+  },
+  {
+   "name": "s1_O",
+   "substituents": [
+    "O",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 4.16
+  },
+  {
+   "name": "s1_O",
+   "substituents": [
+    "O",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.84
+  },
+  {
+   "name": "s1_O",
+   "substituents": [
+    "O",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 2.74
+  },
+  {
+   "name": "s1_O",
+   "substituents": [
+    "O",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 8.32
+  },
+  {
+   "name": "s1_O",
+   "substituents": [
+    "O",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 12.26
+  },
+  {
+   "name": "s1_N",
+   "substituents": [
+    "N",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 11.03
+  },
+  {
+   "name": "s1_N",
+   "substituents": [
+    "N",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 8.87
+  },
+  {
+   "name": "s1_N",
+   "substituents": [
+    "N",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 3.59
+  },
+  {
+   "name": "s1_N",
+   "substituents": [
+    "N",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.73
+  },
+  {
+   "name": "s1_N",
+   "substituents": [
+    "N",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.5
+  },
+  {
+   "name": "s1_N",
+   "substituents": [
+    "N",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 9.5
+  },
+  {
+   "name": "s1_N",
+   "substituents": [
+    "N",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 12.99
+  },
+  {
+   "name": "s1_F",
+   "substituents": [
+    "F",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 9.92
+  },
+  {
+   "name": "s1_F",
+   "substituents": [
+    "F",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 9.43
+  },
+  {
+   "name": "s1_F",
+   "substituents": [
+    "F",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 4.68
+  },
+  {
+   "name": "s1_F",
+   "substituents": [
+    "F",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.68
+  },
+  {
+   "name": "s1_F",
+   "substituents": [
+    "F",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 1.79
+  },
+  {
+   "name": "s1_F",
+   "substituents": [
+    "F",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 7.26
+  },
+  {
+   "name": "s1_F",
+   "substituents": [
+    "F",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 11.88
+  },
+  {
+   "name": "s1_Cl",
+   "substituents": [
+    "Cl",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 10.84
+  },
+  {
+   "name": "s1_Cl",
+   "substituents": [
+    "Cl",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 8.88
+  },
+  {
+   "name": "s1_Cl",
+   "substituents": [
+    "Cl",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 3.71
+  },
+  {
+   "name": "s1_Cl",
+   "substituents": [
+    "Cl",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.78
+  },
+  {
+   "name": "s1_Cl",
+   "substituents": [
+    "Cl",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.36
+  },
+  {
+   "name": "s1_Cl",
+   "substituents": [
+    "Cl",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 9.25
+  },
+  {
+   "name": "s1_Cl",
+   "substituents": [
+    "Cl",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 12.8
+  },
+  {
+   "name": "s1_Br",
+   "substituents": [
+    "Br",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 11.22
+  },
+  {
+   "name": "s1_Br",
+   "substituents": [
+    "Br",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 8.89
+  },
+  {
+   "name": "s1_Br",
+   "substituents": [
+    "Br",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 3.48
+  },
+  {
+   "name": "s1_Br",
+   "substituents": [
+    "Br",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.67
+  },
+  {
+   "name": "s1_Br",
+   "substituents": [
+    "Br",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.62
+  },
+  {
+   "name": "s1_Br",
+   "substituents": [
+    "Br",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 9.75
+  },
+  {
+   "name": "s1_Br",
+   "substituents": [
+    "Br",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 13.18
+  },
+  {
+   "name": "s1_S",
+   "substituents": [
+    "S",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 11.97
+  },
+  {
+   "name": "s1_S",
+   "substituents": [
+    "S",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 9.09
+  },
+  {
+   "name": "s1_S",
+   "substituents": [
+    "S",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 3.16
+  },
+  {
+   "name": "s1_S",
+   "substituents": [
+    "S",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": 0.39
+  },
+  {
+   "name": "s1_S",
+   "substituents": [
+    "S",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.9
+  },
+  {
+   "name": "s1_S",
+   "substituents": [
+    "S",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 10.54
+  },
+  {
+   "name": "s1_S",
+   "substituents": [
+    "S",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 13.93
+  },
+  {
+   "name": "s1_Si",
+   "substituents": [
+    "Si",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 0,
+   "j_hz": 13.62
+  },
+  {
+   "name": "s1_Si",
+   "substituents": [
+    "Si",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 30,
+   "j_hz": 9.96
+  },
+  {
+   "name": "s1_Si",
+   "substituents": [
+    "Si",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 60,
+   "j_hz": 2.87
+  },
+  {
+   "name": "s1_Si",
+   "substituents": [
+    "Si",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 90,
+   "j_hz": -0.3
+  },
+  {
+   "name": "s1_Si",
+   "substituents": [
+    "Si",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 120,
+   "j_hz": 3.98
+  },
+  {
+   "name": "s1_Si",
+   "substituents": [
+    "Si",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 150,
+   "j_hz": 11.79
+  },
+  {
+   "name": "s1_Si",
+   "substituents": [
+    "Si",
+    "H",
+    "H",
+    "H"
+   ],
+   "angle_deg": 180,
+   "j_hz": 15.58
+  }
+ ]
+}
