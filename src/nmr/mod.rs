@@ -9,6 +9,7 @@
 pub mod coupling;
 pub mod hose;
 pub mod nucleus;
+pub mod second_order;
 pub mod shifts;
 pub mod spectrum;
 
@@ -17,6 +18,10 @@ pub use coupling::ensemble_averaged_j_couplings_parallel;
 pub use coupling::{ensemble_averaged_j_couplings, predict_j_couplings, JCoupling, KarplusParams};
 pub use hose::{HoseCode, HoseShiftLookup};
 pub use nucleus::NmrNucleus;
+pub use second_order::{
+    ab_reference, strong_coupling_note, ExactLine, SpinSystem, StrongCouplingPair,
+    STRONG_COUPLING_RATIO,
+};
 pub use shifts::{
     predict_chemical_shifts, predict_chemical_shifts_for_nucleus, ChemicalShift, NmrShiftResult,
     NucleusShiftSeries,
