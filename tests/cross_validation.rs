@@ -3634,3 +3634,99 @@ mod f41_cisd {
         );
     }
 }
+
+/// EHT transition-metal parameters against the YAeHMOP/Alvarez table.
+///
+/// Ficha F31 extension: `src/eht/params.rs` cites Alvarez (1993) for the
+/// d-block parameters; the YAeHMOP distribution compiles the same literature
+/// values into a machine-readable table, so it acts as the reference. The
+/// fixture is produced by `scripts/validation/check_eht_metal_params.py`.
+mod f31_eht_metal_params {
+    use super::*;
+    use sci_form::eht::params::get_params;
+
+    #[derive(Deserialize)]
+    struct OrbitalRow {
+        orbital: String,
+        reference_vsip_ev: f64,
+        reference_zeta: f64,
+        reference_complete: bool,
+    }
+
+    #[derive(Deserialize)]
+    struct ElementRow {
+        z: u8,
+        symbol: String,
+        orbitals: Vec<OrbitalRow>,
+    }
+
+    #[derive(Deserialize)]
+    struct Tolerance {
+        vsip_ev: f64,
+        zeta: f64,
+    }
+
+    #[derive(Deserialize)]
+    struct Fixture {
+        tolerance: Tolerance,
+        elements: Vec<ElementRow>,
+    }
+
+    #[test]
+    fn f31_metal_params_match_yaehmop() {
+        let fixture: Fixture = load("eht_metal_params.json");
+        let mut worst_vsip = (0.0f64, String::new());
+        let mut worst_zeta = (0.0f64, String::new());
+        let mut n_rows = 0usize;
+        for element in &fixture.elements {
+            let params = get_params(element.z)
+                .unwrap_or_else(|| panic!("{}: no EHT parameters", element.symbol));
+            for row in &element.orbitals {
+                if !row.reference_complete {
+                    continue;
+                }
+                let orbital = params
+                    .orbitals
+                    .iter()
+                    .find(|o| o.label == row.orbital)
+                    .unwrap_or_else(|| {
+                        panic!("{}: missing orbital {}", element.symbol, row.orbital)
+                    });
+                let d_vsip = (orbital.vsip - row.reference_vsip_ev).abs();
+                let d_zeta = (orbital.zeta - row.reference_zeta).abs();
+                n_rows += 1;
+                if d_vsip > worst_vsip.0 {
+                    worst_vsip = (d_vsip, format!("{} {}", element.symbol, row.orbital));
+                }
+                if d_zeta > worst_zeta.0 {
+                    worst_zeta = (d_zeta, format!("{} {}", element.symbol, row.orbital));
+                }
+            }
+        }
+        println!(
+            "F31 EHT metales vs YAeHMOP: n={} max |ΔVSIP| = {:.3e} eV ({}), max |Δζ| = {:.3e} ({})",
+            n_rows, worst_vsip.0, worst_vsip.1, worst_zeta.0, worst_zeta.1
+        );
+        assert!(
+            worst_vsip.0 <= fixture.tolerance.vsip_ev,
+            "EHT metal VSIP mismatch {:.3e} eV for {}",
+            worst_vsip.0,
+            worst_vsip.1
+        );
+        assert!(
+            worst_zeta.0 <= fixture.tolerance.zeta,
+            "EHT metal zeta mismatch {:.3e} for {}",
+            worst_zeta.0,
+            worst_zeta.1
+        );
+        record(
+            "F31",
+            "eht_metal_params_vs_yaehmop",
+            "max_abs",
+            worst_zeta.0,
+            fixture.tolerance.zeta,
+            worst_zeta.0 <= fixture.tolerance.zeta,
+            n_rows,
+        );
+    }
+}

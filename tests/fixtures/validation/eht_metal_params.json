@@ -1,0 +1,704 @@
+{
+ "source": "YAeHMOP 3.0.3 tightbind/eht_parms.dat (SourceForge), compilation of Alvarez, Tables of Parameters for Extended Huckel Calculations (1993) and the Hoffmann-group papers",
+ "units": {
+  "vsip": "eV",
+  "zeta": "bohr^-1"
+ },
+ "tolerance": {
+  "vsip_ev": 0.02,
+  "zeta": 0.02
+ },
+ "note": "Our table keeps the first exponent of the reference's double-zeta d functions (single-zeta basis). Elements whose reference rows are incomplete keep our values.",
+ "elements": [
+  {
+   "z": 21,
+   "symbol": "SC",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -8.87,
+     "reference_zeta": 1.3,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -2.75,
+     "reference_zeta": 1.3,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -8.51,
+     "reference_zeta": 4.35,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 22,
+   "symbol": "TI",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -8.97,
+     "reference_zeta": 1.075,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -5.44,
+     "reference_zeta": 1.075,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -10.81,
+     "reference_zeta": 4.55,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 23,
+   "symbol": "V",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -8.81,
+     "reference_zeta": 1.3,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -5.52,
+     "reference_zeta": 1.3,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -11.0,
+     "reference_zeta": 4.75,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 24,
+   "symbol": "CR",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -8.66,
+     "reference_zeta": 1.7,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -5.24,
+     "reference_zeta": 1.7,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -11.22,
+     "reference_zeta": 4.95,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 25,
+   "symbol": "MN",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -9.75,
+     "reference_zeta": 0.97,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -5.89,
+     "reference_zeta": 0.97,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -11.67,
+     "reference_zeta": 5.15,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 26,
+   "symbol": "FE",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -9.1,
+     "reference_zeta": 1.9,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -5.32,
+     "reference_zeta": 1.9,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -12.6,
+     "reference_zeta": 5.35,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 27,
+   "symbol": "CO",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -9.21,
+     "reference_zeta": 2.0,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -5.29,
+     "reference_zeta": 2.0,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -13.18,
+     "reference_zeta": 5.55,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 28,
+   "symbol": "NI",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -10.95,
+     "reference_zeta": 2.1,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -6.27,
+     "reference_zeta": 2.1,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -14.2,
+     "reference_zeta": 5.75,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 29,
+   "symbol": "CU",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -11.4,
+     "reference_zeta": 2.2,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -6.06,
+     "reference_zeta": 2.2,
+     "reference_complete": true
+    },
+    {
+     "orbital": "3d",
+     "reference_vsip_ev": -14.0,
+     "reference_zeta": 5.95,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 30,
+   "symbol": "ZN",
+   "orbitals": [
+    {
+     "orbital": "4s",
+     "reference_vsip_ev": -12.41,
+     "reference_zeta": 2.01,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4p",
+     "reference_vsip_ev": -6.53,
+     "reference_zeta": 1.7,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 39,
+   "symbol": "Y",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -0.0,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -0.0,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -0.0,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    }
+   ]
+  },
+  {
+   "z": 40,
+   "symbol": "ZR",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -9.87,
+     "reference_zeta": 1.817,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -6.76,
+     "reference_zeta": 1.776,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -11.18,
+     "reference_zeta": 3.835,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 41,
+   "symbol": "NB",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -10.1,
+     "reference_zeta": 1.89,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -6.86,
+     "reference_zeta": 1.85,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -12.1,
+     "reference_zeta": 4.08,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 42,
+   "symbol": "MO",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -8.34,
+     "reference_zeta": 1.96,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -5.24,
+     "reference_zeta": 1.9,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -10.5,
+     "reference_zeta": 4.54,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 43,
+   "symbol": "TC",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -10.07,
+     "reference_zeta": 2.018,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -5.4,
+     "reference_zeta": 1.984,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -12.82,
+     "reference_zeta": 4.9,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 44,
+   "symbol": "RU",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -10.4,
+     "reference_zeta": 2.08,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -6.87,
+     "reference_zeta": 2.04,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -14.9,
+     "reference_zeta": 5.38,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 45,
+   "symbol": "RH",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -8.09,
+     "reference_zeta": 2.135,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -4.57,
+     "reference_zeta": 2.1,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -12.5,
+     "reference_zeta": 4.29,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 46,
+   "symbol": "PD",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -7.32,
+     "reference_zeta": 2.19,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -3.75,
+     "reference_zeta": 2.152,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -12.02,
+     "reference_zeta": 5.983,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 47,
+   "symbol": "AG",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -0.0,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -0.0,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -0.0,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    }
+   ]
+  },
+  {
+   "z": 48,
+   "symbol": "CD",
+   "orbitals": [
+    {
+     "orbital": "5s",
+     "reference_vsip_ev": -11.8,
+     "reference_zeta": 1.64,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5p",
+     "reference_vsip_ev": -8.2,
+     "reference_zeta": 1.6,
+     "reference_complete": true
+    },
+    {
+     "orbital": "4d",
+     "reference_vsip_ev": -0.0,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    }
+   ]
+  },
+  {
+   "z": 72,
+   "symbol": "HF",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -4.84,
+     "reference_zeta": 1.527,
+     "reference_complete": false
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -4.84,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -6.56,
+     "reference_zeta": 0.0,
+     "reference_complete": false
+    }
+   ]
+  },
+  {
+   "z": 73,
+   "symbol": "TA",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -10.1,
+     "reference_zeta": 2.28,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -6.86,
+     "reference_zeta": 2.241,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -12.1,
+     "reference_zeta": 4.762,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 74,
+   "symbol": "W",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -8.26,
+     "reference_zeta": 2.341,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -5.17,
+     "reference_zeta": 2.309,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -10.37,
+     "reference_zeta": 4.982,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 75,
+   "symbol": "RE",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -9.36,
+     "reference_zeta": 2.398,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -5.96,
+     "reference_zeta": 2.372,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -12.66,
+     "reference_zeta": 5.343,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 76,
+   "symbol": "OS",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -8.17,
+     "reference_zeta": 2.452,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -4.81,
+     "reference_zeta": 2.429,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -11.84,
+     "reference_zeta": 5.571,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 77,
+   "symbol": "IR",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -11.36,
+     "reference_zeta": 2.5,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -4.5,
+     "reference_zeta": 2.2,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -12.17,
+     "reference_zeta": 5.796,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 78,
+   "symbol": "PT",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -9.077,
+     "reference_zeta": 2.554,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -5.475,
+     "reference_zeta": 2.554,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -12.59,
+     "reference_zeta": 6.013,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 79,
+   "symbol": "AU",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -10.92,
+     "reference_zeta": 2.602,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -5.55,
+     "reference_zeta": 2.584,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -15.07,
+     "reference_zeta": 6.163,
+     "reference_complete": true
+    }
+   ]
+  },
+  {
+   "z": 80,
+   "symbol": "HG",
+   "orbitals": [
+    {
+     "orbital": "6s",
+     "reference_vsip_ev": -13.68,
+     "reference_zeta": 2.649,
+     "reference_complete": true
+    },
+    {
+     "orbital": "6p",
+     "reference_vsip_ev": -8.47,
+     "reference_zeta": 2.631,
+     "reference_complete": true
+    },
+    {
+     "orbital": "5d",
+     "reference_vsip_ev": -17.5,
+     "reference_zeta": 6.436,
+     "reference_complete": true
+    }
+   ]
+  }
+ ]
+}
