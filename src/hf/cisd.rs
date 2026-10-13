@@ -1,20 +1,47 @@
 //! Configuration Interaction Singles and Doubles (CISD).
 //!
-//! Extends CIS with doubly-excited determinants for improved correlation
-//! energies and more accurate excited-state descriptions.
+//! Determinant-based (spin-orbital) CISD over the RHF reference: the CI space
+//! contains the reference determinant, all singly excited determinants and all
+//! doubly excited determinants, including the *same-orbital* doubles
+//! (`(iα iβ) → (aα aβ)`, the dominant correlation determinant of minimal
+//! basis sets such as H₂/STO-3G) and mixed-spin doubles.
 //!
-//! $$H^{CISD}_{ia,jb} = H^{CIS}_{ia,jb}$$
-//! $$H^{CISD}_{ijab,klcd} = (\varepsilon_a + \varepsilon_b - \varepsilon_i - \varepsilon_j)\delta_{ik}\delta_{jl}\delta_{ac}\delta_{bd}
-//!   + \langle ab||cd \rangle \delta_{ij} + \langle ij||kl \rangle \delta_{ab} - P(ij)P(ab)(ia|jb)$$
+//! Matrix elements use the standard Slater–Condon rules in the canonical
+//! determinant basis:
+//!
+//! ```text
+//!   <D|H|D>          = Σ_i h_ii + ½ Σ_ij [(ii|jj) − (ij|ji)]
+//!   <D|H|D_i^a>      = σ · [h_ia + Σ_j ((ia|jj) − (ij|ja))]
+//!   <D|H|D_{ij}^{ab}> = σ · [(ia|jb) − (ib|ja)]
+//! ```
+//!
+//! with `σ` the Slater–Condon phase: the excitation operator is taken in the
+//! standard form `a†_a a†_b a_j a_i` (removals ascending, creations
+//! *descending* — the ordering for which the value formula above pairs the
+//! ascending removed list with the ascending added list). Getting this
+//! ordering wrong is invisible for the H₂O ground state but corrupts the
+//! larger spaces (CH₂O/C₂H₄ off by ~1e-2 Ha), see `tests/cisd_brute.rs`.
+//! One-electron integrals are recovered from the canonical
+//! Fock condition `h_pq = ε_p δ_pq − Σ_j (2(pq|jj) − (pj|jq))`, so the API
+//! stays identical to the previous (spatial-orbital) implementation.
+//!
+//! The ground-state correlation energy is `λ_min − E_ref` (with `E_ref` the
+//! reference determinant energy = the converged RHF energy), not the lowest
+//! CIS eigenvalue of the previous version. Validated against PySCF
+//! `ci.cisd.CISD` (gate F41, `pyscf_tda.json::cisd_correlation_hartree`).
 
-use super::integrals::get_eri;
+use super::mo_transform::ao_to_mo_transform;
 use nalgebra::{DMatrix, SymmetricEigen};
 use serde::{Deserialize, Serialize};
 
 /// CISD excitation.
+///
+/// Energies are the CI eigenvalues relative to the CI ground state; CISD is
+/// not size-consistent for excited states (use the CIS path, F41, when that
+/// matters).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CisdExcitation {
-    /// Excitation energy (Hartree).
+    /// Excitation energy (Hartree, relative to the CI ground state).
     pub energy: f64,
     /// Excitation energy (eV).
     pub energy_ev: f64,
@@ -33,11 +60,11 @@ pub struct CisdExcitation {
 /// CISD result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CisdResult {
-    /// Excitations sorted by energy.
+    /// Excitations sorted by energy (relative to the CI ground state).
     pub excitations: Vec<CisdExcitation>,
-    /// Ground-state correlation energy (Hartree).
+    /// Ground-state correlation energy (Hartree): λ_min − E_ref.
     pub correlation_energy: f64,
-    /// Total number of CSFs in the CI space.
+    /// Total number of determinants in the CI space.
     pub n_csfs: usize,
     /// Approximation used: "full" for exact CISD, "perturbative" for CIS+MP2.
     pub approximation: String,
@@ -45,11 +72,155 @@ pub struct CisdResult {
 
 const HARTREE_TO_EV: f64 = 27.21138602;
 
-/// Compute CISD excitation energies from converged SCF data.
+/// Largest determinant space built explicitly; above this the perturbative
+/// (CIS + MP2) path is used.
+const MAX_DETERMINANTS: usize = 5000;
+
+/// Occupation of one determinant: alpha and beta spin-orbital bitmasks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Determinant {
+    alpha: u64,
+    beta: u64,
+}
+
+impl Determinant {
+    fn popcount(&self) -> usize {
+        self.alpha.count_ones() as usize + self.beta.count_ones() as usize
+    }
+}
+
+/// Parity of the excitation operator mapping the canonical determinant `from`
+/// onto the canonical determinant `to` (allocation-free, mask-based).
+fn phase_between(from: &Determinant, to: &Determinant) -> f64 {
+    let mut alpha = from.alpha;
+    let mut beta = from.beta;
+    let mut parity = 0u32;
+    // Removals in ascending global order (alpha block first).
+    let mut rem = from.alpha & !to.alpha;
+    while rem != 0 {
+        let bit = rem.trailing_zeros();
+        parity += (alpha & ((1u64 << bit) - 1)).count_ones();
+        alpha &= !(1u64 << bit);
+        rem &= rem - 1;
+    }
+    let mut rem = from.beta & !to.beta;
+    while rem != 0 {
+        let bit = rem.trailing_zeros();
+        parity += (beta & ((1u64 << bit) - 1)).count_ones();
+        beta &= !(1u64 << bit);
+        rem &= rem - 1;
+    }
+    // Additions in *descending* global order, matching the standard
+    // Slater-Condon operator a†_a a†_b a_j a_i (i<j, a<b) whose value formula
+    // (ia|jb) - (ib|ja) pairs the ascending removed list with the ascending
+    // added list. Each creation anticommutes past the occupied orbitals
+    // *below* its index (canonical ordering). Verified element-by-element
+    // against the explicit second-quantized reference (tests/cisd_brute.rs).
+    let mut add = to.alpha & !from.alpha;
+    while add != 0 {
+        let bit = 63 - add.leading_zeros();
+        parity += (alpha & ((1u64 << bit) - 1)).count_ones();
+        alpha |= 1u64 << bit;
+        add &= !(1u64 << bit);
+    }
+    let mut add = to.beta & !from.beta;
+    while add != 0 {
+        let bit = 63 - add.leading_zeros();
+        parity += (beta & ((1u64 << bit) - 1)).count_ones();
+        beta |= 1u64 << bit;
+        add &= !(1u64 << bit);
+    }
+    if parity % 2 == 0 {
+        1.0
+    } else {
+        -1.0
+    }
+}
+
+/// Enumerate the CISD determinant space of a closed-shell reference.
+fn build_space(n_basis: usize, n_occupied: usize) -> Vec<Determinant> {
+    let n_virtual = n_basis - n_occupied;
+    let ref_alpha: u64 = if n_occupied >= 64 {
+        u64::MAX
+    } else {
+        (1u64 << n_occupied) - 1
+    };
+    let reference = Determinant {
+        alpha: ref_alpha,
+        beta: ref_alpha,
+    };
+    let mut space = vec![reference];
+
+    let mut occ: Vec<usize> = (0..n_occupied).collect();
+    occ.extend((0..n_occupied).map(|k| n_basis + k));
+    let virt: Vec<usize> = (0..2 * n_virtual)
+        .map(|k| {
+            let spin = k / n_virtual;
+            let spatial = k % n_virtual + n_occupied;
+            spin * n_basis + spatial
+        })
+        .collect();
+    let spin_of = |idx: usize| idx / n_basis;
+
+    let set = |det: &mut Determinant, idx: usize, value: bool| {
+        let mask = 1u64 << (idx % n_basis);
+        if idx / n_basis == 0 {
+            if value {
+                det.alpha |= mask;
+            } else {
+                det.alpha &= !mask;
+            }
+        } else if value {
+            det.beta |= mask;
+        } else {
+            det.beta &= !mask;
+        }
+    };
+
+    // Singles (spin-conserving).
+    for &i in &occ {
+        for &a in &virt {
+            if spin_of(i) != spin_of(a) {
+                continue;
+            }
+            let mut det = reference;
+            set(&mut det, i, false);
+            set(&mut det, a, true);
+            space.push(det);
+        }
+    }
+
+    // Doubles (spin-conserving: the spin pattern of the occupied pair must
+    // match the spin pattern of the virtual pair).
+    for (ii, &i) in occ.iter().enumerate() {
+        for &j in occ.iter().skip(ii + 1) {
+            let n_alpha_occ = (spin_of(i) == 0) as usize + (spin_of(j) == 0) as usize;
+            for (aa, &a) in virt.iter().enumerate() {
+                for &b in virt.iter().skip(aa + 1) {
+                    let n_alpha_virt = (spin_of(a) == 0) as usize + (spin_of(b) == 0) as usize;
+                    if n_alpha_occ != n_alpha_virt {
+                        continue;
+                    }
+                    let mut det = reference;
+                    set(&mut det, i, false);
+                    set(&mut det, j, false);
+                    set(&mut det, a, true);
+                    set(&mut det, b, true);
+                    space.push(det);
+                }
+            }
+        }
+    }
+    space
+}
+
+/// Compute CISD energies from converged SCF data.
 ///
-/// This builds the full CIS+D Hamiltonian including single and double
-/// excitations. For large systems the matrix can be very large
-/// (O(N²_occ × N²_virt)), so this is practical only for small molecules.
+/// `orbital_energies`: canonical RHF orbital energies (Hartree, spatial MOs).
+/// `coefficients`: MO coefficient matrix (n_ao × n_mo).
+/// `eris`: AO ERIs in the packed layout of [`super::integrals::get_eri`].
+/// `n_occupied`: number of occupied *spatial* orbitals.
+/// `n_states`: number of excited states to report.
 pub fn compute_cisd(
     orbital_energies: &[f64],
     coefficients: &DMatrix<f64>,
@@ -59,26 +230,7 @@ pub fn compute_cisd(
     n_states: usize,
 ) -> CisdResult {
     let n_virtual = n_basis - n_occupied;
-    let n_singles = n_occupied * n_virtual;
-
-    // Count unique doubles: i<j, a<b
-    let n_doubles = n_occupied * (n_occupied - 1) / 2 * n_virtual * (n_virtual - 1) / 2;
-
-    let n_csfs = n_singles + n_doubles;
-
-    if n_csfs == 0 || n_singles == 0 {
-        return CisdResult {
-            excitations: Vec::new(),
-            correlation_energy: 0.0,
-            n_csfs: 0,
-            approximation: "full".to_string(),
-        };
-    }
-
-    // For very large CI spaces, truncate to keep tractable
-    let max_csfs = 5000;
-    if n_csfs > max_csfs {
-        // Fall back to CIS + MP2-style doubles correction
+    if n_occupied == 0 || n_virtual == 0 || n_basis > 64 {
         return compute_cisd_perturbative(
             orbital_energies,
             coefficients,
@@ -89,173 +241,52 @@ pub fn compute_cisd(
         );
     }
 
-    // Build full CISD Hamiltonian
-    let mut h = DMatrix::zeros(n_csfs, n_csfs);
-
-    // Index mappings for doubles
-    let doubles_map = build_doubles_map(n_occupied, n_virtual);
-
-    // Singles-Singles block (same as CIS)
-    for ia in 0..n_singles {
-        let i = ia / n_virtual;
-        let a = ia % n_virtual + n_occupied;
-
-        for jb in 0..=ia {
-            let j = jb / n_virtual;
-            let b = jb % n_virtual + n_occupied;
-
-            let mut val = 0.0;
-            if ia == jb {
-                val += orbital_energies[a] - orbital_energies[i];
-            }
-
-            val += mo_eri_cisd(coefficients, eris, n_basis, i, a, j, b)
-                - mo_eri_cisd(coefficients, eris, n_basis, i, j, a, b);
-
-            h[(ia, jb)] = val;
-            h[(jb, ia)] = val;
-        }
+    let space = build_space(n_basis, n_occupied);
+    if space.len() > MAX_DETERMINANTS {
+        return compute_cisd_perturbative(
+            orbital_energies,
+            coefficients,
+            eris,
+            n_basis,
+            n_occupied,
+            n_states,
+        );
     }
 
-    // Doubles-Doubles block
-    for (idx_d1, &(i, j, a, b)) in doubles_map.iter().enumerate() {
-        let row = n_singles + idx_d1;
+    // Determinant space + Hamiltonian (shared builder).
+    let (space, h) = build_hamiltonian(orbital_energies, coefficients, eris, n_basis, n_occupied);
+    let n_dets = space.len();
+    let e_ref = h[(0, 0)];
 
-        // Diagonal
-        h[(row, row)] = orbital_energies[a + n_occupied] + orbital_energies[b + n_occupied]
-            - orbital_energies[i]
-            - orbital_energies[j];
-
-        // Off-diagonal doubles-doubles (simplified: direct + exchange)
-        for (idx_d2, &(k, l, c, d)) in doubles_map.iter().enumerate() {
-            if idx_d2 >= idx_d1 {
-                break;
-            }
-            let col = n_singles + idx_d2;
-
-            let val = if i == k && j == l {
-                // Same occupied pair: (ab||cd)
-                mo_eri_cisd(
-                    coefficients,
-                    eris,
-                    n_basis,
-                    a + n_occupied,
-                    b + n_occupied,
-                    c + n_occupied,
-                    d + n_occupied,
-                ) - mo_eri_cisd(
-                    coefficients,
-                    eris,
-                    n_basis,
-                    a + n_occupied,
-                    d + n_occupied,
-                    c + n_occupied,
-                    b + n_occupied,
-                )
-            } else if a == c && b == d {
-                // Same virtual pair: (ij||kl)
-                mo_eri_cisd(coefficients, eris, n_basis, i, j, k, l)
-                    - mo_eri_cisd(coefficients, eris, n_basis, i, l, k, j)
-            } else {
-                0.0
-            };
-
-            h[(row, col)] = val;
-            h[(col, row)] = val;
-        }
-    }
-
-    // Singles-Doubles coupling: <Φ_i^a|H|Φ_{ij}^{ab}>
-    // Full coupling includes all permutations of occupied/virtual index matching.
-    for ia in 0..n_singles {
-        let i_s = ia / n_virtual;
-        let a_s = ia % n_virtual + n_occupied;
-
-        for (idx_d, &(i_d, j_d, a_d, b_d)) in doubles_map.iter().enumerate() {
-            let col = n_singles + idx_d;
-            let a_d_abs = a_d + n_occupied;
-            let b_d_abs = b_d + n_occupied;
-
-            // <S|H|D> coupling via Slater-Condon rules for one-electron difference
-            // between single and double excitations.
-            // The coupling is nonzero when the single shares one occupied and one
-            // virtual index with the double. Four cases arise from antisymmetry:
-            let mut val = 0.0;
-
-            if i_s == i_d {
-                // Shared occupied index i_s == i_d; differs in j_d and virtual pair
-                val += mo_eri_cisd(coefficients, eris, n_basis, a_s, j_d, a_d_abs, b_d_abs)
-                    - mo_eri_cisd(coefficients, eris, n_basis, a_s, b_d_abs, a_d_abs, j_d);
-            }
-            if i_s == j_d {
-                // Shared occupied index i_s == j_d; antisymmetric permutation
-                val -= mo_eri_cisd(coefficients, eris, n_basis, a_s, i_d, a_d_abs, b_d_abs)
-                    - mo_eri_cisd(coefficients, eris, n_basis, a_s, b_d_abs, a_d_abs, i_d);
-            }
-            if a_s == a_d_abs {
-                // Shared virtual index a_s == a_d; differs in occupied pair and b_d
-                val += mo_eri_cisd(coefficients, eris, n_basis, i_s, j_d, i_d, b_d_abs)
-                    - mo_eri_cisd(coefficients, eris, n_basis, i_s, b_d_abs, i_d, j_d);
-            }
-            if a_s == b_d_abs {
-                // Shared virtual index a_s == b_d; antisymmetric permutation
-                val -= mo_eri_cisd(coefficients, eris, n_basis, i_s, j_d, i_d, a_d_abs)
-                    - mo_eri_cisd(coefficients, eris, n_basis, i_s, a_d_abs, i_d, j_d);
-            }
-
-            h[(ia, col)] = val;
-            h[(col, ia)] = val;
-        }
-    }
-
-    // Diagonalize
+    // Diagonalize.
     let eigen = SymmetricEigen::new(h);
-
-    // Sort eigenvalues
-    let mut indices: Vec<usize> = (0..n_csfs).collect();
+    let mut indices: Vec<usize> = (0..n_dets).collect();
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // Ground state: lowest eigenvalue gives correlation energy
-    let correlation_energy = if !indices.is_empty() {
-        let ground_idx = indices[0];
-        let e0 = eigen.eigenvalues[ground_idx];
-        if e0 < 0.0 {
-            e0
-        } else {
-            0.0
-        }
-    } else {
-        0.0
-    };
+    let e_ground = eigen.eigenvalues[indices[0]];
+    let correlation_energy = e_ground - e_ref;
 
-    // Collect excited states
-    let n_out = n_states.min(n_csfs.saturating_sub(1));
+    // Excited states relative to the CI ground state.
+    let n_out = n_states.min(n_dets.saturating_sub(1));
     let mut excitations = Vec::with_capacity(n_out);
-
-    let start = if correlation_energy < 0.0 { 1 } else { 0 };
-    for &idx in indices.iter().skip(start).take(n_out) {
-        let energy = eigen.eigenvalues[idx] - correlation_energy;
+    for &idx in indices.iter().skip(1).take(n_out) {
+        let energy = eigen.eigenvalues[idx] - e_ground;
         if energy <= 0.0 {
             continue;
         }
-
         let energy_ev = energy * HARTREE_TO_EV;
-        let wavelength_nm = if energy_ev > 0.0 {
-            1239.84193 / energy_ev
-        } else {
-            f64::INFINITY
-        };
+        let wavelength_nm = 1239.84193 / energy_ev;
 
-        // Analyze character
         let col = eigen.eigenvectors.column(idx);
-        let singles_weight: f64 = col.rows(0, n_singles).iter().map(|c| c * c).sum();
+        // Determinant 0 is the reference, 1..=n_singles the singles.
+        let n_singles = 2 * n_occupied * n_virtual;
+        let singles_end = (1 + n_singles).min(n_dets);
+        let singles_weight: f64 = col.rows(1, singles_end - 1).iter().map(|c| c * c).sum();
 
-        // Find dominant transitions
-        let mut transitions = Vec::new();
         let mut max_coeff = 0.0f64;
         let mut dom_idx = 0;
         for (k, &c) in col.iter().enumerate() {
@@ -265,25 +296,37 @@ pub fn compute_cisd(
             }
         }
 
-        if dom_idx < n_singles {
-            let i = dom_idx / n_virtual;
-            let a = dom_idx % n_virtual + n_occupied;
-            transitions.push((i, a));
-        } else {
-            let d_idx = dom_idx - n_singles;
-            if d_idx < doubles_map.len() {
-                let (i, j, a, b) = doubles_map[d_idx];
-                transitions.push((i, a + n_occupied));
-                transitions.push((j, b + n_occupied));
+        let mut transitions = Vec::new();
+        if dom_idx > 0 {
+            let det = space[dom_idx];
+            let reference = space[0];
+            for spin in 0..2 {
+                let (det_mask, ref_mask) = if spin == 0 {
+                    (det.alpha, reference.alpha)
+                } else {
+                    (det.beta, reference.beta)
+                };
+                let mut removed = det_mask & !ref_mask;
+                let mut added = ref_mask & !det_mask;
+                while removed != 0 && added != 0 {
+                    transitions.push((
+                        removed.trailing_zeros() as usize,
+                        added.trailing_zeros() as usize,
+                    ));
+                    removed &= removed - 1;
+                    added &= added - 1;
+                }
             }
         }
 
         let character = if singles_weight > 0.5 {
-            "singles".to_string()
+            "singles"
         } else {
-            "doubles".to_string()
+            "doubles"
         };
 
+        // Crude oscillator proxy (no dipole integrals in this API): the
+        // transition is only bright through its singles component.
         let f_osc = 2.0 / 3.0 * energy * singles_weight;
 
         excitations.push(CisdExcitation {
@@ -292,7 +335,7 @@ pub fn compute_cisd(
             wavelength_nm,
             oscillator_strength: f_osc,
             dominant_transition: transitions,
-            character,
+            character: character.to_string(),
             singles_weight,
         });
     }
@@ -300,29 +343,15 @@ pub fn compute_cisd(
     CisdResult {
         excitations,
         correlation_energy,
-        n_csfs,
+        n_csfs: n_dets,
         approximation: "full".to_string(),
     }
 }
 
-/// Build index mapping for unique doubles: (i<j) → (a<b).
-fn build_doubles_map(n_occ: usize, n_virt: usize) -> Vec<(usize, usize, usize, usize)> {
-    let mut map = Vec::new();
-    for i in 0..n_occ {
-        for j in (i + 1)..n_occ {
-            for a in 0..n_virt {
-                for b in (a + 1)..n_virt {
-                    map.push((i, j, a, b));
-                }
-            }
-        }
-    }
-    map
-}
-
 /// Perturbative CISD approximation for large CI spaces.
 ///
-/// Uses CIS for excitations + MP2-like correction for doubles contribution.
+/// Uses CIS for excitations + the MP2 correlation energy for the doubles
+/// contribution.
 fn compute_cisd_perturbative(
     orbital_energies: &[f64],
     coefficients: &DMatrix<f64>,
@@ -332,8 +361,41 @@ fn compute_cisd_perturbative(
     n_states: usize,
 ) -> CisdResult {
     let n_virtual = n_basis - n_occupied;
+    if n_virtual == 0 {
+        return CisdResult {
+            excitations: Vec::new(),
+            correlation_energy: 0.0,
+            n_csfs: 0,
+            approximation: "perturbative".to_string(),
+        };
+    }
 
-    // Get CIS excitations
+    let mo = ao_to_mo_transform(coefficients, eris, n_basis, n_basis);
+
+    // Closed-shell MP2 correlation energy (spin-summed form, spatial MOs):
+    //   E = Σ_ijab (ia|jb)[2(ia|jb) − (ib|ja)] / (ε_i+ε_j−ε_a−ε_b)
+    // with the sum over all occupied/virtual spatial orbitals (the spin
+    // summation is already contained in the 2(ia|jb) − (ib|ja) factor).
+    // Verified against PySCF `mp.MP2`: H2O/STO-3G −0.0355456516 Ha.
+    let mut e_corr = 0.0;
+    for i in 0..n_occupied {
+        for j in 0..n_occupied {
+            for a in n_occupied..n_basis {
+                for b in n_occupied..n_basis {
+                    let ijab = mo.get(i, a, j, b);
+                    let ijba = mo.get(i, b, j, a);
+                    let denom = orbital_energies[i] + orbital_energies[j]
+                        - orbital_energies[a]
+                        - orbital_energies[b];
+                    if denom >= -1e-12 {
+                        continue;
+                    }
+                    e_corr += ijab * (2.0 * ijab - ijba) / denom;
+                }
+            }
+        }
+    }
+
     let cis = super::cis::compute_cis(
         orbital_energies,
         coefficients,
@@ -342,28 +404,6 @@ fn compute_cisd_perturbative(
         n_occupied,
         n_states,
     );
-
-    // MP2 correlation energy from doubles
-    // Denominator is always negative: ε_i + ε_j - ε_a - ε_b < 0 (occ < virt)
-    let mut e_corr = 0.0;
-    for i in 0..n_occupied {
-        for j in (i + 1)..n_occupied {
-            for a in n_occupied..n_basis {
-                for b in (a + 1)..n_basis {
-                    let ijab = mo_eri_cisd(coefficients, eris, n_basis, i, a, j, b);
-                    let ijba = mo_eri_cisd(coefficients, eris, n_basis, i, b, j, a);
-                    let antisym = ijab - ijba;
-                    let denom = orbital_energies[i] + orbital_energies[j]
-                        - orbital_energies[a]
-                        - orbital_energies[b];
-                    // Only include if denominator is negative (physical)
-                    if denom < -1e-10 {
-                        e_corr += antisym * antisym / denom;
-                    }
-                }
-            }
-        }
-    }
 
     let excitations = cis
         .excitations
@@ -379,53 +419,182 @@ fn compute_cisd_perturbative(
         })
         .collect();
 
+    // Determinant count of the CISD space (same convention as the full path):
+    // reference + singles + (αα→αα) + (αβ→αβ) + (ββ→ββ) doubles.
+    let n_pairs_occ = n_occupied * (n_occupied - 1) / 2;
+    let n_pairs_virt = n_virtual * (n_virtual - 1) / 2;
+    let n_dets = 1
+        + 2 * n_occupied * n_virtual
+        + n_occupied * n_occupied * n_virtual * n_virtual
+        + 2 * n_pairs_occ * n_pairs_virt;
+
     CisdResult {
         excitations,
         correlation_energy: e_corr,
-        n_csfs: n_occupied * n_virtual
-            + n_occupied * (n_occupied - 1) / 2 * n_virtual * (n_virtual - 1) / 2,
+        n_csfs: n_dets,
         approximation: "perturbative".to_string(),
     }
 }
 
-/// MO-basis ERI.
-fn mo_eri_cisd(
-    c: &DMatrix<f64>,
+/// Debug helper: determinant space as (alpha_mask, beta_mask) pairs.
+#[doc(hidden)]
+pub fn debug_space(n_basis: usize, n_occupied: usize) -> Vec<(u64, u64)> {
+    build_space(n_basis, n_occupied)
+        .into_iter()
+        .map(|d| (d.alpha, d.beta))
+        .collect()
+}
+
+/// Build the CISD determinant space and Hamiltonian matrix.
+///
+/// Shared by [`compute_cisd`] and the cross-check test that compares the
+/// matrix against an explicit second-quantized reference
+/// (`tests/cisd_brute.rs`, exposed through [`debug_matrix`]).
+fn build_hamiltonian(
+    orbital_energies: &[f64],
+    coefficients: &DMatrix<f64>,
     eris: &[f64],
-    n: usize,
-    p: usize,
-    q: usize,
-    r: usize,
-    s: usize,
-) -> f64 {
-    let mut val = 0.0;
-    for mu in 0..n {
-        let c_mu_p = c[(mu, p)];
-        if c_mu_p.abs() < 1e-12 {
-            continue;
-        }
-        for nu in 0..n {
-            let c_nu_q = c[(nu, q)];
-            if c_nu_q.abs() < 1e-12 {
-                continue;
+    n_basis: usize,
+    n_occupied: usize,
+) -> (Vec<Determinant>, DMatrix<f64>) {
+    let space = build_space(n_basis, n_occupied);
+    let mo = ao_to_mo_transform(coefficients, eris, n_basis, n_basis);
+    let spin_of = |idx: usize| idx / n_basis;
+    let spatial_of = |idx: usize| idx % n_basis;
+    let mut h_mo = DMatrix::zeros(n_basis, n_basis);
+    for p in 0..n_basis {
+        for q in 0..n_basis {
+            let mut fock = 0.0;
+            for j in 0..n_occupied {
+                fock += 2.0 * mo.get(p, q, j, j) - mo.get(p, j, j, q);
             }
-            let cpq = c_mu_p * c_nu_q;
-            for lam in 0..n {
-                let c_lam_r = c[(lam, r)];
-                if c_lam_r.abs() < 1e-12 {
-                    continue;
-                }
-                for sig in 0..n {
-                    let c_sig_s = c[(sig, s)];
-                    if c_sig_s.abs() < 1e-12 {
-                        continue;
-                    }
-                    val += cpq * c_lam_r * c_sig_s * get_eri(eris, mu, nu, lam, sig, n);
-                }
-            }
+            h_mo[(p, q)] = if p == q {
+                orbital_energies[p] - fock
+            } else {
+                -fock
+            };
         }
     }
-    val
+    let so_h = |p: usize, q: usize| -> f64 {
+        if spin_of(p) == spin_of(q) {
+            h_mo[(spatial_of(p), spatial_of(q))]
+        } else {
+            0.0
+        }
+    };
+    let so_eri = |p: usize, q: usize, r: usize, s: usize| -> f64 {
+        if spin_of(p) == spin_of(q) && spin_of(r) == spin_of(s) {
+            mo.get(spatial_of(p), spatial_of(q), spatial_of(r), spatial_of(s))
+        } else {
+            0.0
+        }
+    };
+    let n_dets = space.len();
+    let mut occ_lists: Vec<u32> = Vec::with_capacity(n_dets * 2 * n_occupied);
+    let mut occ_offsets: Vec<usize> = Vec::with_capacity(n_dets + 1);
+    for det in &space {
+        occ_offsets.push(occ_lists.len());
+        let mut a = det.alpha;
+        while a != 0 {
+            occ_lists.push(a.trailing_zeros());
+            a &= a - 1;
+        }
+        let mut b = det.beta;
+        while b != 0 {
+            occ_lists.push(n_basis as u32 + b.trailing_zeros());
+            b &= b - 1;
+        }
+    }
+    occ_offsets.push(occ_lists.len());
+    let mut h = DMatrix::zeros(n_dets, n_dets);
+    for row in 0..n_dets {
+        for col in 0..=row {
+            let mut val = 0.0;
+            if row == col {
+                let occ = &occ_lists[occ_offsets[row]..occ_offsets[row + 1]];
+                for &p in occ {
+                    let p = p as usize;
+                    val += so_h(p, p);
+                    for &q in occ {
+                        let q = q as usize;
+                        val += 0.5 * (so_eri(p, p, q, q) - so_eri(p, q, q, p));
+                    }
+                }
+            } else {
+                let d1 = space[row];
+                let d2 = space[col];
+                let diff_alpha = (d1.alpha ^ d2.alpha).count_ones() as usize;
+                let diff_beta = (d1.beta ^ d2.beta).count_ones() as usize;
+                match diff_alpha + diff_beta {
+                    2 => {
+                        let (from, to) = if diff_alpha == 2 {
+                            (
+                                (d2.alpha & !d1.alpha).trailing_zeros() as usize,
+                                (d1.alpha & !d2.alpha).trailing_zeros() as usize,
+                            )
+                        } else {
+                            (
+                                (d2.beta & !d1.beta).trailing_zeros() as usize + n_basis,
+                                (d1.beta & !d2.beta).trailing_zeros() as usize + n_basis,
+                            )
+                        };
+                        let phase = phase_between(&d2, &d1);
+                        let mut one = so_h(from, to);
+                        for &j in &occ_lists[occ_offsets[col]..occ_offsets[col + 1]] {
+                            let j = j as usize;
+                            one += so_eri(from, to, j, j) - so_eri(from, j, j, to);
+                        }
+                        val = phase * one;
+                    }
+                    4 => {
+                        let mut removed = [0usize; 2];
+                        let mut added = [0usize; 2];
+                        let mut n_rem = 0;
+                        let mut n_add = 0;
+                        for spin in 0..2 {
+                            let (mask2, mask1) = if spin == 0 {
+                                (d2.alpha, d1.alpha)
+                            } else {
+                                (d2.beta, d1.beta)
+                            };
+                            let mut gone = mask2 & !mask1;
+                            while gone != 0 {
+                                removed[n_rem] = gone.trailing_zeros() as usize + spin * n_basis;
+                                n_rem += 1;
+                                gone &= gone - 1;
+                            }
+                            let mut new = mask1 & !mask2;
+                            while new != 0 {
+                                added[n_add] = new.trailing_zeros() as usize + spin * n_basis;
+                                n_add += 1;
+                                new &= new - 1;
+                            }
+                        }
+                        let phase = phase_between(&d2, &d1);
+                        val = phase
+                            * (so_eri(removed[0], added[0], removed[1], added[1])
+                                - so_eri(removed[0], added[1], removed[1], added[0]));
+                    }
+                    _ => {}
+                }
+            }
+            h[(row, col)] = val;
+            h[(col, row)] = val;
+        }
+    }
+    (space, h)
+}
+
+/// Debug helper: CISD Hamiltonian matrix (same builder as `compute_cisd`).
+#[doc(hidden)]
+pub fn debug_matrix(
+    orbital_energies: &[f64],
+    coefficients: &DMatrix<f64>,
+    eris: &[f64],
+    n_basis: usize,
+    n_occupied: usize,
+) -> DMatrix<f64> {
+    build_hamiltonian(orbital_energies, coefficients, eris, n_basis, n_occupied).1
 }
 
 #[cfg(test)]
@@ -433,25 +602,69 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cisd_h2() {
-        // H2 minimal basis: 2 basis functions, 1 occupied, 1 virtual
-        // 1 single, 0 doubles → should gracefully reduce to CIS
-        let orbital_energies = vec![-0.6, 0.7];
-        let c = DMatrix::from_row_slice(2, 2, &[0.7, 0.7, 0.7, -0.7]);
-        let eris = vec![0.0; 16]; // Simplified
-        let result = compute_cisd(&orbital_energies, &c, &eris, 2, 1, 5);
-        assert_eq!(result.n_csfs, 1); // Only 1 single, 0 doubles
+    fn test_build_space_h2() {
+        // H2/STO-3G: 1 occupied + 1 virtual spatial → 2 singles (α, β) and
+        // one same-orbital double (0α0β → 1α1β).
+        let space = build_space(2, 1);
+        assert_eq!(space.len(), 4);
+        let double = space.last().unwrap();
+        assert_eq!(double.popcount(), 2);
+        assert_eq!(double.alpha, 0b10);
+        assert_eq!(double.beta, 0b10);
     }
 
     #[test]
-    fn test_doubles_map() {
-        let map = build_doubles_map(3, 4);
-        // 3 choose 2 = 3, 4 choose 2 = 6 → 18 doubles
-        assert_eq!(map.len(), 18);
-        // Check ordering
-        for &(i, j, a, b) in &map {
-            assert!(i < j);
-            assert!(a < b);
+    fn test_build_space_counts() {
+        // 2 occupied + 2 virtual spatial (4 + 4 spin orbitals):
+        //   singles: 2 (spin) · 2 · 2 = 8
+        //   doubles: (αα→αα) 1 + (αβ→αβ) 4·4 + (ββ→ββ) 1 = 18
+        let space = build_space(4, 2);
+        assert_eq!(space.len(), 1 + 8 + 18);
+        // Every determinant keeps N_alpha = N_beta = 2.
+        for det in &space {
+            assert_eq!(det.alpha.count_ones(), 2);
+            assert_eq!(det.beta.count_ones(), 2);
         }
+    }
+
+    #[test]
+    fn test_cisd_h2_two_determinants() {
+        // H2/STO-3G-like model with the same-orbital double present.
+        let orbital_energies = vec![-0.5783, 0.6704];
+        // Identity coefficients so the "AO" ERIs below are the MO integrals.
+        let c = DMatrix::identity(2, 2);
+        let n = 2;
+        // Minimal ERIs (values in the ballpark of STO-3G H2), packed layout.
+        let n_pair = n * (n + 1) / 2;
+        let mut eris = vec![0.0; n_pair * (n_pair + 1) / 2];
+        let mut set = |i: usize, j: usize, k: usize, l: usize, v: f64| {
+            eris[super::super::integrals::eri_index(i, j, k, l, n)] = v;
+        };
+        set(0, 0, 0, 0, 0.6746);
+        set(0, 0, 1, 1, 0.6636);
+        set(1, 1, 1, 1, 0.6975);
+        set(0, 1, 0, 1, 0.1813);
+
+        let result = compute_cisd(&orbital_energies, &c, &eris, n, 1, 3);
+        assert_eq!(result.approximation, "full");
+        assert_eq!(result.n_csfs, 4);
+        // The same-orbital double must lower the energy below the reference.
+        assert!(
+            result.correlation_energy < -0.01,
+            "correlation = {}",
+            result.correlation_energy
+        );
+    }
+
+    #[test]
+    fn test_cisd_perturbative_fallback() {
+        // 20 basis / 4 occupied spatial → 5632 determinants > MAX_DETERMINANTS.
+        let n = 20;
+        let orbital_energies: Vec<f64> = (0..n).map(|i| -0.5 + 0.05 * i as f64).collect();
+        let c = DMatrix::identity(n, n);
+        let n_pair = n * (n + 1) / 2;
+        let eris = vec![0.0; n_pair * (n_pair + 1) / 2];
+        let result = compute_cisd(&orbital_energies, &c, &eris, n, 4, 3);
+        assert_eq!(result.approximation, "perturbative");
     }
 }
