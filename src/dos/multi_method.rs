@@ -72,10 +72,11 @@ pub fn compute_dos_multimethod(
             (pm3.orbital_energies, homo, lumo, pm3.gap)
         }
         DosMethod::Xtb => {
-            let xtb = crate::xtb::solve_xtb(elements, positions)?;
-            let homo = xtb.homo_energy;
-            let lumo = xtb.lumo_energy;
-            (xtb.orbital_energies, homo, lumo, xtb.gap)
+            // Alias of GFN2-xTB (the public `compute_xtb` wrapper is GFN2).
+            let gfn2 = crate::xtb::gfn2::solve_gfn2(elements, positions)?;
+            let homo = gfn2.homo_energy;
+            let lumo = gfn2.lumo_energy;
+            (gfn2.orbital_energies, homo, lumo, gfn2.gap)
         }
         DosMethod::Gfn1 => {
             let gfn1 = crate::xtb::gfn1::solve_gfn1(elements, positions)?;

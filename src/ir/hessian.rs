@@ -12,7 +12,7 @@ pub enum HessianMethod {
     Eht,
     /// PM3 semi-empirical SCF
     Pm3,
-    /// GFN0-xTB tight-binding
+    /// GFN2-xTB tight-binding (same solver as the public `compute_xtb`)
     Xtb,
     /// UFF force field with analytical Hessian for bond-stretch and angle-bend
     Uff,
@@ -37,7 +37,9 @@ fn evaluate_energy(
             Ok(result.total_energy)
         }
         HessianMethod::Xtb => {
-            let result = crate::xtb::solve_xtb(elements, positions)?;
+            // GFN2-xTB, consistent with the public `compute_xtb` wrapper and
+            // the F48 reference Hessians (xtb 6.7.1 GFN2-xTB).
+            let result = crate::xtb::gfn2::solve_gfn2(elements, positions)?;
             Ok(result.total_energy)
         }
         HessianMethod::Uff => {

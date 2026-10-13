@@ -494,8 +494,8 @@ fn compute_dipole_vector(
             Ok(dipole.vector)
         }
         HessianMethod::Xtb => {
-            let xtb = crate::xtb::solve_xtb(elements, positions)?;
-            let dipole = crate::dipole::compute_dipole(&xtb.mulliken_charges, positions);
+            let gfn2 = crate::xtb::gfn2::solve_gfn2(elements, positions)?;
+            let dipole = crate::dipole::compute_dipole(&gfn2.mulliken_charges, positions);
             Ok(dipole.vector)
         }
         HessianMethod::Uff => {
