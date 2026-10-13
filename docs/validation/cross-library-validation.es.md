@@ -1490,6 +1490,8 @@ como *parcial* en la tabla "supported accuracy".
 | F43 | xtb GFN0-xTB 6.7.1 | max abs E (18 moléculas) | **1.7e-4 eV** (HOMO 7e-5, LUMO 1e-4) | 0.01 eV | PASS |
 | F44 | tblite GFN1-xTB 0.7.0 | max abs E (18 moléculas) | **8.1e-5 eV** (HOMO 1.8e-5, LUMO 4.2e-5) | 0.01 eV | PASS |
 | F45 | tblite GFN2-xTB | max abs E (18 moléculas) | **2.3e-5 eV** (HOMO/LUMO ~1e-6 eV) | 0.0217 eV | PASS |
+| F44 (ext.) | tblite GFN1-xTB `uhf` | UKS: E−E_spin en OH/CH3/NO/O2 + uhf=0 ≡ restringido | **3.4e-2 eV** (relajación 2º orden; Σm exacto, E_spin<0) | 0.05 eV | PASS |
+| F45 (ext.) | tblite GFN2-xTB `uhf` | UKS: E−E_spin en OH/CH3/NO/O2 + uhf=0 ≡ restringido | **3.5e-2 eV** (relajación 2º orden; Σm exacto, E_spin<0) | 0.05 eV | PASS |
 | F46 | s-dftd3 (D3 HF-3c) / dftd4 (D4 PBE) | max abs E (18 moléculas) | D3 **6.8e-9 Ha** ; D4 **1.2e-10 Ha** | 1e-3 kcal/mol | PASS |
 | F59 | RDKit Morgan/ECFP4 | Spearman Tanimoto (780 pares) | **0.756** | ≥ 0.7 | PASS |
 | F64 | pymatgen/spglib (tablas ITC) | 230/230 grupos: orden, símbolo, sistema, red, grupo puntual y set de operaciones | **0 discrepancias** | 0 | PASS |
@@ -1898,6 +1900,12 @@ solo se ejercitan en `--release`.
   1.9e-11 (tolerancia 1e-10). Hallazgo de fidelidad: la distancia vdW que
   entra al capacitor es el valor crudo de la tabla mctc-lib (Å) porque
   `aatoau`/`autoaa` se cancelan.
+- **UKS/GFN-UHF (2026-10-13)**: `xtb::uks` con SCC α/β y el modelo de
+  espín on-site de tblite (`W` transcrita de `data/spin.f90` para Z=1–86).
+  Hallazgo: tblite 0.7.0 no conecta el contenedor de espín en GFN1/GFN2
+  (su `uhf` solo desdobla ocupaciones; además su Python espera Bohr, no Å).
+  Gates F44-UKS/F45-UKS: `E_uks − E_spin` vs `tblite uhf` a ≤3.5e-2 eV en
+  OH/CH₃/NO/O₂, uhf=0 ≡ restringido, Σm = uhf exacto, E_spin < 0.
 - **LAMMPS con REAXFF (2026-10-13)**: build desde fuente funcional
   (`git clone --branch stable_29Aug2024_update2`, `cmake -S cmake -B build -G
   Ninja -DPKG_REAXFF=on -DBUILD_MPI=off -DCMAKE_DISABLE_FIND_PACKAGE_MPI=ON`,

@@ -121,7 +121,7 @@ fn gfn1_kpair(zi: u8, zj: u8) -> f64 {
 }
 
 /// First shell of each angular momentum is valence (tblite valence rule).
-fn gfn1_valence(ang: &[u8]) -> Vec<bool> {
+pub(crate) fn gfn1_valence(ang: &[u8]) -> Vec<bool> {
     let mut seen = [false; 5];
     ang.iter()
         .map(|&l| {
@@ -136,7 +136,7 @@ fn gfn1_valence(ang: &[u8]) -> Vec<bool> {
 }
 
 /// Number of SAOs per shell (s=1, p=3, d=5).
-fn nsao(l: u8) -> usize {
+pub(crate) fn nsao(l: u8) -> usize {
     match l {
         0 => 1,
         1 => 3,
@@ -267,18 +267,18 @@ fn sao_pair(l_a: u8, l_b: u8, ii: usize, jj: usize) -> (SaoExpansion, SaoExpansi
 }
 
 /// Basis bookkeeping for the GFN1 SAO basis.
-struct Gfn1Basis {
+pub(crate) struct Gfn1Basis {
     /// Contracted shells per atom.
-    atom_shells: Vec<Vec<Gfn1Shell>>,
+    pub(crate) atom_shells: Vec<Vec<Gfn1Shell>>,
     /// (atom, shell, sao index) per basis function.
-    funcs: Vec<(usize, usize, usize)>,
+    pub(crate) funcs: Vec<(usize, usize, usize)>,
     /// First basis-function index of each (atom, shell).
-    shell_ao: Vec<Vec<usize>>,
+    pub(crate) shell_ao: Vec<Vec<usize>>,
     /// Number of basis functions.
-    n_basis: usize,
+    pub(crate) n_basis: usize,
 }
 
-fn build_gfn1_basis(elements: &[u8]) -> Gfn1Basis {
+pub(crate) fn build_gfn1_basis(elements: &[u8]) -> Gfn1Basis {
     let atom_shells: Vec<Vec<Gfn1Shell>> = elements.iter().map(|&z| gfn1_atom_shells(z)).collect();
     let mut funcs: Vec<(usize, usize, usize)> = Vec::new();
     let mut shell_ao: Vec<Vec<usize>> = Vec::new();
@@ -344,7 +344,7 @@ fn shell_overlap(
 }
 
 /// GFN1 overlap and H0 matrices (Hartree), following tblite `get_hamiltonian`.
-fn build_overlap_hamiltonian(
+pub(crate) fn build_overlap_hamiltonian(
     basis: &Gfn1Basis,
     elements: &[u8],
     pos_bohr: &[[f64; 3]],
@@ -465,7 +465,7 @@ fn build_overlap_hamiltonian(
 }
 
 /// GFN1 effective screened repulsion (Hartree), tblite `repulsion/effective.f90`.
-fn compute_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
+pub(crate) fn compute_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
     let n = elements.len();
     let kexp = GFN1_GLOBALS.rep_kexp;
     let rexp = GFN1_GLOBALS.rep_rexp;
@@ -492,7 +492,7 @@ fn compute_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
 }
 
 /// Classical halogen-bond correction (Hartree), tblite `classical/halogen.f90`.
-fn compute_halogen_bond(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
+pub(crate) fn compute_halogen_bond(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
     const HALOGENS: [u8; 4] = [17, 35, 53, 85];
     const ACCEPTORS: [u8; 4] = [7, 8, 15, 16];
     const CUTOFF: f64 = 20.0;
