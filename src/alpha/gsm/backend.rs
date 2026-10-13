@@ -394,7 +394,9 @@ fn capability_for_backend(backend: GsmEnergyBackend, elements: &[u8]) -> GsmBack
         }
         GsmEnergyBackend::Reaxff => {
             let unsupported = unsupported_elements(elements, |z| REAXFF_CHON_ELEMENTS.contains(&z));
-            let limitations = unsupported_message("ReaxFF default CHON parameter set", &unsupported);
+            #[allow(unused_mut)]
+            let mut limitations =
+                unsupported_message("ReaxFF default CHON parameter set", &unsupported);
             #[cfg(not(feature = "alpha-reaxff"))]
             {
                 limitations.push(

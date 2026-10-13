@@ -348,8 +348,16 @@ pub fn solve_microkinetic_network(
         .collect::<Result<Vec<_>, _>>()?;
 
     let dt = config.total_time_s / (config.n_frames - 1) as f64;
-    // Sub-stepping for numerical stability
-    let n_substeps = 100.max((config.total_time_s / 1e-12) as usize).min(10000);
+    // Sub-stepping for numerical stability: explicit Euler needs
+    // `k_max · sub_dt ≲ 0.1`. A fixed sub-step count is not enough for stiff
+    // networks (e.g. a 0.3 eV barrier at 350 K has k ≈ 3.6e8 s⁻¹), which
+    // produced non-finite populations at longer integration times.
+    let k_max = rates
+        .iter()
+        .map(|r| r.forward_rate_s_inv.max(r.reverse_rate_s_inv))
+        .fold(0.0f64, f64::max);
+    let target_sub_dt = if k_max > 0.0 { 0.1 / k_max } else { dt };
+    let n_substeps = ((dt / target_sub_dt).ceil() as usize).clamp(100, 1_000_000);
     let sub_dt = dt / n_substeps as f64;
 
     let mut concentrations = config.initial_populations.clone();
@@ -396,7 +404,13 @@ pub fn solve_microkinetic_network(
             }
 
             for (c, d) in concentrations.iter_mut().zip(&dc) {
-                *c = (*c + sub_dt * d).max(0.0);
+                let updated = *c + sub_dt * d;
+                // Defensive: never let a non-finite step poison the trace.
+                *c = if updated.is_finite() {
+                    updated.max(0.0)
+                } else {
+                    *c
+                };
             }
         }
 
@@ -589,6 +603,61 @@ fn flat_coords_to_positions(coords: &[f64]) -> Result<Vec<[f64; 3]>, String> {
 
 #[cfg(test)]
 mod tests {
+    /// Stiff network regression: a 0.3 eV barrier at 350 K (k ≈ 3.6e8 s⁻¹)
+    /// over 0.01 s used to produce non-finite populations with the fixed
+    /// sub-step count. The adaptive sub-stepping must keep the trace finite
+    /// and mass-conserving.
+    #[test]
+    fn stiff_network_stays_finite_and_conserves_mass() {
+        let config = MicrokineticNetworkConfig {
+            species: vec!["X".into(), "Y".into(), "Z".into()],
+            steps: vec![
+                ElementaryStep {
+                    step_id: "X->Y".into(),
+                    activation_free_energy_ev: 0.3,
+                    reaction_free_energy_ev: -0.2,
+                    prefactor_s_inv: None,
+                },
+                ElementaryStep {
+                    step_id: "Y->Z".into(),
+                    activation_free_energy_ev: 0.6,
+                    reaction_free_energy_ev: 0.1,
+                    prefactor_s_inv: None,
+                },
+            ],
+            stoichiometry: vec![vec![(0, -1.0), (1, 1.0)], vec![(1, -1.0), (2, 1.0)]],
+            initial_populations: vec![1.0, 0.0, 0.0],
+            total_time_s: 0.01,
+            n_frames: 40,
+            state: ThermodynamicState {
+                temperature_k: 350.0,
+                pressure_bar: 1.0,
+            },
+        };
+        let trace = solve_microkinetic_network(&config).expect("stiff solve");
+        for frame in &trace.frames {
+            for sp in &frame.species {
+                assert!(
+                    sp.population.is_finite(),
+                    "non-finite population in frame t={}: {:?}",
+                    frame.time_s,
+                    frame.species
+                );
+                assert!(sp.population >= 0.0);
+            }
+        }
+        let last = trace.frames.last().expect("frames");
+        let total: f64 = last.species.iter().map(|s| s.population).sum();
+        assert!(
+            (total - 1.0).abs() < 1e-6,
+            "mass not conserved: {total} ({:?})",
+            last.species
+        );
+        // The fast first step reaches quasi-equilibrium; the slow step
+        // continues to convert Y into Z.
+        assert!(last.species[1].population > 0.5);
+    }
+
     use super::*;
 
     #[test]
