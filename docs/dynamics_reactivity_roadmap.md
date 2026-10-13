@@ -230,7 +230,16 @@ The existing DIIS in `src/scf/diis.rs` works. The target here is to harden it fo
 
 **Priority:** Medium — enables bond-breaking/formation dynamics without quantum cost.
 
-**Current state:** No reactive force field exists. UFF/MMFF94 require fixed topology.
+**Current state (2026-10-13):** simplified reactive FF implemented in
+`src/forcefield/reaxff/` (bond orders σ/π/ππ + overcoordination penalty,
+EEM charges, shielded vdW/Coulomb, numerical gradients) and validated
+against LAMMPS `reaxff` (F78: σ bond orders to 0.0085 on C–H/O–H pulls, CH₄
+dissociation shape; fixture `reaxff_lammps.json`). Per-pair σ data
+(`r0`/`p_bo`/`De`/`p_be` for C/H/O) transcribed from `ffield.reax.cho`;
+bonded-pair vdW excluded (LJ diverges at bond lengths — ReaxFF uses
+Morse+f13 instead). Gaps: no BO overcoordination corrections, no Morse+f13,
+EEM polarity inverts at short range, no full ffield file parser, UFF/MMFF94
+still require fixed topology.
 
 ### 5.1 Continuous bond orders
 
