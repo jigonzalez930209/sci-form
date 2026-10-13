@@ -18,6 +18,8 @@
 mod charges;
 mod eeq2019;
 mod eeq2019_data;
+mod eeqbc;
+mod eeqbc_data;
 mod energy;
 
 pub use charges::{
@@ -25,4 +27,7 @@ pub use charges::{
     EeqParams,
 };
 pub use eeq2019::compute_eeq2019_charges;
+pub use eeqbc::{
+    compute_eeqbc_charges, eeqbc_coordination_numbers, eeqbc_local_charges, EEQBC_MAX_Z,
+};
 pub use energy::{compute_eeq_energy, compute_eeq_gradient, EeqEnergyResult};
