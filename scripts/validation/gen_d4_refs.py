@@ -176,7 +176,10 @@ def main() -> None:
         return out
 
     def emit_f64(name: str, values: list[float], per_line: int = 6) -> str:
-        lines = [f"pub const {name}: [f64; {len(values)}] = ["]
+        lines = [
+            "#[rustfmt::skip]",
+            f"pub const {name}: [f64; {len(values)}] = [",
+        ]
         for i in range(0, len(values), per_line):
             chunk = ", ".join(f"{v:.10e}" for v in values[i : i + per_line])
             lines.append(f"    {chunk},")
@@ -184,7 +187,10 @@ def main() -> None:
         return "\n".join(lines) + "\n"
 
     def emit_usize(name: str, values, per_line: int = 14) -> str:
-        lines = [f"pub const {name}: [usize; {len(values)}] = ["]
+        lines = [
+            "#[rustfmt::skip]",
+            f"pub const {name}: [usize; {len(values)}] = [",
+        ]
         for i in range(0, len(values), per_line):
             chunk = ", ".join(str(int(v)) for v in values[i : i + per_line])
             lines.append(f"    {chunk},")

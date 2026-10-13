@@ -78,7 +78,11 @@ def main() -> None:
                 print(f"[warn] {name}[Z={z + 1}]: committed {prev[z]} vs source {values[z]}")
 
     def emit(name: str, values: list[float], comment: str, per_line: int = 6) -> str:
-        lines = [f"/// {comment}", f"pub(crate) const {name}: [f64; {len(values)}] = ["]
+        lines = [
+            f"/// {comment}",
+            "#[rustfmt::skip]",
+            f"pub(crate) const {name}: [f64; {len(values)}] = [",
+        ]
         for i in range(0, len(values), per_line):
             chunk = ", ".join(f"{v:.8f}" for v in values[i : i + per_line])
             lines.append(f"    {chunk},")
