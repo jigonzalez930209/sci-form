@@ -251,3 +251,140 @@ fn bonded_energy_decomposition_consistent() {
         e.total
     );
 }
+
+// ─── F78: bond orders + CH4 dissociation shape vs LAMMPS `reaxff` ─────────
+
+#[derive(serde::Deserialize)]
+struct ReaxPoint {
+    distance: f64,
+    coords: Vec<f64>,
+    lammps_energy_kcal: f64,
+    lammps_bo: f64,
+}
+
+#[derive(serde::Deserialize)]
+struct ReaxSystem {
+    name: String,
+    elements: Vec<u8>,
+    bond: Vec<usize>,
+    points: Vec<ReaxPoint>,
+}
+
+#[derive(serde::Deserialize)]
+struct ReaxFixture {
+    systems: Vec<ReaxSystem>,
+}
+
+fn load_reaxff_lammps() -> ReaxFixture {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/validation/reaxff_lammps.json"
+    );
+    let text = std::fs::read_to_string(path).expect("reaxff_lammps.json");
+    serde_json::from_str(&text).expect("parse reaxff fixture")
+}
+
+fn reaxff_atom_params(params: &ReaxffParams, elements: &[u8]) -> Vec<sci_form::forcefield::reaxff::params::ReaxffAtomParams> {
+    elements
+        .iter()
+        .map(|&z| {
+            params
+                .element_index(z)
+                .map(|i| params.atom_params[i].clone())
+                .unwrap()
+        })
+        .collect()
+}
+
+/// F78: σ bond orders against LAMMPS `fix reaxff/bonds` on C–H/O–H pulls,
+/// and the CH4 dissociation-curve shape (minimum location + asymptote).
+/// Our σ machinery uses the transcribed `ffield.reax.cho` pair table;
+/// known gaps (documented): no overcoordination-corrected BO (Δ≤0.1 under
+/// compression), LJ (not Morse) nonbonded with bonded-vdW exclusion instead
+/// of f13 shielding, EEM polarity inverts at short range (J>η) so H2O total
+/// energies are excluded from the shape gate.
+#[test]
+fn f78_reaxff_matches_lammps() {
+    use sci_form::forcefield::reaxff::bond_order::compute_bond_orders_pairs;
+
+    let fix = load_reaxff_lammps();
+    assert!(fix.systems.len() >= 2);
+    let params = ReaxffParams::default_chon();
+    let mut worst_bo = (0.0f64, String::new());
+
+    for sys in &fix.systems {
+        let atom_params = reaxff_atom_params(&params, &sys.elements);
+        let (bi, bj) = (sys.bond[0], sys.bond[1]);
+        let mut prev_bo = f64::INFINITY;
+        for pt in &sys.points {
+            let bo = compute_bond_orders_pairs(&pt.coords, &atom_params, &params, params.cutoff);
+            let ours = bo[bi][bj].total;
+            // Monotonic decay on stretch (r >= 1.0).
+            if pt.distance >= 1.0 {
+                assert!(
+                    ours <= prev_bo + 1e-9,
+                    "{} r={}: BO {} did not decay from {}",
+                    sys.name,
+                    pt.distance,
+                    ours,
+                    prev_bo
+                );
+                prev_bo = ours;
+            }
+            // Absolute BO on LAMMPS-reported points away from compression.
+            if pt.lammps_bo >= 0.3 && pt.distance >= 0.9 {
+                let d = (ours - pt.lammps_bo).abs();
+                if d > worst_bo.0 {
+                    worst_bo = (d, format!("{} r={}", sys.name, pt.distance));
+                }
+            }
+            // Energy path stays finite (gradient API exercises full energy).
+            let (e, g) = compute_reaxff_gradient(&pt.coords, &sys.elements, &params)
+                .unwrap_or_else(|e| panic!("{} r={}: {e}", sys.name, pt.distance));
+            assert!(e.is_finite(), "{} r={}: energy not finite", sys.name, pt.distance);
+            assert!(g.iter().all(|x| x.is_finite()), "{} r={}: gradient not finite", sys.name, pt.distance);
+        }
+    }
+    eprintln!("F78: max |ΔBO| = {:.4} ({})", worst_bo.0, worst_bo.1);
+    assert!(
+        worst_bo.0 <= 0.05,
+        "bond-order deviation {:.4} ({}) exceeds 0.05",
+        worst_bo.0,
+        worst_bo.1
+    );
+
+    // CH4 curve shape (relative energies; absolute zeros differ by construction).
+    let ch4 = fix.systems.iter().find(|s| s.name == "CH4_CH_pull").expect("CH4");
+    let es: Vec<(f64, f64, f64)> = ch4
+        .points
+        .iter()
+        .map(|pt| {
+            let (e, _) = compute_reaxff_gradient(&pt.coords, &ch4.elements, &params).unwrap();
+            (pt.distance, e, pt.lammps_energy_kcal)
+        })
+        .collect();
+    let argmin = |col: usize| {
+        es.iter()
+            .min_by(|a, b| {
+                let va = if col == 1 { a.1 } else { a.2 };
+                let vb = if col == 1 { b.1 } else { b.2 };
+                va.partial_cmp(&vb).unwrap()
+            })
+            .unwrap()
+            .0
+    };
+    let (rmin_ours, rmin_ref) = (argmin(1), argmin(2));
+    eprintln!("F78: CH4 minimum ours r={rmin_ours} LAMMPS r={rmin_ref}");
+    assert!(
+        (rmin_ours - rmin_ref).abs() <= 0.2,
+        "CH4 minimum {rmin_ours} too far from LAMMPS {rmin_ref}"
+    );
+    let at = |d: f64| es.iter().find(|(x, _, _)| (*x - d).abs() < 1e-9).unwrap();
+    let de_ours = at(2.5).1 - at(1.09).1;
+    let de_ref = at(2.5).2 - at(1.09).2;
+    eprintln!("F78: CH4 De(2.5-1.09) ours={de_ours:.1} LAMMPS={de_ref:.1}");
+    assert!(
+        (de_ours - de_ref).abs() <= 30.0,
+        "CH4 dissociation {de_ours:.1} vs LAMMPS {de_ref:.1}"
+    );
+}

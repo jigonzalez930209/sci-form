@@ -33,6 +33,8 @@ pub struct ReaxffParams {
     pub bond_de: Vec<Vec<f64>>,
     /// Bond energy parameters.
     pub p_be1: f64,
+    /// Bond energy exponent (global fallback; per-pair values in
+    /// [`ReaxffParams::pair_table`] take precedence).
     pub p_be2: f64,
     /// Over-coordination penalty.
     pub p_ovun1: f64,
@@ -46,6 +48,31 @@ pub struct ReaxffParams {
     pub angle_force_constants: Vec<f64>,
     /// Non-bonded cutoff (Å).
     pub cutoff: f64,
+    /// Per-element-pair σ-bond data transcribed from `ffield.reax.cho`
+    /// (Chenoweth/van Duin/Goddard 2008, C/H/O combustion). Takes precedence
+    /// over the atom-averaged rules for the covered pairs.
+    pub pair_table: Vec<ReaxffPairParams>,
+}
+
+/// Per-pair σ-bond parameters from a ReaxFF force field file.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ReaxffPairParams {
+    /// First element (atomic number).
+    pub z1: u8,
+    /// Second element (atomic number).
+    pub z2: u8,
+    /// Pair σ equilibrium distance (Å; off-diagonal value for hetero pairs).
+    pub r_sigma: f64,
+    /// σ bond-order exponent prefactor (`p_bo1`).
+    pub p_bo1: f64,
+    /// σ bond-order distance exponent (`p_bo2`).
+    pub p_bo2: f64,
+    /// σ dissociation energy (kcal/mol, `De_sigma`).
+    pub de_sigma: f64,
+    /// Bond-energy screening (`p_be1`).
+    pub p_be1: f64,
+    /// Bond-energy screening exponent (`p_be2`).
+    pub p_be2: f64,
 }
 
 impl ReaxffParams {
@@ -139,7 +166,15 @@ impl ReaxffParams {
             ],
             angle_force_constants: vec![50.0; 100],
             cutoff: 10.0,
+            pair_table: ffield_cho_pairs(),
         }
+    }
+
+    /// Look up per-pair σ data for elements (`z1`, `z2`), order-independent.
+    pub fn pair_params(&self, z1: u8, z2: u8) -> Option<&ReaxffPairParams> {
+        self.pair_table
+            .iter()
+            .find(|p| (p.z1 == z1 && p.z2 == z2) || (p.z1 == z2 && p.z2 == z1))
     }
 
     /// Get bond dissociation energy for pair (i, j) by atom index.
@@ -163,8 +198,23 @@ impl ReaxffParams {
 
     /// Map element to parameter index.
     pub fn element_index(&self, z: u8) -> Option<usize> {
-        self.atom_params.iter().position(|p| p.element == z)
+        self.atom_params.iter().position(|a| a.element == z)
     }
+}
+
+/// C/H/O σ-pair data transcribed from `ffield.reax.cho`
+/// (Chenoweth/van Duin/Goddard, J. Phys. Chem. A 112, 1040–1053 (2008)):
+/// bond section (`De_sigma`, `p_be1`, `p_be2`, `p_bo1`, `p_bo2`) plus the
+/// off-diagonal `ro(sigma)` for hetero pairs (homo pairs use atomic `ro`).
+fn ffield_cho_pairs() -> Vec<ReaxffPairParams> {
+    vec![
+        ReaxffPairParams { z1: 6, z2: 6, r_sigma: 1.3825, p_bo1: -0.0750, p_bo2: 6.8316, de_sigma: 156.5953, p_be1: -0.8157, p_be2: 0.4527 },
+        ReaxffPairParams { z1: 6, z2: 1, r_sigma: 1.1203, p_bo1: -0.0500, p_bo2: 6.8315, de_sigma: 170.2316, p_be1: -0.5931, p_be2: 5.2267 },
+        ReaxffPairParams { z1: 1, z2: 1, r_sigma: 0.7853, p_bo1: -0.0593, p_bo2: 4.8358, de_sigma: 156.0973, p_be1: -0.1377, p_be2: 2.9907 },
+        ReaxffPairParams { z1: 6, z2: 8, r_sigma: 1.2775, p_bo1: -0.1463, p_bo2: 5.2913, de_sigma: 160.4802, p_be1: -0.3873, p_be2: 0.5341 },
+        ReaxffPairParams { z1: 8, z2: 8, r_sigma: 1.2477, p_bo1: -0.1302, p_bo2: 6.2919, de_sigma: 60.1463, p_be1: -0.2802, p_be2: 0.2441 },
+        ReaxffPairParams { z1: 1, z2: 8, r_sigma: 0.9013, p_bo1: -0.0657, p_bo2: 5.0451, de_sigma: 180.4373, p_be1: -0.8074, p_be2: 1.2490 },
+    ]
 }
 
 #[cfg(test)]
