@@ -321,10 +321,13 @@ pub fn min_path_excluding(
     if mol.graph.contains_edge(start, target) {
         return Some(1);
     }
+    // `Vec<bool>` visited flags instead of a `HashSet`: these BFS helpers are
+    // called per bond/atom during conformer generation and hashing dominated
+    // their profile (~8 % of `embed` before this change).
     let mut queue = std::collections::VecDeque::new();
-    let mut visited = std::collections::HashSet::new();
+    let mut visited = vec![false; mol.graph.node_count()];
     queue.push_back((start, 0));
-    visited.insert(start);
+    visited[start.index()] = true;
 
     while let Some((curr, dist)) = queue.pop_front() {
         if dist >= limit {
@@ -334,8 +337,8 @@ pub fn min_path_excluding(
             if n == target {
                 return Some(dist + 1);
             }
-            if n != exclude && !visited.contains(&n) {
-                visited.insert(n);
+            if n != exclude && !visited[n.index()] {
+                visited[n.index()] = true;
                 queue.push_back((n, dist + 1));
             }
         }
@@ -353,18 +356,18 @@ pub fn min_path_excluding2(
     limit: usize,
 ) -> Option<usize> {
     let mut queue = std::collections::VecDeque::new();
-    let mut visited = std::collections::HashSet::new();
-    visited.insert(excl1);
-    visited.insert(excl2);
-    visited.insert(start);
+    let mut visited = vec![false; mol.graph.node_count()];
+    visited[excl1.index()] = true;
+    visited[excl2.index()] = true;
+    visited[start.index()] = true;
 
     // Always start from neighbors, skipping target to avoid counting the direct bond
     for n in mol.graph.neighbors(start) {
         if n == target {
             continue; // Skip direct bond — we want an alternative path
         }
-        if !visited.contains(&n) {
-            visited.insert(n);
+        if !visited[n.index()] {
+            visited[n.index()] = true;
             queue.push_back((n, 1usize));
         }
     }
@@ -377,8 +380,8 @@ pub fn min_path_excluding2(
             if n == target {
                 return Some(dist + 1);
             }
-            if !visited.contains(&n) {
-                visited.insert(n);
+            if !visited[n.index()] {
+                visited[n.index()] = true;
                 queue.push_back((n, dist + 1));
             }
         }

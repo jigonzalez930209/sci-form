@@ -187,10 +187,14 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
 
     // A ring is "relevant" if it cannot be expressed as the symmetric difference of
     // two strictly smaller rings. This matches RDKit's ring perception behavior.
-    let edge_sets: Vec<std::collections::HashSet<(usize, usize)>> =
-        candidates.iter().map(|r| ring_edges(r).collect()).collect();
+    //
+    // Edge sets are kept as sorted `u32` keys (`min << 16 | max`) instead of
+    // `HashSet<(usize, usize)>`: the relevance filter is an O(n_rings³) loop and
+    // hashing dominated the SSSR profile (~10 % of `embed` before this change).
+    let edge_sets: Vec<Vec<u32>> = candidates.iter().map(|r| ring_edge_keys(r)).collect();
 
     let mut relevant = Vec::new();
+    let mut scratch: Vec<u32> = Vec::new();
     for (i, ring) in candidates.iter().enumerate() {
         let mut is_xor_of_smaller = false;
         // Check all pairs of strictly smaller rings
@@ -202,12 +206,9 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
                 if candidates[k].len() >= ring.len() {
                     continue;
                 }
-                // Symmetric difference of edge sets j and k
-                let sym_diff: std::collections::HashSet<(usize, usize)> = edge_sets[j]
-                    .symmetric_difference(&edge_sets[k])
-                    .copied()
-                    .collect();
-                if sym_diff == edge_sets[i] {
+                // Symmetric difference of the sorted edge-key sets (merge).
+                symmetric_difference_into(&edge_sets[j], &edge_sets[k], &mut scratch);
+                if scratch == edge_sets[i] {
                     is_xor_of_smaller = true;
                     break;
                 }
@@ -222,6 +223,46 @@ fn find_sssr(mol: &Molecule) -> Vec<Vec<usize>> {
     }
 
     relevant
+}
+
+/// Sorted edge keys (`min << 16 | max`) for a ring.
+fn ring_edge_keys(ring: &[usize]) -> Vec<u32> {
+    let n = ring.len();
+    let mut keys: Vec<u32> = (0..n)
+        .map(|i| {
+            let a = ring[i];
+            let b = ring[(i + 1) % n];
+            let (lo, hi) = if a < b { (a, b) } else { (b, a) };
+            ((lo as u32) << 16) | (hi as u32 & 0xffff)
+        })
+        .collect();
+    keys.sort_unstable();
+    keys.dedup();
+    keys
+}
+
+/// Symmetric difference of two sorted key vectors into `out` (sorted).
+fn symmetric_difference_into(a: &[u32], b: &[u32], out: &mut Vec<u32>) {
+    out.clear();
+    let (mut i, mut j) = (0usize, 0usize);
+    while i < a.len() && j < b.len() {
+        match a[i].cmp(&b[j]) {
+            std::cmp::Ordering::Less => {
+                out.push(a[i]);
+                i += 1;
+            }
+            std::cmp::Ordering::Greater => {
+                out.push(b[j]);
+                j += 1;
+            }
+            std::cmp::Ordering::Equal => {
+                i += 1;
+                j += 1;
+            }
+        }
+    }
+    out.extend_from_slice(&a[i..]);
+    out.extend_from_slice(&b[j..]);
 }
 
 fn trace_path(parent: &[usize], root: usize, target: usize) -> Vec<usize> {
