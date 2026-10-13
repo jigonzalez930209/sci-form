@@ -2896,12 +2896,16 @@ mod f67_assembly {
     #[derive(Deserialize)]
     struct CgdNode {
         cn: u8,
+        #[serde(default)]
+        frac: Vec<f64>,
     }
 
     #[derive(Deserialize)]
     struct CgdNet {
         cgd: Option<String>,
         nodes: Option<Vec<CgdNode>>,
+        #[serde(default)]
+        n_edge_types: Option<usize>,
     }
 
     #[derive(Deserialize)]
@@ -2924,6 +2928,55 @@ mod f67_assembly {
         mof5: Mof5,
         node_bb: Bb,
         edge_bb: Bb,
+    }
+
+    /// F67 extension: the data-driven RCSR nets (including nets with
+    /// inequivalent edges) must match pormake's `.cgd` data.
+    #[test]
+    fn f67_extended_nets_match_pormake() {
+        use sci_form::materials::topology_data::TOPOLOGY_NETS;
+
+        let fixture: Fixture = load("pormake_mof.json");
+        assert!(!TOPOLOGY_NETS.is_empty());
+        let mut checked = 0usize;
+        for net in TOPOLOGY_NETS {
+            let reference = fixture
+                .topologies
+                .get(net.name)
+                .unwrap_or_else(|| panic!("{}: missing in fixture", net.name));
+            let ref_nodes = reference
+                .nodes
+                .as_ref()
+                .unwrap_or_else(|| panic!("{}: no nodes", net.name));
+            assert_eq!(net.nodes.len(), ref_nodes.len(), "{}: node count", net.name);
+            for (ours, theirs) in net.nodes.iter().zip(ref_nodes.iter()) {
+                assert_eq!(
+                    ours.connectivity, theirs.cn as u32,
+                    "{}: node connectivity",
+                    net.name
+                );
+                for k in 0..3 {
+                    assert!(
+                        (ours.frac[k] - theirs.frac[k]).abs() < 1e-4,
+                        "{}: node coordinates",
+                        net.name
+                    );
+                }
+            }
+            assert_eq!(
+                net.n_edge_types,
+                reference.n_edge_types.unwrap_or(0),
+                "{}: edge types",
+                net.name
+            );
+            checked += 1;
+        }
+        assert!(
+            TOPOLOGY_NETS.iter().any(|n| n.n_edge_types > 1),
+            "expected at least one net with inequivalent edges"
+        );
+        assert!(checked >= 6, "checked only {checked} nets");
+        eprintln!("F67 extended: {checked} RCSR nets validated against pormake");
     }
 
     /// Expected RCSR coordination sets (RCSR database: Blatov/O'Keeffe).
