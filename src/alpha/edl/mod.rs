@@ -832,11 +832,12 @@ pub fn couple_cpm_eeq_edl(
         return Err("elements and positions must have the same length".into());
     }
 
-    let cpm_config = crate::beta::cpm::CpmConfig {
+    let cpm_config = crate::cpm::CpmConfig {
         mu_ev,
         dielectric,
         max_iter: 200,
         charge_tol: 1e-8,
+        mu_per_atom: None,
     };
 
     let mut last_charges: Vec<f64> = vec![0.0; elements.len()];
@@ -844,7 +845,7 @@ pub fn couple_cpm_eeq_edl(
     let mut charge_residual = f64::MAX;
 
     for iter in 0..max_iter {
-        let cpm_result = crate::beta::cpm::compute_cpm_charges(elements, positions, &cpm_config);
+        let cpm_result = crate::cpm::compute_cpm_charges(elements, positions, &cpm_config);
 
         // EEQ update with CPM charge as total charge
         let eeq_result = crate::charges_eeq::compute_eeq_charges(
@@ -1010,7 +1011,7 @@ pub fn compute_cpm_helmholtz_scan(
         return Err("electrode area must be positive".into());
     }
 
-    let surface = crate::beta::cpm::compute_cpm_surface(
+    let surface = crate::cpm::compute_cpm_surface(
         elements,
         positions,
         scan_config.mu_min_ev,

@@ -1,11 +1,11 @@
-//! E10: Constant Potential Method (CPM)
+//! Backwards-compatible re-export of the core [`crate::cpm`] module.
 //!
-//! Couples molecular charge equilibration to a virtual electrode potential μ,
-//! enabling electrochemical property predictions: quantum capacitance,
-//! charge-potential curves, and conformer ranking under applied voltage.
+//! CPM was promoted from beta to core (F95 vs LAMMPS `electrode/conp`).
+//! Prefer `sci_form::cpm`; this path remains so existing `beta::cpm`
+//! imports keep compiling.
 
-pub mod grand_potential;
-pub mod surface;
-
-pub use grand_potential::{compute_cpm_charges, CpmConfig, CpmResult};
-pub use surface::{compute_cpm_surface, CpmSurface};
+pub use crate::cpm::grand_potential;
+pub use crate::cpm::surface;
+pub use crate::cpm::{
+    compute_cpm_charges, compute_cpm_surface, CpmConfig, CpmResult, CpmSurface,
+};

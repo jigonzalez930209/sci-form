@@ -8,6 +8,7 @@
 //! - **Parsing & topology** — [`smiles`], [`graph`], [`smarts`], [`smirks`], [`rings`], [`topology`]
 //! - **Geometry** — [`distgeom`], [`etkdg`], [`conformer`], [`alignment`], [`forcefield`], [`optimization`]
 //! - **Charges & surface** — [`charges`], [`charges_eeq`], [`dipole`], [`surface`], [`esp`], [`population`]
+//! - **Electrochemistry** — [`cpm`]
 //! - **Solvation** — [`solvation`], [`solvation_alpb`]
 //! - **Electronic structure** — [`scf`], [`eht`], [`pm3`], [`xtb`], [`hf`], [`dos`]
 //! - **Spectroscopy** — [`spectroscopy`], [`ir`], [`nmr`]
@@ -38,6 +39,7 @@ pub mod charges;
 pub mod charges_eeq;
 pub mod clustering;
 pub mod conformer;
+pub mod cpm;
 pub mod dipole;
 pub mod dispersion;
 pub mod distgeom;
