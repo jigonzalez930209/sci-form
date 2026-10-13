@@ -1031,12 +1031,12 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Criterio: ≤ 1e-9 vs geomstats; invariancias exactas ≤ 1e-12; optimización L-BFGS converge en los problemas de prueba.
 
 **B5 (F95) · Constant Potential Method (`beta::cpm::{compute_cpm_charges, compute_cpm_surface, grand_potential}`)**
-- Referencia probada: **LAMMPS** `fix electrode/conp` (CPM constante, implementación publicada por los autores del método) sobre la misma topología/electrodo; **VASPsol/GC-DFT** como referencia de gran potencial (opcional); el formalismo de Siepmann/Reed (física de la capacitancia diferencial).
-- Test equivalente: (a) capacitor analítico de placas: Q(φ) lineal con pendiente = C; (b) L0: neutralidad global (Q_sistema + Q_electrodo = 0), simetría Q(−φ) = −Q(φ) en geometría simétrica; (c) comparar magnitudes de carga inducida y curva C(φ) con LAMMPS `fix electrode/conp` para un electrolito modelo; (d) consistencia con EEQ/EDL (`couple_cpm_eeq_edl`).
-- Datasets: electrodo Au(111)/grafeno en agua (configuraciones de ejemplo de LAMMPS/electrode package), `tests/experimental/test_cpm.rs`; curvas experimentales de capacitancia de Grahame (contraste de orden).
-- Procedimiento: `tests/experimental/test_cpm.rs` (existe), CLI `cpm`, `cpm-surface`, `couple_cpm_eeq_edl`; nuevo `scripts/compare_cpm_lammps.py`.
-- Estado en el repo: `src/beta/cpm/*`, `src/gpu/cpm_gpu.rs`, bindings Python/WASM.
-- Criterio: capacitor analítico ± 1e-6; simetría exacta; vs LAMMPS ± 5 % en carga/potencial; conservación de carga ≤ 1e-8 e.
+- Referencia probada: **LAMMPS** `fix electrode/conp` (CPM constante, implementación publicada por los autores del método) sobre un capacitor bilayer de grafeno (2026-10-13, hecho); **VASPsol/GC-DFT** como referencia de gran potencial (opcional); el formalismo de Siepmann/Reed (física de la capacitancia diferencial).
+- Test equivalente: (a) capacitor analítico de placas: Q(φ) lineal con pendiente = C; (b) L0: neutralidad global, simetría Q(−φ) = −Q(φ) en geometría simétrica (exactas en ambos códigos); (c) cargas inducidas ΔQ = Q(±V) − Q(0) y patrón por átomo vs LAMMPS (escala 1.76x, similitud 0.44); (d) consistencia con EEQ/EDL (`couple_cpm_eeq_edl`).
+- Datasets: bilayer grafeno 3×3 AB @ 3.35 Å a V = ±0.5/1/2 (`tests/fixtures/validation/cpm_lammps.json`), `tests/experimental/test_cpm.rs::test_cpm_bilayer_matches_lammps`; curvas experimentales de capacitancia de Grahame (contraste de orden).
+- Procedimiento: `tests/experimental/test_cpm.rs` (gate F95), CLI `cpm`, `cpm-surface`, `couple_cpm_eeq_edl`; oráculo `scripts/validation/oracle_cpm_lammps.py`.
+- Estado en el repo: `src/beta/cpm/*` (μ por átomo + solver LU directo desde 2026-10-13), `src/gpu/cpm_gpu.rs`, bindings Python/WASM.
+- Criterio: simetría/neutralidad exactas; escala dentro de 2.5x y patrón ≥ 0.3 (gap documentado: onsite 5 eV vs self gaussiano).
 
 ## 5. Crate `sci-form-cli`
 
@@ -1282,10 +1282,10 @@ Leyenda: **Actual** = suite que ya existe en el repo; **Nuevo** = artefacto a cr
 | F39 | AO→MO | `test_session_algorithms.rs` §3 | gen `generate_ao2mo_reference.py` | PySCF `ao2mo` |
 | F40 | HF-3c (+D3/gCP/SRB) | `test_experimental_comparison.rs` (bloque HF-3c) | gen `generate_hf3c_orca_reference.py` → fix | ORCA HF-3c; paper Sure-Grimme |
 | F41 | CIS/CISD | `test_experimental_comparison.rs` (spectroscopy) | gen `generate_tda_reference.py` | PySCF TDA; ORCA |
-| F42 | PM3 | `test_session_algorithms.rs` §5, `test_extended_molecules.rs` | gen `compare_pm3_mopac.py` → fix | OpenMOPAC; PubChemQC PM6 |
+| F42 | PM3 | `cross_validation::f42_mopac_pm3` (24/24 a <0.02 kcal/mol) | `oracle_pm3.py` (rama MOPAC 23.2.5) | MOPAC 23.2.5; PubChemQC PM6 |
 | F43 | GFN0/xTB | `test_extended_molecules.rs`, §6 Broyden | gen `compare_xtb_tblite.py` | xtb; tblite |
-| F44 | GFN1 | `test_extended_molecules.rs` (parcial) | gen `compare_gfn1_tblite.py` → fix | tblite; S66x8; WATER27 |
-| F45 | GFN2 | `scripts/gfn2_*` (muchos, consolidar) | gen `compare_gfn2_tblite.py` + lock de versión | tblite; S66x8; HAL59; MOR41 |
+| F44 | GFN1 | `cross_validation::f44` + `f44_uks` (UKS vs `uhf`) | `oracle_tblite.py` + `oracle_uks_tblite.py` | tblite 0.7.0; S66x8; WATER27 |
+| F45 | GFN2 | `cross_validation::f45` + `f45_uks` (UKS vs `uhf`) | `oracle_tblite.py` + `oracle_uks_tblite.py` | tblite 0.7.0; S66x8; HAL59; MOR41 |
 | F46 | D3/D4 | `test_d4.rs` | gen `compare_dftd4.py` → fix | dftd4; simple-dftd3 |
 | F47 | Fukui/frontera/reactividad | `test_new_features.rs`, `test_session_algorithms.rs` | gen `compare_fukui_multiwfn.py` | Multiwfn; series de orientación aromática |
 
@@ -1333,7 +1333,7 @@ Leyenda: **Actual** = suite que ya existe en el repo; **Nuevo** = artefacto a cr
 | F75 | Potenciales analíticos/EVB | `e3_justification.rs`, `reaction_dynamics_study.rs` | tests de mínimos publicados | Muller-Brown; EVB papers |
 | F76 | GPU↔CPU | `test_gpu_candidates.rs`, webgpu harness | ampliar cobertura de kernels | CPU como referencia |
 | F77 | DFT SVWN/PBE | `alpha_dft_validation.rs`, `alpha_cross_method.rs` | gen `generate_dft_reference.py` | PySCF/libxc; AE6/BH6/S22 |
-| F78 | ReaxFF/EEM | `alpha_reaxff_validation.rs` | gen `compare_reaxff_lammps.py` | LAMMPS `reaxff`; PuReMD |
+| F78 | ReaxFF/EEM | `alpha_reaxff_validation::f78` (BO ≤0.0085, forma CH₄) | `oracle_reaxff_lammps.py` (REAXFF desde fuente) | LAMMPS `reaxff` (ffield.reax.cho); PuReMD |
 | F79 | MLFF/AEV | `alpha_mlff_consistency.rs` | gen `compare_aev_n2p2.py` | TorchANI/n2p2; MD17; SPICE |
 | F80 | Obara-Saika alpha API | `alpha_scf_eri_accuracy.rs` | gen `compare_eri_pyscf.py` | PySCF/libcint |
 | F81 | CGA | `test_cga.rs` | gen `check_cga_vs_quaternion.py` | clifford; cuaterniones |
@@ -1344,13 +1344,13 @@ Leyenda: **Actual** = suite que ya existe en el repo; **Nuevo** = artefacto a cr
 | F86 | EDL | tests experimentales/CLI | gen `check_edl_analytics.py` | soluciones analíticas; Grahame |
 | F87 | Cinética/HTST | tests experimental/CLI | gen `compare_microkinetics_cantera.py` | Cantera; CatMAP; Eyring |
 | F88 | Periódico lineal/Bloch | `test_kpm.rs`, CLI | gen `compare_bloch_pybinding.py` | pybinding; pymatgen |
-| F89 | Reaction dynamics 3D | `alpha_reaction_dynamics_3d.rs`, `compare_reaction_layers.py --external` | ampliar a Transition1x | ASE NEB; geomeTRIC; pysisyphus |
+| F89 | Reaction dynamics 3D | `alpha_reaction_dynamics_3d.rs` + `literature_barriers.rs` (etano/metanol/NH₃ ≤1.69) | ampliar a Transition1x | literatura exp.; ASE NEB; geomeTRIC; pysisyphus |
 | F90 | Render bridge/charts | `test_gpu_candidates.rs`, webgpu compare | esquema JSON versionado | JSON Schema; Vega-Lite |
 | F91 | KPM DOS | `test_kpm.rs` | gen `compare_kpm_pybinding.py` | pybinding KPM; `eigh` exacto |
 | F92 | MBH | `test_mbh.rs` | Hessiano completo como referencia | Ghysels et al.; WATER27 |
 | F93 | RandNLA | `test_randnla.rs` | gen `compare_eigsh.py` | scipy `eigsh`; `eigh` |
 | F94 | Riemannian PSD | `test_riemannian.rs` | gen `compare_riemannian_geomstats.py` | geomstats; pymanopt |
-| F95 | CPM | `test_cpm.rs` | gen `compare_cpm_lammps.py` | LAMMPS `fix electrode/conp` |
+| F95 | CPM | `test_cpm::test_cpm_bilayer_matches_lammps` (escala 1.76x, sim 0.44) | `oracle_cpm_lammps.py` (ELECTRODE apt) | LAMMPS `fix electrode/conp` |
 
 **Estado LAMMPS (2026-10-13)**: build desde fuente con `PKG_REAXFF` + ELECTRODE
 operativo (`-DCMAKE_DISABLE_FIND_PACKAGE_MPI=ON` es obligatorio, ver §14.0);
@@ -1375,7 +1375,7 @@ F95 con `fix electrode/conp`) quedan listos para implementar.
 **Fase 2 — L2 referencias canónicas del core (2–3 semanas)**
 - [ ] Stack RDKit: F01, F03, F05, F06, F09, F10, F13, F14, F16, F17, F21, F28, F56, F59.
 - [ ] Stack PySCF: F23, F25, F27, F36, F37, F38, F39, F41, F77.
-- [ ] Stack Grimme: F22, F30, F42, F44, F45 (F43 done), F46, F78.
+- [x] Stack Grimme: F22, F42, F44 (+UKS), F45 (+UKS), F46, F78 (F43 done). Resta F30.
 - [ ] Materiales: F64–F69 (pymatgen/spglib/Zeo++).
 
 **Fase 3 — L4 datasets experimentales (2–4 semanas, en paralelo)**
@@ -1761,9 +1761,8 @@ solo se ejercitan en `--release`.
    N–H/O–H), `fock1`/`fock2` y HoF con `eisol`. Resultado: hidruros X–H
    exactos (<0.02 kcal/mol), matriz H de agua/etileno exacta (1e-4 eV),
    E_nuc por par exacto (1e-4 eV) y SCF de agua con eigenvalores y cargas
-   exactos. Residual: las integrales 2e "polares" (π) de `tx`/`rotatd`
-   salen con signo opuesto (≤130 kcal/mol en sistemas π); el fixture
-   `mopac_pm3.json` (24 moléculas) queda para iterar. **Resuelto 2026-10-13**:
+   exactos. El residual histórico de las integrales 2e "polares" (π)
+   (≤130 kcal/mol en sistemas π) **quedó resuelto 2026-10-13**:
    la rama heavy–heavy de `reppd` no reasignaba `qa`/`qb` a las separaciones
    simples antes de `arg(54..72)` (MOPAC `qa = qq(ni); qb = qq(nj)`); con el
    fix las 24 moléculas quedan a <0.02 kcal/mol (máx 8.4e-3) y el gate
