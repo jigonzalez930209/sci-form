@@ -1730,25 +1730,31 @@ mod f41_cis {
     use sci_form::scf::types::MolecularSystem;
 
     #[derive(Deserialize)]
-    struct TdaCase {
-        name: String,
-        elements: Vec<u8>,
-        coords: Vec<f64>,
-        n_basis: usize,
-        n_occupied: usize,
-        excitation_ev: Vec<f64>,
-        oscillator: Vec<f64>,
+    pub struct TdaCase {
+        pub name: String,
+        pub elements: Vec<u8>,
+        pub coords: Vec<f64>,
+        pub n_basis: usize,
+        pub n_occupied: usize,
+        /// PySCF RHF total energy (Hartree), diagnostic for the CISD gate.
         #[serde(default)]
-        dipole_x: Vec<f64>,
+        pub e_tot: f64,
+        pub excitation_ev: Vec<f64>,
+        pub oscillator: Vec<f64>,
         #[serde(default)]
-        dipole_y: Vec<f64>,
+        pub dipole_x: Vec<f64>,
         #[serde(default)]
-        dipole_z: Vec<f64>,
+        pub dipole_y: Vec<f64>,
+        #[serde(default)]
+        pub dipole_z: Vec<f64>,
+        /// CISD correlation energy (Hartree) from PySCF `ci.cisd.CISD`.
+        #[serde(default)]
+        pub cisd_correlation_hartree: f64,
     }
 
     #[derive(Deserialize)]
-    struct TdaFixture {
-        cases: Vec<TdaCase>,
+    pub struct TdaFixture {
+        pub cases: Vec<TdaCase>,
     }
 
     const CIS_TOL_EV: f64 = 0.01;
@@ -3536,6 +3542,95 @@ mod f22_eeqbc {
             EEQBC_CN_TOL,
             worst_cn.0 <= EEQBC_CN_TOL,
             fixture.molecules.len(),
+        );
+    }
+}
+
+/// CISD ground-state correlation energy against PySCF `ci.cisd.CISD`.
+///
+/// Extension of ficha F41: determinant-based CISD (including the same-orbital
+/// doubles `(iα iβ) → (aα aβ)` and the reference-coupling) over the same
+/// STO-3G SCF data used by the CIS gate.
+mod f41_cisd {
+    use super::pyscf_support::*;
+    use super::*;
+    use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::types::MolecularSystem;
+
+    /// Correlation-energy tolerance (Hartree): measured worst case 2.1e-8
+    /// (C2H4, from the small integral differences between our STO-3G engine
+    /// and PySCF).
+    const CISD_TOL_HARTREE: f64 = 1e-6;
+
+    #[test]
+    fn f41_cisd_matches_pyscf() {
+        let fixture: super::f41_cis::TdaFixture = load("pyscf_tda.json");
+        let mut worst = (0.0f64, String::new());
+        let mut n_cases = 0usize;
+        for case in &fixture.cases {
+            if case.cisd_correlation_hartree == 0.0 {
+                continue;
+            }
+            // The two largest determinant spaces (CH2O 1425, C2H4 3241) are
+            // only exercised in release builds: the debug matrix build is
+            // ~50x slower and would dominate the suite runtime. The release
+            // validation (`cargo test --release`) covers all eight cases.
+            if cfg!(debug_assertions) && case.n_basis >= 12 {
+                continue;
+            }
+            let positions = positions_angstrom(&case.coords);
+            let system = MolecularSystem::from_angstrom(&case.elements, &positions, 0, 1);
+            let scf = run_scf(&system, &ScfConfig::default());
+            assert!(scf.converged, "{}: SCF did not converge", case.name);
+            let basis = sci_form::hf::basis::build_sto3g_basis(&case.elements, &positions);
+            let n = basis.n_basis();
+            assert_eq!(n, case.n_basis, "{}: basis size", case.name);
+            let eri_flat = sci_form::hf::integrals::compute_eris(&basis);
+            let result = sci_form::hf::cisd::compute_cisd(
+                &scf.orbital_energies,
+                &scf.mo_coefficients,
+                &eri_flat,
+                n,
+                case.n_occupied,
+                3,
+            );
+            assert_eq!(
+                result.approximation, "full",
+                "{}: expected the full CISD path",
+                case.name
+            );
+            let diff = (result.correlation_energy - case.cisd_correlation_hartree).abs();
+            n_cases += 1;
+            println!(
+                "  {:6} ours = {:+.8}  pyscf = {:+.8}  Δ = {:.2e}  ΔE_HF = {:.2e}",
+                case.name,
+                result.correlation_energy,
+                case.cisd_correlation_hartree,
+                diff,
+                scf.total_energy - case.e_tot
+            );
+            if diff > worst.0 {
+                worst = (diff, case.name.clone());
+            }
+        }
+        println!(
+            "F41 CISD vs PySCF: n={} max |ΔE_corr| = {:.3e} Ha ({})",
+            n_cases, worst.0, worst.1
+        );
+        assert!(
+            worst.0 <= CISD_TOL_HARTREE,
+            "CISD max error {:.3e} Ha for {}",
+            worst.0,
+            worst.1
+        );
+        record(
+            "F41",
+            "cisd_correlation_vs_pyscf",
+            "max_abs",
+            worst.0,
+            CISD_TOL_HARTREE,
+            worst.0 <= CISD_TOL_HARTREE,
+            n_cases,
         );
     }
 }
