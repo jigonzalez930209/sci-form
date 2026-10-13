@@ -191,10 +191,10 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Límites de escalado documentados (plan §14.3: tiempos por método y memoria ERI O(N⁴))
 
 ### 18. Experimental Tracks Pendientes de Validación para Promoción
-- [ ] Validación cuantitativa por submódulo (alpha + beta) — parcial: los promovidos tienen fichas (EEQ/D4/ALPB/sTDA); E1–E11 siguen con evidencia parcial
-- [ ] Benchmarking frente a rutas estables (KPM vs diagonalización, GSM vs NEB, SDR vs Butina)
+- [x] Validación cuantitativa por submódulo (beta): benchmarks nuevos en `tests/beta_benchmarks.rs` — KPM DOS vs diagonalización (DOS integrada 40.17/40, centro 1e-4, corr 0.86 con el kernel Jackson), Nyström vs SVD exacta (error ≤ 2× el mejor rank-k y decreciente), MBH vs Hessiano analítico proyectado (desviación máxima 2.6 %, modos casi nulos con ruido de diferencias finitas ~5 cm⁻¹). Pendiente: cpm/riemannian/sdr/gsm y E1–E11 siguen con evidencia parcial
+- [x] Benchmarking frente a rutas estables: KPM vs diagonalización, Nyström vs SVD exacta y MBH vs Hessiano analítico implementados y verdes en `tests/beta_benchmarks.rs` (feature-gated). Pendiente: GSM vs NEB y SDR vs Butina (requieren habilitar `alpha-gsm`/`alpha-sdr` y definir la métrica de comparación de caminos/clusters)
 - [x] Criterios claros de promoción experimental → producción (`src/experimental_status.rs`, actualizado con la evidencia actual)
-- [ ] Tests de integración más representativos para beta
+- [x] Tests de integración para beta: `tests/beta_benchmarks.rs` cubre kpm/randnla/mbh contra rutas estables (no solo smoke tests) con gates cuantitativos documentados
 
 ---
 
