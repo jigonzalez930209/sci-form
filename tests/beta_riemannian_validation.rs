@@ -7,11 +7,11 @@
 //! unmet promotion criterion). Gated: projection/retraction (1e-12),
 //! distance proxy (1e-12), objective/gradient pointwise (1e-9),
 //! L-BFGS optimizer vs scipy L-BFGS-B on feasible distance geometry.
-
-#![cfg(feature = "beta-riemannian")]
+//!
+//! Core module (`sci_form::riemannian`).
 
 use nalgebra::DMatrix;
-use sci_form::beta::riemannian::{
+use sci_form::riemannian::{
     psd_distance, psd_projection, psd_retraction, DistanceConstraint, RiemannianLbfgs,
 };
 

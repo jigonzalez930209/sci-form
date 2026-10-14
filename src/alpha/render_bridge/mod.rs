@@ -1,73 +1,20 @@
-//! Alpha render-bridge payload contracts.
+//! Alpha render-bridge domain builders (EDL/kinetics/periodic/GSM charts).
 //!
-//! This module keeps visualization-facing payloads decoupled from solver
-//! internals so Python, WASM, and charting frontends can share a stable format.
-//! Supports EDL profiles, periodic DOS, band structures, capacitance scans,
-//! temperature sweeps, microkinetic traces, and GSM path trajectories.
-//!
-//! Transport decisions (Sprint 1):
-//! - Small results: JSON via `serde_json` (< 64 KiB).
-//! - Large profile/DOS arrays: Arrow-style `RecordBatch` via `crate::transport::arrow`.
-//! - WASM typed arrays: `Float64Array` / `Float32Array` via flat contiguous buffers.
+//! Generic payloads live in core [`crate::render_bridge`] (re-exported below).
 
 #[cfg(feature = "experimental-gpu")]
 pub mod gpu;
 
-use serde::{Deserialize, Serialize};
+pub use crate::render_bridge::*;
 
 use crate::transport::arrow::RecordBatch;
 
 #[cfg(feature = "alpha-edl")]
-use crate::alpha::edl::{CpmEdlScanResult, EdlProfileResult};
+use crate::edl::{CpmEdlScanResult, EdlProfileResult};
 #[cfg(feature = "alpha-kinetics")]
 use crate::alpha::kinetics::{ElementaryRateResult, MicrokineticTrace};
 #[cfg(feature = "alpha-periodic-linear")]
-use crate::alpha::periodic_linear::{BandStructureAdapterResult, PeriodicKpmDosResult};
-
-/// One XY series payload for charts.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-pub struct ChartSeries {
-    /// Stable series identifier.
-    pub series_id: String,
-    /// Human-readable label.
-    pub label: String,
-    /// X values.
-    pub x: Vec<f64>,
-    /// Y values.
-    pub y: Vec<f64>,
-    /// Suggested unit label for the x axis.
-    pub x_unit: String,
-    /// Suggested unit label for the y axis.
-    pub y_unit: String,
-}
-
-/// Multi-series chart payload.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-pub struct ChartPayload {
-    /// Chart title.
-    pub title: String,
-    /// Included series.
-    pub series: Vec<ChartSeries>,
-}
-
-/// One 3D polyline frame, typically for reaction trajectories.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-pub struct TrajectoryFrame {
-    /// Time-like coordinate.
-    pub frame_time: f64,
-    /// Flattened xyz coordinates.
-    pub coords: Vec<f64>,
-}
-
-/// Generic bridge payload for render clients.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-pub struct RenderPayload {
-    /// Scalar chart data.
-    pub charts: Vec<ChartPayload>,
-    /// Optional geometry frames.
-    pub trajectory: Vec<TrajectoryFrame>,
-}
-
+use crate::kmesh::{BandStructureAdapterResult, PeriodicKpmDosResult};
 #[cfg(feature = "alpha-edl")]
 /// Convert an EDL profile into a standard chart payload.
 pub fn edl_profile_chart(profile: &EdlProfileResult) -> ChartPayload {
@@ -231,22 +178,6 @@ pub fn band_structure_chart(bs: &BandStructureAdapterResult) -> ChartPayload {
     }
 }
 
-#[cfg(feature = "alpha-kinetics")]
-/// Convert GSM path coordinates into trajectory frames for 3D visualization.
-pub fn gsm_path_trajectory(
-    path_coords: &[Vec<f64>],
-    path_energies: &[f64],
-) -> Vec<TrajectoryFrame> {
-    path_coords
-        .iter()
-        .zip(path_energies)
-        .map(|(coords, &energy)| TrajectoryFrame {
-            frame_time: energy, // Use energy as the "time" coordinate for path visualization
-            coords: coords.clone(),
-        })
-        .collect()
-}
-
 /// Build a full render payload from all available alpha results.
 #[cfg(all(
     feature = "alpha-edl",
@@ -366,66 +297,6 @@ pub fn pack_microkinetic_trace(trace: &MicrokineticTrace) -> RecordBatch {
         }
     }
     batch
-}
-
-/// Pack a generic `ChartPayload` into a `RecordBatch`.
-pub fn pack_chart_payload(chart: &ChartPayload) -> RecordBatch {
-    let mut batch = RecordBatch::new();
-    for (i, s) in chart.series.iter().enumerate() {
-        let n = s.x.len();
-        batch.add_float64(&format!("{}_x", s.series_id), s.x.clone(), vec![n]);
-        batch.add_float64(&format!("{}_y", s.series_id), s.y.clone(), vec![n]);
-        let _ = i; // series index for diagnostics
-    }
-    batch
-}
-
-/// Pack multiple chart payloads into `RecordBatch` in parallel using rayon.
-#[cfg(feature = "parallel")]
-pub fn pack_charts_parallel(charts: &[ChartPayload]) -> Vec<RecordBatch> {
-    use rayon::prelude::*;
-    charts.par_iter().map(pack_chart_payload).collect()
-}
-
-/// Pack multiple chart payloads into `RecordBatch` sequentially (non-parallel fallback).
-#[cfg(not(feature = "parallel"))]
-pub fn pack_charts_parallel(charts: &[ChartPayload]) -> Vec<RecordBatch> {
-    charts.iter().map(pack_chart_payload).collect()
-}
-
-/// Verify lossless round-trip: `ChartPayload` → `RecordBatch` → reconstructed series.
-/// Returns `true` when all values survive within `tol`.
-pub fn verify_chart_round_trip(chart: &ChartPayload, tol: f64) -> bool {
-    let batch = pack_chart_payload(chart);
-    for s in &chart.series {
-        let x_col = batch
-            .float_columns
-            .iter()
-            .find(|c| c.name == format!("{}_x", s.series_id));
-        let y_col = batch
-            .float_columns
-            .iter()
-            .find(|c| c.name == format!("{}_y", s.series_id));
-        match (x_col, y_col) {
-            (Some(xc), Some(yc)) => {
-                if xc.values.len() != s.x.len() || yc.values.len() != s.y.len() {
-                    return false;
-                }
-                for (a, b) in xc.values.iter().zip(&s.x) {
-                    if (a - b).abs() > tol {
-                        return false;
-                    }
-                }
-                for (a, b) in yc.values.iter().zip(&s.y) {
-                    if (a - b).abs() > tol {
-                        return false;
-                    }
-                }
-            }
-            _ => return false,
-        }
-    }
-    true
 }
 
 #[cfg(test)]
@@ -585,7 +456,7 @@ mod tests {
     #[cfg(feature = "alpha-edl")]
     #[test]
     fn edl_profile_packs_to_record_batch() {
-        use crate::alpha::edl::{CapacitanceBreakdown, EdlBackend, EdlProfileResult};
+        use crate::edl::{CapacitanceBreakdown, EdlBackend, EdlProfileResult};
         let profile = EdlProfileResult {
             distance_axis_angstrom: vec![0.0, 1.0, 2.0],
             electrostatic_potential_v: vec![0.5, 0.3, 0.1],

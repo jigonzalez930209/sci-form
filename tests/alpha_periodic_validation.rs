@@ -5,11 +5,11 @@
 //! textbook Gamma grids, e^{i2pik.R} phases, E(k) = e + 2t cos(2 pi k)
 //! chain bands. Documented gap: `build_bloch_hamiltonian` keeps the cos
 //! part only (complex H(k) unimplemented).
-
-#![cfg(feature = "alpha-periodic-linear")]
+//!
+//! Core module (`sci_form::kmesh`).
 
 use nalgebra::DMatrix;
-use sci_form::alpha::periodic_linear::{
+use sci_form::kmesh::{
     assemble_periodic_operators, bloch_phase, build_bloch_hamiltonian, bz_integrate_scalar,
     bz_integrate_vector, monkhorst_pack_mesh, validate_kmesh_weights, KMeshCentering, KMeshConfig,
 };

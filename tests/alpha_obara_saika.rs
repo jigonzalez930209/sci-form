@@ -6,8 +6,8 @@
 //! approximation) and primitive (ss|ss) references from PySCF `int2e`
 //! over single-primitive custom bases (libcint, independent of our
 //! recurrence). Units: bohr / bohr^-2 / Hartree.
-
-#![cfg(feature = "alpha-obara-saika")]
+//!
+//! Core module (`sci_form::scf::obara_saika`).
 
 use sci_form::scf::obara_saika::{boys_function, eri_ssss, schwarz_bound, ShellPairData};
 

@@ -6,10 +6,10 @@
 //! sandwich in the `clifford` package (Cl(4,1)) — the latter validates
 //! our bitmask blade encoding. Dihedral rotation about a bond axis +
 //! dihedral angle vs numpy.
+//!
+//! Core module (`sci_form::cga`).
 
-#![cfg(feature = "alpha-cga")]
-
-use sci_form::alpha::cga::{
+use sci_form::cga::{
     apply_motor_to_subtree, conformal_point, dihedral_angle, dihedral_motor, extract_euclidean,
     Motor,
 };

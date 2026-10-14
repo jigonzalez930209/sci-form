@@ -5,10 +5,10 @@
 //! F = -k(r-r0) from independent numpy code, including multi-force
 //! additivity. Gates energy/forces (1e-12), additivity/clear semantics,
 //! and energy-force consistency via finite differences.
+//!
+//! Core module (`sci_form::imd`).
 
-#![cfg(feature = "alpha-dynamics-live")]
-
-use sci_form::dynamics_live::steering::SteeringForces;
+use sci_form::imd::SteeringForces;
 
 #[derive(serde::Deserialize)]
 struct ForceSpec {
