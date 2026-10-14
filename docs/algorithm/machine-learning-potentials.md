@@ -61,6 +61,13 @@ res = sci_form.compare_methods(
 ```
 
 ## Benchmarks & Validation
-The `sci-form` implementation has been battle-tested on strict test sets spanning 100 structurally diverse molecules, benchmarked concurrently against TorchANI. 
 
-**Results confirmed exactly 0.0000% maximum deviation in both network energy and AEV matrices**, guaranteeing production-level mathematical equivalence at native speeds.
+> **Corrección 2026-10-14**: el párrafo anterior afirmaba equivalencia
+> TorchANI al 0.0000% — esa comparación nunca existió (nuestros AEV son
+> agnósticos por especie; TorchANI parte por especie). Estado real (F79):
+> AEV exactos vs implementación numpy independiente de las fórmulas
+> Behler-Parrinello (8 moléculas × 2 sets de parámetros, constantes
+> ANI-2x verificadas), energías de nets tiny a 5.1e-14, fuerzas (FD h=1e-4)
+> a 6.4e-6, red GELU a 1.1e-6 (límite del erf A&S). Gaps: tensores TorchANI
+> (diseño) y benchmarks MD17/SPICE (faltan pesos entrenados). Ver
+> `tests/alpha_mlff_validation.rs` (`--features alpha-mlff`).
