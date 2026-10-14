@@ -48,26 +48,23 @@ For the Stiefel manifold: $P_{T_X}(\xi) = \xi - X \cdot \text{sym}(X^T \xi)$
 ## API
 
 ```rust
-use sci_form::experimental::riemannian::*;
+use sci_form::riemannian::*;
 
 // PSD projection
-let (projected, n_neg) = project_psd(&matrix);
+let (projected, n_neg) = psd_projection(&matrix);
 
-// Retraction
-let retracted = retract_psd(&x, &tangent_vector, epsilon);
+// Retraction (first-order): P₊(X + ξ)
+let retracted = psd_retraction(&x, &xi);
 
-// Riemannian gradient
-let rgrad = riemannian_gradient(&x, &euclidean_grad);
-
-// Full L-BFGS optimization
+// Full L-BFGS optimization under distance bounds
 let config = RiemannianConfig {
     max_iter: 500,
-    tol: 1e-6,
-    memory: 5,
+    grad_tol: 1e-6,
     ..Default::default()
 };
-let result = riemannian_lbfgs(&x0, &objective, &gradient, &config);
-// result.x, result.iterations, result.converged, result.final_gradient_norm
+let opt = RiemannianLbfgs::new(config);
+let result = opt.optimize(&x0, &constraints);
+// result.metric_matrix, result.objective, result.converged
 ```
 
 ---
