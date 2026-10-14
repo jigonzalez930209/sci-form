@@ -181,7 +181,10 @@ pub fn compute_kpm_mulliken(
     let b = (e_max + e_min) / 2.0;
     let h_tilde = rescale_matrix(&h_orth, e_min, e_max);
 
-    let target = n_electrons as f64;
+    // Closed shell: each spatial orbital holds 2 electrons, so the
+    // Fermi level is bisected for n_electrons/2 filled states and the
+    // resulting projector is doubled (spin degeneracy).
+    let target = n_electrons as f64 / 2.0;
     let mut mu_lo = e_min;
     let mut mu_hi = e_max;
 
@@ -201,7 +204,9 @@ pub fn compute_kpm_mulliken(
     let coeffs = fermi_dirac_coefficients(config.order, a, b, mu, config.temperature);
     let gk = jackson_kernel(config.order);
 
-    // P_orth = sum_k (c_k * g_k) * T_k(H_tilde)  in orthogonal basis
+    // P_orth = sum_k (c_k * g_k) * T_k(H_tilde)  in orthogonal basis.
+    // NOTE: fermi_dirac_coefficients already folds the 1/2 of c_0 into
+    // coeffs[0], so k >= 1 terms enter WITHOUT an extra factor of 2.
     let mut p_orth = DMatrix::zeros(n, n);
     let mut t_prev = DMatrix::identity(n, n);
     let mut t_curr = h_tilde.clone();
@@ -211,20 +216,20 @@ pub fn compute_kpm_mulliken(
     p_orth += &t_prev * c0;
 
     if config.order > 1 {
-        let c1 = 2.0 * coeffs[1] * gk[1];
+        let c1 = coeffs[1] * gk[1];
         p_orth += &t_curr * c1;
     }
 
     for k in 2..config.order {
         let t_next = &h_tilde * &t_curr * 2.0 - &t_prev;
-        let ck = 2.0 * coeffs[k] * gk[k.min(gk.len() - 1)];
+        let ck = coeffs[k] * gk[k.min(gk.len() - 1)];
         p_orth += &t_next * ck;
         t_prev = t_curr;
         t_curr = t_next;
     }
 
-    // Step 4: Transform back: P_AO = S^{-1/2} P_orth S^{-1/2}
-    let p_ao = &s_inv_sqrt * &p_orth * &s_inv_sqrt;
+    // Step 4: Transform back + spin degeneracy: P_AO = 2 S^{-1/2} P_orth S^{-1/2}
+    let p_ao = ((&s_inv_sqrt * &p_orth * &s_inv_sqrt) * 2.0);
 
     // Step 5: Mulliken charges: q_i = Z_i - sum of (PS)_ii contributions per atom
     // We need to map basis functions to atoms for proper Mulliken analysis.
@@ -267,12 +272,12 @@ fn electron_count_kpm(h_tilde: &DMatrix<f64>, a: f64, b: f64, mu: f64, config: &
     let mut ne = coeffs[0] * gk[0] * t_prev.trace();
 
     if config.order > 1 {
-        ne += 2.0 * coeffs[1] * gk[1] * t_curr.trace();
+        ne += coeffs[1] * gk[1] * t_curr.trace();
     }
 
     for k in 2..config.order {
         let t_next = h_tilde * &t_curr * 2.0 - &t_prev;
-        ne += 2.0 * coeffs[k] * gk[k.min(gk.len() - 1)] * t_next.trace();
+        ne += coeffs[k] * gk[k.min(gk.len() - 1)] * t_next.trace();
         t_prev = t_curr;
         t_curr = t_next;
     }
