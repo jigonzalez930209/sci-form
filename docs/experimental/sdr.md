@@ -1,7 +1,7 @@
 # E8: Semidefinite Relaxation Embedding (SDR)
 
-**Module:** `sci_form::experimental::sdr`
-**Feature flag:** `experimental-sdr`
+**Module:** `sci_form::sdr` (core since 2026-10-14; `alpha::sdr` re-export)
+**Feature flag:** none (core); `alpha-sdr` kept as no-op alias
 
 ---
 
@@ -89,6 +89,15 @@ let result = sdr_embed(n_atoms, &distance_pairs, &config);
 | Warm start | No | From Cayley-Menger |
 
 ---
+
+## Validation (F83, 2026-10-14)
+
+External gate `tests/alpha_sdr_validation.rs` vs
+`scripts/validation/oracle_sdr.py` (numpy + CVXPY/SCS SDP, seed 42):
+PSD clip/SVT exact, distance-projection residual 4.4e-16, exact embeds
+7e-15 (better than CVXPY 1e-8), noisy case within 3× of the SDP optimum.
+Fix: PSD dust threshold in the removal count. Run: `cargo test --test
+alpha_sdr_validation` (no feature needed).
 
 ## Tests
 
