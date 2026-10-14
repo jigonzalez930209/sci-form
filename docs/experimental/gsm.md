@@ -1,7 +1,7 @@
 # E11: Growing String Method (GSM)
 
-**Module:** `sci_form::experimental::gsm`
-**Feature flag:** `experimental-gsm`
+**Module:** `sci_form::alpha::gsm` (gated; F82 validated, promotion pending)
+**Feature flag:** `alpha-gsm` (`experimental-gsm` alias)
 
 ---
 
@@ -107,6 +107,14 @@ The transition state result includes:
 - **Energy evaluation count** for benchmarking efficiency
 
 ---
+
+## Validation (F82, 2026-10-14)
+
+External gate `tests/alpha_gsm_validation.rs --features alpha-gsm` vs
+`scripts/validation/oracle_gsm.py` (ASE CI-NEB/FIRE on Müller-Brown,
+TS −40.66 textbook): barrier 1.6e-3, TS location 0.028. Fix: arc-length
+reparametrization every iteration (without it nodes slide into the minima
+and the barrier collapses to 0.02). pyGSM/Transition1x not run.
 
 ## Tests
 
