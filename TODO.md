@@ -16,6 +16,15 @@
 > scipy). 44 gates en `tests/{alpha,beta}_*_validation.rs`, todos verdes.
 > Suites: `lib` 739/739 (951 con features de validación), `cross_validation`
 > 38/38. Promoción a la lib pendiente de decisión (F89 queda en alpha).
+>
+> **Promoción ronda 2 (2026-10-14, solo-criterio-cumplido)**: a la lib
+> `scf::{obara_saika,screening}` (F80), `cga` (F81, gaps refine/materials),
+> `sdr` (F83), `imd` (F85, `dynamics_live` re-exporta), `edl` (F86), `kmesh`
+> base (F88; adaptadores KPM/RandNLA en alpha), `render_bridge` base (F90;
+> builders en alpha), `riemannian` (F94, proxy documentado). Re-exports
+> `alpha::`/`beta::` + features como alias no-op. Suites: `lib` 827/827.
+> Quedan gateados: dft, mlff, gsm, dynamics_live, kinetics, periodic-adapters,
+> render-builders, kpm, mbh, rand_nla, reaction_dynamics, cpm-compat.
 
 ## Ciclo actual — Kohn–Sham DFT en la librería
 
