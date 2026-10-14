@@ -51,7 +51,7 @@ where $V_3, \Sigma_3$ are the top-3 eigenvectors/values of $X^*$.
 ## API
 
 ```rust
-use sci_form::experimental::sdr::*;
+use sci_form::sdr::*;
 
 // PSD projection
 let (projected, n_negative) = project_psd(&matrix);
