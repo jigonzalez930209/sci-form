@@ -12,6 +12,14 @@
 //! | ALPB solvation | `solvation_alpb` | Klamt-corrected solvation, improves over plain GB; shares the SASA implementation with the core (test) |
 //! | sTDA UV-Vis | `spectroscopy::stda_uvvis` | CIS-like excitations from monopole charges, ~1000× faster than full CI; Cauchy-Schwarz prescreening tested |
 //! | GIAO NMR | `spectroscopy::giao_nmr` | Multi-nucleus NMR shieldings, complements empirical HOSE |
+//! | Obara-Saika ERIs | `scf::{obara_saika,screening}` | Boys/ERI/Schwarz vs scipy + libcint, 5.6e-14 (F80) |
+//! | CGA motors | `cga` | Rotors vs Rodrigues + clifford 3.4e-15 (F81; refine/materials gaps documented) |
+//! | SDR embedding | `sdr` | Projections + CVXPY embeds 7e-15 (F83) |
+//! | IMD steering | `imd` | Harmonic E/F analytic 1.1e-13 (F85) |
+//! | EDL | `edl` | GC/GCS/Helmholtz analytic 2e-14 (F86) |
+//! | k-mesh/Bloch | `kmesh` | ASE meshes + chain bands 4.4e-16 (F88; KPM/RandNLA adapters stay alpha) |
+//! | Chart payloads | `render_bridge` | JSON Schema + pack round-trip (F90; domain builders stay alpha) |
+//! | Riemannian PSD | `riemannian` | Projection/optimizer vs scipy (F94; Frobenius proxy documented) |
 //!
 //! The promotion criteria below follow the validation culture of the repo:
 //! a module is promoted when a cross-library ficha (or a documented external
@@ -91,7 +99,7 @@
 //! producción exacta con fallback (`tests/beta_randnla_validation.rs`).
 //! El criterio 2 sigue sin cumplirse.
 //!
-//! ### EXP-204: Spectral Dimensionality Reduction (SDR)
+//! ### EXP-204: Spectral Dimensionality Reduction (SDR) — PROMOVIDO 2026-10-14 (`src/sdr`)
 //!
 //! **Feature flag:** `experimental-sdr`
 //! **Location:** `experimental/sdr/` (embedding.rs, projections.rs)
@@ -113,7 +121,7 @@
 //! embeds exactos 7e-15 (mejor que CVXPY/SCS 1e-8), caso ruidoso dentro de
 //! 3× del óptimo (`tests/alpha_sdr_validation.rs`).
 //!
-//! ### EXP-205a: Conformal Geometric Algebra (CGA)
+//! ### EXP-205a: Conformal Geometric Algebra (CGA) — PROMOVIDO 2026-10-14 (`src/cga`)
 //!
 //! **Feature flag:** `experimental-cga`
 //! **Location:** `experimental/cga/` (multivector.rs, motor.rs, conformer.rs, materials.rs)
@@ -160,7 +168,7 @@
 //! CI-NEB (barrera 1.6e-3, TS 0.028; `tests/alpha_gsm_validation.rs`).
 //! Fix: reparametrización por arco cada iteración.
 //!
-//! ### EXP-205c: Continuous Phase Methods (CPM)
+//! ### EXP-205c: Continuous Phase Methods (CPM) — PROMOVIDO 2026-10-13 (`src/cpm`)
 //!
 //! **Feature flag:** `experimental-cpm`
 //! **Location:** `experimental/cpm/` (surface.rs, grand_potential.rs)
