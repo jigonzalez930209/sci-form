@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-11",
+ "generated": "2026-10-14",
  "python": "3.14.4",
  "references": [
   {
@@ -14,7 +14,9 @@
     "F21",
     "F59",
     "corpus 3D (tblite/dftd4 oracles)",
-    "F70 (uff-opt)"
+    "F70 (uff-opt)",
+    "F79 (ETKDG)",
+    "F84 (UFF CalcGrad)"
    ]
   },
   {
@@ -33,7 +35,9 @@
     "F37",
     "F38",
     "F39",
-    "F26"
+    "F26",
+    "F77 (RKS)",
+    "F80 (int2e)"
    ]
   },
   {
@@ -42,14 +46,18 @@
    "used_by": [
     "F13",
     "F14",
-    "oracle common"
+    "oracle common",
+    "F79/F83/F88/F91/F93/F94 oracles"
    ]
   },
   {
    "tool": "SciPy",
    "version": "1.18.1",
    "used_by": [
-    "ECFP ranking (oracle)"
+    "ECFP ranking (oracle)",
+    "F80 (Boys gammainc)",
+    "F87 (solve_ivp)",
+    "F91/F93/F94 (eigh/sqrtm/logm refs)"
    ]
   },
   {
@@ -96,7 +104,9 @@
    "tool": "ASE",
    "version": "3.29.0",
    "used_by": [
-    "F66"
+    "F66",
+    "F82 (CI-NEB)",
+    "F88 (monkhorst_pack)"
    ]
   },
   {
@@ -118,6 +128,55 @@
    "version": "0.2.0",
    "used_by": [
     "F68 (MOF-5 Di/Df/AV with sci-form radii)"
+   ]
+  },
+  {
+   "tool": "clifford",
+   "version": "1.5.1",
+   "used_by": [
+    "F81 (CGA motors)"
+   ]
+  },
+  {
+   "tool": "cvxpy",
+   "version": "1.9.3",
+   "used_by": [
+    "F83 (SDR SDP, SCS solver)"
+   ]
+  },
+  {
+   "tool": "jsonschema",
+   "version": "4.26.0",
+   "used_by": [
+    "F90 (chart schema --check)"
+   ]
+  },
+  {
+   "tool": "cantera",
+   "version": "3.2.0",
+   "used_by": [
+    "installed; F87 uses Eyring/solve_ivp instead (mechanism I/O unmet)"
+   ]
+  },
+  {
+   "tool": "pysisyphus",
+   "version": "1.0.0",
+   "used_by": [
+    "installed; F82 uses ASE CI-NEB instead"
+   ]
+  },
+  {
+   "tool": "geomstats",
+   "version": "2.8.0",
+   "used_by": [
+    "installed; F94 affine-invariant unmet (Frobenius proxy)"
+   ]
+  },
+  {
+   "tool": "torch",
+   "version": "2.14.1+cpu",
+   "used_by": [
+    "installed; F79 uses BP formulas (species-split layout gap)"
    ]
   }
  ],
