@@ -53,11 +53,20 @@ pub fn project_psd(x: &DMatrix<f64>) -> (DMatrix<f64>, usize) {
     let eigen = sym.symmetric_eigen();
     let mut neg_count = 0;
 
+    // Dust threshold: round-off negatives (|λ| ≤ 1e-12·scale) are clamped
+    // without counting as removed.
+    let scale = eigen
+        .eigenvalues
+        .iter()
+        .fold(1.0f64, |m, &v| m.max(v.abs()));
+    let dust = 1e-12 * scale;
     let mut sigma = eigen.eigenvalues.clone();
     for i in 0..n {
-        if sigma[i] < 0.0 {
+        if sigma[i] < -dust {
             sigma[i] = 0.0;
             neg_count += 1;
+        } else if sigma[i] < 0.0 {
+            sigma[i] = 0.0;
         }
     }
 

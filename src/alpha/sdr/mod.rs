@@ -9,5 +9,5 @@ pub mod projections;
 
 pub use embedding::{extract_coordinates, sdr_embed, warm_start_gram, SdrResult};
 pub use projections::{
-    alternating_projections, project_distances, project_psd, SdrConfig, SdrConvergence,
+    alternating_projections, project_distances, project_psd, svt_step, SdrConfig, SdrConvergence,
 };
