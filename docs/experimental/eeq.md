@@ -1,7 +1,7 @@
 # E5: Dynamic EEQ Charge Model
 
-**Module:** `sci_form::experimental::eeq`
-**Feature flag:** `experimental-eeq`
+**Module:** `sci_form::charges_eeq` (core; promoted E3)
+**Feature flag:** none (core)
 
 ---
 
@@ -44,7 +44,7 @@ where $\sigma_{ij}$ is derived from atomic charge radii. The damping exponent wa
 ## API
 
 ```rust
-use sci_form::experimental::eeq::*;
+use sci_form::charges_eeq::*;
 
 // Compute EEQ charges
 let result = compute_eeq_charges(&elements, &positions, total_charge);
