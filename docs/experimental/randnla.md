@@ -38,7 +38,7 @@ The transformed Hamiltonian $\tilde{H} = S^{-1/2} H S^{-1/2}$ is diagonalized us
 ## API
 
 ```rust
-use sci_form::experimental::rand_nla::*;
+use sci_form::beta::rand_nla::*;
 
 // Nyström approximation
 let config = NystromConfig { rank: 50, seed: 42 };
