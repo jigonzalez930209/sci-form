@@ -22,7 +22,7 @@ with Slater's shielding rules. The radial function is the STO-3G three-Gaussian 
 
 Z > 30 uses a small-core ECP: n_core electrons are removed, the nuclear charge is Z_eff, and a local Gaussian replaces the core. f electrons stay in the core. This is not a fitted Stuttgart/LANL potential.
 
-The Coulomb matrix uses Cartesian Obara–Saika ERIs through d Gaussians (memoized VRR). The PySCF 1 mHa gate is H₂ and H₂O/STO-3G (s/p). Sc–Zn all-electron bases include 3d; a Zn atom RKS smoke checks that the d Coulomb is finite and the SCF runs.
+The Coulomb matrix uses Cartesian Obara–Saika ERIs through d Gaussians (memoized VRR). The PySCF gate (F77, 2026-10-14) covers H₂/H₂O/CH₄/NH₃/N₂/CO × SVWN/PBE vs PySCF RKS/STO-3G (`generate_dft_reference.py`, `tests/alpha_dft_pyscf.rs --features alpha-dft`): dE ≤ 7.2e-5 Ha, dgap ≤ 9.7e-3 eV. Sc–Zn all-electron bases include 3d; a Zn atom RKS smoke checks that the d Coulomb is finite and the SCF runs.
 
 Closed-shell RKS is the default. UKS runs when `multiplicity > 1`, the valence electron count is odd, or `unrestricted` is set. Spin-polarized Slater + unpolarized VWN is used for SVWN.
 
