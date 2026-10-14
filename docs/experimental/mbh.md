@@ -1,7 +1,7 @@
 # E9: Mobile Block Hessian (MBH)
 
-**Module:** `sci_form::experimental::mbh`
-**Feature flag:** `experimental-mbh`
+**Module:** `sci_form::beta::mbh` (gated; F92 validated, promotion pending)
+**Feature flag:** `beta-mbh` (`experimental-mbh` alias)
 
 ---
 
@@ -87,6 +87,14 @@ let result = compute_mbh_frequencies(&elements, &positions, &ring_info, &energy_
 | Penicillin (2 rings) | 99 | ~60 | 1.7× |
 
 ---
+
+## Validation (F92, 2026-10-14)
+
+External gate `tests/beta_mbh_validation.rs --features beta-mbh` vs
+`scripts/validation/oracle_mbh.py` (diatomic stretches from SI constants,
+validates the 108.59 factor): stretch 1.3e-5, benzene 1 block 24/36 DOF
+speedup 1.5, zero modes ≤5 cm⁻¹ (linear-molecule quartic fd artifact).
+Gap: experimental ±2 cm⁻¹ (Ghysels).
 
 ## Tests
 
