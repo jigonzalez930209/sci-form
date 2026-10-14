@@ -235,7 +235,7 @@ $$Q_{\text{total}} = \arg\min_q \left[ E_{\text{electrostatic}}(q) - V_0 \sum_i 
 ### Rust
 
 ```rust
-use sci_form::beta::cpm::{compute_cpm_charges, CpmConfig};
+use sci_form::cpm::{compute_cpm_charges, CpmConfig};
 
 let config = CpmConfig { potential: -0.5, ..Default::default() }; // V vs vacuum
 let result = compute_cpm_charges(&elements, &positions, &config)?;
