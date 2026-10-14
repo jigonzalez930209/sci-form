@@ -190,7 +190,7 @@ Operations on the **manifold of positive semidefinite (PSD) matrices**, used by 
 ### Rust
 
 ```rust
-use sci_form::beta::riemannian::{psd_distance, psd_projection};
+use sci_form::riemannian::{psd_distance, psd_projection};
 use nalgebra::DMatrix;
 
 let a = DMatrix::identity(4, 4);
