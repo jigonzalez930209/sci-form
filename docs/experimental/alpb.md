@@ -1,7 +1,7 @@
 # E6: Analytical Linearized Poisson-Boltzmann (ALPB)
 
-**Module:** `sci_form::experimental::alpb`
-**Feature flag:** `experimental-alpb`
+**Module:** `sci_form::solvation_alpb` (core; promoted E3)
+**Feature flag:** none (core)
 
 ---
 
@@ -46,7 +46,7 @@ where $\gamma_{SA}$ is the surface tension parameter (default: 0.005 kcal/mol/Å
 ## API
 
 ```rust
-use sci_form::experimental::alpb::*;
+use sci_form::solvation_alpb::*;
 
 // Compute Born radii
 let born = compute_born_radii(&elements, &positions);
