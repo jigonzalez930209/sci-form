@@ -11,24 +11,24 @@
 | ID | Module | Feature flag | Description |
 |----|--------|-------------|-------------|
 | A1 | `alpha::dft` | `alpha-dft` | Kohn-Sham DFT (SVWN / PBE) |
-| A2 | `alpha::reaxff` | `alpha-reaxff` | ReaxFF reactive force field |
+| A2 | `forcefield::reaxff` (core, F78) | — | ReaxFF reactive force field |
 | A3 | `alpha::mlff` | `alpha-mlff` | Neural network force field with AEV descriptors |
-| A4 | `alpha::obara_saika` | `alpha-obara-saika` | Obara-Saika ERIs and Boys function |
-| A5 | `alpha::cga` | `alpha-cga` | CGA motor algebra for dihedral refinement |
+| A4 | `scf::obara_saika` (core, F80) | — | Obara-Saika ERIs and Boys function |
+| A5 | `cga` (core, F81) | — | CGA motor algebra for dihedral refinement |
 | A6 | `alpha::gsm` | `alpha-gsm` | Growing String Method for reaction paths |
-| A7 | `alpha::sdr` | `alpha-sdr` | Semidefinite relaxation embedding |
+| A7 | `sdr` (core, F83) | — | Semidefinite relaxation embedding |
 | A8 | `alpha::dynamics` | `alpha-dynamics-live` | Live interactive molecular dynamics |
-| A9 | `alpha::imd` | `alpha-imd` | IMD wire-protocol bridge (NAMD/GROMACS) |
-| A10 | `alpha::edl` | `alpha-edl` | Electrochemical double-layer contracts and Helmholtz CPU reference |
+| A9 | `imd` (core, F85) | — | IMD steering forces |
+| A10 | `edl` (core, F86) | — | Electrochemical double-layer models |
 | A11 | `alpha::periodic_linear` | `alpha-periodic-linear` | Periodic k-mesh, Bloch-phase, and linear-scaling spectral contracts |
 | A12 | `alpha::kinetics` | `alpha-kinetics` | HTST and microkinetic contracts with CPU reference rates |
-| A13 | `alpha::render_bridge` | `alpha-render-bridge` | Shared chart and trajectory payload contracts for alpha workflows |
+| A13 | `render_bridge` (core base, F90) | — | Chart/trajectory payloads (domain builders stay alpha) |
 
 ---
 
 ## A1 — Kohn-Sham DFT (`alpha-dft`)
 
-**Module:** `sci_form::alpha::dft`
+**Module:** `sci_form::alpha::dft` (gated; F77 validated 2026-10-14: dE ≤ 7.2e-5 Ha vs PySCF, gap vs 1e-5)
 
 Density functional theory solver using a minimal Gaussian basis. Supports SVWN (LDA) and PBE (GGA) functionals. For systems up to ~20 atoms in the current implementation.
 
@@ -68,7 +68,7 @@ print(f"gap: {result.gap:.3f} eV")
 
 ## A2 — ReaxFF Reactive Force Field (`alpha-reaxff`)
 
-**Module:** `sci_form::alpha::reaxff`
+**Module:** `sci_form::forcefield::reaxff` (core since 2026-10-13, F78; `alpha::reaxff` re-export)
 
 Bond-order-based reactive force field for bond breaking and formation. Includes EEM charge equilibration and central-difference gradients (parallelized with the `parallel` feature).
 
@@ -110,7 +110,7 @@ The central-difference gradient loop is parallelized under `features = ["paralle
 
 ## A3 — Neural Network Force Field (`alpha-mlff`)
 
-**Module:** `sci_form::alpha::mlff`
+**Module:** `sci_form::alpha::mlff` (gated; F79 validated 2026-10-14: AEV exact, E 5.1e-14, F 6.4e-6; TorchANI/MD17 gaps)
 
 Machine-learned force field using Atomic Environment Vectors (AEVs) / Behler-Parrinello symmetry functions as descriptors. The AEV computation (`compute_aevs`) is parallelized with the `parallel` feature.
 
@@ -162,7 +162,7 @@ print(f"MLFF energy: {mlff_result.energy:.4f} eV")
 
 ## A4 — Obara-Saika ERIs and Boys Function (`alpha-obara-saika`)
 
-**Module:** `sci_form::alpha::obara_saika`
+**Module:** `sci_form::scf::obara_saika` (core since 2026-10-14, F80: Boys 5.6e-14, ERI 3.1e-14)
 
 Two-electron repulsion integrals (ERIs) via the Obara-Saika recurrence, and the Boys function $F_n(x)$ needed for Gaussian-based SCF. Required for `alpha-dft` and forms the integral engine for HF/DFT calculations.
 
@@ -196,7 +196,7 @@ const eri = JSON.parse(alpha_eri_ssss(shellA_json, shellB_json, shellC_json, she
 
 ## A5 — CGA Dihedral Refinement (`alpha-cga`)
 
-**Module:** `sci_form::alpha::cga`
+**Module:** `sci_form::cga` (core since 2026-10-14, F81: motors 3.4e-15 vs Rodrigues+clifford)
 
 Conformal Geometric Algebra (CGA) motor rotation for dihedral angle refinement. Provides numerically exact rigid-body rotation of atom subtrees around arbitrary bond axes — avoids the small-angle approximation errors of Cartesian torsion updates.
 
@@ -227,7 +227,7 @@ const rotated = JSON.parse(alpha_rotate_dihedral_cga(
 
 ## A6 — Growing String Method (`alpha-gsm`)
 
-**Module:** `sci_form::alpha::gsm`
+**Module:** `sci_form::alpha::gsm` (gated; F82 validated 2026-10-14: MB barrier 1.6e-3 vs ASE; arc-length fix)
 
 Reaction path interpolation and transition-state search via the Growing String Method. Nodes are added from both reactant and product ends toward the transition state, using UFF/MMFF for node relaxation.
 
@@ -261,7 +261,7 @@ const ts = JSON.parse(alpha_gsm_find_ts(smiles, reactant_json, product_json, con
 
 ## A7 — Semidefinite Relaxation Embedding (`alpha-sdr`)
 
-**Module:** `sci_form::alpha::sdr`
+**Module:** `sci_form::sdr` (core since 2026-10-14, F83: embeds 7e-15, beats CVXPY)
 
 Embeds atoms in 3D by solving a semidefinite program (SDP) relaxation of the distance geometry problem. Conceptually eliminates the retry loop of ETKDG for challenging ring systems by finding the global minimum of the distance bounds satisfaction.
 
@@ -294,7 +294,7 @@ const result = JSON.parse(alpha_sdr_embed(distance_pairs_json, n_atoms, config_j
 
 ## A8 & A9 — Live MD and IMD Bridge (`alpha-dynamics-live`, `alpha-imd`)
 
-**Module:** `sci_form::alpha::dynamics`
+**Module:** `sci_form::alpha::dynamics_live` (gated; F84 validated 2026-10-14: UFF forces 3.6e-13 vs RDKit; steering → `imd` core)
 
 **A8 (`alpha-dynamics-live`):** Real-time molecular dynamics integration (Verlet / velocity Verlet) with per-frame callbacks — suitable for interactive visualization or frame streaming to a WebSocket.
 
@@ -320,7 +320,7 @@ sim.start();
 
 ## A10 — Electrochemistry / EDL (`alpha-edl`)
 
-**Module:** `sci_form::alpha::edl`
+**Module:** `sci_form::edl` (core since 2026-10-14, F86: worst 2e-14 vs Grahame/Stern)
 
 Defines serializable electrical double-layer inputs and outputs for electrochemical interface work. Models include Helmholtz (compact-layer only), Gouy-Chapman (diffuse-layer only), and Gouy-Chapman-Stern (coupled compact/diffuse). Contains CPU reference solvers and adapters for CPM, EEQ, and ALPB coupling.
 
@@ -422,7 +422,7 @@ sci-form edl-scan --v-min -0.5 --v-max 0.5 --n-points 50 --model gcs
 
 ## A11 — Periodic Linear-Scaling (`alpha-periodic-linear`)
 
-**Module:** `sci_form::alpha::periodic_linear`
+**Module:** base in `sci_form::kmesh` (core, F88) + KPM/RandNLA adapters gated in alpha
 
 Defines reusable periodic spectral contracts and CPU reference reciprocal-space helpers. Supports Monkhorst-Pack and gamma-centered k-meshes, Bloch-phase factors, k-point integration, band structure, and density-of-states calculations. Integrates with future KPM and randomized low-rank adapters.
 
@@ -489,7 +489,7 @@ sci-form kmesh --grid 4 4 4 --centering monkhorst-pack
 
 ## A12 — Kinetics (`alpha-kinetics`)
 
-**Module:** `sci_form::alpha::kinetics`
+**Module:** `sci_form::alpha::kinetics` (gated; F87 validated 2026-10-14: Eyring 1.9e-16, equilibrium 8e-16; Cantera gap)
 
 Defines elementary-step, HTST, and microkinetic trace contracts for catalytic and surface-chemistry workflows. Computes transition-state-theory rates, temperature sweeps, and microkinetic steady-state solutions. Integrates with GSM and MBH for barrier estimation.
 
@@ -578,7 +578,7 @@ sci-form htst-rate --activation 0.45 --reaction -0.10 --temperature 298.15
 
 ## A13 — Render Bridge (`alpha-render-bridge`)
 
-**Module:** `sci_form::alpha::render_bridge`
+**Module:** base in `sci_form::render_bridge` (core, F90) + domain builders gated in alpha
 
 Defines solver-agnostic payloads for charts, traces, and trajectory visualizations. Shared chart generator for EDL profiles, band structures, microkinetic population traces, Arrhenius plots, and capacitance scans. Converts computed results into Arrow RecordBatch format for transport to web frontends or Jupyter notebooks.
 
