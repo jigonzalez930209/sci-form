@@ -13,14 +13,14 @@
 | B1 | `beta::kpm` | `beta-kpm` | Kernel Polynomial Method — O(N) DOS |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian vibrational analysis |
 | B3 | `beta::randnla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) diagonalization |
-| B4 | `beta::riemannian` | `beta-riemannian` | Riemannian geometry on the PSD cone |
-| B5 | `beta::cpm` | `beta-cpm` | Constant Potential Method charge equilibration |
+| B4 | `riemannian` (core, F94) | — | Riemannian geometry on the PSD cone |
+| B5 | `cpm` (core, F95) | — | Constant Potential Method charge equilibration |
 
 ---
 
 ## B1 — Kernel Polynomial Method (`beta-kpm`)
 
-**Module:** `sci_form::beta::kpm`
+**Module:** `sci_form::beta::kpm` (gated; F91 validated 2026-10-14: moments 3.5e-15, DOS 1.7e-14, Mulliken; pybinding gap)
 
 Computes the density of states (DOS) and stochastic Mulliken charges using a **Chebyshev polynomial expansion** of the Hamiltonian. Avoids diagonalization entirely, achieving $O(N)$ cost for sparse systems.
 
@@ -85,7 +85,7 @@ The stochastic trace estimation (`ChebyshevExpansion::from_matrix`) generates al
 
 ## B2 — Mobile Block Hessian (`beta-mbh`)
 
-**Module:** `sci_form::beta::mbh`
+**Module:** `sci_form::beta::mbh` (gated; F92 validated 2026-10-14: stretch 1.3e-5 SI; Ghysels gap)
 
 Computes vibrational frequencies for large molecules by partitioning atoms into **mobile blocks** and computing a reduced-dimension Hessian. Dramatically reduces the cost of normal-mode analysis versus the full $3N \times 3N$ Hessian.
 
@@ -128,7 +128,7 @@ print(f"ZPE: {result.zero_point_energy:.4f} Ha")
 
 ## B3 — Randomized Nyström EHT (`beta-randnla`)
 
-**Module:** `sci_form::beta::randnla`
+**Module:** `sci_form::beta::randnla` (gated; F93 validated 2026-10-14: valid regime 3.9e-3, production exact; 1e-3 gap)
 
 Approximates the EHT eigenvalue problem using a **randomized Nyström sketch**: projects the $N \times N$ Hamiltonian onto a $k$-dimensional random subspace before computing eigenvalues. Cost drops from $O(N^3)$ (full diag) to $O(N k^2)$ — enabling EHT for systems of thousands of atoms.
 
@@ -175,7 +175,7 @@ print(f"RandNLA gap: {result.gap:.3f} eV  (k={result.sketch_dim}/{result.n_basis
 
 ## B4 — Riemannian PSD Geometry (`beta-riemannian`)
 
-**Module:** `sci_form::beta::riemannian`
+**Module:** `sci_form::riemannian` (core since 2026-10-14, F94: projection 8.2e-12, optimizer like scipy; Frobenius proxy)
 
 Operations on the **manifold of positive semidefinite (PSD) matrices**, used by the SDR embedding (`alpha-sdr`) and Riemannian L-BFGS optimizer. Provides geodesic distance, projections onto the PSD cone, and Riemannian gradient maps.
 
@@ -226,7 +226,7 @@ proj = beta_psd_projection(m_flat, dim=3)
 
 ## B5 — Constant Potential Method (`beta-cpm`)
 
-**Module:** `sci_form::beta::cpm`
+**Module:** `sci_form::cpm` (core since 2026-10-13, F95 vs LAMMPS electrode/conp)
 
 Electrochemical charge equilibration at a **fixed external electrostatic potential** $V_0$. Models electrodes and surfaces by constraining the total charge to match the applied potential, relevant for electrolyte-electrode simulations.
 
