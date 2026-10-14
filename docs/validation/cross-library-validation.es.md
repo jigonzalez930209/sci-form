@@ -1991,6 +1991,94 @@ detrás de su feature alpha/beta.
 
 
 
+### 14.4 Segunda campaña + promoción ronda 2 (2026-10-14)
+
+16 fichas alpha/beta con gates externos (44 tests en
+`tests/{alpha,beta}_*_validation.rs`, todos verdes; `lib` 739/739 default,
+951 con features de validación). Herramientas nuevas en
+`validation/refs.lock.json`: clifford 1.5.1, cvxpy 1.9.3, jsonschema 4.26.0,
+cantera/pysisyphus/geomstats/torch instalados (con gaps documentados);
+pybinding no instalable (ruedas ausentes) → numpy en su lugar.
+
+- **F80 Obara-Saika**: `oracle_obara_saika.py` (Boys por gammainc de scipy;
+  ERIs primitivas vía PySCF `int2e` con bases de una primitiva —
+  **hay que desnormalizar**: libcint normaliza, N(a)=(2a/π)^{3/4}).
+  Gate 3/3: Boys 5.6e-14, ERI 3.1e-14, Schwarz 2.1e-15 + sweep de no-violación.
+  **Fix**: la recursión ascendente catastrófica en x pequeño → serie x≤6 +
+  erf a precisión máquina (Taylor + Lentz) + recursión arriba; el Lentz
+  necesitaba el recíproco (la fracción de Laplace es 1/CF).
+  **Promovido**: `scf::{obara_saika,screening}` sin gate.
+- **F86 EDL**: `oracle_edl.py` (Grahame/Stern cerrados en SI, 54 GC + 54 GCS
+  + scans). Gate 4/4, peor 2.0e-14 (tol 1e-9); scan C(σ) par con mínimo en
+  cero. **Promovido**: `alpha::edl` → `src/edl`.
+- **F77 DFT**: `generate_dft_reference.py` (PySCF RKS/STO-3G lda,vwn+pbe,
+  6 moléculas × 2). Gate 12/12: dE ≤ 7.2e-5 Ha, dgap ≤ 9.7e-3 eV (tol 1e-3 /
+  0.05; el criterio 1e-5 no aplica con base/grid propias). Hallazgo: el
+  oráculo truncaba kB (...262 vs ...262145) y el error se amplificaba ×|x|.
+  Queda gateado (gap vs 1e-5).
+- **F91 KPM**: `oracle_kpm.py` (GOE + espectro con gap, eigh). Gate 3/3:
+  momentos 3.5e-15, DOS Jackson L2 1.7e-14 (σ=πa/M con `a` de Gershgorin;
+  Gauss queda en 0.054 irreducible por forma de kernel), Mulliken gap 3.8e-5
+  y finite-T 2.6e-2. **Fixes**: factor 2 espurio en k≥1 de la expansión FD y
+  factor 2 de espín ausente en Mulliken (Tr daba N en vez de N/2 estados).
+  Queda gateado (pybinding ausente; T=0 en metales sufre Gibbs).
+- **F93 RandNLA**: `oracle_randnla.py` (overlaps, eigh/sqrtm). Gate 3/3.
+  **Gap cuantificado**: single-shot rank-N/4 da ~0.13, no 1e-3 (faltan power
+  iterations); régimen casi-identidad 3.9e-3; producción exacta (N=96 ejerce
+  el fallback). Queda gateado.
+- **F94 Riemann**: `oracle_riemannian.py` (eigh-clip, Frobenius, L-BFGS-B).
+  Gate 4/4: proyección 8.2e-12 (round-off entre eigensolvers), distancia
+  2.2e-16, optimizador factible como scipy. **Gap**: `psd_distance` es el
+  proxy Frobenius, no la geodésica afín-invariante (el doc decía Retr de
+  2º orden; el código es P₊(X+ξ) de 1er orden). **Promovido**:
+  `beta::riemannian` → `src/riemannian`.
+- **F92 MBH**: `oracle_mbh.py` (stretches diatómicos SI, valida el 108.59).
+  Gate 2/2: stretch 1.3e-5, benceno 1 bloque 24/36 DOF speedup 1.5. Ceros:
+  modos rotacionales de lineales filtran cúspide cuártica al Hessiano fd
+  (tol 5). Gap: ±2 cm⁻¹ experimental (Ghysels). Queda gateado.
+- **F81 CGA**: `oracle_cga.py` (Rodrigues + `clifford` Cl(4,1), convención
+  verificada a 1e-15). Gate 2/2: motores 3.4e-15 (valida el encoding de
+  bitmasks), diedro 6.6e-15; ángulo ≡ −numpy mod 2π (quiralidad espejo).
+  Re-exports nuevos para el gate. **Promovido**: `alpha::cga` → `src/cga`
+  (gaps refine/materials documentados).
+- **F87 cinética**: `oracle_kinetics.py` (Eyring CODATA + solve_ivp RK45).
+  Gate 3/3: rates 1.9e-16, trazas (Euler vs RK45 9e-4), equilibrio 8e-16.
+  Gap: Cantera (falta I/O de mecanismos). Queda gateado.
+- **F90 render**: `oracle_render_charts.py` (schema draft 2020-12 +
+  adversariales) + `--check` con `jsonschema` 2/2 PASS sobre JSON emitido
+  por Rust. Gate cargo 2/2. **Promovido (base)**: tipos + pack/verify →
+  `src/render_bridge`; builders de dominio en alpha.
+- **F85 IMD**: `oracle_imd.py` (steering armónico, semántica last-wins).
+  Gate 3/3: E/F 1.1e-13, gradiente 7.6e-9. **Promovido**: steering →
+  `src/imd` (`dynamics_live` re-exporta).
+- **F88 periódico**: `oracle_periodic.py` (ASE monkhorst_pack + formas
+  cerradas + cadenas TB). Gate 4/4: mallas (10 casos), fases 3.6e-16,
+  bandas 4.4e-16. Gap: H(k) complejo (solo cos). **Promovido (base)**:
+  mallas/fases/Bloch/BZ/EHT → `src/kmesh`; adaptadores KPM/RandNLA en alpha.
+- **F82 GSM**: `oracle_gsm.py` (ASE CI-NEB/FIRE en Müller-Brown, TS −40.66
+  de libro). Gate 2/2: barrera 1.6e-3, TS 0.028. **Fix**: reparametrización
+  por arco cada iteración (sin ella los nodos colapsaban y la barrera daba
+  0.02). pyGSM/Transition1x no corridos. Queda gateado.
+- **F84 dinámica**: `oracle_dynamics.py` (RDKit UFF CalcGrad, construcción
+  F16). Gate 3/3: fuerzas 3.6e-13, drift NVE 4.4e-4, reversibilidad 5.7e-17,
+  Berendsen ⟨T⟩=306.7K. Gap: trayectoria vs LAMMPS (sin UFF en LAMMPS).
+  Queda gateado.
+- **F79 MLFF**: `oracle_mlff.py` (fórmulas BP + nets tiny + fuerzas FD,
+  ETKDG 8 moléculas). Gate 2/2: AEV exacto (layout 256+16 con cola de ceros
+  documentada; pairing shift/eta), E 5.1e-14, F 6.4e-6 (FD h=1e-4),
+  GELU 1.1e-6 (límite del erf A&S). Gaps: tensores TorchANI (split por
+  especie por diseño), MD17/SPICE (faltan pesos). Queda gateado.
+- **F83 SDR**: `oracle_sdr.py` (numpy + CVXPY/SCS). Gate 3/3: proyecciones
+  exactas, embeds exactos 7e-15 (mejor que CVXPY 1e-8), ruidoso ≤ 3× óptimo.
+  **Fix**: umbral de polvo PSD en el conteo. **Promovido**:
+  `alpha::sdr` → `src/sdr`.
+- **Promoción ronda 2 (2026-10-14, solo-criterio)**: F80→`scf`, F81→`cga`,
+  F83→`sdr`, F85→`imd`, F86→`edl`, F88-base→`kmesh`, F90-base→
+  `render_bridge`, F94→`riemannian`. Re-exports `alpha::`/`beta::` y
+  features como alias no-op; `lib` 827/827. Quedan gateados: dft, mlff, gsm,
+  dynamics_live, kinetics, periodic-adapters, render-builders, kpm, mbh,
+  rand_nla, reaction_dynamics (F89 excluido por diseño).
+
 > Medido el 2026-10-12 en la misma máquina de referencia (Intel i5-10500H,
 > 12 hilos lógicos), build `--release`.
 
