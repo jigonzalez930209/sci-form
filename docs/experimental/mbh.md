@@ -53,7 +53,7 @@ $$\nu_i = \frac{1}{2\pi c} \sqrt{\lambda_i} \times 108.59$$
 ## API
 
 ```rust
-use sci_form::experimental::mbh::*;
+use sci_form::beta::mbh::*;
 
 // Detect rigid blocks
 let decomposition = detect_rigid_blocks(&elements, &positions, &ring_info);
