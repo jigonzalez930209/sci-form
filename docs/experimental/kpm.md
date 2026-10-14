@@ -1,7 +1,7 @@
 # E4: Kernel Polynomial Method (KPM)
 
-**Module:** `sci_form::experimental::kpm`
-**Feature flag:** `experimental-kpm`
+**Module:** `sci_form::beta::kpm` (gated; F91 validated, promotion pending)
+**Feature flag:** `beta-kpm` (`experimental-kpm` alias)
 
 ---
 
@@ -98,6 +98,15 @@ let mulliken = compute_kpm_mulliken(&hamiltonian, &overlap, n_electrons, &config
 | $N = 10000$ | Infeasible | $O(10^6)$ |
 
 ---
+
+## Validation (F91, 2026-10-14)
+
+External gate `tests/beta_kpm_validation.rs --features beta-kpm` vs
+`scripts/validation/oracle_kpm.py` (numpy eigh, GOE + gapped spectra):
+exact moments 3.5e-15, Jackson DOS L2 1.7e-14 (σ=πa/M with Gershgorin `a`;
+Gaussian shape 0.054 irreducible), Mulliken gapped 3.8e-5 / finite-T
+2.6e-2. Fixes: spurious 2× on k≥1 FD terms, missing spin-2 in Mulliken.
+Gap: T=0 on gapless spectra (Gibbs); pybinding uninstallable.
 
 ## Tests
 
