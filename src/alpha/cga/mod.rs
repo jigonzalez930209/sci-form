@@ -9,8 +9,9 @@ mod motor;
 mod multivector;
 
 pub use conformer::{
-    apply_motor_to_subtree, dihedral_motor, embed_point, extract_point, refine_torsion_cga,
+    apply_motor_to_subtree, dihedral_angle, dihedral_motor, embed_point, extract_point,
+    refine_torsion_cga,
 };
 pub use materials::{assemble_framework_cga, place_sbu_cga, CgaFrame};
-pub use motor::Motor;
+pub use motor::{conformal_point, extract_euclidean, Motor};
 pub use multivector::Multivector;
