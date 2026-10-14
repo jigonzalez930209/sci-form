@@ -212,10 +212,10 @@ mod tests {
         let f0 = boys_function(0, 0.0);
         assert!((f0 - 1.0).abs() < 1e-10);
 
-        // F_0(1) analytical
+        // F_0(1) analytical: sqrt(pi) * erf(1) / 2, erf(1) = 0.8427007929...
         let f0_1 = boys_function(0, 1.0);
-        let expected = (PI / 1.0).sqrt() * erf_approx(1.0) / 2.0;
-        assert!((f0_1 - expected).abs() < 1e-8);
+        let expected = (PI / 1.0).sqrt() * 0.8427007929497149 / 2.0;
+        assert!((f0_1 - expected).abs() < 1e-12);
     }
 
     #[test]
