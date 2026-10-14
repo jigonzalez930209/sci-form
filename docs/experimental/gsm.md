@@ -39,7 +39,7 @@ At each iteration, new nodes are added along the string:
 ## API
 
 ```rust
-use sci_form::experimental::gsm::*;
+use sci_form::alpha::gsm::*;
 
 // Interpolate between two geometries
 let midpoint = interpolate_node(&reactant, &product, 0.5);
