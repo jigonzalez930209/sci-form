@@ -1,0 +1,41 @@
+{
+ "ficha": "F92",
+ "oracle": "oracle_mbh.py (SI closed form; validates the 108.59 factor)",
+ "note": "Analytic harmonic core only. Experimental/literature +-2 cm-1 (Ghysels et al.) needs a real PES + anharmonicity: unmet promotion criterion, documented gap.",
+ "stretch_tolerance_rel": 0.001,
+ "zero_tolerance_cm": 5.0,
+ "cases": [
+  {
+   "name": "H2-like",
+   "m1_amu": 1.008,
+   "m2_amu": 1.008,
+   "k_kcal_per_mol_A2": 100.0,
+   "r0_A": 1.0,
+   "nu_ref_cm": 1529.6074792825978
+  },
+  {
+   "name": "N2-like",
+   "m1_amu": 14.007,
+   "m2_amu": 14.007,
+   "k_kcal_per_mol_A2": 300.0,
+   "r0_A": 1.0,
+   "nu_ref_cm": 710.719657509558
+  },
+  {
+   "name": "CO-like",
+   "m1_amu": 12.011,
+   "m2_amu": 15.999,
+   "k_kcal_per_mol_A2": 250.0,
+   "r0_A": 1.0,
+   "nu_ref_cm": 655.5198130937134
+  },
+  {
+   "name": "HCl-like",
+   "m1_amu": 1.008,
+   "m2_amu": 35.453,
+   "k_kcal_per_mol_A2": 120.0,
+   "r0_A": 1.0,
+   "nu_ref_cm": 1201.5543393115668
+  }
+ ]
+}
