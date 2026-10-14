@@ -17,14 +17,14 @@ New methods gated by `alpha-*` feature flags. Functionally correct but API shape
 | ID | Module | Feature flag | Description |
 |----|--------|-------------|-------------|
 | A1 | `alpha::dft` | `alpha-dft` | Kohn-Sham DFT (SVWN / PBE) |
-| A2 | `alpha::reaxff` | `alpha-reaxff` | ReaxFF reactive force field |
+| A2 | `forcefield::reaxff` (core, F78) | — | ReaxFF reactive force field |
 | A3 | `alpha::mlff` | `alpha-mlff` | Neural network FF with AEV descriptors |
-| A4 | `alpha::obara_saika` | `alpha-obara-saika` | Obara-Saika ERIs + Boys function |
-| A5 | `alpha::cga` | `alpha-cga` | CGA motor algebra dihedral refinement |
+| A4 | `scf::obara_saika` (core, F80) | — | Obara-Saika ERIs + Boys function |
+| A5 | `cga` (core, F81) | — | CGA motor algebra dihedral refinement |
 | A6 | `alpha::gsm` | `alpha-gsm` | Growing String Method |
-| A7 | `alpha::sdr` | `alpha-sdr` | Semidefinite relaxation embedding |
+| A7 | `sdr` (core, F83) | — | Semidefinite relaxation embedding |
 | A8 | `alpha::dynamics` | `alpha-dynamics-live` | Live interactive MD |
-| A9 | `alpha::imd` | `alpha-imd` | IMD wire-protocol bridge |
+| A9 | `imd` (core, F85) | — | IMD steering forces |
 
 ```typescript
 // WASM: subpath import
@@ -47,8 +47,8 @@ Validated methods gated by `beta-*` feature flags. API is stable within minor ve
 | B1 | `beta::kpm` | `beta-kpm` | Kernel Polynomial Method — O(N) DOS |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian |
 | B3 | `beta::randnla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) |
-| B4 | `beta::riemannian` | `beta-riemannian` | Riemannian PSD cone geometry |
-| B5 | `beta::cpm` | `beta-cpm` | Constant Potential Method |
+| B4 | `riemannian` (core, F94) | — | Riemannian PSD cone geometry |
+| B5 | `cpm` (core, F95) | — | Constant Potential Method |
 
 ```typescript
 // WASM: subpath import
