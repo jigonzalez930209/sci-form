@@ -11,15 +11,60 @@
 use super::gaussian_integrals::{distance_squared, gaussian_product_center};
 use std::f64::consts::PI;
 
-/// Approximate erf(x) using Abramowitz & Stegun formula 7.1.26.
-fn erf_approx(x: f64) -> f64 {
+/// Error function to machine precision (no std `erf` on stable Rust).
+///
+/// Taylor series for |x| <= 1, Lentz continued fraction for erfc(x) above.
+fn erf_accurate(x: f64) -> f64 {
+    if x.abs() <= 1.0 {
+        // erf(x) = 2/sqrt(pi) * sum_k (-1)^k x^(2k+1) / (k! (2k+1))
+        let mut term = x;
+        let mut sum = x;
+        let x2 = x * x;
+        for k in 1..60 {
+            term *= -x2 * (2 * k - 1) as f64 / (k * (2 * k + 1)) as f64;
+            sum += term;
+            if term.abs() < 1e-18 * sum.abs().max(1e-300) {
+                break;
+            }
+        }
+        return 2.0 * sum / PI.sqrt();
+    }
+    // erfc(x) = x*e^(-x^2)/sqrt(pi) * 1/(x^2 + (1/2)/(1 + 1/(x^2 + (3/2)/(1 + ...))))
+    // Lentz's algorithm on the Laplace continued fraction.
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
-    let x = x.abs();
-    let t = 1.0 / (1.0 + 0.3275911 * x);
-    let poly = t
-        * (0.254829592
-            + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-    sign * (1.0 - poly * (-x * x).exp())
+    let z = x.abs();
+    let tiny = 1e-300;
+    let mut f = tiny;
+    let mut c = 1.0 / tiny;
+    let mut d = 0.0;
+    let z2 = z * z;
+    // Lentz init: f = C = b0 = z^2, D = 0; pairs (a_n, b_n) = Laplace sequence.
+    let mut f = z2;
+    let mut c = z2;
+    let mut d = 0.0;
+    let mut n = 1u32;
+    loop {
+        let a = n as f64 / 2.0;
+        let b = if n % 2 == 1 { 1.0 } else { z2 };
+        d = b + a * d;
+        if d.abs() < tiny {
+            d = tiny;
+        }
+        d = 1.0 / d;
+        c = b + a / c;
+        if c.abs() < tiny {
+            c = tiny;
+        }
+        let delta = c * d;
+        f *= delta;
+        n += 1;
+        if (delta - 1.0).abs() < 1e-15 || n > 200 {
+            break;
+        }
+    }
+    // The Laplace fraction is the reciprocal of the b0-anchored CF value.
+    let erfc = z * (-z2).exp() / PI.sqrt() / f;
+    sign * (1.0 - erfc.min(2.0).max(0.0))
 }
 
 /// Shell pair data pre-computed for efficient ERI evaluation.
@@ -68,35 +113,30 @@ impl ShellPairData {
 
 /// Boys function F_n(x) for nuclear attraction and ERI integrals.
 ///
-/// Uses asymptotic expansion for large x and Taylor series for small x.
+/// Taylor series for x <= 6 (no cancellation issues), F_0 from the
+/// machine-precision erf plus upward recursion above (stable there:
+/// the 2x denominator dominates and exp(-x) is negligible).
 pub fn boys_function(n: usize, x: f64) -> f64 {
-    if x < 1e-12 {
+    if x <= 0.0 {
         return 1.0 / (2 * n + 1) as f64;
     }
-    if x > 30.0 {
-        // Asymptotic: F_n(x) ≈ (2n-1)!! / 2^(n+1) * sqrt(π/x^(2n+1))
-        let pi_over_x = (PI / x).sqrt();
-        let mut result = pi_over_x / 2.0;
-        for i in 1..=n {
-            result *= (2 * i - 1) as f64 / (2.0 * x);
+    if x <= 6.0 {
+        // F_n(x) = sum_k (-x)^k / (k! (2n+2k+1))
+        let mut term = 1.0 / (2 * n + 1) as f64;
+        let mut sum = term;
+        for k in 1..200 {
+            term *= -x * (2 * n + 2 * k - 1) as f64 / (k * (2 * n + 2 * k + 1)) as f64;
+            sum += term;
+            if term.abs() < 1e-17 * sum.abs().max(1e-300) {
+                break;
+            }
         }
-        return result;
+        return sum;
     }
 
-    // Numerical integration / series expansion
-    // Using upward recursion from F_0
-    let f0 = (PI / x).sqrt() * erf_approx(x.sqrt()) / 2.0;
+    let f0 = (PI / x).sqrt() * erf_accurate(x.sqrt()) / 2.0;
     if n == 0 {
         return f0;
-    }
-
-    // Downward recursion: F_{n-1}(x) = (2x * F_n(x) + exp(-x)) / (2n - 1)
-    // Start from high n and recurse down for stability
-    let n_max = n + 15;
-    let f_high = 0.0;
-    // Very rough initial estimate for high n
-    for _k in (0..=n_max).rev() {
-        // Not needed for the upward path
     }
 
     // Upward recursion: F_{n+1}(x) = ((2n+1)*F_n(x) - exp(-x)) / (2x)
@@ -105,8 +145,6 @@ pub fn boys_function(n: usize, x: f64) -> f64 {
     for i in 0..n {
         f_curr = ((2 * i + 1) as f64 * f_curr - exp_neg_x) / (2.0 * x);
     }
-
-    let _ = f_high;
     f_curr
 }
 
