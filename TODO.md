@@ -6,6 +6,16 @@
 > `electrode/conp`, ReaxFF vs LAMMPS `reaxff`. Suites: `lib` 712/712,
 > `cross_validation` 38/38, `regression` 429/429 (release). Detalle por ficha
 > en `docs/validation/cross-library-validation.es.md` (§13–§14).
+>
+> **Segunda campaña (2026-10-14)**: 16 fichas alpha/beta con gates externos —
+> F77 (DFT/PySCF), F79 (MLFF/BP), F80 (Boys/ERI: fix serie+erf), F81 (CGA/
+> clifford), F82 (GSM/ASE: fix reparametrización), F83 (SDR/CVXPY: fix polvo
+> PSD), F84 (dinámica/RDKit), F85 (IMD), F86 (EDL/Grahame), F87 (cinética/
+> Eyring+ivp), F88 (periódico/ASE), F90 (render/jsonschema), F91 (KPM: fixes
+> 2×/espín-2), F92 (MBH/SI), F93 (RandNLA: gap 1e-1 doc.), F94 (Riemann/
+> scipy). 44 gates en `tests/{alpha,beta}_*_validation.rs`, todos verdes.
+> Suites: `lib` 739/739 (951 con features de validación), `cross_validation`
+> 38/38. Promoción a la lib pendiente de decisión (F89 queda en alpha).
 
 ## Ciclo actual — Kohn–Sham DFT en la librería
 
