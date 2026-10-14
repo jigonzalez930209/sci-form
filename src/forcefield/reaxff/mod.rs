@@ -1,4 +1,4 @@
-//! **ALPHA** — ReaxFF reactive force field.
+//! ReaxFF reactive force field (core since 2026-10-13, F78 vs LAMMPS `reaxff`).
 //!
 //! Implements continuous bond-order based reactive force fields that allow
 //! bond breaking and formation during molecular dynamics.
@@ -10,15 +10,10 @@
 //! - [`energy`] — Bonded energy terms as functions of continuous BO
 //! - [`nonbonded`] — van der Waals + shielded Coulomb
 //! - [`eem`] — Electronegativity Equalization Method for charges
-//! - [`params`] — ReaxFF parameter parsing
-//! - [`gradients`] — Analytical gradients for all terms
+//! - [`params`] — ReaxFF parameter parsing (`ffield.reax.cho` pair table)
+//! - [`gradients`] — Numerical (central-difference) gradients
 //!
-//! # Feature gate
-//!
-//! Requires `alpha-reaxff`:
-//! ```toml
-//! sci-form = { version = "0.11", features = ["alpha-reaxff"] }
-//! ```
+//! `alpha-reaxff` survives as a no-op feature alias.
 
 pub mod bond_order;
 pub mod eem;
