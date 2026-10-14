@@ -1,7 +1,7 @@
 # E2: Randomized Numerical Linear Algebra (RandNLA)
 
-**Module:** `sci_form::experimental::rand_nla`
-**Feature flag:** `experimental-randnla`
+**Module:** `sci_form::beta::rand_nla` (gated; F93 validated, promotion pending)
+**Feature flag:** `beta-randnla` (`experimental-randnla` alias)
 
 ---
 
@@ -66,6 +66,14 @@ $$\text{error} = \frac{\|HC - SCE\|_F}{\|SCE\|_F}$$
 If the error exceeds 0.1%, the module falls back to exact diagonalization and reports in the `rand_nla_error` field.
 
 ---
+
+## Validation (F93, 2026-10-14)
+
+External gate `tests/beta_randnla_validation.rs --features beta-randnla` vs
+`scripts/validation/oracle_randnla.py` (numpy/scipy, overlap spectra):
+characterization rank-N/4 ~0.13 (quantified gap: 1e-3 needs power
+iterations), near-identity regime 3.9e-3 with fallback OFF, default config
+exact incl. exercised fallback at N=96.
 
 ## Tests
 
