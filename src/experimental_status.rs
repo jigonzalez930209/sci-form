@@ -41,6 +41,11 @@
 //! 2. Validate spectral accuracy within 0.1 eV of full diagonalization
 //! 3. Add sparse matrix support (nalgebra-sparse or sprs)
 //!
+//! **Validación externa (2026-10-14, F91)**: momentos exactos 3.5e-15,
+//! DOS Jackson L2 1.7e-14 y Mulliken (gap 3.8e-5 / finite-T 2.6e-2) vs
+//! numpy eigh (`tests/beta_kpm_validation.rs`). Fixes aplicados: factor 2
+//! en coeficientes FD y degeneración de espín 2 en Mulliken.
+//!
 //! ### EXP-202: Multi-Basin Hopping (MBH)
 //!
 //! **Feature flag:** `experimental-mbh`
@@ -58,6 +63,10 @@
 //! 1. Integrate with `forcefield` module for energy evaluation
 //! 2. Reproduce known global minima for test molecules (alanine dipeptide, etc.)
 //! 3. Compare basin-hopping yield vs multi-seed ETKDG
+//!
+//! **Validación externa (2026-10-14, F92)**: stretches diatómicos vs forma
+//! cerrada SI 1.3e-5 (valida el factor 108.59) y estructura de bloques en
+//! benceno (`tests/beta_mbh_validation.rs`). Gap: ±2 cm⁻¹ experimental.
 //!
 //! ### EXP-203: Randomized Numerical Linear Algebra (RandNLA)
 //!
@@ -77,6 +86,11 @@
 //! 2. Show <1% error in eigenvalues for rank = N/4
 //! 3. Demonstrate speedup for N>500 basis functions
 //!
+//! **Validación externa (2026-10-14, F93)**: caracterización rank-N/4 ~0.13
+//! (gap cuantificado: 1e-3 exige power iterations), régimen válido 3.9e-3,
+//! producción exacta con fallback (`tests/beta_randnla_validation.rs`).
+//! El criterio 2 sigue sin cumplirse.
+//!
 //! ### EXP-204: Spectral Dimensionality Reduction (SDR)
 //!
 //! **Feature flag:** `experimental-sdr`
@@ -94,6 +108,10 @@
 //! 1. Validate embeddings preserve known SAR relationships
 //! 2. Add adaptive bandwidth selection
 //! 3. Compare clustering quality vs Butina (Tanimoto)
+//!
+//! **Validación externa (2026-10-14, F83)**: proyecciones exactas vs numpy,
+//! embeds exactos 7e-15 (mejor que CVXPY/SCS 1e-8), caso ruidoso dentro de
+//! 3× del óptimo (`tests/alpha_sdr_validation.rs`).
 //!
 //! ### EXP-205a: Conformal Geometric Algebra (CGA)
 //!
@@ -113,6 +131,10 @@
 //! 1. Demonstrate advantage in distance geometry constraint handling
 //! 2. Benchmark CGA conformer vs ETKDG quality and speed
 //! 3. Show utility for symmetry-constrained crystal assembly
+//!
+//! **Validación externa (2026-10-14, F81)**: motores 3.4e-15 vs Rodrigues y
+//! `clifford` Cl(4,1), diedros 6.6e-15 (`tests/alpha_cga_validation.rs`).
+//! Convención de ángulo espejo documentada.
 //!
 //! ### EXP-205b: Growing String Method (GSM)
 //!
@@ -134,6 +156,10 @@
 //! 2. Reproduce known barrier heights (SN2, Diels-Alder)
 //! 3. Compare path energy profiles vs NEB reference in 5+ reactions
 //!
+//! **Validación externa (2026-10-14, F82)**: TS en Müller-Brown vs ASE
+//! CI-NEB (barrera 1.6e-3, TS 0.028; `tests/alpha_gsm_validation.rs`).
+//! Fix: reparametrización por arco cada iteración.
+//!
 //! ### EXP-205c: Continuous Phase Methods (CPM)
 //!
 //! **Feature flag:** `experimental-cpm`
@@ -151,6 +177,9 @@
 //! 1. Validate surface energies against DFT reference for binary alloys
 //! 2. Integrate with `materials::UnitCell` for consistent crystal handling
 //! 3. Add Wulff construction for equilibrium crystal shapes
+//!
+//! **Nota 2026-10-13**: CPM promovido a core (`src/cpm`, F95 vs LAMMPS
+//! `electrode/conp`); `beta::cpm` sobrevive como re-export compatible.
 
 // This module is documentation-only; no runtime code.
 // The experimental modules remain behind their respective feature flags.
