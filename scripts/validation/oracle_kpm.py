@@ -102,7 +102,7 @@ def main() -> int:
         charges = (1.0 - np.diag(p)).tolist()
         # Finite-T reference (kT = 0.1 eV): mu bisected for nelec/2
         # spatial states, P = 2 V diag(f) V^T.
-        kt = T_K * 8.617333262e-5
+        kt = T_K * 8.617333262145e-5
         mu_lo, mu_hi = float(w[0]) - 1.0, float(w[-1]) + 1.0
         for _ in range(100):
             mu = (mu_lo + mu_hi) / 2
