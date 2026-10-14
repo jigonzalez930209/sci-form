@@ -35,13 +35,13 @@ Density functional theory solver using a minimal Gaussian basis. Supports SVWN (
 ### Rust
 
 ```rust
-use sci_form::alpha::dft::{compute_dft, DftConfig, DftMethod};
+use sci_form::dft::{solve_ks_dft, DftConfig, DftMethod};
 
 let conf = sci_form::embed("CCO", 42);
 let pos: Vec<[f64;3]> = conf.coords.chunks(3).map(|c| [c[0],c[1],c[2]]).collect();
 
-let config = DftConfig { method: DftMethod::Pbe, max_iter: 200, ..Default::default() };
-let result = compute_dft(&conf.elements, &pos, &config)?;
+let config = DftConfig { method: DftMethod::Pbe, max_iterations: 200, ..Default::default() };
+let result = solve_ks_dft(&conf.elements, &pos, &config)?;
 println!("DFT total energy: {:.6} Ha", result.total_energy);
 println!("HOMO: {:.3} eV,  LUMO: {:.3} eV,  gap: {:.3} eV",
     result.homo_energy, result.lumo_energy, result.gap);
@@ -75,7 +75,7 @@ Bond-order-based reactive force field for bond breaking and formation. Includes 
 ### Rust
 
 ```rust
-use sci_form::alpha::reaxff::{compute_reaxff_energy, compute_reaxff_gradient};
+use sci_form::forcefield::reaxff::{compute_reaxff_gradient, ReaxffParams};
 
 let (energy, grad) = compute_reaxff_gradient(&coords_flat, &elements, &ReaxffParams::default_chon())?;
 println!("ReaxFF energy: {:.4} kcal/mol", energy);
@@ -117,8 +117,7 @@ Machine-learned force field using Atomic Environment Vectors (AEVs) / Behler-Par
 ### Rust
 
 ```rust
-use sci_form::alpha::mlff::{compute_mlff, MlffConfig};
-use sci_form::alpha::symmetry_functions::{compute_aevs, SymmetryFunctionParams};
+use sci_form::alpha::mlff::{compute_aevs, compute_mlff, MlffConfig, SymmetryFunctionParams};
 
 let pos: Vec<[f64;3]> = conf.coords.chunks(3).map(|c| [c[0],c[1],c[2]]).collect();
 
@@ -169,14 +168,13 @@ Two-electron repulsion integrals (ERIs) via the Obara-Saika recurrence, and the 
 ### Rust
 
 ```rust
-use sci_form::alpha::obara_saika::{boys_function, schwarz_bound};
-use sci_form::alpha::obara_saika::eri::{Shell, eri_ssss};
+use sci_form::scf::obara_saika::{boys_function, eri_ssss, schwarz_bound, ShellPairData};
 
 // Boys function F_n(x)
 let f0 = boys_function(0, 2.5);  // F_0(2.5)
 
 // Schwarz upper bound for ERI screening
-let bound = schwarz_bound(1.2, &[0.0, 0.0, 0.0], 0.8, &[1.5, 0.0, 0.0]);
+let bound = schwarz_bound(1.2, [0.0, 0.0, 0.0], 0.8, [1.5, 0.0, 0.0]);
 
 // (ss|ss) ERI
 let shell_s = Shell { alpha: 1.0, center: [0.0, 0.0, 0.0] };
@@ -203,13 +201,14 @@ Conformal Geometric Algebra (CGA) motor rotation for dihedral angle refinement. 
 ### Rust
 
 ```rust
-use sci_form::alpha::cga::{rotate_dihedral, refine_torsion};
+use sci_form::cga::{apply_motor_to_subtree, dihedral_motor, refine_torsion_cga};
 
-// Rotate atom subtree around bond axis by angle_rad
-let new_coords = rotate_dihedral(&coords_flat, &subtree_indices, &axis_a, &axis_b, angle_rad);
+// Rotate atom subtree around the axis_a→axis_b bond by angle_rad
+let motor = dihedral_motor(axis_a, axis_b, angle_rad);
+let new_coords = apply_motor_to_subtree(&coords_flat, &subtree_indices, &motor);
 
 // Iterative torsion refinement toward target dihedral
-let refined = refine_torsion(&coords_flat, &subtree_indices, &axis_a, &axis_b, target_rad, 50)?;
+let refined = refine_torsion_cga(&coords_flat, bond_a, bond_b, &subtree_indices, 50);
 ```
 
 ### WASM / TypeScript
@@ -234,14 +233,14 @@ Reaction path interpolation and transition-state search via the Growing String M
 ### Rust
 
 ```rust
-use sci_form::alpha::gsm::{gsm_interpolate, gsm_find_ts, GsmConfig};
+use sci_form::alpha::gsm::{find_transition_state, interpolate_node, GsmConfig};
 
 // Interpolate geometry at parameter t in [0,1]
-let interp = gsm_interpolate(&reactant_coords, &product_coords, 0.5);
+let interp = interpolate_node(&reactant_coords, &product_coords, 0.5);
 
 // Find transition state
 let config = GsmConfig { max_nodes: 11, ..Default::default() };
-let ts_result = gsm_find_ts("CCO>>CC=O", &reactant_coords, &product_coords, &config)?;
+let ts_result = find_transition_state(&reactant_coords, &product_coords, &mb_energy, &config);
 println!("TS energy: {:.4} kcal/mol", ts_result.ts_energy);
 ```
 
@@ -268,16 +267,16 @@ Embeds atoms in 3D by solving a semidefinite program (SDP) relaxation of the dis
 ### Rust
 
 ```rust
-use sci_form::alpha::sdr::{sdr_embed, SdrConfig, DistanceBound};
+use sci_form::sdr::{sdr_embed, SdrConfig};
 
-let bounds = vec![
-    DistanceBound { i: 0, j: 1, lower: 1.4, upper: 1.6 },
-    DistanceBound { i: 1, j: 2, lower: 1.4, upper: 1.6 },
+let pairs = vec![
+    (0, 1, 1.5),
+    (1, 2, 1.5),
     // ...
 ];
 
-let config = SdrConfig { max_iter: 500, tolerance: 1e-6, ..Default::default() };
-let result = sdr_embed(&bounds, n_atoms, &config)?;
+let config = SdrConfig { max_iter: 500, tol: 1e-6, ..Default::default() };
+let result = sdr_embed(n_atoms, &pairs, &config);
 // result.coords — flat [x0,y0,z0,...]
 ```
 
@@ -327,7 +326,7 @@ Defines serializable electrical double-layer inputs and outputs for electrochemi
 ### Rust
 
 ```rust
-use sci_form::alpha::edl::*;
+use sci_form::edl::*;
 
 // Compute individual model profiles
 let helmholtz = compute_helmholtz_profile(0.2, &EdlConfig::default())?;
@@ -585,8 +584,8 @@ Defines solver-agnostic payloads for charts, traces, and trajectory visualizatio
 ### Rust
 
 ```rust
-use sci_form::alpha::render_bridge::*;
-use sci_form::alpha::edl::*;
+use sci_form::render_bridge::*;
+use sci_form::edl::*;
 use sci_form::alpha::kinetics::*;
 
 // EDL profile chart
