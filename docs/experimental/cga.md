@@ -1,7 +1,7 @@
 # E1: Conformal Geometric Algebra (CGA)
 
-**Module:** `sci_form::experimental::cga`
-**Feature flag:** `experimental-cga`
+**Module:** `sci_form::cga` (core since 2026-10-14; `alpha::cga` re-export)
+**Feature flag:** none (core); `alpha-cga` kept as no-op alias
 
 ---
 
@@ -77,6 +77,16 @@ let dihedral_motor = Motor::dihedral([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], 1.047);
 - **Supercell construction:** Motor exponentiation $M_{super} = M_{cell}^{n_a \cdot n_b \cdot n_c}$
 
 ---
+
+## Validation (F81, 2026-10-14)
+
+External gate `tests/alpha_cga_validation.rs` (no feature needed) vs
+`scripts/validation/oracle_cga.py` (Rodrigues closed form + `clifford`
+Cl(4,1) sandwich, seed 42): motors 3.4e-15 on 16 rigid motions (validates
+the bitmask blade encoding, incl. the e31 sign), dihedral rotation 6.6e-15,
+subtree isolation bit-exact, dihedral angle exact up to the documented
+mirror convention (ours ≡ −numpy mod 2π). Gaps: `refine_torsion_cga` vs
+matrix method and materials assembly vs real MOF structures unmet.
 
 ## Tests
 
