@@ -1,8 +1,9 @@
-//! E8: Semidefinite Relaxation Embedding (SDR)
+//! E8: Semidefinite Relaxation Embedding (SDR) — core since 2026-10-14 (F83).
 //!
 //! Convex optimization approach to conformer embedding that guarantees
 //! positive semidefinite Gram matrices, eliminating retry loops from
-//! negative eigenvalues.
+//! negative eigenvalues. Validated vs numpy + CVXPY/SCS; `alpha-sdr`
+//! survives as a no-op feature alias.
 
 pub mod embedding;
 pub mod projections;

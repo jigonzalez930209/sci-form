@@ -60,7 +60,7 @@ pub fn compute_edl_profiles_gpu(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alpha::edl::{EdlModel, EdlNumerics};
+    use crate::edl::{EdlModel, EdlNumerics};
 
     #[test]
     fn gpu_scan_falls_back_to_cpu() {

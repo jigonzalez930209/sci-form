@@ -6,10 +6,10 @@
 //! Stern split, Helmholtz compact capacitor, Stern series capacitance.
 //! Same equations, independently coded constants and unit handling, so
 //! the gate catches wrong constants, Å↔m slips, and missing factors.
+//!
+//! Core module (`sci_form::edl`).
 
-#![cfg(feature = "alpha-edl")]
-
-use sci_form::alpha::edl::{
+use sci_form::edl::{
     compute_edl_profile, compute_gcs_profile, compute_gouy_chapman_profile,
     compute_helmholtz_profile, scan_edl_capacitance, EdlConfig, EdlModel,
 };

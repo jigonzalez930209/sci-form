@@ -9,10 +9,10 @@
 //! `target/validation/render_bridge/`, where the oracle check mode
 //! (`--check`, `jsonschema` package) proves conformance externally.
 //! Round-trip through the columnar packer is gated too.
+//!
+//! Core module (`sci_form::render_bridge`).
 
-#![cfg(feature = "alpha-render-bridge")]
-
-use sci_form::alpha::render_bridge::{verify_chart_round_trip, ChartPayload, ChartSeries};
+use sci_form::render_bridge::{verify_chart_round_trip, ChartPayload, ChartSeries};
 use std::path::PathBuf;
 
 #[derive(serde::Deserialize)]

@@ -6,11 +6,11 @@
 //! and CVXPY/SCS convex-SDP optima (max distance error) on exact and
 //! noisy distance sets. Coordinates are compared via rotation-invariant
 //! Gram reconstruction (eigenvector signs are arbitrary).
-
-#![cfg(feature = "alpha-sdr")]
+//!
+//! Core module (`sci_form::sdr`).
 
 use nalgebra::DMatrix;
-use sci_form::alpha::sdr::{alternating_projections, extract_coordinates, project_distances, project_psd, svt_step, warm_start_gram, SdrConfig};
+use sci_form::sdr::{alternating_projections, extract_coordinates, project_distances, project_psd, svt_step, warm_start_gram, SdrConfig};
 
 #[derive(serde::Deserialize)]
 struct ProjCase {

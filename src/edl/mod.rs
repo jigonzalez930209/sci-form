@@ -1,4 +1,5 @@
-//! Alpha electrical double-layer contracts and CPU reference helpers.
+//! Electrical double-layer models and CPU reference helpers — core since
+//! 2026-10-14 (F86 vs analytic Grahame/Stern, worst 2e-14).
 //!
 //! This module is the Rust entry point for the electrochemical-interface roadmap.
 //! Models: Helmholtz, Gouy-Chapman, Gouy-Chapman-Stern, and a hybrid coupling
@@ -19,7 +20,7 @@ const AVOGADRO: f64 = 6.022_140_76e23;
 /// Faraday constant in C/mol.
 const _FARADAY_C_PER_MOL: f64 = 96_485.332_12;
 
-/// Supported alpha-stage electrical double-layer models.
+/// Supported electrical double-layer models.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum EdlModel {
     /// Linear compact-layer model with no diffuse ion response.

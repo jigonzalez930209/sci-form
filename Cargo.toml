@@ -45,8 +45,9 @@ experimental-mbh = ["beta-mbh"]
 experimental-cpm = ["beta-cpm"]
 experimental-gsm = ["alpha-gsm"]
 # Alpha — early research, proof-of-concept
-# (alpha-reaxff is a legacy no-op: ReaxFF is core since F78; kept so existing
-# feature flags and cfg gates keep resolving)
+# (legacy no-ops, kept so existing feature flags and cfg gates resolve:
+# alpha-reaxff core since F78; alpha-obara-saika/F80, alpha-sdr/F83,
+# alpha-cga/F81, alpha-edl/F86, alpha-render-bridge/F90 core since 2026-10-14)
 alpha-cga = []
 alpha-gsm = []
 alpha-sdr = []
@@ -62,6 +63,7 @@ alpha-kinetics = ["experimental-gsm", "experimental-mbh"]
 alpha-render-bridge = ["experimental-kpm", "experimental-gsm", "experimental-gpu-rendering"]
 alpha-reaction-dynamics = []
 # Beta — tested, approaching core readiness
+# (beta-cpm/F95 and beta-riemannian/F94 core since 2026-10; kept as aliases)
 beta-kpm = []
 beta-mbh = []
 beta-cpm = []
