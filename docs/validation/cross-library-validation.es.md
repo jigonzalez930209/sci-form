@@ -913,7 +913,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: `boys_function(m, x)` vs referencia tabulada para x∈[0,50], m∈[0,10] (rel 1e-12); `eri_ssss` vs expresión cerrada de s-funciones y vs PySCF con exponentes de prueba; `schwarz_bound` verifica la cota.
 - Datasets: sin descarga; exponentes/centros de la suite de PySCF (`pyscf/gto/test/test_ints.py`).
 - Procedimiento: `tests/alpha_scf_eri_accuracy.rs` (existe) + `scripts/compare_eri_pyscf.py`.
-- Estado en el repo: `src/scf/obara_saika.rs`, bindings `alpha_boys_function`, `alpha_eri_ssss`, `alpha_schwarz_bound`. **Validado 2026-10-14 (F80)**: `oracle_obara_saika.py` (scipy gammainc + PySCF/libcint desnormalizado) + gate `tests/alpha_obara_saika.rs` 3/3 (Boys 5.6e-14, ERI 3.1e-14, Schwarz 2.1e-15, nunca violada). Fix: Boys estable (serie x≤6 + erf preciso) + Lentz recíproco.
+- Estado en el repo: `src/scf/obara_saika.rs`, bindings `alpha_boys_function`, `alpha_eri_ssss`, `alpha_schwarz_bound`. **Validado 2026-10-14 (F80)**: `oracle_obara_saika.py` (scipy gammainc + PySCF/libcint desnormalizado) + gate `tests/alpha_obara_saika.rs` 3/3 (Boys 5.6e-14, ERI 3.1e-14, Schwarz 2.1e-15, nunca violada). **Promovido 2026-10-14**: `scf::{obara_saika,screening}` sin gate. Fix: Boys estable (serie x≤6 + erf preciso) + Lentz recíproco.
 - Criterio: Boys ≤ 1e-12 rel; ERI ≤ 1e-10 rel; cota de Schwarz nunca violada.
 
 **A5 (F81) · CGA: rotores conformes para dihedros (`alpha::cga::{dihedral_motor, apply_motor_to_subtree, refine_torsion_cga}`)**
@@ -921,7 +921,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: aplicar el rotor a un subárbol y comparar con la rotación cuaterniónica equivalente (≤ 1e-12); invariancia de distancias internas; cierre del motor (`M M† = 1`); y refinamiento de torsión: mismo dihedro final que el método de rotación matriz (`refine_torsion_cga` vs `rotate_atoms`).
 - Datasets: geometrías GDB-20 (torsiones extraídas), `tests/fixtures/torsion_params.json`.
 - Procedimiento: `tests/experimental/test_cga.rs` (existe) + `scripts/check_cga_vs_quaternion.py`.
-- Estado en el repo: `src/alpha/cga/*` (motor, multivector, conformer, materials), tests existentes. **Validado 2026-10-14 (F81)**: `oracle_cga.py` (Rodrigues + `clifford` Cl(4,1)) + gate `tests/alpha_cga_validation.rs` 2/2 (motores 3.4e-15, diedro 6.6e-15; ángulo ≡ −numpy mod 2π, convención espejo documentada).
+- Estado en el repo: `src/alpha/cga/*` (motor, multivector, conformer, materials), tests existentes. **Validado 2026-10-14 (F81)**: `oracle_cga.py` (Rodrigues + `clifford` Cl(4,1)) + gate `tests/alpha_cga_validation.rs` 2/2 (motores 3.4e-15, diedro 6.6e-15; ángulo ≡ −numpy mod 2π, convención espejo documentada). **Promovido 2026-10-14**: `alpha::cga` → `src/cga` (gaps de refine/materials documentados).
 - Criterio: ≤ 1e-12 en coords vs cuaternión (f64); preservación exacta de longitudes de enlace ≤ 1e-12.
 
 **A6 (F82) · Growing String Method (`alpha::gsm::{find_transition_state*, grow_string, interpolate_node, refine_saddle}`)**
@@ -937,7 +937,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: mismas tripletas (i,j,d) → comparar matriz de Gram óptima y coordenadas finales (RMSD ≤ 1e-3 Å tras Kabsch); violación de restricciones ≤ 1e-3 Å; comportamiento con restricciones inconsistentes (infactible → residual acotado).
 - Datasets: grafos de distancia de moléculas GDB-20 (bounds → distancias), ejemplos de SFSDP en los papers.
 - Procedimiento: `tests/experimental/test_sdr.rs` (existe) + `scripts/compare_sdr_cvxpy.py`.
-- Estado en el repo: `src/alpha/sdr/{embedding,projections}.rs`, bindings Python/WASM. **Validado 2026-10-14 (F83)**: `oracle_sdr.py` (numpy + CVXPY/SCS) + gate `tests/alpha_sdr_validation.rs` 3/3 (proyecciones exactas, embeds exactos 7e-15, ruidoso dentro de 3× del óptimo). Fix: umbral de polvo PSD en el conteo.
+- Estado en el repo: `src/alpha/sdr/{embedding,projections}.rs`, bindings Python/WASM. **Validado 2026-10-14 (F83)**: `oracle_sdr.py` (numpy + CVXPY/SCS) + gate `tests/alpha_sdr_validation.rs` 3/3 (proyecciones exactas, embeds exactos 7e-15, ruidoso dentro de 3× del óptimo). **Promovido 2026-10-14**: `alpha::sdr` → `src/sdr`. Fix: umbral de polvo PSD en el conteo.
 - Criterio: violación máx ≤ 1e-3 Å; RMSD vs CVXPY ≤ 0.01 Å; coste O(N·k) documentado.
 
 **A8 (F84) · Dynamics-live (`dynamics_live::*`, feature `alpha-dynamics-live`)**
@@ -953,7 +953,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: conformidad de mensajes (bytes) + sesión real con VMD; steering aplicado; reconexión.
 - Datasets: sin descarga.
 - Procedimiento: `examples/` y prueba manual con VMD; tests de `steering.rs`.
-- Estado en el repo: protocolo en `src/alpha/`/`dynamics_live`, WASM `apply_steering_force`. **Validado 2026-10-14 (F85)**: `oracle_imd.py` (steering armónico analítico, last-wins) + gate `tests/alpha_imd_validation.rs` 3/3 (E/F 1.1e-13, semántica, gradiente 7.6e-9).
+- Estado en el repo: protocolo en `src/alpha/`/`dynamics_live`, WASM `apply_steering_force`. **Validado 2026-10-14 (F85)**: `oracle_imd.py` (steering armónico analítico, last-wins) + gate `tests/alpha_imd_validation.rs` 3/3 (E/F 1.1e-13, semántica, gradiente 7.6e-9). **Promovido 2026-10-14**: steering → `src/imd` (`dynamics_live` re-exporta).
 - Criterio: handshake correcto; ≥ 30 fps; sin cuelgues al desconectar.
 
 **A10 (F86) · EDL: modelos de doble capa (`alpha::edl::*`: Helmholtz, Gouy-Chapman, GCS, perfiles, capacitancia; `cpm ↔ eeq ↔ edl`)**
@@ -961,7 +961,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: evaluar el perfil de potencial/carga en malla → comparar con la fórmula cerrada (≤ 1e-6 rel); límites: concentración → 0 (Debye), φ pequeño (linealización), φ grande (límite de Stern); derivada dσ/dφ = capacitancia comparada con derivada numérica.
 - Datasets: curvas capacitancia-potencial experimentales de Grahame (Hg) y datos de superficies metálicas en literatura electroquímica; `tests/fixtures` propios.
 - Procedimiento: `crates/cli/src/experimental_cmds.rs` (`edl-*`), tests `tests/experimental/test_cpm.rs` relacionados; nuevo `scripts/check_edl_analytics.py`.
-- Estado en el repo: `src/alpha/edl/*` (incluye GPU), docs `experimental/*` de EDL; CLI `edl-profile`, `edl-gcs`, `edl-helmholtz`, `capacitance-scan`. **Validado 2026-10-14 (F86)**: `oracle_edl.py` (Grahame/Stern cerrados, SI) + gate `tests/alpha_edl_validation.rs` 4/4 (peor 2.0e-14, tol 1e-9; scan par con mínimo en cero).
+- Estado en el repo: `src/alpha/edl/*` (incluye GPU), docs `experimental/*` de EDL; CLI `edl-profile`, `edl-gcs`, `edl-helmholtz`, `capacitance-scan`. **Validado 2026-10-14 (F86)**: `oracle_edl.py` (Grahame/Stern cerrados, SI) + gate `tests/alpha_edl_validation.rs` 4/4 (peor 2.0e-14, tol 1e-9; scan par con mínimo en cero). **Promovido 2026-10-14**: `alpha::edl` → `src/edl`.
 - Criterio: fórmulas cerradas ≤ 1e-6; capacitancia = derivada numérica ± 1e-3; monotonías físicas correctas.
 
 **A11 (F87) · Cinética: HTST, redes microcinéticas y Arrhenius (`alpha::kinetics::*`)**
@@ -977,7 +977,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: cadena 1D/2D → dispersión analítica; hermeticidad del Hamiltoniano Bloch (H(k) = H†(k)); periodicidad H(k+G) = H(k); pesos `monkhorst_pack_mesh` vs pymatgen; KPM periódico vs diagonalización exacta (L2 ≤ 5 %).
 - Datasets: modelos TB publicados (SSH, grafeno, H-chain); CIFs simples de COD.
 - Procedimiento: `tests/experimental/test_kpm.rs`, CLI `build-bloch-hamiltonian`, `solve-periodic-randnla`, `compute-periodic-dos`.
-- Estado en el repo: `src/alpha/periodic_linear/*` (incluye GPU), bindings Python/WASM. **Validado 2026-10-14 (F88)**: `oracle_periodic.py` (ASE monkhorst_pack + formas cerradas) + gate `tests/alpha_periodic_validation.rs` 4/4 (mallas, fases 3.6e-16, bandas 4.4e-16). Gap: H(k) complejo (solo cos). pybinding no instalable.
+- Estado en el repo: `src/alpha/periodic_linear/*` (incluye GPU), bindings Python/WASM. **Validado 2026-10-14 (F88)**: `oracle_periodic.py` (ASE monkhorst_pack + formas cerradas) + gate `tests/alpha_periodic_validation.rs` 4/4 (mallas, fases 3.6e-16, bandas 4.4e-16). **Promovido 2026-10-14 (base)**: mallas/fases/Bloch/BZ/adaptador EHT → `src/kmesh`; adaptadores KPM/RandNLA siguen en alpha (beta gated). Gap: H(k) complejo (solo cos). pybinding no instalable.
 - Criterio: analítico ≤ 1e-6; H(k) hermítica ≤ 1e-10; DOS relativo ≤ 5 % vs exacto.
 
 **A13 (F89) · Dinámica de reacción 3D: complejo, sitios reactivos, approach, IRC, CI-NEB (`alpha::reaction_dynamics::*`)**
@@ -993,7 +993,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: round-trip `chart_to_json → chart_from_json` bit-exacto; validación contra el esquema (`ajv` o `jsonschema`); comparación de payloads GPU vs CPU; verificación de los campos temporales/etiquetas.
 - Datasets: `tests/regression/test_gpu_candidates.rs` y `tests/integration/compare_webgpu_reports.js` para los charts GPU; sin descargas externas.
 - Procedimiento: `cargo test --test regression test_gpu_candidates`; `node tests/integration/compare_webgpu_reports.js`; CLI `validate-chart-schema`.
-- Estado en el repo: `src/alpha/render_bridge/*`, `crates/wasm/js`. **Validado 2026-10-14 (F90)**: `oracle_render_charts.py` (JSON Schema draft 2020-12 + adversariales) + gate `tests/alpha_render_validation.rs` 2/2 y `--check` con `jsonschema` 2/2 PASS.
+- Estado en el repo: `src/alpha/render_bridge/*`, `crates/wasm/js`. **Validado 2026-10-14 (F90)**: `oracle_render_charts.py` (JSON Schema draft 2020-12 + adversariales) + gate `tests/alpha_render_validation.rs` 2/2 y `--check` con `jsonschema` 2/2 PASS. **Promovido 2026-10-14 (base)**: tipos + pack/verify → `src/render_bridge`; builders de dominio siguen en alpha.
 - Criterio: round-trip exacto; 0 violaciones de esquema; GPU/CPU idénticos.
 
 ### 4.12 Módulos beta
@@ -1027,7 +1027,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: distancia afín-invariante entre pares A,B vs geomstats (≤ 1e-9); invariancia bajo congruencia A→GAGᵀ (L0); proyección = clamp de autovalores negativos a 0 (comparar con `eigh`); gradiente riemanniano = G − X G X en el punto X (comparar con scipy); retracción/geodésica cumple `dist(R(X,η), X) = ‖η‖_X`.
 - Datasets: matrices de ejemplo de la clase (covarianzas, `from_psd`), problemas de optimización del repo; sin descarga.
 - Procedimiento: `tests/experimental/test_riemannian.rs` (existe) + `scripts/compare_riemannian_geomstats.py`.
-- Estado en el repo: `src/beta/riemannian/*` (manifold, lbfgs, objetivo), tests existentes. **Validado 2026-10-14 (F94)**: `oracle_riemannian.py` (numpy + scipy L-BFGS-B) + gate `tests/beta_riemannian_validation.rs` 4/4 (proyección 8.2e-12, distancia 2.2e-16, optimizador factible como scipy). Gap: distancia afín-invariante (geomstats no corrido; proxy Frobenius).
+- Estado en el repo: `src/beta/riemannian/*` (manifold, lbfgs, objetivo), tests existentes. **Validado 2026-10-14 (F94)**: `oracle_riemannian.py` (numpy + scipy L-BFGS-B) + gate `tests/beta_riemannian_validation.rs` 4/4 (proyección 8.2e-12, distancia 2.2e-16, optimizador factible como scipy). **Promovido 2026-10-14**: `beta::riemannian` → `src/riemannian` (proxy Frobenius documentado). Gap: distancia afín-invariante (geomstats no corrido; proxy Frobenius).
 - Criterio: ≤ 1e-9 vs geomstats; invariancias exactas ≤ 1e-12; optimización L-BFGS converge en los problemas de prueba.
 
 **B5 (F95) · Constant Potential Method (`beta::cpm::{compute_cpm_charges, compute_cpm_surface, grand_potential}`)**
