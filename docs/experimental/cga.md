@@ -48,24 +48,16 @@ Coordinates are recovered from the transformed multivector by extracting the Euc
 ## API
 
 ```rust
-use sci_form::experimental::cga::*;
-
-// Multivector operations
-let a = Multivector::basis(1);           // e₁
-let b = Multivector::basis(2);           // e₂
-let ab = a.geometric_product(&b);        // e₁e₂
-let rev = ab.reverse();                  // ẽ₁₂ = e₂e₁
+use sci_form::cga::*;
 
 // Motor from axis-angle
-let motor = Motor::from_axis_angle([0.0, 0.0, 1.0], std::f64::consts::FRAC_PI_2);
+let motor = Motor::rotor([0.0, 0.0, 1.0], std::f64::consts::FRAC_PI_2);
 
 // Transform a point
-let point = cga_point([1.0, 0.0, 0.0]);
-let rotated = motor.apply(&point);
-let coords = extract_point(&rotated);   // ≈ [0, 1, 0]
+let rotated = motor.transform_point([1.0, 0.0, 0.0]);   // ≈ [0, 1, 0]
 
-// Dihedral rotation
-let dihedral_motor = Motor::dihedral([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], 1.047);
+// Dihedral rotation about the a→b bond axis
+let dm = dihedral_motor([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], 1.047);
 ```
 
 ---
