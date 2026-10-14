@@ -50,7 +50,7 @@ using $n_v$ random probe vectors $r_i$ with entries $\pm 1$.
 ## API
 
 ```rust
-use sci_form::experimental::kpm::*;
+use sci_form::beta::kpm::*;
 
 // Spectral bounds
 let (e_min, e_max) = estimate_spectral_bounds(&hamiltonian);
