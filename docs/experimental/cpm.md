@@ -1,7 +1,7 @@
 # E10: Constant Potential Method (CPM)
 
-**Module:** `sci_form::experimental::cpm`
-**Feature flag:** `experimental-cpm`
+**Module:** `sci_form::cpm` (core since 2026-10-13; `beta::cpm` re-export)
+**Feature flag:** none (core); `beta-cpm`/`experimental-cpm` kept as no-op aliases
 
 ---
 
@@ -61,7 +61,7 @@ computed via finite differences over the $\mu$ scan.
 ## API
 
 ```rust
-use sci_form::experimental::cpm::*;
+use sci_form::cpm::*;
 
 // CPM charges at a given potential
 let config = CpmConfig {
