@@ -73,6 +73,53 @@ fn numerical_gradient(coords: &[f64], energy_fn: &dyn Fn(&[f64]) -> f64, h: f64)
     grad
 }
 
+/// Arc-length reparametrization (core GSM step).
+///
+/// Keeps the endpoints fixed and redistributes interior nodes uniformly
+/// along the polygonal path. Without this, interior nodes slide downhill
+/// along the tangent into the minima and the string maximum collapses
+/// to an endpoint instead of converging to the MEP/TS.
+fn reparametrize_nodes(nodes: &mut Vec<Vec<f64>>) {
+    let m = nodes.len();
+    if m <= 2 {
+        return;
+    }
+    let dim = nodes[0].len();
+    let seg_len = |a: &[f64], b: &[f64]| {
+        a.iter()
+            .zip(b)
+            .map(|(x, y)| (x - y) * (x - y))
+            .sum::<f64>()
+            .sqrt()
+    };
+    let mut cum = vec![0.0; m];
+    for i in 1..m {
+        cum[i] = cum[i - 1] + seg_len(&nodes[i - 1], &nodes[i]);
+    }
+    let total = cum[m - 1];
+    if total < 1e-15 {
+        return;
+    }
+    let mut out = Vec::with_capacity(m);
+    out.push(nodes[0].clone());
+    let mut seg = 0;
+    for i in 1..(m - 1) {
+        let target = total * i as f64 / (m - 1) as f64;
+        while seg + 1 < m - 1 && cum[seg + 1] < target {
+            seg += 1;
+        }
+        let lo = cum[seg];
+        let hi = cum[seg + 1];
+        let t = if hi > lo { ((target - lo) / (hi - lo)).clamp(0.0, 1.0) } else { 0.0 };
+        let mut p = vec![0.0; dim];
+        for k in 0..dim {
+            p[k] = nodes[seg][k] + t * (nodes[seg + 1][k] - nodes[seg][k]);
+        }
+        out.push(p);
+    }
+    out.push(nodes[m - 1].clone());
+    *nodes = out;
+}
 /// Compute string tangent at a given node (central difference).
 fn compute_tangent(nodes: &[Vec<f64>], idx: usize) -> Vec<f64> {
     if idx == 0 {
@@ -185,6 +232,9 @@ pub fn grow_string(
                 nodes[i][k] -= step * perp[k];
             }
         }
+
+        // Arc-length reparametrization keeps interior nodes on the MEP.
+        reparametrize_nodes(&mut nodes);
 
         // Check junction: distance between adjacent interior nodes
         let mut all_close = true;
