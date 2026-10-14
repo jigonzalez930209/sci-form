@@ -66,7 +66,9 @@ from sci_form.beta import kpm_dos, eht_randnla
 
 The older `experimental-*` feature flags remain available at their existing module paths:
 
-> All experimental modules live under `sci_form::experimental::*` and require explicit feature flags to compile.
+> Gated modules live behind `alpha-*`/`beta-*` features (legacy
+> `experimental-*` flags alias them); promoted modules need no feature.
+> There is no `sci_form::experimental` Rust path.
 
 ### Track Summary
 
