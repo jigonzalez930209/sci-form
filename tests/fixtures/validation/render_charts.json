@@ -1,0 +1,270 @@
+{
+ "ficha": "F90",
+ "oracle": "oracle_render_charts.py (JSON Schema draft 2020-12)",
+ "schema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ChartPayload",
+  "type": "object",
+  "required": [
+   "title",
+   "series"
+  ],
+  "properties": {
+   "title": {
+    "type": "string",
+    "minLength": 1
+   },
+   "series": {
+    "type": "array",
+    "items": {
+     "$ref": "#/$defs/series"
+    }
+   }
+  },
+  "$defs": {
+   "series": {
+    "type": "object",
+    "required": [
+     "series_id",
+     "label",
+     "x",
+     "y",
+     "x_unit",
+     "y_unit"
+    ],
+    "properties": {
+     "series_id": {
+      "type": "string",
+      "minLength": 1
+     },
+     "label": {
+      "type": "string"
+     },
+     "x": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "y": {
+      "type": "array",
+      "items": {
+       "type": "number"
+      }
+     },
+     "x_unit": {
+      "type": "string"
+     },
+     "y_unit": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ },
+ "adversarial": [
+  {
+   "id": "missing-title",
+   "chart": {
+    "series": [
+     {
+      "series_id": "A",
+      "label": "A",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       1.0,
+       0.5,
+       0.25
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     },
+     {
+      "series_id": "B",
+      "label": "B",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       0.0,
+       0.5,
+       0.75
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     }
+    ]
+   },
+   "valid": false
+  },
+  {
+   "id": "empty-series-id",
+   "chart": {
+    "title": "Microkinetic populations",
+    "series": [
+     {
+      "series_id": "",
+      "label": "A",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       1.0,
+       0.5,
+       0.25
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     },
+     {
+      "series_id": "B",
+      "label": "B",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       0.0,
+       0.5,
+       0.75
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     }
+    ]
+   },
+   "valid": false
+  },
+  {
+   "id": "duplicate-series-id",
+   "chart": {
+    "title": "Microkinetic populations",
+    "series": [
+     {
+      "series_id": "A",
+      "label": "A",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       1.0,
+       0.5,
+       0.25
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     },
+     {
+      "series_id": "A",
+      "label": "B",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       0.0,
+       0.5,
+       0.75
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     }
+    ]
+   },
+   "valid": false
+  },
+  {
+   "id": "xy-length-skew",
+   "chart": {
+    "title": "Microkinetic populations",
+    "series": [
+     {
+      "series_id": "A",
+      "label": "A",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       1.0,
+       0.5
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     },
+     {
+      "series_id": "B",
+      "label": "B",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       0.0,
+       0.5,
+       0.75
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     }
+    ]
+   },
+   "valid": false
+  },
+  {
+   "id": "good-chart",
+   "chart": {
+    "title": "Microkinetic populations",
+    "series": [
+     {
+      "series_id": "A",
+      "label": "A",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       1.0,
+       0.5,
+       0.25
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     },
+     {
+      "series_id": "B",
+      "label": "B",
+      "x": [
+       0.0,
+       1.0,
+       2.0
+      ],
+      "y": [
+       0.0,
+       0.5,
+       0.75
+      ],
+      "x_unit": "s",
+      "y_unit": "arb."
+     }
+    ]
+   },
+   "valid": true
+  }
+ ]
+}
