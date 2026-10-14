@@ -1,7 +1,7 @@
 # E3: Riemannian Optimization for ETKDG
 
-**Module:** `sci_form::experimental::riemannian`
-**Feature flag:** `experimental-riemannian`
+**Module:** `sci_form::riemannian` (core since 2026-10-14; `beta::riemannian` re-export)
+**Feature flag:** none (core); `beta-riemannian` kept as no-op alias
 
 ---
 
@@ -79,6 +79,16 @@ let result = riemannian_lbfgs(&x0, &objective, &gradient, &config);
 - **Fallback:** Reverts to Euclidean BFGS + PSD projection if not converged in 500 iterations
 
 ---
+
+## Validation (F94, 2026-10-14)
+
+External gate `tests/beta_riemannian_validation.rs` vs
+`scripts/validation/oracle_riemannian.py` (numpy + scipy L-BFGS-B):
+projection 8.2e-12, Frobenius distance 2.2e-16, objective/gradient 1.2e-16,
+optimizer reaches the feasible set like scipy. Documented gap:
+`psd_distance` is the Frobenius proxy, NOT the affine-invariant geodesic
+distance (geomstats cross-check unmet). Note: the implemented retraction is
+first-order P₊(X+ξ), not the second-order form once sketched in Theory.
 
 ## Tests
 
