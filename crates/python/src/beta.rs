@@ -403,6 +403,7 @@ mod cpm_py {
     ) -> PyResult<CpmResultPy> {
         let config = CpmConfig {
             mu_ev: potential,
+            mu_per_atom: None,
             ..Default::default()
         };
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();

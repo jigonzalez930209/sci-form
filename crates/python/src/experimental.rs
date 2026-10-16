@@ -276,6 +276,7 @@ mod cpm_py {
             dielectric,
             max_iter: 100,
             charge_tol: 1e-6,
+            mu_per_atom: None,
         };
         let r = sci_form_core::beta::cpm::compute_cpm_charges(&elements, &pos, &config);
         Ok(CpmResultPy {
