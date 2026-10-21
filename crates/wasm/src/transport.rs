@@ -2,7 +2,10 @@
 
 use wasm_bindgen::prelude::*;
 
-/// Pack a batch of conformer results into Arrow-compatible columnar format.
+/// Pack a batch of conformer results into sci-form's columnar (Arrow-like) format.
+///
+/// This is not the Apache Arrow IPC format: the payload is a JSON
+/// serialisation of sci-form's own columnar layout.
 #[wasm_bindgen]
 pub fn pack_batch_arrow(results_json: &str) -> String {
     let results: Vec<sci_form::ConformerResult> = match serde_json::from_str(results_json) {

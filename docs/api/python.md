@@ -1112,7 +1112,7 @@ print(f"Diverse set: {len(diverse_idx)} conformers")
 def pack_conformers(results: list[ConformerResult]) -> RecordBatch
 ```
 
-Pack conformer results into Arrow-compatible columnar format for efficient transfer.
+Pack conformer results into sci-form's columnar (Arrow-like) format for efficient transfer. This is not the Apache Arrow IPC format.
 
 ```python
 from sci_form import embed_batch, pack_conformers

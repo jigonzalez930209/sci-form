@@ -1,4 +1,13 @@
-//! Arrow-compatible columnar memory layouts for zero-copy data transfer.
+//! Columnar, Arrow-*like* memory layouts for zero-copy data transfer.
+//!
+//! This is **not** the Apache Arrow IPC format: the crate has no `arrow`
+//! dependency and emits no IPC stream. The layout mirrors Arrow's columnar
+//! idea (one typed column per field, `#[repr(C)]` primitives) so that a
+//! consumer can build a real Arrow batch from it cheaply, but the bytes
+//! are sci-form's own. The audit (reports/auditoria-total.md, P2-49) flagged
+//! the previous "Arrow-compatible" wording as an overstatement.
+//!
+//! Native endianness is assumed; a cross-endian consumer must byte-swap.
 //!
 //! Provides flat, typed-array compatible buffers that can be directly
 //! transferred to JavaScript TypedArrays (Float64Array, Int32Array, etc.)
@@ -163,7 +172,7 @@ impl RecordBatch {
     }
 }
 
-/// Pack conformer results into an Arrow-compatible batch.
+/// Pack conformer results into a columnar batch (Arrow-like layout).
 ///
 /// Columns: elements (u8), coords_x/y/z (f64), success (i32), time_ms (f64)
 pub fn pack_conformers(results: &[crate::ConformerResult]) -> RecordBatch {
@@ -209,7 +218,7 @@ pub fn pack_conformers(results: &[crate::ConformerResult]) -> RecordBatch {
     batch
 }
 
-/// Pack an ESP grid into an Arrow-compatible batch.
+/// Pack an ESP grid into a columnar batch (Arrow-like layout).
 pub fn pack_esp_grid(grid: &crate::esp::EspGrid) -> RecordBatch {
     let mut batch = RecordBatch::new();
 
@@ -228,7 +237,7 @@ pub fn pack_esp_grid(grid: &crate::esp::EspGrid) -> RecordBatch {
     batch
 }
 
-/// Pack DOS data into an Arrow-compatible batch.
+/// Pack DOS data into a columnar batch (Arrow-like layout).
 pub fn pack_dos(dos: &crate::dos::DosResult) -> RecordBatch {
     let n_points = dos.energies.len();
     let n_atoms = dos.pdos.len();

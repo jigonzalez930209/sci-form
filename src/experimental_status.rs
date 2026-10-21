@@ -3,7 +3,7 @@
 //! This module documents which experimental methods remain gated behind
 //! feature flags and the criteria required for eventual promotion to core.
 //!
-//! ## Promoted to Core (E3)
+//! ## Promoted to Core
 //!
 //! | Module | Core path | Justification |
 //! |--------|-----------|---------------|
@@ -20,6 +20,8 @@
 //! | k-mesh/Bloch | `kmesh` | ASE meshes + chain bands 4.4e-16 (F88; KPM/RandNLA adapters stay alpha) |
 //! | Chart payloads | `render_bridge` | JSON Schema + pack round-trip (F90; domain builders stay alpha) |
 //! | Riemannian PSD | `riemannian` | Projection/optimizer vs scipy (F94; Frobenius proxy documented) |
+//! | CPM | `cpm` | Constant-potential electrochemistry vs LAMMPS `electrode/conp` (F95) |
+//! | MMFF94 parameters | `forcefield::mmff94_params` | Real published parameter tables (F100) |
 //!
 //! The promotion criteria below follow the validation culture of the repo:
 //! a module is promoted when a cross-library ficha (or a documented external
@@ -28,12 +30,13 @@
 //!
 //! ---
 //!
-//! ## Retained as Experimental (E4)
+//! ## Retained as Experimental
 //!
 //! ### EXP-201: Kernel Polynomial Method (KPM)
 //!
-//! **Feature flag:** `experimental-kpm`
-//! **Location:** `experimental/kpm/` (chebyshev.rs, density.rs)
+//! **Feature flag:** `beta-kpm`
+//! **Location:** `src/beta/kpm/` (chebyshev.rs, density.rs)
+//! **Validation test:** `tests/beta_kpm_validation.rs` (F91)
 //!
 //! KPM approximates the density of states via Chebyshev expansion of the
 //! spectral function. Useful for very large systems (10k+ atoms) but the
@@ -56,8 +59,9 @@
 //!
 //! ### EXP-202: Multi-Basin Hopping (MBH)
 //!
-//! **Feature flag:** `experimental-mbh`
-//! **Location:** `experimental/mbh/` (blocks.rs, hessian.rs)
+//! **Feature flag:** `beta-mbh`
+//! **Location:** `src/beta/mbh/` (blocks.rs, hessian.rs)
+//! **Validation test:** `tests/beta_mbh_validation.rs` (F92)
 //!
 //! Block-diagonal Hessian approach for exploring conformational basins.
 //! Intended for global optimization of flexible molecules.
@@ -78,8 +82,9 @@
 //!
 //! ### EXP-203: Randomized Numerical Linear Algebra (RandNLA)
 //!
-//! **Feature flag:** `experimental-randnla`
-//! **Location:** `experimental/rand_nla/` (nystrom.rs, solver.rs)
+//! **Feature flag:** `beta-randnla`
+//! **Location:** `src/beta/rand_nla/` (nystrom.rs, solver.rs)
+//! **Validation test:** `tests/beta_randnla_validation.rs` (F93)
 //!
 //! Nyström approximation and randomized eigensolvers for large overlap/Fock
 //! matrices. Currently a backend alternative, not a user-facing feature.
@@ -99,10 +104,11 @@
 //! producción exacta con fallback (`tests/beta_randnla_validation.rs`).
 //! El criterio 2 sigue sin cumplirse.
 //!
-//! ### EXP-204: Spectral Dimensionality Reduction (SDR) — PROMOVIDO 2026-10-14 (`src/sdr`)
+//! ### EXP-204: Spectral Dimensionality Reduction (SDR) — PROMOVIDO (`src/sdr`)
 //!
-//! **Feature flag:** `experimental-sdr`
-//! **Location:** `experimental/sdr/` (embedding.rs, projections.rs)
+//! **Feature flag:** `alpha-sdr`
+//! **Location:** `src/sdr/` (embedding.rs, projections.rs)
+//! **Validation test:** `tests/alpha_sdr_validation.rs` (F83)
 //!
 //! Diffusion-map and spectral embedding for chemical space visualization.
 //! Alternative to fingerprint-based Tanimoto similarity.
@@ -121,10 +127,11 @@
 //! embeds exactos 7e-15 (mejor que CVXPY/SCS 1e-8), caso ruidoso dentro de
 //! 3× del óptimo (`tests/alpha_sdr_validation.rs`).
 //!
-//! ### EXP-205a: Conformal Geometric Algebra (CGA) — PROMOVIDO 2026-10-14 (`src/cga`)
+//! ### EXP-205a: Conformal Geometric Algebra (CGA) — PROMOVIDO (`src/cga`)
 //!
-//! **Feature flag:** `experimental-cga`
-//! **Location:** `experimental/cga/` (multivector.rs, motor.rs, conformer.rs, materials.rs)
+//! **Feature flag:** `alpha-cga`
+//! **Location:** `src/cga/` (multivector.rs, motor.rs, conformer.rs, materials.rs)
+//! **Validation test:** `tests/alpha_cga_validation.rs` (F81)
 //!
 //! CGA representation of molecular geometry: motors for rigid transforms,
 //! conformal points for distance geometry. Research-stage alternative to
@@ -146,8 +153,9 @@
 //!
 //! ### EXP-205b: Growing String Method (GSM)
 //!
-//! **Feature flag:** `experimental-gsm`
-//! **Location:** `experimental/gsm/` (string.rs, saddle.rs)
+//! **Feature flag:** `alpha-gsm`
+//! **Location:** `src/alpha/gsm/` (string.rs, saddle.rs, backend.rs)
+//! **Validation test:** `tests/alpha_gsm_validation.rs` (F82)
 //!
 //! Reaction path finding via growing string interpolation between
 //! reactant and product geometries. Identifies transition states.
@@ -159,6 +167,7 @@
 //!
 //! **Status update:** gradient coupling is implemented — `alpha::gsm::backend`
 //! drives the string with UFF, MMFF94, PM3, xTB, GFN1, GFN2 and HF-3c.
+//!
 //! **Promotion criteria:**
 //! 1. ~~Couple with PM3 or xTB gradient evaluation~~ (done: multi-backend)
 //! 2. Reproduce known barrier heights (SN2, Diels-Alder)
@@ -168,26 +177,68 @@
 //! CI-NEB (barrera 1.6e-3, TS 0.028; `tests/alpha_gsm_validation.rs`).
 //! Fix: reparametrización por arco cada iteración.
 //!
-//! ### EXP-205c: Continuous Phase Methods (CPM) — PROMOVIDO 2026-10-13 (`src/cpm`)
+//! ### EXP-205c: Constant Potential Method (CPM) — PROMOVIDO (`src/cpm`)
 //!
-//! **Feature flag:** `experimental-cpm`
-//! **Location:** `experimental/cpm/` (surface.rs, grand_potential.rs)
+//! **Feature flag:** `beta-cpm` (alias; the core module is unconditional)
+//! **Location:** `src/cpm/` (surface.rs, grand_potential.rs)
+//! **Validation test:** `tests/experimental/test_cpm.rs` (F95)
 //!
-//! Phase-field and grand potential methods for crystal surface
-//! thermodynamics and phase boundary determination.
+//! Constant-potential electrochemistry: the electrode potential is a
+//! degree of freedom and the atomic charges follow from the grand potential.
 //!
 //! **Current limitations:**
-//! - Grand potential formulation needs thermodynamic data
-//! - Surface energy calculations untested for ternary systems
-//! - No integration with `materials` module
+//! - The Coulomb kernel has no Gaussian smearing (LAMMPS `electrode/conp`
+//!   has), so the charge response is ~1.76x too weak
+//! - The self-interaction hardness is 5 eV vs ~22 eV for a Gaussian
+//! - No integration with a plane-wave / DFT reference
 //!
 //! **Promotion criteria:**
-//! 1. Validate surface energies against DFT reference for binary alloys
-//! 2. Integrate with `materials::UnitCell` for consistent crystal handling
-//! 3. Add Wulff construction for equilibrium crystal shapes
+//! 1. Add the Gaussian-smeared Coulomb kernel and match LAMMPS
+//!    `electrode/conp` on the charge pattern
+//! 2. Validate the quantum capacitance curve against experiment or DFT
+//! 3. Integrate with `materials::UnitCell` for electrode geometry
 //!
 //! **Nota 2026-10-13**: CPM promovido a core (`src/cpm`, F95 vs LAMMPS
 //! `electrode/conp`); `beta::cpm` sobrevive como re-export compatible.
+//!
+//! ### EXP-206: Alpha-tier subsystems
+//!
+//! These remain gated and are NOT promoted:
+//!
+//! | Subsystem | Feature flag | Location | Validation test | Notes |
+//! |---|---|---|---|---|
+//! | Kohn–Sham DFT | `alpha-dft` | `src/dft/` | `tests/alpha_dft_pyscf.rs` (F77) | E ≤ 1 mHa vs PySCF; `coulomb_energy` is still 0.0 and the ECP path is unfitted |
+//! | ReaxFF | `alpha-reaxff` | `src/forcefield/reaxff/` | `tests/alpha_reaxff_validation.rs` (F78) | bond orders vs LAMMPS `reaxff` |
+//! | ML force field | `alpha-mlff` | `src/ml/{mlff,symmetry_functions}.rs` | `tests/alpha_mlff_validation.rs` (F79) | AEV vs a numpy BP oracle; no trained weights, no MD17/SPICE benchmark |
+//! | Obara–Saika ERI engine | `alpha-obara-saika` | `src/scf/obara_saika.rs` | `tests/alpha_obara_saika.rs` (F80) | Boys/ERI/Schwarz vs scipy + libcint (s-type shells only) |
+//! | Interactive MD | `alpha-imd` | `src/imd.rs` | `tests/alpha_imd_validation.rs` (F85) | steering forces vs an analytic oracle |
+//! | Live MD | `alpha-dynamics-live` | `src/dynamics_live/` | `tests/alpha_dynamics_validation.rs` (F84) | forces vs RDKit UFF; NVE drift and reversibility |
+//! | Reaction dynamics | `alpha-reaction-dynamics` | `src/alpha/reaction_dynamics/` | `tests/alpha_reaction_dynamics_3d.rs` | self-consistency only; no ASE NEB parity |
+//! | EDL adapters | `alpha-edl` | `src/edl/` | `tests/alpha_edl_validation.rs` (F86) | analytic electrochemistry |
+//! | Periodic adapters | `alpha-periodic-linear` | `src/alpha/periodic_linear/` | `tests/alpha_periodic_validation.rs` (F88) | k-mesh vs ASE |
+//! | Kinetics (HTST) | `alpha-kinetics` | `src/alpha/kinetics/` | `tests/alpha_kinetics_validation.rs` (F87) | Eyring + scipy `solve_ivp` |
+//! | Render-bridge builders | `alpha-render-bridge` | `src/alpha/render_bridge/` | `tests/alpha_render_validation.rs` (F90) | JSON Schema 2020-12 |
+//!
+//! ### EXP-207: GPU acceleration
+//!
+//! **Feature flag:** `experimental-gpu` (plus `experimental-gpu-rendering`)
+//! **Location:** `src/gpu/`
+//! **Validation test:** `tests/regression/test_gpu_candidates.rs`
+//!
+//! The GPU tree is a set of compute backends with CPU fallbacks; it is not a
+//! "scientific method" and has no promotion criteria of its own. Two
+//! properties are enforced instead:
+//!
+//! 1. The CPU fallback must always work. `GpuContext::try_create` wraps the
+//!    adapter acquisition in `catch_unwind`, because wgpu-hal's GLES/EGL
+//!    backend panics with `BadDisplay` on headless hosts.
+//! 2. Every kernel that claims a GPU result must be compared against the
+//!    CPU implementation. The MMFF94 kernel uses a workgroup reduction plus
+//!    signed fixed-point atomic adds (WGSL has no atomic float add).
+//!
+//! Known gaps: the GPU results are only ever compared against sci-form's own
+//! CPU code, never against an external reference (libcint for the ERI/S/T/V
+//! kernels, dftd4 for the dispersion kernel, VTK for marching cubes).
 
 // This module is documentation-only; no runtime code.
 // The experimental modules remain behind their respective feature flags.
