@@ -87,9 +87,15 @@ fn f93_characterization_rank_quarter() {
         let worst = got[..c.k]
             .iter()
             .zip(&c.top_eigenvalues)
-            .fold(0.0f64, |m, (&g, &w)| m.max((g - w).abs() / w.abs().max(1e-300)));
+            .fold(0.0f64, |m, (&g, &w)| {
+                m.max((g - w).abs() / w.abs().max(1e-300))
+            });
         println!("F93a N={} k={}: top-k worst {:.3e}", c.n, c.k, worst);
-        assert!(worst <= fix.characterization_tolerance_rel, "N={}: {worst:.3e}", c.n);
+        assert!(
+            worst <= fix.characterization_tolerance_rel,
+            "N={}: {worst:.3e}",
+            c.n
+        );
     }
 }
 
@@ -109,7 +115,9 @@ fn f93_valid_regime_randomized() {
         let topk = got[..c.k]
             .iter()
             .zip(&c.top_eigenvalues)
-            .fold(0.0f64, |m, (&g, &w)| m.max((g - w).abs() / w.abs().max(1e-300)));
+            .fold(0.0f64, |m, (&g, &w)| {
+                m.max((g - w).abs() / w.abs().max(1e-300))
+            });
         // Generalized solve, randomized path only.
         let cfg = RandNlaConfig {
             sketch_size: Some(c.k),
@@ -128,10 +136,20 @@ fn f93_valid_regime_randomized() {
         let x = approx.inverse_sqrt();
         let want = mat(c.n, &c.inv_sqrt);
         let isr = (&x - &want).norm() / want.norm().max(1e-300);
-        println!("F93b N={}: topk {topk:.3e} gen {worst:.3e} (resid {:.2e}) isqrt {isr:.3e}",
-            c.n, info.residual_error);
-        assert!(worst <= fix.valid_regime_tolerance, "N={} gen: {worst:.3e}", c.n);
-        assert!(isr <= fix.inv_sqrt_tolerance_rel, "N={} isqrt: {isr:.3e}", c.n);
+        println!(
+            "F93b N={}: topk {topk:.3e} gen {worst:.3e} (resid {:.2e}) isqrt {isr:.3e}",
+            c.n, info.residual_error
+        );
+        assert!(
+            worst <= fix.valid_regime_tolerance,
+            "N={} gen: {worst:.3e}",
+            c.n
+        );
+        assert!(
+            isr <= fix.inv_sqrt_tolerance_rel,
+            "N={} isqrt: {isr:.3e}",
+            c.n
+        );
     }
 }
 
@@ -143,14 +161,20 @@ fn f93_production_default_exact() {
     for c in &fix.production {
         let h = mat(c.n, &c.h);
         let s = mat(c.n, &c.s);
-        let cfg = RandNlaConfig { seed: 42, ..RandNlaConfig::default() };
+        let cfg = RandNlaConfig {
+            seed: 42,
+            ..RandNlaConfig::default()
+        };
         let (energies, _, info) = solve_eht_randnla(&h, &s, &cfg);
         let width = c.energies.last().unwrap() - c.energies.first().unwrap();
         let worst = energies
             .iter()
             .zip(&c.energies)
             .fold(0.0f64, |m, (&g, &w)| m.max((g - w).abs() / width));
-        println!("F93c N={}: worst {worst:.3e} fallback={} k={}", c.n, info.used_fallback, info.k);
+        println!(
+            "F93c N={}: worst {worst:.3e} fallback={} k={}",
+            c.n, info.used_fallback, info.k
+        );
         assert!(worst <= fix.production_tolerance, "N={}: {worst:.3e}", c.n);
     }
 }

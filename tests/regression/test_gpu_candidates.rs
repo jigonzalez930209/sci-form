@@ -1450,7 +1450,7 @@ mod methodology_notes {
         eprintln!("GPU_TIER: 4 (driver), but inner SCF evals are Tier 1 targets.");
     }
 
-    #[cfg(feature = "experimental-riemannian")]
+    #[cfg(feature = "beta-riemannian")]
     #[test]
     fn bench_lbfgs_methodology_note() {
         eprintln!("\n=== L-BFGS: Riemannian vs Cartesian ===");
@@ -1463,7 +1463,6 @@ mod methodology_notes {
 //  GPU CANDIDATES: experimental tracks (feature-gated)
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-eeq")]
 mod gpu_candidate_eeq {
     use super::*;
 
@@ -1527,7 +1526,6 @@ mod gpu_candidate_eeq {
     }
 }
 
-#[cfg(feature = "experimental-d4")]
 mod gpu_candidate_d4 {
     use super::*;
 
@@ -1579,7 +1577,7 @@ mod gpu_candidate_d4 {
     }
 }
 
-#[cfg(feature = "experimental-kpm")]
+#[cfg(feature = "beta-kpm")]
 mod gpu_candidate_kpm {
     use super::*;
     use nalgebra::DMatrix;
@@ -1616,7 +1614,6 @@ mod gpu_candidate_kpm {
     }
 }
 
-#[cfg(feature = "experimental-alpb")]
 mod gpu_candidate_alpb {
     use super::*;
 
@@ -1674,7 +1671,6 @@ mod gpu_candidate_alpb {
     }
 }
 
-#[cfg(feature = "experimental-cpm")]
 mod gpu_candidate_cpm {
     use super::*;
 
@@ -1741,7 +1737,7 @@ mod gpu_candidate_cpm {
 //  RandNLA — Randomized Eigensolve — GPU Tier 2
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-randnla")]
+#[cfg(feature = "beta-randnla")]
 mod gpu_candidate_randnla {
     use super::*;
 
@@ -1790,7 +1786,7 @@ mod gpu_candidate_randnla {
 //  SDR — Semidefinite Relaxation Embedding — GPU Tier 2
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-sdr")]
+#[cfg(feature = "alpha-sdr")]
 mod gpu_candidate_sdr {
     use super::*;
 
@@ -1862,7 +1858,7 @@ mod gpu_candidate_sdr {
 //  MBH — Mobile Block Hessian — GPU Tier 2
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-mbh")]
+#[cfg(feature = "beta-mbh")]
 mod gpu_candidate_mbh {
     use super::*;
 
@@ -1911,7 +1907,7 @@ mod gpu_candidate_mbh {
 //  CGA — Conformal Geometric Algebra — GPU Tier 3
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-cga")]
+#[cfg(feature = "alpha-cga")]
 mod gpu_candidate_cga {
     use super::*;
 
@@ -1966,7 +1962,7 @@ mod gpu_candidate_cga {
 //  GSM — Growing String Method — GPU Tier 3-4
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-gsm")]
+#[cfg(feature = "alpha-gsm")]
 mod gpu_candidate_gsm {
     #[test]
     fn bench_gsm_methodology_note() {

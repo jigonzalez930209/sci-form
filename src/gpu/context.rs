@@ -108,55 +108,72 @@ impl GpuContext {
     }
 
     /// Attempt to initialize a real wgpu compute device.
+    ///
+    /// Adapter/device acquisition can panic inside `wgpu-hal` (for example the
+    /// GLES/EGL backend aborts with `BadDisplay` on headless hosts). The whole
+    /// acquisition is therefore wrapped in `catch_unwind` so the CPU-fallback
+    /// contract of [`GpuContext::best_available`] always holds.
     pub fn try_create() -> Result<Self, String> {
         #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
         {
-            let instance = wgpu::Instance::default();
-            let adapter =
-                pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::HighPerformance,
-                    compatible_surface: None,
-                    force_fallback_adapter: false,
-                }))
-                .ok_or_else(|| "No GPU adapter found".to_string())?;
-
-            let adapter_info = adapter.get_info();
-            let limits = adapter.limits();
-            let required_limits = wgpu::Limits::default().using_resolution(limits.clone());
-
-            let (device, queue) = pollster::block_on(adapter.request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("sci-form gpu"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits,
-                },
-                None,
-            ))
-            .map_err(|err| format!("Failed to create wgpu device: {err}"))?;
-
-            Ok(Self {
-                capabilities: ComputeCapabilities {
-                    backend: format!("{:?}", adapter_info.backend),
-                    max_workgroup_size_x: limits.max_compute_workgroup_size_x,
-                    max_workgroup_size_y: limits.max_compute_workgroup_size_y,
-                    max_workgroup_invocations: limits.max_compute_invocations_per_workgroup,
-                    max_storage_buffer_size: limits.max_storage_buffer_binding_size as u64,
-                    gpu_available: true,
-                },
-                runtime_error: None,
-                runtime: Some(NativeGpuRuntime {
-                    _instance: instance,
-                    _adapter: adapter,
-                    device,
-                    queue,
-                }),
-            })
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(Self::try_create_native))
+                .unwrap_or_else(|payload| {
+                    let detail = payload
+                        .downcast_ref::<&str>()
+                        .map(|s| (*s).to_string())
+                        .or_else(|| payload.downcast_ref::<String>().cloned())
+                        .unwrap_or_else(|| "unknown panic".to_string());
+                    Err(format!("GPU adapter acquisition panicked: {detail}"))
+                })
         }
 
         #[cfg(not(all(feature = "experimental-gpu", not(target_arch = "wasm32"))))]
         {
             Err("experimental-gpu feature not enabled".to_string())
         }
+    }
+
+    #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
+    fn try_create_native() -> Result<Self, String> {
+        let instance = wgpu::Instance::default();
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            compatible_surface: None,
+            force_fallback_adapter: false,
+        }))
+        .ok_or_else(|| "No GPU adapter found".to_string())?;
+
+        let adapter_info = adapter.get_info();
+        let limits = adapter.limits();
+        let required_limits = wgpu::Limits::default().using_resolution(limits.clone());
+
+        let (device, queue) = pollster::block_on(adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                label: Some("sci-form gpu"),
+                required_features: wgpu::Features::empty(),
+                required_limits,
+            },
+            None,
+        ))
+        .map_err(|err| format!("Failed to create wgpu device: {err}"))?;
+
+        Ok(Self {
+            capabilities: ComputeCapabilities {
+                backend: format!("{:?}", adapter_info.backend),
+                max_workgroup_size_x: limits.max_compute_workgroup_size_x,
+                max_workgroup_size_y: limits.max_compute_workgroup_size_y,
+                max_workgroup_invocations: limits.max_compute_invocations_per_workgroup,
+                max_storage_buffer_size: limits.max_storage_buffer_binding_size as u64,
+                gpu_available: true,
+            },
+            runtime_error: None,
+            runtime: Some(NativeGpuRuntime {
+                _instance: instance,
+                _adapter: adapter,
+                device,
+                queue,
+            }),
+        })
     }
 
     /// Best available backend: GPU if possible, CPU fallback otherwise.

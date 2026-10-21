@@ -219,6 +219,8 @@ mod f01_parse {
     struct Case {
         smiles: String,
         n_atoms: usize,
+        /// Mirrors the fixture schema; not consumed by the assertions below.
+        #[allow(dead_code)]
         n_heavy: usize,
         elements: Vec<u8>,
         formal_charges: Vec<i8>,
@@ -1554,12 +1556,9 @@ mod f45_uks {
                 continue;
             }
             let positions = positions(&case.coords);
-            let u = sci_form::xtb::uks::solve_gfn2_unrestricted(
-                &case.elements,
-                &positions,
-                case.uhf,
-            )
-            .unwrap_or_else(|err| panic!("{}: UKS failed: {err}", case.name));
+            let u =
+                sci_form::xtb::uks::solve_gfn2_unrestricted(&case.elements, &positions, case.uhf)
+                    .unwrap_or_else(|err| panic!("{}: UKS failed: {err}", case.name));
             assert!(u.converged, "{}: UKS SCC did not converge", case.name);
             // Exact magnetization conservation: Σm = Nα − Nβ.
             let mtot: f64 = u.spin_moments.iter().sum();
@@ -1640,12 +1639,9 @@ mod f45_uks {
         let mut worst = (0.0f64, String::new());
         for case in &fixture.cases {
             let positions = positions(&case.coords);
-            let u = sci_form::xtb::uks::solve_gfn1_unrestricted(
-                &case.elements,
-                &positions,
-                case.uhf,
-            )
-            .unwrap_or_else(|err| panic!("{}: GFN1-UKS failed: {err}", case.name));
+            let u =
+                sci_form::xtb::uks::solve_gfn1_unrestricted(&case.elements, &positions, case.uhf)
+                    .unwrap_or_else(|err| panic!("{}: GFN1-UKS failed: {err}", case.name));
             assert!(u.converged, "{}: GFN1-UKS SCC did not converge", case.name);
             let mtot: f64 = u.spin_moments.iter().sum();
             assert!(
@@ -2008,12 +2004,10 @@ mod f41_cis {
             let dipoles = sci_form::scf::dipole_matrix::dipole_matrices(&basis, [0.0, 0.0, 0.0]);
             let n = basis.n_basis;
             if !case.dipole_x.is_empty() {
-                for comp in 0..3 {
-                    let expected = match comp {
-                        0 => &case.dipole_x,
-                        1 => &case.dipole_y,
-                        _ => &case.dipole_z,
-                    };
+                for (comp, expected) in [&case.dipole_x, &case.dipole_y, &case.dipole_z]
+                    .into_iter()
+                    .enumerate()
+                {
                     assert_eq!(expected.len(), n * n, "{}: dipole size", case.name);
                     for i in 0..n {
                         for j in 0..n {
@@ -3102,6 +3096,8 @@ mod f67_assembly {
         cell_lengths: Vec<f64>,
         n_atoms: usize,
         composition: HashMap<String, usize>,
+        /// Mirrors the fixture schema; not consumed by the assertions below.
+        #[allow(dead_code)]
         n_bonds: usize,
     }
 

@@ -278,7 +278,7 @@ sci-form assemble --topology pcu --metal 30 --geometry octahedral --a 10.0
 
 ```bash
 $ sci-form info
-sci-form 0.9.1
+sci-form 0.15.2
 ```
 
 ## Exit Codes

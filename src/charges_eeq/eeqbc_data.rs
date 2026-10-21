@@ -7,6 +7,10 @@
 //!
 //! Regenerate with `scripts/validation/gen_eeqbc_params.py`.
 //! Units: Bohr for lengths, Hartree for chi/eta.
+// The tables below transcribe published parameter values verbatim; the
+// decimal literals are kept as published rather than replaced by symbolic
+// constants, so `clippy::approx_constant` does not apply here.
+#![allow(clippy::approx_constant)]
 
 #[rustfmt::skip]
 /// Element electronegativities (Hartree), Z = 1..103.
@@ -291,7 +295,7 @@ pub const EEQBC_AVG_CN: [f64; 103] = [
 /// Packed pairwise van-der-Waals distances as passed by
 /// `new_eeqbc2025_model` (raw mctc-lib table value); index
 /// `min + max*(max-1)/2` (1-based) for `min <= max`.
-pub const EEQBC_VDW_PAIRS: [f64; 5356] = [
+pub static EEQBC_VDW_PAIRS: [f64; 5356] = [
     2.1823, 1.8547, 1.7347, 2.9086,
     2.5732, 3.4956, 2.355, 2.5095,
     2.9802, 3.0982, 2.5141, 2.3917,

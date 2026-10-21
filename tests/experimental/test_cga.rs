@@ -3,7 +3,7 @@
 //! Validates all E1 subsections: algebraic layer, conformer generation,
 //! and materials assembly.
 
-#[cfg(feature = "experimental-cga")]
+#[cfg(feature = "alpha-cga")]
 mod cga_tests {
     use sci_form::alpha::cga::*;
 

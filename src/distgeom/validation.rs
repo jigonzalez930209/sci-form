@@ -292,15 +292,6 @@ fn normalize_ring(ring: &[usize]) -> Vec<usize> {
     forward.min(backward)
 }
 
-fn ring_edges(ring: &[usize]) -> impl Iterator<Item = (usize, usize)> + '_ {
-    let n = ring.len();
-    (0..n).map(move |i| {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
-        (a.min(b), a.max(b))
-    })
-}
-
 /// Volume test: check that a tetrahedral center has minimum volume.
 /// Uses NORMALIZED direction vectors from center to each neighbor.
 /// Checks all C(4,3)=4 combinations of 3 vectors.

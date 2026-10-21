@@ -135,5 +135,9 @@ fn f81_dihedral_matches_axis_rotation() {
         let da = circ(got_a - d.dihedral_ref).min(circ(got_a + d.dihedral_ref));
         assert!(da <= 1e-9, "dihedral angle {da:.3e}");
     }
-    println!("F81b dihedrals: n={} worst {:.3e}", fix.dihedrals.len(), worst);
+    println!(
+        "F81b dihedrals: n={} worst {:.3e}",
+        fix.dihedrals.len(),
+        worst
+    );
 }

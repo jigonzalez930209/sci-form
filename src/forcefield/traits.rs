@@ -91,7 +91,7 @@ impl MolecularForceField {
                     || (0.0, vec![0.0; grad.len()]),
                     |mut left, right| {
                         left.0 += right.0;
-                        for (dst, src) in left.1.iter_mut().zip(right.1.into_iter()) {
+                        for (dst, src) in left.1.iter_mut().zip(right.1) {
                             *dst += src;
                         }
                         left

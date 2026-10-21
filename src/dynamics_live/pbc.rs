@@ -69,23 +69,92 @@ impl SimulationBox {
     }
 
     /// Minimum-image displacement vector from r1 to r2.
+    ///
+    /// The closest periodic image is located by searching neighbouring
+    /// lattice images. Rounding the fractional components alone is only
+    /// exact for orthogonal boxes (there the components are independent),
+    /// so skewed boxes need the explicit image search.
     pub fn minimum_image(&self, r1: &[f64; 3], r2: &[f64; 3]) -> [f64; 3] {
         if !self.periodic {
             return [r2[0] - r1[0], r2[1] - r1[1], r2[2] - r1[2]];
         }
 
-        let mut dr = [r2[0] - r1[0], r2[1] - r1[1], r2[2] - r1[2]];
-        // Convert to fractional
+        let dr = [r2[0] - r1[0], r2[1] - r1[1], r2[2] - r1[2]];
         let frac = self.to_fractional(&dr);
-        // Apply minimum image in fractional space
-        let wrapped = [
-            frac[0] - frac[0].round(),
-            frac[1] - frac[1].round(),
-            frac[2] - frac[2].round(),
-        ];
-        // Convert back
-        dr = self.to_cartesian(&wrapped);
-        dr
+        // Fractional rounding: the exact minimum image for orthogonal boxes.
+        let base = [frac[0].round(), frac[1].round(), frac[2].round()];
+        let mut best = [frac[0] - base[0], frac[1] - base[1], frac[2] - base[2]];
+        if !self.is_orthogonal() {
+            // Skewed box: search the ±1-cell neighbourhood, then refine by
+            // stepping while a neighbouring image is closer.
+            let mut best_d2 = self.frac_dist2(best);
+            let mut shift = base;
+            for i in -1..=1 {
+                for j in -1..=1 {
+                    for k in -1..=1 {
+                        let candidate_shift =
+                            [base[0] + i as f64, base[1] + j as f64, base[2] + k as f64];
+                        let candidate = [
+                            frac[0] - candidate_shift[0],
+                            frac[1] - candidate_shift[1],
+                            frac[2] - candidate_shift[2],
+                        ];
+                        let d2 = self.frac_dist2(candidate);
+                        if d2 < best_d2 {
+                            best_d2 = d2;
+                            best = candidate;
+                            shift = candidate_shift;
+                        }
+                    }
+                }
+            }
+            for _ in 0..64 {
+                let mut improved = false;
+                for axis in 0..3 {
+                    for step in [-1.0f64, 1.0] {
+                        let mut candidate_shift = shift;
+                        candidate_shift[axis] += step;
+                        let candidate = [
+                            frac[0] - candidate_shift[0],
+                            frac[1] - candidate_shift[1],
+                            frac[2] - candidate_shift[2],
+                        ];
+                        let d2 = self.frac_dist2(candidate);
+                        if d2 < best_d2 {
+                            best_d2 = d2;
+                            best = candidate;
+                            shift = candidate_shift;
+                            improved = true;
+                        }
+                    }
+                }
+                if !improved {
+                    break;
+                }
+            }
+        }
+        self.to_cartesian(&best)
+    }
+
+    /// Squared Cartesian length of a fractional displacement.
+    fn frac_dist2(&self, frac: [f64; 3]) -> f64 {
+        let d = self.to_cartesian(&frac);
+        d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
+    }
+
+    /// Whether the lattice vectors are mutually orthogonal.
+    fn is_orthogonal(&self) -> bool {
+        let l = self.lattice;
+        for i in 0..3 {
+            for j in (i + 1)..3 {
+                let dot = l[i][0] * l[j][0] + l[i][1] * l[j][1] + l[i][2] * l[j][2];
+                let scale = norm3(l[i]) * norm3(l[j]);
+                if dot.abs() > 1e-12 * scale {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     /// Minimum-image distance squared.
@@ -127,6 +196,11 @@ impl SimulationBox {
         ];
         (a[0] * cross[0] + a[1] * cross[1] + a[2] * cross[2]).abs()
     }
+}
+
+/// Euclidean length of a 3-vector.
+fn norm3(v: [f64; 3]) -> f64 {
+    (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
 }
 
 /// Invert a 3×3 matrix.

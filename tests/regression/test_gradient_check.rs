@@ -173,7 +173,7 @@ fn test_gradient_finite_diff() {
     };
 
     // Sort by heaviest molecules first (most atoms) for a representative sample
-    ref_mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));
+    ref_mols.sort_by_key(|m| std::cmp::Reverse(m.atoms.len()));
 
     // Optional limit — default 100 heaviest; use GDB20_LIMIT=0 for all
     let limit: usize = std::env::var("GDB20_LIMIT")

@@ -26,8 +26,10 @@ struct DftCase {
 
 #[derive(serde::Deserialize)]
 struct Fixture {
-    energy_tolerance_Ha: f64,
-    gap_tolerance_eV: f64,
+    #[serde(rename = "energy_tolerance_Ha")]
+    energy_tolerance_ha: f64,
+    #[serde(rename = "gap_tolerance_eV")]
+    gap_tolerance_ev: f64,
     cases: Vec<DftCase>,
 }
 
@@ -74,8 +76,7 @@ fn f77_dft_matches_pyscf() {
         }
         println!(
             "{}/{}: E={:.8} (ref {:.8}, dE={:.2e}) gap={:.3} (ref {:.3}, dg={:.2e}) iters={}",
-            c.name, c.xc, r.total_energy, c.e_ref, de, r.gap, c.gap_ref, dg,
-            r.scf_iterations
+            c.name, c.xc, r.total_energy, c.e_ref, de, r.gap, c.gap_ref, dg, r.scf_iterations
         );
     }
     println!(
@@ -87,17 +88,17 @@ fn f77_dft_matches_pyscf() {
         worst_g.1
     );
     assert!(
-        worst_e.0 <= fix.energy_tolerance_Ha,
+        worst_e.0 <= fix.energy_tolerance_ha,
         "dE {:.4e} Ha at {} (tol {})",
         worst_e.0,
         worst_e.1,
-        fix.energy_tolerance_Ha
+        fix.energy_tolerance_ha
     );
     assert!(
-        worst_g.0 <= fix.gap_tolerance_eV,
+        worst_g.0 <= fix.gap_tolerance_ev,
         "dgap {:.4e} eV at {} (tol {})",
         worst_g.0,
         worst_g.1,
-        fix.gap_tolerance_eV
+        fix.gap_tolerance_ev
     );
 }

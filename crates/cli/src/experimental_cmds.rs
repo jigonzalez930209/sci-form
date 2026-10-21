@@ -1,4 +1,8 @@
 //! CLI handlers for experimental modules.
+//!
+//! Every handler either delegates to a real core implementation in
+//! [`sci_form`] or has been removed — no handler returns hard-coded
+//! placeholder data.
 
 #[allow(unused_imports)]
 use crate::format::parse_elems_coords;
@@ -109,6 +113,7 @@ pub fn cmd_cpm(elements: &str, coords: &str, mu_ev: f64, dielectric: f64) {
         dielectric,
         max_iter: 100,
         charge_tol: 1e-6,
+        mu_per_atom: None,
     };
     let r = sci_form::beta::cpm::compute_cpm_charges(&elems, &positions, &config);
     println!(
@@ -281,6 +286,7 @@ pub fn cmd_gsm_compare_backends(smiles: &str, coords: &str, methods: &str) {
 }
 
 /// Compute a simplified NEB-like path between two geometries.
+#[allow(clippy::too_many_arguments)]
 pub fn cmd_simplified_neb_path(
     smiles: &str,
     start_coords: &str,
@@ -477,8 +483,54 @@ pub fn cmd_edl_gcs(
     }
 }
 
+// ─── Render-bridge chart output ───────────────────────────────────────────
+
+/// Print a chart payload as JSON.
+#[cfg(all(
+    feature = "alpha-render-bridge",
+    any(
+        feature = "alpha-edl",
+        feature = "alpha-kinetics",
+        feature = "alpha-periodic-linear",
+        feature = "alpha-gsm"
+    )
+))]
+fn print_chart(chart: &sci_form::render_bridge::ChartPayload) {
+    println!(
+        "{}",
+        serde_json::json!({
+            "title": chart.title,
+            "series_count": chart.series.len(),
+            "series": chart.series.iter().map(|s| serde_json::json!({
+                "series_id": s.series_id,
+                "label": s.label,
+                "x": s.x,
+                "y": s.y,
+                "x_unit": s.x_unit,
+                "y_unit": s.y_unit
+            })).collect::<Vec<_>>()
+        })
+    );
+}
+
+/// Integrate the charge density of an EDL profile into a surface charge
+/// density in coulombs per square metre.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
+fn integrated_charge_c_per_m2(profile: &sci_form::alpha::edl::EdlProfileResult) -> f64 {
+    const ANGSTROM_TO_M: f64 = 1.0e-10;
+    let mut integral = 0.0_f64;
+    for i in 1..profile.distance_axis_angstrom.len() {
+        let dx_m = (profile.distance_axis_angstrom[i] - profile.distance_axis_angstrom[i - 1])
+            * ANGSTROM_TO_M;
+        integral += 0.5
+            * (profile.charge_density_c_per_m3[i] + profile.charge_density_c_per_m3[i - 1])
+            * dx_m;
+    }
+    integral
+}
+
 /// Generate an EDL profile chart.
-#[cfg(feature = "alpha-render-bridge")]
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
 pub fn cmd_edl_chart(surface_potential_v: f64, ionic_strength_m: f64) {
     use sci_form::alpha::edl::*;
     use sci_form::alpha::render_bridge::edl_profile_chart;
@@ -488,16 +540,7 @@ pub fn cmd_edl_chart(surface_potential_v: f64, ionic_strength_m: f64) {
         ..Default::default()
     };
     match compute_gouy_chapman_profile(surface_potential_v, &config) {
-        Ok(profile) => {
-            let chart = edl_profile_chart(&profile);
-            println!(
-                "{}",
-                serde_json::json!({
-                    "title": chart.title,
-                    "series_count": chart.series.len()
-                })
-            );
-        }
+        Ok(profile) => print_chart(&edl_profile_chart(&profile)),
         Err(e) => {
             eprintln!("EDL chart error: {}", e);
             std::process::exit(1);
@@ -506,7 +549,7 @@ pub fn cmd_edl_chart(surface_potential_v: f64, ionic_strength_m: f64) {
 }
 
 /// Generate a capacitance scan chart.
-#[cfg(feature = "alpha-render-bridge")]
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
 pub fn cmd_capacitance_chart(
     v_min: f64,
     v_max: f64,
@@ -515,7 +558,7 @@ pub fn cmd_capacitance_chart(
     model: &str,
 ) {
     use sci_form::alpha::edl::*;
-    use sci_form::alpha::render_bridge::capacitance_scan_chart;
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let edl_model = match model {
         "helmholtz" => EdlModel::Helmholtz,
         "gouy-chapman" => EdlModel::GouyChapman,
@@ -530,136 +573,240 @@ pub fn cmd_capacitance_chart(
         ionic_strength_m,
         ..Default::default()
     };
-    match scan_edl_capacitance(v_min, v_max, n_points, &config) {
-        Ok(scan) => {
-            let cpm_scan_result = CpmEdlScanResult {
-                mu_values_ev: scan.iter().map(|(v, _)| *v).collect(),
-                total_charge_e: vec![0.0; scan.len()],
-                grand_potential_ev: vec![0.0; scan.len()],
-                capacitance_e_per_ev: scan.iter().map(|(_, c)| *c).collect(),
-                profiles: vec![],
-                all_converged: true,
-            };
-            let chart = capacitance_scan_chart(&cpm_scan_result);
-            println!(
-                "{}",
-                serde_json::json!({
-                    "title": chart.title,
-                    "series_count": chart.series.len(),
-                    "potentials": scan.iter().map(|(v, _)| v).collect::<Vec<_>>()
-                })
-            );
-        }
+    let scan = match scan_edl_capacitance(v_min, v_max, n_points, &config) {
+        Ok(scan) => scan,
         Err(e) => {
             eprintln!("Capacitance chart error: {}", e);
             std::process::exit(1);
         }
+    };
+    let mut potentials = Vec::with_capacity(scan.len());
+    let mut capacitances = Vec::with_capacity(scan.len());
+    let mut charges = Vec::with_capacity(scan.len());
+    for (potential, capacitance) in &scan {
+        let profile = match compute_edl_profile(*potential, &config) {
+            Ok(profile) => profile,
+            Err(e) => {
+                eprintln!("Capacitance chart error: {}", e);
+                std::process::exit(1);
+            }
+        };
+        potentials.push(*potential);
+        capacitances.push(*capacitance);
+        charges.push(integrated_charge_c_per_m2(&profile));
     }
+    let chart = ChartPayload {
+        title: "EDL Capacitance Scan".to_string(),
+        series: vec![
+            ChartSeries {
+                series_id: "charge_vs_potential".into(),
+                label: "Q(μ)".into(),
+                x: potentials.clone(),
+                y: charges,
+                x_unit: "V".into(),
+                y_unit: "C/m^2".into(),
+            },
+            ChartSeries {
+                series_id: "capacitance".into(),
+                label: "C(μ)".into(),
+                x: potentials,
+                y: capacitances,
+                x_unit: "V".into(),
+                y_unit: "F/m^2".into(),
+            },
+        ],
+    };
+    print_chart(&chart);
 }
 
-/// Generate an Arrhenius chart.
-#[cfg(feature = "alpha-render-bridge")]
+/// Generate an Arrhenius chart from temperature-dependent rates.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
 pub fn cmd_arrhenius_chart(temperatures_str: &str, rates_str: &str) {
-    use sci_form::alpha::kinetics::{ElementaryRateResult, ThermodynamicState};
-    use sci_form::alpha::render_bridge::arrhenius_chart;
-    let temps: Vec<f64> = match serde_json::from_str(temperatures_str) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to parse temperatures: {}", e);
-            std::process::exit(1);
-        }
-    };
-    let rates: Vec<f64> = match serde_json::from_str(rates_str) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to parse rates: {}", e);
-            std::process::exit(1);
-        }
-    };
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
+    let temps: Vec<f64> = serde_json::from_str(temperatures_str).unwrap_or_else(|e| {
+        eprintln!("Failed to parse temperatures: {}", e);
+        std::process::exit(1);
+    });
+    let rates: Vec<f64> = serde_json::from_str(rates_str).unwrap_or_else(|e| {
+        eprintln!("Failed to parse rates: {}", e);
+        std::process::exit(1);
+    });
     if temps.len() != rates.len() {
         eprintln!("Temperature and rate arrays must have same length");
         std::process::exit(1);
     }
-    let results: Vec<ElementaryRateResult> = temps
-        .into_iter()
-        .zip(rates.into_iter())
-        .map(|(t, r)| ElementaryRateResult {
-            step_id: "arrhenius".to_string(),
-            forward_rate_s_inv: r,
-            reverse_rate_s_inv: r / 1000.0,
-            equilibrium_constant: 1.0,
-            state: ThermodynamicState {
-                temperature_k: t,
-                pressure_bar: 1.0,
-            },
-        })
-        .collect();
-    let chart = arrhenius_chart(&results);
-    println!(
-        "{}",
-        serde_json::json!({
-            "title": chart.title,
-            "series_count": chart.series.len()
-        })
-    );
+    let chart = ChartPayload {
+        title: "Arrhenius Plot".to_string(),
+        series: vec![ChartSeries {
+            series_id: "arrhenius".into(),
+            label: "ln(k) vs 1000/T".into(),
+            x: temps.iter().map(|t| 1000.0 / t).collect(),
+            y: rates.iter().map(|r| r.ln()).collect(),
+            x_unit: "1000/K".into(),
+            y_unit: "ln(s⁻¹)".into(),
+        }],
+    };
+    print_chart(&chart);
 }
 
-/// Generate a band structure chart.
-#[cfg(feature = "alpha-render-bridge")]
-pub fn cmd_band_structure_chart(k_points: usize, n_bands: usize, e_min: f64, e_max: f64) {
-    use sci_form::alpha::periodic_linear::{
-        BandStructureAdapterResult, PeriodicBandEdgeSummary, PeriodicSpectralDiagnostics,
+/// Generate a thermal-properties chart from an elementary step.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+pub fn cmd_thermal_prop_chart(
+    activation_free_energy_ev: f64,
+    reaction_free_energy_ev: f64,
+    temperatures_str: &str,
+) {
+    use sci_form::alpha::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
+    use sci_form::alpha::render_bridge::arrhenius_chart;
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
+    let temperatures: Vec<f64> = serde_json::from_str(temperatures_str).unwrap_or_else(|e| {
+        eprintln!("Failed to parse temperatures: {}", e);
+        std::process::exit(1);
+    });
+    let step = ElementaryStep {
+        step_id: "thermal".to_string(),
+        activation_free_energy_ev,
+        reaction_free_energy_ev,
+        prefactor_s_inv: None,
     };
+    let results = match evaluate_htst_temperature_sweep(&step, &temperatures, 1.0) {
+        Ok(results) => results,
+        Err(e) => {
+            eprintln!("Thermal property chart error: {}", e);
+            std::process::exit(1);
+        }
+    };
+    let base = arrhenius_chart(&results);
+    let mut series = base.series.into_iter().collect::<Vec<_>>();
+    series.push(ChartSeries {
+        series_id: "equilibrium_constant".into(),
+        label: "ln(K_eq) vs 1000/T".into(),
+        x: results
+            .iter()
+            .map(|r| 1000.0 / r.state.temperature_k)
+            .collect(),
+        y: results
+            .iter()
+            .map(|r| r.equilibrium_constant.ln())
+            .collect(),
+        x_unit: "1000/K".into(),
+        y_unit: "ln".into(),
+    });
+    let chart = ChartPayload {
+        title: "Thermal Properties".to_string(),
+        series,
+    };
+    print_chart(&chart);
+}
+
+/// Generate a phase portrait chart from a solved microkinetic network.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+pub fn cmd_phase_portrait_chart(network: Option<&str>, n_steps: usize) {
+    use sci_form::alpha::kinetics::solve_microkinetic_network;
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
+    let config = microkinetic_config(network, n_steps);
+    if config.species.len() < 2 {
+        eprintln!("A phase portrait needs a network with at least two species");
+        std::process::exit(1);
+    }
+    let trace = match solve_microkinetic_network(&config) {
+        Ok(trace) => trace,
+        Err(e) => {
+            eprintln!("microkinetic solve failed: {e}");
+            std::process::exit(1);
+        }
+    };
+    let mut x = Vec::with_capacity(trace.frames.len());
+    let mut y = Vec::with_capacity(trace.frames.len());
+    for frame in &trace.frames {
+        let first = frame
+            .species
+            .iter()
+            .find(|s| s.species_id == config.species[0])
+            .map(|s| s.population)
+            .unwrap_or_default();
+        let second = frame
+            .species
+            .iter()
+            .find(|s| s.species_id == config.species[1])
+            .map(|s| s.population)
+            .unwrap_or_default();
+        x.push(first);
+        y.push(second);
+    }
+    let chart = ChartPayload {
+        title: "Phase Portrait".to_string(),
+        series: vec![ChartSeries {
+            series_id: "phase_portrait".into(),
+            label: format!("[{}] vs [{}]", config.species[0], config.species[1]),
+            x,
+            y,
+            x_unit: "arb.".into(),
+            y_unit: "arb.".into(),
+        }],
+    };
+    print_chart(&chart);
+}
+
+/// Generate a band structure chart from a periodic EHT calculation.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+pub fn cmd_band_structure_chart(
+    elements: &str,
+    coords: &str,
+    lattice: &str,
+    n_kpoints_per_segment: usize,
+) {
+    use sci_form::alpha::periodic_linear::*;
     use sci_form::alpha::render_bridge::band_structure_chart;
-    let band_energies_ev: Vec<Vec<f64>> = (0..k_points)
-        .map(|_| {
-            (0..n_bands)
-                .map(|i| e_min + (i as f64) * (e_max - e_min) / (n_bands as f64))
-                .collect()
-        })
-        .collect();
-    let bs = BandStructureAdapterResult {
-        bands: band_energies_ev,
-        n_bands,
-        n_kpoints: k_points,
-        fermi_energy_ev: (e_min + e_max) / 2.0,
-        direct_gap_ev: Some((e_max - e_min) / 2.0),
-        indirect_gap_ev: Some((e_max - e_min) / 2.0),
-        band_edges: PeriodicBandEdgeSummary::default(),
-        high_symmetry_points: vec![("G".to_string(), 0), ("X".to_string(), k_points / 2)],
-        diagnostics: PeriodicSpectralDiagnostics::default(),
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let lattice_values: Vec<f64> = serde_json::from_str(lattice).unwrap_or_else(|e| {
+        eprintln!("Bad lattice JSON: {}", e);
+        std::process::exit(1);
+    });
+    if lattice_values.len() != 9 {
+        eprintln!("Lattice needs exactly nine components");
+        std::process::exit(1);
+    }
+    let mut lattice_matrix = [[0.0_f64; 3]; 3];
+    for (row, chunk) in lattice_values.chunks_exact(3).enumerate() {
+        lattice_matrix[row] = [chunk[0], chunk[1], chunk[2]];
+    }
+    let n_electrons = match sci_form::eht::solve_eht(&elems, &positions, None) {
+        Ok(result) => result.n_electrons,
+        Err(e) => {
+            eprintln!("EHT failed: {e}");
+            std::process::exit(1);
+        }
     };
-    let chart = band_structure_chart(&bs);
-    println!(
-        "{}",
-        serde_json::json!({
-            "title": chart.title,
-            "series_count": chart.series.len()
-        })
-    );
+    let config = BandStructureAdapterConfig {
+        n_kpoints_per_segment,
+        path: BandStructureAdapterConfig::default().path,
+    };
+    match compute_band_structure_adapter(&elems, &positions, &lattice_matrix, n_electrons, &config)
+    {
+        Ok(bands) => print_chart(&band_structure_chart(&bands)),
+        Err(e) => {
+            eprintln!("Band structure chart error: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 /// Generate a DOS chart.
-#[cfg(feature = "alpha-render-bridge")]
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 pub fn cmd_dos_chart(energies_str: &str, dos_str: &str) {
     use sci_form::alpha::periodic_linear::{
         PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
     };
     use sci_form::alpha::render_bridge::periodic_dos_chart;
-    let energies: Vec<f64> = match serde_json::from_str(energies_str) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to parse energies: {}", e);
-            std::process::exit(1);
-        }
-    };
-    let dos_values: Vec<f64> = match serde_json::from_str(dos_str) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to parse DOS values: {}", e);
-            std::process::exit(1);
-        }
-    };
+    let energies: Vec<f64> = serde_json::from_str(energies_str).unwrap_or_else(|e| {
+        eprintln!("Failed to parse energies: {}", e);
+        std::process::exit(1);
+    });
+    let dos_values: Vec<f64> = serde_json::from_str(dos_str).unwrap_or_else(|e| {
+        eprintln!("Failed to parse DOS values: {}", e);
+        std::process::exit(1);
+    });
     let dos_result = PeriodicKpmDosResult {
         energies_ev: energies,
         total_dos: dos_values,
@@ -667,118 +814,659 @@ pub fn cmd_dos_chart(energies_str: &str, dos_str: &str) {
         band_edges: PeriodicBandEdgeSummary::default(),
         diagnostics: PeriodicSpectralDiagnostics::default(),
     };
-    let chart = periodic_dos_chart(&dos_result);
-    println!(
-        "{}",
-        serde_json::json!({
-            "title": chart.title,
-            "series_count": chart.series.len()
+    print_chart(&periodic_dos_chart(&dos_result));
+}
+
+// ─── Periodic chart helpers ───────────────────────────────────────────────
+
+/// Parse a JSON array of real-space operator blocks.
+///
+/// A block is `{"matrix": [[...], ...], "translation": [i, j, k]}` where the
+/// matrix is square and the translation is expressed in lattice-vector units.
+#[cfg(feature = "alpha-periodic-linear")]
+fn parse_blocks(json_str: &str) -> Vec<(nalgebra::DMatrix<f64>, [i32; 3])> {
+    let value: serde_json::Value = match serde_json::from_str(json_str) {
+        Ok(value) => value,
+        Err(e) => {
+            eprintln!("Invalid real-space block JSON: {e}");
+            std::process::exit(1);
+        }
+    };
+    let array = match value.as_array() {
+        Some(array) => array,
+        None => {
+            eprintln!("Real-space blocks must be a JSON array");
+            std::process::exit(1);
+        }
+    };
+    let mut blocks = Vec::with_capacity(array.len());
+    for item in array {
+        let matrix = match item.get("matrix").and_then(|m| m.as_array()) {
+            Some(matrix) => matrix,
+            None => {
+                eprintln!("Each real-space block needs a 'matrix' array");
+                std::process::exit(1);
+            }
+        };
+        let translation = match item.get("translation").and_then(|t| t.as_array()) {
+            Some(translation) => translation,
+            None => {
+                eprintln!("Each real-space block needs a 'translation' array");
+                std::process::exit(1);
+            }
+        };
+        if translation.len() != 3 {
+            eprintln!("Lattice translations need exactly three components");
+            std::process::exit(1);
+        }
+        let mut trans = [0i32; 3];
+        for (slot, value) in trans.iter_mut().zip(translation.iter()) {
+            *slot = match value.as_i64() {
+                Some(v) => v as i32,
+                None => {
+                    eprintln!("Lattice translations must be integers");
+                    std::process::exit(1);
+                }
+            };
+        }
+        let n = matrix.len();
+        if n == 0 {
+            eprintln!("Real-space matrices must be non-empty");
+            std::process::exit(1);
+        }
+        let mut flat = Vec::with_capacity(n * n);
+        for row in matrix {
+            let row = match row.as_array() {
+                Some(row) => row,
+                None => {
+                    eprintln!("Real-space matrix rows must be arrays");
+                    std::process::exit(1);
+                }
+            };
+            if row.len() != n {
+                eprintln!("Real-space matrices must be square");
+                std::process::exit(1);
+            }
+            for entry in row {
+                match entry.as_f64() {
+                    Some(value) => flat.push(value),
+                    None => {
+                        eprintln!("Real-space matrix entries must be numbers");
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+        blocks.push((nalgebra::DMatrix::from_row_slice(n, n, &flat), trans));
+    }
+    if blocks.is_empty() {
+        eprintln!("At least one real-space block is required");
+        std::process::exit(1);
+    }
+    blocks
+}
+
+/// Borrow parsed blocks in the shape expected by the core k-mesh API.
+#[cfg(feature = "alpha-periodic-linear")]
+fn as_core_refs(
+    blocks: &[(nalgebra::DMatrix<f64>, [i32; 3])],
+) -> Vec<(&nalgebra::DMatrix<f64>, [i32; 3])> {
+    blocks
+        .iter()
+        .map(|(matrix, trans)| (matrix, *trans))
+        .collect()
+}
+
+/// Parse a k-mesh centering label.
+#[cfg(feature = "alpha-periodic-linear")]
+fn parse_centering(centering: &str) -> sci_form::kmesh::KMeshCentering {
+    use sci_form::kmesh::KMeshCentering;
+    match centering {
+        "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
+        "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
+        _ => {
+            eprintln!("Unknown centering: {centering}");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Row-major representation of a square matrix.
+#[cfg(feature = "alpha-periodic-linear")]
+fn matrix_rows(matrix: &nalgebra::DMatrix<f64>) -> Vec<Vec<f64>> {
+    let n = matrix.nrows();
+    (0..n)
+        .map(|i| (0..n).map(|j| matrix[(i, j)]).collect())
+        .collect()
+}
+
+/// Ascending eigenvalues of a symmetric matrix.
+#[cfg(feature = "alpha-periodic-linear")]
+fn symmetric_eigenvalues(matrix: &nalgebra::DMatrix<f64>) -> Vec<f64> {
+    let eigen = nalgebra::SymmetricEigen::new(matrix.clone());
+    let mut values: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    values
+}
+
+/// Interpolate a high-symmetry k-path and return the cumulative path distance
+/// together with the sampled fractional k-points.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+fn interpolate_path(
+    path: &[([f64; 3], String)],
+    n_points_per_segment: usize,
+) -> (Vec<f64>, Vec<[f64; 3]>) {
+    let n = n_points_per_segment.max(1);
+    let mut distance = Vec::new();
+    let mut points = Vec::new();
+    let mut accumulated = 0.0_f64;
+    let mut previous: Option<[f64; 3]> = None;
+    for index in 0..path.len().saturating_sub(1) {
+        let start = path[index].0;
+        let end = path[index + 1].0;
+        for step in 0..=n {
+            if index > 0 && step == 0 {
+                continue;
+            }
+            let t = step as f64 / n as f64;
+            let mut k = [0.0_f64; 3];
+            for axis in 0..3 {
+                k[axis] = start[axis] + t * (end[axis] - start[axis]);
+            }
+            if let Some(prev) = previous {
+                accumulated += ((k[0] - prev[0]).powi(2)
+                    + (k[1] - prev[1]).powi(2)
+                    + (k[2] - prev[2]).powi(2))
+                .sqrt();
+            }
+            previous = Some(k);
+            distance.push(accumulated);
+            points.push(k);
+        }
+    }
+    (distance, points)
+}
+
+/// Compute the Fermi-surface contour of the selected band in the `kz = 0` plane.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+fn fermi_contour(
+    refs: &[(&nalgebra::DMatrix<f64>, [i32; 3])],
+    fermi_energy_ev: Option<f64>,
+    n_kx: usize,
+    n_ky: usize,
+) -> (Vec<f64>, Vec<f64>, f64) {
+    let n_kx = n_kx.max(2);
+    let n_ky = n_ky.max(2);
+    let kx_values: Vec<f64> = (0..n_kx).map(|i| -0.5 + i as f64 / n_kx as f64).collect();
+    let ky_values: Vec<f64> = (0..n_ky).map(|j| -0.5 + j as f64 / n_ky as f64).collect();
+
+    let mut samples: Vec<Vec<Vec<f64>>> = Vec::with_capacity(n_ky);
+    let mut all_energies: Vec<f64> = Vec::new();
+    for &ky in &ky_values {
+        let mut row = Vec::with_capacity(n_kx);
+        for &kx in &kx_values {
+            let hamiltonian = sci_form::kmesh::build_bloch_hamiltonian(refs, [kx, ky, 0.0]);
+            let eigenvalues = symmetric_eigenvalues(&hamiltonian);
+            all_energies.extend(eigenvalues.iter().copied());
+            row.push(eigenvalues);
+        }
+        samples.push(row);
+    }
+
+    let fermi = match fermi_energy_ev {
+        Some(value) => value,
+        None => {
+            let mut sorted = all_energies.clone();
+            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            if sorted.is_empty() {
+                0.0
+            } else {
+                sorted[sorted.len() / 2]
+            }
+        }
+    };
+
+    let band = samples
+        .first()
+        .and_then(|row| row.first())
+        .map(|energies| {
+            energies
+                .iter()
+                .filter(|&&e| e < fermi)
+                .count()
+                .min(energies.len().saturating_sub(1))
         })
-    );
+        .unwrap_or(0);
+
+    let mut contour_x = Vec::new();
+    let mut contour_y = Vec::new();
+    for (j, &ky) in ky_values.iter().enumerate() {
+        for i in 0..n_kx.saturating_sub(1) {
+            let e0 = samples[j][i].get(band).copied().unwrap_or(f64::NAN);
+            let e1 = samples[j][i + 1].get(band).copied().unwrap_or(f64::NAN);
+            if !e0.is_finite() || !e1.is_finite() {
+                continue;
+            }
+            let f0 = e0 - fermi;
+            let f1 = e1 - fermi;
+            if f0 == 0.0 {
+                contour_x.push(kx_values[i]);
+                contour_y.push(ky);
+                continue;
+            }
+            if f0 * f1 > 0.0 {
+                continue;
+            }
+            let span = kx_values[i + 1] - kx_values[i];
+            let energy_at = |x: f64| -> f64 {
+                if span == 0.0 {
+                    e0
+                } else {
+                    e0 + (x - kx_values[i]) / span * (e1 - e0)
+                }
+            };
+            let (mut lo, mut hi) = (kx_values[i], kx_values[i + 1]);
+            for _ in 0..60 {
+                let mid = 0.5 * (lo + hi);
+                if (energy_at(mid) - fermi) * f0 <= 0.0 {
+                    hi = mid;
+                } else {
+                    lo = mid;
+                }
+            }
+            contour_x.push(0.5 * (lo + hi));
+            contour_y.push(ky);
+        }
+    }
+    (contour_x, contour_y, fermi)
 }
 
-/// Generate chart stubs
-#[cfg(feature = "alpha-render-bridge")]
-pub fn cmd_trajectory_chart() {
-    println!(
-        "{}",
-        serde_json::json!({"title": "Trajectory", "status": "stub"})
-    );
+/// Generate a k-point path chart from the core high-symmetry path.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+pub fn cmd_kpoint_path_chart(n_points_per_segment: usize) {
+    use sci_form::alpha::periodic_linear::BandStructureAdapterConfig;
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
+    let path = BandStructureAdapterConfig::default().path;
+    let (distance, points) = interpolate_path(&path, n_points_per_segment);
+    let chart = ChartPayload {
+        title: "K-Point Path".to_string(),
+        series: vec![
+            ChartSeries {
+                series_id: "k_x".into(),
+                label: "k_x".into(),
+                x: distance.clone(),
+                y: points.iter().map(|k| k[0]).collect(),
+                x_unit: "1/B".into(),
+                y_unit: "1/B".into(),
+            },
+            ChartSeries {
+                series_id: "k_y".into(),
+                label: "k_y".into(),
+                x: distance.clone(),
+                y: points.iter().map(|k| k[1]).collect(),
+                x_unit: "1/B".into(),
+                y_unit: "1/B".into(),
+            },
+            ChartSeries {
+                series_id: "k_z".into(),
+                label: "k_z".into(),
+                x: distance,
+                y: points.iter().map(|k| k[2]).collect(),
+                x_unit: "1/B".into(),
+                y_unit: "1/B".into(),
+            },
+        ],
+    };
+    print_chart(&chart);
 }
 
-#[cfg(feature = "alpha-render-bridge")]
-pub fn cmd_kpoint_path_chart() {
-    println!(
-        "{}",
-        serde_json::json!({"title": "K-Point Path", "status": "stub"})
-    );
+/// Generate a Fermi-surface slice chart from real-space operator blocks.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+pub fn cmd_fermi_surface_chart(
+    blocks: &str,
+    fermi_energy_ev: Option<f64>,
+    n_kx: usize,
+    n_ky: usize,
+) {
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
+    let parsed = parse_blocks(blocks);
+    let refs = as_core_refs(&parsed);
+    let (contour_x, contour_y, fermi) = fermi_contour(&refs, fermi_energy_ev, n_kx, n_ky);
+    let chart = ChartPayload {
+        title: "Fermi Surface".to_string(),
+        series: vec![ChartSeries {
+            series_id: "fermi_contour".into(),
+            label: format!("E_F = {fermi:.4} eV"),
+            x: contour_x,
+            y: contour_y,
+            x_unit: "1/B".into(),
+            y_unit: "1/B".into(),
+        }],
+    };
+    print_chart(&chart);
 }
 
-#[cfg(feature = "alpha-render-bridge")]
-pub fn cmd_fermi_surface_chart() {
-    println!(
-        "{}",
-        serde_json::json!({"title": "Fermi Surface", "status": "stub"})
-    );
+// ─── GSM chart helpers ────────────────────────────────────────────────────
+
+/// Run the core GSM search with the requested energy backend.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+fn gsm_path(
+    smiles: &str,
+    reactant: &[f64],
+    product: &[f64],
+    method: &str,
+) -> sci_form::alpha::gsm::GsmResult {
+    use sci_form::alpha::gsm::{find_transition_state_with_backend, GsmConfig, GsmEnergyBackend};
+    let backend: GsmEnergyBackend = match method.parse() {
+        Ok(backend) => backend,
+        Err(e) => {
+            eprintln!("Unknown GSM backend '{method}': {e}");
+            std::process::exit(1);
+        }
+    };
+    match find_transition_state_with_backend(
+        smiles,
+        reactant,
+        product,
+        backend,
+        &GsmConfig::default(),
+    ) {
+        Ok(result) => result,
+        Err(e) => {
+            eprintln!("GSM path error: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
-#[cfg(feature = "alpha-render-bridge")]
-pub fn cmd_phase_portrait_chart() {
-    println!(
-        "{}",
-        serde_json::json!({"title": "Phase Portrait", "status": "stub"})
-    );
+/// Accumulated path length of the string nodes.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+fn path_distances(path_coords: &[Vec<f64>]) -> Vec<f64> {
+    let mut distances = Vec::with_capacity(path_coords.len());
+    let mut accumulated = 0.0_f64;
+    let mut previous: Option<&Vec<f64>> = None;
+    for coords in path_coords {
+        if let Some(prev) = previous {
+            accumulated += prev
+                .iter()
+                .zip(coords.iter())
+                .map(|(a, b)| (a - b).powi(2))
+                .sum::<f64>()
+                .sqrt();
+        }
+        previous = Some(coords);
+        distances.push(accumulated);
+    }
+    distances
 }
 
-#[cfg(feature = "alpha-render-bridge")]
-pub fn cmd_reaction_coordinate_chart() {
-    println!(
-        "{}",
-        serde_json::json!({"title": "Reaction Coordinate", "status": "stub"})
-    );
+/// Generate a trajectory chart from a GSM reaction path.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+pub fn cmd_trajectory_chart(
+    smiles: &str,
+    reactant_coords: &str,
+    product_coords: &str,
+    method: &str,
+) {
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
+    let reactant = parse_flat_coords_json(reactant_coords);
+    let product = parse_flat_coords_json(product_coords);
+    let result = gsm_path(smiles, &reactant, &product, method);
+    let distances = path_distances(&result.path_coords);
+    let index: Vec<f64> = (0..result.path_energies.len()).map(|i| i as f64).collect();
+    let chart = ChartPayload {
+        title: "GSM Trajectory".to_string(),
+        series: vec![
+            ChartSeries {
+                series_id: "path_energy".into(),
+                label: "E(path)".into(),
+                x: index.clone(),
+                y: result.path_energies.clone(),
+                x_unit: "node".into(),
+                y_unit: "kcal/mol".into(),
+            },
+            ChartSeries {
+                series_id: "path_distance".into(),
+                label: "path length".into(),
+                x: index,
+                y: distances,
+                x_unit: "node".into(),
+                y_unit: "A".into(),
+            },
+        ],
+    };
+    print_chart(&chart);
 }
 
-#[cfg(feature = "alpha-render-bridge")]
-pub fn cmd_thermal_prop_chart() {
-    println!(
-        "{}",
-        serde_json::json!({"title": "Thermal Properties", "status": "stub"})
-    );
+/// Generate a reaction-coordinate chart from a GSM reaction path.
+#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+pub fn cmd_reaction_coordinate_chart(
+    smiles: &str,
+    reactant_coords: &str,
+    product_coords: &str,
+    method: &str,
+) {
+    use sci_form::render_bridge::{ChartPayload, ChartSeries};
+    let reactant = parse_flat_coords_json(reactant_coords);
+    let product = parse_flat_coords_json(product_coords);
+    let result = gsm_path(smiles, &reactant, &product, method);
+    let chart = ChartPayload {
+        title: "Reaction Coordinate".to_string(),
+        series: vec![ChartSeries {
+            series_id: "reaction_coordinate".into(),
+            label: "E(rc)".into(),
+            x: path_distances(&result.path_coords),
+            y: result.path_energies.clone(),
+            x_unit: "A".into(),
+            y_unit: "kcal/mol".into(),
+        }],
+    };
+    print_chart(&chart);
 }
 
 // ─── PERIODIC LINEAR COMMANDS ──────────────────────────────────────
 
+/// Compute the k-averaged density of states with the core KPM solver.
 #[cfg(feature = "alpha-periodic-linear")]
-pub fn cmd_compute_periodic_dos(n_kpoints: usize, order: usize) {
-    let energies: Vec<f64> = (0..100).map(|i| -20.0 + 30.0 * i as f64 / 100.0).collect();
-    println!(
-        "{}",
-        serde_json::json!({
-            "energies_ev": energies,
-            "total_dos": vec![1.0; 100],
-            "n_kpoints": n_kpoints,
-            "order": order
-        })
-    );
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_compute_periodic_dos(
+    hamiltonian_blocks: &str,
+    grid: [usize; 3],
+    centering: &str,
+    order: usize,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    fermi_energy_ev: Option<f64>,
+) {
+    use sci_form::alpha::periodic_linear::*;
+    let blocks = parse_blocks(hamiltonian_blocks);
+    let centering = parse_centering(centering);
+    let kmesh_config = KMeshConfig { grid, centering };
+    let mesh = match monkhorst_pack_mesh(&kmesh_config) {
+        Ok(mesh) => mesh,
+        Err(e) => {
+            eprintln!("k-mesh error: {e}");
+            std::process::exit(1);
+        }
+    };
+    let hamiltonian_refs = as_core_refs(&blocks);
+    let (hamiltonians, _overlaps) =
+        sci_form::kmesh::assemble_periodic_operators(&hamiltonian_refs, &[], &mesh);
+    let config = PeriodicKpmAdapterConfig {
+        kmesh: kmesh_config,
+        order,
+        e_min_ev: e_min,
+        e_max_ev: e_max,
+        n_points,
+        fermi_energy_ev,
+        ..Default::default()
+    };
+    match compute_periodic_kpm_dos_from_operators(&hamiltonians, &config) {
+        Ok(result) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "energies_ev": result.energies_ev,
+                    "total_dos": result.total_dos,
+                    "n_kpoints": result.diagnostics.n_kpoints,
+                    "order": order,
+                    "e_min": e_min,
+                    "e_max": e_max,
+                    "fermi_energy_ev": fermi_energy_ev,
+                    "band_edges": result.band_edges,
+                    "diagnostics": result.diagnostics,
+                })
+            );
+        }
+        Err(e) => {
+            eprintln!("periodic DOS error: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
+/// Solve the periodic generalized eigenproblem with the core RandNLA solver.
 #[cfg(feature = "alpha-periodic-linear")]
-pub fn cmd_solve_periodic_randnla(n_kpoints: usize) {
-    println!(
-        "{}",
-        serde_json::json!({
-            "n_kpoints": n_kpoints,
-            "homo_energy_ev": -5.0,
-            "lumo_energy_ev": 2.0,
-            "band_gap_ev": 7.0
-        })
-    );
+pub fn cmd_solve_periodic_randnla(
+    hamiltonian_blocks: &str,
+    overlap_blocks: &str,
+    n_electrons: usize,
+    grid: [usize; 3],
+    centering: &str,
+    sketch_size: Option<usize>,
+) {
+    use sci_form::alpha::periodic_linear::*;
+    let hamiltonian_blocks = parse_blocks(hamiltonian_blocks);
+    let overlap_blocks = parse_blocks(overlap_blocks);
+    let centering = parse_centering(centering);
+    let kmesh_config = KMeshConfig { grid, centering };
+    let mesh = match monkhorst_pack_mesh(&kmesh_config) {
+        Ok(mesh) => mesh,
+        Err(e) => {
+            eprintln!("k-mesh error: {e}");
+            std::process::exit(1);
+        }
+    };
+    let hamiltonian_refs = as_core_refs(&hamiltonian_blocks);
+    let overlap_refs = as_core_refs(&overlap_blocks);
+    let (hamiltonians, overlaps) =
+        sci_form::kmesh::assemble_periodic_operators(&hamiltonian_refs, &overlap_refs, &mesh);
+    let config = PeriodicRandNlaAdapterConfig {
+        kmesh: kmesh_config,
+        sketch_size,
+        ..Default::default()
+    };
+    match sci_form::alpha::periodic_linear::solve_periodic_randnla(
+        &hamiltonians,
+        &overlaps,
+        n_electrons,
+        &config,
+    ) {
+        Ok(result) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "n_kpoints": result.diagnostics.n_kpoints,
+                    "sketch_size": sketch_size,
+                    "homo_energy_ev": result.band_edges.homo_energy_ev,
+                    "lumo_energy_ev": result.band_edges.lumo_energy_ev,
+                    "band_gap_ev": result.band_edges.direct_gap_ev,
+                    "direct_gap_ev": result.band_edges.direct_gap_ev,
+                    "indirect_gap_ev": result.band_edges.indirect_gap_ev,
+                    "max_residual": result.diagnostics.max_residual,
+                    "used_fallback": result.diagnostics.used_fallback,
+                    "kpoint_results": result.kpoint_results,
+                })
+            );
+        }
+        Err(e) => {
+            eprintln!("periodic RandNLA error: {e}");
+            std::process::exit(1);
+        }
+    }
 }
 
+/// Compute the Bloch phase factor for a lattice translation.
 #[cfg(feature = "alpha-periodic-linear")]
-pub fn cmd_bloch_phase(k_x: f64, k_y: f64, k_z: f64) {
-    let theta = 2.0 * std::f64::consts::PI * k_x;
+pub fn cmd_bloch_phase(k_x: f64, k_y: f64, k_z: f64, t_x: i32, t_y: i32, t_z: i32) {
+    let (cos_theta, sin_theta) = sci_form::kmesh::bloch_phase([k_x, k_y, k_z], [t_x, t_y, t_z]);
     println!(
         "{}",
         serde_json::json!({
             "k": [k_x, k_y, k_z],
-            "cos": theta.cos(),
-            "sin": theta.sin()
+            "translation": [t_x, t_y, t_z],
+            "cos": cos_theta,
+            "sin": sin_theta
         })
     );
 }
 
+/// Build the Bloch Hamiltonian `H(k)` from real-space operator blocks.
 #[cfg(feature = "alpha-periodic-linear")]
-pub fn cmd_build_bloch_hamiltonian(n_basis: usize) {
+pub fn cmd_build_bloch_hamiltonian(blocks: &str, k_x: f64, k_y: f64, k_z: f64) {
+    let parsed = parse_blocks(blocks);
+    let refs = as_core_refs(&parsed);
+    let hamiltonian = sci_form::kmesh::build_bloch_hamiltonian(&refs, [k_x, k_y, k_z]);
+    let n = hamiltonian.nrows();
     println!(
         "{}",
         serde_json::json!({
-            "n_basis": n_basis,
-            "matrix_shape": [n_basis, n_basis]
+            "n_basis": n,
+            "k": [k_x, k_y, k_z],
+            "matrix_shape": [n, n],
+            "matrix": matrix_rows(&hamiltonian),
+            "eigenvalues": symmetric_eigenvalues(&hamiltonian),
         })
     );
 }
 
+/// Assemble periodic Hamiltonians and overlaps for every k-point of a mesh.
+#[cfg(feature = "alpha-periodic-linear")]
+pub fn cmd_assemble_periodic_operators(
+    hamiltonian_blocks: &str,
+    overlap_blocks: &str,
+    grid: [usize; 3],
+    centering: &str,
+) {
+    use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
+    let hamiltonian_blocks = parse_blocks(hamiltonian_blocks);
+    let overlap_blocks = if overlap_blocks.trim().is_empty() {
+        Vec::new()
+    } else {
+        parse_blocks(overlap_blocks)
+    };
+    let centering = parse_centering(centering);
+    let mesh = match monkhorst_pack_mesh(&KMeshConfig { grid, centering }) {
+        Ok(mesh) => mesh,
+        Err(e) => {
+            eprintln!("k-mesh error: {e}");
+            std::process::exit(1);
+        }
+    };
+    let hamiltonian_refs = as_core_refs(&hamiltonian_blocks);
+    let overlap_refs = as_core_refs(&overlap_blocks);
+    let (hamiltonians, overlaps) =
+        sci_form::kmesh::assemble_periodic_operators(&hamiltonian_refs, &overlap_refs, &mesh);
+    let n_basis = hamiltonians.first().map(|m| m.nrows()).unwrap_or_default();
+    println!(
+        "{}",
+        serde_json::json!({
+            "n_kpoints": hamiltonians.len(),
+            "n_basis": n_basis,
+            "assembled": hamiltonians.len() == mesh.points.len(),
+            "kpoints": mesh.points.iter().map(|p| serde_json::json!({
+                "fractional": p.fractional,
+                "index": p.index,
+                "weight": p.weight,
+            })).collect::<Vec<_>>(),
+            "hamiltonians": hamiltonians.iter().map(matrix_rows).collect::<Vec<_>>(),
+            "overlaps": overlaps.iter().map(matrix_rows).collect::<Vec<_>>(),
+        })
+    );
+}
+
+/// Check that the electron count fits into the available band/k-point states.
 #[cfg(feature = "alpha-periodic-linear")]
 pub fn cmd_validate_electron_count(n_electrons: usize, n_bands: usize, n_kpoints: usize) {
     let valid = n_electrons <= n_bands * n_kpoints;
@@ -918,6 +1606,7 @@ pub fn cmd_solve_microkinetic_steady_state(network: Option<&str>, n_steps: usize
 }
 
 #[cfg(feature = "alpha-kinetics")]
+#[allow(clippy::too_many_arguments)]
 pub fn cmd_analyze_gsm_mbh_htst_step(
     smiles: &str,
     reactant_coords: &str,
@@ -984,89 +1673,53 @@ pub fn cmd_analyze_gsm_mbh_htst_step(
     }
 }
 
-// ──── RENDER BRIDGE: Missing chart utilities ──────────────────────────────
+// ──── RENDER BRIDGE: chart utilities ──────────────────────────────────────
 
-pub fn cmd_chart_to_json() {
-    println!(
-        "{}",
-        serde_json::json!({
-            "format": "json",
-            "version": "1.0",
-            "data": {}
-        })
-    );
-}
-
-pub fn cmd_chart_from_json(json_input: String) {
-    match serde_json::from_str::<serde_json::Value>(&json_input) {
-        Ok(v) => println!("{}", v),
-        Err(_) => println!("{}", serde_json::json!({"error": "Invalid JSON"})),
+/// Parse either the chart wrapper envelope or a bare chart payload.
+fn parse_chart(json_str: &str) -> Result<sci_form::render_bridge::ChartPayload, String> {
+    let value: serde_json::Value =
+        serde_json::from_str(json_str).map_err(|e| format!("invalid JSON: {e}"))?;
+    let chart_value = value.get("data").cloned().unwrap_or(value);
+    let chart: sci_form::render_bridge::ChartPayload =
+        serde_json::from_value(chart_value).map_err(|e| format!("invalid chart payload: {e}"))?;
+    if chart.series.iter().any(|s| s.x.len() != s.y.len()) {
+        return Err("chart series must have matching x and y lengths".into());
     }
+    Ok(chart)
 }
 
-pub fn cmd_validate_chart_schema(json_input: String) {
-    match serde_json::from_str::<serde_json::Value>(&json_input) {
-        Ok(v) => {
-            let is_valid = v.is_object() && v.get("format").is_some();
-            println!("{}", serde_json::json!({"valid": is_valid}));
+/// Serialize a chart payload to the canonical wrapper JSON.
+pub fn cmd_chart_to_json(json_input: String) {
+    match parse_chart(&json_input) {
+        Ok(chart) => {
+            println!(
+                "{}",
+                serde_json::json!({
+                    "format": "json",
+                    "version": "1.0",
+                    "data": chart,
+                })
+            );
         }
-        Err(_) => println!("{}", serde_json::json!({"valid": false})),
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
     }
 }
 
-// ──── AUXILIARY: Missing utility functions ───────────────────────────────
-
-pub fn cmd_validate_experimental_result() {
-    println!("{}", serde_json::json!({"valid": true}));
+/// Deserialize a chart payload (wrapper or bare chart) to chart JSON.
+pub fn cmd_chart_from_json(json_input: String) {
+    match parse_chart(&json_input) {
+        Ok(chart) => println!("{}", serde_json::to_string(&chart).unwrap()),
+        Err(e) => println!("{}", serde_json::json!({"error": e})),
+    }
 }
 
-pub fn cmd_merge_experiment_results() {
+/// Validate the structure of a chart payload (wrapper or bare chart).
+pub fn cmd_validate_chart_schema(json_input: String) {
     println!(
         "{}",
-        serde_json::json!({
-            "merged_count": 0,
-            "timestamp": "2026-03-28T00:00:00Z"
-        })
-    );
-}
-
-pub fn cmd_experimental_result_to_sdf() {
-    println!("V2000\n\n  0  0  0     0  0  0  0  0  0999 V2000\nM  END");
-}
-
-pub fn cmd_experimental_result_to_json() {
-    println!(
-        "{}",
-        serde_json::json!({"format": "json", "version": "1.0"})
-    );
-}
-
-pub fn cmd_benchmark_function() {
-    println!(
-        "{}",
-        serde_json::json!({
-            "function": "unknown",
-            "time_ms": 0.0,
-            "iterations": 1
-        })
-    );
-}
-
-pub fn cmd_trace_function_calls() {
-    println!("{}", serde_json::json!({"trace": [], "depth": 0}));
-}
-
-pub fn cmd_report_generator() {
-    println!("# Report\n\nGenerated: 2026-03-28\n");
-}
-
-pub fn cmd_pipeline_validator() {
-    println!("{}", serde_json::json!({"valid": true}));
-}
-
-pub fn cmd_cache_results() {
-    println!(
-        "{}",
-        serde_json::json!({"cache_size": 0, "hits": 0, "misses": 0})
+        serde_json::json!({"valid": parse_chart(&json_input).is_ok()})
     );
 }

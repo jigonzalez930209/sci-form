@@ -26,4 +26,4 @@ pub mod vxc_matrix;
 pub use gradient::ks_nuclear_gradient;
 pub use grid::MolecularGrid;
 pub use ks_fock::{solve_ks_dft, DftConfig, DftMethod, DftResult};
-pub use valence_basis::DftBasisKind;
+pub use valence_basis::{ks_basis, ks_basis_kind, DftBasisKind};

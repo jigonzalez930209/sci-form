@@ -243,8 +243,10 @@ mod tests {
             [-0.55, 0.94, 0.0],
             [-0.55, -0.94, 0.0],
         ];
-        let mut config = FluorescenceConfig::default();
-        config.stokes_ev = 0.15;
+        let config = FluorescenceConfig {
+            stokes_ev: 0.15,
+            ..Default::default()
+        };
         let spectrum = compute_fluorescence_spectrum(&elements, &positions, &config)
             .expect("formaldehyde should have a bright singlet");
         assert!(spectrum.emission_energy_ev < spectrum.absorption_energy_ev);
@@ -287,11 +289,16 @@ mod tests {
     fn rejects_negative_stokes_and_subunity_index() {
         let elements = [1u8, 1];
         let positions = [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]];
-        let mut config = FluorescenceConfig::default();
-        config.stokes_ev = -0.1;
+        let config = FluorescenceConfig {
+            stokes_ev: -0.1,
+            ..Default::default()
+        };
         assert!(compute_fluorescence_spectrum(&elements, &positions, &config).is_err());
-        config.stokes_ev = 0.0;
-        config.refractive_index = 0.9;
+        let config = FluorescenceConfig {
+            stokes_ev: 0.0,
+            refractive_index: 0.9,
+            ..Default::default()
+        };
         assert!(compute_fluorescence_spectrum(&elements, &positions, &config).is_err());
     }
 

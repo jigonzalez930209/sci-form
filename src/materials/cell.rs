@@ -170,16 +170,106 @@ impl UnitCell {
     }
 
     /// Minimum-image distance between two Cartesian points under PBC.
+    ///
+    /// The closest periodic image is located by searching neighbouring
+    /// lattice images (validation ficha F66: "minimum image = search over
+    /// ±1 cell translations"). Rounding the fractional components alone is
+    /// only exact for orthogonal cells — there the three components are
+    /// independent — so skewed cells need the explicit image search.
     pub fn minimum_image_distance(&self, a: [f64; 3], b: [f64; 3]) -> f64 {
         let fa = self.cart_to_frac(a);
         let fb = self.cart_to_frac(b);
-        let mut df = [fa[0] - fb[0], fa[1] - fb[1], fa[2] - fb[2]];
-        // Apply minimum image convention
-        for d in &mut df {
-            *d -= d.round();
-        }
-        let dc = self.frac_to_cart(df);
+        let df = [fa[0] - fb[0], fa[1] - fb[1], fa[2] - fb[2]];
+        let dc = self.frac_to_cart(self.minimum_image_fractional(df));
         norm3(dc)
+    }
+
+    /// Fractional displacement to the closest periodic image of `df`.
+    ///
+    /// `df` is a fractional displacement; the image `n` (integer lattice
+    /// shift) is the candidate `df - n`. The returned vector is the one
+    /// minimising the Cartesian length over the neighbouring images.
+    fn minimum_image_fractional(&self, df: [f64; 3]) -> [f64; 3] {
+        // Fractional rounding: the exact minimum image for orthogonal cells.
+        let base = [df[0].round(), df[1].round(), df[2].round()];
+        let mut best = [df[0] - base[0], df[1] - base[1], df[2] - base[2]];
+        if self.is_orthogonal() {
+            return best;
+        }
+
+        // Skewed cell: the closest image is not the rounded one in general.
+        // Search the ±1-cell neighbourhood, then refine by stepping while a
+        // neighbouring image is closer.
+        let mut best_d2 = self.frac_dist2(best);
+        let mut shift = base;
+        for i in -1..=1 {
+            for j in -1..=1 {
+                for k in -1..=1 {
+                    let candidate_shift =
+                        [base[0] + i as f64, base[1] + j as f64, base[2] + k as f64];
+                    let candidate = [
+                        df[0] - candidate_shift[0],
+                        df[1] - candidate_shift[1],
+                        df[2] - candidate_shift[2],
+                    ];
+                    let d2 = self.frac_dist2(candidate);
+                    if d2 < best_d2 {
+                        best_d2 = d2;
+                        best = candidate;
+                        shift = candidate_shift;
+                    }
+                }
+            }
+        }
+        for _ in 0..64 {
+            let mut improved = false;
+            for axis in 0..3 {
+                for step in [-1.0f64, 1.0] {
+                    let mut candidate_shift = shift;
+                    candidate_shift[axis] += step;
+                    let candidate = [
+                        df[0] - candidate_shift[0],
+                        df[1] - candidate_shift[1],
+                        df[2] - candidate_shift[2],
+                    ];
+                    let d2 = self.frac_dist2(candidate);
+                    if d2 < best_d2 {
+                        best_d2 = d2;
+                        best = candidate;
+                        shift = candidate_shift;
+                        improved = true;
+                    }
+                }
+            }
+            if !improved {
+                break;
+            }
+        }
+        best
+    }
+
+    /// Squared Cartesian length of a fractional displacement.
+    fn frac_dist2(&self, frac: [f64; 3]) -> f64 {
+        let d = self.frac_to_cart(frac);
+        d[0] * d[0] + d[1] * d[1] + d[2] * d[2]
+    }
+
+    /// Whether the lattice vectors are mutually orthogonal.
+    ///
+    /// Only then are the fractional components independent and the
+    /// fractional rounding the exact minimum image.
+    fn is_orthogonal(&self) -> bool {
+        let l = self.lattice;
+        for i in 0..3 {
+            for j in (i + 1)..3 {
+                let dot = l[i][0] * l[j][0] + l[i][1] * l[j][1] + l[i][2] * l[j][2];
+                let scale = norm3(l[i]) * norm3(l[j]);
+                if dot.abs() > 1e-12 * scale {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     /// Build a supercell by replicating (na × nb × nc) times.
@@ -890,6 +980,28 @@ mod tests {
         assert!(
             (dist - 2.0).abs() < 1e-10,
             "Minimum image distance should be 2.0, got {dist:.6}"
+        );
+    }
+
+    #[test]
+    fn test_minimum_image_distance_skewed_cell() {
+        // γ = 60°: the fractional rounding is not the closest image. The
+        // closest image of (0.5, 0.5, 0) is (0.5, -0.5, 0), 0.5 Å away, not
+        // the 0.866 Å the fractional shortcut returns.
+        let cell = UnitCell::from_parameters(&CellParameters {
+            a: 1.0,
+            b: 1.0,
+            c: 2.0,
+            alpha: 90.0,
+            beta: 90.0,
+            gamma: 60.0,
+        });
+        let p0 = cell.frac_to_cart([0.0, 0.0, 0.0]);
+        let p1 = cell.frac_to_cart([0.5, 0.5, 0.0]);
+        let dist = cell.minimum_image_distance(p0, p1);
+        assert!(
+            (dist - 0.5).abs() < 1e-12,
+            "Skewed-cell minimum image should be 0.5, got {dist:.6}"
         );
     }
 

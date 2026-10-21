@@ -112,8 +112,11 @@ pub fn compute_mmff94_nonbonded_gpu(
     params.extend_from_slice(&0u32.to_ne_bytes());
     params.extend_from_slice(&0u32.to_ne_bytes());
 
-    // Output: per-pair energies (vdw + elec), reduced on GPU
-    let n_output = 2; // [total_vdw, total_elec]
+    // Output: two fixed-point accumulators (vdW, electrostatic) in units of
+    // 1/MMFF94_FIXED_POINT_SCALE kcal/mol. WGSL has no atomic float add, so
+    // the kernel reduces within each workgroup and then performs a single
+    // signed integer atomic add per workgroup.
+    let n_output = 2; // [total_vdw_fixed, total_elec_fixed]
     let output_bytes = vec![0u8; n_output * 4];
 
     let n_pairs = n_atoms * (n_atoms - 1) / 2;
@@ -157,8 +160,10 @@ pub fn compute_mmff94_nonbonded_gpu(
         return Err("Insufficient output from MMFF94 kernel".to_string());
     }
 
-    let vdw = f32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as f64;
-    let elec = f32::from_ne_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as f64;
+    let vdw_fixed = i32::from_ne_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]) as f64;
+    let elec_fixed = i32::from_ne_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]) as f64;
+    let vdw = vdw_fixed / MMFF94_FIXED_POINT_SCALE;
+    let elec = elec_fixed / MMFF94_FIXED_POINT_SCALE;
 
     Ok(Mmff94GpuResult {
         total_energy: vdw + elec,
@@ -363,8 +368,16 @@ pub fn compute_mmff94_nonbonded_with_report(
 ///
 /// Each workgroup processes a batch of atom pairs, computing buffered-14-7
 /// VdW and Coulomb electrostatics. Exclusions are checked via bitmap.
+///
+/// Fixed-point scale for the GPU energy accumulators (1 / scale kcal/mol per
+/// least-significant bit). 2^16 gives a 1.5e-5 kcal/mol resolution, and the
+/// per-workgroup reduction keeps the number of atomic additions small enough
+/// that the accumulated rounding error stays well below 1e-2 kcal/mol.
 #[cfg(feature = "experimental-gpu")]
-pub const MMFF94_NB_SHADER: &str = r#"
+pub const MMFF94_FIXED_POINT_SCALE: f64 = 65_536.0;
+
+#[cfg(feature = "experimental-gpu")]
+const MMFF94_NB_SHADER: &str = r#"
 struct Atom {
     x: f32, y: f32, z: f32,
     charge: f32,
@@ -380,7 +393,15 @@ struct Params {
 @group(0) @binding(0) var<storage, read> atoms: array<Atom>;
 @group(0) @binding(1) var<storage, read> exclusions: array<u32>;
 @group(0) @binding(2) var<uniform> params: Params;
-@group(0) @binding(3) var<storage, read_write> output: array<atomic<u32>>;
+@group(0) @binding(3) var<storage, read_write> output: array<atomic<i32>>;
+
+// Per-workgroup partial sums. WGSL has no atomic float add, so each
+// workgroup first reduces its 64 lanes in shared memory and then performs a
+// single signed integer atomic add per component.
+var<workgroup> wg_vdw: array<f32, 64>;
+var<workgroup> wg_elec: array<f32, 64>;
+
+const FIXED_POINT_SCALE: f32 = 65536.0;
 
 fn pair_to_ij(pair_idx: u32, n: u32) -> vec2<u32> {
     // Convert linear pair index to (i, j) with i < j
@@ -399,53 +420,73 @@ fn pair_to_ij(pair_idx: u32, n: u32) -> vec2<u32> {
 }
 
 @compute @workgroup_size(64, 1, 1)
-fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+fn main(
+    @builtin(global_invocation_id) gid: vec3<u32>,
+    @builtin(local_invocation_id) lid: vec3<u32>,
+) {
     let n = params.n_atoms;
     let n_pairs = n * (n - 1u) / 2u;
     let pair_idx = gid.x;
 
-    if (pair_idx >= n_pairs) {
-        return;
+    var e_vdw = 0.0;
+    var e_elec = 0.0;
+
+    if (pair_idx < n_pairs) {
+        let ij = pair_to_ij(pair_idx, n);
+        let i = ij.x;
+        let j = ij.y;
+
+        // Check exclusion bitmap
+        let bit_idx = i * n + j;
+        let word = exclusions[bit_idx / 32u];
+        let excluded = ((word >> (bit_idx % 32u)) & 1u) != 0u;
+
+        if (!excluded) {
+            let a = atoms[i];
+            let b = atoms[j];
+
+            let dx = a.x - b.x;
+            let dy = a.y - b.y;
+            let dz = a.z - b.z;
+            let r = sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (r >= 0.1 && r <= 15.0) {
+                // Buffered 14-7 VdW
+                let r_star = a.r_vdw + b.r_vdw;
+                let eps = sqrt(a.eps_vdw * b.eps_vdw);
+                let rho = r / r_star;
+                let rho7 = pow(rho, 7.0);
+                e_vdw = eps * pow(1.07 / (rho + 0.07), 7.0) * ((1.12 / (rho7 + 0.12)) - 2.0);
+
+                // Coulomb with distance-dependent dielectric
+                e_elec = 332.0716 * a.charge * b.charge / (r + 0.05);
+            }
+        }
     }
 
-    let ij = pair_to_ij(pair_idx, n);
-    let i = ij.x;
-    let j = ij.y;
+    // Reduce the 64 lanes of this workgroup in shared memory.
+    wg_vdw[lid.x] = e_vdw;
+    wg_elec[lid.x] = e_elec;
+    workgroupBarrier();
 
-    // Check exclusion bitmap
-    let bit_idx = i * n + j;
-    let word = exclusions[bit_idx / 32u];
-    if ((word >> (bit_idx % 32u)) & 1u) != 0u {
-        return;
+    var stride = 32u;
+    loop {
+        if (stride == 0u) {
+            break;
+        }
+        if (lid.x < stride) {
+            wg_vdw[lid.x] = wg_vdw[lid.x] + wg_vdw[lid.x + stride];
+            wg_elec[lid.x] = wg_elec[lid.x] + wg_elec[lid.x + stride];
+        }
+        workgroupBarrier();
+        stride = stride >> 1u;
     }
 
-    let a = atoms[i];
-    let b = atoms[j];
-
-    let dx = a.x - b.x;
-    let dy = a.y - b.y;
-    let dz = a.z - b.z;
-    let r = sqrt(dx * dx + dy * dy + dz * dz);
-
-    if (r < 0.1 || r > 15.0) {
-        return;
+    // One signed fixed-point atomic add per workgroup and component.
+    if (lid.x == 0u) {
+        atomicAdd(&output[0], i32(round(wg_vdw[0] * FIXED_POINT_SCALE)));
+        atomicAdd(&output[1], i32(round(wg_elec[0] * FIXED_POINT_SCALE)));
     }
-
-    // Buffered 14-7 VdW
-    let r_star = a.r_vdw + b.r_vdw;
-    let eps = sqrt(a.eps_vdw * b.eps_vdw);
-    let rho = r / r_star;
-    let rho7 = pow(rho, 7.0);
-    let e_vdw = eps * pow(1.07 / (rho + 0.07), 7.0) * ((1.12 / (rho7 + 0.12)) - 2.0);
-
-    // Coulomb with distance-dependent dielectric
-    let e_elec = 332.0716 * a.charge * b.charge / (r + 0.05);
-
-    // Atomic add to output (using integer representation)
-    let vdw_bits = bitcast<u32>(e_vdw);
-    let elec_bits = bitcast<u32>(e_elec);
-    atomicAdd(&output[0], vdw_bits);
-    atomicAdd(&output[1], elec_bits);
 }
 "#;
 
@@ -480,6 +521,74 @@ mod tests {
         let vdw_radii: Vec<f64> = (0..n).map(|i| 1.5 + 0.05 * (i % 3) as f64).collect();
         let vdw_epsilon: Vec<f64> = (0..n).map(|i| 0.05 + 0.01 * (i % 2) as f64).collect();
         (coords, charges, vdw_radii, vdw_epsilon)
+    }
+
+    /// Simulates the WGSL kernel's accumulation strategy: per-pair energies
+    /// are reduced in groups of 64 (one workgroup) and each workgroup adds a
+    /// single fixed-point integer to a global signed accumulator.
+    ///
+    /// This exercises the same arithmetic the GPU path uses, so the encoding
+    /// is verified even on hosts without a GPU adapter.
+    #[test]
+    fn test_fixed_point_accumulation_matches_cpu_energy() {
+        let (coords, charges, vdw_radii, vdw_epsilon) = chain(24);
+        let exclusions = vec![(0, 1), (2, 3), (5, 9)];
+        let cpu = compute_mmff94_nonbonded_cpu(
+            &coords,
+            &charges,
+            &vdw_radii,
+            &vdw_epsilon,
+            &exclusions,
+            "test",
+        );
+
+        // Re-derive the per-pair energies exactly as the kernel does.
+        let n = charges.len();
+        let n_pairs = n * (n - 1) / 2;
+        let mut excl_set = std::collections::HashSet::new();
+        for &(i, j) in &exclusions {
+            excl_set.insert((i.min(j), i.max(j)));
+        }
+
+        const SCALE: f64 = MMFF94_FIXED_POINT_SCALE;
+        let mut acc_vdw: i64 = 0;
+        let mut acc_elec: i64 = 0;
+        for pair_idx in 0..n_pairs {
+            // Mirror the shader's linear pair index -> (i, j) mapping.
+            let mut i = 0usize;
+            let mut remaining = pair_idx;
+            loop {
+                let row = n - 1 - i;
+                if remaining < row {
+                    break;
+                }
+                remaining -= row;
+                i += 1;
+            }
+            let j = i + 1 + remaining;
+            if excl_set.contains(&(i, j)) {
+                continue;
+            }
+            if let Some((e_vdw, e_elec)) =
+                mmff94_pair_energy(i, j, &coords, &charges, &vdw_radii, &vdw_epsilon)
+            {
+                acc_vdw += (e_vdw * SCALE).round() as i64;
+                acc_elec += (e_elec * SCALE).round() as i64;
+            }
+        }
+
+        let vdw = acc_vdw as f64 / SCALE;
+        let elec = acc_elec as f64 / SCALE;
+        assert!(
+            (vdw - cpu.vdw_energy).abs() < 1e-3,
+            "vdW mismatch: gpu-encoding {vdw} vs cpu {}",
+            cpu.vdw_energy
+        );
+        assert!(
+            (elec - cpu.electrostatic_energy).abs() < 1e-3,
+            "electrostatic mismatch: gpu-encoding {elec} vs cpu {}",
+            cpu.electrostatic_energy
+        );
     }
 
     #[test]

@@ -479,8 +479,7 @@ fn rotate_fragments(
 /// Uniform random rotation matrix (axis-angle, Rodrigues).
 fn random_rotation(rng: &mut crate::distgeom::MinstdRand) -> [[f64; 3]; 3] {
     // Uniform unit vector.
-    let mut axis = [0.0f64; 3];
-    loop {
+    let axis = loop {
         let v = [
             rng.next_double() * 2.0 - 1.0,
             rng.next_double() * 2.0 - 1.0,
@@ -488,10 +487,9 @@ fn random_rotation(rng: &mut crate::distgeom::MinstdRand) -> [[f64; 3]; 3] {
         ];
         let norm = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
         if norm > 1e-6 {
-            axis = [v[0] / norm, v[1] / norm, v[2] / norm];
-            break;
+            break [v[0] / norm, v[1] / norm, v[2] / norm];
         }
-    }
+    };
     let theta = rng.next_double() * std::f64::consts::TAU;
     let (s, c) = theta.sin_cos();
     let t = 1.0 - c;

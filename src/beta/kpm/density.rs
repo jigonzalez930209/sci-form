@@ -229,7 +229,7 @@ pub fn compute_kpm_mulliken(
     }
 
     // Step 4: Transform back + spin degeneracy: P_AO = 2 S^{-1/2} P_orth S^{-1/2}
-    let p_ao = ((&s_inv_sqrt * &p_orth * &s_inv_sqrt) * 2.0);
+    let p_ao = (&s_inv_sqrt * &p_orth * &s_inv_sqrt) * 2.0;
 
     // Step 5: Mulliken charges: q_i = Z_i - sum of (PS)_ii contributions per atom
     // We need to map basis functions to atoms for proper Mulliken analysis.

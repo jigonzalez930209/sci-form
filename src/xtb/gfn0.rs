@@ -76,7 +76,7 @@ pub fn gfn0_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
             let dy = pos_bohr[i][1] - pos_bohr[j][1];
             let dz = pos_bohr[i][2] - pos_bohr[j][2];
             let r2 = dx * dx + dy * dy + dz * dz;
-            if r2 > 1600.0 || r2 < 1e-12 {
+            if !(1e-12..=1600.0).contains(&r2) {
                 continue;
             }
             let r = r2.sqrt();
@@ -140,7 +140,7 @@ pub fn gfn0_cn(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Vec<f64> {
             let dy = pos_bohr[i][1] - pos_bohr[j][1];
             let dz = pos_bohr[i][2] - pos_bohr[j][2];
             let r = (dx * dx + dy * dy + dz * dz).sqrt();
-            if r > 40.0 || r < 1e-12 {
+            if !(1e-12..=40.0).contains(&r) {
                 continue;
             }
             let rc = COVRAD_D3[zi - 1] + COVRAD_D3[zj - 1];
@@ -325,13 +325,7 @@ fn gfn0_ngauss(z: u8, _sh: usize, l: u8, pqn: u8, valence: bool) -> u8 {
         }
     } else {
         match l {
-            0 => {
-                if pqn > 5 {
-                    6
-                } else {
-                    4
-                }
-            }
+            0 if pqn > 5 => 6,
             1 => {
                 if pqn > 5 {
                     6
@@ -534,7 +528,6 @@ pub fn gfn0_h0(
                     // Without this, dxy-type overlaps come out sqrt(3) too
                     // big (found by F43 validation vs numeric quadrature).
                     let s3 = 3.0f64.sqrt();
-                    let mut cao = cao;
                     if ia.l == 2 {
                         for a in 3..6 {
                             for b in 0..nb {
@@ -654,7 +647,7 @@ pub fn gfn0_eht(
 ) -> Result<(Vec<f64>, f64, f64, f64), String> {
     use nalgebra::DMatrix;
     let n = s_mat.nrows();
-    if n_electrons % 2 != 0 {
+    if !n_electrons.is_multiple_of(2) {
         return Err("GFN0 EHT: open shells not supported".to_string());
     }
     // Löwdin S^{-1/2}.
@@ -887,7 +880,7 @@ pub fn gfn0_srb(elements: &[u8], pos_bohr: &[[f64; 3]], cn: &[f64]) -> f64 {
             let dy = pos_bohr[i][1] - pos_bohr[j][1];
             let dz = pos_bohr[i][2] - pos_bohr[j][2];
             let r2 = dx * dx + dy * dy + dz * dz;
-            if r2 >= 200.0 || r2 < 1e-12 {
+            if !(1e-12..200.0).contains(&r2) {
                 continue;
             }
             let rab = r2.sqrt();
@@ -949,7 +942,7 @@ pub fn solve_gfn0(
         .map(|&z| GFN0_NVALENCE[(z - 1) as usize] as usize)
         .sum::<usize>()
         .saturating_sub(charge.round() as usize);
-    if n_electrons % 2 != 0 {
+    if !n_electrons.is_multiple_of(2) {
         return Err("GFN0: open shells not supported".to_string());
     }
 

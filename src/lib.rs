@@ -1429,6 +1429,12 @@ pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
 /// `smiles`: SMILES string for bond/topology information.
 /// `coords`: flat xyz coordinates `[x0,y0,z0, x1,y1,z1, ...]`.
 ///
+/// The energy is the MMFF94 valence + dispersion part of the total MMFF94
+/// energy: bond stretching, angle bending, torsion and van der Waals
+/// (buffered 14-7) terms, evaluated with the published MMFF94 parameter
+/// tables.  MMFF94's electrostatic, stretch-bend and out-of-plane bending
+/// terms are not implemented, so this is *not* the complete MMFF94 energy.
+///
 /// Returns total MMFF94 energy in kcal/mol.
 pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
@@ -1436,25 +1442,10 @@ pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String
     if coords.len() != n * 3 {
         return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
     }
-    let elements: Vec<u8> = (0..n)
-        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
-        .collect();
-    let bonds: Vec<(usize, usize, u8)> = mol
-        .graph
-        .edge_indices()
-        .map(|e| {
-            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-            let order = match mol.graph[e].order {
-                graph::BondOrder::Single => 1u8,
-                graph::BondOrder::Double => 2,
-                graph::BondOrder::Triple => 3,
-                graph::BondOrder::Aromatic => 2,
-                graph::BondOrder::Unknown => 1,
-            };
-            (a.index(), b.index(), order)
-        })
-        .collect();
-    let terms = forcefield::mmff94::Mmff94Builder::build(&elements, &bonds);
+    let terms = forcefield::mmff94::Mmff94Builder::build_typed(
+        &mol,
+        forcefield::mmff94::Mmff94Variant::Mmff94,
+    );
     let (energy, _grad) = forcefield::mmff94::Mmff94Builder::total_energy(&terms, coords);
     Ok(energy)
 }
@@ -1493,25 +1484,10 @@ pub fn compute_mmff94_energy_breakdown(
     if coords.len() != n * 3 {
         return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
     }
-    let elements: Vec<u8> = (0..n)
-        .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
-        .collect();
-    let bonds: Vec<(usize, usize, u8)> = mol
-        .graph
-        .edge_indices()
-        .map(|e| {
-            let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-            let order = match mol.graph[e].order {
-                graph::BondOrder::Single => 1u8,
-                graph::BondOrder::Double => 2,
-                graph::BondOrder::Triple => 3,
-                graph::BondOrder::Aromatic => 2,
-                graph::BondOrder::Unknown => 1,
-            };
-            (a.index(), b.index(), order)
-        })
-        .collect();
-    let terms = forcefield::mmff94::Mmff94Builder::build(&elements, &bonds);
+    let terms = forcefield::mmff94::Mmff94Builder::build_typed(
+        &mol,
+        forcefield::mmff94::Mmff94Variant::Mmff94,
+    );
     Ok(forcefield::traits::aggregate_breakdown(&terms, coords)
         .into_iter()
         .map(|(kind, energy)| (kind.to_string(), energy))

@@ -3,7 +3,7 @@
 //! Validates Nyström approximation, randomized solver, and accuracy
 //! compared to exact diagonalization.
 
-#[cfg(feature = "experimental-randnla")]
+#[cfg(feature = "beta-randnla")]
 mod randnla_tests {
     use sci_form::beta::rand_nla::*;
 

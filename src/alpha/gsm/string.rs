@@ -110,7 +110,11 @@ fn reparametrize_nodes(nodes: &mut Vec<Vec<f64>>) {
         }
         let lo = cum[seg];
         let hi = cum[seg + 1];
-        let t = if hi > lo { ((target - lo) / (hi - lo)).clamp(0.0, 1.0) } else { 0.0 };
+        let t = if hi > lo {
+            ((target - lo) / (hi - lo)).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
         let mut p = vec![0.0; dim];
         for k in 0..dim {
             p[k] = nodes[seg][k] + t * (nodes[seg + 1][k] - nodes[seg][k]);

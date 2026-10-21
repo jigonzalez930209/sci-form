@@ -237,15 +237,14 @@ mod cpm_tests {
         let mut worst_sim = 1.0f64;
         for v in &fix.voltages {
             let mut mus = vec![0.0; n];
-            for i in 0..np {
-                mus[i] = -v.voltage;
+            for m in mus.iter_mut().take(np) {
+                *m = -v.voltage;
             }
-            for i in np..n {
-                mus[i] = v.voltage;
+            for m in mus.iter_mut().skip(np) {
+                *m = v.voltage;
             }
             let qv = cpm_run(&fix.elements, &pos, mus);
-            let ind: Vec<f64> =
-                qv.iter().zip(q0.iter()).map(|(a, b)| a - b).collect();
+            let ind: Vec<f64> = qv.iter().zip(q0.iter()).map(|(a, b)| a - b).collect();
             let qb: f64 = ind[..np].iter().sum();
             let qt: f64 = ind[np..].iter().sum();
             // Exact antisymmetry (symmetric plates, uniform χ).

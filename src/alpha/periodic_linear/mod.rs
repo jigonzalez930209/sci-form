@@ -190,5 +190,4 @@ mod tests {
         assert!(result.band_edges.direct_gap_ev >= 0.0);
         assert!(result.diagnostics.max_residual < 1e-8);
     }
-
 }

@@ -4,6 +4,10 @@
 //! edges (`xah`, `tfy`), which the homogeneous built-in topologies could
 //! not express. Regenerate with `scripts/validation/gen_topologies.py`;
 //! do not edit by hand.
+// The tables below transcribe published parameter values verbatim; the
+// decimal literals are kept as published rather than replaced by symbolic
+// constants, so `clippy::approx_constant` does not apply here.
+#![allow(clippy::approx_constant)]
 
 /// One node of a topology net.
 #[derive(Debug, Clone, Copy)]

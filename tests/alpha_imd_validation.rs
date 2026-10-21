@@ -70,7 +70,11 @@ fn f85_steering_matches_analytic() {
         assert!(de <= fix.tolerance, "case {n}: dE {de:.3e}");
         assert!(df <= 1e-9, "case {n}: dF {df:.3e}");
     }
-    println!("F85a steering vs analytic: n={} worst {:.3e}", fix.cases.len(), worst);
+    println!(
+        "F85a steering vs analytic: n={} worst {:.3e}",
+        fix.cases.len(),
+        worst
+    );
 }
 
 /// F85b: management semantics (update-in-place, clear, clear_all).

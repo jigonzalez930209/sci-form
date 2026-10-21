@@ -1,3 +1,11 @@
+// PyO3 binding functions uniformly return `Result<T, PyErr>` (i.e. `PyResult<T>`)
+// and convert the core crate's `String` errors with `PyRuntimeError::new_err`.
+// Clippy's `useless_conversion` flags the identity `Result<T, PyErr>` ->
+// `PyResult<T>` conversion that this pattern produces on every function, and
+// several scientific entry points legitimately take more than seven arguments.
+#![allow(clippy::useless_conversion)]
+#![allow(clippy::too_many_arguments)]
+
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 

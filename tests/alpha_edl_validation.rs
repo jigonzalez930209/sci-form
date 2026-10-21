@@ -26,6 +26,12 @@ struct GcCase {
     n: usize,
     #[serde(rename = "extent_A")]
     extent: f64,
+    /// Mirrors the fixture schema; the reference profile is only used for
+    /// the shape checks, not the sampled values.
+    #[allow(dead_code)]
+    /// Mirrors the fixture schema; the reference profile is only used for
+    /// the shape checks, not the sampled values.
+    #[allow(dead_code)]
     #[serde(rename = "x_A")]
     x: Vec<f64>,
     #[serde(rename = "phi_V")]
@@ -54,6 +60,9 @@ struct GcsCase {
     #[serde(rename = "extent_A")]
     extent: f64,
     #[serde(rename = "x_A")]
+    /// Mirrors the fixture schema; the reference profile is only used
+    /// for the shape checks, not the sampled values.
+    #[allow(dead_code)]
     x: Vec<f64>,
     #[serde(rename = "phi_V")]
     phi: Vec<f64>,
@@ -119,7 +128,7 @@ fn load() -> Fixture {
         .expect("parse fixture")
 }
 
-fn base_config(t: f64, ionic: f64, eps_b: f64, n: usize, extent: f64) -> EdlConfig {
+fn base_config(t: f64, ionic: f64, eps_b: f64, _n: usize, _extent: f64) -> EdlConfig {
     EdlConfig {
         model: EdlModel::GouyChapman,
         temperature_k: t,
@@ -164,8 +173,17 @@ fn f86_gc_matches_analytic() {
         // Surface value exact: φ(0) = φ₀.
         assert!((r.electrostatic_potential_v[0] - c.phi0).abs() <= 1e-9);
     }
-    println!("F86a GC vs analytic: n={} worst {:.3e}", fix.gc.len(), worst.0);
-    assert!(worst.0 <= fix.tolerance_rel, "GC worst {:.3e} at {}", worst.0, worst.1);
+    println!(
+        "F86a GC vs analytic: n={} worst {:.3e}",
+        fix.gc.len(),
+        worst.0
+    );
+    assert!(
+        worst.0 <= fix.tolerance_rel,
+        "GC worst {:.3e} at {}",
+        worst.0,
+        worst.1
+    );
 }
 
 /// F86b: GCS profiles + Stern split + series capacitance.
@@ -199,8 +217,17 @@ fn f86_gcs_matches_analytic() {
             assert!(d <= fix.tolerance_rel, "GCS {name} rel err {d:.3e}");
         }
     }
-    println!("F86b GCS vs analytic: n={} worst {:.3e}", fix.gcs.len(), worst.0);
-    assert!(worst.0 <= fix.tolerance_rel, "GCS worst {:.3e} at {}", worst.0, worst.1);
+    println!(
+        "F86b GCS vs analytic: n={} worst {:.3e}",
+        fix.gcs.len(),
+        worst.0
+    );
+    assert!(
+        worst.0 <= fix.tolerance_rel,
+        "GCS worst {:.3e} at {}",
+        worst.0,
+        worst.1
+    );
 }
 
 /// F86c: Helmholtz compact capacitor (C_H + drop linear in σ).
@@ -210,15 +237,21 @@ fn f86_helmholtz_matches_analytic() {
     assert!(!fix.helmholtz.is_empty());
     let mut worst = 0.0f64;
     for c in &fix.helmholtz {
-        let mut cfg = EdlConfig::default();
-        cfg.compact_dielectric = c.eps_c;
-        cfg.stern_thickness_angstrom = c.stern;
+        let cfg = EdlConfig {
+            compact_dielectric: c.eps_c,
+            stern_thickness_angstrom: c.stern,
+            ..Default::default()
+        };
         let r = compute_helmholtz_profile(c.sigma, &cfg).expect("helmholtz");
         let dc = (r.differential_capacitance.compact_f_per_m2 - c.c_c).abs() / c.c_c;
         let dd = (r.compact_layer_drop_v - c.drop).abs() / c.drop.abs().max(1e-300);
         worst = worst.max(dc).max(dd);
     }
-    println!("F86c Helmholtz vs analytic: n={} worst {:.3e}", fix.helmholtz.len(), worst);
+    println!(
+        "F86c Helmholtz vs analytic: n={} worst {:.3e}",
+        fix.helmholtz.len(),
+        worst
+    );
     assert!(worst <= fix.tolerance_rel);
 }
 

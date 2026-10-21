@@ -98,7 +98,7 @@ console.log(`Atoms: ${info.num_atoms}, Bonds: ${info.num_bonds}`);
 
 ```typescript
 import { version } from 'sci-form-wasm';
-console.log(version()); // "sci-form 0.9.1"
+console.log(version()); // "sci-form 0.15.2"
 ```
 
 ## Browser Usage

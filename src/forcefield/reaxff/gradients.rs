@@ -7,7 +7,6 @@
 use super::bond_order::compute_bond_orders_pairs;
 use super::eem::{default_eem_params, solve_eem};
 use super::energy::compute_bonded_energy;
-use super::nonbonded::compute_nonbonded_energy_excluding;
 use super::params::ReaxffParams;
 
 /// Compute ReaxFF energy and gradient (numerical, central differences).

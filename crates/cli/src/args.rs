@@ -267,8 +267,114 @@ pub enum Commands {
         dielectric: f64,
     },
 
+    /// [experimental-alpha] Compute an EDL profile
+    #[cfg(feature = "alpha-edl")]
+    EdlProfile {
+        /// Surface potential (or surface charge) in V
+        #[arg(short, long, default_value_t = 0.05)]
+        potential: f64,
+        /// EDL model: helmholtz, gouy-chapman, gouy-chapman-stern
+        #[arg(short, long, default_value = "gouy-chapman-stern")]
+        model: String,
+        /// Bulk ionic strength in mol/L
+        #[arg(short, long, default_value_t = 0.1)]
+        ionic_strength: f64,
+        /// Temperature in K
+        #[arg(short, long, default_value_t = 298.15)]
+        temperature: f64,
+        /// Number of grid points
+        #[arg(short, long, default_value_t = 128)]
+        n_points: usize,
+        /// Maximum profile extent in Å
+        #[arg(short, long, default_value_t = 12.0)]
+        extent: f64,
+    },
+
+    /// [experimental-alpha] Scan EDL capacitance over a potential range
+    #[cfg(feature = "alpha-edl")]
+    EdlCapacitanceScan {
+        #[arg(long, default_value_t = -0.5)]
+        v_min: f64,
+        #[arg(long, default_value_t = 0.5)]
+        v_max: f64,
+        #[arg(short, long, default_value_t = 50)]
+        n_points: usize,
+        #[arg(short, long, default_value_t = 0.1)]
+        ionic_strength: f64,
+        /// EDL model: helmholtz, gouy-chapman, gouy-chapman-stern
+        #[arg(short, long, default_value = "gouy-chapman-stern")]
+        model: String,
+    },
+
+    /// [experimental-alpha] Compute a Helmholtz-only EDL profile
+    #[cfg(feature = "alpha-edl")]
+    EdlHelmholtz {
+        #[arg(short, long, default_value_t = 0.05)]
+        potential: f64,
+        #[arg(short, long, default_value_t = 0.1)]
+        ionic_strength: f64,
+        #[arg(short, long, default_value_t = 298.15)]
+        temperature: f64,
+    },
+
+    /// [experimental-alpha] Compute a Gouy-Chapman EDL profile
+    #[cfg(feature = "alpha-edl")]
+    EdlGouyChapman {
+        #[arg(short, long, default_value_t = 0.05)]
+        potential: f64,
+        #[arg(short, long, default_value_t = 0.1)]
+        ionic_strength: f64,
+        #[arg(short, long, default_value_t = 298.15)]
+        temperature: f64,
+    },
+
+    /// [experimental-alpha] Compute a Gouy-Chapman-Stern EDL profile
+    #[cfg(feature = "alpha-edl")]
+    EdlGcs {
+        #[arg(short, long, default_value_t = 0.05)]
+        potential: f64,
+        #[arg(short, long, default_value_t = 0.1)]
+        ionic_strength: f64,
+        #[arg(short, long, default_value_t = 298.15)]
+        temperature: f64,
+        /// Stern-layer thickness in Å
+        #[arg(short, long, default_value_t = 3.0)]
+        stern_thickness: f64,
+    },
+
+    /// [experimental-alpha] Evaluate an HTST transition rate
+    #[cfg(feature = "alpha-kinetics")]
+    HtstRate {
+        /// Activation free energy in eV
+        #[arg(long)]
+        activation_free_energy: f64,
+        /// Reaction free energy in eV
+        #[arg(long)]
+        reaction_free_energy: f64,
+        /// Temperature in K
+        #[arg(short, long, default_value_t = 298.15)]
+        temperature: f64,
+    },
+
+    /// [experimental-alpha] Generate a k-mesh
+    #[cfg(feature = "alpha-periodic-linear")]
+    Kmesh {
+        /// Mesh divisions along the first reciprocal axis
+        #[arg(long, default_value_t = 4)]
+        nx: usize,
+        /// Mesh divisions along the second reciprocal axis
+        #[arg(long, default_value_t = 4)]
+        ny: usize,
+        /// Mesh divisions along the third reciprocal axis
+        #[arg(long, default_value_t = 1)]
+        nz: usize,
+        /// Centering: monkhorst-pack or gamma
+        #[arg(short, long, default_value = "monkhorst-pack")]
+        centering: String,
+    },
+
     /// [experimental-alpha] Generate EDL profile chart visualization
-    #[cfg(feature = "alpha-render-bridge")]
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
     EdlChart {
         #[arg(short, long, default_value_t = 0.1)]
         potential: f64,
@@ -277,7 +383,7 @@ pub enum Commands {
     },
 
     /// [experimental-alpha] Generate capacitance scan chart visualization
-    #[cfg(feature = "alpha-render-bridge")]
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
     CapacitanceChart {
         #[arg(long, default_value_t = -0.5)]
         v_min: f64,
@@ -292,7 +398,7 @@ pub enum Commands {
     },
 
     /// [experimental-alpha] Generate Arrhenius chart
-    #[cfg(feature = "alpha-render-bridge")]
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
     ArrheniusChart {
         #[arg(short, long)]
         temperatures: String,
@@ -300,21 +406,47 @@ pub enum Commands {
         rates: String,
     },
 
+    /// [experimental-alpha] Generate thermal properties chart
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+    ThermalPropChart {
+        /// Activation free energy in eV
+        #[arg(long)]
+        activation_free_energy: f64,
+        /// Reaction free energy in eV
+        #[arg(long)]
+        reaction_free_energy: f64,
+        /// JSON array of temperatures in K
+        #[arg(short, long)]
+        temperatures: String,
+    },
+
+    /// [experimental-alpha] Generate a phase portrait chart from a microkinetic network
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+    PhasePortraitChart {
+        /// `MicrokineticNetworkConfig` JSON (file path or inline). Omit for the demo network.
+        #[arg(long)]
+        network: Option<String>,
+        /// Number of integration frames
+        #[arg(long, default_value_t = 50)]
+        n_steps: usize,
+    },
+
     /// [experimental-alpha] Generate band structure chart
-    #[cfg(feature = "alpha-render-bridge")]
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
     BandStructureChart {
-        #[arg(long, default_value_t = 100)]
-        k_points: usize,
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords for the unit cell
+        coords: String,
+        /// JSON array of nine lattice-vector components
+        lattice: String,
+        /// k-points per high-symmetry segment
         #[arg(long, default_value_t = 20)]
-        n_bands: usize,
-        #[arg(long, default_value_t = -30.0)]
-        e_min: f64,
-        #[arg(long, default_value_t = 5.0)]
-        e_max: f64,
+        n_kpoints_per_segment: usize,
     },
 
     /// [experimental-alpha] Generate DOS chart
-    #[cfg(feature = "alpha-render-bridge")]
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
     DosChart {
         #[arg(short, long)]
         energies: String,
@@ -322,45 +454,118 @@ pub enum Commands {
         dos_values: String,
     },
 
-    /// [experimental-alpha] Generate trajectory chart
-    #[cfg(feature = "alpha-render-bridge")]
-    TrajectoryChart,
-
     /// [experimental-alpha] Generate k-point path chart
-    #[cfg(feature = "alpha-render-bridge")]
-    KpointPathChart,
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+    KpointPathChart {
+        /// Points per high-symmetry segment
+        #[arg(long, default_value_t = 20)]
+        n_points_per_segment: usize,
+    },
 
-    /// [experimental-alpha] Generate Fermi surface chart
-    #[cfg(feature = "alpha-render-bridge")]
-    FermiSurfaceChart,
+    /// [experimental-alpha] Generate Fermi-surface slice chart
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+    FermiSurfaceChart {
+        /// JSON array of real-space operator blocks
+        blocks: String,
+        /// Fermi energy in eV (estimated from the sampled band structure when omitted)
+        #[arg(long)]
+        fermi_energy_ev: Option<f64>,
+        /// k-points along the first reciprocal axis
+        #[arg(long, default_value_t = 24)]
+        n_kx: usize,
+        /// k-points along the second reciprocal axis
+        #[arg(long, default_value_t = 24)]
+        n_ky: usize,
+    },
 
-    /// [experimental-alpha] Generate phase portrait chart
-    #[cfg(feature = "alpha-render-bridge")]
-    PhasePortraitChart,
+    /// [experimental-alpha] Generate trajectory chart from a GSM reaction path
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+    TrajectoryChart {
+        /// SMILES string for topology and atom typing
+        smiles: String,
+        /// JSON array of flat reactant coords
+        reactant_coords: String,
+        /// JSON array of flat product coords
+        product_coords: String,
+        /// GSM backend: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c
+        #[arg(short, long, default_value = "uff")]
+        method: String,
+    },
 
-    /// [experimental-alpha] Generate reaction coordinate chart
-    #[cfg(feature = "alpha-render-bridge")]
-    ReactionCoordinateChart,
-
-    /// [experimental-alpha] Generate thermal properties chart
-    #[cfg(feature = "alpha-render-bridge")]
-    ThermalPropChart,
+    /// [experimental-alpha] Generate reaction coordinate chart from a GSM reaction path
+    #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+    ReactionCoordinateChart {
+        /// SMILES string for topology and atom typing
+        smiles: String,
+        /// JSON array of flat reactant coords
+        reactant_coords: String,
+        /// JSON array of flat product coords
+        product_coords: String,
+        /// GSM backend: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c
+        #[arg(short, long, default_value = "uff")]
+        method: String,
+    },
 
     // ─── PERIODIC LINEAR COMMANDS ──────────────
-    /// [experimental-alpha] Compute periodic DOS
+    /// [experimental-alpha] Compute the k-averaged periodic DOS with the KPM solver
     #[cfg(feature = "alpha-periodic-linear")]
     ComputePeriodicDos {
-        #[arg(long, default_value_t = 10)]
-        n_kpoints: usize,
+        /// JSON array of real-space Hamiltonian blocks
+        hamiltonian_blocks: String,
+        /// Mesh divisions along the first reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        nx: usize,
+        /// Mesh divisions along the second reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        ny: usize,
+        /// Mesh divisions along the third reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        nz: usize,
+        /// Centering: monkhorst-pack or gamma
+        #[arg(short, long, default_value = "monkhorst-pack")]
+        centering: String,
+        /// Chebyshev expansion order
         #[arg(long, default_value_t = 100)]
         order: usize,
+        /// Output minimum energy in eV
+        #[arg(long, default_value_t = -20.0)]
+        e_min: f64,
+        /// Output maximum energy in eV
+        #[arg(long, default_value_t = 10.0)]
+        e_max: f64,
+        /// Number of output grid points
+        #[arg(long, default_value_t = 512)]
+        n_points: usize,
+        /// Fermi energy in eV
+        #[arg(long)]
+        fermi_energy_ev: Option<f64>,
     },
 
     /// [experimental-alpha] Solve periodic RandNLA
     #[cfg(feature = "alpha-periodic-linear")]
     SolvePeriodicRandnla {
-        #[arg(long, default_value_t = 10)]
-        n_kpoints: usize,
+        /// JSON array of real-space Hamiltonian blocks
+        hamiltonian_blocks: String,
+        /// JSON array of real-space overlap blocks
+        overlap_blocks: String,
+        /// Number of valence electrons
+        #[arg(long, default_value_t = 2)]
+        n_electrons: usize,
+        /// Mesh divisions along the first reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        nx: usize,
+        /// Mesh divisions along the second reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        ny: usize,
+        /// Mesh divisions along the third reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        nz: usize,
+        /// Centering: monkhorst-pack or gamma
+        #[arg(short, long, default_value = "monkhorst-pack")]
+        centering: String,
+        /// Nyström sketch rank
+        #[arg(long)]
+        sketch_size: Option<usize>,
     },
 
     /// [experimental-alpha] Compute Bloch phase
@@ -372,13 +577,50 @@ pub enum Commands {
         k_y: f64,
         #[arg(long, default_value_t = 0.0)]
         k_z: f64,
+        /// Lattice translation along the first axis
+        #[arg(long, default_value_t = 1)]
+        t_x: i32,
+        /// Lattice translation along the second axis
+        #[arg(long, default_value_t = 0)]
+        t_y: i32,
+        /// Lattice translation along the third axis
+        #[arg(long, default_value_t = 0)]
+        t_z: i32,
     },
 
     /// [experimental-alpha] Build Bloch Hamiltonian
     #[cfg(feature = "alpha-periodic-linear")]
     BuildBlochHamiltonian {
-        #[arg(long, default_value_t = 10)]
-        n_basis: usize,
+        /// JSON array of real-space operator blocks
+        blocks: String,
+        #[arg(long, default_value_t = 0.0)]
+        k_x: f64,
+        #[arg(long, default_value_t = 0.0)]
+        k_y: f64,
+        #[arg(long, default_value_t = 0.0)]
+        k_z: f64,
+    },
+
+    /// [experimental-alpha] Assemble periodic operators for every k-point
+    #[cfg(feature = "alpha-periodic-linear")]
+    AssemblePeriodicOperators {
+        /// JSON array of real-space Hamiltonian blocks
+        hamiltonian_blocks: String,
+        /// JSON array of real-space overlap blocks (optional)
+        #[arg(default_value = "")]
+        overlap_blocks: String,
+        /// Mesh divisions along the first reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        nx: usize,
+        /// Mesh divisions along the second reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        ny: usize,
+        /// Mesh divisions along the third reciprocal axis
+        #[arg(long, default_value_t = 2)]
+        nz: usize,
+        /// Centering: monkhorst-pack or gamma
+        #[arg(short, long, default_value = "monkhorst-pack")]
+        centering: String,
     },
 
     /// [experimental-alpha] Validate electron count
@@ -477,9 +719,14 @@ pub enum Commands {
         mbh_fd_step: f64,
     },
 
-    // ──── RENDER BRIDGE: Missing chart utilities ───────────────────────────────
+    // ──── RENDER BRIDGE: chart utilities ───────────────────────────────
     /// [render-bridge] Serialize chart to JSON
-    ChartToJson,
+    #[command(args_conflicts_with_subcommands = true)]
+    ChartToJson {
+        /// JSON string input (a chart payload or the chart wrapper)
+        #[arg(value_name = "JSON")]
+        json_input: Option<String>,
+    },
 
     /// [render-bridge] Deserialize chart from JSON
     #[command(args_conflicts_with_subcommands = true)]
@@ -496,34 +743,6 @@ pub enum Commands {
         #[arg(value_name = "JSON")]
         json_input: Option<String>,
     },
-
-    // ──── AUXILIARY: Missing utility functions ──────────────────────────────
-    /// [auxiliary] Validate experimental result
-    ValidateExperimentalResult,
-
-    /// [auxiliary] Merge experimental results
-    MergeExperimentResults,
-
-    /// [auxiliary] Export result to SDF format
-    ExperimentalResultToSdf,
-
-    /// [auxiliary] Export result to JSON format
-    ExperimentalResultToJson,
-
-    /// [auxiliary] Benchmark function execution
-    BenchmarkFunction,
-
-    /// [auxiliary] Trace function calls for debugging
-    TraceFunctionCalls,
-
-    /// [auxiliary] Generate structured report
-    ReportGenerator,
-
-    /// [auxiliary] Validate pipeline consistency
-    PipelineValidator,
-
-    /// [auxiliary] Cache computation results
-    CacheResults,
 
     /// [alpha-reaction-dynamics] Compute full 3D reaction dynamics path
     #[cfg(feature = "alpha-reaction-dynamics")]

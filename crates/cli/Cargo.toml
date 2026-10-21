@@ -39,3 +39,4 @@ sci-form = { path = "../..", version = "0.15.2", default-features = false }
 clap = { version = "4", features = ["derive"] }
 rayon = "1.10"
 serde_json = "1.0"
+nalgebra = "0.32"

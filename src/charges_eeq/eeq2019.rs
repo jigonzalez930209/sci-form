@@ -67,7 +67,7 @@ fn eeq2019_cn(elements: &[u8], positions_bohr: &[[f64; 3]]) -> Vec<f64> {
             let dy = positions_bohr[i][1] - positions_bohr[j][1];
             let dz = positions_bohr[i][2] - positions_bohr[j][2];
             let r2 = dx * dx + dy * dy + dz * dz;
-            if r2 > EEQ_CN_CUTOFF * EEQ_CN_CUTOFF || r2 < 1e-12 {
+            if !(1e-12..=EEQ_CN_CUTOFF * EEQ_CN_CUTOFF).contains(&r2) {
                 continue;
             }
             let r = r2.sqrt();

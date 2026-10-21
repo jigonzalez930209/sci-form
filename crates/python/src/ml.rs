@@ -50,7 +50,10 @@ pub(crate) struct MlPropertyResultPy {
     druglikeness: f64,
 }
 
-fn parse_mol_for_ml(smiles: &str) -> PyResult<(Vec<u8>, Vec<(usize, usize, u8)>)> {
+/// Elements and (i, j, order) bonds extracted from a SMILES string.
+type MolElementsAndBonds = (Vec<u8>, Vec<(usize, usize, u8)>);
+
+fn parse_mol_for_ml(smiles: &str) -> PyResult<MolElementsAndBonds> {
     let mol = sci_form_core::parse(smiles).map_err(pyo3::exceptions::PyValueError::new_err)?;
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)

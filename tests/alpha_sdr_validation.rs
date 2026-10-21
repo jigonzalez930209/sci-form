@@ -10,7 +10,10 @@
 //! Core module (`sci_form::sdr`).
 
 use nalgebra::DMatrix;
-use sci_form::sdr::{alternating_projections, extract_coordinates, project_distances, project_psd, svt_step, warm_start_gram, SdrConfig};
+use sci_form::sdr::{
+    alternating_projections, extract_coordinates, project_distances, project_psd, svt_step,
+    warm_start_gram, SdrConfig,
+};
 
 #[derive(serde::Deserialize)]
 struct ProjCase {
@@ -36,7 +39,8 @@ struct EmbedCase {
 struct Fixture {
     projection_tolerance: f64,
     gram_tolerance: f64,
-    embed_tolerance_A: f64,
+    #[serde(rename = "embed_tolerance_A")]
+    embed_tolerance_a: f64,
     projections: Vec<ProjCase>,
     embeddings: Vec<EmbedCase>,
 }
@@ -106,7 +110,11 @@ fn f83_distance_projection_satisfies() {
 fn f83_embed_matches_cvxpy() {
     let fix = load();
     assert!(fix.embeddings.len() >= 3);
-    let cfg = SdrConfig { max_iter: 500, tol: 1e-9, ..SdrConfig::default() };
+    let cfg = SdrConfig {
+        max_iter: 500,
+        tol: 1e-9,
+        ..SdrConfig::default()
+    };
     for c in &fix.embeddings {
         let g0 = warm_start_gram(c.n, &c.pairs);
         let eg = frob_rel(&g0, &mat(c.n, &c.gram_ref));
@@ -131,7 +139,11 @@ fn f83_embed_matches_cvxpy() {
             "F83c n={} noise={}: recon {er:.3e} max_err {max_err:.3e} (cvxpy {:.3e}) iters={} conv={}",
             c.n, c.noise, c.cvxpy_max_err, conv.iterations, conv.converged
         );
-        assert!(max_err <= fix.embed_tolerance_A.max(c.cvxpy_max_err * 3.0),
-            "n={}: {max_err:.3e} vs cvxpy {:.3e}", c.n, c.cvxpy_max_err);
+        assert!(
+            max_err <= fix.embed_tolerance_a.max(c.cvxpy_max_err * 3.0),
+            "n={}: {max_err:.3e} vs cvxpy {:.3e}",
+            c.n,
+            c.cvxpy_max_err
+        );
     }
 }

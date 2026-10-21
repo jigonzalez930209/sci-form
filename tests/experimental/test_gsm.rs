@@ -1,6 +1,6 @@
 //! Integration tests for E11: Growing String Method
 
-#[cfg(feature = "experimental-gsm")]
+#[cfg(feature = "alpha-gsm")]
 mod gsm_tests {
     use sci_form::alpha::gsm::*;
 

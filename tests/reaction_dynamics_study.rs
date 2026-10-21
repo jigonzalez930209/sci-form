@@ -593,7 +593,7 @@ fn study_55_reaction_types() {
         total
     );
 
-    let outcomes: Vec<ReactionOutcome> = battery.par_iter().map(|case| run_one(case)).collect();
+    let outcomes: Vec<ReactionOutcome> = battery.par_iter().map(run_one).collect();
 
     // ── Print summary table ──────────────────────────────────────────
     println!("\n╔══════════════════════════════════════════════════════════════════════╗");

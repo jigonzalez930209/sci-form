@@ -383,7 +383,11 @@ pub(crate) static SCATTERING_COEFFS: [Option<[[f64; 2]; N_SCATTERING_COEFFS]>; 9
 /// Atomic scattering factor f(s^2) for element `z`, or `None` when the
 /// reference table has no entry (callers fall back to f = Z).
 pub(crate) fn atomic_scattering_factor(z: u8, s2: f64) -> Option<f64> {
-    let coeffs = SCATTERING_COEFFS.get(z as usize).copied().flatten()?;
+    // The table is indexed by atomic number minus one (index 0 = H).
+    if z == 0 {
+        return None;
+    }
+    let coeffs = SCATTERING_COEFFS.get(z as usize - 1).copied().flatten()?;
     let mut sum = 0.0;
     for [a, b] in coeffs {
         sum += a * (-b * s2).exp();

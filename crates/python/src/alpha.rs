@@ -75,7 +75,7 @@ mod dft_py {
             ..Default::default()
         };
         let r = solve_ks_dft(&elements, &positions, &config)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         Ok(DftResultPy {
             energy: r.total_energy_ev,
             homo_energy: r.homo_energy,
@@ -188,7 +188,7 @@ mod reaxff_py {
     ) -> PyResult<ReaxffGradientResultPy> {
         let params = ReaxffParams::default_chon();
         let (energy, gradient) = compute_reaxff_gradient(&coords, &elements, &params)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         Ok(ReaxffGradientResultPy {
             energy_kcal_mol: energy,
             gradient,
@@ -208,7 +208,7 @@ mod reaxff_py {
             .map(|&z| sci_form_core::forcefield::reaxff::eem::default_eem_params(z))
             .collect();
         let charges = solve_eem(&coords, &eem_params, 0.0)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         let bo = compute_bond_orders(&coords, &atom_params, params.cutoff);
         let bonded = compute_bonded_energy(&coords, &bo, &params);
         let (van_der_waals, coulomb) =
@@ -303,7 +303,7 @@ mod mlff_py {
         let config: MlffConfig = serde_json::from_str(&config_json)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("bad config: {}", e)))?;
         let r = compute_mlff(&elements, &positions, &config)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         Ok(MlffResultPy {
             energy: r.energy,
             atomic_energies: r.atomic_energies,
@@ -950,7 +950,7 @@ mod reaction_dynamics_py {
         let p_refs: Vec<&str> = product_smiles.iter().map(String::as_str).collect();
 
         let result = compute_reaction_dynamics_3d(&r_refs, &p_refs, &config)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
 
         Ok(ReactionDynamics3DResultPy {
             frames: result

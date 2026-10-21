@@ -205,7 +205,9 @@ pub fn cmd_parse(smiles: &str) {
 pub fn cmd_info() {
     println!("{}", sci_form::version());
     println!("Features: ETKDG distance geometry, CSD torsion patterns, SMARTS matching");
-    println!("  EHT, PM3, xTB, HF-3c, ANI, Gasteiger charges, SASA, IR, NMR, UV-Vis");
+    println!(
+        "  EHT, PM3, xTB, GFN1, GFN2, HF-3c, ANI, Gasteiger charges, SASA, ESP,\n   DOS, MMFF94, UFF, stereochemistry, solvation, SSSR, ECFP, Tanimoto, cell, MOF assembly"
+    );
     println!("Formats: JSON, XYZ, SDF");
     println!("Bindings: CLI, Python (PyO3), TypeScript (WASM)");
 }

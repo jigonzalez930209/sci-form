@@ -72,7 +72,7 @@ pub fn conjugated_bond_flags(mol: &Molecule) -> Vec<bool> {
     for edge in mol.graph.edge_references() {
         let i = edge.source().index();
         let j = edge.target().index();
-        edges.push((i, j, edge.weight().order.clone()));
+        edges.push((i, j, edge.weight().order));
     }
     let mut adjacency: Vec<Vec<(usize, usize)>> = vec![Vec::new(); n]; // (edge idx, other atom)
     for (eidx, &(i, j, _)) in edges.iter().enumerate() {
@@ -94,7 +94,7 @@ pub fn conjugated_bond_flags(mol: &Molecule) -> Vec<bool> {
 
     let mut flags = vec![false; edges.len()];
     // Aromatic bonds.
-    for (eidx, &(_, _, ref order)) in edges.iter().enumerate() {
+    for (eidx, (_, _, order)) in edges.iter().enumerate() {
         if matches!(order, BondOrder::Aromatic) {
             flags[eidx] = true;
         }

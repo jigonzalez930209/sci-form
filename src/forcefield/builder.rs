@@ -281,7 +281,7 @@ pub fn build_uff_force_field(mol: &Molecule) -> MolecularForceField {
             continue;
         }
         let hyb_j = mol.graph[NodeIndex::new(j)].hybridization;
-        if matches!(element, 6 | 7 | 8) && !matches!(hyb_j, Hybridization::SP2) {
+        if matches!(element, 6..=8) && !matches!(hyb_j, Hybridization::SP2) {
             continue;
         }
         let is_c_bound_to_o = element == 6

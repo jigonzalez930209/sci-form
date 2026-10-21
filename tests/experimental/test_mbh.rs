@@ -1,6 +1,6 @@
 //! Integration tests for E9: Mobile Block Hessian
 
-#[cfg(feature = "experimental-mbh")]
+#[cfg(feature = "beta-mbh")]
 mod mbh_tests {
     use sci_form::beta::mbh::*;
 

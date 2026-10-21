@@ -323,7 +323,7 @@ pub fn get_uff_torsion_params(
 /// three inversion contributions per sp2 centre.
 pub fn get_uff_inversion_params(at2_atomic_num: u8, is_c_bound_to_o: bool) -> (f64, f64, f64, f64) {
     use std::f64::consts::PI;
-    if matches!(at2_atomic_num, 6 | 7 | 8) {
+    if matches!(at2_atomic_num, 6..=8) {
         let k = if is_c_bound_to_o { 50.0 } else { 6.0 };
         (k / 3.0, 1.0, -1.0, 0.0)
     } else {

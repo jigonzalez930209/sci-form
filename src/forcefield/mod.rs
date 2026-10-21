@@ -5,6 +5,7 @@
 //! - [`atom_typer`] — Element + topology → UFF atom type assignment.
 //! - [`params`] — UFF parameter tables (bond radii, angles, torsions).
 //! - [`uff`] / [`mmff94`] — Energy term implementations per force field.
+//! - [`mmff94_params`] — Generated MMFF94 parameter tables (Halgren 1996).
 //! - [`energy`] — Unified total-energy evaluation.
 //! - [`gradients`] — Analytical gradient computation.
 //! - [`minimizer`] — L-BFGS energy minimizer.
@@ -25,6 +26,7 @@ pub mod etkdg_lite;
 pub mod gradients;
 pub mod minimizer;
 pub mod mmff94;
+pub mod mmff94_params;
 pub mod params;
 pub mod reaxff;
 pub mod torsion_scan;

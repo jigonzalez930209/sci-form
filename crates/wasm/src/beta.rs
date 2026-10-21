@@ -370,7 +370,7 @@ pub fn beta_modules_info() -> String {
             "cpm"
         ],
         "stability": "beta — validated, approaching stable",
-        "version": "0.11.2"
+        "version": env!("CARGO_PKG_VERSION"),
     })
     .to_string()
 }

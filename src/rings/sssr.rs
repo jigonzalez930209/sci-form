@@ -338,7 +338,7 @@ fn insert_basis_row(basis_rows: &mut Vec<(usize, Vec<u64>)>, mut row: Vec<u64>) 
     }
 
     basis_rows.push((pivot, row));
-    basis_rows.sort_by(|a, b| b.0.cmp(&a.0));
+    basis_rows.sort_by_key(|x| std::cmp::Reverse(x.0));
     true
 }
 

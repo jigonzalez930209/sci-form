@@ -6,6 +6,4 @@
 
 pub use crate::cpm::grand_potential;
 pub use crate::cpm::surface;
-pub use crate::cpm::{
-    compute_cpm_charges, compute_cpm_surface, CpmConfig, CpmResult, CpmSurface,
-};
+pub use crate::cpm::{compute_cpm_charges, compute_cpm_surface, CpmConfig, CpmResult, CpmSurface};

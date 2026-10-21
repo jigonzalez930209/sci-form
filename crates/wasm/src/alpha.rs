@@ -731,7 +731,7 @@ pub fn alpha_modules_info() -> String {
             "reaction-dynamics"
         ],
         "stability": "alpha — experimental, subject to breaking changes",
-        "version": "0.14.4"
+        "version": env!("CARGO_PKG_VERSION"),
     })
     .to_string()
 }

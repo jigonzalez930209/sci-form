@@ -105,7 +105,10 @@ fn f80_eri_matches_pyscf() {
         if rel > worst.0 {
             worst = (
                 rel,
-                format!("a={:.3} b={:.3} g={:.3} d={:.3}", c.alpha, c.beta, c.gamma, c.delta),
+                format!(
+                    "a={:.3} b={:.3} g={:.3} d={:.3}",
+                    c.alpha, c.beta, c.gamma, c.delta
+                ),
             );
         }
     }
@@ -141,7 +144,10 @@ fn f80_schwarz_never_violated() {
         fix.schwarz.len(),
         worst
     );
-    assert!(worst <= 1e-10, "Schwarz worst rel err {worst:.3e} (tol 1e-10)");
+    assert!(
+        worst <= 1e-10,
+        "Schwarz worst rel err {worst:.3e} (tol 1e-10)"
+    );
 
     // Deterministic pseudo-random sweep (xorshift64, seed 42): the
     // screening inequality must hold everywhere, with margin.
