@@ -31,8 +31,19 @@ fn test_compare_bounds_matrix() {
         if smooth_ok { "OK" } else { "FAILED" }
     );
 
+    // The RDKit reference is produced by an external script that writes a
+    // .npy file. When it is absent the comparison is skipped instead of
+    // failing the whole test suite (the committed F71 gate in
+    // tests/rdkit_parity.rs covers the same ground hermetically).
     let rdkit_bounds_path = "/tmp/rdkit_bounds.npy";
-    let data = std::fs::read(rdkit_bounds_path).expect("Run Python script first");
+    if !std::path::Path::new(rdkit_bounds_path).exists() {
+        eprintln!(
+            "skipping: {rdkit_bounds_path} not found (run scripts/compare_bounds.py); \
+             the committed F71 gate covers the same comparison"
+        );
+        return;
+    }
+    let data = std::fs::read(rdkit_bounds_path).expect("read rdkit bounds");
 
     let major = data[6] as u16;
     let header_len = if major >= 2 {

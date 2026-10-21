@@ -194,10 +194,16 @@ pub fn compute_hessian(
         .iter()
         .enumerate()
         .map(|(i, &val)| {
+            // The mass-weighted Hessian eigenvalue `val` is in
+            // Hartree/(amu·Bohr²), so `sqrt(val)` is an angular frequency in
+            // units of sqrt(Ha/(amu·bohr²)).  The atomic unit of angular
+            // frequency converts to 219474.63 cm⁻¹ (Eh/hc) *without* an
+            // extra 2π: the Hartree conversion already refers to the ordinary
+            // frequency nu = omega / 2*pi.
             let freq = if val >= 0.0 {
-                val.sqrt() * hartree_to_cm1 / (2.0 * std::f64::consts::PI * amu_to_au.sqrt())
+                val.sqrt() * hartree_to_cm1 / amu_to_au.sqrt()
             } else {
-                -((-val).sqrt() * hartree_to_cm1 / (2.0 * std::f64::consts::PI * amu_to_au.sqrt()))
+                -((-val).sqrt() * hartree_to_cm1 / amu_to_au.sqrt())
             };
             (freq, i)
         })
@@ -291,10 +297,16 @@ pub fn compute_hessian_parallel(
         .iter()
         .enumerate()
         .map(|(i, &val)| {
+            // The mass-weighted Hessian eigenvalue `val` is in
+            // Hartree/(amu·Bohr²), so `sqrt(val)` is an angular frequency in
+            // units of sqrt(Ha/(amu·bohr²)).  The atomic unit of angular
+            // frequency converts to 219474.63 cm⁻¹ (Eh/hc) *without* an
+            // extra 2π: the Hartree conversion already refers to the ordinary
+            // frequency nu = omega / 2*pi.
             let freq = if val >= 0.0 {
-                val.sqrt() * hartree_to_cm1 / (2.0 * std::f64::consts::PI * amu_to_au.sqrt())
+                val.sqrt() * hartree_to_cm1 / amu_to_au.sqrt()
             } else {
-                -((-val).sqrt() * hartree_to_cm1 / (2.0 * std::f64::consts::PI * amu_to_au.sqrt()))
+                -((-val).sqrt() * hartree_to_cm1 / amu_to_au.sqrt())
             };
             (freq, i)
         })

@@ -20,7 +20,7 @@ import time
 
 import numpy as np
 
-from common import HARTREE2EV, Report, emit_fixture_report
+from common import HARTREE2EV, HARTREE2KCAL, Report, emit_fixture_report
 
 try:
     from tblite.interface import Calculator
@@ -149,8 +149,136 @@ def run() -> Report:
     return report
 
 
+# ---------------------------------------------------------------------------
+# F84 — ALPB / GB solvation
+# ---------------------------------------------------------------------------
+
+# name, SMILES, class ("hydrocarbon" = neutral and non-polar)
+ALPB_SMILES = [
+    ("water", "O", "polar"),
+    ("methanol", "CO", "polar"),
+    ("ethanol", "CCO", "polar"),
+    ("acetone", "CC(C)=O", "polar"),
+    ("acetic-acid", "CC(=O)O", "polar"),
+    ("urea", "NC(N)=O", "polar"),
+    ("aniline", "Nc1ccccc1", "polar"),
+    ("methane", "C", "hydrocarbon"),
+    ("ethane", "CC", "hydrocarbon"),
+    ("propane", "CCC", "hydrocarbon"),
+    ("butane", "CCCC", "hydrocarbon"),
+    ("pentane", "CCCCC", "hydrocarbon"),
+    ("hexane", "CCCCCC", "hydrocarbon"),
+    ("ethylene", "C=C", "hydrocarbon"),
+    ("benzene", "c1ccccc1", "hydrocarbon"),
+    ("toluene", "Cc1ccccc1", "hydrocarbon"),
+]
+
+
+def _solvation_singlepoint(
+    method: str, elements, coords, interaction: str, args: tuple
+) -> float:
+    """Solvation energy (kcal/mol) of a GFN2-xTB single point."""
+    numbers = np.array(elements, dtype=np.int32)
+    angles = np.array(coords).reshape(-1, 3)
+    pos_bohr = angles * (1.0 / 0.529177210903)
+    calc = Calculator(method, numbers, pos_bohr, charge=0.0)
+    calc.set("verbosity", 0)
+    calc.add(interaction, *args)
+    res = calc.singlepoint()
+    return float(res.get("energy")) * HARTREE2KCAL
+
+
+def _charges(elements, coords) -> list[float]:
+    numbers = np.array(elements, dtype=np.int32)
+    angles = np.array(coords).reshape(-1, 3)
+    pos_bohr = angles * (1.0 / 0.529177210903)
+    calc = Calculator("GFN2-xTB", numbers, pos_bohr, charge=0.0)
+    calc.set("verbosity", 0)
+    res = calc.singlepoint()
+    return [float(q) for q in res.get("charges")]
+
+
+def run_alpb() -> Report:
+    """F84 — ALPB/GB solvation reference (tblite).
+
+    * `gb_solvation` with epsilon = 78.5 and the "still" Born model is the
+      *non-empirical* generalized-Born term: it contains the electrostatic
+      solvation energy only (no surface term, no empirical shift).
+    * `alpb_solvation`/`gbsa_solvation` with the solvent name "water" are
+      the parametrized variants: they add the non-polar surface term, the
+      charge-dependent solvation (CDS) term and the empirical shift.
+    """
+    cases = []
+    for name, smiles, kind in ALPB_SMILES:
+        elements, coords = embed(smiles)
+        vacuum = _solvation_singlepoint("GFN2-xTB", elements, coords, "gb-solvation", (78.5, "still"))
+        # The vacuum energy (no interaction) for the same geometry.
+        numbers = np.array(elements, dtype=np.int32)
+        pos_bohr = np.array(coords).reshape(-1, 3) * (1.0 / 0.529177210903)
+        calc = Calculator("GFN2-xTB", numbers, pos_bohr, charge=0.0)
+        calc.set("verbosity", 0)
+        e_vacuum = float(calc.singlepoint().get("energy")) * HARTREE2KCAL
+
+        gb = _solvation_singlepoint("GFN2-xTB", elements, coords, "gb-solvation", (78.5, "still"))
+        gbe = _solvation_singlepoint("GFN2-xTB", elements, coords, "gbe-solvation", (78.5, "still"))
+        alpb = _solvation_singlepoint("GFN2-xTB", elements, coords, "alpb-solvation", ("water",))
+        gbsa = _solvation_singlepoint("GFN2-xTB", elements, coords, "gbsa-solvation", ("water",))
+        cases.append(
+            {
+                "name": name,
+                "smiles": smiles,
+                "kind": kind,
+                "elements": elements,
+                "coords": coords,
+                "charges": _charges(elements, coords),
+                "e_vacuum_kcal": e_vacuum,
+                "gb_kcal": gb - e_vacuum,
+                "gbe_kcal": gbe - e_vacuum,
+                "alpb_kcal": alpb - e_vacuum,
+                "gbsa_kcal": gbsa - e_vacuum,
+            }
+        )
+        del vacuum
+
+    payload = {
+        "reference": REFERENCE,
+        "solvent_dielectric": 78.5,
+        "born_model": "still",
+        "generated": time.strftime("%Y-%m-%d"),
+        "cases": cases,
+    }
+    report = Report(
+        ficha="F84",
+        observable="alpb_solvation_vs_tblite",
+        reference_tool=f"{REFERENCE} GB/ALPB solvation",
+        units="kcal/mol",
+        tolerance=0.0,
+        level="L2",
+        n_cases=len(cases),
+        metric="max_abs",
+        value=float("nan"),
+        notes=(
+            "tblite GB(eps=78.5, born=still) is the pure electrostatic term; "
+            "the parametrized ALPB/GBSA('water') add the surface, CDS and "
+            "empirical-shift contributions."
+        ),
+    )
+    emit_fixture_report("tblite_alpb.json", payload, report)
+    return report
+
+
 def main() -> int:
-    run()
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "command", nargs="?", default="all", choices=["gfn", "alpb", "all"]
+    )
+    args = parser.parse_args()
+    if args.command in ("gfn", "all"):
+        run()
+    if args.command in ("alpb", "all"):
+        run_alpb()
     print("fixtures -> tests/fixtures/validation")
     return 0
 

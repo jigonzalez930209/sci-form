@@ -281,7 +281,11 @@ fn assign_cip_priorities(
 ///
 /// Uses the signed volume of the tetrahedron formed by substituents 1-2-3
 /// viewed from substituent 4 (lowest priority).
-/// Positive volume with 1→2→3 going clockwise = R.
+///
+/// The signed volume `v1 · (v2 × v3)` with `v_i = r_i − r_4` is negative
+/// when the 1→2→3 sequence is *clockwise* when viewed with the lowest
+/// priority group pointing away from the observer, i.e. when the centre is
+/// **R** (clockwise = rectus). A positive volume corresponds to **S**.
 fn assign_rs(positions: &[[f64; 3]], center: usize, sorted_subs: &[usize]) -> Option<String> {
     if sorted_subs.len() != 4 || positions.is_empty() {
         return None;
@@ -313,7 +317,9 @@ fn assign_rs(positions: &[[f64; 3]], center: usize, sorted_subs: &[usize]) -> Op
         return None; // Planar, can't determine
     }
 
-    Some(if signed_volume > 0.0 {
+    // Clockwise (1→2→3 seen with group 4 pointing away) = R ⇔ negative
+    // signed volume. See the function docs.
+    Some(if signed_volume < 0.0 {
         "R".to_string()
     } else {
         "S".to_string()

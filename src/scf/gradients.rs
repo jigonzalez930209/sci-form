@@ -101,7 +101,12 @@ pub fn energy_weighted_density(
 
 /// Compute nuclear repulsion gradient for atom A.
 ///
-///   ∂V_nn/∂R_A = Z_A Σ_{B≠A} Z_B (R_A - R_B) / |R_A - R_B|³
+///   ∂V_nn/∂R_A = -Z_A Σ_{B≠A} Z_B (R_A - R_B) / |R_A - R_B|³
+///
+/// The sign follows the definition of a gradient (`dE/dR`): moving an atom
+/// towards a partner *increases* the repulsion, so the derivative of
+/// `Z_A Z_B / |R_A - R_B|` with respect to `R_A` carries the minus sign.
+/// (The negative of this quantity is the corresponding force.)
 pub fn nuclear_repulsion_gradient(
     atomic_numbers: &[u8],
     positions: &[[f64; 3]],
@@ -125,7 +130,8 @@ pub fn nuclear_repulsion_gradient(
         let r = r2.sqrt();
         let r3 = r * r2;
 
-        let factor = z_a * z_b / r3;
+        // d/dR_A (Z_A Z_B / r) = -Z_A Z_B (R_A - R_B) / r³
+        let factor = -z_a * z_b / r3;
         grad[0] += factor * dx;
         grad[1] += factor * dy;
         grad[2] += factor * dz;
@@ -152,7 +158,13 @@ mod tests {
             assert!((g0[i] + g1[i]).abs() < 1e-12);
         }
 
-        assert!(g0[0] < 0.0, "Atom 0 should be pushed in -x direction");
+        assert!(g0[0] > 0.0, "Atom 0 gradient should point towards +x");
+        // dV/dR_0 for V = Z0 Z1 / r with R_0 = 0, R_1 = d is +Z0 Z1 / d²:
+        // bringing the atoms closer increases the repulsion energy.
+        assert!(
+            (g0[0] - 1.0 / (d * d)).abs() < 1e-12,
+            "gradient {g0:?} does not match dV/dR = 1/d²"
+        );
     }
 
     #[test]

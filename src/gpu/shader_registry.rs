@@ -231,6 +231,50 @@ pub const SHADER_CPM_COULOMB: ShaderDescriptor = ShaderDescriptor {
 };
 
 /// All registered shaders.
+/// HCT Born radii (Generalized Born descreening).
+pub const SHADER_HCT_BORN_RADII: ShaderDescriptor = ShaderDescriptor {
+    name: "hct_born_radii",
+    tier: GpuTier::Tier3,
+    workgroup_size: [64, 1, 1],
+    entry_point: "main",
+    storage_bindings: 3, // atoms, params, output
+    uniform_bindings: 0,
+    description: "HCT Born radii (GPU Tier 3: O(N^2) descreening)",
+};
+
+/// ANI radial Behler-Parrinello atomic environment vector.
+pub const SHADER_ANI_RADIAL_AEV: ShaderDescriptor = ShaderDescriptor {
+    name: "ani_radial_aev",
+    tier: GpuTier::Tier2,
+    workgroup_size: [64, 1, 1],
+    entry_point: "main",
+    storage_bindings: 3, // atoms, params, output
+    uniform_bindings: 1,
+    description: "ANI radial AEV (GPU Tier 2: O(N x n_species) descriptor)",
+};
+
+/// MMFF94 buffered 14-7 van der Waals non-bonded energy.
+pub const SHADER_MMFF94_NB: ShaderDescriptor = ShaderDescriptor {
+    name: "mmff94_nonbonded",
+    tier: GpuTier::Tier3,
+    workgroup_size: [64, 1, 1],
+    entry_point: "main",
+    storage_bindings: 4, // atoms, exclusions, params, output
+    uniform_bindings: 1,
+    description: "MMFF94 non-bonded vdW + electrostatics (GPU Tier 3: O(N^2) pairwise)",
+};
+
+/// sTDA Coulomb matrix product (A = 2 Q^T Gamma Q, computed as two matmuls).
+pub const SHADER_STDA_MATMUL: ShaderDescriptor = ShaderDescriptor {
+    name: "stda_matmul",
+    tier: GpuTier::Tier2,
+    workgroup_size: [16, 16, 1],
+    entry_point: "main",
+    storage_bindings: 3, // a, b, output
+    uniform_bindings: 1,
+    description: "sTDA Coulomb matrix matmul (GPU Tier 2: O(N^3) dense)",
+};
+
 pub const ALL_SHADERS: &[&ShaderDescriptor] = &[
     &SHADER_VECTOR_ADD,
     &SHADER_ORBITAL_GRID,
@@ -245,6 +289,10 @@ pub const ALL_SHADERS: &[&ShaderDescriptor] = &[
     &SHADER_GAMMA_MATRIX,
     &SHADER_ALPB_BORN_RADII,
     &SHADER_CPM_COULOMB,
+    &SHADER_HCT_BORN_RADII,
+    &SHADER_ANI_RADIAL_AEV,
+    &SHADER_MMFF94_NB,
+    &SHADER_STDA_MATMUL,
 ];
 
 /// Look up a shader by name.
@@ -344,6 +392,6 @@ mod tests {
 
     #[test]
     fn test_all_shaders_registered() {
-        assert_eq!(ALL_SHADERS.len(), 13);
+        assert_eq!(ALL_SHADERS.len(), 17);
     }
 }
