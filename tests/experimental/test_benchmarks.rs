@@ -1205,7 +1205,10 @@ mod bench_cga_geometry {
 // ═══════════════════════════════════════════════════════════════════
 
 mod bench_cpm_electrochemistry {
-    use sci_form::beta::cpm::*;
+    // The core `cpm` module is unconditional; the `beta::cpm` alias is only a
+    // feature-gated re-export, so using the core path keeps this file
+    // compilable without the `beta-cpm` feature.
+    use sci_form::cpm::*;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
         (

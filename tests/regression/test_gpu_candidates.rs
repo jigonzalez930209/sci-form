@@ -1679,10 +1679,10 @@ mod gpu_candidate_cpm {
         timed_bench!("CPM charges H₂O", {
             let (elements, positions) = water_system();
 
-            let config = sci_form::beta::cpm::CpmConfig::default();
+            let config = sci_form::cpm::CpmConfig::default();
 
             let t0 = Instant::now();
-            let result = sci_form::beta::cpm::compute_cpm_charges(&elements, &positions, &config);
+            let result = sci_form::cpm::compute_cpm_charges(&elements, &positions, &config);
             let t_cpu = t0.elapsed();
 
             let Some(ctx) = best_gpu_context("CPM charges H2O") else {
