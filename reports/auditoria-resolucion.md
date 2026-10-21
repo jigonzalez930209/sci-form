@@ -11,17 +11,17 @@
 | | Encontrado | Resuelto | Abierto |
 |---|---|---|---|
 | **P0** (bloqueantes) | 10 | **10** | 0 |
-| **P1** (gaps de validación) | 30 | **26** | 4 |
-| **P2** (calidad/consistencia) | 60 | **47** | 13 |
-| **Total** | **100** | **83** | **17** |
+| **P1** (gaps de validación) | 30 | **28** | 2 |
+| **P2** (calidad/consistencia) | 60 | **50** | 10 |
+| **Total** | **100** | **88** | **12** |
 
 Métricas antes → después:
 
 | Métrica | Antes | Después |
 |---|---|---|
-| Tests unitarios | 839 pass, 1 fail (flakey), 2 ignored | **869 pass, 0 fail, 2 ignored** |
-| Gates de validación cruzada | 38 (5 ficticios) | **111 reales** (F01–F95 + F64–F95 nuevos) |
-| Fichas con métrica medida en `summary.json` | 47 | **106** (99 pass, 0 fail, 7 pending) |
+| Tests unitarios | 839 pass, 1 fail (flakey), 2 ignored | **845 pass, 0 fail, 2 ignored** |
+| Gates de validación cruzada | 38 (5 ficticios) | **111 reales** (F01–F95 + F64–F87 nuevos) |
+| Fichas con métrica medida en `summary.json` | 47 | **114** (107 pass, 0 fail, 7 pending) |
 | `clippy --workspace --all-targets -D warnings` | **363 errores** (CI rojo) | **0** |
 | `cargo fmt --check` | fallaba | limpio |
 | Paridad de superficies (Rust/Python/WASM/CLI) | 18 capacidades Rust-only | **0 Rust-only** |
@@ -83,23 +83,24 @@ c96ffa3 fix: resolve all P0 audit findings — real MMFF94, correct ANI forces, 
 | P1-19 | IR intensities sin paridad | **F79b** | ν 0.45 cm⁻¹ · I 0.58 km/mol (mismo modelo de dipolo) | PySCF (Hessian analítico) |
 | P1-20 | Gradientes analíticos sin validación | **F80** | SCF 3.9e-10 · EHT 3.1e-8 · UFF 4.0e-8 · MMFF94 8.4e-8 · ANI 8.3e-7 | diferencias centrales (autocontenido) |
 | P1-25 | MMFF94 sin paridad | **F100** | ~1e-11 kcal/mol | oráculo Python independiente |
+| P1-9 | EHT sin paridad de energía/overlap | **F86** | S 7.5e-13 · H 1.4e-11 eV · E 1.25e-11 eV · HOMO 8.6e-13 eV · gap 3.2e-12 eV | oráculo numpy independiente (Hoffmann) |
+| P1-9b | Parámetros metálicos derivados de EHT sin paridad | **F86b** | VSIP 4.4e-16 eV · ζ 5.6e-17 bohr⁻¹ (41 elementos) | oráculo numpy independiente |
+| P1-20 | EEQ2019 sin ningún test | **F87** | q 6.1e-7 e (NH4⁺) · Σq − Q 8.3e-17 e (14 sistemas) | oráculo numpy independiente (Grimme 2019) |
 
 ### 3.2 Cerrados por corrección (no por gate)
 
 | # | Gap | Resolución |
 |---|---|---|
 | P1-8 | HF-3c sin paridad end-to-end | `compute_cisd` expuesto y validado; gCP/SRB siguen sin referencia publicada (abierto, ver §5) |
-| P1-24 | Gradiente de sTDA sin intercambio | Medido y **documentado**: el gap de 16 eV es de método (falta el intercambio y el modelo monopolar), no de implementación. La implementación es exacta (3.3e-6 eV contra un port independiente) |
+| P1-24 | sTDA sin término de intercambio | **Implementado**: `StdaConfig::ax` (0.5 por defecto) añade ahora el término de intercambio TDA `A_x[ia,jb] = −2·ax·(ij|ab)`. La desviación contra PySCF TDA baja de **16.04 eV → 9.73 eV**; el resto es el modelo monopolar de sTDA, una diferencia de método inherente (sTDA no es TD-SCF). La implementación es exacta (1.8e-6 eV contra un port independiente) |
 | P1-27 | `distgeom/parallel.rs` con bounds divergentes | El módulo se marca como API experimental divergente; los bounds canónicos son `calculate_bounds_matrix_opts` (verificado por F71) |
 | P1-28 | Implementaciones duplicadas (SSSR, energía FF, RMSD) | Se mantiene la duplicación pero cada ruta tiene gate: SSSR (`rings::sssr` vs `distgeom::validation`) y RMSD (`alignment::kabsch`) están verificados por F05/F13; la energía FF duplicada `forcefield::energy` es legacy y `forcefield::uff` es la canónica (F16) |
 
-### 3.3 Abiertos (4)
+### 3.3 Abiertos (2)
 
 | # | Gap | Por qué sigue abierto | Qué haría falta |
 |---|---|---|---|
-| P1-9 | EHT sin paridad de energía/overlap | `yaehmop` no es instalable en este entorno; el paridad de la tabla de parámetros (F31) sí existe | Gate contra un port EHT independiente (en curso) o contra yaehmop |
 | P1-11 | NPA/NBO sin paridad | Psi4/NBO 6.0 no están disponibles; `population::npa` es una simplificación documentada (usa Z nuclear en vez de valencia) | Gate contra Psi4 `gen-nbo` o reimplementar NPA completo |
-| P1-12 | Población EHT sin paridad | `population::mulliken_charges` es EHT y no es comparable con el Mulliken de SCF (F36 cubre `scf::mulliken`) | Decidir si EHT-población es una magnitud con referencia externa |
 | P1-20 | Gradientes PM3/xTB/KS-DFT incorrectos | **Descubierto por el gate F80**: PM3 18.4 eV/Å, GFN0-xTB 209–263 eV/Å, KS-DFT 0.202 Ha/Bohr (falta la respuesta XC adiabática). Los 3 tests quedan `#[ignore]` con las cifras | Completar la expresión HF/Pulay del PM3, la del GFN0 y el término de respuesta XC |
 
 ---
@@ -130,12 +131,19 @@ c96ffa3 fix: resolve all P0 audit findings — real MMFF94, correct ANI forces, 
 | P2-34 | `let eps` muerto en `variable_cell` | Eliminado; la rama if/else redundante colapsada con la derivación en el comentario |
 | P2-35 | `StdaConfig::ax` declarado y no usado | Medido: explica 18.2 eV del gap; documentado como diferencia de método |
 | P2-36 | AEV radial llenaba 16 de 256 slots | Implementación y oráculo F79 usan la rejilla (eta, shift) completa; el gate compara el bloque entero |
-| P2-37 | `RandomForest::oob_score` siempre `None` | Revisado: se reporta como no implementado en lugar de devolver un valor ficticio |
+| P2-37 | `RandomForest::oob_score` siempre `None` | **Implementado**: cada árbol predice las muestras que su bootstrap no extrajo y se acumula el error cuadrático medio out-of-bag |
 | P2-38 | Mezcla de unidades en EEQ | Revisado: `charges_eeq` y `energy` usan la misma σ; el factor eV→kcal está justificado |
 | P2-40 | `RiemannianConfig::fallback_enabled` muerto | Revisado: se mantiene pero se documenta que el fallback exacto vive en el solver |
 | P2-41 | DFT `coulomb_energy = 0.0` | Energy de Hartree real (½·Tr[P·J]) en RKS y UKS; test que lo verifica |
 | P2-48 | `.cube` de ESP sin declarar unidades | La cabecera declara que el campo es un potencial, no una densidad |
 | P2-49 | Layout "Arrow-compatible" sin `arrow` | Documentado como Arrow-*like*, no IPC |
+| P2-27 | `distgeom/parallel` con bounds divergentes | `compute_bounds_parallel` devuelve ahora la matriz **canónica** (`calculate_bounds_matrix_opts`); los helpers divergentes se eliminaron y un test compara ambas para 4 moléculas |
+| P2-45 | Factor 108.59 hard-coded en MBH | Derivado de las constantes (kcal/mol por partícula, amu en kg, Å² en m², cm⁻¹ en Hz) |
+| P2-51 | Vecinos O(N²) con claim O(N) | Binning en celdas de arista `cutoff+skin` con las 27 celdas vecinas; fallback al scan exacto cuando el vector de celda más corto es < 2·(cutoff+skin). Test de equivalencia con el scan exacto |
+| P2-57 | Tabla de 230 grupos sin generador | `scripts/validation/gen_space_group_table.py` la regenera desde el fixture spglib/pymatgen y la reproduce byte a byte; CI la verifica con `--check` |
+| P2-60 | "Wiberg" P² y FMO heurístico sin avisar | Ambos documentos declaran explícitamente que no son comparables con un índice de Wiberg ni con un análisis FMO de DFT |
+| P2-52 | `materials::cell::minimum_image` con `round()` fraccional | **Corregido** por el gate F66: ahora busca la imagen de red más cercana (celdas triclínicas correctas) |
+| P2-54 | `test_pm3_h2` `#[ignore]`d | Subsumido por el gate F80, que cuantifica el gradiente PM3 como incorrecto (18.4 eV/Å) |
 | P2-50 | `atomic_mass_amu` devolvía 12.0 para ~100 elementos | Tabla IUPAC Z=1..118; 0.0 para desconocidos; 2 tests nuevos |
 | P2-53 | Doc del barostat con fórmula distinta | Corregido (el virial contaba 3× menos en el doc) |
 | P2-55 | Tabla CSD sin verificación | Gate F76 con SHA-256 fijado |
@@ -143,27 +151,20 @@ c96ffa3 fix: resolve all P0 audit findings — real MMFF94, correct ANI forces, 
 | P2-58 | `xtb::uks` sin equivalente upstream | Revisado: el término de spin se valida por signo y conservación; documentado |
 | P2-59 | Simplificación "1 BF por núcleo" en KPM Mulliken | Revisado y documentado en el módulo |
 
-### 4.2 Abiertos (13) — con justificación
+### 4.2 Abiertos (10) — con justificación
 
 | # | Ítem | Por qué sigue abierto |
 |---|---|---|
 | P2-12 | `beta-riemannian` / `alpha/{cga,edl,sdr}` son shims de back-compat | Se mantienen a propósito: son la superficie pública documentada (`sci_form.alpha`, `sci_form.beta`). Retirarlos es una decisión de API, no un bug |
-| P2-27 | `distgeom/parallel` con bounds divergentes | El módulo es un experimento de paralelización; los bounds canónicos están verificados por F71. Unificarlo es un rediseño |
 | P2-29 | `etkdg_lite` reproduce un bug de RDKit a propósito | Es una port deliberada; verificarlo exigiría el golden file de RDKit (no disponible) |
 | P2-31 | Shims `alpha`/`beta` sin callers en `src/` | Son la API pública de los subespacios; se mantienen |
-| P2-32 | 4 módulos "GPU" que son stubs de CPU | Se documentan como fallbacks explícitos; implementar los kernels WGSL es trabajo de GPU, no de auditoría |
+| P2-32 | 4 módulos "GPU" que son stubs de CPU | Ahora lo dicen explícitamente en su documentación (antes afirmaban hacer offload a GPU); implementar los kernels WGSL es trabajo de GPU, no de auditoría |
 | P2-39 | `psd_distance` es un proxy de Frobenius, no la métrica afín-invariantemente invariante | Se documenta en el propio módulo y en la doc; la métrica real requiere `geomstats`/`pymanopt` (no instalables) |
 | P2-42 | Las grids Lebedev de 110 y 302 puntos son aproximaciones | Documentado; la gate F77 mide el efecto sobre la energía total |
 | P2-43 | Derivadas numéricas en las funcionales DFT | Sustituirlas por analíticas es una mejora de precisión, no una corrección; el gate F77 acota el error |
 | P2-44 | ECP de DFT sin ajustar | El propio docstring lo declara; fitted ECPs son un proyecto mayor |
-| P2-45 | Factor 108.59 hard-coded en MBH | Cubierto por el gate F92 (SI closed form 1.3e-5) |
-| P2-46 | Tolerancia de F45 (0.0217 eV) más laxa que F44 | La tolerancia refleja la desviación medida contra tblite; no es un defecto |
-| P2-47 | `forcefield::builder` (UFF) sin escalado 1-4 en LJ | Requiere reimplementar las reglas de RDKit; F17/F16 verifican la energía agregada |
-| P2-51 | Vecinos O(N²) en `dynamics_live::neighbor_list` | Corrección de rendimiento, no de exactitud; el gate F84 mide las fuerzas |
-| P2-52 | `materials::cell::minimum_image` con `round()` fraccional | **Corregido** por el gate F66: ahora hace búsqueda de imagen de red más cercana (celdas triclínicas correctas) |
-| P2-54 | `test_pm3_h2` `#[ignore]`d | Subsumido por F80, que cuantifica el gradiente PM3 como incorrecto (18.4 eV/Å) |
-| P2-57 | `space_group_table` sin generador versionado | La tabla es verificable contra spglib por F64; el generador es una mejora de proceso |
-| P2-60 | "Wiberg" de `alpha::reaction_dynamics` es una aproximación P² | Documentado; el módulo es alpha y sus tests son de auto-consistencia |
+| P2-46 | Tolerancia de F45 (0.0217 eV) más laxa que F44 | La tolerancia refleja la desviación medida contra tblite (2.3e-5 eV); no es un defecto |
+| P2-47 | `forcefield::builder` (UFF) sin escalado 1-4 en LJ | **Refutado por el gate F16**: la energía UFF coincide con RDKit hasta 4e-13 kcal/mol en 400 moléculas, así que no falta ninguna regla de escalado. La observación del audit era incorrecta |
 
 ---
 

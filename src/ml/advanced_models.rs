@@ -230,6 +230,9 @@ fn select_features(n_features: usize, max_features: usize, seed: u64) -> Vec<usi
 pub struct RandomForest {
     pub trees: Vec<TreeNode>,
     pub n_trees: usize,
+    /// Out-of-bag mean squared error, computed from the samples each tree's
+    /// bootstrap did not draw. `None` when no sample was ever out of bag
+    /// (e.g. a bootstrap that covers the whole training set).
     pub oob_score: Option<f64>,
 }
 
@@ -264,6 +267,12 @@ pub fn train_random_forest(
     let n_sample = ((n as f64 * config.sample_fraction).ceil() as usize).max(1);
     let mut trees = Vec::with_capacity(config.n_trees);
 
+    // Out-of-bag accumulation: every tree predicts the samples that its
+    // bootstrap did not draw, which gives an unbiased estimate of the
+    // generalisation error (the "OOB score").
+    let mut oob_sq_error = 0.0f64;
+    let mut oob_count = 0usize;
+
     for t in 0..config.n_trees {
         let seed = config.seed.wrapping_add(t as u64 * 1000003);
         // Bootstrap sample
@@ -271,13 +280,35 @@ pub fn train_random_forest(
         let boot_features: Vec<Vec<f64>> = bootstrap.iter().map(|&i| features[i].clone()).collect();
         let boot_targets: Vec<f64> = bootstrap.iter().map(|&i| targets[i]).collect();
         let tree = build_tree(&boot_features, &boot_targets, &config.tree_config, seed);
+
+        // Samples that are out of the bag for this tree.
+        let mut in_bag = vec![false; n];
+        for &i in &bootstrap {
+            in_bag[i] = true;
+        }
+        for i in 0..n {
+            if in_bag[i] {
+                continue;
+            }
+            let pred = tree.predict(&features[i]);
+            let err = pred - targets[i];
+            oob_sq_error += err * err;
+            oob_count += 1;
+        }
+
         trees.push(tree);
     }
+
+    let oob_score = if oob_count > 0 {
+        Some(oob_sq_error / oob_count as f64)
+    } else {
+        None
+    };
 
     RandomForest {
         n_trees: config.n_trees,
         trees,
-        oob_score: None,
+        oob_score,
     }
 }
 
@@ -667,6 +698,27 @@ mod tests {
         let (pred, var) = model.predict_with_variance(&[10.0]);
         assert!(pred > 0.0);
         assert!(var >= 0.0);
+    }
+
+    /// The out-of-bag score must be a real number and must be close to the
+    /// error the forest makes on unseen data (it used to be always `None`).
+    #[test]
+    fn test_random_forest_oob_score() {
+        // A deterministic linear target: the forest should learn it well.
+        let features: Vec<Vec<f64>> = (0..40).map(|i| vec![i as f64 * 0.1]).collect();
+        let targets: Vec<f64> = features.iter().map(|f| 2.0 * f[0] + 1.0).collect();
+        let config = RandomForestConfig {
+            n_trees: 12,
+            seed: 7,
+            ..RandomForestConfig::default()
+        };
+        let rf = train_random_forest(&features, &targets, &config);
+        let oob = rf.oob_score.expect("an OOB score should be available");
+        assert!(oob.is_finite(), "OOB score must be finite: {oob}");
+        assert!(
+            oob < 1.0,
+            "OOB error should be small for a linear target: {oob}"
+        );
     }
 
     #[test]

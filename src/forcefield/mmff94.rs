@@ -1076,6 +1076,11 @@ fn mmff94_eq_level(atom_type: u8, level: usize) -> u8 {
     if t >= MMFF94_DEFS.len() {
         return 0;
     }
+    // The equivalence-level table has four entries (the type itself plus the
+    // three successively more general default types).  The five-stage
+    // torsion search can ask for level 4, which is out of range: clamp it to
+    // the most general level instead of panicking.
+    let level = level.min(MMFF94_DEFS[t].eq_level.len() - 1);
     MMFF94_DEFS[t].eq_level[level]
 }
 

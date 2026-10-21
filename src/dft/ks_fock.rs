@@ -548,6 +548,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn dft_config_default_is_svwn() {
         let config = DftConfig::default();
         assert_eq!(config.method, DftMethod::Svwn);

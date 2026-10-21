@@ -3,6 +3,12 @@
 //! Offloads large capacitance scan workloads to GPU compute shaders when the
 //! number of bias points exceeds a threshold (≥32 points). Falls back to CPU
 //! for smaller scans.
+//!
+//! NOTE: this is currently a **CPU fallback only** — the WGSL kernel it
+//! advertises does not exist yet, so the "GPU" path executes exactly the same
+//! CPU code and the parity test compares CPU against CPU. The audit
+//! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
+//! call site for the kernel to be added.
 
 use super::{compute_edl_profile, scan_edl_capacitance, EdlConfig, EdlProfileResult};
 use crate::gpu::context::GpuContext;

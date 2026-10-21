@@ -2,6 +2,12 @@
 //!
 //! Offloads large chart packing workloads to GPU compute when processing
 //! many chart payloads simultaneously. Falls back to CPU for small batches.
+//!
+//! NOTE: this is currently a **CPU fallback only** — the WGSL kernel it
+//! advertises does not exist yet, so the "GPU" path executes exactly the same
+//! CPU code and the parity test compares CPU against CPU. The audit
+//! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
+//! call site for the kernel to be added.
 
 use super::{pack_chart_payload, ChartPayload};
 use crate::gpu::context::GpuContext;

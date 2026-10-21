@@ -42,6 +42,11 @@ impl std::fmt::Display for OrbitalInteraction {
 /// For a bimolecular reaction, the approach should maximise the overlap
 /// between the nucleophile's HOMO and the electrophile's LUMO (or vice versa).
 ///
+/// NOTE: the orbital energies and the atomic-centroid map come from EHT, and
+/// the basis-function-to-atom assignment is a heuristic table rather than the
+/// real EHT basis partition. The direction is therefore a qualitative
+/// frontier-orbital indicator, NOT a DFT-quality FMO analysis.
+///
 /// Returns `None` if EHT calculation fails (falls back to electrostatic approach).
 pub fn compute_orbital_approach_direction(
     elements_a: &[u8],

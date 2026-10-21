@@ -2,6 +2,12 @@
 //!
 //! Offloads k-point operator assembly and KPM matrix-vector products to GPU
 //! compute shaders when the workload is large enough.
+//!
+//! NOTE: this is currently a **CPU fallback only** — the WGSL kernel it
+//! advertises does not exist yet, so the "GPU" path executes exactly the same
+//! CPU code and the parity test compares CPU against CPU. The audit
+//! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
+//! call site for the kernel to be added.
 
 use nalgebra::DMatrix;
 
