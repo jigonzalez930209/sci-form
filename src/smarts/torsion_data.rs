@@ -1,6 +1,20 @@
-//! CSD torsion preference data (837 patterns).
+//! CSD torsion preference data (837 upstream patterns + 8 sci-form extensions).
 //! Format: (SMARTS, [s1, V1, s2, V2, s3, V3, s4, V4, s5, V5, s6, V6])
 //! Energy: V = sum_k V_k * (1 + s_k * cos(k * phi))
+//!
+//! The three upstream tables are faithful transcriptions of RDKit's
+//! `Code/GraphMol/ForceFieldHelpers/CrystalFF/torsionData/` files at the
+//! `Release_2026_09_1` tag:
+//!
+//! | sci-form table             | upstream file                      |
+//! |----------------------------|------------------------------------|
+//! | `TORSION_PREFS_V2`         | `torsionPreferences_v2.in`         |
+//! | `TORSION_PREFS_SMALL_RINGS`| `torsionPreferences_smallrings.in`  |
+//! | `TORSION_PREFS_MACROCYCLES`| `torsionPreferences_macrocycles.in` |
+//!
+//! [`TORSION_PREFS_EXTENSIONS`] holds the sci-form-specific patterns that are
+//! *not* part of RDKit's tables.  `scripts/validation/check_csd_torsion_table.py`
+//! verifies the transcription and pins the SHA-256 of the tables.
 
 /// Non-ring torsion preferences (365 patterns)
 pub const TORSION_PREFS_V2: &[(&str, [f32; 12])] = &[
@@ -1544,46 +1558,6 @@ pub const TORSION_PREFS_V2: &[(&str, [f32; 12])] = &[
             1.0, 0.0, -1.0, 100.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
         ],
     ),
-    // ─── Additional patterns: amides, sulfoxides, phosphorus ─────────────
-    // Amide C(=O)-NH rotation: strong 2-fold barrier (planar trans preferred)
-    (
-        "[O:1]=[C:2]!@;-[NH1:3][*:4]",
-        [-1.0, 50.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
-    (
-        "[O:1]=[C:2]!@;-[NH2:3][H:4]",
-        [-1.0, 30.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
-    // Amide C(=O)-N(C)(C) (tertiary amide)
-    (
-        "[O:1]=[C:2]!@;-[NX3H0:3][*:4]",
-        [-1.0, 40.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
-    // Sulfonamide S(=O)(=O)-N
-    (
-        "[O:1]=[S:2](=O)!@;-[N:3][*:4]",
-        [1.0, 0.0, 1.0, 0.0, 1.0, 4.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
-    // Sulfoxide S(=O) rotation
-    (
-        "[O:1]=[SX3:2]!@;-[C:3][*:4]",
-        [1.0, 0.0, 1.0, 0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
-    // Sulfone S(=O)(=O) rotation
-    (
-        "[*:1][SX4:2](=O)(=O)!@;-[C:3][*:4]",
-        [1.0, 0.0, 1.0, 0.0, 1.0, 4.5, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
-    // Phosphonate P(=O) rotation
-    (
-        "[O:1]=[PX4:2]!@;-[O:3][C:4]",
-        [1.0, 0.0, 1.0, 0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
-    // 1,5-allylic: C=C-C-C-X
-    (
-        "[*:1][CX3:2](=C)!@;-[CX4:3][*:4]",
-        [1.0, 0.0, 1.0, 0.0, 1.0, 1.5, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
-    ),
 ];
 
 /// Small ring torsion preferences (105 patterns)
@@ -1693,6 +1667,57 @@ pub const TORSION_PREFS_SMALL_RINGS: &[(&str, [f32; 12])] = &[
     ("[!#1;r{5-8}:1]@[P;r{5-8}:2]@;-[S,P;r{5-8}:3]@[!#1;r{5-8}:4]", [1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 5.0]),
     ("[!#1;r{5-8}:1]@[P;r{5-8}:2]@;-[a;r{5-8}:3]@[!#1;r{5-8}:4]", [1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, -1.0, 10.0]),
     ("[!#1;r{5-8}:1]@;~[A;r{5-8}:2]@;-[A,a;r{5-8}:3]@;~[!#1;r{5-8}:4]", [1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, -1.0, 20.0]),
+];
+
+/// sci-form specific torsion preferences (8 patterns).
+///
+/// These patterns are **not** part of RDKit's
+/// `torsionPreferences_v2.in`; they are sci-form extensions that cover
+/// amide, sulfoxide, sulfone, phosphonate and 1,5-allylic rotations which
+/// RDKit handles through its own `basic knowledge` terms instead.
+/// They are kept in a separate table so that [`TORSION_PREFS_V2`] stays a
+/// faithful, byte-for-byte transcription of the upstream RDKit table
+/// (see `scripts/validation/check_csd_torsion_table.py`).
+pub const TORSION_PREFS_EXTENSIONS: &[(&str, [f32; 12])] = &[
+    // Amide C(=O)-NH rotation: strong 2-fold barrier (planar trans preferred)
+    (
+        "[O:1]=[C:2]!@;-[NH1:3][*:4]",
+        [-1.0, 50.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
+    (
+        "[O:1]=[C:2]!@;-[NH2:3][H:4]",
+        [-1.0, 30.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
+    // Amide C(=O)-N(C)(C) (tertiary amide)
+    (
+        "[O:1]=[C:2]!@;-[NX3H0:3][*:4]",
+        [-1.0, 40.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
+    // Sulfonamide S(=O)(=O)-N
+    (
+        "[O:1]=[S:2](=O)!@;-[N:3][*:4]",
+        [1.0, 0.0, 1.0, 0.0, 1.0, 4.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
+    // Sulfoxide S(=O) rotation
+    (
+        "[O:1]=[SX3:2]!@;-[C:3][*:4]",
+        [1.0, 0.0, 1.0, 0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
+    // Sulfone S(=O)(=O) rotation
+    (
+        "[*:1][SX4:2](=O)(=O)!@;-[C:3][*:4]",
+        [1.0, 0.0, 1.0, 0.0, 1.0, 4.5, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
+    // Phosphonate P(=O) rotation
+    (
+        "[O:1]=[PX4:2]!@;-[O:3][C:4]",
+        [1.0, 0.0, 1.0, 0.0, 1.0, 3.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
+    // 1,5-allylic: C=C-C-C-X
+    (
+        "[*:1][CX3:2](=C)!@;-[CX4:3][*:4]",
+        [1.0, 0.0, 1.0, 0.0, 1.0, 1.5, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
+    ),
 ];
 
 /// Macrocycle torsion preferences (367 patterns)
@@ -2238,31 +2263,31 @@ pub const TORSION_PREFS_MACROCYCLES: &[(&str, [f32; 12])] = &[
         [1.0, 0.0, -1.0, 39.4, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O:1]=[CX3;r{9-}:2]([$([NX3H1]C)])@;-[NX3H1;r{9-}:3][!#1:4]",
+        "[O:1]=[CX3;r{9-}:2]([$([NX3H1]C)])@;-[NX3H1;r:3][!#1:4]",
         [-1.0, 51.7, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O:1]=[C;r{9-}:2]([!$([NH1])])@;-[NX3H1;r{9-}:3]([H:4])[$(c([nX2H0])([nX2H0]))]",
+        "[O:1]=[C;r{9-}:2]([!$([NH1])])@;-[NX3H1;r:3]([H:4])[$(c([nX2H0])([nX2H0]))]",
         [1.0, 100.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O,S:1]=[C;r{9-}:2]([$([NX3H1]),$([NX3H2])])@;-[$([NX3](cn));r{9-}:3][H:4]",
+        "[O,S:1]=[C;r{9-}:2]([$([NX3H1]),$([NX3H2])])@;-[$([NX3](cn));r:3][H:4]",
         [1.0, 0.0, -1.0, 50.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O:1]=[C;r{9-}:2]@;-[NX3H0;r{9-}:3]([a:4])[A]",
+        "[O:1]=[C;r{9-}:2]@;-[NX3H0;r:3]([a:4])[A]",
         [1.0, 0.0, -1.0, 4.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O:1]=[CX3;r{9-}:2](a)@;-[NX3H0;r{9-}:3][!#1:4]",
+        "[O:1]=[CX3;r{9-}:2](a)@;-[NX3H0;r:3][!#1:4]",
         [1.0, 0.0, -1.0, 13.9, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O:1]=[CX3;r{9-}:2]@;-[NX3H0;r{9-}:3][!#1:4]",
+        "[O:1]=[CX3;r{9-}:2]@;-[NX3H0;r:3][!#1:4]",
         [1.0, 0.0, -1.0, 8.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O:1]=[CX3;r{9-}:2]@;-[NX3H1;r{9-}:3][!#1:4]",
+        "[O:1]=[CX3;r{9-}:2]@;-[NX3H1;r:3][!#1:4]",
         [
             -1.0, 100.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
         ],
@@ -2354,23 +2379,23 @@ pub const TORSION_PREFS_MACROCYCLES: &[(&str, [f32; 12])] = &[
         ],
     ),
     (
-        "[O:1]=[CX3;r{9-}:2]@;-[nX3;r{9-}:3]([aH0:4])([aH0])",
+        "[O:1]=[CX3;r{9-}:2]@;-[nX3;r:3]([aH0:4])([aH0])",
         [1.0, 0.0, -1.0, 8.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[O:1]=[CX3;r{9-}:2]@;-[nX3;r{9-}:3][aH1:4]",
+        "[O:1]=[CX3;r{9-}:2]@;-[nX3;r:3][aH1:4]",
         [1.0, 0.0, -1.0, 18.7, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[a:1][CX3;r{9-}:2](=S)@;-[NX3;r{9-}:3][a:4]",
+        "[a:1][CX3;r{9-}:2](=S)@;-[NX3;r:3][a:4]",
         [1.0, 100.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[!#1:1][CX3;r{9-}:2](=S)@;-[NX3H0;r{9-}:3][!#1:4]",
+        "[!#1:1][CX3;r{9-}:2](=S)@;-[NX3H0;r:3][!#1:4]",
         [1.0, 0.0, -1.0, 22.5, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (
-        "[!#1:1][CX3;r{9-}:2](=S)@;-[NX3H1;r{9-}:3][!#1:4]",
+        "[!#1:1][CX3;r{9-}:2](=S)@;-[NX3H1;r:3][!#1:4]",
         [1.0, 0.0, -1.0, 20.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0],
     ),
     (

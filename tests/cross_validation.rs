@@ -209,6 +209,15 @@ mod f42_mopac_pm3 {
             max_err = max_err.max(err);
         }
         eprintln!("F42: max |dHoF| = {max_err:.3} kcal/mol over all 24 (tolerance 0.02)");
+        record(
+            "F42",
+            "mopac_pm3_max_abs",
+            "max_abs",
+            max_err,
+            0.02,
+            max_err < 0.02,
+            fixture.cases.len(),
+        );
     }
 }
 

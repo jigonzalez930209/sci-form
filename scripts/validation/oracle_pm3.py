@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """PM3 heat-of-formation oracle for sci-form validation (ficha F42).
 
-Status: cross-check against MOPAC is BLOCKED (no MOPAC binary and no
-Fortran toolchain in this environment). This oracle therefore ships:
+Two fixtures are produced:
 
   - `pm3_dhf.json`: deterministic geometries (RDKit ETKDG + MMFF94) plus
     experimental gas-phase heats of formation (NIST WebBook, 298 K) used
     by the regression guard `f42_pm3_guard` in tests/cross_validation.rs;
-  - an optional MOPAC branch: if a `mopac` binary is on PATH (or `MOPAC`
-    points at it), reference PM3 single points (`PM3 1SCF`) are computed
-    and stored under the `mopac` key, upgrading the fixture to a real
-    cross-validation the moment the toolchain exists.
+  - `mopac_pm3.json` (mode `mopac-fixture`): the PM3 single-point reference
+    values that `tests/cross_validation.rs::f42_mopac_pm3` compares against.
+    The reference geometry is **sci-form's own seed-42 embedding**, so the
+    fixture has to be regenerated whenever the embedding pipeline changes
+    (the heat of formation is geometry dependent).
+
+The MOPAC branch is optional: if a `mopac` binary is on PATH (or `MOPAC`
+points at it), reference PM3 single points (`PM3 1SCF`) are computed.
 
 Usage:
     python scripts/validation/oracle_pm3.py
+    python scripts/validation/oracle_pm3.py mopac-fixture
     MOPAC=/path/to/mopac python scripts/validation/oracle_pm3.py  # with reference
 """
 
@@ -27,7 +31,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from common import Report, emit_fixture_report
+from common import Report, cli_path, emit_fixture_report
 
 try:
     from rdkit import Chem
@@ -36,6 +40,38 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit(f"RDKit is required for this oracle: {exc}")
 
 REFERENCE = "NIST WebBook gas-phase ΔHf°(298 K)"
+
+#: The molecules of the `mopac_pm3.json` fixture (name, SMILES).  The
+#: reference geometry is sci-form's own seed-42 embedding.
+MOPAC_FIXTURE_MOLECULES = [
+    ("water", "O"),
+    ("methane", "C"),
+    ("ethane", "CC"),
+    ("ethylene", "C=C"),
+    ("acetylene", "C#C"),
+    ("benzene", "c1ccccc1"),
+    ("methanol", "CO"),
+    ("acetic_acid", "CC(=O)O"),
+    ("formaldehyde", "C=O"),
+    ("acetone", "CC(=O)C"),
+    ("ammonia", "N"),
+    ("methylamine", "CN"),
+    ("pyridine", "c1ccncc1"),
+    ("pyrrole", "c1cc[nH]c1"),
+    ("thiophene", "c1ccsc1"),
+    ("chloromethane", "CCl"),
+    ("dichloromethane", "C(Cl)Cl"),
+    ("silane", "[SiH4]"),
+    ("phosphine", "P"),
+    ("hydrogen_sulfide", "S"),
+    ("fluoroform", "FC(F)F"),
+    ("phenol", "Oc1ccccc1"),
+    ("aniline", "Nc1ccccc1"),
+    ("toluene", "Cc1ccccc1"),
+]
+
+#: Seed of the sci-form embedding used for the MOPAC reference geometries.
+MOPAC_FIXTURE_SEED = 42
 
 # molecule -> (SMILES, experimental ΔHf in kcal/mol)
 SERIES = {
@@ -52,7 +88,7 @@ SERIES = {
     "benzene": ("c1ccccc1", 19.8),
 }
 
-Z2SYM = {1: "H", 6: "C", 7: "N", 8: "O", 9: "F"}
+Z2SYM = {1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 14: "Si", 15: "P", 16: "S", 17: "Cl"}
 
 
 def mopac_path() -> str | None:
@@ -86,7 +122,9 @@ def run_mopac(binary: str, elements, coords) -> float | None:
         for line in text.splitlines():
             if "HEAT OF FORMATION" in line.upper():
                 try:
-                    return float(line.split("=")[-1].split()[0])
+                    # MOPAC prints "HEAT OF FORMATION = <kcal/mol> KCAL/MOL = <kJ/mol> KJ/MOL";
+                    # the kcal/mol value is the one after the *first* "=".
+                    return float(line.split("=")[1].split()[0])
                 except (ValueError, IndexError):
                     return None
     return None
@@ -140,7 +178,96 @@ def run() -> Report:
     return report
 
 
+def sciform_embed(smiles: str, seed: int):
+    """sci-form's own seed-`seed` embedding (via the sci-form CLI)."""
+    import json
+    import subprocess
+
+    cmd = [str(cli_path()), "embed", smiles, "--seed", str(seed), "--format", "json"]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    if proc.returncode != 0:
+        return None
+    data = json.loads(proc.stdout)
+    return data["coords"], data.get("elements", [])
+
+
+def run_mopac_fixture() -> Report:
+    """Regenerate `mopac_pm3.json` (F42) from sci-form's seed-42 embeddings.
+
+    The reference geometry is sci-form's own embedding, so the fixture has to
+    be regenerated whenever the embedding pipeline changes: the PM3 heat of
+    formation is geometry dependent.
+    """
+    binary = mopac_path()
+    if binary is None:
+        raise SystemExit(
+            "a MOPAC binary is required to regenerate mopac_pm3.json "
+            "(install it with scripts/validation/install_mopac.sh)"
+        )
+    cases = []
+    max_delta = 0.0
+    for name, smi in MOPAC_FIXTURE_MOLECULES:
+        embedded = sciform_embed(smi, MOPAC_FIXTURE_SEED)
+        if embedded is None:
+            raise SystemExit(f"sci-form embedding failed for {name} ({smi})")
+        coords, _ = embedded
+        mol = Chem.AddHs(Chem.MolFromSmiles(smi))
+        elements = [a.GetAtomicNum() for a in mol.GetAtoms()]
+        ref = run_mopac(binary, elements, coords)
+        if ref is None:
+            raise SystemExit(f"MOPAC failed for {name} ({smi})")
+        cases.append(
+            {
+                "name": name,
+                "smiles": smi,
+                "mopac_hof_kcal": ref,
+            }
+        )
+    payload = {
+        "reference": "MOPAC 23.2.5 PM3 1SCF on the sci-form seed-42 embedding",
+        "source": "MOPAC 23.2.5 (PM3 1SCF) at the sci-form embed geometries (seed 42)",
+        "notes": [
+            "F42 arbiter for the faithful PM3 port (src/pm3/faithful.rs).",
+            "The reference geometry is sci-form's own embedding, so this fixture "
+            "must be regenerated (python scripts/validation/oracle_pm3.py "
+            "mopac-fixture) whenever the embedding pipeline changes.",
+        ],
+        "seed": MOPAC_FIXTURE_SEED,
+        "tolerance": 0.02,
+        "generated": time.strftime("%Y-%m-%d"),
+        "cases": cases,
+    }
+    report = Report(
+        ficha="F42",
+        observable="mopac_pm3_max_abs",
+        reference_tool="MOPAC 23.2.5 PM3 1SCF",
+        units="kcal/mol",
+        tolerance=0.02,
+        level="L2",
+        n_cases=len(cases),
+        metric="max_abs",
+        # The deviation is measured by the Rust gate
+        # (tests/cross_validation.rs::f42_mopac_pm3), which records the real
+        # value into target/validation/F42.json; `collect.py` merges it over
+        # this placeholder. The oracle cannot evaluate sci-form's PM3 itself,
+        # so it must not report a fabricated value.
+        value=float("nan"),
+        notes=(
+            "reference values are recomputed on sci-form's own seed-42 "
+            "embedding, so this fixture must be regenerated whenever the "
+            "embedding pipeline changes; the measured deviation is recorded "
+            "by the Rust gate f42_mopac_pm3"
+        ),
+    )
+    emit_fixture_report("mopac_pm3.json", payload, report)
+    return report
+
+
 def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "mopac-fixture":
+        run_mopac_fixture()
+        print("fixtures -> tests/fixtures/validation")
+        return 0
     run()
     print("fixtures -> tests/fixtures/validation")
     return 0

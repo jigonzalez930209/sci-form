@@ -99,8 +99,13 @@ pub fn calculate_bounds_matrix_opts(mol: &Molecule, use_set15: bool) -> DMatrix<
     }
     for bond in mol.graph.edge_references() {
         let d = get_bond_length(mol, bond.source(), bond.target());
+        // RDKit's `set12Bounds` applies the extra "squish" slack only when
+        // *both* ends of the bond were flagged by `squishBond`
+        // (`squishAtoms[begId] && squishAtoms[endId]`). Using `||` here made
+        // sci-form looser than RDKit for every bond that merely *touches* a
+        // squished heteroatom (e.g. the C-C bonds of thiophene).
         let extra_squish =
-            if squish_atoms[bond.source().index()] || squish_atoms[bond.target().index()] {
+            if squish_atoms[bond.source().index()] && squish_atoms[bond.target().index()] {
                 0.2
             } else {
                 0.0
