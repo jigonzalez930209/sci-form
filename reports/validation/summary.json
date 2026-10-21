@@ -1158,8 +1158,8 @@
   "value": 16.04366933391003,
   "tolerance": 20.0,
   "pass": true,
-  "notes": "sTDA (monopole Coulomb, no exchange) vs PySCF TD-SCF. The implementation-parity gate (sci-form sTDA vs the Python port stda_ref) is tight; the cross-library deviation is dominated by sci-form's missing exchange term (StdaConfig::ax is declared but never used) and by the monopole approximation of the Coulomb interaction. Measured by tests/pyscf_parity.rs::f77_stda_uvvis.",
-  "timestamp": "2026-10-21T16:59:46",
+  "notes": "sTDA (monopole Coulomb) vs PySCF TD-SCF, plus the exchange-enabled variant (A_x = -2 ax (ij|ab), ax = 0.5) that sci-form implements in `compute_stda_with_exchange`. The implementation-parity gate (sci-form sTDA vs the Python port stda_ref / stda_ex_ref) is tight; the cross-library deviation is dominated by the monopole approximation of the Coulomb interaction. Measured by tests/pyscf_parity.rs::f77_stda_uvvis.",
+  "timestamp": "2026-10-21T18:15:17",
   "source": "tests/pyscf_parity.rs"
  },
  {
@@ -1703,7 +1703,7 @@
   "tolerance": 1e-10,
   "pass": true,
   "notes": "Extended Huckel Theory: STO-nG overlap, Wolfsberg-Helmholtz Hamiltonian (K=1.75) and the generalized eigenproblem H C = S C E, compared against an independent numpy implementation. The STO-nG contraction tables (HSP 1969 / Stewart 1970) are transcribed in the oracle and cross-checked against sci-form's src/eht/basis.rs.",
-  "timestamp": "2026-10-21T16:59:44",
+  "timestamp": "2026-10-21T18:14:56",
   "source": "tests/eht_eeq_parity.rs"
  },
  {
@@ -1720,7 +1720,7 @@
   "tolerance": 1e-05,
   "pass": true,
   "notes": "EEQ2019 partial charges: erf coordination numbers with a log cut at CN_max = 8, Gaussian-width Coulomb matrix and CN-dependent electronegativity, solved with the total-charge constraint. The oracle uses the exact scipy erf; sci-form uses the Abramowitz & Stegun 7.1.26 approximation.",
-  "timestamp": "2026-10-21T16:59:44",
+  "timestamp": "2026-10-21T18:14:57",
   "source": "tests/eht_eeq_parity.rs"
  },
  {

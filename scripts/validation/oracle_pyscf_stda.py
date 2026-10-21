@@ -503,12 +503,13 @@ def run() -> Report:
         metric="max_abs",
         value=float("nan"),
         notes=(
-            "sTDA (monopole Coulomb, no exchange) vs PySCF TD-SCF. The "
-            "implementation-parity gate (sci-form sTDA vs the Python port "
-            "stda_ref) is tight; the cross-library deviation is dominated by "
-            "sci-form's missing exchange term (StdaConfig::ax is declared but "
-            "never used) and by the monopole approximation of the Coulomb "
-            "interaction. Measured by tests/pyscf_parity.rs::f77_stda_uvvis."
+            "sTDA (monopole Coulomb) vs PySCF TD-SCF, plus the exchange-enabled "
+            "variant (A_x = -2 ax (ij|ab), ax = 0.5) that sci-form implements in "
+            "`compute_stda_with_exchange`. The implementation-parity gate (sci-form "
+            "sTDA vs the Python port stda_ref / stda_ex_ref) is tight; the "
+            "cross-library deviation is dominated by the monopole approximation "
+            "of the Coulomb interaction. Measured by "
+            "tests/pyscf_parity.rs::f77_stda_uvvis."
         ),
     )
     emit_fixture_report("pyscf_stda.json", payload, report)
