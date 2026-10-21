@@ -2,7 +2,7 @@
 
 **Auditoría original:** `reports/auditoria-total.md` (10 P0, 30 P1, 60 P2).
 **Este documento:** qué se corrigió, con qué evidencia y qué queda abierto.
-**Fecha:** 2026-10-21 · **Rama:** `main` · 7 commits de remediación.
+**Fecha:** 2026-10-21 · **Rama:** `main` · 10 commits de remediación.
 
 ---
 
@@ -21,7 +21,8 @@ Métricas antes → después:
 |---|---|---|
 | Tests unitarios | 839 pass, 1 fail (flakey), 2 ignored | **844 pass, 0 fail, 2 ignored** |
 | Gates de validación cruzada | 38 (5 ficticios) | **111 reales** (F01–F95 + F64–F87 nuevos) |
-| Fichas con métrica medida en `summary.json` | 47 | **114** (107 pass, 0 fail, 7 pending) |
+| Tests de integración totales | ~90 | **646** (10 targets) |
+| Fichas con métrica medida en `summary.json` | 47 | **127** (120 pass, 0 fail, 7 pending) |
 | `clippy --workspace --all-targets -D warnings` | **363 errores** (CI rojo) | **0** |
 | `cargo fmt --check` | fallaba | limpio |
 | Paridad de superficies (Rust/Python/WASM/CLI) | 18 capacidades Rust-only | **0 Rust-only** |
@@ -32,6 +33,10 @@ Métricas antes → después:
 Commits:
 
 ```
+606c5f3 fix: the regression test target only compiled with the beta-cpm feature
+544a0b9 fix+test: implement the sTDA exchange term and the EHT/EEQ2019 parity gates
+478dc22 perf+docs: cell-list neighbour search, canonical parallel bounds, generated space-group table
+04e7099 docs: add the audit resolution report and the DFT Coulomb energy
 d8cb795 docs+code: correct the stale experimental-status ledger and the Arrow wording
 25c266d docs: correct the stale API, CLI and benchmark documentation
 161c2e1 test(validation): add PySCF/RDKit/tblite/ASE gates; fix 8 bugs they proved
@@ -47,6 +52,7 @@ c96ffa3 fix: resolve all P0 audit findings — real MMFF94, correct ANI forces, 
 | # | Hallazgo | Resolución | Evidencia |
 |---|---|---|---|
 | P0-1 | `GpuContext::best_available()` hace panic en wgpu-hal (`BadDisplay`) en headless | `try_create` envuelve la adquisición de adapter/device en `catch_unwind`; el fallback CPU es ahora determinista | `src/gpu/context.rs`; el test que fallaba (`test_compute_esp_grid_water`) pasa |
+| P0-2b | Panic por índice fuera de rango en la búsqueda de nivel de equivalencia de torsión de MMFF94 (`eq_level` tiene 4 entradas, se pedía el nivel 4) | El nivel se acota al mayor válido; `tests/benchmarks.rs` volvía a fallar antes de esto | `src/forcefield/mmff94.rs` |
 | P0-2 | MMFF94 con parámetros placeholder | Tablas reales del set publicado, generadas por `scripts/validation/gen_mmff94_params.py` desde RDKit `Params.cpp` (BSD-3); `compute_mmff94_energy` usa el builder tipado | `src/forcefield/mmff94_params.rs` (5296 líneas, 11 tablas); `tests/mmff94_validation.rs`: 5 tests, desviación ~1e-11 kcal/mol |
 | P0-3 | ~63 funciones de binding devuelven datos falsos | Las que tienen contraparte real están cableadas al core; las que no, eliminadas | `crates/{python,wasm}/src/experimental.rs`, `crates/cli/src/experimental_cmds.rs`; 7 handlers CLI antes inalcanzables ahora tienen `Commands::` |
 | P0-4 | `atomicAdd` sobre `bitcast<u32>` de floats en el kernel MMFF94 | Reducción en memoria de workgroup + acumulación signed fixed-point (WGSL no tiene atomic float add); test que reproduce la aritmética del kernel en CPU | `src/gpu/mmff94_gpu.rs`; `test_fixed_point_accumulation_matches_cpu_energy` |
