@@ -74,7 +74,14 @@ pub fn compute_frame_properties(
 
 /// Compute Wiberg bond orders from the density matrix.
 ///
-/// Uses EHT density to compute bond orders: BOij = Σ_μν (P*S)_μi * (P*S)_νj
+/// Uses the EHT density to compute bond orders:
+/// BOij = Σ_μ∈A Σ_ν∈B (P*S)_μν²
+///
+/// NOTE: this is the **P² (density-square) approximation**, not the standard
+/// Wiberg index (which sums (PS)_μν over the atomic blocks without squaring).
+/// It is a reasonable reactivity proxy for the EHT density but it is NOT
+/// comparable with a Wiberg index computed by a quantum-chemistry package.
+///
 /// Falls back to zero matrix on failure.
 fn compute_wiberg_bond_orders(elements: &[u8], coords: &[f64], n_atoms: usize) -> Vec<f64> {
     let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();

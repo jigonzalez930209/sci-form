@@ -39,8 +39,6 @@ impl NeighborList {
 
         if use_cells {
             // Bin the atoms into cubic cells of edge r_list.
-            let origin = [positions_flat[0.min(3 * n.saturating_sub(1))], 0.0, 0.0];
-            let _ = origin;
             let mut cell_min = [f64::INFINITY; 3];
             let mut cell_max = [f64::NEG_INFINITY; 3];
             for i in 0..n {

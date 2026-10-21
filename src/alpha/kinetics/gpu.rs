@@ -3,6 +3,12 @@
 //! Offloads large batched temperature sweeps to GPU compute when the number
 //! of temperature points exceeds a threshold (≥256). Falls back to CPU
 //! (optionally rayon-parallelized) for smaller sweeps.
+//!
+//! NOTE: this is currently a **CPU fallback only** — the WGSL kernel it
+//! advertises does not exist yet, so the "GPU" path executes exactly the same
+//! CPU code and the parity test compares CPU against CPU. The audit
+//! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
+//! call site for the kernel to be added.
 
 use super::{evaluate_htst_temperature_sweep, ElementaryRateResult, ElementaryStep};
 use crate::gpu::context::GpuContext;
