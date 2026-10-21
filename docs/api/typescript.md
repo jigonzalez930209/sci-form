@@ -744,7 +744,7 @@ console.log(`${mof.num_atoms} atoms in framework`);
 function pack_batch_arrow(results_json: string): string
 ```
 
-Pack a JSON array of conformer results into Arrow-compatible columnar format for efficient Worker postMessage transfer.
+Pack a JSON array of conformer results into sci-form's columnar (Arrow-like) format for efficient Worker postMessage transfer. This is not the Apache Arrow IPC format.
 
 ### `split_worker_tasks`
 

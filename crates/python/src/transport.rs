@@ -1,4 +1,7 @@
-//! Transport: Arrow-compatible batch packing, worker task splitting.
+//! Transport: columnar (Arrow-like) batch packing, worker task splitting.
+//!
+//! The batch layout mirrors Arrow's columnar idea but is sci-form's own; it is
+//! not the Apache Arrow IPC format.
 
 use crate::embed::ConformerResult;
 use pyo3::prelude::*;
