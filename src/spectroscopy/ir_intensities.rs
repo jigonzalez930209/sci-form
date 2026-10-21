@@ -114,8 +114,22 @@ pub fn compute_ir_intensities(
         ];
 
         let intensity_au = dmu_dq[0].powi(2) + dmu_dq[1].powi(2) + dmu_dq[2].powi(2);
-        let au_to_km_mol = 42.256;
-        let intensity = intensity_au * au_to_km_mol;
+        // IR intensity conversion (Gaussian convention):
+        //
+        //   I[km/mol] = 42.2561 * (dmu/dQ)^2
+        //
+        // with `dmu/dQ` expressed in Debye/(Angstrom*sqrt(amu)).  The
+        // `dmu_dq` computed above is `d(mu)/d(delta)` with `mu` in e*a0 and
+        // `delta` in Bohr (the mass-weighted coordinate in sqrt(amu)*Bohr), so
+        // it has to be converted with
+        //
+        //   1 e*a0 = 2.541746 D      and      1 Bohr = 0.529177 Angstrom
+        //
+        // which gives the factor 2.541746 / 0.529177 = 4.80321 below.
+        const AU_TO_KM_MOL: f64 = 42.2561;
+        const DIPOLE_DERIV_TO_STANDARD: f64 = 2.541746 / 0.529177;
+        let intensity =
+            intensity_au * AU_TO_KM_MOL * DIPOLE_DERIV_TO_STANDARD * DIPOLE_DERIV_TO_STANDARD;
 
         peaks.push(IrPeak {
             frequency: freq,

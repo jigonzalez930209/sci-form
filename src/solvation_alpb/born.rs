@@ -30,17 +30,39 @@ pub struct AlpbBornRadii {
     pub intrinsic: Vec<f64>,
 }
 
-/// Compute effective Born radii using the HCT model with OBC correction.
+/// Compute effective Born radii using the HCT model with OBC corrections.
+///
+/// The pairwise descreening integral is the analytical ("ACE") expression of
+/// Onufriev, Bashford and Case (J. Phys. Chem. B 2004, 108, 2648) as used
+/// by OpenMM's OBC-I generalised Born model:
+///
+/// ```text
+/// or_i  = radius_i - 0.009
+/// I_ij  = 0.5 * ( 1/L - 1/U
+///                + 0.25*(1/U^2 - 1/L^2)*(r - sr2^2/r)
+///                + 0.5*ln(L/U)/r + C )
+/// U     = r + sr2            sr2 = or_j
+/// L     = max(or_i, |r - sr2|)
+/// C     = 2*(1/or_i - 1/L)   if sr2 >= r + or_i else 0
+/// psi_i = sum_j I_ij
+/// 1/R_i = 1/or_i - tanh(a*psi - b*psi^2 + c*psi^3)/radius_i   with psi = psi_i*or_i
+/// ```
+///
+/// The intrinsic radii `radius_i` include the probe offset (`+0.1*probe`),
+/// as in the rest of the ALPB module.
 pub fn compute_born_radii(
     elements: &[u8],
     positions: &[[f64; 3]],
     probe_radius: f64,
 ) -> AlpbBornRadii {
     let n = elements.len();
-    let rho: Vec<f64> = elements
+    let radius: Vec<f64> = elements
         .iter()
         .map(|&z| intrinsic_radius(z) + probe_radius * 0.1)
         .collect();
+    // OBC offset ("alpha" of the original OBC formulation).
+    const OFFSET: f64 = 0.009;
+    let orad: Vec<f64> = radius.iter().map(|&r| (r - OFFSET).max(0.1)).collect();
 
     let alpha = 1.0;
     let beta = 0.8;
@@ -66,7 +88,9 @@ pub fn compute_born_radii(
     let mut born_radii = vec![0.0; n];
 
     for i in 0..n {
-        let mut psi = 0.0;
+        let or_i = orad[i];
+        let mut psi = 0.0f64;
+
         for j in 0..n {
             if i == j {
                 continue;
@@ -74,26 +98,39 @@ pub fn compute_born_radii(
             let dx = positions[i][0] - positions[j][0];
             let dy = positions[i][1] - positions[j][1];
             let dz = positions[i][2] - positions[j][2];
-            let r_ij = (dx * dx + dy * dy + dz * dz).sqrt();
-            let rho_j = rho[j];
-
-            if r_ij > rho_j {
-                let l_ij = rho[i].max(r_ij - rho_j);
-                let u_ij = r_ij + rho_j;
-                if u_ij > l_ij {
-                    psi += 0.5
-                        * (1.0 / l_ij - 1.0 / u_ij
-                            + 0.25 * (1.0 / u_ij - 1.0 / l_ij) * (r_ij * r_ij - rho_j * rho_j)
-                            + 0.5 * (1.0 / u_ij.powi(2) - 1.0 / l_ij.powi(2)) * r_ij);
-                }
+            let r = (dx * dx + dy * dy + dz * dz).sqrt();
+            if r < 1e-10 {
+                continue;
             }
+            let sr2 = orad[j];
+            if r + sr2 < or_i {
+                // The pair does not reach the descreening sphere of atom i.
+                continue;
+            }
+            let u = r + sr2;
+            let d = (r - sr2).abs();
+            let l = or_i.max(d);
+            let inv_l = 1.0 / l;
+            let inv_u = 1.0 / u;
+            // Atom j completely inside the descreening sphere of atom i.
+            let c = if sr2 >= r + or_i {
+                2.0 * (1.0 / or_i - inv_l)
+            } else {
+                0.0
+            };
+            let integral = 0.5
+                * (inv_l - inv_u
+                    + 0.25 * (inv_u * inv_u - inv_l * inv_l) * (r - sr2 * sr2 / r)
+                    + 0.5 * (l / u).ln() / r
+                    + c);
+            psi += integral;
         }
 
-        let psi_scaled = psi * rho[i];
+        let psi_scaled = psi * or_i;
         let tanh_val =
             (alpha * psi_scaled - beta * psi_scaled.powi(2) + gamma * psi_scaled.powi(3)).tanh();
 
-        let inv_r_eff = 1.0 / rho[i] - tanh_val / rho[i];
+        let inv_r_eff = 1.0 / or_i - tanh_val / radius[i];
         born_radii[i] = if inv_r_eff > 1e-10 {
             (1.0 / inv_r_eff).min(born_cap)
         } else {

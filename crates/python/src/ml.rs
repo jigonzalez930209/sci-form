@@ -193,7 +193,7 @@ fn parse_mol_for_ml(smiles: &str) -> PyResult<MolElementsAndBonds> {
                 sci_form_core::graph::BondOrder::Single => 1u8,
                 sci_form_core::graph::BondOrder::Double => 2,
                 sci_form_core::graph::BondOrder::Triple => 3,
-                sci_form_core::graph::BondOrder::Aromatic => 2,
+                sci_form_core::graph::BondOrder::Aromatic => 4,
                 sci_form_core::graph::BondOrder::Unknown => 1,
             };
             (a.index(), b.index(), order)

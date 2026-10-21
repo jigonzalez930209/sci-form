@@ -79,6 +79,12 @@ jobs:
             test: experimental
           - gate: regression
             test: regression
+          - gate: rdkit-chem-parity
+            test: rdkit_chem_parity
+          - gate: pyscf-parity
+            test: pyscf_parity
+          - gate: gradient-parity
+            test: gradient_parity
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
@@ -92,6 +98,10 @@ jobs:
             beta)           cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test beta_benchmarks --test beta_kpm_validation --test beta_mbh_validation --test beta_randnla_validation --test beta_riemannian_validation -- --nocapture ;;
             experimental)   cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test experimental_gates -- --nocapture ;;
             regression)     cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test regression --test validation_gates --test mmff94_validation -- --nocapture ;;
+            rdkit_parity)   cargo test --release --test rdkit_parity -- --nocapture ;;
+            rdkit_chem_parity) cargo test --release --test rdkit_chem_parity -- --nocapture ;;
+            pyscf_parity)   cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test pyscf_parity -- --nocapture ;;
+            gradient_parity) cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test gradient_parity -- --nocapture ;;
           esac
 
   lint:

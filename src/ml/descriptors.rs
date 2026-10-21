@@ -36,7 +36,7 @@ pub struct MolecularDescriptors {
     pub n_rings: usize,
     /// Number of aromatic atoms.
     pub n_aromatic: usize,
-    /// Balaban J index (approximation).
+    /// Balaban J index (bond-order weighted, RDKit-compatible definition).
     pub balaban_j: f64,
     /// Sum of atomic electronegativities (Pauling).
     pub sum_electronegativity: f64,
@@ -62,22 +62,132 @@ pub struct Descriptors3D {
     pub span: f64,
 }
 
-/// Atomic weight table for common elements.
+/// Standard atomic weights (IUPAC 2021 conventional values, in Da).
+///
+/// The table covers the whole periodic table so that the molecular weight
+/// of a metal-containing molecule is not silently replaced by the old
+/// `z * 1.5` fallback.
 fn atomic_weight(z: u8) -> f64 {
     match z {
         1 => 1.008,
-        5 => 10.81,
+        2 => 4.003,
+        3 => 6.941,
+        4 => 9.012,
+        5 => 10.812,
         6 => 12.011,
         7 => 14.007,
         8 => 15.999,
         9 => 18.998,
+        10 => 20.18,
+        11 => 22.99,
+        12 => 24.305,
+        13 => 26.982,
         14 => 28.086,
         15 => 30.974,
-        16 => 32.06,
-        17 => 35.45,
+        16 => 32.067,
+        17 => 35.453,
+        18 => 39.948,
+        19 => 39.098,
+        20 => 40.078,
+        21 => 44.956,
+        22 => 47.867,
+        23 => 50.944,
+        24 => 51.996,
+        25 => 54.938,
+        26 => 55.845,
+        27 => 58.933,
+        28 => 58.693,
+        29 => 63.546,
+        30 => 65.39,
+        31 => 69.723,
+        32 => 72.61,
+        33 => 74.922,
+        34 => 78.96,
         35 => 79.904,
+        36 => 83.8,
+        37 => 85.468,
+        38 => 87.62,
+        39 => 88.906,
+        40 => 91.224,
+        41 => 92.906,
+        42 => 95.94,
+        43 => 98.0,
+        44 => 101.07,
+        45 => 102.906,
+        46 => 106.42,
+        47 => 107.868,
+        48 => 112.412,
+        49 => 114.818,
+        50 => 118.711,
+        51 => 121.76,
+        52 => 127.6,
         53 => 126.904,
-        _ => z as f64 * 1.5, // rough fallback
+        54 => 131.29,
+        55 => 132.905,
+        56 => 137.328,
+        57 => 138.906,
+        58 => 140.116,
+        59 => 140.908,
+        60 => 144.24,
+        61 => 145.0,
+        62 => 150.36,
+        63 => 151.964,
+        64 => 157.25,
+        65 => 158.925,
+        66 => 162.5,
+        67 => 164.93,
+        68 => 167.26,
+        69 => 168.934,
+        70 => 173.04,
+        71 => 174.967,
+        72 => 178.49,
+        73 => 180.948,
+        74 => 183.84,
+        75 => 186.207,
+        76 => 190.23,
+        77 => 192.217,
+        78 => 195.078,
+        79 => 196.967,
+        80 => 200.59,
+        81 => 204.383,
+        82 => 207.2,
+        83 => 208.98,
+        84 => 209.0,
+        85 => 210.0,
+        86 => 222.0,
+        87 => 223.0,
+        88 => 226.0,
+        89 => 227.0,
+        90 => 232.038,
+        91 => 231.036,
+        92 => 238.029,
+        93 => 237.0,
+        94 => 244.0,
+        95 => 243.0,
+        96 => 247.0,
+        97 => 247.0,
+        98 => 251.0,
+        99 => 252.0,
+        100 => 257.0,
+        101 => 258.0,
+        102 => 259.0,
+        103 => 262.0,
+        104 => 267.0,
+        105 => 268.0,
+        106 => 269.0,
+        107 => 270.0,
+        108 => 269.0,
+        109 => 278.0,
+        110 => 281.0,
+        111 => 281.0,
+        112 => 285.0,
+        113 => 284.0,
+        114 => 289.0,
+        115 => 288.0,
+        116 => 293.0,
+        117 => 292.0,
+        118 => 294.0,
+        _ => 0.0,
     }
 }
 
@@ -119,10 +229,99 @@ fn atomic_polarizability(z: u8) -> f64 {
     }
 }
 
+/// Bond-order weight used by the Balaban J index.
+///
+/// The topological distances are bond-order weighted (`1 / order`), which is
+/// the convention used by RDKit's `Descriptors.BalabanJ`.
+fn balaban_bond_weight(order: u8) -> f64 {
+    match order {
+        1 => 1.0,
+        2 => 0.5,
+        3 => 1.0 / 3.0,
+        4 => 2.0 / 3.0, // aromatic (order 1.5)
+        _ => 1.0,
+    }
+}
+
+/// Balaban J index.
+///
+/// ```text
+/// J = (m / (m - n + 2)) * sum_bonds 1 / sqrt(S_i * S_j)
+/// ```
+///
+/// with `m` the number of bonds, `n` the number of atoms and `S_i` the sum
+/// of the bond-order weighted topological distances from atom `i` to every
+/// other atom.
+///
+/// The bond-order convention of the `bonds` argument is 1 = single,
+/// 2 = double, 3 = triple, 4 = aromatic.
+fn balaban_j(n: usize, bonds: &[(usize, usize, u8)]) -> f64 {
+    if n < 2 || bonds.is_empty() {
+        return 0.0;
+    }
+    let m = bonds.len();
+    let denom = m as f64 - n as f64 + 2.0;
+    if denom.abs() < 1e-12 {
+        return 0.0;
+    }
+
+    // Adjacency with bond-order weights.
+    let mut adj: Vec<Vec<(usize, f64)>> = vec![Vec::new(); n];
+    for &(i, j, order) in bonds {
+        if i >= n || j >= n || i == j {
+            continue;
+        }
+        let w = balaban_bond_weight(order);
+        adj[i].push((j, w));
+        adj[j].push((i, w));
+    }
+
+    // All-pairs shortest paths (Dijkstra, O(n^2) per source).
+    let mut s_sum = vec![0.0f64; n];
+    for start in 0..n {
+        let mut dist = vec![f64::INFINITY; n];
+        let mut visited = vec![false; n];
+        dist[start] = 0.0;
+        for _ in 0..n {
+            let mut best = usize::MAX;
+            let mut best_d = f64::INFINITY;
+            for v in 0..n {
+                if !visited[v] && dist[v] < best_d {
+                    best_d = dist[v];
+                    best = v;
+                }
+            }
+            if best == usize::MAX {
+                break;
+            }
+            visited[best] = true;
+            for &(nb, w) in &adj[best] {
+                let cand = best_d + w;
+                if cand < dist[nb] {
+                    dist[nb] = cand;
+                }
+            }
+        }
+        let total: f64 = dist.iter().filter(|d| d.is_finite()).sum();
+        s_sum[start] = total;
+    }
+
+    let mut sum = 0.0f64;
+    for &(i, j, _) in bonds {
+        if i >= n || j >= n || s_sum[i] <= 0.0 || s_sum[j] <= 0.0 {
+            continue;
+        }
+        sum += 1.0 / (s_sum[i] * s_sum[j]).sqrt();
+    }
+
+    (m as f64 / denom) * sum
+}
+
 /// Compute molecular descriptors from elements, bonds, and partial charges.
 ///
 /// `elements`: atomic numbers.
-/// `bonds`: (atom_i, atom_j, bond_order) list.
+/// `bonds`: (atom_i, atom_j, bond_order) list. The bond order uses the
+///   encoding 1 = single, 2 = double, 3 = triple, 4 = aromatic.
 /// `charges`: partial charges (same length as elements), or empty.
 /// `aromatic_atoms`: boolean flags per atom, or empty.
 pub fn compute_descriptors(
@@ -248,13 +447,8 @@ pub fn compute_descriptors(
         0
     };
 
-    // Balaban J (simplified)
-    let balaban_j = if !bonds.is_empty() && n > 1 {
-        let mu = bonds.len() as f64 / (n as f64 - 1.0);
-        mu.ln().abs() + 1.0
-    } else {
-        0.0
-    };
+    // Balaban J index (real definition, see `balaban_j`).
+    let balaban_j = balaban_j(n, bonds);
 
     let sum_en: f64 = elements.iter().map(|&z| electronegativity(z)).sum();
     let sum_pol: f64 = elements.iter().map(|&z| atomic_polarizability(z)).sum();

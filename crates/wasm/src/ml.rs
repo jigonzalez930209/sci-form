@@ -22,7 +22,7 @@ pub fn compute_ml_properties(smiles: &str) -> String {
                 sci_form::graph::BondOrder::Single => 1u8,
                 sci_form::graph::BondOrder::Double => 2,
                 sci_form::graph::BondOrder::Triple => 3,
-                sci_form::graph::BondOrder::Aromatic => 2,
+                sci_form::graph::BondOrder::Aromatic => 4,
                 sci_form::graph::BondOrder::Unknown => 1,
             };
             (a.index(), b.index(), order)
@@ -57,7 +57,7 @@ pub fn compute_molecular_descriptors(smiles: &str) -> String {
                 sci_form::graph::BondOrder::Single => 1u8,
                 sci_form::graph::BondOrder::Double => 2,
                 sci_form::graph::BondOrder::Triple => 3,
-                sci_form::graph::BondOrder::Aromatic => 2,
+                sci_form::graph::BondOrder::Aromatic => 4,
                 sci_form::graph::BondOrder::Unknown => 1,
             };
             (a.index(), b.index(), order)

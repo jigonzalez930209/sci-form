@@ -46,51 +46,138 @@ pub struct VeberResult {
     pub passes: bool,
 }
 
+/// Topological environment of a polar atom, used to look up its Ertl TPSA
+/// fragment contribution.
+///
+/// * `n_heavy` — number of non-hydrogen neighbours
+/// * `n_h` — number of hydrogen neighbours
+/// * `orders` — sorted bond orders towards the heavy neighbours, using the
+///   encoding 1 = single, 2 = double, 3 = triple, 4 = aromatic (order 1.5)
+/// * `in_three_ring` — the atom sits in a three-membered ring
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TpsaEnvironment {
+    n_heavy: usize,
+    n_h: usize,
+    orders: Vec<u8>,
+    in_three_ring: bool,
+}
+
 /// Contribution of each atom type to TPSA (Å²).
-/// Ertl, P., Rohde, B., Selzer, P. (2000) — simplified fragment contributions.
-fn tpsa_contribution(z: u8, n_heavy_neighbors: usize, n_h_neighbors: usize) -> f64 {
+///
+/// Ertl, P., Rohde, B., Selzer, P. (2000), *J. Med. Chem.* **43**, 100 —
+/// "Fast Calculation of Molecular Polar Surface Area as a Sum of
+/// Fragment-Based Contributions …".
+///
+/// The fragment values below are the ones implemented by RDKit's
+/// `rdMolDescriptors.CalcTPSA` (TPSA fragment table v2.0.0); they are
+/// reproduced here so that sci-form and RDKit agree on the same molecules.
+fn tpsa_contribution(z: u8, env: &TpsaEnvironment) -> f64 {
+    let TpsaEnvironment {
+        n_heavy,
+        n_h,
+        orders,
+        in_three_ring,
+    } = env;
     match z {
-        // Nitrogen contributions
-        7 => match (n_heavy_neighbors, n_h_neighbors) {
-            (1, 2) => 26.02, // -NH₂
-            (1, 1) => 26.02, // =NH
-            (2, 1) => 12.36, // >NH
-            (2, 0) => 12.36, // =N-
-            (3, 0) => 3.24,  // >N-
-            (1, 0) => 23.79, // ≡N
-            _ => 12.0,
+        // ---------------- nitrogen ----------------
+        7 => match (n_heavy, n_h, orders.as_slice()) {
+            (0, 3, []) => 35.00,  // NH3
+            (0, 4, []) => 36.50,  // NH4+
+            (1, 0, [2]) => 22.30, // =N-
+            (1, 0, [3]) => 23.79, // #N
+            (1, 1, [2]) => 23.85, // =NH
+            (1, 2, [1]) => 26.02, // -NH2
+            (1, 3, [1]) => 27.64, // -NH3+
+            (2, 0, [1, 2]) => 12.36,
+            (2, 0, [1, 3]) => 4.36,
+            (2, 0, [4, 4]) => 12.89, // aromatic, pyridine type
+            (2, 0, [2, 2]) => 14.10,
+            (2, 1, [1, 1]) => 12.03,   // >NH-
+            (2, 1, [4, 4]) => 15.79,   // aromatic, pyrrole type
+            (3, 0, [1, 1, 1]) => 3.24, // >N-
+            (3, 0, [1, 1, 2]) => 3.01,
+            (3, 0, [1, 4, 4]) => 4.93,
+            (3, 0, [4, 4, 4]) => 4.41,
+            (4, 0, [1, 1, 1, 1]) => 0.00,
+            _ => 12.00,
         },
-        // Oxygen contributions
-        8 => match (n_heavy_neighbors, n_h_neighbors) {
-            (0, 2) => 20.23, // H₂O
-            (1, 1) => 20.23, // -OH
-            (1, 0) => 17.07, // =O
-            (2, 0) => 9.23,  // -O-
-            _ => 15.0,
+        // ---------------- oxygen ----------------
+        8 => match (n_heavy, n_h, orders.as_slice()) {
+            (0, 2, []) => 31.50,  // H2O
+            (0, 3, []) => 33.00,  // H3O+
+            (1, 0, [1]) => 23.06, // -O-
+            (1, 0, [2]) => 17.07, // =O
+            (1, 1, [1]) => 20.23, // -OH
+            (2, 0, [1, 1]) => {
+                if *in_three_ring {
+                    12.53 // epoxide-like (three-membered ring)
+                } else {
+                    9.23 // -O-
+                }
+            }
+            (2, 0, [4, 4]) => 13.14, // aromatic (furan)
+            _ => 15.00,
         },
-        // Sulfur: small contributions
-        16 => match (n_heavy_neighbors, n_h_neighbors) {
-            (1, 1) => 38.80, // -SH
-            (2, 0) => 25.30, // -S-
-            (1, 0) => 32.00, // =S
-            _ => 28.0,
+        // ---------------- sulfur ----------------
+        16 => match (n_heavy, n_h, orders.as_slice()) {
+            (0, 1, []) => 0.00,
+            (0, 2, []) => 0.00,
+            (1, 0, [2]) => 32.09,    // =S
+            (1, 1, [1]) => 38.80,    // -SH
+            (2, 0, [1, 1]) => 25.30, // -S-
+            (2, 0, [4, 4]) => 28.24, // aromatic (thiophene)
+            (3, 0, [1, 1, 1]) => 0.00,
+            (3, 0, [1, 1, 2]) => 19.21, // -S(=O)-
+            (3, 1, [1, 1, 1]) => 0.00,
+            (4, 0, [1, 1, 2, 2]) => 8.38, // -S(=O)2-
+            (4, 1, [1, 1, 1, 1]) => 0.00,
+            _ => 0.00,
         },
-        // Phosphorus
-        15 => 34.14,
+        // ---------------- phosphorus ----------------
+        15 => match (n_heavy, n_h, orders.as_slice()) {
+            (0, 3, []) => 0.00,
+            (3, 0, [1, 1, 1]) => 13.59,
+            (4, 0, [1, 1, 1, 1]) => 0.00,
+            (4, 0, [1, 1, 1, 2]) => 9.81,
+            (4, 1, [1, 1, 1, 1]) => 0.00,
+            _ => 0.00,
+        },
         _ => 0.0,
     }
 }
 
 /// Compute TPSA from elements and bond connectivity.
 ///
-/// Uses Ertl fragment-based TPSA calculation.
+/// Uses the Ertl fragment-based TPSA calculation.  The bond-order encoding
+/// of the `bonds` argument is 1 = single, 2 = double, 3 = triple,
+/// 4 = aromatic.
 pub fn compute_tpsa(elements: &[u8], bonds: &[(usize, usize, u8)]) -> f64 {
     let n = elements.len();
     let mut adj: Vec<Vec<usize>> = vec![vec![]; n];
-    for &(i, j, _) in bonds {
-        if i < n && j < n {
+    let mut adj_order: Vec<Vec<u8>> = vec![vec![]; n];
+    for &(i, j, order) in bonds {
+        if i < n && j < n && i != j {
             adj[i].push(j);
+            adj_order[i].push(order);
             adj[j].push(i);
+            adj_order[j].push(order);
+        }
+    }
+
+    // Three-membered ring detection (small rings get their own fragment
+    // contribution for oxygen).
+    let mut in_three_ring = vec![false; n];
+    for i in 0..n {
+        let neigh = &adj[i];
+        for a in 0..neigh.len() {
+            for b in (a + 1)..neigh.len() {
+                let (u, v) = (neigh[a], neigh[b]);
+                if adj[u].contains(&v) {
+                    in_three_ring[i] = true;
+                    in_three_ring[u] = true;
+                    in_three_ring[v] = true;
+                }
+            }
         }
     }
 
@@ -99,9 +186,27 @@ pub fn compute_tpsa(elements: &[u8], bonds: &[(usize, usize, u8)]) -> f64 {
         if !matches!(elements[i], 7 | 8 | 15 | 16) {
             continue;
         }
-        let n_heavy = adj[i].iter().filter(|&&j| elements[j] != 1).count();
-        let n_h = adj[i].iter().filter(|&&j| elements[j] == 1).count();
-        tpsa += tpsa_contribution(elements[i], n_heavy, n_h);
+        let mut n_heavy = 0usize;
+        let mut n_h = 0usize;
+        let mut orders: Vec<u8> = Vec::new();
+        for (k, &nb) in adj[i].iter().enumerate() {
+            if elements[nb] == 1 {
+                n_h += 1;
+            } else {
+                n_heavy += 1;
+                orders.push(adj_order[i][k]);
+            }
+        }
+        orders.sort_unstable();
+        tpsa += tpsa_contribution(
+            elements[i],
+            &TpsaEnvironment {
+                n_heavy,
+                n_h,
+                orders,
+                in_three_ring: in_three_ring[i],
+            },
+        );
     }
     tpsa
 }
@@ -314,11 +419,13 @@ mod tests {
 
     #[test]
     fn test_tpsa_water() {
-        // Water: O with 2 H neighbors
+        // Water: O with 2 H neighbours.  The value follows the Ertl fragment
+        // table as implemented by RDKit's `rdMolDescriptors.CalcTPSA`
+        // (31.50 A^2 for H2O).
         let elements = [8u8, 1, 1];
         let bonds = [(0usize, 1usize, 1u8), (0, 2, 1)];
         let tpsa = compute_tpsa(&elements, &bonds);
-        assert!(tpsa > 15.0 && tpsa < 25.0, "Water TPSA: {tpsa}");
+        assert!((tpsa - 31.50).abs() < 1e-9, "Water TPSA: {tpsa}");
     }
 
     #[test]

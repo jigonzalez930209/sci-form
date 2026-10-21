@@ -1,0 +1,438 @@
+{
+ "reference": "RDKit 2026.09.1",
+ "generated": "2026-10-21",
+ "cases": [
+  {
+   "name": "ethanol",
+   "smiles": "CCO",
+   "rdkit_canonical": "CCO",
+   "rdkit_canonical_reordered": "CCO",
+   "rdkit_canonical_reorderings": [
+    "CCO",
+    "CCO",
+    "CCO"
+   ],
+   "n_heavy_atoms": 3
+  },
+  {
+   "name": "acetic-acid",
+   "smiles": "CC(=O)O",
+   "rdkit_canonical": "CC(=O)O",
+   "rdkit_canonical_reordered": "CC(=O)O",
+   "rdkit_canonical_reorderings": [
+    "CC(=O)O",
+    "CC(=O)O",
+    "CC(=O)O"
+   ],
+   "n_heavy_atoms": 4
+  },
+  {
+   "name": "benzene",
+   "smiles": "c1ccccc1",
+   "rdkit_canonical": "c1ccccc1",
+   "rdkit_canonical_reordered": "c1ccccc1",
+   "rdkit_canonical_reorderings": [
+    "c1ccccc1",
+    "c1ccccc1",
+    "c1ccccc1"
+   ],
+   "n_heavy_atoms": 6
+  },
+  {
+   "name": "toluene",
+   "smiles": "Cc1ccccc1",
+   "rdkit_canonical": "Cc1ccccc1",
+   "rdkit_canonical_reordered": "Cc1ccccc1",
+   "rdkit_canonical_reorderings": [
+    "Cc1ccccc1",
+    "Cc1ccccc1",
+    "Cc1ccccc1"
+   ],
+   "n_heavy_atoms": 7
+  },
+  {
+   "name": "phenol",
+   "smiles": "Oc1ccccc1",
+   "rdkit_canonical": "Oc1ccccc1",
+   "rdkit_canonical_reordered": "Oc1ccccc1",
+   "rdkit_canonical_reorderings": [
+    "Oc1ccccc1",
+    "Oc1ccccc1",
+    "Oc1ccccc1"
+   ],
+   "n_heavy_atoms": 7
+  },
+  {
+   "name": "pyridine",
+   "smiles": "c1ccncc1",
+   "rdkit_canonical": "c1ccncc1",
+   "rdkit_canonical_reordered": "c1ccncc1",
+   "rdkit_canonical_reorderings": [
+    "c1ccncc1",
+    "c1ccncc1",
+    "c1ccncc1"
+   ],
+   "n_heavy_atoms": 6
+  },
+  {
+   "name": "naphthalene",
+   "smiles": "c1ccc2ccccc2c1",
+   "rdkit_canonical": "c1ccc2ccccc2c1",
+   "rdkit_canonical_reordered": "c1ccc2ccccc2c1",
+   "rdkit_canonical_reorderings": [
+    "c1ccc2ccccc2c1",
+    "c1ccc2ccccc2c1",
+    "c1ccc2ccccc2c1"
+   ],
+   "n_heavy_atoms": 10
+  },
+  {
+   "name": "branching",
+   "smiles": "CC(C)(C)C",
+   "rdkit_canonical": "CC(C)(C)C",
+   "rdkit_canonical_reordered": "CC(C)(C)C",
+   "rdkit_canonical_reorderings": [
+    "CC(C)(C)C",
+    "CC(C)(C)C",
+    "CC(C)(C)C"
+   ],
+   "n_heavy_atoms": 5
+  },
+  {
+   "name": "isobutane",
+   "smiles": "CC(C)C",
+   "rdkit_canonical": "CC(C)C",
+   "rdkit_canonical_reordered": "CC(C)C",
+   "rdkit_canonical_reorderings": [
+    "CC(C)C",
+    "CC(C)C",
+    "CC(C)C"
+   ],
+   "n_heavy_atoms": 4
+  },
+  {
+   "name": "neopentane",
+   "smiles": "CC(C)(C)C",
+   "rdkit_canonical": "CC(C)(C)C",
+   "rdkit_canonical_reordered": "CC(C)(C)C",
+   "rdkit_canonical_reorderings": [
+    "CC(C)(C)C",
+    "CC(C)(C)C",
+    "CC(C)(C)C"
+   ],
+   "n_heavy_atoms": 5
+  },
+  {
+   "name": "long-chain",
+   "smiles": "CCCCCCCCCC",
+   "rdkit_canonical": "CCCCCCCCCC",
+   "rdkit_canonical_reordered": "CCCCCCCCCC",
+   "rdkit_canonical_reorderings": [
+    "CCCCCCCCCC",
+    "CCCCCCCCCC",
+    "CCCCCCCCCC"
+   ],
+   "n_heavy_atoms": 10
+  },
+  {
+   "name": "symmetric-diol",
+   "smiles": "OCC(O)CO",
+   "rdkit_canonical": "OCC(O)CO",
+   "rdkit_canonical_reordered": "OCC(O)CO",
+   "rdkit_canonical_reorderings": [
+    "OCC(O)CO",
+    "OCC(O)CO",
+    "OCC(O)CO"
+   ],
+   "n_heavy_atoms": 6
+  },
+  {
+   "name": "symmetric-ester",
+   "smiles": "CC(=O)OC(C)=O",
+   "rdkit_canonical": "CC(=O)OC(C)=O",
+   "rdkit_canonical_reordered": "CC(=O)OC(C)=O",
+   "rdkit_canonical_reorderings": [
+    "CC(=O)OC(C)=O",
+    "CC(=O)OC(C)=O",
+    "CC(=O)OC(C)=O"
+   ],
+   "n_heavy_atoms": 7
+  },
+  {
+   "name": "two-rings",
+   "smiles": "C1CCC2(CC1)CCCCC2",
+   "rdkit_canonical": "C1CCC2(CC1)CCCCC2",
+   "rdkit_canonical_reordered": "C1CCC2(CC1)CCCCC2",
+   "rdkit_canonical_reorderings": [
+    "C1CCC2(CC1)CCCCC2",
+    "C1CCC2(CC1)CCCCC2",
+    "C1CCC2(CC1)CCCCC2"
+   ],
+   "n_heavy_atoms": 11
+  },
+  {
+   "name": "ring-numbering",
+   "smiles": "C1CC2CCC1CC2",
+   "rdkit_canonical": "C1CC2CCC1CC2",
+   "rdkit_canonical_reordered": "C1CC2CCC1CC2",
+   "rdkit_canonical_reorderings": [
+    "C1CC2CCC1CC2",
+    "C1CC2CCC1CC2",
+    "C1CC2CCC1CC2"
+   ],
+   "n_heavy_atoms": 8
+  },
+  {
+   "name": "fused-rings",
+   "smiles": "c1ccc2c(c1)ccc1ccccc12",
+   "rdkit_canonical": "c1ccc2c(c1)ccc1ccccc12",
+   "rdkit_canonical_reordered": "c1ccc2c(c1)ccc1ccccc12",
+   "rdkit_canonical_reorderings": [
+    "c1ccc2c(c1)ccc1ccccc12",
+    "c1ccc2c(c1)ccc1ccccc12",
+    "c1ccc2c(c1)ccc1ccccc12"
+   ],
+   "n_heavy_atoms": 14
+  },
+  {
+   "name": "spiro",
+   "smiles": "C1CCC2(CC1)CCCC2",
+   "rdkit_canonical": "C1CCC2(CC1)CCCC2",
+   "rdkit_canonical_reordered": "C1CCC2(CC1)CCCC2",
+   "rdkit_canonical_reorderings": [
+    "C1CCC2(CC1)CCCC2",
+    "C1CCC2(CC1)CCCC2",
+    "C1CCC2(CC1)CCCC2"
+   ],
+   "n_heavy_atoms": 10
+  },
+  {
+   "name": "nitro",
+   "smiles": "C[N+](=O)[O-]",
+   "rdkit_canonical": "C[N+](=O)[O-]",
+   "rdkit_canonical_reordered": "C[N+](=O)[O-]",
+   "rdkit_canonical_reorderings": [
+    "C[N+](=O)[O-]",
+    "C[N+](=O)[O-]",
+    "C[N+](=O)[O-]"
+   ],
+   "n_heavy_atoms": 4
+  },
+  {
+   "name": "amide",
+   "smiles": "CC(=O)NC",
+   "rdkit_canonical": "CNC(C)=O",
+   "rdkit_canonical_reordered": "CNC(C)=O",
+   "rdkit_canonical_reorderings": [
+    "CNC(C)=O",
+    "CNC(C)=O",
+    "CNC(C)=O"
+   ],
+   "n_heavy_atoms": 5
+  },
+  {
+   "name": "sulfonamide",
+   "smiles": "CS(=O)(=O)N",
+   "rdkit_canonical": "CS(N)(=O)=O",
+   "rdkit_canonical_reordered": "CS(N)(=O)=O",
+   "rdkit_canonical_reorderings": [
+    "CS(N)(=O)=O",
+    "CS(N)(=O)=O",
+    "CS(N)(=O)=O"
+   ],
+   "n_heavy_atoms": 5
+  },
+  {
+   "name": "halides",
+   "smiles": "FC(Cl)Br",
+   "rdkit_canonical": "FC(Cl)Br",
+   "rdkit_canonical_reordered": "FC(Cl)Br",
+   "rdkit_canonical_reorderings": [
+    "FC(Cl)Br",
+    "FC(Cl)Br",
+    "FC(Cl)Br"
+   ],
+   "n_heavy_atoms": 4
+  },
+  {
+   "name": "ether",
+   "smiles": "CCOCC",
+   "rdkit_canonical": "CCOCC",
+   "rdkit_canonical_reordered": "CCOCC",
+   "rdkit_canonical_reorderings": [
+    "CCOCC",
+    "CCOCC",
+    "CCOCC"
+   ],
+   "n_heavy_atoms": 5
+  },
+  {
+   "name": "ester",
+   "smiles": "CCOC(=O)C",
+   "rdkit_canonical": "CCOC(C)=O",
+   "rdkit_canonical_reordered": "CCOC(C)=O",
+   "rdkit_canonical_reorderings": [
+    "CCOC(C)=O",
+    "CCOC(C)=O",
+    "CCOC(C)=O"
+   ],
+   "n_heavy_atoms": 6
+  },
+  {
+   "name": "amine",
+   "smiles": "CCN(C)C",
+   "rdkit_canonical": "CCN(C)C",
+   "rdkit_canonical_reordered": "CCN(C)C",
+   "rdkit_canonical_reorderings": [
+    "CCN(C)C",
+    "CCN(C)C",
+    "CCN(C)C"
+   ],
+   "n_heavy_atoms": 5
+  },
+  {
+   "name": "phenol-ether",
+   "smiles": "COc1ccccc1O",
+   "rdkit_canonical": "COc1ccccc1O",
+   "rdkit_canonical_reordered": "COc1ccccc1O",
+   "rdkit_canonical_reorderings": [
+    "COc1ccccc1O",
+    "COc1ccccc1O",
+    "COc1ccccc1O"
+   ],
+   "n_heavy_atoms": 9
+  },
+  {
+   "name": "indole",
+   "smiles": "c1ccc2[nH]ccc2c1",
+   "rdkit_canonical": "c1ccc2[nH]ccc2c1",
+   "rdkit_canonical_reordered": "c1ccc2[nH]ccc2c1",
+   "rdkit_canonical_reorderings": [
+    "c1ccc2[nH]ccc2c1",
+    "c1ccc2[nH]ccc2c1",
+    "c1ccc2[nH]ccc2c1"
+   ],
+   "n_heavy_atoms": 9
+  },
+  {
+   "name": "caffeine",
+   "smiles": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+   "rdkit_canonical": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+   "rdkit_canonical_reordered": "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+   "rdkit_canonical_reorderings": [
+    "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+    "Cn1c(=O)c2c(ncn2C)n(C)c1=O",
+    "Cn1c(=O)c2c(ncn2C)n(C)c1=O"
+   ],
+   "n_heavy_atoms": 14
+  },
+  {
+   "name": "aspirin",
+   "smiles": "CC(=O)Oc1ccccc1C(=O)O",
+   "rdkit_canonical": "CC(=O)Oc1ccccc1C(=O)O",
+   "rdkit_canonical_reordered": "CC(=O)Oc1ccccc1C(=O)O",
+   "rdkit_canonical_reorderings": [
+    "CC(=O)Oc1ccccc1C(=O)O",
+    "CC(=O)Oc1ccccc1C(=O)O",
+    "CC(=O)Oc1ccccc1C(=O)O"
+   ],
+   "n_heavy_atoms": 13
+  },
+  {
+   "name": "paracetamol",
+   "smiles": "CC(=O)Nc1ccc(O)cc1",
+   "rdkit_canonical": "CC(=O)Nc1ccc(O)cc1",
+   "rdkit_canonical_reordered": "CC(=O)Nc1ccc(O)cc1",
+   "rdkit_canonical_reorderings": [
+    "CC(=O)Nc1ccc(O)cc1",
+    "CC(=O)Nc1ccc(O)cc1",
+    "CC(=O)Nc1ccc(O)cc1"
+   ],
+   "n_heavy_atoms": 11
+  },
+  {
+   "name": "ibuprofen",
+   "smiles": "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+   "rdkit_canonical": "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+   "rdkit_canonical_reordered": "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+   "rdkit_canonical_reorderings": [
+    "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+    "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+    "CC(C)Cc1ccc(C(C)C(=O)O)cc1"
+   ],
+   "n_heavy_atoms": 15
+  },
+  {
+   "name": "glucose",
+   "smiles": "OCC1OC(O)C(O)C(O)C1O",
+   "rdkit_canonical": "OCC1OC(O)C(O)C(O)C1O",
+   "rdkit_canonical_reordered": "OCC1OC(O)C(O)C(O)C1O",
+   "rdkit_canonical_reorderings": [
+    "OCC1OC(O)C(O)C(O)C1O",
+    "OCC1OC(O)C(O)C(O)C1O",
+    "OCC1OC(O)C(O)C(O)C1O"
+   ],
+   "n_heavy_atoms": 12
+  },
+  {
+   "name": "biphenyl",
+   "smiles": "c1ccc(-c2ccccc2)cc1",
+   "rdkit_canonical": "c1ccc(-c2ccccc2)cc1",
+   "rdkit_canonical_reordered": "c1ccc(-c2ccccc2)cc1",
+   "rdkit_canonical_reorderings": [
+    "c1ccc(-c2ccccc2)cc1",
+    "c1ccc(-c2ccccc2)cc1",
+    "c1ccc(-c2ccccc2)cc1"
+   ],
+   "n_heavy_atoms": 12
+  },
+  {
+   "name": "triple-bond",
+   "smiles": "C#CC#C",
+   "rdkit_canonical": "C#CC#C",
+   "rdkit_canonical_reordered": "C#CC#C",
+   "rdkit_canonical_reorderings": [
+    "C#CC#C",
+    "C#CC#C",
+    "C#CC#C"
+   ],
+   "n_heavy_atoms": 4
+  },
+  {
+   "name": "allene",
+   "smiles": "CC=C=CC",
+   "rdkit_canonical": "CC=C=CC",
+   "rdkit_canonical_reordered": "CC=C=CC",
+   "rdkit_canonical_reorderings": [
+    "CC=C=CC",
+    "CC=C=CC",
+    "CC=C=CC"
+   ],
+   "n_heavy_atoms": 5
+  },
+  {
+   "name": "cyclohexane",
+   "smiles": "C1CCCCC1",
+   "rdkit_canonical": "C1CCCCC1",
+   "rdkit_canonical_reordered": "C1CCCCC1",
+   "rdkit_canonical_reorderings": [
+    "C1CCCCC1",
+    "C1CCCCC1",
+    "C1CCCCC1"
+   ],
+   "n_heavy_atoms": 6
+  },
+  {
+   "name": "adamantane",
+   "smiles": "C1C2CC3CC1CC(C2)C3",
+   "rdkit_canonical": "C1C2CC3CC1CC(C2)C3",
+   "rdkit_canonical_reordered": "C1C2CC3CC1CC(C2)C3",
+   "rdkit_canonical_reorderings": [
+    "C1C2CC3CC1CC(C2)C3",
+    "C1C2CC3CC1CC(C2)C3",
+    "C1C2CC3CC1CC(C2)C3"
+   ],
+   "n_heavy_atoms": 10
+  }
+ ]
+}
