@@ -33,7 +33,9 @@ pub mod ani_aev_gpu;
 pub mod backend_report;
 pub mod buffer_manager;
 pub mod context;
-#[cfg(feature = "beta-cpm")]
+// The CPM model is core (src/cpm), so its GPU counterpart is not gated on a
+// beta feature any more; the kernel itself is gated on `experimental-gpu`
+// where it needs the device.
 pub mod cpm_gpu;
 pub mod d4_dispersion_gpu;
 pub mod density_grid_gpu;
