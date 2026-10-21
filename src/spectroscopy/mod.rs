@@ -30,7 +30,7 @@ pub use fluorescence::{compute_fluorescence_spectrum, FluorescenceConfig, Fluore
 pub use giao_nmr::{
     compute_nmr_shieldings, compute_nmr_shieldings_for_nucleus, shieldings_to_shifts,
 };
-pub use stda_uvvis::{compute_stda, StdaConfig};
+pub use stda_uvvis::{compute_stda, compute_stda_with_exchange, StdaConfig};
 pub use types::{
     NmrShieldingResult, ScfInput, ShieldingTensor, SpectroscopyResult, TransitionInfo,
 };

@@ -88,12 +88,28 @@ print(result.charges)      # [-0.387, -0.042, -0.228, 0.123, ...]
 print(result.total_charge) # ~0.0
 ```
 
-### `charges_configured`
+### `compute_charges_configured`
 
-> **Rust-only.** This function exists in the Rust API (`sci_form::...`) but is not
-> currently exposed through the Python bindings.
+```python
+def compute_charges_configured(
+    smiles: str,
+    max_iter: int = 6,
+    initial_damping: float = 0.5,
+    convergence_threshold: float = 1e-10,
+) -> ChargeResultPy
+```
 
-Use `charges` for the Python binding of the Gasteiger-Marsili PEOE solver.
+Gasteiger-Marsili PEOE charges with an explicit convergence configuration:
+`max_iter` is the number of electronegativity-equalisation sweeps,
+`initial_damping` the first damping factor (halved every iteration) and
+`convergence_threshold` the maximum charge-transfer convergence criterion.
+
+```python
+result = sci_form.compute_charges_configured("CCO", max_iter=12, initial_damping=0.7)
+print(result.charges)
+```
+
+`charges` is the shorthand for the same solver with the default parameters.
 
 ---
 
@@ -450,13 +466,36 @@ plt.gca().invert_xaxis()
 plt.show()
 ```
 
-### `ir_spectrum_broadened`
+### `compute_ir_spectrum_broadened`
 
-> **Rust-only.** This function exists in the Rust API (`sci_form::...`) but is not
-> currently exposed through the Python bindings.
+```python
+def compute_ir_spectrum_broadened(
+    elements: list[int],
+    coords: list[float],
+    method: str = "eht",
+    gamma: float = 15.0,
+    wn_min: float = 400.0,
+    wn_max: float = 4000.0,
+    n_points: int = 1000,
+    broadening: str = "lorentzian",
+    step_size: float | None = None,
+    smiles: str | None = None,
+) -> IrSpectrumPy
+```
 
-Use `ir_spectrum` for the Python binding (it takes elements + coordinates and
-applies the default Lorentzian broadening).
+Broadened IR spectrum with the vibrational analysis run internally.
+`method` selects the Hessian method (`eht`, `pm3`, `xtb`, `uff`, …);
+`broadening` is `gaussian` or `lorentzian`; `step_size` is the
+finite-difference step in Å (`None` uses the engine default) and `smiles` is
+required when `method` is `uff`.
+
+```python
+spec = sci_form.compute_ir_spectrum_broadened(
+    elements, coords, method="eht", gamma=15.0, broadening="lorentzian"
+)
+```
+
+`ir_spectrum` is the shorthand that applies the default Lorentzian broadening.
 
 ### `nmr_shifts`
 
@@ -549,10 +588,26 @@ for j in couplings:
     print(f"{j.n_bonds}J(H{j.h1_index},H{j.h2_index}) = {j.j_hz:.2f} Hz  [{j.coupling_type}]")
 ```
 
-### `ensemble_j_couplings`
+### `compute_ensemble_j_couplings`
 
-> **Rust-only.** This function exists in the Rust API (`sci_form::...`) but is not
-> currently exposed through the Python bindings.
+```python
+def compute_ensemble_j_couplings(
+    smiles: str,
+    conformer_coords: list[list[float]],
+    energies_kcal: list[float],
+    temperature_k: float = 298.15,
+) -> list[JCouplingPy]
+```
+
+J-couplings averaged over a conformer ensemble with Boltzmann weighting.
+`conformer_coords` is a list of conformers, each a flat xyz coordinate array,
+and `energies_kcal` holds the matching conformer energies in kcal/mol.
+
+```python
+couplings = sci_form.compute_ensemble_j_couplings(
+    "CCO", [conf.coords], [-12.3], temperature_k=298.15
+)
+```
 
 Use `nmr_couplings` for the Python binding of the ³J predictor.
 

@@ -28,8 +28,11 @@ impl BerendsenBarostat {
     ///
     /// This rescales coordinates and the simulation box uniformly.
     ///
-    /// Requires the instantaneous pressure, which is computed from the virial:
-    ///   P = (N*k_B*T + virial) / (3*V)
+    /// Requires the instantaneous pressure, which is computed from the virial
+    /// (see `compute_pressure_bar`):
+    ///   P = (2*KE + virial) / (3*V)
+    /// which is the standard MD expression; note that it is *not* the same as
+    /// `(N*k_B*T + virial)/(3*V)`, which under-weights the virial by 3x.
     pub fn apply(
         &self,
         system: &mut LiveMolecularSystem,

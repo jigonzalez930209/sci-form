@@ -99,7 +99,9 @@ Gap: experimental ±2 cm⁻¹ (Ghysels).
 ## Tests
 
 ```bash
-cargo test --features experimental-mbh --test regression -- test_mbh
+cargo test --features "beta-cpm beta-mbh" --test experimental_gates -- test_mbh
 ```
 
-8 integration tests covering: rigid block detection, block COM computation, projection matrix orthogonality, DOF reduction verification, frequency computation, frequency ordering, and comparison between full and reduced Hessian results.
+8 integration tests (`tests/experimental/test_mbh.rs`) covering: rigid block detection, block COM computation, projection matrix orthogonality, DOF reduction verification, frequency computation, frequency ordering, and comparison between full and reduced Hessian results.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

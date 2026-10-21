@@ -98,7 +98,9 @@ When $\varepsilon = 1.0$ (vacuum), the solvation energy is exactly zero — no d
 ## Tests
 
 ```bash
-cargo test --features experimental-alpb --test regression -- test_alpb
+cargo test --features beta-cpm --test experimental_gates -- test_alpb
 ```
 
-8 integration tests covering: Born radii computation, GB kernel asymptotics, electrostatic solvation energy, vacuum limit (zero energy), solvent dielectric dependence, non-polar contributions, and total solvation energy.
+8 integration tests (`tests/experimental/test_alpb.rs`) covering: Born radii computation, GB kernel asymptotics, electrostatic solvation energy, vacuum limit (zero energy), solvent dielectric dependence, non-polar contributions, and total solvation energy.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

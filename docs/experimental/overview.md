@@ -142,6 +142,11 @@ sci-form = { version = "0.11", features = [
 
 ### Run tests
 
+The `tests/experimental/` suite is aggregated by the **`experimental_gates`** test target
+(`tests/experimental_gates.rs`), not by `regression`. A command of the form
+`cargo test --test regression -- test_<module>` matches **no test** and therefore
+"succeeds" without running anything — always use `experimental_gates`.
+
 ```bash
 # Alpha tests
 cargo test --features alpha-dft,alpha-reaxff,alpha-mlff --lib --test 'alpha_*'
@@ -149,9 +154,28 @@ cargo test --features alpha-dft,alpha-reaxff,alpha-mlff --lib --test 'alpha_*'
 # Beta tests
 cargo test --features beta-kpm,beta-mbh,beta-randnla --lib --test 'beta_*'
 
-# Legacy experimental tests
-cargo test --features experimental-d4 --test regression -- test_d4
+# The experimental/ suite (needs beta-cpm so that the aggregated CPM
+# benchmark module compiles, plus the feature of the module under test)
+cargo test --features "beta-cpm alpha-cga alpha-gsm alpha-sdr beta-kpm beta-mbh beta-randnla beta-riemannian" --test experimental_gates
 ```
+
+| Module | Command suffix | Tests |
+|--------|----------------|-------|
+| ALPB | `-- test_alpb` | 8 |
+| CGA | `-- test_cga` | 20 |
+| CPM | `-- test_cpm` | 9 |
+| D4 | `-- test_d4` | 8 |
+| EEQ | `-- test_eeq` | 8 |
+| GSM | `-- test_gsm` | 8 |
+| KPM | `-- test_kpm` | 9 |
+| MBH | `-- test_mbh` | 8 |
+| RandNLA | `-- test_randnla` | 8 |
+| Riemannian | `-- test_riemannian` | 11 |
+| SDR | `-- test_sdr` | 8 |
+
+The legacy `experimental-*` feature names still work as aliases
+(`experimental-cga` → `alpha-cga`, `experimental-kpm` → `beta-kpm`, and so on),
+but the modern `alpha-*` / `beta-*` names are the ones to use.
 
 ---
 

@@ -4,6 +4,24 @@
 //! oscillator strengths at dramatically reduced cost vs full TD-DFT.
 //!
 //! Reference: S. Grimme, J. Chem. Phys. 138, 244104 (2013).
+//!
+//! # Model
+//!
+//! The A matrix of this implementation is
+//!
+//! ```text
+//!   A[ia,jb] = delta_ij delta_ab (eps_a - eps_i)
+//!            + 2 sum_AB q_ia(A) gamma_AB q_jb(B)      (damped monopole Coulomb)
+//!            - 2 ax (ij|ab)                           (exchange, optional)
+//! ```
+//!
+//! The Coulomb term uses the damped monopole model (transition charges per
+//! atom), which is what makes the method cheap.  The **exchange** term
+//! requires the real two-electron integrals and is therefore only available
+//! through [`compute_stda_with_exchange`], which needs the AO-basis ERI
+//! tensor of the same basis that produced the SCF.  [`compute_stda`] keeps
+//! the exchange-free (monopole) model and is the entry point used by the
+//! reactivity and fluorescence modules.
 
 use nalgebra::DMatrix;
 
@@ -20,7 +38,13 @@ pub struct StdaConfig {
     pub virt_window_ev: f64,
     /// Maximum number of excitations to compute.
     pub n_roots: usize,
-    /// Scaling factor for exchange integrals (0.5 for sTDA).
+    /// Scaling factor of the exchange integrals in the A matrix.
+    ///
+    /// The exchange contribution is `A_x[ia,jb] = -2 ax (ij|ab)`, so the
+    /// default `ax = 0.5` reproduces the Tamm-Dancoff exchange term
+    /// `-(ij|ab)`.  It is only used by [`compute_stda_with_exchange`];
+    /// [`compute_stda`] uses the exchange-free monopole model and ignores
+    /// this field.
     pub ax: f64,
     /// Screening threshold for integral approximation.
     pub threshold: f64,
@@ -117,6 +141,10 @@ fn transition_charges(
 /// Compute sTDA excitation energies and oscillator strengths.
 ///
 /// Requires converged SCF data, basis-to-atom mapping, and atomic positions (Bohr).
+///
+/// This is the exchange-free (monopole Coulomb) model; see
+/// [`compute_stda_with_exchange`] for the variant that adds the exchange
+/// term `-2 ax (ij|ab)`.
 pub fn compute_stda(
     scf: &ScfInput,
     basis_to_atom: &[usize],
@@ -124,6 +152,56 @@ pub fn compute_stda(
     config: &StdaConfig,
 ) -> SpectroscopyResult {
     compute_stda_with_dipoles(scf, basis_to_atom, positions_bohr, config, None)
+}
+
+/// sTDA with the Tamm-Dancoff exchange term `-2 ax (ij|ab)`.
+///
+/// The exchange contribution needs the real two-electron integrals, so the
+/// AO-basis ERI tensor of the *same* basis that produced the SCF has to be
+/// supplied:
+///
+/// ```no_run
+/// use sci_form::scf::basis::BasisSet;
+/// use sci_form::scf::two_electron::TwoElectronIntegrals;
+/// # use sci_form::spectroscopy::{compute_stda_with_exchange, ScfInput, StdaConfig};
+/// # fn run(scf: ScfInput, basis: &BasisSet) {
+/// let eris = TwoElectronIntegrals::compute(basis);
+/// let spectrum = compute_stda_with_exchange(
+///     &scf,
+///     &basis.function_to_atom,
+///     &basis.functions.iter().map(|f| f.center).collect::<Vec<_>>(),
+///     &StdaConfig::default(),
+///     &eris,
+/// );
+/// # let _ = spectrum;
+/// # }
+/// ```
+///
+/// The exchange term lowers the excitation energies (it is the dominant
+/// correction of the monopole model) and is *not* screened by the monopole
+/// Cauchy-Schwarz criterion.
+///
+/// The AO → MO transformation of the ERI tensor costs O(N^5) time and
+/// O(N^4) memory, so this variant is meant for small-to-medium systems;
+/// [`compute_stda`] stays the cheap (exchange-free) option for large
+/// molecules.
+pub fn compute_stda_with_exchange(
+    scf: &ScfInput,
+    basis_to_atom: &[usize],
+    positions_bohr: &[[f64; 3]],
+    config: &StdaConfig,
+    eris: &crate::scf::two_electron::TwoElectronIntegrals,
+) -> SpectroscopyResult {
+    let n_occ_total = scf.n_electrons / 2;
+    let exchange = build_active_exchange(eris, &scf.mo_coefficients, n_occ_total);
+    compute_stda_inner(
+        scf,
+        basis_to_atom,
+        positions_bohr,
+        config,
+        None,
+        Some(&exchange),
+    )
 }
 
 /// sTDA with AO dipole integrals: exact transition dipoles (instead of the
@@ -137,6 +215,92 @@ pub fn compute_stda_with_dipoles(
     positions_bohr: &[[f64; 3]],
     config: &StdaConfig,
     ao_dipoles: Option<&[DMatrix<f64>; 3]>,
+) -> SpectroscopyResult {
+    compute_stda_inner(scf, basis_to_atom, positions_bohr, config, ao_dipoles, None)
+}
+
+/// Active-space exchange integrals `(ij|ab)` in chemist notation.
+struct ActiveExchange {
+    /// `(ij|ab)` with `i`, `j` the occupied MO indices and `a`, `b` the
+    /// virtual MO indices (both counted from zero).
+    values: Vec<f64>,
+    /// Number of occupied MOs.
+    n_occ: usize,
+    /// Number of virtual MOs.
+    n_virt: usize,
+}
+
+impl ActiveExchange {
+    #[inline]
+    fn get(&self, i: usize, j: usize, a: usize, b: usize) -> f64 {
+        let ai = a - self.n_occ;
+        let bi = b - self.n_occ;
+        let idx = ((i * self.n_occ + j) * self.n_virt + ai) * self.n_virt + bi;
+        self.values[idx]
+    }
+}
+
+/// AO -> MO transformation of the two-electron integrals.
+fn mo_integrals(
+    eris: &crate::scf::two_electron::TwoElectronIntegrals,
+    coefficients: &DMatrix<f64>,
+) -> crate::hf::mo_transform::MoIntegrals {
+    use crate::hf::integrals::eri_index;
+    use crate::hf::mo_transform::ao_to_mo_transform;
+
+    let n = eris.n_basis();
+    let n_pair = n * (n + 1) / 2;
+    let mut flat = vec![0.0f64; n_pair * (n_pair + 1) / 2];
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                for l in 0..n {
+                    flat[eri_index(i, j, k, l, n)] = eris.get(i, j, k, l);
+                }
+            }
+        }
+    }
+    ao_to_mo_transform(coefficients, &flat, n, n)
+}
+
+/// Build the exchange block `(ij|ab)` for the occupied/virtual space.
+///
+/// The active-space restriction is applied when the A matrix is assembled,
+/// so that the same integrals serve every active-space choice.
+fn build_active_exchange(
+    eris: &crate::scf::two_electron::TwoElectronIntegrals,
+    coefficients: &DMatrix<f64>,
+    n_occ: usize,
+) -> ActiveExchange {
+    let mo = mo_integrals(eris, coefficients);
+    let n_mo = mo.n_mo();
+    let n_virt = n_mo - n_occ;
+    let mut values = vec![0.0f64; n_occ * n_occ * n_virt * n_virt];
+    for i in 0..n_occ {
+        for j in 0..n_occ {
+            for a in 0..n_virt {
+                for b in 0..n_virt {
+                    let idx = ((i * n_occ + j) * n_virt + a) * n_virt + b;
+                    values[idx] = mo.get(i, j, n_occ + a, n_occ + b);
+                }
+            }
+        }
+    }
+    ActiveExchange {
+        values,
+        n_occ,
+        n_virt,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn compute_stda_inner(
+    scf: &ScfInput,
+    basis_to_atom: &[usize],
+    positions_bohr: &[[f64; 3]],
+    config: &StdaConfig,
+    ao_dipoles: Option<&[DMatrix<f64>; 3]>,
+    exchange: Option<&ActiveExchange>,
 ) -> SpectroscopyResult {
     let active = select_active_space(scf, config);
     let n_active_occ = active.n_occ;
@@ -266,6 +430,22 @@ pub fn compute_stda_with_dipoles(
                 }
 
                 a_matrix[(idx1, idx2)] += 2.0 * j_integral;
+            }
+        }
+    }
+
+    // Exchange contribution: A_x[ia,jb] = -2 ax (ij|ab).
+    //
+    // The exchange integrals are *not* screened by the monopole
+    // Cauchy-Schwarz criterion: they are a different (non-local) quantity.
+    if let Some(exch) = exchange {
+        for (idx1, (i_l, a_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
+            let i = active.occ_indices[i_l];
+            let a = active.virt_indices[a_l];
+            for (idx2, (j_l, b_l)) in iproduct(n_active_occ, n_active_virt).enumerate() {
+                let j = active.occ_indices[j_l];
+                let b = active.virt_indices[b_l];
+                a_matrix[(idx1, idx2)] -= 2.0 * config.ax * exch.get(i, j, a, b);
             }
         }
     }

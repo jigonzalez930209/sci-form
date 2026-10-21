@@ -47,7 +47,9 @@
     "F13",
     "F14",
     "oracle common",
-    "F79/F83/F88/F91/F93/F94 oracles"
+    "F79/F83/F88/F91/F93/F94 oracles",
+    "F86-EHT",
+    "F87-EEQ2019"
    ]
   },
   {
@@ -57,7 +59,9 @@
     "ECFP ranking (oracle)",
     "F80 (Boys gammainc)",
     "F87 (solve_ivp)",
-    "F91/F93/F94 (eigh/sqrtm/logm refs)"
+    "F91/F93/F94 (eigh/sqrtm/logm refs)",
+    "F86-EHT (generalized eigh)",
+    "F87-EEQ2019 (erf, solve)"
    ]
   },
   {

@@ -90,7 +90,9 @@ first-order P₊(X+ξ), not the second-order form once sketched in Theory.
 ## Tests
 
 ```bash
-cargo test --features experimental-riemannian --test regression -- test_riemannian
+cargo test --features "beta-cpm beta-riemannian" --test experimental_gates -- test_riemannian
 ```
 
-Covers: PSD projection correctness, retraction stays on manifold, Riemannian gradient orthogonality, L-BFGS convergence on Rosenbrock and distance geometry objectives.
+11 integration tests (`tests/experimental/test_riemannian.rs`) covering: PSD projection correctness, retraction stays on manifold, Riemannian gradient orthogonality, L-BFGS convergence on Rosenbrock and distance geometry objectives.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

@@ -26,6 +26,7 @@ step "[2/5] generate RDKit fixtures + reports (${PYTHON})"
 step "[3/6] generate PySCF fixtures (optional)"
 if "${PYTHON}" -c "import pyscf" >/dev/null 2>&1; then
   "${PYTHON}" scripts/validation/oracle_pyscf.py all
+  "${PYTHON}" scripts/validation/oracle_pyscf_stda.py
 else
   echo "pyscf not available in ${PYTHON}; skipping (F36/F37/F23/F38/F39 use the checked-in fixtures)"
 fi
@@ -60,9 +61,12 @@ else
   echo "xtb binary not found (set XTB=/path/to/xtb); skipping (F43/F48 use the checked-in fixtures)"
 fi
 
-step "[6/7] generate Fukui/PM3 fixtures"
+step "[6/7] generate Fukui/PM3/EHT/EEQ2019 fixtures"
 "${PYTHON}" scripts/validation/oracle_fukui.py
 "${PYTHON}" scripts/validation/oracle_pm3.py
+# numpy/scipy only (no external tool needed)
+"${PYTHON}" scripts/validation/oracle_eht.py
+"${PYTHON}" scripts/validation/oracle_eeq2019.py
 
 step "[7/7] run cross-validation tests"
 if [[ "${FAST}" == "1" ]]; then

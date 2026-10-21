@@ -102,7 +102,9 @@ alpha_sdr_validation` (no feature needed).
 ## Tests
 
 ```bash
-cargo test --features experimental-sdr --test regression -- test_sdr
+cargo test --features "beta-cpm alpha-sdr" --test experimental_gates -- test_sdr
 ```
 
-8 integration tests covering: PSD projection, negative eigenvalue removal, warm start Gram matrix, coordinate extraction with distance preservation, equilateral triangle and tetrahedron embedding, convergence tracking, and alternating projection improvement.
+8 integration tests (`tests/experimental/test_sdr.rs`) covering: PSD projection, negative eigenvalue removal, warm start Gram matrix, coordinate extraction with distance preservation, equilateral triangle and tetrahedron embedding, convergence tracking, and alternating projection improvement.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

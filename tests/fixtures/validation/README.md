@@ -27,6 +27,8 @@ per-ficha gates `tests/{alpha,beta}_*_validation.rs`, see Ficha column).
 | `uks_tblite.json` | F44-UKS/F45-UKS | `oracle_uks_tblite.py` | tblite 0.7.0 GFN1/GFN2 `uhf` (OH/CH₃/NO/O₂/H₂O; ¡posiciones tblite-Python en bohr!) |
 | `eeqbc_charges.json` | F22 | `oracle_eeqbc.py` (binario multicharge) | cargas/CN EEQ-BC `--model eeqbc` (23 moléculas) |
 | `eht_metal_params.json` | F31 | `check_eht_metal_params.py` | parámetros EHT de metales vs YAeHMOP 3.0.3 (76 filas) |
+| `eht_parity.json` | F86-EHT | `oracle_eht.py` | EHT independiente en numpy: S (STO-nG), H Wolfsberg-Helmholtz, energías orbitales, HOMO/LUMO/gap (9 moléculas) + parámetros metálicos derivados (41 elementos) |
+| `eeq2019_charges.json` | F87-EEQ2019 | `oracle_eeq2019.py` | cargas EEQ2019 (numpy, ecuaciones publicadas) de 14 sistemas (3 cargados) |
 | `hla_couplings.json` | F54 | `oracle_hla.py` | ³J de la calculadora HLA de referencia (84 casos) |
 | `cpm_lammps.json` | F95 | `oracle_cpm_lammps.py` (LAMMPS ELECTRODE) | bilayer grafeno 3×3: cargas por átomo/placa a V=±0.5/1/2 |
 | `reaxff_lammps.json` | F78 | `oracle_reaxff_lammps.py` (LAMMPS REAXFF) | pulls C–H/O–H con `ffield.reax.cho`: E + BO |

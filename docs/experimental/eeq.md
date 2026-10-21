@@ -86,7 +86,9 @@ Full coverage for Z=1–86: H through Rn, including all 3d/4d/5d transition meta
 ## Tests
 
 ```bash
-cargo test --features experimental-eeq --test regression -- test_eeq
+cargo test --features beta-cpm --test experimental_gates -- test_eeq
 ```
 
-8 integration tests covering: charge neutrality, coordination numbers, energy computation, gradient accuracy, element coverage, and comparison with Gasteiger charges.
+8 integration tests (`tests/experimental/test_eeq.rs`) covering: charge neutrality, coordination numbers, energy computation, gradient accuracy, element coverage, and comparison with Gasteiger charges.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

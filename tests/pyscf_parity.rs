@@ -564,8 +564,9 @@ mod f77_stda {
     use super::*;
     use sci_form::scf::extended_basis::{build_basis_set, BasisSetType};
     use sci_form::scf::scf_loop::{run_scf, ScfConfig};
+    use sci_form::scf::two_electron::TwoElectronIntegrals;
     use sci_form::scf::types::MolecularSystem;
-    use sci_form::spectroscopy::{compute_stda, ScfInput, StdaConfig};
+    use sci_form::spectroscopy::{compute_stda, compute_stda_with_exchange, ScfInput, StdaConfig};
 
     #[derive(Deserialize)]
     struct Case {
@@ -593,6 +594,10 @@ mod f77_stda {
         tda_noex_active_oscillator: Vec<f64>,
         stda_ref_ev: Vec<f64>,
         stda_ref_oscillator: Vec<f64>,
+        /// Reference port of the exchange-enabled sTDA
+        /// (`compute_stda_with_exchange`, A_x = -2 ax (ij|ab)).
+        stda_ex_ref_ev: Vec<f64>,
+        stda_ex_ref_oscillator: Vec<f64>,
     }
 
     #[derive(Deserialize)]
@@ -617,14 +622,18 @@ mod f77_stda {
     /// * `PARITY_OSC` — same for the oscillator strengths.
     /// * `CROSS_EV` / `CROSS_OSC` — sci-form's sTDA against PySCF's TDA on the
     ///   same active space.  sTDA is an approximation of TD-SCF: sci-form's
-    ///   implementation has **no exchange term** (`StdaConfig::ax` is declared
-    ///   but never used) and replaces the two-electron Coulomb interaction by
-    ///   a damped monopole model, so the deviations are expected to be large.
+    ///   implementation replaces the two-electron Coulomb interaction by a
+    ///   damped monopole model, so the deviations are expected to be large.
     ///   The bounds below are the measured maxima over the fixture set.
+    /// * `CROSS_EV_EX` — the same comparison for the exchange-enabled sTDA
+    ///   (`compute_stda_with_exchange`), which adds the Tamm-Dancoff exchange
+    ///   term `-2 ax (ij|ab)` with `ax = 0.5`.
     const PARITY_EV: f64 = 1e-3;
     const PARITY_OSC: f64 = 1e-5;
     const CROSS_EV: f64 = 20.0;
     const CROSS_OSC: f64 = 5.0;
+    const CROSS_EV_EX: f64 = 10.0;
+    const CROSS_OSC_EX: f64 = 5.0;
 
     #[test]
     fn f77_stda_uvvis_matches_pyscf() {
@@ -649,6 +658,15 @@ mod f77_stda {
         let mut worst_tdhf_osc = (0.0f64, String::new());
         let mut worst_exchange_gap = (0.0f64, String::new());
         let mut worst_monopole_gap = (0.0f64, String::new());
+        let mut worst_ex_parity_ev = (0.0f64, String::new());
+        let mut worst_ex_parity_osc = (0.0f64, String::new());
+        let mut worst_ex_cross_ev = (0.0f64, String::new());
+        let mut worst_ex_cross_osc = (0.0f64, String::new());
+        let mut worst_ex_tda_full = (0.0f64, String::new());
+        let mut worst_ex_tda_full_osc = (0.0f64, String::new());
+        let mut worst_ex_tdhf_ev = (0.0f64, String::new());
+        let mut worst_ex_tdhf_osc = (0.0f64, String::new());
+        let mut worst_exchange_effect = (0.0f64, String::new());
 
         for case in &fixture.cases {
             let positions_ang: Vec<[f64; 3]> = case
@@ -763,6 +781,76 @@ mod f77_stda {
             if monopole_gap > worst_monopole_gap.0 {
                 worst_monopole_gap = (monopole_gap, case.name.clone());
             }
+
+            // --- exchange-enabled sTDA (A_x = -2 ax (ij|ab)) -----------------
+            let eris = TwoElectronIntegrals::compute(&basis);
+            let spectrum_ex = compute_stda_with_exchange(
+                &scf_input,
+                &basis.function_to_atom,
+                &positions_bohr,
+                &config,
+                &eris,
+            );
+            let ours_ex_ev: Vec<f64> = spectrum_ex
+                .transitions
+                .iter()
+                .map(|t| t.energy_ev)
+                .collect();
+            let ours_ex_osc: Vec<f64> = spectrum_ex
+                .transitions
+                .iter()
+                .map(|t| t.oscillator_strength)
+                .collect();
+
+            assert_eq!(
+                ours_ex_ev.len(),
+                case.stda_ex_ref_ev.len(),
+                "{}: exchange-enabled sTDA returned {} transitions, the reference port has {}",
+                case.name,
+                ours_ex_ev.len(),
+                case.stda_ex_ref_ev.len()
+            );
+
+            let ex_parity_ev = max_abs_diff(&ours_ex_ev, &case.stda_ex_ref_ev);
+            if ex_parity_ev > worst_ex_parity_ev.0 {
+                worst_ex_parity_ev = (ex_parity_ev, case.name.clone());
+            }
+            let ex_parity_osc = max_abs_diff(&ours_ex_osc, &case.stda_ex_ref_oscillator);
+            if ex_parity_osc > worst_ex_parity_osc.0 {
+                worst_ex_parity_osc = (ex_parity_osc, case.name.clone());
+            }
+
+            let ex_cross_ev = max_abs_diff(&ours_ex_ev, &case.tda_active_ev);
+            if ex_cross_ev > worst_ex_cross_ev.0 {
+                worst_ex_cross_ev = (ex_cross_ev, case.name.clone());
+            }
+            let ex_cross_osc = max_abs_diff(&ours_ex_osc, &case.tda_active_oscillator);
+            if ex_cross_osc > worst_ex_cross_osc.0 {
+                worst_ex_cross_osc = (ex_cross_osc, case.name.clone());
+            }
+
+            let ex_tda_full = max_abs_diff(&ours_ex_ev, &case.tda_ev);
+            if ex_tda_full > worst_ex_tda_full.0 {
+                worst_ex_tda_full = (ex_tda_full, case.name.clone());
+            }
+            let ex_tda_full_osc = max_abs_diff(&ours_ex_osc, &case.tda_oscillator);
+            if ex_tda_full_osc > worst_ex_tda_full_osc.0 {
+                worst_ex_tda_full_osc = (ex_tda_full_osc, case.name.clone());
+            }
+            let ex_tdhf = max_abs_diff(&ours_ex_ev, &case.tdhf_ev);
+            if ex_tdhf > worst_ex_tdhf_ev.0 {
+                worst_ex_tdhf_ev = (ex_tdhf, case.name.clone());
+            }
+            let ex_tdhf_osc = max_abs_diff(&ours_ex_osc, &case.tdhf_oscillator);
+            if ex_tdhf_osc > worst_ex_tdhf_osc.0 {
+                worst_ex_tdhf_osc = (ex_tdhf_osc, case.name.clone());
+            }
+
+            // how much the exchange term moves the energies
+            let exchange_effect = max_abs_diff(&ours_ev, &ours_ex_ev);
+            if exchange_effect > worst_exchange_effect.0 {
+                worst_exchange_effect = (exchange_effect, case.name.clone());
+            }
         }
 
         println!(
@@ -793,6 +881,28 @@ mod f77_stda {
             worst_monopole_gap.1
         );
 
+        println!(
+            "F77 sTDA *with exchange* vs PySCF: parity vs port max|dE| = {:.3e} eV ({}), \
+             max|df| = {:.3e} ({}); cross-library vs TDA(max|dE| = {:.3} eV, {}), \
+             max|df| = {:.3} ({}); vs full-space TDA max|dE| = {:.3} eV ({}); \
+             vs TDHF max|dE| = {:.3} eV ({}); the exchange term moves the energies by up to \
+             {:.3} eV ({})",
+            worst_ex_parity_ev.0,
+            worst_ex_parity_ev.1,
+            worst_ex_parity_osc.0,
+            worst_ex_parity_osc.1,
+            worst_ex_cross_ev.0,
+            worst_ex_cross_ev.1,
+            worst_ex_cross_osc.0,
+            worst_ex_cross_osc.1,
+            worst_ex_tda_full.0,
+            worst_ex_tda_full.1,
+            worst_ex_tdhf_ev.0,
+            worst_ex_tdhf_ev.1,
+            worst_exchange_effect.0,
+            worst_exchange_effect.1
+        );
+
         assert!(
             worst_mo.0 <= 1e-6,
             "SCF orbital energies deviate from PySCF by {:.3e} Ha for {}",
@@ -814,7 +924,7 @@ mod f77_stda {
         assert!(
             worst_cross_ev.0 <= CROSS_EV,
             "sTDA energies deviate from PySCF's TDA by {:.3} eV for {} \
-             (sTDA has no exchange term and uses a monopole Coulomb model)",
+             (sTDA uses a monopole Coulomb model and has no exchange term)",
             worst_cross_ev.0,
             worst_cross_ev.1
         );
@@ -823,6 +933,44 @@ mod f77_stda {
             "sTDA oscillator strengths deviate from PySCF's TDA by {:.3} for {}",
             worst_cross_osc.0,
             worst_cross_osc.1
+        );
+        assert!(
+            worst_ex_parity_ev.0 <= PARITY_EV,
+            "the exchange-enabled sTDA deviates from the reference port by {:.3e} eV for {}",
+            worst_ex_parity_ev.0,
+            worst_ex_parity_ev.1
+        );
+        assert!(
+            worst_ex_parity_osc.0 <= PARITY_OSC,
+            "the exchange-enabled sTDA oscillator strengths deviate from the reference port \
+             by {:.3e} for {}",
+            worst_ex_parity_osc.0,
+            worst_ex_parity_osc.1
+        );
+        assert!(
+            worst_ex_cross_ev.0 <= CROSS_EV_EX,
+            "the exchange-enabled sTDA deviates from PySCF's TDA by {:.3} eV for {}",
+            worst_ex_cross_ev.0,
+            worst_ex_cross_ev.1
+        );
+        assert!(
+            worst_ex_cross_osc.0 <= CROSS_OSC_EX,
+            "the exchange-enabled sTDA oscillator strengths deviate from PySCF's TDA by \
+             {:.3} for {}",
+            worst_ex_cross_osc.0,
+            worst_ex_cross_osc.1
+        );
+        assert!(
+            worst_ex_tda_full.0 <= CROSS_EV_EX,
+            "the exchange-enabled sTDA deviates from PySCF's full-space TDA by {:.3} eV for {}",
+            worst_ex_tda_full.0,
+            worst_ex_tda_full.1
+        );
+        assert!(
+            worst_ex_tdhf_ev.0 <= CROSS_EV_EX,
+            "the exchange-enabled sTDA deviates from PySCF's TDHF by {:.3} eV for {}",
+            worst_ex_tdhf_ev.0,
+            worst_ex_tdhf_ev.1
         );
 
         record(
@@ -922,6 +1070,87 @@ mod f77_stda {
             worst_monopole_gap.0,
             CROSS_EV,
             worst_monopole_gap.0 <= CROSS_EV,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_impl_parity_max_abs_ev",
+            "max_abs",
+            worst_ex_parity_ev.0,
+            PARITY_EV,
+            worst_ex_parity_ev.0 <= PARITY_EV,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_impl_parity_max_abs_oscillator",
+            "max_abs",
+            worst_ex_parity_osc.0,
+            PARITY_OSC,
+            worst_ex_parity_osc.0 <= PARITY_OSC,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_vs_pyscf_tda_max_abs_ev",
+            "max_abs",
+            worst_ex_cross_ev.0,
+            CROSS_EV_EX,
+            worst_ex_cross_ev.0 <= CROSS_EV_EX,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_vs_pyscf_tda_max_abs_oscillator",
+            "max_abs",
+            worst_ex_cross_osc.0,
+            CROSS_OSC_EX,
+            worst_ex_cross_osc.0 <= CROSS_OSC_EX,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_vs_pyscf_tda_fullspace_max_abs_ev",
+            "max_abs",
+            worst_ex_tda_full.0,
+            CROSS_EV_EX,
+            worst_ex_tda_full.0 <= CROSS_EV_EX,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_vs_pyscf_tda_fullspace_max_abs_oscillator",
+            "max_abs",
+            worst_ex_tda_full_osc.0,
+            CROSS_OSC_EX,
+            worst_ex_tda_full_osc.0 <= CROSS_OSC_EX,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_vs_pyscf_tdhf_max_abs_ev",
+            "max_abs",
+            worst_ex_tdhf_ev.0,
+            CROSS_EV_EX,
+            worst_ex_tdhf_ev.0 <= CROSS_EV_EX,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_vs_pyscf_tdhf_max_abs_oscillator",
+            "max_abs",
+            worst_ex_tdhf_osc.0,
+            CROSS_OSC_EX,
+            worst_ex_tdhf_osc.0 <= CROSS_OSC_EX,
+            fixture.cases.len(),
+        );
+        record(
+            "F77",
+            "stda_exchange_term_effect_max_abs_ev",
+            "max_abs",
+            worst_exchange_effect.0,
+            CROSS_EV,
+            worst_exchange_effect.0 <= CROSS_EV,
             fixture.cases.len(),
         );
     }

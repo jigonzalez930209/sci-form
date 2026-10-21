@@ -111,7 +111,9 @@ Gap: T=0 on gapless spectra (Gibbs); pybinding uninstallable.
 ## Tests
 
 ```bash
-cargo test --features experimental-kpm --test regression -- test_kpm
+cargo test --features "beta-cpm beta-kpm" --test experimental_gates -- test_kpm
 ```
 
-9 integration tests covering: spectral bounds estimation, Chebyshev recursion stability, Jackson kernel positivity, DOS peak detection, band gap identification, and Mulliken charge conservation.
+9 integration tests (`tests/experimental/test_kpm.rs`) covering: spectral bounds estimation, Chebyshev recursion stability, Jackson kernel positivity, DOS peak detection, band gap identification, and Mulliken charge conservation.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.
