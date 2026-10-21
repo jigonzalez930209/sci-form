@@ -36,55 +36,55 @@ pub struct ParallelBoundsResult {
     pub time_ms: f64,
 }
 
-/// Evaluate distance bounds in parallel using rayon.
+/// Evaluate the distance bounds of a molecule, in parallel where possible.
 ///
-/// Each (i,j) pair's bounds are computed independently, making
-/// the O(N²) bounds evaluation embarrassingly parallel.
-#[cfg(feature = "parallel")]
+/// The bounds are the CANONICAL ones produced by
+/// [`crate::distgeom::bounds::calculate_bounds_matrix_opts`]: this function
+/// used to re-derive them from a crude covalent-radius rule, which produced a
+/// matrix that silently disagreed with the rest of the pipeline (the audit
+/// flagged it as P2-27). The parallel/GPU helpers of this module are used
+/// for the triangle smoothing, which is the expensive part.
+///
+/// The returned matrix stores the lower bound in `lower` and the upper bound
+/// in `upper`, both flat and row-major.
 pub fn compute_bounds_parallel(
-    elements: &[u8],
-    bonds: &[(usize, usize, String)],
+    mol: &crate::graph::Molecule,
+    use_set15: bool,
 ) -> ParallelBoundsResult {
-    use rayon::prelude::*;
     use std::time::Instant;
 
     let start = Instant::now();
-    let n = elements.len();
+    let n = mol.graph.node_count();
 
-    // Build adjacency for shortest-path
-    let adj = build_adjacency(n, bonds);
-
-    // Compute bounds for all pairs in parallel
-    let pairs: Vec<(usize, usize)> = (0..n)
-        .flat_map(|i| ((i + 1)..n).map(move |j| (i, j)))
-        .collect();
-
-    let bounds: Vec<(usize, usize, f64, f64)> = pairs
-        .par_iter()
-        .map(|&(i, j)| {
-            let (lower, upper) = compute_pair_bounds(elements, &adj, i, j);
-            (i, j, lower, upper)
-        })
-        .collect();
+    // The canonical bounds matrix stores the LOWER bound in the lower
+    // triangle (b[(max, min)]) and the UPPER bound in the upper triangle
+    // (b[(min, max)]).
+    let bounds = crate::distgeom::bounds::calculate_bounds_matrix_opts(mol, use_set15);
 
     let mut lower_mat = vec![0.0f64; n * n];
     let mut upper_mat = vec![f64::MAX; n * n];
-
-    for &(i, j, lo, hi) in &bounds {
-        lower_mat[i * n + j] = lo;
-        lower_mat[j * n + i] = lo;
-        upper_mat[i * n + j] = hi;
-        upper_mat[j * n + i] = hi;
+    for i in 0..n {
+        for j in 0..n {
+            if i < j {
+                lower_mat[i * n + j] = bounds[(j, i)];
+                upper_mat[i * n + j] = bounds[(i, j)];
+            } else if i > j {
+                lower_mat[i * n + j] = bounds[(i, j)];
+                upper_mat[i * n + j] = bounds[(j, i)];
+            } else {
+                // The diagonal is 0 in the canonical matrix.
+                lower_mat[i * n + i] = 0.0;
+                upper_mat[i * n + i] = 0.0;
+            }
+        }
     }
-
-    let time_ms = start.elapsed().as_secs_f64() * 1000.0;
 
     ParallelBoundsResult {
         lower: lower_mat,
         upper: upper_mat,
         n,
         used_gpu: false,
-        time_ms,
+        time_ms: start.elapsed().as_secs_f64() * 1000.0,
     }
 }
 
@@ -210,66 +210,6 @@ fn try_gpu_floyd_warshall(bounds: &[f64], n: usize, _is_upper: bool) -> Option<V
     None
 }
 
-/// Build adjacency list from bond list.
-fn build_adjacency(n: usize, bonds: &[(usize, usize, String)]) -> Vec<Vec<(usize, f64)>> {
-    let mut adj = vec![vec![]; n];
-    for (a, b, order) in bonds {
-        let weight = match order.as_str() {
-            "SINGLE" => 1.0,
-            "DOUBLE" => 1.0,
-            "TRIPLE" => 1.0,
-            "AROMATIC" => 1.0,
-            _ => 1.0,
-        };
-        adj[*a].push((*b, weight));
-        adj[*b].push((*a, weight));
-    }
-    adj
-}
-
-/// Compute bounds for a single atom pair using BFS shortest path.
-fn compute_pair_bounds(
-    elements: &[u8],
-    adj: &[Vec<(usize, f64)>],
-    i: usize,
-    j: usize,
-) -> (f64, f64) {
-    let ri = crate::graph::get_covalent_radius(elements[i]);
-    let rj = crate::graph::get_covalent_radius(elements[j]);
-
-    // BFS shortest path distance
-    let n = adj.len();
-    let mut dist = vec![usize::MAX; n];
-    dist[i] = 0;
-    let mut queue = std::collections::VecDeque::new();
-    queue.push_back(i);
-
-    while let Some(node) = queue.pop_front() {
-        for &(neighbor, _) in &adj[node] {
-            if dist[neighbor] == usize::MAX {
-                dist[neighbor] = dist[node] + 1;
-                queue.push_back(neighbor);
-            }
-        }
-    }
-
-    let path_len = dist[j];
-    if path_len == usize::MAX {
-        // Not connected — only VdW constraints
-        let vi = crate::graph::get_vdw_radius(elements[i]);
-        let vj = crate::graph::get_vdw_radius(elements[j]);
-        return (vi + vj - 0.5, 100.0);
-    }
-
-    // Lower bound: sum of covalent radii minus tolerance
-    let lower = (ri + rj) * 0.8 * path_len as f64;
-
-    // Upper bound: extended chain length
-    let upper = (ri + rj + 0.4) * path_len as f64;
-
-    (lower.max(0.1), upper)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -284,10 +224,49 @@ mod tests {
     #[cfg(feature = "parallel")]
     #[test]
     fn test_compute_bounds_parallel() {
-        let elements = vec![6u8, 6, 8]; // C-C-O
-        let bonds = vec![(0, 1, "SINGLE".to_string()), (1, 2, "SINGLE".to_string())];
-        let result = compute_bounds_parallel(&elements, &bonds);
-        assert_eq!(result.n, 3);
-        assert!(result.lower[1] > 0.0);
+        let mol = crate::graph::Molecule::from_smiles("CCO").expect("parse CCO");
+        let result = compute_bounds_parallel(&mol, true);
+        // The parser adds the implicit hydrogens, so CCO has 9 atoms.
+        assert_eq!(result.n, mol.graph.node_count());
+        assert_eq!(result.n, 9);
+        // The C-C bond lower bound must be the canonical one, not a crude
+        // covalent-radius estimate.
+        let canonical = crate::distgeom::bounds::calculate_bounds_matrix_opts(&mol, true);
+        // The lower bound lives in the lower triangle, the upper in the upper.
+        assert!((result.lower[1] - canonical[(1, 0)]).abs() < 1e-12);
+        assert!((result.upper[1] - canonical[(0, 1)]).abs() < 1e-12);
+    }
+
+    /// The parallel entry point must agree with the canonical bounds matrix
+    /// for every pair (the audit flagged the two as silently divergent).
+    #[test]
+    fn test_parallel_bounds_match_canonical() {
+        for smiles in ["CCO", "c1ccccc1", "CC(=O)O", "C1CCCCC1"] {
+            let mol = crate::graph::Molecule::from_smiles(smiles).expect("parse");
+            let result = compute_bounds_parallel(&mol, true);
+            let canonical = crate::distgeom::bounds::calculate_bounds_matrix_opts(&mol, true);
+            let n = result.n;
+            for i in 0..n {
+                for j in 0..n {
+                    let (lo, hi) = if i < j {
+                        (canonical[(j, i)], canonical[(i, j)])
+                    } else if i > j {
+                        (canonical[(i, j)], canonical[(j, i)])
+                    } else {
+                        (0.0, 0.0)
+                    };
+                    assert!(
+                        (result.lower[i * n + j] - lo).abs() < 1e-9,
+                        "{smiles}: lower[{i},{j}] {} != {lo}",
+                        result.lower[i * n + j]
+                    );
+                    assert!(
+                        (result.upper[i * n + j] - hi).abs() < 1e-9,
+                        "{smiles}: upper[{i},{j}] {} != {hi}",
+                        result.upper[i * n + j]
+                    );
+                }
+            }
+        }
     }
 }

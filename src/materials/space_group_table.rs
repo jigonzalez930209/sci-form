@@ -1,8 +1,8 @@
 //! Generated space-group table (all 230 ITC groups).
 //!
 //! Generated from pymatgen/spglib reference data (ITC settings); do not edit
-//! by hand. See `scripts/validation/oracle_spacegroups.py` and fichas F64/F65
-//! in docs/validation/cross-library-validation.es.md.
+//! by hand. See `scripts/validation/gen_space_group_table.py` and the F64
+//! gate in `tests/validation_gates.rs`.
 
 use super::space_groups::LatticeType;
 
