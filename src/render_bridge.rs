@@ -130,4 +130,3 @@ pub fn verify_chart_round_trip(chart: &ChartPayload, tol: f64) -> bool {
     }
     true
 }
-

@@ -84,6 +84,7 @@ struct Determinant {
 }
 
 impl Determinant {
+    #[cfg(test)]
     fn popcount(&self) -> usize {
         self.alpha.count_ones() as usize + self.beta.count_ones() as usize
     }
@@ -130,7 +131,7 @@ fn phase_between(from: &Determinant, to: &Determinant) -> f64 {
         beta |= 1u64 << bit;
         add &= !(1u64 << bit);
     }
-    if parity % 2 == 0 {
+    if parity.is_multiple_of(2) {
         1.0
     } else {
         -1.0

@@ -54,8 +54,13 @@ pub struct LiveMolecularSystem {
 }
 
 /// Conversion constants.
-const AMU_ANGFS2_TO_KCAL_MOL: f64 = 2_390.057_361_533_49;
-const R_GAS_KCAL_MOLK: f64 = 0.001_987_204_258_640_83;
+///
+/// `AMU_ANGFS2_TO_KCAL_MOL` converts `amu·(Å/fs)²` into `kcal/mol`; it is the
+/// single source of truth for the unit system used by the live-dynamics
+/// module (positions in Å, velocities in Å/fs, forces in kcal/(mol·Å),
+/// masses in amu).
+pub(crate) const AMU_ANGFS2_TO_KCAL_MOL: f64 = 2_390.057_361_533_49;
+pub(crate) const R_GAS_KCAL_MOLK: f64 = 0.001_987_204_258_640_83;
 
 impl LiveMolecularSystem {
     /// Initialize from a conformer result.

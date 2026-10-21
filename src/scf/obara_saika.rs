@@ -34,9 +34,9 @@ fn erf_accurate(x: f64) -> f64 {
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
     let z = x.abs();
     let tiny = 1e-300;
-    let mut f = tiny;
-    let mut c = 1.0 / tiny;
-    let mut d = 0.0;
+    let _f = tiny;
+    let _c = 1.0 / tiny;
+    let _d = 0.0;
     let z2 = z * z;
     // Lentz init: f = C = b0 = z^2, D = 0; pairs (a_n, b_n) = Laplace sequence.
     let mut f = z2;
@@ -64,7 +64,7 @@ fn erf_accurate(x: f64) -> f64 {
     }
     // The Laplace fraction is the reciprocal of the b0-anchored CF value.
     let erfc = z * (-z2).exp() / PI.sqrt() / f;
-    sign * (1.0 - erfc.min(2.0).max(0.0))
+    sign * (1.0 - erfc.clamp(0.0, 2.0))
 }
 
 /// Shell pair data pre-computed for efficient ERI evaluation.

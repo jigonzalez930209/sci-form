@@ -151,12 +151,81 @@ fn main() {
             dielectric,
         } => experimental_cmds::cmd_cpm(&elements, &coords, mu_ev, dielectric),
 
-        #[cfg(feature = "alpha-render-bridge")]
+        #[cfg(feature = "alpha-edl")]
+        Commands::EdlProfile {
+            potential,
+            model,
+            ionic_strength,
+            temperature,
+            n_points,
+            extent,
+        } => experimental_cmds::cmd_edl_profile(
+            potential,
+            &model,
+            ionic_strength,
+            temperature,
+            n_points,
+            extent,
+        ),
+        #[cfg(feature = "alpha-edl")]
+        Commands::EdlCapacitanceScan {
+            v_min,
+            v_max,
+            n_points,
+            ionic_strength,
+            model,
+        } => experimental_cmds::cmd_edl_capacitance_scan(
+            v_min,
+            v_max,
+            n_points,
+            ionic_strength,
+            &model,
+        ),
+        #[cfg(feature = "alpha-edl")]
+        Commands::EdlHelmholtz {
+            potential,
+            ionic_strength,
+            temperature,
+        } => experimental_cmds::cmd_edl_helmholtz(potential, ionic_strength, temperature),
+        #[cfg(feature = "alpha-edl")]
+        Commands::EdlGouyChapman {
+            potential,
+            ionic_strength,
+            temperature,
+        } => experimental_cmds::cmd_edl_gouy_chapman(potential, ionic_strength, temperature),
+        #[cfg(feature = "alpha-edl")]
+        Commands::EdlGcs {
+            potential,
+            ionic_strength,
+            temperature,
+            stern_thickness,
+        } => {
+            experimental_cmds::cmd_edl_gcs(potential, ionic_strength, temperature, stern_thickness)
+        }
+        #[cfg(feature = "alpha-kinetics")]
+        Commands::HtstRate {
+            activation_free_energy,
+            reaction_free_energy,
+            temperature,
+        } => experimental_cmds::cmd_htst_rate(
+            activation_free_energy,
+            reaction_free_energy,
+            temperature,
+        ),
+        #[cfg(feature = "alpha-periodic-linear")]
+        Commands::Kmesh {
+            nx,
+            ny,
+            nz,
+            centering,
+        } => experimental_cmds::cmd_kmesh([nx, ny, nz], &centering),
+
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
         Commands::EdlChart {
             potential,
             ionic_strength,
         } => experimental_cmds::cmd_edl_chart(potential, ionic_strength),
-        #[cfg(feature = "alpha-render-bridge")]
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
         Commands::CapacitanceChart {
             v_min,
             v_max,
@@ -167,62 +236,161 @@ fn main() {
             experimental_cmds::cmd_capacitance_chart(v_min, v_max, n_points, ionic_strength, &model)
         }
 
-        #[cfg(feature = "alpha-render-bridge")]
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
         Commands::ArrheniusChart {
             temperatures,
             rates,
         } => experimental_cmds::cmd_arrhenius_chart(&temperatures, &rates),
 
-        #[cfg(feature = "alpha-render-bridge")]
-        Commands::BandStructureChart {
-            k_points,
-            n_bands,
-            e_min,
-            e_max,
-        } => experimental_cmds::cmd_band_structure_chart(k_points, n_bands, e_min, e_max),
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+        Commands::ThermalPropChart {
+            activation_free_energy,
+            reaction_free_energy,
+            temperatures,
+        } => experimental_cmds::cmd_thermal_prop_chart(
+            activation_free_energy,
+            reaction_free_energy,
+            &temperatures,
+        ),
 
-        #[cfg(feature = "alpha-render-bridge")]
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
+        Commands::PhasePortraitChart { network, n_steps } => {
+            experimental_cmds::cmd_phase_portrait_chart(network.as_deref(), n_steps)
+        }
+
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+        Commands::BandStructureChart {
+            elements,
+            coords,
+            lattice,
+            n_kpoints_per_segment,
+        } => experimental_cmds::cmd_band_structure_chart(
+            &elements,
+            &coords,
+            &lattice,
+            n_kpoints_per_segment,
+        ),
+
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
         Commands::DosChart {
             energies,
             dos_values,
         } => experimental_cmds::cmd_dos_chart(&energies, &dos_values),
 
-        #[cfg(feature = "alpha-render-bridge")]
-        Commands::TrajectoryChart => experimental_cmds::cmd_trajectory_chart(),
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+        Commands::KpointPathChart {
+            n_points_per_segment,
+        } => experimental_cmds::cmd_kpoint_path_chart(n_points_per_segment),
 
-        #[cfg(feature = "alpha-render-bridge")]
-        Commands::KpointPathChart => experimental_cmds::cmd_kpoint_path_chart(),
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
+        Commands::FermiSurfaceChart {
+            blocks,
+            fermi_energy_ev,
+            n_kx,
+            n_ky,
+        } => experimental_cmds::cmd_fermi_surface_chart(&blocks, fermi_energy_ev, n_kx, n_ky),
 
-        #[cfg(feature = "alpha-render-bridge")]
-        Commands::FermiSurfaceChart => experimental_cmds::cmd_fermi_surface_chart(),
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+        Commands::TrajectoryChart {
+            smiles,
+            reactant_coords,
+            product_coords,
+            method,
+        } => experimental_cmds::cmd_trajectory_chart(
+            &smiles,
+            &reactant_coords,
+            &product_coords,
+            &method,
+        ),
 
-        #[cfg(feature = "alpha-render-bridge")]
-        Commands::PhasePortraitChart => experimental_cmds::cmd_phase_portrait_chart(),
-
-        #[cfg(feature = "alpha-render-bridge")]
-        Commands::ReactionCoordinateChart => experimental_cmds::cmd_reaction_coordinate_chart(),
-
-        #[cfg(feature = "alpha-render-bridge")]
-        Commands::ThermalPropChart => experimental_cmds::cmd_thermal_prop_chart(),
+        #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-gsm"))]
+        Commands::ReactionCoordinateChart {
+            smiles,
+            reactant_coords,
+            product_coords,
+            method,
+        } => experimental_cmds::cmd_reaction_coordinate_chart(
+            &smiles,
+            &reactant_coords,
+            &product_coords,
+            &method,
+        ),
 
         // ─── PERIODIC LINEAR ───
         #[cfg(feature = "alpha-periodic-linear")]
-        Commands::ComputePeriodicDos { n_kpoints, order } => {
-            experimental_cmds::cmd_compute_periodic_dos(n_kpoints, order)
-        }
+        Commands::ComputePeriodicDos {
+            hamiltonian_blocks,
+            nx,
+            ny,
+            nz,
+            centering,
+            order,
+            e_min,
+            e_max,
+            n_points,
+            fermi_energy_ev,
+        } => experimental_cmds::cmd_compute_periodic_dos(
+            &hamiltonian_blocks,
+            [nx, ny, nz],
+            &centering,
+            order,
+            e_min,
+            e_max,
+            n_points,
+            fermi_energy_ev,
+        ),
 
         #[cfg(feature = "alpha-periodic-linear")]
-        Commands::SolvePeriodicRandnla { n_kpoints } => {
-            experimental_cmds::cmd_solve_periodic_randnla(n_kpoints)
-        }
+        Commands::SolvePeriodicRandnla {
+            hamiltonian_blocks,
+            overlap_blocks,
+            n_electrons,
+            nx,
+            ny,
+            nz,
+            centering,
+            sketch_size,
+        } => experimental_cmds::cmd_solve_periodic_randnla(
+            &hamiltonian_blocks,
+            &overlap_blocks,
+            n_electrons,
+            [nx, ny, nz],
+            &centering,
+            sketch_size,
+        ),
 
         #[cfg(feature = "alpha-periodic-linear")]
-        Commands::BlochPhase { k_x, k_y, k_z } => experimental_cmds::cmd_bloch_phase(k_x, k_y, k_z),
+        Commands::BlochPhase {
+            k_x,
+            k_y,
+            k_z,
+            t_x,
+            t_y,
+            t_z,
+        } => experimental_cmds::cmd_bloch_phase(k_x, k_y, k_z, t_x, t_y, t_z),
 
         #[cfg(feature = "alpha-periodic-linear")]
-        Commands::BuildBlochHamiltonian { n_basis } => {
-            experimental_cmds::cmd_build_bloch_hamiltonian(n_basis)
-        }
+        Commands::BuildBlochHamiltonian {
+            blocks,
+            k_x,
+            k_y,
+            k_z,
+        } => experimental_cmds::cmd_build_bloch_hamiltonian(&blocks, k_x, k_y, k_z),
+
+        #[cfg(feature = "alpha-periodic-linear")]
+        Commands::AssemblePeriodicOperators {
+            hamiltonian_blocks,
+            overlap_blocks,
+            nx,
+            ny,
+            nz,
+            centering,
+        } => experimental_cmds::cmd_assemble_periodic_operators(
+            &hamiltonian_blocks,
+            &overlap_blocks,
+            [nx, ny, nz],
+            &centering,
+        ),
 
         #[cfg(feature = "alpha-periodic-linear")]
         Commands::ValidateElectronCount {
@@ -285,26 +453,15 @@ fn main() {
         ),
 
         // Render Bridge commands
-        Commands::ChartToJson => experimental_cmds::cmd_chart_to_json(),
+        Commands::ChartToJson { json_input } => {
+            experimental_cmds::cmd_chart_to_json(json_input.unwrap_or_default())
+        }
         Commands::ChartFromJson { json_input } => {
             experimental_cmds::cmd_chart_from_json(json_input.unwrap_or_default())
         }
         Commands::ValidateChartSchema { json_input } => {
             experimental_cmds::cmd_validate_chart_schema(json_input.unwrap_or_default())
         }
-
-        // Auxiliary commands
-        Commands::ValidateExperimentalResult => {
-            experimental_cmds::cmd_validate_experimental_result()
-        }
-        Commands::MergeExperimentResults => experimental_cmds::cmd_merge_experiment_results(),
-        Commands::ExperimentalResultToSdf => experimental_cmds::cmd_experimental_result_to_sdf(),
-        Commands::ExperimentalResultToJson => experimental_cmds::cmd_experimental_result_to_json(),
-        Commands::BenchmarkFunction => experimental_cmds::cmd_benchmark_function(),
-        Commands::TraceFunctionCalls => experimental_cmds::cmd_trace_function_calls(),
-        Commands::ReportGenerator => experimental_cmds::cmd_report_generator(),
-        Commands::PipelineValidator => experimental_cmds::cmd_pipeline_validator(),
-        Commands::CacheResults => experimental_cmds::cmd_cache_results(),
 
         #[cfg(feature = "alpha-reaction-dynamics")]
         Commands::ReactionDynamics3d {

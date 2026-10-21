@@ -311,7 +311,7 @@ fn test_ensemble_rmsd() {
         serde_json::from_str(&data).expect("Invalid gdb20_ensemble fixture");
 
     // Sort by heaviest molecules first (most atoms) for a representative sample
-    mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));
+    mols.sort_by_key(|m| std::cmp::Reverse(m.atoms.len()));
 
     // Load original reference for correct torsion data
     let ref_data = sci_form::fixture_io::read_text_fixture(reference_fixture)

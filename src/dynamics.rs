@@ -529,22 +529,10 @@ pub fn neb_energy_and_gradient(
             Ok(ff.compute_system_energy_and_gradients(coords, grad))
         }
         NebBackend::Mmff94 => {
-            let bonds: Vec<(usize, usize, u8)> = mol
-                .graph
-                .edge_indices()
-                .map(|e| {
-                    let (a, b) = mol.graph.edge_endpoints(e).unwrap();
-                    let order = match mol.graph[e].order {
-                        crate::graph::BondOrder::Single => 1u8,
-                        crate::graph::BondOrder::Double => 2,
-                        crate::graph::BondOrder::Triple => 3,
-                        crate::graph::BondOrder::Aromatic => 2,
-                        crate::graph::BondOrder::Unknown => 1,
-                    };
-                    (a.index(), b.index(), order)
-                })
-                .collect();
-            let terms = crate::forcefield::mmff94::Mmff94Builder::build(elements, &bonds);
+            let terms = crate::forcefield::mmff94::Mmff94Builder::build_typed(
+                mol,
+                crate::forcefield::mmff94::Mmff94Variant::Mmff94,
+            );
             let (energy, g) =
                 crate::forcefield::mmff94::Mmff94Builder::total_energy(&terms, coords);
             grad[..g.len()].copy_from_slice(&g);

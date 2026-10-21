@@ -82,7 +82,11 @@ fn f88_meshes_match_ase() {
             "GammaCentered" => KMeshCentering::GammaCentered,
             other => panic!("centering {other}"),
         };
-        let mesh = monkhorst_pack_mesh(&KMeshConfig { grid: m.grid, centering }).expect("mesh");
+        let mesh = monkhorst_pack_mesh(&KMeshConfig {
+            grid: m.grid,
+            centering,
+        })
+        .expect("mesh");
         assert_eq!(mesh.points.len(), m.grid.iter().product::<usize>());
         assert!(validate_kmesh_weights(&mesh, 1e-12));
         assert!((mesh.total_weight - 1.0).abs() <= 1e-12);
@@ -97,12 +101,13 @@ fn f88_meshes_match_ase() {
         got.sort_by(|a, b| a.partial_cmp(b).unwrap());
         if let Some(ase) = &m.ase_ref {
             assert_eq!(got.len(), ase.len());
-            let e = got
-                .iter()
-                .zip(ase)
-                .fold(0.0f64, |mm, (g, w)| {
-                    mm.max(g.iter().zip(w).fold(0.0, |m2, (&a, &b)| m2.max((a - b).abs())))
-                });
+            let e = got.iter().zip(ase).fold(0.0f64, |mm, (g, w)| {
+                mm.max(
+                    g.iter()
+                        .zip(w)
+                        .fold(0.0, |m2, (&a, &b)| m2.max((a - b).abs())),
+                )
+            });
             assert!(e <= fix.mesh_tolerance, "MP {:?}: {e:.3e}", m.grid);
         }
         // Per-axis closed form.
@@ -128,7 +133,9 @@ fn f88_bloch_phases_match() {
     let mut worst = 0.0f64;
     for c in &fix.phases {
         let (cos_p, sin_p) = bloch_phase(c.k, c.r);
-        worst = worst.max((cos_p - c.cos_ref).abs()).max((sin_p - c.sin_ref).abs());
+        worst = worst
+            .max((cos_p - c.cos_ref).abs())
+            .max((sin_p - c.sin_ref).abs());
         // Unit modulus.
         assert!((cos_p * cos_p + sin_p * sin_p - 1.0).abs() <= 1e-12);
     }
@@ -159,7 +166,11 @@ fn f88_chain_bands_match_analytic() {
         for ((k, w1), w2) in c.k_path.iter().zip(&c.band1_ref).zip(&c.band2_ref) {
             let hk = build_bloch_hamiltonian(&space, [*k, 0.0, 0.0]);
             let ev = hk.symmetric_eigen().eigenvalues;
-            let (lo, hi) = if ev[0] <= ev[1] { (ev[0], ev[1]) } else { (ev[1], ev[0]) };
+            let (lo, hi) = if ev[0] <= ev[1] {
+                (ev[0], ev[1])
+            } else {
+                (ev[1], ev[0])
+            };
             assert!((lo - w1).abs() <= fix.band_tolerance, "band1 {lo} vs {w1}");
             assert!((hi - w2).abs() <= fix.band_tolerance, "band2 {hi} vs {w2}");
         }

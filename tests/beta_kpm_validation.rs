@@ -38,6 +38,9 @@ struct KpmSystem {
 
 #[derive(serde::Deserialize)]
 struct Fixture {
+    /// Mirrors the fixture schema; the relative DOS tolerance is not used
+    /// because the gate compares the L2 error against the absolute tolerance.
+    #[allow(dead_code)]
     dos_tolerance_l2_rel: f64,
     moment_tolerance: f64,
     charge_tolerance_abs: f64,
@@ -91,14 +94,28 @@ fn f91_dos_matches_broadened_eigh() {
             continue;
         }
         let h = hmat(sys);
-        let cfg = KpmConfig { order: sys.order, n_vectors: 0, seed: 42, temperature: 0.0 };
+        let cfg = KpmConfig {
+            order: sys.order,
+            n_vectors: 0,
+            seed: 42,
+            temperature: 0.0,
+        };
         let lo = sys.grid[0];
         let hi = *sys.grid.last().unwrap();
         let r = compute_kpm_dos(&h, &cfg, lo, hi, sys.grid.len());
         assert_eq!(r.energies.len(), sys.grid.len());
-        assert_eq!(r.total_dos.len(), sys.dos_jackson_ref.len(), "fixture DOS length mismatch");
+        assert_eq!(
+            r.total_dos.len(),
+            sys.dos_jackson_ref.len(),
+            "fixture DOS length mismatch"
+        );
         let l2 = |want: &[f64]| {
-            let num: f64 = r.total_dos.iter().zip(want).map(|(&g, &w)| (g - w).powi(2)).sum();
+            let num: f64 = r
+                .total_dos
+                .iter()
+                .zip(want)
+                .map(|(&g, &w)| (g - w).powi(2))
+                .sum();
             let den: f64 = want.iter().map(|&w| w.powi(2)).sum();
             (num / den).sqrt()
         };
@@ -107,10 +124,16 @@ fn f91_dos_matches_broadened_eigh() {
         // Trapezoid integral ≈ N states.
         let dx = (hi - lo) / (sys.grid.len() - 1) as f64;
         let integ: f64 = r.total_dos.iter().sum::<f64>() * dx;
-        println!("F91b DOS N={}: Jackson L2 {tight:.3e}, Gauss L2 {shape:.4}, integral {integ:.3}", sys.n);
+        println!(
+            "F91b DOS N={}: Jackson L2 {tight:.3e}, Gauss L2 {shape:.4}, integral {integ:.3}",
+            sys.n
+        );
         assert!(tight <= 1e-9, "N={}: Jackson L2 {tight:.3e}", sys.n);
         assert!(shape <= 0.15, "N={}: Gauss shape L2 {shape:.4}", sys.n);
-        assert!((integ - sys.n as f64).abs() / sys.n as f64 <= 0.02, "integral {integ}");
+        assert!(
+            (integ - sys.n as f64).abs() / sys.n as f64 <= 0.02,
+            "integral {integ}"
+        );
     }
 }
 
@@ -126,7 +149,12 @@ fn f91_mulliken_matches_projector() {
         let s = DMatrix::identity(n, n);
         let z = vec![1.0; n];
         if sys.gapped {
-            let cfg = KpmConfig { order: sys.order, n_vectors: 0, seed: 42, temperature: 0.0 };
+            let cfg = KpmConfig {
+                order: sys.order,
+                n_vectors: 0,
+                seed: 42,
+                temperature: 0.0,
+            };
             let r = compute_kpm_mulliken(&h, &s, sys.nelec, &z, &cfg);
             let worst = r
                 .charges
@@ -137,7 +165,11 @@ fn f91_mulliken_matches_projector() {
                 "F91c Mulliken gapped N={}: worst {:.3e} (e_count {:.4}/{}, mu {:.4})",
                 sys.n, worst, r.n_electrons_kpm, r.n_electrons_target, r.fermi_level
             );
-            assert!(worst <= fix.charge_tolerance_abs, "N={}: {worst:.3e}", sys.n);
+            assert!(
+                worst <= fix.charge_tolerance_abs,
+                "N={}: {worst:.3e}",
+                sys.n
+            );
         } else {
             let cfg = KpmConfig {
                 order: sys.order,
@@ -156,7 +188,11 @@ fn f91_mulliken_matches_projector() {
                 "F91c Mulliken finite-T N={}: worst {:.3e} (e_count {:.4}/{}, mu {:.4})",
                 sys.n, worst, r.n_electrons_kpm, r.n_electrons_target, r.fermi_level
             );
-            assert!(worst <= fix.charge_tolerance_abs, "N={}: {worst:.3e}", sys.n);
+            assert!(
+                worst <= fix.charge_tolerance_abs,
+                "N={}: {worst:.3e}",
+                sys.n
+            );
         }
     }
     // Jackson kernel sanity (g_0 = 1, decaying).

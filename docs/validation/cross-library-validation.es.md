@@ -1258,7 +1258,7 @@ Leyenda: **Actual** = suite que ya existe en el repo; **Nuevo** = artefacto a cr
 |---|---|---|---|---|
 | F21 | Gasteiger | `test_charges.rs`, `generate_charges_reference.py` | gen `compare_gasteiger_rdkit.py` → test | RDKit `ComputeGasteigerCharges` |
 | F22 | EEQ (+EEQ-BC) | `test_eeq.rs`, `test_session_algorithms.rs` §10, `cross_validation.rs` (f22_eeqbc) | gen `compare_eeq_xtb.py` → fix; `oracle_eeqbc.py` (multicharge CLI) | xtb/tblite EEQ; multicharge `--model eeqbc` |
-| F23 | Mulliken/Löwdin | `test_eht.rs`, `test_phase_c.rs`, `generate_population_reference.py` | gen `compare_population_ref.py` → fix | YAeHMOP; PySCF |
+| F23 | Mulliken/Löwdin | `cross_validation.rs` (observable F23 registrado por el test F36) | `compare_population_ref.py` pendiente para la ruta EHT | YAeHMOP; PySCF |
 | F24 | NBO/NPA | `src/population/npa.rs` | gen `janpa_reference.py` → fix → test `test_npa_cross` | JANPA; NBO7 |
 | F25 | Wiberg/Mayer | `test_session_algorithms.rs` (parallel=serial) | gen `generate_bond_orders_reference.py` | Multiwfn; PySCF |
 | F26 | Dipolo | `test_extended_molecules.rs::test_dipole_moments_vs_nist` | ampliar serie NIST | NIST CCCBDB/WebBook |
@@ -1319,12 +1319,12 @@ Leyenda: **Actual** = suite que ya existe en el repo; **Nuevo** = artefacto a cr
 
 | # | Funcionalidad | Actual | Nuevo | Referencia / dataset |
 |---|---|---|---|---|
-| F64 | Grupos espaciales | `test_new_features.rs` (parcial) | gen `compare_space_groups.py` → fix 230 grupos | pymatgen; pyxtal; spglib |
-| F65 | CIF import/export | `test_session_algorithms.rs` §2 | gen `compare_cif_pymatgen.py` | pymatgen/ASE; COD |
-| F66 | PBC/superceldas | `test_roadmap_validation.rs` (parcial) | gen `compare_pbc_ase.py` | ASE; pymatgen |
+| F64 | Grupos espaciales | `validation_gates.rs` (f64, 230/230) | — | pymatgen; pyxtal; spglib |
+| F65 | CIF import/export | `validation_gates.rs` (f65) | — | pymatgen/ASE; COD |
+| F66 | PBC/superceldas | `validation_gates.rs` (f66) | — | ASE; pymatgen |
 | F67 | Ensamblado MOF | `test_roadmap_validation.rs` | gen `compare_pormake.py` | pormake; CoRE MOF; RCSR |
 | F68 | Porosidad | `docs/materials-assembly.md` | gen `compare_porosity_zeopp.py` | Zeo++; CoRE MOF |
-| F69 | XRD de polvo | `simulate_powder_xrd` | gen `compare_xrd_pymatgen.py` | pymatgen XRDCalculator; COD |
+| F69 | XRD de polvo | `validation_gates.rs` (f69) | — | pymatgen XRDCalculator; COD |
 | F70 | Optimización de frameworks | `test_new_features.rs` | gen `compare_framework_opt_ase.py` | ASE BFGS; CoRE MOF |
 | F71 | MD NVE/NVT | `alpha_dynamics_conservation.rs` | gen `compare_md_openmm.py` | OpenMM; LAMMPS; analítico |
 | F72 | Termostatos/barostats | `dynamics_live/*` tests | comparación LAMMPS | LAMMPS; Frenkel-Smit |
@@ -1477,7 +1477,7 @@ como *parcial* en la tabla "supported accuracy".
 | F16 | RDKit UFF | max abs (400 moléculas) | **0.0000 kcal/mol** | 0.01 | PASS |
 | F17 | RDKit UFF AtomTyper | etiquetas con mismatch | **0 / 33641** | 0 | PASS |
 | F21 | RDKit Gasteiger nIter=6 | max abs | **8.3e-17 e** | 0.02 | PASS |
-| F23 | PySCF RHF/STO-3G Mulliken | max abs | **8.6e-8 e** | 0.005 | PASS |
+| F23 | PySCF RHF/STO-3G Mulliken | max abs (medido dentro del test F36) | **8.6e-8 e** | 0.005 | PASS |
 | F26 | PySCF RHF/STO-3G dipolo Mulliken | max abs por componente | **1.8e-7 D**; dirección 0.0000° | 1e-6 | PASS |
 | F49 | NIST/CCCBDB bandas IR experimentales | recall de grupo (10 moléculas) | **1.000** | ≥ 0.90 | PASS |
 | F70 | RDKit `UFFOptimizeMolecule` (misma superficie F16) | |ΔE|/átomo mismo mínimo | **7.8e-10 kcal/mol**; RMSD 3.4e-6 Å | 1e-6 | PASS |
@@ -1496,10 +1496,10 @@ como *parcial* en la tabla "supported accuracy".
 | F45 (ext.) | tblite GFN2-xTB `uhf` | UKS: E−E_spin en OH/CH3/NO/O2 + uhf=0 ≡ restringido | **3.5e-2 eV** (relajación 2º orden; Σm exacto, E_spin<0) | 0.05 eV | PASS |
 | F46 | s-dftd3 (D3 HF-3c) / dftd4 (D4 PBE) | max abs E (18 moléculas) | D3 **6.8e-9 Ha** ; D4 **1.2e-10 Ha** | 1e-3 kcal/mol | PASS |
 | F59 | RDKit Morgan/ECFP4 | Spearman Tanimoto (780 pares) | **0.756** | ≥ 0.7 | PASS |
-| F64 | pymatgen/spglib (tablas ITC) | 230/230 grupos: orden, símbolo, sistema, red, grupo puntual y set de operaciones | **0 discrepancias** | 0 | PASS |
-| F65 | pymatgen CIF | parámetros de red (4 estructuras) + round-trip | **0.0** Å/grados | 1e-6 | PASS |
-| F66 | ASE `find_mic` | distancias de mínima imagen (44 pares) | **8.9e-16 Å** | 1e-10 | PASS |
-| F69 | pymatgen XRDCalculator (CuKα) | posiciones 2θ (4 estructuras) + corr. intensidades | **Δ2θ=0.0000°; corr ≥ 0.9982** | 0.01° / ≥0.95 | PASS |
+| F64 | pymatgen/spglib (tablas ITC) | 230/230 grupos: orden, símbolo, sistema, red, grupo puntual y set de operaciones (`tests/validation_gates.rs::f64_space_groups_match_spglib`) | **0 discrepancias** | 0 | PASS |
+| F65 | pymatgen CIF | parámetros de red (4 estructuras) + round-trip (`tests/validation_gates.rs::f65_cif_matches_pymatgen`) | **0.0** Å/grados | 1e-6 | PASS |
+| F66 | ASE `find_mic` | distancias de mínima imagen (44 pares) (`tests/validation_gates.rs::f66_minimum_image_matches_pymatgen`) | **8.9e-16 Å** | 1e-10 | PASS |
+| F69 | pymatgen XRDCalculator (CuKα) | posiciones 2θ (4 estructuras) + corr. intensidades (`tests/validation_gates.rs::f69_powder_xrd_matches_pymatgen`) | **Δ2θ=4.3e-14°; corr 1.000000** | 0.01° / ≥0.95 | PASS |
 | F47 | reglas EAS experimentales (+DFT) | top-1 f− en serie aromática (8 moléculas) | **7/8 (0.875)** | ≥ 0.80 | PASS |
 | F48 | xtb `vibspectrum` (misma matriz H) | 39 frecuencias (6 moléculas) | **0.009 cm⁻¹** | 2.0 | PASS |
 | F42 | MOPAC 23.2.5 PM3 | ΔHf (24 moléculas) + H/E_nuc/SCF de agua | **las 24 a <0.02 kcal/mol** (máx 8.4e-3; hidruros, H y E_nuc exactos como antes) | 0.02 | PASS |
@@ -1892,7 +1892,9 @@ detrás de su feature alpha/beta.
 | Runner end-to-end | `scripts/run_validation.sh` |
 | Fixtures + procedencia | `tests/fixtures/validation/` |
 | Versiones de referencia | `validation/refs.lock.json` |
-| Tests de validación cruzada | `tests/cross_validation.rs` (38 tests activos: F01, F05, F13, F14, F16, F17, F21, F22-EEQBC, F23+F26, F28, F31-EHT, F36–F39, F41 (CIS+CISD), F42 (24/24), F43–F49, F44-UKS, F45-UKS, F54-HLA, F59, F64–F70) |
+| Tests de validación cruzada | `tests/cross_validation.rs` (38 tests activos: F01, F05, F13, F14, F16, F17, F21, F22-EEQBC, F26, F28, F31-EHT, F36–F39, F41 (CIS+CISD), F42 (24/24), F43–F49, F44-UKS, F45-UKS, F54-HLA, F59, F67, F68, F70) |
+| Tests de validación de materiales | `tests/validation_gates.rs` (4 tests activos: F64 grupos espaciales, F65 CIF, F66 minimum-image, F69 XRD de polvo) |
+| Tests de validación MMFF94 | `tests/mmff94_validation.rs` (5 tests activos) |
 | Reporte | `reports/validation/summary.json` |
 
 ---

@@ -150,7 +150,11 @@ fn build_fock(
 }
 
 /// Löwdin diagonalization returning ascending eigenvalues + AO coefficients.
-fn diagonalize(s_half_inv: &DMatrix<f64>, fock: &DMatrix<f64>, n_basis: usize) -> (Vec<f64>, DMatrix<f64>) {
+fn diagonalize(
+    s_half_inv: &DMatrix<f64>,
+    fock: &DMatrix<f64>,
+    n_basis: usize,
+) -> (Vec<f64>, DMatrix<f64>) {
     let f_prime = s_half_inv * fock * s_half_inv;
     let eigen = f_prime.symmetric_eigen();
     let mut indices: Vec<usize> = (0..n_basis).collect();
@@ -654,12 +658,30 @@ pub fn solve_gfn2_unrestricted(
         }
 
         let f_a = build_fock(
-            &h_mat, &s_mat, &shifts_a, &vat_mp, &vdp, &vqp, &dpint, &qpint,
-            &basis_to_shell, &basis_map, n_basis,
+            &h_mat,
+            &s_mat,
+            &shifts_a,
+            &vat_mp,
+            &vdp,
+            &vqp,
+            &dpint,
+            &qpint,
+            &basis_to_shell,
+            &basis_map,
+            n_basis,
         );
         let f_b = build_fock(
-            &h_mat, &s_mat, &shifts_b, &vat_mp, &vdp, &vqp, &dpint, &qpint,
-            &basis_to_shell, &basis_map, n_basis,
+            &h_mat,
+            &s_mat,
+            &shifts_b,
+            &vat_mp,
+            &vdp,
+            &vqp,
+            &dpint,
+            &qpint,
+            &basis_to_shell,
+            &basis_map,
+            n_basis,
         );
         let (ea, ca) = diagonalize(&s_half_inv, &f_a, n_basis);
         let (eb, cb) = diagonalize(&s_half_inv, &f_b, n_basis);
@@ -738,7 +760,8 @@ pub fn solve_gfn2_unrestricted(
                 if shells[shp].atom != at {
                     continue;
                 }
-                e_spin += 0.5 * new_sh_mag[sh] * spin_w(shells[sh].l, shells[shp].l, z) * new_sh_mag[shp];
+                e_spin +=
+                    0.5 * new_sh_mag[sh] * spin_w(shells[sh].l, shells[shp].l, z) * new_sh_mag[shp];
             }
         }
 
@@ -809,8 +832,6 @@ pub fn solve_gfn2_unrestricted(
             prev_e_elec = e_elec;
             sh_charges = new_sh_charges;
             sh_mag = new_sh_mag;
-            dpat = new_dpat;
-            qpat = new_qpat;
             break;
         }
         prev_e_elec = e_elec;
@@ -849,15 +870,25 @@ pub fn solve_gfn2_unrestricted(
 
     let orb_a_ev: Vec<f64> = evals_a.iter().map(|e| e * EV_PER_HARTREE).collect();
     let orb_b_ev: Vec<f64> = evals_b.iter().map(|e| e * EV_PER_HARTREE).collect();
-    let na_idx = (n_alpha.round() as usize).saturating_sub(1).min(n_basis - 1);
+    let na_idx = (n_alpha.round() as usize)
+        .saturating_sub(1)
+        .min(n_basis - 1);
     let nb_idx = (n_beta.round() as usize).saturating_sub(1).min(n_basis - 1);
     let (homo_alpha, lumo_alpha) = (
         orb_a_ev[na_idx],
-        if na_idx + 1 < n_basis { orb_a_ev[na_idx + 1] } else { orb_a_ev[na_idx] },
+        if na_idx + 1 < n_basis {
+            orb_a_ev[na_idx + 1]
+        } else {
+            orb_a_ev[na_idx]
+        },
     );
     let (homo_beta, lumo_beta) = (
         orb_b_ev[nb_idx],
-        if nb_idx + 1 < n_basis { orb_b_ev[nb_idx + 1] } else { orb_b_ev[nb_idx] },
+        if nb_idx + 1 < n_basis {
+            orb_b_ev[nb_idx + 1]
+        } else {
+            orb_b_ev[nb_idx]
+        },
     );
 
     Ok(UksResult {
@@ -1240,15 +1271,25 @@ pub fn solve_gfn1_unrestricted(
 
     let orb_a_ev: Vec<f64> = evals_a.iter().map(|e| e * EV_PER_HARTREE).collect();
     let orb_b_ev: Vec<f64> = evals_b.iter().map(|e| e * EV_PER_HARTREE).collect();
-    let na_idx = (n_alpha.round() as usize).saturating_sub(1).min(n_basis - 1);
+    let na_idx = (n_alpha.round() as usize)
+        .saturating_sub(1)
+        .min(n_basis - 1);
     let nb_idx = (n_beta.round() as usize).saturating_sub(1).min(n_basis - 1);
     let (homo_alpha, lumo_alpha) = (
         orb_a_ev[na_idx],
-        if na_idx + 1 < n_basis { orb_a_ev[na_idx + 1] } else { orb_a_ev[na_idx] },
+        if na_idx + 1 < n_basis {
+            orb_a_ev[na_idx + 1]
+        } else {
+            orb_a_ev[na_idx]
+        },
     );
     let (homo_beta, lumo_beta) = (
         orb_b_ev[nb_idx],
-        if nb_idx + 1 < n_basis { orb_b_ev[nb_idx + 1] } else { orb_b_ev[nb_idx] },
+        if nb_idx + 1 < n_basis {
+            orb_b_ev[nb_idx + 1]
+        } else {
+            orb_b_ev[nb_idx]
+        },
     );
 
     Ok(Gfn1UksResult {

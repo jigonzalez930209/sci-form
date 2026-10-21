@@ -14,13 +14,21 @@ use sci_form::alpha::gsm::{find_transition_state, grow_string, interpolate_node,
 
 #[derive(serde::Deserialize)]
 struct Minimum {
+    /// Mirrors the fixture schema; the reference minimum is only used for
+    /// the endpoint checks, not the sampled energy.
+    #[allow(dead_code)]
     coords: [f64; 2],
+    #[allow(dead_code)]
     energy: f64,
 }
 
 #[derive(serde::Deserialize)]
 struct MepPoint {
+    /// Mirrors the fixture schema; the reference MEP is only used for the
+    /// shape checks, not the sampled values.
+    #[allow(dead_code)]
     coords: [f64; 2],
+    #[allow(dead_code)]
     energy: f64,
 }
 
@@ -30,6 +38,9 @@ struct Fixture {
     ts_energy: f64,
     ts_coords: [f64; 2],
     barrier: f64,
+    /// Mirrors the fixture schema; the reference MEP is only used for the
+    /// shape checks, not the sampled values.
+    #[allow(dead_code)]
     mep: Vec<MepPoint>,
     barrier_tolerance_rel: f64,
     ts_location_tolerance: f64,
@@ -81,12 +92,22 @@ fn f82_interpolate_exact() {
     // String grows from both ends and joins.
     let g = grow_string(&r, &p, &mb, &GsmConfig::default());
     assert!(g.nodes.len() >= 2);
-    println!("F82a: string nodes={} joined={} iters={}", g.nodes.len(), g.joined, g.iterations);
+    println!(
+        "F82a: string nodes={} joined={} iters={}",
+        g.nodes.len(),
+        g.joined,
+        g.iterations
+    );
 }
 
 /// MB-tuned config: gradients ~1e2/mol per unit length need small steps.
 fn mb_config() -> GsmConfig {
-    GsmConfig { max_nodes: 21, step_size: 0.001, max_iter: 2000, ..GsmConfig::default() }
+    GsmConfig {
+        max_nodes: 21,
+        step_size: 0.001,
+        max_iter: 2000,
+        ..GsmConfig::default()
+    }
 }
 
 /// F82b: GSM transition state vs ASE CI-NEB (barrier + location).
@@ -104,8 +125,13 @@ fn f82_ts_matches_ase_neb() {
     let d_e = (res.ts_energy - fix.ts_energy).abs() / fix.ts_energy.abs();
     println!(
         "F82b GSM vs ASE: barrier {:.4} (ref {:.4}, d={:.3e}) TS [{:.4},{:.4}] (d={:.4}) nodes={}",
-        res.activation_energy, fix.barrier, d_bar,
-        res.ts_coords[0], res.ts_coords[1], d_ts, res.n_nodes
+        res.activation_energy,
+        fix.barrier,
+        d_bar,
+        res.ts_coords[0],
+        res.ts_coords[1],
+        d_ts,
+        res.n_nodes
     );
     assert!(d_bar <= fix.barrier_tolerance_rel, "barrier {d_bar:.3e}");
     assert!(d_ts <= fix.ts_location_tolerance, "location {d_ts:.4}");

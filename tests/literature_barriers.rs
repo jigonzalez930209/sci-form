@@ -95,7 +95,12 @@ fn torsion_barrier(
             set_pos(
                 &mut g,
                 i,
-                rot_about_axis(get_pos(start, i), ax, pp, d as f64 * std::f64::consts::PI / 9.0),
+                rot_about_axis(
+                    get_pos(start, i),
+                    ax,
+                    pp,
+                    d as f64 * std::f64::consts::PI / 9.0,
+                ),
             );
         }
         es.push(sci_form::neb_backend_energy_kcal(method, smiles, &g).expect("single point"));
@@ -125,7 +130,11 @@ fn ammonia_barrier(method: &str, start: &[f64]) -> f64 {
         set_pos(
             &mut g,
             0,
-            [nat[0] + n[0] * (dd - d0), nat[1] + n[1] * (dd - d0), nat[2] + n[2] * (dd - d0)],
+            [
+                nat[0] + n[0] * (dd - d0),
+                nat[1] + n[1] * (dd - d0),
+                nat[2] + n[2] * (dd - d0),
+            ],
         );
         es.push(sci_form::neb_backend_energy_kcal(method, "N", &g).expect("single point"));
     }

@@ -146,7 +146,7 @@ pub(crate) fn nsao(l: u8) -> usize {
 }
 
 /// One contracted shell with absolute primitives.
-struct Gfn1Shell {
+pub(crate) struct Gfn1Shell {
     l: u8,
     prims: Vec<(f64, f64)>,
 }

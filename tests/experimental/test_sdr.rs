@@ -1,6 +1,6 @@
 //! Integration tests for E8: SDR Embedding
 
-#[cfg(feature = "experimental-sdr")]
+#[cfg(feature = "alpha-sdr")]
 mod sdr_tests {
     use sci_form::alpha::sdr::*;
 

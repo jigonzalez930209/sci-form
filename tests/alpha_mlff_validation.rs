@@ -131,7 +131,10 @@ fn f79_aev_matches_bp() {
             assert_eq!(x.to_vec(), y.to_vec());
         }
     }
-    println!("F79a AEV vs numpy: {} molecules x 2 param sets", fix.cases.len());
+    println!(
+        "F79a AEV vs numpy: {} molecules x 2 param sets",
+        fix.cases.len()
+    );
 }
 
 /// F79b: MLFF energies vs numpy forward; forces vs numpy FD.
@@ -143,15 +146,25 @@ fn f79_mlff_energy_forces_match() {
     let mut worst_f = 0.0f64;
     for c in &fix.cases {
         let mut element_nets = HashMap::new();
-        for z in c.elements.iter().copied().collect::<std::collections::HashSet<_>>() {
+        for z in c
+            .elements
+            .iter()
+            .copied()
+            .collect::<std::collections::HashSet<_>>()
+        {
             let key = z.to_string();
-            let spec = fix.nets.get(&key).unwrap_or_else(|| panic!("no net for {z}"));
+            let spec = fix
+                .nets
+                .get(&key)
+                .unwrap_or_else(|| panic!("no net for {z}"));
             element_nets.insert(z, net(spec));
         }
-        let cfg = MlffConfig { aev_params: params.clone(), element_nets };
+        let cfg = MlffConfig {
+            aev_params: params.clone(),
+            element_nets,
+        };
         let r = compute_mlff(&c.elements, &c.coords, &cfg).expect("mlff");
-        let de = (r.energy - c.energy_ref).abs()
-            / c.energy_ref.abs().max(1e-300);
+        let de = (r.energy - c.energy_ref).abs() / c.energy_ref.abs().max(1e-300);
         worst_e = worst_e.max(de);
         assert!(de <= fix.energy_tolerance, "{}: {de:.3e}", c.smiles);
         for (g, w) in r.forces.iter().zip(&c.forces_ref) {
@@ -168,26 +181,32 @@ fn f79_mlff_energy_forces_match() {
     let dim = params.radial_shifts.len() * params.radial_etas.len()
         + params.angular_shifts.len() * params.angular_etas.len() * params.angular_zetas.len();
     let zero_net = || {
-        InferenceNet::new(vec![
-            DenseLayer {
-                weights: vec![0.0; dim],
-                bias: vec![0.0],
-                in_features: dim,
-                out_features: 1,
-                activation: Activation::Linear,
-            },
-        ])
+        InferenceNet::new(vec![DenseLayer {
+            weights: vec![0.0; dim],
+            bias: vec![0.0],
+            in_features: dim,
+            out_features: 1,
+            activation: Activation::Linear,
+        }])
     };
     let mut worst_g = 0.0f64;
     for c in fix.cases.iter().filter(|c| c.gelu_energy_ref.is_some()) {
         let mut element_nets = HashMap::new();
         element_nets.insert(6u8, net(&fix.nets["6-gelu"]));
-        for z in c.elements.iter().copied().collect::<std::collections::HashSet<_>>() {
+        for z in c
+            .elements
+            .iter()
+            .copied()
+            .collect::<std::collections::HashSet<_>>()
+        {
             if z != 6 {
                 element_nets.insert(z, zero_net());
             }
         }
-        let cfg = MlffConfig { aev_params: params.clone(), element_nets };
+        let cfg = MlffConfig {
+            aev_params: params.clone(),
+            element_nets,
+        };
         let r = compute_mlff(&c.elements, &c.coords, &cfg).expect("mlff gelu");
         let want = c.gelu_energy_ref.unwrap();
         let dg = (r.energy - want).abs() / want.abs().max(1e-300);

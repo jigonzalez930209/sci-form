@@ -514,27 +514,7 @@ console.log(`Dominant IR band: ${peak_wn.toFixed(1)} cm⁻¹`);
 
 ### `compute_ir_spectrum_broadened`
 
-```typescript
-function compute_ir_spectrum_broadened(
-  analysis_json: string,  // JSON-serialised VibrationalAnalysis
-  gamma: number,          // HWHM (Lorentzian) or σ (Gaussian) in cm⁻¹
-  wn_min: number,
-  wn_max: number,
-  n_points: number,
-  broadening: string      // "lorentzian" | "gaussian"
-): string
-```
-
-Full-control IR broadening from an existing `VibrationalAnalysis` JSON. Returns the same `IrSpectrum` shape with both `.intensities` (absorbance) and `.transmittance` axes.
-
-```typescript
-const spec = JSON.parse(
-  compute_ir_spectrum_broadened(JSON.stringify(vib), 10.0, 400.0, 4000.0, 2000, 'gaussian')
-);
-console.log(`${spec.peaks.length} labelled peaks`);
-```
-
----
+> **Rust-only.** This function exists in the Rust API but is not currently exposed through the WASM/TypeScript bindings.
 
 ### `predict_nmr_shifts`
 
@@ -623,28 +603,7 @@ Returns JSON array of `JCoupling { h1_index, h2_index, j_hz, n_bonds, coupling_t
 
 ### `compute_ensemble_j_couplings`
 
-```typescript
-function compute_ensemble_j_couplings(
-  smiles: string,
-  conformers_json: string,  // JSON number[][] (array of flat coord arrays)
-  energies_json: string,    // JSON number[] in kcal/mol
-  temperature_k: number
-): string
-```
-
-Boltzmann-average ³J couplings over a conformer ensemble. Returns JSON array of `JCoupling`.
-
-```typescript
-const allCoords = results.map((r: any) => r.coords);
-const energies = new Array(allCoords.length).fill(0);
-const couplings = JSON.parse(
-  compute_ensemble_j_couplings('CCCC', JSON.stringify(allCoords), JSON.stringify(energies), 298.15)
-);
-couplings.forEach((jc: any) =>
-  console.log(`H${jc.h1_index}–H${jc.h2_index}: ${jc.j_hz.toFixed(2)} Hz`));
-```
-
----
+> **Rust-only.** This function exists in the Rust API but is not currently exposed through the WASM/TypeScript bindings.
 
 ### `compute_nmr_spectrum`
 

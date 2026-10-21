@@ -23,8 +23,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 
 const JS_SRC = path.join(root, 'crates', 'wasm', 'js');
-const PKG = path.join(root, 'pkg');
-const PKG_NODE = path.join(root, 'pkg-node');
+const PKG = path.join(root, 'crates', 'wasm', 'pkg');
+const PKG_NODE = path.join(root, 'crates', 'wasm', 'pkg-node');
+
+// wasm-pack emits `sci_form_wasm.js` for both the `web` (ESM) and `nodejs`
+// (CJS) targets — the module format differs, the file name does not.
+const MAIN_JS = 'sci_form_wasm.js';
+const MAIN_DTS = 'sci_form_wasm.d.ts';
 
 // ─── 1. Copy JS/TS re-export files into pkg directories ─────────────────────
 
@@ -47,8 +52,8 @@ function copySubpath(subdir, destRoot, mainEntry) {
 }
 
 for (const [pkgDir, mainEntry] of [
-  [PKG, '../sci_form_wasm.js'],
-  [PKG_NODE, '../sci_form.js'],
+  [PKG, `../${MAIN_JS}`],
+  [PKG_NODE, `../${MAIN_JS}`],
 ]) {
   if (!fs.existsSync(pkgDir)) {
     console.warn(`  ⚠ ${path.relative(root, pkgDir)} not found — run wasm-pack build first`);
@@ -95,10 +100,10 @@ function patchPackageJson(pkgDir, mainJs, mainDts, isCjs) {
 }
 
 if (fs.existsSync(PKG)) {
-  patchPackageJson(PKG, 'sci_form_wasm.js', 'sci_form_wasm.d.ts', false);
+  patchPackageJson(PKG, MAIN_JS, MAIN_DTS, false);
 }
 if (fs.existsSync(PKG_NODE)) {
-  patchPackageJson(PKG_NODE, 'sci_form.js', 'sci_form.d.ts', true);
+  patchPackageJson(PKG_NODE, MAIN_JS, MAIN_DTS, true);
 }
 
 console.log('\n✓ alpha/beta subpath exports installed');

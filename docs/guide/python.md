@@ -74,7 +74,7 @@ Returns a dict:
 ### `version() → str`
 
 ```python
-print(sci_form.version())  # "sci-form 0.9.1"
+print(sci_form.version())  # "sci-form 0.15.2"
 ```
 
 ## ConformerResult
@@ -103,7 +103,7 @@ print(sci_form.version())  # "sci-form 0.9.1"
 ```python
 import sci_form
 
-result = sci_form.compute_charges("CCO")
+result = sci_form.charges("CCO")
 print(f"Charges: {result['charges']}")          # [q₀, q₁, ...]
 print(f"Total charge: {result['total_charge']}")
 print(f"Iterations: {result['iterations']}")
@@ -132,7 +132,7 @@ print(f"All orbital energies: {eht['energies']}")
 ```python
 import sci_form
 
-pop = sci_form.compute_population(elements, coords)
+pop = sci_form.population(elements, coords)
 print(f"Mulliken charges: {pop['mulliken_charges']}")
 print(f"Löwdin charges: {pop['lowdin_charges']}")
 print(f"HOMO energy: {pop['homo_energy']:.3f} eV")
@@ -145,7 +145,7 @@ print(f"HOMO–LUMO gap: {pop['homo_lumo_gap']:.3f} eV")
 ```python
 import sci_form
 
-dipole = sci_form.compute_dipole(elements, coords)
+dipole = sci_form.dipole(elements, coords)
 print(f"Dipole magnitude: {dipole['magnitude']:.3f} Debye")
 print(f"Dipole vector: {dipole['vector']} D")  # [x, y, z]
 ```
@@ -155,7 +155,7 @@ print(f"Dipole vector: {dipole['vector']} D")  # [x, y, z]
 ```python
 import sci_form
 
-esp = sci_form.compute_esp(elements, coords, spacing=0.3, padding=3.0)
+esp = sci_form.esp(elements, coords, spacing=0.3, padding=3.0)
 print(f"Grid dimensions: {esp['dims']}")   # (nx, ny, nz)
 print(f"Grid origin: {esp['origin']}")     # [x, y, z]
 print(f"Grid spacing: {esp['spacing']} Ų")
@@ -167,7 +167,7 @@ print(f"Grid values shape: ({esp['nx']} × {esp['ny']} × {esp['nz']})")
 ```python
 import sci_form
 
-sasa = sci_form.compute_sasa(elements, coords, probe_radius=1.4)
+sasa = sci_form.sasa(elements, coords, probe_radius=1.4)
 print(f"Total SASA: {sasa['total_sasa']:.2f} Ų")
 print(f"Per-atom SASA: {sasa['per_atom_sasa']}")  # [a₀, a₁, ...]
 ```
@@ -177,7 +177,7 @@ print(f"Per-atom SASA: {sasa['per_atom_sasa']}")  # [a₀, a₁, ...]
 ```python
 import sci_form
 
-dos = sci_form.compute_dos(
+dos = sci_form.dos(
     elements, coords,
     sigma=0.3,        # Gaussian smearing width
     e_min=-30.0,      # Energy range (eV)
@@ -200,7 +200,7 @@ import sci_form
 coords_flat = [x0, y0, z0, x1, y1, z1, ...]  # from result.coords
 reference_flat = [...]                         # reference conformation
 
-rmsd_result = sci_form.compute_rmsd(coords_flat, reference_flat)
+rmsd_result = sci_form.rmsd(coords_flat, reference_flat)
 print(f"RMSD: {rmsd_result['rmsd']:.3f} Ų")
 print(f"Aligned coordinates: {rmsd_result['aligned_coords']}")
 ```
@@ -211,7 +211,7 @@ print(f"Aligned coordinates: {rmsd_result['aligned_coords']}")
 import sci_form
 
 # From SMILES directly
-energy = sci_form.compute_uff_energy("CCO", coords_flat)
+energy = sci_form.uff_energy("CCO", coords_flat)
 print(f"UFF Energy: {energy:.3f} kcal/mol")
 ```
 
@@ -234,10 +234,10 @@ result = sci_form.embed("c1ccc(cc1)C(=O)Nc1ccc(O)cc1" * 2, seed=42)
 
 # These run in parallel automatically
 start = time.time()
-dos = sci_form.compute_dos(result.elements, result.coords, sigma=0.3, n_points=500)
+dos = sci_form.dos(result.elements, result.coords, sigma=0.3, n_points=500)
 print(f"DOS computed in {time.time() - start:.3f}s (parallel)")
 
-sasa = sci_form.compute_sasa(result.elements, result.coords)
+sasa = sci_form.sasa(result.elements, result.coords)
 print(f"SASA computed in {time.time() - start:.3f}s (parallel)")
 ```
 

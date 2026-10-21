@@ -106,13 +106,19 @@ pub fn numerical_stress(
             }
             let e_plus = energy_at(&plus)?;
             let e_minus = energy_at(&minus)?;
-            // ∂E/∂ε_ij: for i≠j the ±δ/2 perturbation counts both symmetric
-            // entries, hence the factor 1/(4·(δ/2)) = 1/(2δ).
-            let deriv = if i == j {
-                (e_plus - e_minus) / (2.0 * delta)
-            } else {
-                (e_plus - e_minus) / (2.0 * delta)
-            };
+            // ∂E/∂ε_ij.
+            //
+            // Diagonal (i == j): the perturbation is ε_ii = ±δ, so the central
+            // difference over ±δ gives the derivative directly.
+            //
+            // Off-diagonal (i ≠ j): the symmetric perturbation sets
+            // ε_ij = ε_ji = ±δ/2. Since the energy is invariant under
+            // interchanging i and j, the symmetric-strain derivative
+            // ∂E/∂ε_ij counts both entries, and the chain rule contributes the
+            // extra factor 1/2 from d(δ/2)/dδ. The two therefore cancel and
+            // the same 1/(2δ) central difference applies:
+            //     (E(+δ/2) - E(-δ/2)) / (2·(δ/2)) · ½ = (E+ - E-)/(2δ).
+            let deriv = (e_plus - e_minus) / (2.0 * delta);
             let value = deriv / volume;
             stress[i][j] = value;
             stress[j][i] = value;
@@ -209,13 +215,6 @@ pub fn optimize_variable_cell(
     let mut n_iter = 0;
 
     let (mut energy, mut forces) = energy_fn(elements, &positions, &lattice)?;
-    let mut stress = numerical_stress(
-        elements,
-        &positions,
-        &lattice,
-        energy_fn,
-        config.stress_delta,
-    )?;
     energy_history.push(energy);
 
     for outer in 0..config.max_outer {
@@ -243,8 +242,8 @@ pub fn optimize_variable_cell(
             }
         }
 
-        // 2) Stress.
-        stress = numerical_stress(
+        // 2) Stress (recomputed after every position relaxation).
+        let stress = numerical_stress(
             elements,
             &positions,
             &lattice,

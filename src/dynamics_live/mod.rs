@@ -21,10 +21,10 @@ pub mod neighbor_list;
 pub mod pbc;
 pub mod state;
 
+/// Steering lives in core [`crate::imd`]; re-exported here for compatibility.
+pub use crate::imd::*;
 pub use barostat::*;
 pub use langevin::*;
 pub use neighbor_list::*;
 pub use pbc::*;
 pub use state::*;
-/// Steering lives in core [`crate::imd`]; re-exported here for compatibility.
-pub use crate::imd::*;

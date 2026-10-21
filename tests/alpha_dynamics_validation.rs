@@ -63,7 +63,12 @@ fn topology(smiles: &str) -> (Vec<u8>, Vec<(usize, usize, String)>) {
 
 fn system_for(c: &DynCase) -> LiveMolecularSystem {
     let (elements, bonds) = topology(&c.smiles);
-    assert_eq!(elements.len() * 3, c.coords.len(), "{}: topology/coords", c.smiles);
+    assert_eq!(
+        elements.len() * 3,
+        c.coords.len(),
+        "{}: topology/coords",
+        c.smiles
+    );
     assert_eq!(elements, c.elements, "{}: elements", c.smiles);
     LiveMolecularSystem::from_conformer(&c.smiles, &elements, &c.coords, &bonds, MdBackend::Uff)
 }
@@ -89,15 +94,19 @@ fn f84_forces_match_rdkit() {
         }
         assert!(df <= fix.force_tolerance, "{}: forces {df:.3e}", c.smiles);
     }
-    println!("F84a forces vs RDKit: n={} worst {:.3e}", fix.cases.len(), worst.0);
+    println!(
+        "F84a forces vs RDKit: n={} worst {:.3e}",
+        fix.cases.len(),
+        worst.0
+    );
 }
 
 /// Total linear momentum (amu·Å/fs).
 fn momentum(sys: &LiveMolecularSystem) -> [f64; 3] {
     let mut p = [0.0; 3];
     for a in &sys.atoms {
-        for d in 0..3 {
-            p[d] += a.mass * a.velocity[d];
+        for (d, p_d) in p.iter_mut().enumerate() {
+            *p_d += a.mass * a.velocity[d];
         }
     }
     p
@@ -109,14 +118,14 @@ fn f84_nve_verlet_properties() {
     let fix = load();
     let c = &fix.cases[0];
     let mut sys = system_for(c);
-    let pe0 = sys.compute_forces().expect("forces");
+    let _pe0 = sys.compute_forces().expect("forces");
     sys.initialize_velocities(300.0, 42);
     // Zero total momentum for a clean conservation check.
     let p0 = momentum(&sys);
     let mtot: f64 = sys.atoms.iter().map(|a| a.mass).sum();
     for a in sys.atoms.iter_mut() {
-        for d in 0..3 {
-            a.velocity[d] -= p0[d] / mtot;
+        for (d, v) in a.velocity.iter_mut().enumerate() {
+            *v -= p0[d] / mtot;
         }
     }
     sys.sync_flat_from_atoms();
@@ -127,7 +136,10 @@ fn f84_nve_verlet_properties() {
     let drift = (e1 - e0).abs() / e0.abs().max(1e-300);
     let p1 = momentum(&sys);
     let pmag: f64 = p1.iter().map(|v| v * v).sum::<f64>().sqrt();
-    println!("F84b NVE 1ps: drift {drift:.3e} |p| {pmag:.3e} t={}fs", sys.time_fs);
+    println!(
+        "F84b NVE 1ps: drift {drift:.3e} |p| {pmag:.3e} t={}fs",
+        sys.time_fs
+    );
     assert!(drift <= 1e-3, "energy drift {drift:.3e}");
     assert!(pmag <= 1e-6, "momentum {pmag:.3e}");
     // Reversibility over a short horizon (long horizons diverge by chaos

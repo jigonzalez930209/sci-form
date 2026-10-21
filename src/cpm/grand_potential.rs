@@ -108,7 +108,7 @@ pub fn compute_cpm_charges(
 ) -> CpmResult {
     let n = elements.len();
     let mut charges = vec![0.0; n];
-    let mut converged = false;
+    let _converged = false;
 
     // Precompute Coulomb coupling matrix J_ij
     // Screened by dielectric: J_ij = 1 / (ε · r_ij) in eV (with conversion)
@@ -230,7 +230,12 @@ pub fn compute_cpm_charges(
         }
     }
 
-    let grand_potential = e_elec - mus.iter().zip(charges.iter()).map(|(m, q)| m * q).sum::<f64>();
+    let grand_potential = e_elec
+        - mus
+            .iter()
+            .zip(charges.iter())
+            .map(|(m, q)| m * q)
+            .sum::<f64>();
 
     CpmResult {
         charges,

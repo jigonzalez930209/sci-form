@@ -3,9 +3,32 @@
  * sci-form WASM/TypeScript Integration Tests
  *
  * Tests that WASM bindings produce correct results across all API functions.
+ *
+ * Requires a built WASM package:
+ *   npm run wasm:build:node     (emits crates/wasm/pkg-node/sci_form_wasm.js)
+ *   npm run wasm:build          (emits crates/wasm/pkg/sci_form_wasm.js, ESM)
  */
 
-const wasm = require('../crates/wasm/pkg/sci_form_wasm.js');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const rootDir = path.resolve(__dirname, '..', '..');
+const CANDIDATES = [
+  path.join(rootDir, 'crates', 'wasm', 'pkg-node', 'sci_form_wasm.js'),
+  path.join(rootDir, 'crates', 'wasm', 'pkg', 'sci_form_wasm.js'),
+];
+
+const wasmPath = CANDIDATES.find((candidate) => fs.existsSync(candidate));
+if (!wasmPath) {
+  console.error(
+    'FATAL: no built WASM package found.\n' +
+      `Looked in:\n${CANDIDATES.map((c) => `  - ${c}`).join('\n')}\n` +
+      'Build it first with: npm run wasm:build:node'
+  );
+  process.exit(1);
+}
+console.log(`Using WASM package: ${path.relative(rootDir, wasmPath)}`);
+const wasm = require(wasmPath);
 
 let passed = 0;
 let failed = 0;

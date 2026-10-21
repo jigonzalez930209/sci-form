@@ -182,7 +182,7 @@ pub fn eeqbc_coordination_numbers(elements: &[u8], positions_bohr: &[[f64; 3]]) 
                 continue;
             }
             let r = pair_distance(positions_bohr, i, j);
-            if r > EEQBC_CN_CUTOFF || r < 1e-6 {
+            if !(1e-6..=EEQBC_CN_CUTOFF).contains(&r) {
                 continue;
             }
             let rc = EEQBC_COVRAD[zi - 1] + EEQBC_COVRAD[zj - 1];
@@ -215,7 +215,7 @@ pub fn eeqbc_local_charges(
                 continue;
             }
             let r = pair_distance(positions_bohr, i, j);
-            if r > EEQBC_CN_CUTOFF || r < 1e-6 {
+            if !(1e-6..=EEQBC_CN_CUTOFF).contains(&r) {
                 continue;
             }
             let rc = EEQBC_COVRAD[zi - 1] + EEQBC_COVRAD[zj - 1];

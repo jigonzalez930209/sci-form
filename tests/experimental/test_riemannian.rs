@@ -3,7 +3,7 @@
 //! Validates PSD manifold operations, Riemannian L-BFGS convergence,
 //! and geometric quality of optimized metric matrices.
 
-#[cfg(feature = "experimental-riemannian")]
+#[cfg(feature = "beta-riemannian")]
 mod riemannian_tests {
     use nalgebra::{DMatrix, SymmetricEigen};
     use sci_form::beta::riemannian::*;

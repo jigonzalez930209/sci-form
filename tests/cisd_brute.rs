@@ -245,7 +245,7 @@ fn create(det: &(u64, u64), p: usize, n: usize) -> Option<(u64, u64)> {
 fn phase_annihilate(det: &(u64, u64), p: usize, n: usize) -> f64 {
     let m = if p / n == 0 { det.0 } else { det.1 };
     let below = (m & ((1u64 << (p % n)) - 1)).count_ones();
-    if below % 2 == 0 {
+    if below.is_multiple_of(2) {
         1.0
     } else {
         -1.0
@@ -257,7 +257,7 @@ fn phase_create(det: &(u64, u64), p: usize, n: usize) -> f64 {
     // orbitals *below* its index.
     let m = if p / n == 0 { det.0 } else { det.1 };
     let below = (m & ((1u64 << (p % n)) - 1)).count_ones();
-    if below % 2 == 0 {
+    if below.is_multiple_of(2) {
         1.0
     } else {
         -1.0

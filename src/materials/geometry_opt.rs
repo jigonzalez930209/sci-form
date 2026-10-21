@@ -22,6 +22,9 @@ pub enum OptMethod {
     Bfgs,
 }
 
+/// One accepted steepest-descent step: positions, energy, forces, step length.
+type AcceptedStep = (Vec<[f64; 3]>, f64, Vec<[f64; 3]>, f64);
+
 /// Configuration for framework geometry optimization.
 #[derive(Debug, Clone)]
 pub struct FrameworkOptConfig {
@@ -270,7 +273,7 @@ where
         // and steepest descent is retried; if that fails too, the loop
         // stops with converged == false.
         let c_armijo = 1e-4;
-        let mut accepted: Option<(Vec<[f64; 3]>, f64, Vec<[f64; 3]>, f64)> = None;
+        let mut accepted: Option<AcceptedStep> = None;
         for _ in 0..2 {
             let mut a = 1.0;
             loop {

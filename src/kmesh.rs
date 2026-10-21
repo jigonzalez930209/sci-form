@@ -233,7 +233,6 @@ pub fn monkhorst_pack_mesh(config: &KMeshConfig) -> Result<KMesh, String> {
     })
 }
 
-
 /// Compute the Bloch phase for a lattice translation.
 pub fn bloch_phase(k_fractional: [f64; 3], translation: [i32; 3]) -> (f64, f64) {
     let theta = 2.0

@@ -22,7 +22,7 @@ pub(crate) const EV: f64 = 27.211_386_245_988;
 /// Bohr radius in Å (MOPAC `a0`).
 pub(crate) const A0: f64 = 0.529_177_210_903;
 /// kcal/mol per eV (MOPAC `fpc_9`).
-pub(crate) const KCAL_PER_EV: f64 = 23.060_547_830_619_029;
+pub(crate) const KCAL_PER_EV: f64 = 23.060_547_830_619_03;
 
 /// Derived per-element quantities (MOPAC `calpar` + `inid`).
 #[derive(Debug, Clone, Copy)]
@@ -228,7 +228,7 @@ fn set_ab(esa: f64, esb: f64, na: u8, nb: u8, rab: f64, ii: usize) -> AbIntegral
 
 /// Full molecular-frame overlap matrix for the sp basis (MOPAC `diat`/`diat2`).
 pub(crate) fn overlap_matrix(elements: &[u8], positions: &[[f64; 3]]) -> DMatrix<f64> {
-    let n_atoms = elements.len();
+    let _n_atoms = elements.len();
     let mut basis: Vec<(usize, usize)> = Vec::new(); // (atom, orbital 0=s,1=px,2=py,3=pz)
     for (i, &z) in elements.iter().enumerate() {
         basis.push((i, 0));
@@ -288,8 +288,10 @@ fn diat2_overlaps(
 ) {
     let rab = r_ang / A0;
     let mut ab = set_ab(esa, esb, na, nb, rab, ii);
-    let mut isp = ab.isp;
-    let mut ips = ab.ips;
+    // `isp`/`ips` are always (re)assigned from `ab` before use in every
+    // branch below, so they are intentionally left uninitialized here.
+    let mut isp;
+    let mut ips;
     let s11;
     let mut s22a = 0.0;
     let mut s22b = 0.0;
@@ -804,8 +806,18 @@ fn reppd(
     (ri, gab)
 }
 
+/// Density matrix, Fock matrix, electronic energy and Mulliken charges.
+type DmFockEnergyCharges = (DMatrix<f64>, DMatrix<f64>, f64, Vec<f64>);
+
+/// 3x3 matrix of direction cosines.
+type Mat3 = [[f64; 3]; 3];
+/// Six 3x3 direction-cosine blocks (`pp[6][3][3]`).
+type Mat3x6 = [[[f64; 3]; 3]; 6];
+/// NDDO two-centre integrals: 10x10 sp block, two 4x4 blocks and a scalar.
+type TwoCentreIntegrals = ([[f64; 10]; 10], [[f64; 4]; 4], [[f64; 4]; 4], f64);
+
 /// Direction cosines (MOPAC `rotmat`, sp block): `p[3][3]` and `pp[6][3][3]`.
-fn rotmat(pos_a: &[f64; 3], pos_b: &[f64; 3]) -> ([f64; 3], [[f64; 3]; 3], [[[f64; 3]; 3]; 6]) {
+fn rotmat(pos_a: &[f64; 3], pos_b: &[f64; 3]) -> ([f64; 3], Mat3, Mat3x6) {
     let (x11, x22, x33) = (
         pos_b[0] - pos_a[0],
         pos_b[1] - pos_a[1],
@@ -932,7 +944,7 @@ fn two_center_block(
     db: &Pm3Derived,
     pos_a: &[f64; 3],
     pos_b: &[f64; 3],
-) -> ([[f64; 10]; 10], [[f64; 4]; 4], [[f64; 4]; 4], f64) {
+) -> TwoCentreIntegrals {
     let r_ang = ((pos_a[0] - pos_b[0]).powi(2)
         + (pos_a[1] - pos_b[1]).powi(2)
         + (pos_a[2] - pos_b[2]).powi(2))
@@ -1134,7 +1146,7 @@ fn ccrep(pa: &Pm3Params, pb: &Pm3Params, r_ang: f64, gab: f64) -> f64 {
     let r = r_ang;
     let enuc = pa.core_charge * pb.core_charge * gab;
     let mut enuclr;
-    let n_gauss;
+
     // PM3 has no bond parameters (`xfac`) for these pairs: exponential branch.
     let eni = (-pa.alpha * r).exp();
     let enj = (-pb.alpha * r).exp();
@@ -1150,7 +1162,7 @@ fn ccrep(pa: &Pm3Params, pb: &Pm3Params, r_ang: f64, gab: f64) -> f64 {
         }
     }
     enuclr = scale0 * enuc.abs() + enuc;
-    n_gauss = 4;
+    let n_gauss = 4;
     let mut scale = 0.0;
     for ig in 0..n_gauss {
         if let Some(&(g1, g2, g3)) = pa.gaussians.get(ig) {
@@ -1366,7 +1378,7 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
     let basis = basis_layout(elements);
     let n_basis = basis.len();
     let n_electrons: usize = params.iter().map(|p| p.core_charge as usize).sum();
-    if n_electrons % 2 != 0 {
+    if !n_electrons.is_multiple_of(2) {
         return Err(
             "faithful PM3 currently supports closed-shell (even electron) systems".to_string(),
         );
@@ -1454,7 +1466,6 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
     let mut converged = false;
     let mut iterations = 0;
     let mut prev_energy = f64::MAX;
-    let mut e_elec = 0.0;
     let mut alpha: f64 = 0.4;
     let build_g = |density: &DMatrix<f64>| build_g_matrix(&params, &basis, &blocks, density);
     let density_from = |coeff: &DMatrix<f64>| -> DMatrix<f64> {
@@ -1486,33 +1497,33 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
         let p_new = density_from(&coeff);
         let g_new = build_g(&p_new);
         let f_new = &h_core + &g_new;
-        e_elec = trace_p_hf(&p_new, &f_new);
+        let e_elec_iter = trace_p_hf(&p_new, &f_new);
         if std::env::var("PM3_TRACE").is_ok() {
             eprintln!(
-                "iter {iter}: E_elec={e_elec:.6} P_diag={:?}",
+                "iter {iter}: E_elec={e_elec_iter:.6} P_diag={:?}",
                 (0..n_basis).map(|i| p_new[(i, i)]).collect::<Vec<_>>()
             );
         }
-        if (e_elec - prev_energy).abs() < 1e-9 && iter > 1 {
+        if (e_elec_iter - prev_energy).abs() < 1e-9 && iter > 1 {
             converged = true;
             density = p_new;
             fock = f_new;
             break;
         }
         // Adaptive damping: shrink on energy increase, grow otherwise.
-        if iter > 0 && e_elec > prev_energy {
+        if iter > 0 && e_elec_iter > prev_energy {
             alpha = (alpha * 0.5).max(0.02);
         } else {
             alpha = (alpha * 1.05).min(0.9);
         }
-        prev_energy = e_elec;
+        prev_energy = e_elec_iter;
         density = &density * (1.0 - alpha) + &p_new * alpha;
         fock = &h_core + &build_g(&density);
     }
 
     let (orbital_energies, coeff) = solve_generalized(&fock, &s_mat);
-    // Final density from the converged coefficients.
-    let mut density = DMatrix::zeros(n_basis, n_basis);
+    // Final density from the converged coefficients (overwrites the damped
+    // SCF density in place).
     for i in 0..n_basis {
         for j in 0..n_basis {
             let mut sum = 0.0;
@@ -1522,7 +1533,7 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
             density[(i, j)] = 2.0 * sum;
         }
     }
-    e_elec = 0.0;
+    let mut e_elec = 0.0;
     for i in 0..n_basis {
         for j in 0..n_basis {
             e_elec += 0.5 * density[(i, j)] * (h_core[(i, j)] + fock[(i, j)]);
@@ -1574,7 +1585,7 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
 pub fn debug_matrices(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<(DMatrix<f64>, DMatrix<f64>, f64, Vec<f64>), String> {
+) -> Result<DmFockEnergyCharges, String> {
     let params: Vec<&Pm3Params> = elements
         .iter()
         .map(|&z| get_pm3_params(z).ok_or_else(|| format!("no params Z={z}")))
@@ -1667,7 +1678,7 @@ pub fn debug_block(
     zb: u8,
     pos_a: &[f64; 3],
     pos_b: &[f64; 3],
-) -> Result<([[f64; 10]; 10], [[f64; 4]; 4], [[f64; 4]; 4], f64), String> {
+) -> Result<TwoCentreIntegrals, String> {
     let pa = get_pm3_params(za).ok_or("no params")?;
     let pb = get_pm3_params(zb).ok_or("no params")?;
     let da = Pm3Derived::new(pa);

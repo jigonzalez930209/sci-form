@@ -228,7 +228,7 @@ fn test_gdb20_parallel() {
         serde_json::from_str(&ref_data).expect("Invalid gdb20_reference fixture");
 
     // Sort by heaviest molecules first (most atoms) for a representative sample
-    ref_mols.sort_by(|a, b| b.atoms.len().cmp(&a.atoms.len()));
+    ref_mols.sort_by_key(|m| std::cmp::Reverse(m.atoms.len()));
 
     // Optional limit — default 300 heaviest; use GDB20_LIMIT=0 for full run
     let limit: usize = std::env::var("GDB20_LIMIT")

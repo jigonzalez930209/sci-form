@@ -72,7 +72,8 @@ pub fn compute_bond_orders(
             let pi = &atom_params[i];
             let pj = &atom_params[j];
 
-            let r0_sigma = (pi.r_sigma + pj.r_sigma) / 2.0;            let r0_pi = (pi.r_pi + pj.r_pi) / 2.0;
+            let r0_sigma = (pi.r_sigma + pj.r_sigma) / 2.0;
+            let r0_pi = (pi.r_pi + pj.r_pi) / 2.0;
             let r0_pipi = (pi.r_pipi + pj.r_pipi) / 2.0;
 
             // Bond order components

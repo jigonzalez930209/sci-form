@@ -1052,6 +1052,18 @@ pub fn sto_multipole_with_ng(
     (s_total, d_total, q_total)
 }
 
+/// Raw STO-nG table primitives as (exponent ratio, coefficient) for an
+/// (n, l) shell with ng primitives. Ratios multiply ζ² for absolute
+/// exponents. Used by the GFN0 basis builder (validation F43).
+pub(crate) fn sto_table_prims(n: u8, l: u8, ng: u8) -> Vec<(f64, f64)> {
+    match ng {
+        2 => sto2g_coefficients(n, l).to_vec(),
+        4 => sto4g_coefficients(n, l).to_vec(),
+        6 => sto6g_coefficients(n, l).to_vec(),
+        _ => sto3g_coefficients(n, l).to_vec(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1379,17 +1391,5 @@ mod tests {
         println!("Diff primitive_overlap:     {:.3e}", total - expected);
         println!("Diff sto_overlap_with_ng:   {:.3e}", s_func - expected);
         println!("Diff sto_multipole_with_ng: {:.3e}", s_mp - expected);
-    }
-}
-
-/// Raw STO-nG table primitives as (exponent ratio, coefficient) for an
-/// (n, l) shell with ng primitives. Ratios multiply ζ² for absolute
-/// exponents. Used by the GFN0 basis builder (validation F43).
-pub(crate) fn sto_table_prims(n: u8, l: u8, ng: u8) -> Vec<(f64, f64)> {
-    match ng {
-        2 => sto2g_coefficients(n, l).to_vec(),
-        4 => sto4g_coefficients(n, l).to_vec(),
-        6 => sto6g_coefficients(n, l).to_vec(),
-        _ => sto3g_coefficients(n, l).to_vec(),
     }
 }

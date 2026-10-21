@@ -315,7 +315,7 @@
   "ficha": "F41",
   "observable": "cisd_correlation_vs_pyscf",
   "metric": "max_abs",
-  "value": 1.780608945706197e-08,
+  "value": 1.7806089457061972e-08,
   "tolerance": 1e-06,
   "pass": true,
   "n_cases": 6,
@@ -442,7 +442,7 @@
   "ficha": "F46",
   "observable": "d4_pbe_standalone_max_abs_hartree",
   "metric": "max_abs",
-  "value": 6.197625954107444e-10,
+  "value": 6.197625954107443e-10,
   "tolerance": 1.5936014376405156e-06,
   "pass": true,
   "n_cases": 25,
@@ -555,6 +555,18 @@
   "source": "tests/cross_validation.rs"
  },
  {
+  "ficha": "F64",
+  "observable": "space_groups_vs_spglib",
+  "metric": "max_abs_translation",
+  "value": 0.0,
+  "tolerance": 1e-12,
+  "pass": true,
+  "n_cases": 230,
+  "source": "tests/validation_gates.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
   "ficha": "F65",
   "observable": "cif_roundtrip_vs_pymatgen",
   "reference": {
@@ -564,12 +576,13 @@
   "level": "L2",
   "n_cases": 4,
   "metric": "max_abs_lattice_param",
-  "value": null,
+  "value": 0.0,
   "tolerance": 1e-06,
-  "pass": null,
+  "pass": true,
   "notes": "Cell parameters \u2264 1e-6 \u00c5/deg; round-trip stable. Measured by tests/cross_validation.rs::f65_cif.",
   "timestamp": "2026-10-12T10:27:34",
-  "status": "tracked"
+  "status": "tracked",
+  "source": "tests/validation_gates.rs"
  },
  {
   "ficha": "F66",
@@ -581,12 +594,13 @@
   "level": "L0/L2",
   "n_cases": 4,
   "metric": "max_abs",
-  "value": null,
+  "value": 8.881784197001252e-16,
   "tolerance": 1e-10,
-  "pass": null,
+  "pass": true,
   "notes": "Minimum-image distances \u2264 1e-10 \u00c5; supercell/wrap invariants checked in the Rust test. Measured by tests/cross_validation.rs::f66_pbc.",
   "timestamp": "2026-10-12T10:27:34",
-  "status": "tracked"
+  "status": "tracked",
+  "source": "tests/validation_gates.rs"
  },
  {
   "ficha": "F67",
@@ -663,12 +677,13 @@
   "level": "L2",
   "n_cases": 4,
   "metric": "max_abs_two_theta",
-  "value": null,
+  "value": 4.263256414560601e-14,
   "tolerance": 0.01,
-  "pass": null,
+  "pass": true,
   "notes": "Peak positions tolerance 0.01\u00b0; intensity correlation \u2265 0.95 in the plan. Measured by tests/cross_validation.rs::f69_xrd.",
   "timestamp": "2026-10-12T10:27:34",
-  "status": "tracked"
+  "status": "tracked",
+  "source": "tests/validation_gates.rs"
  },
  {
   "ficha": "F70",

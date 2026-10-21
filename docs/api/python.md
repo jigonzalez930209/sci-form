@@ -90,24 +90,10 @@ print(result.total_charge) # ~0.0
 
 ### `charges_configured`
 
-```python
-def charges_configured(
-    smiles: str,
-    max_iter: int = 6,
-    initial_damping: float = 1.0,
-    convergence_threshold: float = 1e-8,
-) -> ChargeResult
-```
+> **Rust-only.** This function exists in the Rust API (`sci_form::...`) but is not
+> currently exposed through the Python bindings.
 
-Gasteiger-Marsili charges with full configuration control. Covers all main-group elements up to period 4 (Li, Be, Na, Mg, Al, Si, …) and handles formal charges on charged species.
-
-```python
-from sci_form import charges_configured
-
-# Charged species
-result = charges_configured("[NH4+]", max_iter=12, convergence_threshold=1e-10)
-print(f"Total charge: {result.total_charge:.2f}")  # ~+1.0
-```
+Use `charges` for the Python binding of the Gasteiger-Marsili PEOE solver.
 
 ---
 
@@ -389,7 +375,7 @@ def stda_uvvis(
 ) -> StdaUvVisSpectrumPy
 ```
 
-Compute UV-Vis spectrum via sTDA on EHT MO transitions. Returns a `StdaUvVisSpectrumPy` with `.wavelengths_nm`, `.intensities`, `.excitations` (list of `StdaExcitationPy`), `.gap`, `.homo_energy`, `.lumo_energy`, `.n_transitions`, `.notes`.
+Compute UV-Vis spectrum via sTDA on EHT MO transitions. Returns a `StdaUvVisSpectrumPy` with `.energies_ev`, `.wavelengths_nm`, `.absorptivity`, `.excitations` (list of `StdaExcitationPy`), `.sigma`, `.broadening`, `.notes`.
 
 ```python
 from sci_form import embed, stda_uvvis
@@ -414,9 +400,9 @@ def vibrational_analysis(
 ) -> VibrationalAnalysisPy
 ```
 
-Numerical Hessian ($6N$ energy evaluations with mass-aware step size) + diagonalization. Removes translation/rotation modes automatically. Returns `VibrationalAnalysisPy` with `.n_atoms`, `.modes` (list of `VibrationalModePy`), `.n_real_modes`, `.zpve_ev`, `.method`, `.notes`, `.thermochemistry`.
+Numerical Hessian ($6N$ energy evaluations with mass-aware step size) + diagonalization. Removes translation/rotation modes automatically. Returns `VibrationalAnalysisPy` with `.n_atoms`, `.modes` (list of `VibrationalModePy`), `.n_real_modes`, `.zpve_ev`, `.method`, `.notes`.
 
-Each `VibrationalModePy` has `.frequency_cm1`, `.ir_intensity` (km/mol), `.displacement` (list, length 3N), `.is_real`, `.label` (functional group annotation).
+Each `VibrationalModePy` has `.frequency_cm1`, `.ir_intensity` (km/mol), `.displacement` (list, length 3N), `.is_real`.
 
 `ThermochemistryPy` (RRHO, 298.15 K): `.zpve_kcal`, `.thermal_energy_kcal`, `.entropy_vib_cal`, `.gibbs_correction_kcal`.
 
@@ -440,11 +426,17 @@ print(f"Strongest IR: {strongest.frequency_cm1:.1f} cm⁻¹  "
 def ir_spectrum(
     elements: list[int],
     coords: list[float],
-    method: str = "xtb",
+    method: str = "eht",
+    gamma: float = 15.0,
+    wn_min: float = 400.0,
+    wn_max: float = 4000.0,
+    n_points: int = 1000,
+    step_size: float | None = None,
+    smiles: str | None = None,
 ) -> IrSpectrumPy
 ```
 
-Convenience wrapper: runs `vibrational_analysis` and applies default Lorentzian broadening. Returns `IrSpectrumPy` with `.wavenumbers`, `.intensities`, `.transmittance`, `.peaks` (list of `IrPeakPy`), `.gamma`.
+Convenience wrapper: runs `vibrational_analysis` and applies default Lorentzian broadening. Returns `IrSpectrumPy` with `.wavenumbers`, `.intensities`, `.peaks` (list of `IrPeakPy`), `.gamma`, `.notes`.
 
 ```python
 from sci_form import embed, ir_spectrum
@@ -460,27 +452,11 @@ plt.show()
 
 ### `ir_spectrum_broadened`
 
-```python
-def ir_spectrum_broadened(
-    analysis: VibrationalAnalysisPy,
-    gamma: float = 15.0,
-    wn_min: float = 600.0,
-    wn_max: float = 4000.0,
-    n_points: int = 1000,
-    broadening: str = "lorentzian",  # "lorentzian" or "gaussian"
-) -> IrSpectrumPy
-```
+> **Rust-only.** This function exists in the Rust API (`sci_form::...`) but is not
+> currently exposed through the Python bindings.
 
-Broadened IR spectrum from an existing `VibrationalAnalysisPy` with full parameter control. Includes both absorbance (`.intensities`) and transmittance (`.transmittance`) axes.
-
-```python
-from sci_form import ir_spectrum_broadened
-
-# Gaussian broadening for publication-quality output
-spec = ir_spectrum_broadened(vib, gamma=10.0, wn_min=400.0, wn_max=4000.0,
-                              n_points=2000, broadening="gaussian")
-print(f"{len(spec.peaks)} labelled peaks")
-```
+Use `ir_spectrum` for the Python binding (it takes elements + coordinates and
+applies the default Lorentzian broadening).
 
 ### `nmr_shifts`
 
@@ -575,27 +551,10 @@ for j in couplings:
 
 ### `ensemble_j_couplings`
 
-```python
-def ensemble_j_couplings(
-    smiles: str,
-    conformer_coords: list[list[float]],
-    energies_kcal: list[float],
-    temperature_k: float = 298.15,
-) -> list[JCouplingPy]
-```
+> **Rust-only.** This function exists in the Rust API (`sci_form::...`) but is not
+> currently exposed through the Python bindings.
 
-Boltzmann-average ³J couplings over a conformer ensemble.
-
-```python
-from sci_form import embed_batch, ensemble_j_couplings
-
-results = embed_batch(["CCCC"] * 20, seed=42)
-coords = [r.coords for r in results if r.is_ok()]
-energies = [0.0] * len(coords)  # or compute from uff_energy
-couplings = ensemble_j_couplings("CCCC", coords, energies, temperature_k=298.15)
-for jc in couplings:
-    print(f"H{jc.h1_index}–H{jc.h2_index}: {jc.j_hz:.2f} Hz")
-```
+Use `nmr_couplings` for the Python binding of the ³J predictor.
 
 ### `nmr_spectrum`
 
@@ -603,10 +562,10 @@ for jc in couplings:
 def nmr_spectrum(
     smiles: str,
     nucleus: str = "1H",   # e.g. "1H", "13C", "35Cl", "79Br", "195Pt"
-    gamma: float = 0.01,
-    ppm_min: float = -2.0,
-    ppm_max: float = 14.0,
-    n_points: int = 2000,
+    gamma: float = 0.02,
+    ppm_min: float = 0.0,
+    ppm_max: float = 12.0,
+    n_points: int = 1000,
 ) -> NmrSpectrumPy
 ```
 
@@ -628,10 +587,10 @@ plt.show()
 ### `hose_codes`
 
 ```python
-def hose_codes(smiles: str, max_radius: int = 4) -> list[HoseCodePy]
+def hose_codes(smiles: str, max_radius: int = 2) -> list[tuple[int, int, str]]
 ```
 
-Generate HOSE code fingerprints for all atoms. Each `HoseCodePy` has `.atom_index`, `.element`, `.code_string`, `.radius`.
+Generate HOSE code fingerprints for all atoms. Returns one `(atom_index, element, full_code)` tuple per atom.
 
 ---
 

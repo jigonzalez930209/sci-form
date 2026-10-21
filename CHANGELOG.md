@@ -6,6 +6,36 @@ the summary below records the substantive work that landed in each release line.
 Future releases should append new sections here so this file remains the maintained,
 human-written changelog for the repository.
 
+## Unreleased
+
+### Changed
+- MMFF94 now uses the **published MMFF94 parameter set** instead of placeholders.
+  - New generated table module `src/forcefield/mmff94_params.rs` (atom-type
+    equivalence levels, atom-type properties, bond / angle / torsion / van der
+    Waals parameters, default bond rule, Badger's-rule parameters), produced by
+    `scripts/validation/gen_mmff94_params.py` from the parameter tables embedded
+    in RDKit's `Code/ForceField/MMFF/Params.cpp` (BSD-3-Clause; parameter data
+    © Merck and Co., Inc., 1994–1996).
+  - Parameter resolution follows the published rules: the MMFF.I atom-type
+    equivalence hierarchy for angles, the five-stage MMFF.IV hierarchy for
+    torsions, and the MMFF.V empirical default rules for bonds, angles and
+    torsions when a typed parameter is absent.
+  - New builder entry point `Mmff94Builder::build_typed(mol, variant)`; the
+    existing `build` / `build_variant` entry points are unchanged and now
+    derive their atom types from the same MMFF94 typer.
+  - Fixed the cubic bend constant (was `-0.014 deg⁻¹`, now the MMFF94/RDKit
+    value `-0.4 rad⁻¹ = -0.006981317 deg⁻¹`), switched the angle force-constant
+    factor to the exact `143.9325 * (pi/180)^2`, added MMFF94's linear-centre
+    cosine angle form, and replaced the placeholder 1-4-only van der Waals
+    terms with the full MMFF94 pair set (all pairs separated by three or more
+    bonds) and the MMFF94 combination rules for `R*_ij` / `eps_ij`.
+- Added an independent MMFF94 reference implementation
+  (`scripts/validation/oracle_mmff94.py`), the fixture
+  `tests/fixtures/validation/mmff94_rdkit.json` and the parity test
+  `tests/mmff94_validation.rs` (agreement with the Rust implementation at the
+  1e-11 kcal/mol level for methane, ethanol, acetic acid, dimethyl ether,
+  benzene, water and methylamine).
+
 ## v0.15.0 - 2026-04-06
 
 ### Added

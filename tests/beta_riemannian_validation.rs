@@ -47,7 +47,8 @@ struct OptCase {
     initial: Vec<Vec<f64>>,
     constraints: Vec<[f64; 4]>,
     scipy_objective: f64,
-    scipy_max_violation_A: f64,
+    #[serde(rename = "scipy_max_violation_A")]
+    scipy_max_violation_a: f64,
 }
 
 #[derive(serde::Deserialize)]
@@ -55,7 +56,8 @@ struct Fixture {
     projection_tolerance: f64,
     distance_tolerance: f64,
     objective_tolerance: f64,
-    optimizer_violation_tolerance_A: f64,
+    #[serde(rename = "optimizer_violation_tolerance_A")]
+    optimizer_violation_tolerance_a: f64,
     projections: Vec<ProjCase>,
     distances: Vec<DistCase>,
     #[serde(rename = "eval")]
@@ -85,7 +87,12 @@ fn frob_diff(got: &DMatrix<f64>, want: &DMatrix<f64>) -> f64 {
 
 fn cons(raw: &[[f64; 4]]) -> Vec<DistanceConstraint> {
     raw.iter()
-        .map(|c| DistanceConstraint { i: c[0] as usize, j: c[1] as usize, lower: c[2], upper: c[3] })
+        .map(|c| DistanceConstraint {
+            i: c[0] as usize,
+            j: c[1] as usize,
+            lower: c[2],
+            upper: c[3],
+        })
         .collect()
 }
 
@@ -185,13 +192,13 @@ fn f94_optimizer_matches_scipy() {
             r.objective,
             c.scipy_objective,
             viol,
-            c.scipy_max_violation_A,
+            c.scipy_max_violation_a,
             r.iterations,
             r.converged,
             r.used_fallback
         );
         assert!(
-            viol <= fix.optimizer_violation_tolerance_A,
+            viol <= fix.optimizer_violation_tolerance_a,
             "N={}: violation {viol:.3e}",
             c.n
         );

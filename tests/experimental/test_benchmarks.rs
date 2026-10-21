@@ -9,7 +9,7 @@
 // B1 — EHT Exact vs. RandNLA (E2): Eigenvalue accuracy
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-randnla")]
+#[cfg(feature = "beta-randnla")]
 mod bench_randnla_vs_eht {
     use sci_form::beta::rand_nla::*;
     use sci_form::eht::solve_eht;
@@ -142,7 +142,7 @@ mod bench_randnla_vs_eht {
 // B2 — EHT Exact vs. KPM (E4): DOS comparison, Mulliken charges
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-kpm")]
+#[cfg(feature = "beta-kpm")]
 mod bench_kpm_vs_eht {
     use sci_form::beta::kpm::*;
     use sci_form::eht::solve_eht;
@@ -303,7 +303,6 @@ mod bench_kpm_vs_eht {
 // B3 — Gasteiger vs. EEQ (E5): Charge accuracy
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-eeq")]
 mod bench_eeq_vs_gasteiger {
     use sci_form::charges_eeq::*;
     use std::time::Instant;
@@ -438,7 +437,6 @@ mod bench_eeq_vs_gasteiger {
 // B4 — GB-HCT vs. ALPB (E6): Solvation energy comparison
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-alpb")]
 mod bench_alpb_vs_gb {
     use sci_form::solvation::{compute_gb_solvation, compute_nonpolar_solvation};
     use sci_form::solvation_alpb::*;
@@ -576,7 +574,6 @@ mod bench_alpb_vs_gb {
 // B5 — UFF vs. UFF+D4 (E7): Dispersion energy contribution
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-d4")]
 mod bench_d4_vs_uff {
     use sci_form::dispersion::*;
     use std::time::Instant;
@@ -722,7 +719,7 @@ mod bench_d4_vs_uff {
 // B6 — ETKDG vs. Riemannian (E3): PSD guarantee, embedding quality
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-riemannian")]
+#[cfg(feature = "beta-riemannian")]
 mod bench_riemannian_vs_etkdg {
     use nalgebra::DMatrix;
     use sci_form::beta::riemannian::*;
@@ -871,7 +868,7 @@ mod bench_riemannian_vs_etkdg {
 // B7 — ETKDG vs. SDR (E8): PSD embedding, retry elimination
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-sdr")]
+#[cfg(feature = "alpha-sdr")]
 mod bench_sdr_vs_etkdg {
     use sci_form::alpha::sdr::*;
     use std::time::Instant;
@@ -973,7 +970,7 @@ mod bench_sdr_vs_etkdg {
 // B8 — Full Hessian IR vs. MBH (E9): Frequency accuracy, DOF reduction
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-mbh")]
+#[cfg(feature = "beta-mbh")]
 mod bench_mbh_vs_full_hessian {
     use sci_form::beta::mbh::*;
     use std::time::Instant;
@@ -1127,7 +1124,7 @@ mod bench_mbh_vs_full_hessian {
 // B9 — CGA Motor algebra (E1): Geometric correctness
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-cga")]
+#[cfg(feature = "alpha-cga")]
 mod bench_cga_geometry {
     use sci_form::alpha::cga::*;
 
@@ -1207,7 +1204,6 @@ mod bench_cga_geometry {
 // B10 — CPM Electrode (E10): Charge vs potential curve
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-cpm")]
 mod bench_cpm_electrochemistry {
     use sci_form::beta::cpm::*;
 
@@ -1307,7 +1303,7 @@ mod bench_cpm_electrochemistry {
 // B11 — GSM Reaction Path (E11): Transition state search
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "experimental-gsm")]
+#[cfg(feature = "alpha-gsm")]
 mod bench_gsm_reaction_path {
     use sci_form::alpha::gsm::*;
 

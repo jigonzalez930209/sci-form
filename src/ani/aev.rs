@@ -156,7 +156,13 @@ fn compute_angular_aev(
 
             let theta = compute_angle(positions, i, j, k);
             let (s_lo, s_hi) = if sj <= sk { (sj, sk) } else { (sk, sj) };
-            let pair_idx = s_lo * (2 * N_SPECIES - s_lo - 1) / 2 + (s_hi - s_lo);
+            // Row-major index over unordered species pairs (lo <= hi).
+            // Row `lo` holds N-lo entries, so the number of pairs before it is
+            //   sum_{m<lo} (N - m) = lo*N - lo*(lo+1)/2,
+            // and the position inside the row is `hi - lo`. The combined
+            // formula `lo*N - lo*(lo+1)/2 + hi` enumerates all N*(N+1)/2
+            // pairs bijectively over 0..N*(N+1)/2-1.
+            let pair_idx = s_lo * N_SPECIES - s_lo * (s_lo + 1) / 2 + s_hi;
             let offset = rad_total + pair_idx * ang_len;
 
             let r_avg = (rij + rik) / 2.0;
@@ -224,6 +230,32 @@ mod tests {
             .map(|(a, b)| (a - b).abs())
             .sum();
         assert!(diff < 1e-10, "H atoms in water should have symmetric AEVs");
+    }
+
+    #[test]
+    fn test_angular_pair_index_is_bijective() {
+        // Every unordered species pair (lo <= hi) must map to a distinct
+        // angular block index in 0..N*(N+1)/2-1.
+        let n_pairs = N_SPECIES * (N_SPECIES + 1) / 2;
+        let mut seen = vec![false; n_pairs];
+        for lo in 0..N_SPECIES {
+            for hi in lo..N_SPECIES {
+                let idx = lo * N_SPECIES - lo * (lo + 1) / 2 + hi;
+                assert!(
+                    idx < n_pairs,
+                    "pair ({lo},{hi}) index {idx} out of range 0..{n_pairs}"
+                );
+                assert!(
+                    !seen[idx],
+                    "pair ({lo},{hi}) collides with an earlier pair at index {idx}"
+                );
+                seen[idx] = true;
+            }
+        }
+        assert!(
+            seen.iter().all(|s| *s),
+            "not every angular block is reachable"
+        );
     }
 
     #[test]

@@ -285,7 +285,10 @@ fn load_reaxff_lammps() -> ReaxFixture {
     serde_json::from_str(&text).expect("parse reaxff fixture")
 }
 
-fn reaxff_atom_params(params: &ReaxffParams, elements: &[u8]) -> Vec<sci_form::forcefield::reaxff::params::ReaxffAtomParams> {
+fn reaxff_atom_params(
+    params: &ReaxffParams,
+    elements: &[u8],
+) -> Vec<sci_form::forcefield::reaxff::params::ReaxffAtomParams> {
     elements
         .iter()
         .map(|&z| {
@@ -342,8 +345,18 @@ fn f78_reaxff_matches_lammps() {
             // Energy path stays finite (gradient API exercises full energy).
             let (e, g) = compute_reaxff_gradient(&pt.coords, &sys.elements, &params)
                 .unwrap_or_else(|e| panic!("{} r={}: {e}", sys.name, pt.distance));
-            assert!(e.is_finite(), "{} r={}: energy not finite", sys.name, pt.distance);
-            assert!(g.iter().all(|x| x.is_finite()), "{} r={}: gradient not finite", sys.name, pt.distance);
+            assert!(
+                e.is_finite(),
+                "{} r={}: energy not finite",
+                sys.name,
+                pt.distance
+            );
+            assert!(
+                g.iter().all(|x| x.is_finite()),
+                "{} r={}: gradient not finite",
+                sys.name,
+                pt.distance
+            );
         }
     }
     eprintln!("F78: max |ΔBO| = {:.4} ({})", worst_bo.0, worst_bo.1);
@@ -355,7 +368,11 @@ fn f78_reaxff_matches_lammps() {
     );
 
     // CH4 curve shape (relative energies; absolute zeros differ by construction).
-    let ch4 = fix.systems.iter().find(|s| s.name == "CH4_CH_pull").expect("CH4");
+    let ch4 = fix
+        .systems
+        .iter()
+        .find(|s| s.name == "CH4_CH_pull")
+        .expect("CH4");
     let es: Vec<(f64, f64, f64)> = ch4
         .points
         .iter()

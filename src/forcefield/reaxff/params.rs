@@ -1,4 +1,8 @@
 //! ReaxFF parameter set and parsing.
+// The tables below transcribe published parameter values verbatim; the
+// decimal literals are kept as published rather than replaced by symbolic
+// constants, so `clippy::approx_constant` does not apply here.
+#![allow(clippy::approx_constant)]
 
 use serde::{Deserialize, Serialize};
 
@@ -208,12 +212,66 @@ impl ReaxffParams {
 /// off-diagonal `ro(sigma)` for hetero pairs (homo pairs use atomic `ro`).
 fn ffield_cho_pairs() -> Vec<ReaxffPairParams> {
     vec![
-        ReaxffPairParams { z1: 6, z2: 6, r_sigma: 1.3825, p_bo1: -0.0750, p_bo2: 6.8316, de_sigma: 156.5953, p_be1: -0.8157, p_be2: 0.4527 },
-        ReaxffPairParams { z1: 6, z2: 1, r_sigma: 1.1203, p_bo1: -0.0500, p_bo2: 6.8315, de_sigma: 170.2316, p_be1: -0.5931, p_be2: 5.2267 },
-        ReaxffPairParams { z1: 1, z2: 1, r_sigma: 0.7853, p_bo1: -0.0593, p_bo2: 4.8358, de_sigma: 156.0973, p_be1: -0.1377, p_be2: 2.9907 },
-        ReaxffPairParams { z1: 6, z2: 8, r_sigma: 1.2775, p_bo1: -0.1463, p_bo2: 5.2913, de_sigma: 160.4802, p_be1: -0.3873, p_be2: 0.5341 },
-        ReaxffPairParams { z1: 8, z2: 8, r_sigma: 1.2477, p_bo1: -0.1302, p_bo2: 6.2919, de_sigma: 60.1463, p_be1: -0.2802, p_be2: 0.2441 },
-        ReaxffPairParams { z1: 1, z2: 8, r_sigma: 0.9013, p_bo1: -0.0657, p_bo2: 5.0451, de_sigma: 180.4373, p_be1: -0.8074, p_be2: 1.2490 },
+        ReaxffPairParams {
+            z1: 6,
+            z2: 6,
+            r_sigma: 1.3825,
+            p_bo1: -0.0750,
+            p_bo2: 6.8316,
+            de_sigma: 156.5953,
+            p_be1: -0.8157,
+            p_be2: 0.4527,
+        },
+        ReaxffPairParams {
+            z1: 6,
+            z2: 1,
+            r_sigma: 1.1203,
+            p_bo1: -0.0500,
+            p_bo2: 6.8315,
+            de_sigma: 170.2316,
+            p_be1: -0.5931,
+            p_be2: 5.2267,
+        },
+        ReaxffPairParams {
+            z1: 1,
+            z2: 1,
+            r_sigma: 0.7853,
+            p_bo1: -0.0593,
+            p_bo2: 4.8358,
+            de_sigma: 156.0973,
+            p_be1: -0.1377,
+            p_be2: 2.9907,
+        },
+        ReaxffPairParams {
+            z1: 6,
+            z2: 8,
+            r_sigma: 1.2775,
+            p_bo1: -0.1463,
+            p_bo2: 5.2913,
+            de_sigma: 160.4802,
+            p_be1: -0.3873,
+            p_be2: 0.5341,
+        },
+        ReaxffPairParams {
+            z1: 8,
+            z2: 8,
+            r_sigma: 1.2477,
+            p_bo1: -0.1302,
+            p_bo2: 6.2919,
+            de_sigma: 60.1463,
+            p_be1: -0.2802,
+            p_be2: 0.2441,
+        },
+        ReaxffPairParams {
+            z1: 1,
+            z2: 8,
+            r_sigma: 0.9013,
+            p_bo1: -0.0657,
+            p_bo2: 5.0451,
+            de_sigma: 180.4373,
+            p_be1: -0.8074,
+            p_be2: 1.2490,
+        },
     ]
 }
 

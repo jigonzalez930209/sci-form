@@ -353,7 +353,7 @@ fn full_pipeline_bimolecular() {
     // This may fail for atom count mismatch — that's fine, just test the error path
     match result {
         Ok(dyn_result) => {
-            assert!(dyn_result.frames.len() > 0);
+            assert!(!dyn_result.frames.is_empty());
             assert!(dyn_result.n_atoms > 0);
         }
         Err(e) => {
@@ -575,12 +575,8 @@ fn idpp_preserves_endpoints() {
     assert_eq!(path.len(), 9);
 
     // First image should match start
-    for k in 0..r.coords.len() {
-        assert!(
-            (path[0][k] - r.coords[k]).abs() < 1e-10,
-            "Start mismatch at k={}",
-            k
-        );
+    for (k, (p0k, rk)) in path[0].iter().zip(r.coords.iter()).enumerate() {
+        assert!((p0k - rk).abs() < 1e-10, "Start mismatch at k={}", k);
     }
 
     // Last image should match end

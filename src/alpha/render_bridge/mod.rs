@@ -9,10 +9,10 @@ pub use crate::render_bridge::*;
 
 use crate::transport::arrow::RecordBatch;
 
-#[cfg(feature = "alpha-edl")]
-use crate::edl::{CpmEdlScanResult, EdlProfileResult};
 #[cfg(feature = "alpha-kinetics")]
 use crate::alpha::kinetics::{ElementaryRateResult, MicrokineticTrace};
+#[cfg(feature = "alpha-edl")]
+use crate::edl::{CpmEdlScanResult, EdlProfileResult};
 #[cfg(feature = "alpha-periodic-linear")]
 use crate::kmesh::{BandStructureAdapterResult, PeriodicKpmDosResult};
 #[cfg(feature = "alpha-edl")]

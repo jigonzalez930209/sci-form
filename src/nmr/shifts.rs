@@ -1122,6 +1122,7 @@ mod tests {
         }
     }
 
+    #[test]
     fn test_benzene_h_shifts() {
         let mol = Molecule::from_smiles("c1ccccc1").unwrap();
         let result = predict_chemical_shifts(&mol);

@@ -16,8 +16,10 @@ struct MbhCase {
     name: String,
     m1_amu: f64,
     m2_amu: f64,
-    k_kcal_per_mol_A2: f64,
-    r0_A: f64,
+    #[serde(rename = "k_kcal_per_mol_A2")]
+    k_kcal_per_mol_a2: f64,
+    #[serde(rename = "r0_A")]
+    r0_a: f64,
     nu_ref_cm: f64,
 }
 
@@ -61,9 +63,9 @@ fn f92_diatomic_matches_analytic() {
     assert!(fix.cases.len() >= 4);
     for c in &fix.cases {
         let elements = [amu_of(c.m1_amu), amu_of(c.m2_amu)];
-        let positions = [[0.0, 0.0, 0.0], [c.r0_A, 0.0, 0.0]];
-        let k = c.k_kcal_per_mol_A2;
-        let r0 = c.r0_A;
+        let positions = [[0.0, 0.0, 0.0], [c.r0_a, 0.0, 0.0]];
+        let k = c.k_kcal_per_mol_a2;
+        let r0 = c.r0_a;
         let energy = move |coords: &[f64]| {
             let dx = coords[3] - coords[0];
             let dy = coords[4] - coords[1];
@@ -73,14 +75,28 @@ fn f92_diatomic_matches_analytic() {
         };
         let cfg = MbhConfig { fd_step: 0.001 };
         let r = compute_mbh_frequencies(&elements, &positions, &[], &energy, &cfg);
-        assert_eq!(r.frequencies.len(), 6, "{}: {}", c.name, r.frequencies.len());
+        assert_eq!(
+            r.frequencies.len(),
+            6,
+            "{}: {}",
+            c.name,
+            r.frequencies.len()
+        );
         let stretch = r.frequencies[5];
         let d = (stretch - c.nu_ref_cm).abs() / c.nu_ref_cm;
-        let zero_max = r.frequencies[..5].iter().fold(0.0f64, |m, &v| m.max(v.abs()));
-        println!("F92a {}: stretch {stretch:.4} (ref {:.4}, d={d:.2e}) zero_max {zero_max:.2e}",
-            c.name, c.nu_ref_cm);
+        let zero_max = r.frequencies[..5]
+            .iter()
+            .fold(0.0f64, |m, &v| m.max(v.abs()));
+        println!(
+            "F92a {}: stretch {stretch:.4} (ref {:.4}, d={d:.2e}) zero_max {zero_max:.2e}",
+            c.name, c.nu_ref_cm
+        );
         assert!(d <= fix.stretch_tolerance_rel, "{}: {d:.3e}", c.name);
-        assert!(zero_max <= fix.zero_tolerance_cm, "{}: {zero_max:.3e}", c.name);
+        assert!(
+            zero_max <= fix.zero_tolerance_cm,
+            "{}: {zero_max:.3e}",
+            c.name
+        );
     }
 }
 
@@ -115,16 +131,31 @@ fn f92_benzene_block_structure() {
                 let dy = coords[3 * j + 1] - coords[3 * i + 1];
                 let dz = coords[3 * j + 2] - coords[3 * i + 2];
                 let r = (dx * dx + dy * dy + dz * dz).sqrt();
-                let r0 = if elements[i] == 6 && elements[j] == 6 { 1.39 } else { 1.09 };
+                let r0 = if elements[i] == 6 && elements[j] == 6 {
+                    1.39
+                } else {
+                    1.09
+                };
                 e += 50.0 * (r - r0) * (r - r0);
             }
         }
         e
     };
-    let r = compute_mbh_frequencies(&elements, &positions, &[( (0..6).collect(), true)], &energy, &MbhConfig::default());
+    let r = compute_mbh_frequencies(
+        &elements,
+        &positions,
+        &[((0..6).collect(), true)],
+        &energy,
+        &MbhConfig::default(),
+    );
     println!(
         "F92b benzene: blocks={} flex={} dof {}/{} speedup {:.2} nf={}",
-        r.n_blocks, r.n_flexible, r.n_dof_reduced, r.n_dof_full, r.speedup, r.frequencies.len()
+        r.n_blocks,
+        r.n_flexible,
+        r.n_dof_reduced,
+        r.n_dof_full,
+        r.speedup,
+        r.frequencies.len()
     );
     assert_eq!(r.n_blocks, 1);
     assert!(r.n_dof_reduced < r.n_dof_full);

@@ -60,11 +60,12 @@ pub fn cmd_esp(elements: &str, coords: &str, spacing: f64, padding: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     match sci_form::compute_esp(&elems, &positions, spacing, padding) {
         Ok(grid) => println!(
-            "{{\"origin\":{:?},\"spacing\":{},\"dims\":{:?},\"n_values\":{}}}",
+            "{{\"origin\":{:?},\"spacing\":{},\"dims\":{:?},\"n_values\":{},\"values\":{:?}}}",
             grid.origin,
             grid.spacing,
             grid.dims,
-            grid.values.len()
+            grid.values.len(),
+            grid.values
         ),
         Err(e) => {
             eprintln!("ESP error: {}", e);
@@ -139,9 +140,13 @@ pub fn cmd_assemble(topology: &str, a: f64, metal: u8, geometry: &str, supercell
 
 pub fn cmd_ani(elements: &str, coords: &str) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
+    // The network input dimension must match the real AEV length (4032 for the
+    // default ANI-2x-style parameters); using a different value makes every
+    // call fail with an input-dimension mismatch.
+    let aev_len = sci_form::ani::aev_params::default_ani2x_params().total_aev_length();
     let mut network_map = std::collections::HashMap::new();
     for &element in &[1u8, 6, 7, 8] {
-        network_map.insert(element, sci_form::ani::weights::make_test_model(384));
+        network_map.insert(element, sci_form::ani::weights::make_test_model(aev_len));
     }
     let config = sci_form::ani::api::AniConfig {
         compute_forces: true,
@@ -149,7 +154,14 @@ pub fn cmd_ani(elements: &str, coords: &str) {
         ..Default::default()
     };
     match sci_form::ani::api::compute_ani(&elems, &positions, &config, &network_map) {
-        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Ok(result) => {
+            eprintln!(
+                "note: using randomly-initialized test networks ({} AEV inputs); \
+                 energies are not physically meaningful.",
+                aev_len
+            );
+            println!("{}", serde_json::to_string_pretty(&result).unwrap());
+        }
         Err(e) => {
             eprintln!("ANI error: {}", e);
             std::process::exit(1);
@@ -204,7 +216,7 @@ pub fn cmd_gfn2(elements: &str, coords: &str) {
 pub fn cmd_hf3c(elements: &str, coords: &str) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let config = sci_form::hf::api::HfConfig {
-        n_cis_states: 0,
+        n_cis_states: 5,
         corrections: true,
         ..Default::default()
     };

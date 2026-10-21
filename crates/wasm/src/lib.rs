@@ -1,3 +1,7 @@
+// Several wasm-bindgen entry points mirror the Python/Rust surface and take more
+// than seven arguments (coordinates plus per-method parameters).
+#![allow(clippy::too_many_arguments)]
+
 //! sci-form WASM bindings.
 //!
 //! All public functions are split into focused modules.

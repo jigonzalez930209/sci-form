@@ -1,6 +1,6 @@
 //! Integration tests for Track E4: Kernel Polynomial Method (KPM)
 
-#[cfg(feature = "experimental-kpm")]
+#[cfg(feature = "beta-kpm")]
 mod kpm_tests {
     use nalgebra::{DMatrix, SymmetricEigen};
     use sci_form::beta::kpm::*;

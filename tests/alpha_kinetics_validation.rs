@@ -18,21 +18,27 @@ use sci_form::alpha::kinetics::{
 struct HtstCase {
     #[serde(rename = "T_K")]
     t: f64,
-    dg_ts_eV: f64,
-    dg_rxn_eV: f64,
+    #[serde(rename = "dg_ts_eV")]
+    dg_ts_ev: f64,
+    #[serde(rename = "dg_rxn_eV")]
+    dg_rxn_ev: f64,
     pref_override: Option<f64>,
     kf: f64,
     kr: f64,
     #[serde(rename = "K")]
     keq: f64,
+    /// Mirrors the fixture schema; the reference prefactor is not compared.
+    #[allow(dead_code)]
     pref: f64,
 }
 
 #[derive(serde::Deserialize)]
 struct StepSpec {
     step_id: String,
-    dg_ts_eV: f64,
-    dg_rxn_eV: f64,
+    #[serde(rename = "dg_ts_eV")]
+    dg_ts_ev: f64,
+    #[serde(rename = "dg_rxn_eV")]
+    dg_rxn_ev: f64,
     pref: Option<f64>,
 }
 
@@ -72,8 +78,8 @@ fn load() -> Fixture {
 fn to_step(s: &StepSpec) -> ElementaryStep {
     ElementaryStep {
         step_id: s.step_id.clone(),
-        activation_free_energy_ev: s.dg_ts_eV,
-        reaction_free_energy_ev: s.dg_rxn_eV,
+        activation_free_energy_ev: s.dg_ts_ev,
+        reaction_free_energy_ev: s.dg_rxn_ev,
         prefactor_s_inv: s.pref,
     }
 }
@@ -87,13 +93,16 @@ fn f87_htst_matches_eyring() {
     for c in &fix.htst {
         let step = ElementaryStep {
             step_id: "t".into(),
-            activation_free_energy_ev: c.dg_ts_eV,
-            reaction_free_energy_ev: c.dg_rxn_eV,
+            activation_free_energy_ev: c.dg_ts_ev,
+            reaction_free_energy_ev: c.dg_rxn_ev,
             prefactor_s_inv: c.pref_override,
         };
         let r = evaluate_htst_rate(
             &step,
-            ThermodynamicState { temperature_k: c.t, pressure_bar: 1.0 },
+            ThermodynamicState {
+                temperature_k: c.t,
+                pressure_bar: 1.0,
+            },
         )
         .expect("htst rate");
         for (got, want, name) in [
@@ -106,11 +115,17 @@ fn f87_htst_matches_eyring() {
             assert!(
                 d <= fix.htst_tolerance_rel,
                 "{name} T={} dg#={} dgr={}: got {got:.6e} want {want:.6e} d={d:.3e}",
-                c.t, c.dg_ts_eV, c.dg_rxn_eV
+                c.t,
+                c.dg_ts_ev,
+                c.dg_rxn_ev
             );
         }
     }
-    println!("F87a Eyring vs closed form: n={} worst {:.3e}", fix.htst.len(), worst);
+    println!(
+        "F87a Eyring vs closed form: n={} worst {:.3e}",
+        fix.htst.len(),
+        worst
+    );
 }
 
 /// F87b: microkinetic traces vs scipy solve_ivp.
@@ -126,12 +141,19 @@ fn f87_traces_match_solve_ivp() {
             initial_populations: n.initial.clone(),
             total_time_s: n.t_end_s,
             n_frames: n.times_s.len(),
-            state: ThermodynamicState { temperature_k: n.t, pressure_bar: 1.0 },
+            state: ThermodynamicState {
+                temperature_k: n.t,
+                pressure_bar: 1.0,
+            },
         };
         let trace = solve_microkinetic_network(&cfg).expect("network");
         assert_eq!(trace.frames.len(), n.times_s.len());
         let mut worst = 0.0f64;
-        for (f, (t, want)) in trace.frames.iter().zip(n.times_s.iter().zip(&n.populations)) {
+        for (f, (t, want)) in trace
+            .frames
+            .iter()
+            .zip(n.times_s.iter().zip(&n.populations))
+        {
             assert!((f.time_s - t).abs() <= 1e-9 * t.max(1e-300));
             for (sp, w) in f.species.iter().zip(want) {
                 worst = worst.max((sp.population - w).abs());
@@ -152,7 +174,11 @@ fn f87_traces_match_solve_ivp() {
 #[test]
 fn f87_steady_state_matches_equilibrium() {
     let fix = load();
-    let n = fix.networks.iter().find(|x| x.id == "AB-reversible").expect("AB case");
+    let n = fix
+        .networks
+        .iter()
+        .find(|x| x.id == "AB-reversible")
+        .expect("AB case");
     let k_ref = n.k_ref.expect("K_ref");
     let cfg = MicrokineticNetworkConfig {
         species: n.species.clone(),
@@ -161,7 +187,10 @@ fn f87_steady_state_matches_equilibrium() {
         initial_populations: n.initial.clone(),
         total_time_s: 50.0 * n.t_end_s,
         n_frames: 11,
-        state: ThermodynamicState { temperature_k: n.t, pressure_bar: 1.0 },
+        state: ThermodynamicState {
+            temperature_k: n.t,
+            pressure_bar: 1.0,
+        },
     };
     let trace = solve_microkinetic_steady_state(&cfg, 1e-6).expect("steady state");
     let last = trace.frames.last().expect("frames");

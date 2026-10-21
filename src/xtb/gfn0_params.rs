@@ -80,7 +80,7 @@ pub struct Gfn0ElementParams {
 }
 
 /// Element table indexed by Z (1-based helper below).
-const GFN0_TABLE: [Gfn0ElementParams; 86] = [
+static GFN0_TABLE: [Gfn0ElementParams; 86] = [
     Gfn0ElementParams {
         // Z=1 1s2s
         z: 1,
