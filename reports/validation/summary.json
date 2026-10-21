@@ -1356,7 +1356,7 @@
   "ficha": "F80",
   "observable": "scf_nuclear_repulsion_gradient_max_abs",
   "metric": "max_abs",
-  "value": 3.8853475992084415e-10,
+  "value": 3.8853475992084425e-10,
   "tolerance": 9.485097046321572e-07,
   "pass": true,
   "n_cases": 1,
