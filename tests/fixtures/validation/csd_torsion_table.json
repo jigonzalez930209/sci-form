@@ -1,0 +1,56 @@
+{
+ "reference": "RDKit Release_2026_09_1 Code/GraphMol/ForceFieldHelpers/CrystalFF/torsionData",
+ "rdkit_tag": "Release_2026_09_1",
+ "upstream_source": "https://raw.githubusercontent.com/rdkit/rdkit/Release_2026_09_1/Code/GraphMol/ForceFieldHelpers/CrystalFF/torsionData (pinned tag; the RDKit wheel does not ship the .in files)",
+ "upstream_sha256": {
+  "torsionPreferences_v2.in": "c1c1ff3d93b9629d1e71502daa02257c9968ca4788478d4970f81e457a37d8e5",
+  "torsionPreferences_smallrings.in": "28124c740e9aba1ec835fa9cef8f095258f0b94f5829dda2b995e99bbd1b5efb",
+  "torsionPreferences_macrocycles.in": "0a11044bbcdddf842b505e4baa0b4878e1fcc0725fa7c99dd82ff462938eab6e"
+ },
+ "transcribed_sha256": "7db329db391a628ec265c94754b39c522bbb560fe9a8e5866a5a077628dff4ac",
+ "transcribed_serialisation": "one line per entry: '<table>\\t<smarts>\\t<f32 bit patterns, comma separated>'; the SHA-256 is taken over the lines joined with '\\n'",
+ "n_upstream_entries": 837,
+ "n_transcribed_entries": 837,
+ "n_extension_entries": 8,
+ "n_differing_entries": 0,
+ "extension_patterns": [
+  "[O:1]=[C:2]!@;-[NH1:3][*:4]",
+  "[O:1]=[C:2]!@;-[NH2:3][H:4]",
+  "[O:1]=[C:2]!@;-[NX3H0:3][*:4]",
+  "[O:1]=[S:2](=O)!@;-[N:3][*:4]",
+  "[O:1]=[SX3:2]!@;-[C:3][*:4]",
+  "[*:1][SX4:2](=O)(=O)!@;-[C:3][*:4]",
+  "[O:1]=[PX4:2]!@;-[O:3][C:4]",
+  "[*:1][CX3:2](=C)!@;-[CX4:3][*:4]"
+ ],
+ "tables": [
+  {
+   "file": "torsionPreferences_v2.in",
+   "table": "TORSION_PREFS_V2",
+   "n_upstream": 365,
+   "n_transcribed": 365,
+   "only_in_upstream": [],
+   "only_in_transcribed": [],
+   "different_parameters": []
+  },
+  {
+   "file": "torsionPreferences_smallrings.in",
+   "table": "TORSION_PREFS_SMALL_RINGS",
+   "n_upstream": 105,
+   "n_transcribed": 105,
+   "only_in_upstream": [],
+   "only_in_transcribed": [],
+   "different_parameters": []
+  },
+  {
+   "file": "torsionPreferences_macrocycles.in",
+   "table": "TORSION_PREFS_MACROCYCLES",
+   "n_upstream": 367,
+   "n_transcribed": 367,
+   "only_in_upstream": [],
+   "only_in_transcribed": [],
+   "different_parameters": []
+  }
+ ],
+ "generated": "2026-10-21"
+}

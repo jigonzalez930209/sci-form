@@ -1,130 +1,133 @@
 {
-  "source": "MOPAC 23.2.5 (PM3 1SCF) at the sci-form embed geometries (seed 42)",
-  "notes": [
-    "F42 arbiter for the faithful PM3 port (src/pm3/faithful.rs).",
-    "The hydride subset is exact to <0.02 kcal/mol; molecules with pi/polar",
-    "two-center integrals carry a documented residual (see TODO.md)."
-  ],
-  "cases": [
-    {
-      "name": "water",
-      "smiles": "O",
-      "mopac_hof_kcal": -51.84372
-    },
-    {
-      "name": "methane",
-      "smiles": "C",
-      "mopac_hof_kcal": -11.96165
-    },
-    {
-      "name": "ethane",
-      "smiles": "CC",
-      "mopac_hof_kcal": -15.05898
-    },
-    {
-      "name": "ethylene",
-      "smiles": "C=C",
-      "mopac_hof_kcal": 17.61859
-    },
-    {
-      "name": "acetylene",
-      "smiles": "C#C",
-      "mopac_hof_kcal": 51.73435
-    },
-    {
-      "name": "benzene",
-      "smiles": "c1ccccc1",
-      "mopac_hof_kcal": 25.62565
-    },
-    {
-      "name": "methanol",
-      "smiles": "CO",
-      "mopac_hof_kcal": -49.86335
-    },
-    {
-      "name": "acetic_acid",
-      "smiles": "CC(=O)O",
-      "mopac_hof_kcal": -88.54426
-    },
-    {
-      "name": "formaldehyde",
-      "smiles": "C=O",
-      "mopac_hof_kcal": -32.52905
-    },
-    {
-      "name": "acetone",
-      "smiles": "CC(=O)C",
-      "mopac_hof_kcal": -51.26329
-    },
-    {
-      "name": "ammonia",
-      "smiles": "N",
-      "mopac_hof_kcal": 1.01052
-    },
-    {
-      "name": "methylamine",
-      "smiles": "CN",
-      "mopac_hof_kcal": -0.86303
-    },
-    {
-      "name": "pyridine",
-      "smiles": "c1ccncc1",
-      "mopac_hof_kcal": 35.39723
-    },
-    {
-      "name": "pyrrole",
-      "smiles": "c1cc[nH]c1",
-      "mopac_hof_kcal": 35.23613
-    },
-    {
-      "name": "thiophene",
-      "smiles": "c1ccsc1",
-      "mopac_hof_kcal": 48.40644
-    },
-    {
-      "name": "chloromethane",
-      "smiles": "CCl",
-      "mopac_hof_kcal": -13.97549
-    },
-    {
-      "name": "dichloromethane",
-      "smiles": "C(Cl)Cl",
-      "mopac_hof_kcal": -16.60412
-    },
-    {
-      "name": "silane",
-      "smiles": "[SiH4]",
-      "mopac_hof_kcal": 13.34228
-    },
-    {
-      "name": "phosphine",
-      "smiles": "P",
-      "mopac_hof_kcal": 10.63381
-    },
-    {
-      "name": "hydrogen_sulfide",
-      "smiles": "S",
-      "mopac_hof_kcal": 3.85623
-    },
-    {
-      "name": "fluoroform",
-      "smiles": "FC(F)F",
-      "mopac_hof_kcal": -157.32567
-    },
-    {
-      "name": "phenol",
-      "smiles": "Oc1ccccc1",
-      "mopac_hof_kcal": -13.75096
-    },
-    {
-      "name": "aniline",
-      "smiles": "Nc1ccccc1",
-      "mopac_hof_kcal": 33.53211
-    },
-    {
-      "name": "toluene",
-      "smiles": "Cc1ccccc1",
-      "mopac_hof_kcal": 35.80691
-    }
-  ]
+ "reference": "MOPAC 23.2.5 PM3 1SCF on the sci-form seed-42 embedding",
+ "source": "MOPAC 23.2.5 (PM3 1SCF) at the sci-form embed geometries (seed 42)",
+ "notes": [
+  "F42 arbiter for the faithful PM3 port (src/pm3/faithful.rs).",
+  "The reference geometry is sci-form's own embedding, so this fixture must be regenerated (python scripts/validation/oracle_pm3.py mopac-fixture) whenever the embedding pipeline changes."
+ ],
+ "seed": 42,
+ "tolerance": 0.02,
+ "generated": "2026-10-21",
+ "cases": [
+  {
+   "name": "water",
+   "smiles": "O",
+   "mopac_hof_kcal": -51.84372
+  },
+  {
+   "name": "methane",
+   "smiles": "C",
+   "mopac_hof_kcal": -11.96165
+  },
+  {
+   "name": "ethane",
+   "smiles": "CC",
+   "mopac_hof_kcal": -15.05898
+  },
+  {
+   "name": "ethylene",
+   "smiles": "C=C",
+   "mopac_hof_kcal": 17.61859
+  },
+  {
+   "name": "acetylene",
+   "smiles": "C#C",
+   "mopac_hof_kcal": 51.73435
+  },
+  {
+   "name": "benzene",
+   "smiles": "c1ccccc1",
+   "mopac_hof_kcal": 25.62565
+  },
+  {
+   "name": "methanol",
+   "smiles": "CO",
+   "mopac_hof_kcal": -49.86335
+  },
+  {
+   "name": "acetic_acid",
+   "smiles": "CC(=O)O",
+   "mopac_hof_kcal": -88.54426
+  },
+  {
+   "name": "formaldehyde",
+   "smiles": "C=O",
+   "mopac_hof_kcal": -32.52905
+  },
+  {
+   "name": "acetone",
+   "smiles": "CC(=O)C",
+   "mopac_hof_kcal": -51.26329
+  },
+  {
+   "name": "ammonia",
+   "smiles": "N",
+   "mopac_hof_kcal": 1.01052
+  },
+  {
+   "name": "methylamine",
+   "smiles": "CN",
+   "mopac_hof_kcal": -0.86303
+  },
+  {
+   "name": "pyridine",
+   "smiles": "c1ccncc1",
+   "mopac_hof_kcal": 35.39723
+  },
+  {
+   "name": "pyrrole",
+   "smiles": "c1cc[nH]c1",
+   "mopac_hof_kcal": 35.23613
+  },
+  {
+   "name": "thiophene",
+   "smiles": "c1ccsc1",
+   "mopac_hof_kcal": 47.9765
+  },
+  {
+   "name": "chloromethane",
+   "smiles": "CCl",
+   "mopac_hof_kcal": -13.97549
+  },
+  {
+   "name": "dichloromethane",
+   "smiles": "C(Cl)Cl",
+   "mopac_hof_kcal": -16.60412
+  },
+  {
+   "name": "silane",
+   "smiles": "[SiH4]",
+   "mopac_hof_kcal": 13.34228
+  },
+  {
+   "name": "phosphine",
+   "smiles": "P",
+   "mopac_hof_kcal": 10.63381
+  },
+  {
+   "name": "hydrogen_sulfide",
+   "smiles": "S",
+   "mopac_hof_kcal": 3.85623
+  },
+  {
+   "name": "fluoroform",
+   "smiles": "FC(F)F",
+   "mopac_hof_kcal": -157.32567
+  },
+  {
+   "name": "phenol",
+   "smiles": "Oc1ccccc1",
+   "mopac_hof_kcal": -13.75096
+  },
+  {
+   "name": "aniline",
+   "smiles": "Nc1ccccc1",
+   "mopac_hof_kcal": 33.53211
+  },
+  {
+   "name": "toluene",
+   "smiles": "Cc1ccccc1",
+   "mopac_hof_kcal": 35.80691
+  }
+ ]
 }

@@ -3,7 +3,7 @@
 
 use super::matcher::{precompute_ring_info, substruct_match_with_ring_info};
 use super::parser::{parse_smarts, SmartsPattern};
-use super::torsion_data::{TORSION_PREFS_MACROCYCLES, TORSION_PREFS_V2};
+use super::torsion_data::{TORSION_PREFS_EXTENSIONS, TORSION_PREFS_MACROCYCLES, TORSION_PREFS_V2};
 use crate::forcefield::etkdg_3d::M6TorsionContrib;
 use crate::graph::Molecule;
 use std::collections::HashSet;
@@ -64,6 +64,7 @@ fn parse_table(table: &[(&str, [f32; 12])]) -> Vec<TorsionEntry> {
 /// Pre-parsed pattern library (parsed once, reused across calls).
 struct TorsionLibrary {
     v2: Vec<TorsionEntry>,
+    extensions: Vec<TorsionEntry>,
     macrocycles: Vec<TorsionEntry>,
 }
 
@@ -71,6 +72,7 @@ impl TorsionLibrary {
     fn new() -> Self {
         Self {
             v2: parse_table(TORSION_PREFS_V2),
+            extensions: parse_table(TORSION_PREFS_EXTENSIONS),
             macrocycles: parse_table(TORSION_PREFS_MACROCYCLES),
         }
     }
@@ -97,8 +99,14 @@ fn match_with_library(mol: &Molecule, lib: &TorsionLibrary) -> Vec<M6TorsionCont
     let mut done_bonds = vec![false; num_bonds];
     let mut torsion_contribs = Vec::new();
 
-    // Process v2 + macrocycles (not small rings, matching ETKDGv3)
-    for entry in lib.v2.iter().chain(lib.macrocycles.iter()) {
+    // Process v2 + sci-form extensions + macrocycles (not small rings, matching ETKDGv3).
+    // The order matters: the first matching pattern wins for a given central bond.
+    for entry in lib
+        .v2
+        .iter()
+        .chain(lib.extensions.iter())
+        .chain(lib.macrocycles.iter())
+    {
         // Early exit: if all rotatable bonds already matched, skip remaining patterns
         if done_bonds.iter().all(|&d| d) {
             break;

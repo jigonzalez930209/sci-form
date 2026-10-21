@@ -69,6 +69,8 @@ jobs:
         include:
           - gate: cross-validation
             test: cross_validation
+          - gate: rdkit-parity
+            test: rdkit_parity
           - gate: alpha
             test: alpha
           - gate: beta
@@ -85,6 +87,7 @@ jobs:
         run: |
           case "${{ matrix.test }}" in
             cross-validation) cargo test --release --test cross_validation -- --nocapture ;;
+            rdkit-parity)    cargo test --release --test rdkit_parity -- --nocapture ;;
             alpha)          cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test alpha_cga_validation --test alpha_cross_method --test alpha_dft_pyscf --test alpha_dft_validation --test alpha_dynamics_conservation --test alpha_dynamics_validation --test alpha_edl_validation --test alpha_gsm_validation --test alpha_imd_validation --test alpha_kinetics_validation --test alpha_mlff_consistency --test alpha_mlff_validation --test alpha_obara_saika --test alpha_periodic_validation --test alpha_reaction_dynamics_3d --test alpha_reaxff_validation --test alpha_render_validation --test alpha_scf_eri_accuracy --test alpha_sdr_validation -- --nocapture ;;
             beta)           cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test beta_benchmarks --test beta_kpm_validation --test beta_mbh_validation --test beta_randnla_validation --test beta_riemannian_validation -- --nocapture ;;
             experimental)   cargo test --release --features "${RUST_EXPERIMENTAL_FEATURES}" --test experimental_gates -- --nocapture ;;

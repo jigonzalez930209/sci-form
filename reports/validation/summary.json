@@ -315,13 +315,30 @@
   "ficha": "F41",
   "observable": "cisd_correlation_vs_pyscf",
   "metric": "max_abs",
-  "value": 1.7806089457061972e-08,
+  "value": 2.0727322080915656e-08,
   "tolerance": 1e-06,
   "pass": true,
-  "n_cases": 6,
+  "n_cases": 8,
   "source": "tests/cross_validation.rs",
   "reference": {},
   "level": "L2"
+ },
+ {
+  "ficha": "F42",
+  "observable": "mopac_pm3_max_abs",
+  "reference": {
+   "tool": "MOPAC 23.2.5 PM3 1SCF"
+  },
+  "units": "kcal/mol",
+  "level": "L2",
+  "n_cases": 24,
+  "metric": "max_abs",
+  "value": 0.008428875111903267,
+  "tolerance": 0.02,
+  "pass": true,
+  "notes": "reference values are recomputed on sci-form's own seed-42 embedding, so this fixture must be regenerated whenever the embedding pipeline changes; the measured deviation is recorded by the Rust gate f42_mopac_pm3",
+  "timestamp": "2026-10-21T12:52:16",
+  "source": "tests/cross_validation.rs"
  },
  {
   "ficha": "F42",
@@ -442,7 +459,7 @@
   "ficha": "F46",
   "observable": "d4_pbe_standalone_max_abs_hartree",
   "metric": "max_abs",
-  "value": 6.197625954107443e-10,
+  "value": 6.197625954107444e-10,
   "tolerance": 1.5936014376405156e-06,
   "pass": true,
   "n_cases": 25,
@@ -701,5 +718,239 @@
   "notes": "Same UFF surface (F16 parity 3.98e-13 kcal/mol), same start: sci-form BFGS vs RDKit minimization. Tolerance 1e-3 kcal/mol/atom (4.3e-8 eV/atom, stricter than the plan's 1e-6 eV/atom: both minimizers land in the same basin). Measured by tests/cross_validation.rs::f70_framework_opt.",
   "timestamp": "2026-10-12T10:27:30",
   "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_matrix_max_abs",
+  "reference": {
+   "tool": "RDKit 2026.09.1 GetMoleculeBoundsMatrix"
+  },
+  "units": "angstrom",
+  "level": "L2",
+  "n_cases": 29,
+  "metric": "max_abs",
+  "value": null,
+  "tolerance": 0.35,
+  "pass": null,
+  "notes": "per-pair lower/upper distance bounds; tolerances are per topological distance class and are read from the fixture",
+  "timestamp": "2026-10-21T12:38:27",
+  "status": "tracked"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_topo_1_max_abs",
+  "metric": "max_abs",
+  "value": 0.025898512447935618,
+  "tolerance": 0.03,
+  "pass": true,
+  "n_cases": 305,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_topo_2_max_abs",
+  "metric": "max_abs",
+  "value": 0.33651967120031845,
+  "tolerance": 0.35,
+  "pass": true,
+  "n_cases": 513,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_topo_3_max_abs",
+  "metric": "max_abs",
+  "value": 0.37316485515447706,
+  "tolerance": 0.4,
+  "pass": true,
+  "n_cases": 548,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_topo_4_divergent_pairs",
+  "metric": "count",
+  "value": 8.0,
+  "tolerance": 388.0,
+  "pass": true,
+  "n_cases": 388,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_topo_4_max_abs",
+  "metric": "max_abs",
+  "value": 1.7763568394002505e-15,
+  "tolerance": 1.0,
+  "pass": true,
+  "n_cases": 380,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_topo_5_max_abs",
+  "metric": "max_abs",
+  "value": 0.5374999999999999,
+  "tolerance": 0.6,
+  "pass": true,
+  "n_cases": 173,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F71",
+  "observable": "bounds_topo_6_max_abs",
+  "metric": "max_abs",
+  "value": 0.95,
+  "tolerance": 1.0,
+  "pass": true,
+  "n_cases": 77,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F72",
+  "observable": "embedding_bond_length_max_abs",
+  "reference": {
+   "tool": "RDKit 2026.09.1 AllChem.EmbedMolecule (ETKDGv3)"
+  },
+  "units": "fraction of the bounds window",
+  "level": "L2",
+  "n_cases": 29,
+  "metric": "max_abs",
+  "value": 0.5052427189039934,
+  "tolerance": 1.0,
+  "pass": true,
+  "notes": "the two embedders use independent random streams, so coordinates are NOT expected to match; the gate checks connectivity, atom count, heavy-atom bond-length agreement and a bounded Kabsch RMSD",
+  "timestamp": "2026-10-21T12:38:27",
+  "source": "tests/rdkit_parity.rs"
+ },
+ {
+  "ficha": "F72",
+  "observable": "embedding_heavy_rmsd_mean",
+  "metric": "mean",
+  "value": 0.028552599678893335,
+  "tolerance": 3.0,
+  "pass": true,
+  "n_cases": 29,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F73",
+  "observable": "etkdg3d_ff_energy_abs_error",
+  "reference": {
+   "tool": "RDKit 2026.09.1 ForceField (ETKDG-3D term set)"
+  },
+  "units": "kcal/mol",
+  "level": "L2",
+  "n_cases": 19,
+  "metric": "max_abs",
+  "value": 9.094947017729282e-13,
+  "tolerance": 5.0,
+  "pass": true,
+  "notes": "1-2/1-3 distance constraints, SP angle constraints and the UFF inversion (improper) terms are compared on a shared perturbed geometry; the long-range constraints are reported but not gated because sci-form's experimental-torsion bookkeeping differs from RDKit's",
+  "timestamp": "2026-10-21T12:38:27",
+  "source": "tests/rdkit_parity.rs"
+ },
+ {
+  "ficha": "F73",
+  "observable": "etkdg3d_ff_inversion_energy_abs_error",
+  "metric": "max_abs",
+  "value": 4.263256414560601e-14,
+  "tolerance": 5.0,
+  "pass": true,
+  "n_cases": 19,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F74",
+  "observable": "bfgs_bounds_energy_after_min",
+  "metric": "max_abs",
+  "value": 0.005697869599657633,
+  "tolerance": 0.01,
+  "pass": true,
+  "n_cases": 28,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F74",
+  "observable": "bfgs_minimised_rmsd",
+  "reference": {
+   "tool": "RDKit 2026.09.1 ForceField::minimize"
+  },
+  "units": "angstrom",
+  "level": "L2",
+  "n_cases": 28,
+  "metric": "max_abs",
+  "value": 0.13550764890887004,
+  "tolerance": 0.25,
+  "pass": true,
+  "notes": "both sides start from the same coordinates and enforce the same distance-bounds constraint set; the RMSD measures the separation of the two local minima reached by the two optimisers",
+  "timestamp": "2026-10-21T12:38:27",
+  "source": "tests/rdkit_parity.rs"
+ },
+ {
+  "ficha": "F75",
+  "observable": "smarts_match_agreement",
+  "reference": {
+   "tool": "RDKit 2026.09.1 GetSubstructMatches"
+  },
+  "units": "fraction",
+  "level": "L2",
+  "n_cases": 8370,
+  "metric": "fraction_geq",
+  "value": 1.0,
+  "tolerance": 0.9,
+  "pass": true,
+  "notes": "837 CSD torsion patterns x 10 molecules; the canonical match sets must agree exactly for at least 90% of the (pattern, molecule) pairs",
+  "timestamp": "2026-10-21T12:38:27",
+  "source": "tests/rdkit_parity.rs"
+ },
+ {
+  "ficha": "F75",
+  "observable": "smarts_raw_count_agreement",
+  "metric": "fraction_geq",
+  "value": 0.9994026284348865,
+  "tolerance": 0.9,
+  "pass": true,
+  "n_cases": 8370,
+  "source": "tests/rdkit_parity.rs",
+  "reference": {},
+  "level": "L2"
+ },
+ {
+  "ficha": "F76",
+  "observable": "csd_torsion_table_drift",
+  "reference": {
+   "tool": "RDKit Release_2026_09_1 torsionPreferences*.in"
+  },
+  "units": "count",
+  "level": "L2",
+  "n_cases": 837,
+  "metric": "differing_entries",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "notes": "the three transcribed CSD torsion tables must match RDKit's upstream torsionPreferences*.in entry for entry; the sci-form specific patterns are kept in a separate TORSION_PREFS_EXTENSIONS table; the SHA-256 of the transcribed tables is pinned in the Rust test",
+  "timestamp": "2026-10-21T12:38:28",
+  "source": "tests/rdkit_parity.rs"
  }
 ]
