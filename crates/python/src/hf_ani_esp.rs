@@ -149,12 +149,59 @@ fn esp(elements: Vec<u8>, coords: Vec<f64>, spacing: f64, padding: f64) -> PyRes
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct AniTmAevsPy {
+    #[pyo3(get)]
+    n_atoms: usize,
+    #[pyo3(get)]
+    aev_length: usize,
+    #[pyo3(get)]
+    aevs: Vec<Vec<f64>>,
+}
+#[pymethods]
+impl AniTmAevsPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "AniTmAevs(n_atoms={}, aev_length={})",
+            self.n_atoms, self.aev_length
+        )
+    }
+}
+
+/// Compute ANI-TM atomic environment vectors (24-element extended set).
+///
+/// Uses the built-in transition-metal AEV parameter set
+/// (`default_ani_tm_params`): larger radial cutoff and an extra angular zeta
+/// for metal coordination environments.
+#[pyfunction]
+fn compute_aevs_tm(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniTmAevsPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(),
+            elements.len() * 3
+        )));
+    }
+    let positions = coords_to_positions(&coords);
+    let params = sci_form_core::ani::ani_tm::default_ani_tm_params();
+    let aevs = sci_form_core::ani::ani_tm::compute_aevs_tm(&elements, &positions, &params);
+    let aev_length = aevs.first().map(|a| a.len()).unwrap_or(0);
+    Ok(AniTmAevsPy {
+        n_atoms: elements.len(),
+        aev_length,
+        aevs,
+    })
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(hf3c_calculate, m)?)?;
     m.add_function(wrap_pyfunction!(ani_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_aevs_tm, m)?)?;
     m.add_function(wrap_pyfunction!(esp, m)?)?;
     m.add_class::<Hf3cResultPy>()?;
     m.add_class::<AniResultPy>()?;
+    m.add_class::<AniTmAevsPy>()?;
     m.add_class::<EspGridPy>()?;
     Ok(())
 }

@@ -112,6 +112,67 @@ pub fn compute_dos(
     }
 }
 
+/// Compute Gasteiger-Marsili partial charges with configurable parameters.
+///
+/// `max_iter`: number of electronegativity-equalization sweeps.
+/// `initial_damping`: first damping factor (halved every iteration).
+/// `convergence_threshold`: max charge-transfer convergence criterion.
+#[wasm_bindgen]
+pub fn compute_charges_configured(
+    smiles: &str,
+    max_iter: usize,
+    initial_damping: f64,
+    convergence_threshold: f64,
+) -> String {
+    let config = sci_form::charges::gasteiger::GasteigerConfig {
+        max_iter,
+        initial_damping,
+        convergence_threshold,
+    };
+    match sci_form::compute_charges_configured(smiles, &config) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Compute DOS from the orbital energies of a chosen electronic-structure method.
+///
+/// `method`: `eht`, `pm3`, `xtb` (GFN2), `gfn1`, `gfn2` or `hf3c`.
+#[wasm_bindgen]
+pub fn compute_dos_multimethod(
+    elements: &str,
+    coords_flat: &str,
+    method: &str,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    let dos_method = match method.to_ascii_lowercase().as_str() {
+        "eht" => sci_form::dos::multi_method::DosMethod::Eht,
+        "pm3" => sci_form::dos::multi_method::DosMethod::Pm3,
+        "xtb" | "gfn0" => sci_form::dos::multi_method::DosMethod::Xtb,
+        "gfn1" => sci_form::dos::multi_method::DosMethod::Gfn1,
+        "gfn2" => sci_form::dos::multi_method::DosMethod::Gfn2,
+        "hf3c" | "hf-3c" => sci_form::dos::multi_method::DosMethod::Hf3c,
+        other => {
+            return json_error(&format!(
+                "unknown DOS method '{other}' (expected eht, pm3, xtb, gfn1, gfn2 or hf3c)"
+            ))
+        }
+    };
+    match sci_form::dos::multi_method::compute_dos_multimethod(
+        &elems, &positions, dos_method, sigma, e_min, e_max, n_points,
+    ) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
 /// Compute RMSD between two coordinate sets after Kabsch alignment.
 #[wasm_bindgen]
 pub fn compute_rmsd(coords: &str, reference: &str) -> String {

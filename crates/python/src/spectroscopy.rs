@@ -323,11 +323,166 @@ fn ir_spectrum(
     })
 }
 
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct FunctionalGroupMatchPy {
+    #[pyo3(get)]
+    group: String,
+    #[pyo3(get)]
+    vibration_type: String,
+    #[pyo3(get)]
+    match_quality: f64,
+}
+
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct PeakAssignmentPy {
+    #[pyo3(get)]
+    frequency: f64,
+    #[pyo3(get)]
+    intensity: f64,
+    #[pyo3(get)]
+    assignments: Vec<FunctionalGroupMatchPy>,
+    #[pyo3(get)]
+    confidence: f64,
+}
+
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct AssignmentResultPy {
+    #[pyo3(get)]
+    assignments: Vec<PeakAssignmentPy>,
+    #[pyo3(get)]
+    functional_groups: Vec<String>,
+}
+#[pymethods]
+impl AssignmentResultPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "AssignmentResult(n_peaks={}, groups={:?})",
+            self.assignments.len(),
+            self.functional_groups
+        )
+    }
+}
+
+#[pyfunction]
+#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, broadening="lorentzian", step_size=None, smiles=None))]
+fn compute_ir_spectrum_broadened(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    method: &str,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+    broadening: &str,
+    step_size: Option<f64>,
+    smiles: Option<&str>,
+) -> PyResult<IrSpectrumPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != elements.len() * 3 = {}",
+            coords.len(),
+            elements.len() * 3
+        )));
+    }
+    let positions = coords_to_positions(&coords);
+    let analysis = if method.eq_ignore_ascii_case("uff") {
+        let smiles = smiles.ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("UFF IR spectrum requires smiles=...")
+        })?;
+        sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
+    } else {
+        sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
+    }
+    .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    let spectrum = sci_form_core::compute_ir_spectrum_broadened(
+        &analysis, gamma, wn_min, wn_max, n_points, broadening,
+    );
+    Ok(IrSpectrumPy {
+        wavenumbers: spectrum.wavenumbers,
+        intensities: spectrum.intensities,
+        peaks: spectrum
+            .peaks
+            .iter()
+            .map(|p| IrPeakPy {
+                frequency_cm1: p.frequency_cm1,
+                ir_intensity: p.ir_intensity,
+                mode_index: p.mode_index,
+            })
+            .collect(),
+        gamma: spectrum.gamma,
+        notes: spectrum.notes,
+    })
+}
+
+/// Assign IR peaks to functional groups using standard group-frequency tables.
+///
+/// `frequencies` and `intensities` come from a vibrational analysis;
+/// `mode_displacements` (optional) is one list of per-atom xyz displacements
+/// per mode (each mode a list of `[x, y, z]` triples) and refines the
+/// assignment with the normal-mode character.
+#[pyfunction]
+#[pyo3(signature = (frequencies, intensities, elements, mode_displacements=None))]
+fn assign_peaks(
+    frequencies: Vec<f64>,
+    intensities: Vec<f64>,
+    elements: Vec<u8>,
+    mode_displacements: Option<Vec<Vec<Vec<f64>>>>,
+) -> AssignmentResultPy {
+    let displacements: Option<Vec<Vec<[f64; 3]>>> = mode_displacements.map(|modes| {
+        modes
+            .into_iter()
+            .map(|mode| {
+                mode.into_iter()
+                    .map(|xyz| {
+                        if xyz.len() != 3 {
+                            [0.0, 0.0, 0.0]
+                        } else {
+                            [xyz[0], xyz[1], xyz[2]]
+                        }
+                    })
+                    .collect::<Vec<[f64; 3]>>()
+            })
+            .collect()
+    });
+    let result = sci_form_core::ir::peak_assignment::assign_peaks(
+        &frequencies,
+        &intensities,
+        &elements,
+        displacements.as_deref(),
+    );
+    AssignmentResultPy {
+        assignments: result
+            .assignments
+            .iter()
+            .map(|a| PeakAssignmentPy {
+                frequency: a.frequency,
+                intensity: a.intensity,
+                assignments: a
+                    .assignments
+                    .iter()
+                    .map(|m| FunctionalGroupMatchPy {
+                        group: m.group.clone(),
+                        vibration_type: m.vibration_type.clone(),
+                        match_quality: m.match_quality,
+                    })
+                    .collect(),
+                confidence: a.confidence,
+            })
+            .collect(),
+        functional_groups: result.functional_groups,
+    }
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(stda_uvvis, m)?)?;
     m.add_function(wrap_pyfunction!(fluorescence_spectrum, m)?)?;
     m.add_function(wrap_pyfunction!(vibrational_analysis, m)?)?;
     m.add_function(wrap_pyfunction!(ir_spectrum, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_ir_spectrum_broadened, m)?)?;
+    m.add_function(wrap_pyfunction!(assign_peaks, m)?)?;
     m.add_class::<StdaExcitationPy>()?;
     m.add_class::<StdaUvVisSpectrumPy>()?;
     m.add_class::<FluorescenceSpectrumPy>()?;
@@ -335,5 +490,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<VibrationalAnalysisPy>()?;
     m.add_class::<IrPeakPy>()?;
     m.add_class::<IrSpectrumPy>()?;
+    m.add_class::<FunctionalGroupMatchPy>()?;
+    m.add_class::<PeakAssignmentPy>()?;
+    m.add_class::<AssignmentResultPy>()?;
     Ok(())
 }

@@ -1,6 +1,8 @@
 //! EHT, SASA, population, dipole, ESP, DOS, cell, assemble, ANI, PM3, xTB, GFN, HF-3c command handlers.
 
-use crate::format::parse_elems_coords;
+use crate::format::{
+    gasteiger_charges_from_geometry, parse_bond_list, parse_elems_coords, perceive_bonds,
+};
 
 pub fn cmd_eht(elements: &str, coords: &str, k: f64) {
     let (elems, flat, _) = parse_elems_coords(elements, coords);
@@ -307,4 +309,589 @@ pub fn cmd_tanimoto(smiles1: &str, smiles2: &str, radius: usize, n_bits: usize) 
     };
     let t = sci_form::compute_tanimoto(&fp1, &fp2);
     println!("{{\"tanimoto\": {:.6}}}", t);
+}
+
+// ─── Cross-surface parity commands ─────────────────────────────────────────
+
+pub fn cmd_ecfp_batch(smiles_list: &str, radius: usize, n_bits: usize) {
+    let smiles: Vec<String> = serde_json::from_str(smiles_list).unwrap_or_else(|e| {
+        eprintln!("Bad smiles list JSON: {}", e);
+        std::process::exit(1);
+    });
+    let refs: Vec<&str> = smiles.iter().map(|s| s.as_str()).collect();
+    match sci_form::compute_ecfp_batch(&refs, radius, n_bits) {
+        Ok(fps) => println!("{}", serde_json::to_string_pretty(&fps).unwrap()),
+        Err(e) => {
+            eprintln!("ECFP batch error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_charges_configured(
+    smiles: &str,
+    max_iter: usize,
+    initial_damping: f64,
+    convergence_threshold: f64,
+) {
+    let config = sci_form::charges::gasteiger::GasteigerConfig {
+        max_iter,
+        initial_damping,
+        convergence_threshold,
+    };
+    match sci_form::compute_charges_configured(smiles, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("Charges error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_ensemble_j_couplings(
+    smiles: &str,
+    conformer_coords: &str,
+    energies_kcal: &str,
+    temperature_k: f64,
+) {
+    let conformers: Vec<Vec<f64>> = serde_json::from_str(conformer_coords).unwrap_or_else(|e| {
+        eprintln!("Bad conformer coords JSON: {}", e);
+        std::process::exit(1);
+    });
+    let energies: Vec<f64> = serde_json::from_str(energies_kcal).unwrap_or_else(|e| {
+        eprintln!("Bad conformer energies JSON: {}", e);
+        std::process::exit(1);
+    });
+    match sci_form::compute_ensemble_j_couplings(smiles, &conformers, &energies, temperature_k) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("Ensemble J-coupling error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_ir_spectrum_broadened(
+    elements: &str,
+    coords: &str,
+    method: &str,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+    broadening: &str,
+    step_size: f64,
+    smiles: &str,
+) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let step = if step_size > 0.0 {
+        Some(step_size)
+    } else {
+        None
+    };
+    let analysis = if method.eq_ignore_ascii_case("uff") {
+        if smiles.is_empty() {
+            eprintln!("UFF IR spectrum requires --smiles");
+            std::process::exit(1);
+        }
+        sci_form::compute_vibrational_analysis_uff(smiles, &elems, &positions, step)
+    } else {
+        sci_form::compute_vibrational_analysis(&elems, &positions, method, step)
+    };
+    let analysis = match analysis {
+        Ok(a) => a,
+        Err(e) => {
+            eprintln!("Vibrational analysis error: {}", e);
+            std::process::exit(1);
+        }
+    };
+    let spectrum = sci_form::compute_ir_spectrum_broadened(
+        &analysis, gamma, wn_min, wn_max, n_points, broadening,
+    );
+    println!("{}", serde_json::to_string_pretty(&spectrum).unwrap());
+}
+
+pub fn cmd_cisd(elements: &str, coords: &str, n_states: usize) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let system = sci_form::scf::types::MolecularSystem::from_angstrom(&elems, &positions, 0, 1);
+    let scf_config = sci_form::scf::scf_loop::ScfConfig::default();
+    let scf = sci_form::scf::scf_loop::run_scf(&system, &scf_config);
+    if !scf.converged {
+        eprintln!("CISD error: RHF/STO-3G SCF did not converge");
+        std::process::exit(1);
+    }
+    let basis =
+        sci_form::scf::basis::BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
+    let n_basis = basis.n_basis;
+    let engine = sci_form::scf::two_electron::TwoElectronIntegrals::compute(&basis);
+    let n_pair = n_basis * (n_basis + 1) / 2;
+    let mut eris = vec![0.0f64; n_pair * (n_pair + 1) / 2];
+    for i in 0..n_basis {
+        for j in 0..n_basis {
+            for k in 0..n_basis {
+                for l in 0..n_basis {
+                    eris[sci_form::hf::integrals::eri_index(i, j, k, l, n_basis)] =
+                        engine.get(i, j, k, l);
+                }
+            }
+        }
+    }
+    let n_occupied = scf.n_electrons / 2;
+    let result = sci_form::hf::compute_cisd(
+        &scf.orbital_energies,
+        &scf.mo_coefficients,
+        &eris,
+        n_basis,
+        n_occupied,
+        n_states,
+    );
+    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+}
+
+pub fn cmd_dos_multimethod(
+    elements: &str,
+    coords: &str,
+    method: &str,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let dos_method = match method.to_ascii_lowercase().as_str() {
+        "eht" => sci_form::dos::multi_method::DosMethod::Eht,
+        "pm3" => sci_form::dos::multi_method::DosMethod::Pm3,
+        "xtb" | "gfn0" => sci_form::dos::multi_method::DosMethod::Xtb,
+        "gfn1" => sci_form::dos::multi_method::DosMethod::Gfn1,
+        "gfn2" => sci_form::dos::multi_method::DosMethod::Gfn2,
+        "hf3c" | "hf-3c" => sci_form::dos::multi_method::DosMethod::Hf3c,
+        other => {
+            eprintln!(
+                "Unknown DOS method '{}' (expected eht, pm3, xtb, gfn1, gfn2 or hf3c)",
+                other
+            );
+            std::process::exit(1);
+        }
+    };
+    match sci_form::dos::multi_method::compute_dos_multimethod(
+        &elems, &positions, dos_method, sigma, e_min, e_max, n_points,
+    ) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("DOS error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_eht_gradient(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    match sci_form::eht::gradients::compute_eht_gradient(&elems, &positions) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("EHT gradient error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_optimize_geometry_eht(
+    elements: &str,
+    coords: &str,
+    max_steps: usize,
+    grad_threshold: f64,
+    energy_threshold: f64,
+    step_size: f64,
+) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let config = sci_form::eht::gradients::EhtOptConfig {
+        max_steps,
+        grad_threshold,
+        energy_threshold,
+        step_size,
+    };
+    match sci_form::eht::gradients::optimize_geometry_eht(&elems, &positions, Some(config)) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("EHT optimization error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_aevs_tm(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let params = sci_form::ani::ani_tm::default_ani_tm_params();
+    let aevs = sci_form::ani::ani_tm::compute_aevs_tm(&elems, &positions, &params);
+    let aev_length = aevs.first().map(|a| a.len()).unwrap_or(0);
+    let payload = serde_json::json!({
+        "n_atoms": elems.len(),
+        "aev_length": aev_length,
+        "aevs": aevs,
+    });
+    println!("{}", serde_json::to_string_pretty(&payload).unwrap());
+}
+
+pub fn cmd_whim(elements: &str, coords: &str, weighting: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let w = match weighting.to_ascii_lowercase().as_str() {
+        "unit" | "unweighted" => sci_form::ml::whim::WhimWeighting::Unit,
+        "mass" => sci_form::ml::whim::WhimWeighting::Mass,
+        "volume" | "vdw" => sci_form::ml::whim::WhimWeighting::Volume,
+        "electronegativity" | "en" => sci_form::ml::whim::WhimWeighting::Electronegativity,
+        "polarizability" => sci_form::ml::whim::WhimWeighting::Polarizability,
+        other => {
+            eprintln!(
+                "Unknown WHIM weighting '{}' (expected unit, mass, volume, \
+                 electronegativity or polarizability)",
+                other
+            );
+            std::process::exit(1);
+        }
+    };
+    let result = sci_form::ml::whim::compute_whim(&elems, &positions, w);
+    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+}
+
+pub fn cmd_rdf(
+    elements: &str,
+    coords: &str,
+    charges: &str,
+    beta: f64,
+    r_max: f64,
+    n_points: usize,
+) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let q = if charges.is_empty() || charges == "[]" {
+        match gasteiger_charges_from_geometry(&elems, &positions) {
+            Ok(q) => q,
+            Err(e) => {
+                eprintln!("Gasteiger charge error: {}", e);
+                std::process::exit(1);
+            }
+        }
+    } else {
+        serde_json::from_str(charges).unwrap_or_else(|e| {
+            eprintln!("Bad charges JSON: {}", e);
+            std::process::exit(1);
+        })
+    };
+    let result =
+        sci_form::ml::rdf_descriptors::compute_rdf(&elems, &positions, &q, beta, r_max, n_points);
+    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+}
+
+pub fn cmd_getaway(elements: &str, coords: &str, bonds: &str, max_lag: usize) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let bond_list = match parse_bond_list(bonds) {
+        Some(b) => b,
+        None => perceive_bonds(&elems, &positions, 0.3),
+    };
+    let result = sci_form::ml::getaway::compute_getaway(&elems, &positions, &bond_list, max_lag);
+    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+}
+
+fn rmse(predictions: &[f64], targets: &[f64]) -> f64 {
+    if predictions.is_empty() {
+        return 0.0;
+    }
+    let sum: f64 = predictions
+        .iter()
+        .zip(targets.iter())
+        .map(|(p, t)| (p - t) * (p - t))
+        .sum();
+    (sum / predictions.len() as f64).sqrt()
+}
+
+fn parse_training_data(features: &str, targets: &str) -> (Vec<Vec<f64>>, Vec<f64>) {
+    let feats: Vec<Vec<f64>> = serde_json::from_str(features).unwrap_or_else(|e| {
+        eprintln!("Bad features JSON: {}", e);
+        std::process::exit(1);
+    });
+    let tgts: Vec<f64> = serde_json::from_str(targets).unwrap_or_else(|e| {
+        eprintln!("Bad targets JSON: {}", e);
+        std::process::exit(1);
+    });
+    if feats.len() != tgts.len() {
+        eprintln!(
+            "features length {} != targets length {}",
+            feats.len(),
+            tgts.len()
+        );
+        std::process::exit(1);
+    }
+    (feats, tgts)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_train_random_forest(
+    features: &str,
+    targets: &str,
+    n_trees: usize,
+    max_depth: usize,
+    min_samples_split: usize,
+    min_samples_leaf: usize,
+    sample_fraction: f64,
+    seed: u64,
+) {
+    let (feats, tgts) = parse_training_data(features, targets);
+    let config = sci_form::ml::advanced_models::RandomForestConfig {
+        n_trees,
+        tree_config: sci_form::ml::advanced_models::TreeConfig {
+            max_depth,
+            min_samples_split,
+            min_samples_leaf,
+            max_features: 0,
+        },
+        sample_fraction,
+        seed,
+    };
+    let model = sci_form::ml::advanced_models::train_random_forest(&feats, &tgts, &config);
+    let predictions: Vec<f64> = feats.iter().map(|f| model.predict(f)).collect();
+    let payload = serde_json::json!({
+        "model_type": "random_forest",
+        "n_estimators": model.n_trees,
+        "n_samples": tgts.len(),
+        "train_rmse": rmse(&predictions, &tgts),
+        "predictions": predictions,
+    });
+    println!("{}", serde_json::to_string_pretty(&payload).unwrap());
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_train_gradient_boosting(
+    features: &str,
+    targets: &str,
+    n_estimators: usize,
+    learning_rate: f64,
+    max_depth: usize,
+    min_samples_split: usize,
+    min_samples_leaf: usize,
+    subsample: f64,
+    seed: u64,
+) {
+    let (feats, tgts) = parse_training_data(features, targets);
+    let config = sci_form::ml::advanced_models::GradientBoostingConfig {
+        n_estimators,
+        learning_rate,
+        tree_config: sci_form::ml::advanced_models::TreeConfig {
+            max_depth,
+            min_samples_split,
+            min_samples_leaf,
+            max_features: 0,
+        },
+        subsample,
+        seed,
+    };
+    let model = sci_form::ml::advanced_models::train_gradient_boosting(&feats, &tgts, &config);
+    let predictions: Vec<f64> = feats.iter().map(|f| model.predict(f)).collect();
+    let payload = serde_json::json!({
+        "model_type": "gradient_boosting",
+        "n_estimators": model.n_estimators,
+        "n_samples": tgts.len(),
+        "train_rmse": rmse(&predictions, &tgts),
+        "predictions": predictions,
+    });
+    println!("{}", serde_json::to_string_pretty(&payload).unwrap());
+}
+
+pub fn cmd_assign_peaks(
+    frequencies: &str,
+    intensities: &str,
+    elements: &str,
+    mode_displacements: &str,
+) {
+    let freqs: Vec<f64> = serde_json::from_str(frequencies).unwrap_or_else(|e| {
+        eprintln!("Bad frequencies JSON: {}", e);
+        std::process::exit(1);
+    });
+    let ints: Vec<f64> = serde_json::from_str(intensities).unwrap_or_else(|e| {
+        eprintln!("Bad intensities JSON: {}", e);
+        std::process::exit(1);
+    });
+    let elems: Vec<u8> = serde_json::from_str(elements).unwrap_or_else(|e| {
+        eprintln!("Bad elements JSON: {}", e);
+        std::process::exit(1);
+    });
+    let displacements: Option<Vec<Vec<[f64; 3]>>> =
+        if mode_displacements.is_empty() || mode_displacements == "[]" {
+            None
+        } else {
+            Some(
+                serde_json::from_str(mode_displacements).unwrap_or_else(|e| {
+                    eprintln!("Bad mode displacements JSON: {}", e);
+                    std::process::exit(1);
+                }),
+            )
+        };
+    let result = sci_form::ir::peak_assignment::assign_peaks(
+        &freqs,
+        &ints,
+        &elems,
+        displacements.as_deref(),
+    );
+    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+}
+
+pub fn cmd_space_group(number: Option<u16>, symbol: Option<&str>) {
+    let group = match (number, symbol) {
+        (Some(n), _) => sci_form::materials::space_groups::space_group_by_number(n),
+        (None, Some(s)) => sci_form::materials::space_groups::space_group_by_symbol(s),
+        (None, None) => {
+            eprintln!("Provide --number or --symbol");
+            std::process::exit(1);
+        }
+    };
+    match group {
+        Some(sg) => println!("{}", serde_json::to_string_pretty(&sg).unwrap()),
+        None => {
+            eprintln!("Space group not found");
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_all_space_groups() {
+    let groups: Vec<(u16, String)> = sci_form::materials::space_groups::all_space_groups()
+        .into_iter()
+        .map(|(n, s)| (n, s.to_string()))
+        .collect();
+    println!("{}", serde_json::to_string_pretty(&groups).unwrap());
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_periodic_molecule(
+    elements: &str,
+    frac_coords: &str,
+    a: f64,
+    b: f64,
+    c: f64,
+    alpha: f64,
+    beta: f64,
+    gamma: f64,
+    bond_tolerance: f64,
+) {
+    let elems: Vec<u8> = serde_json::from_str(elements).unwrap_or_else(|e| {
+        eprintln!("Bad elements JSON: {}", e);
+        std::process::exit(1);
+    });
+    let frac: Vec<[f64; 3]> = serde_json::from_str(frac_coords).unwrap_or_else(|e| {
+        eprintln!("Bad fractional coords JSON: {}", e);
+        std::process::exit(1);
+    });
+    let cell = sci_form::create_unit_cell(a, b, c, alpha, beta, gamma);
+    let tolerance = if bond_tolerance > 0.0 {
+        Some(bond_tolerance)
+    } else {
+        None
+    };
+    let pm = sci_form::periodic::build_periodic_molecule(&elems, &frac, &cell, tolerance);
+    println!("{}", serde_json::to_string_pretty(&pm).unwrap());
+}
+
+pub fn cmd_hapticity(elements: &str, coords: &str, bonds: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let bond_list = match parse_bond_list(bonds) {
+        Some(b) => b,
+        None => perceive_bonds(&elems, &positions, 0.3),
+    };
+    let result = sci_form::periodic::detect_hapticity(&elems, &positions, &bond_list);
+    println!("{}", serde_json::to_string_pretty(&result).unwrap());
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn cmd_optimize_framework(
+    smiles: &str,
+    coords: &str,
+    method: &str,
+    max_iter: usize,
+    force_tol: f64,
+    energy_tol: f64,
+    max_step: f64,
+    fixed_atoms: &str,
+    cell: Option<[f64; 6]>,
+) {
+    let mol = match sci_form::parse(smiles) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("Parse error: {}", e);
+            std::process::exit(1);
+        }
+    };
+    let n = mol.graph.node_count();
+    let flat: Vec<f64> = serde_json::from_str(coords).unwrap_or_else(|e| {
+        eprintln!("Bad coords JSON: {}", e);
+        std::process::exit(1);
+    });
+    if flat.len() != n * 3 {
+        eprintln!("coords length {} != 3 * atoms {}", flat.len(), n);
+        std::process::exit(1);
+    }
+    let elems: Vec<u8> = (0..n)
+        .map(|i| mol.graph[sci_form::graph::NodeIndex::new(i)].element)
+        .collect();
+    let initial_positions: Vec<[f64; 3]> =
+        flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+
+    let opt_method = match method.to_ascii_lowercase().as_str() {
+        "bfgs" => sci_form::materials::geometry_opt::OptMethod::Bfgs,
+        "steepest_descent" | "sd" => sci_form::materials::geometry_opt::OptMethod::SteepestDescent,
+        other => {
+            eprintln!(
+                "Unknown optimization method '{}' (expected bfgs or steepest_descent)",
+                other
+            );
+            std::process::exit(1);
+        }
+    };
+    let fixed: Vec<usize> = if fixed_atoms.is_empty() || fixed_atoms == "[]" {
+        Vec::new()
+    } else {
+        serde_json::from_str(fixed_atoms).unwrap_or_else(|e| {
+            eprintln!("Bad fixed atoms JSON: {}", e);
+            std::process::exit(1);
+        })
+    };
+    let lattice =
+        cell.map(|c| sci_form::create_unit_cell(c[0], c[1], c[2], c[3], c[4], c[5]).lattice);
+
+    let config = sci_form::materials::geometry_opt::FrameworkOptConfig {
+        method: opt_method,
+        max_iter,
+        force_tol,
+        energy_tol,
+        max_step,
+        fixed_atoms: fixed,
+        lattice,
+    };
+
+    // UFF-backed energy/force closure (UFF works in kcal/mol and kcal/mol/Å).
+    let ff = sci_form::forcefield::builder::build_uff_force_field(&mol);
+    const KCAL_PER_EV: f64 = 23.0605;
+    let energy_force = |_els: &[u8], pos: &[[f64; 3]]| -> Result<(f64, Vec<[f64; 3]>), String> {
+        let flat: Vec<f64> = pos.iter().flat_map(|p| p.iter().copied()).collect();
+        let mut grad = vec![0.0f64; flat.len()];
+        let energy_kcal = ff.compute_system_energy_and_gradients(&flat, &mut grad);
+        let mut forces = vec![[0.0f64; 3]; pos.len()];
+        for (i, f) in forces.iter_mut().enumerate() {
+            f[0] = -grad[3 * i] / KCAL_PER_EV;
+            f[1] = -grad[3 * i + 1] / KCAL_PER_EV;
+            f[2] = -grad[3 * i + 2] / KCAL_PER_EV;
+        }
+        Ok((energy_kcal / KCAL_PER_EV, forces))
+    };
+
+    match sci_form::materials::geometry_opt::optimize_framework(
+        &elems,
+        &initial_positions,
+        &energy_force,
+        &config,
+    ) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(e) => {
+            eprintln!("Framework optimization error: {}", e);
+            std::process::exit(1);
+        }
+    }
 }

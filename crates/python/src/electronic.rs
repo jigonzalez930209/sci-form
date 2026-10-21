@@ -133,6 +133,57 @@ pub(crate) struct Gfn2ResultPy {
     scc_iterations: usize,
 }
 
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct CisdExcitationPy {
+    #[pyo3(get)]
+    energy: f64,
+    #[pyo3(get)]
+    energy_ev: f64,
+    #[pyo3(get)]
+    wavelength_nm: f64,
+    #[pyo3(get)]
+    oscillator_strength: f64,
+    #[pyo3(get)]
+    dominant_transition: Vec<[usize; 2]>,
+    #[pyo3(get)]
+    character: String,
+    #[pyo3(get)]
+    singles_weight: f64,
+}
+
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct CisdResultPy {
+    #[pyo3(get)]
+    excitations: Vec<CisdExcitationPy>,
+    #[pyo3(get)]
+    correlation_energy: f64,
+    #[pyo3(get)]
+    n_csfs: usize,
+    #[pyo3(get)]
+    approximation: String,
+    #[pyo3(get)]
+    scf_energy: f64,
+    #[pyo3(get)]
+    scf_converged: bool,
+    #[pyo3(get)]
+    n_basis: usize,
+    #[pyo3(get)]
+    n_occupied: usize,
+}
+#[pymethods]
+impl CisdResultPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "CisdResult(n_exc={}, correlation={:.6} Ha, approx={})",
+            self.excitations.len(),
+            self.correlation_energy,
+            self.approximation
+        )
+    }
+}
+
 fn validate_coords(elements: &[u8], coords: &[f64]) -> PyResult<Vec<[f64; 3]>> {
     if coords.len() != elements.len() * 3 {
         return Err(pyo3::exceptions::PyValueError::new_err(format!(
@@ -239,11 +290,88 @@ fn gfn2_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Gfn2ResultPy>
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
+/// Compute CISD excited states from an internal STO-3G RHF calculation.
+///
+/// The binding runs the shared SCF engine (RHF/STO-3G) and the validated
+/// two-electron integral engine internally, then feeds the canonical orbitals
+/// and ERIs to the CISD driver. `n_states` is the number of excited states
+/// to report. Large systems fall back to the perturbative (CIS + MP2)
+/// approximation automatically, reported in `approximation`.
+#[pyfunction]
+#[pyo3(signature = (elements, coords, n_states=5))]
+fn compute_cisd(elements: Vec<u8>, coords: Vec<f64>, n_states: usize) -> PyResult<CisdResultPy> {
+    let positions = validate_coords(&elements, &coords)?;
+
+    // STO-3G RHF SCF (shared engine).
+    let system =
+        sci_form_core::scf::types::MolecularSystem::from_angstrom(&elements, &positions, 0, 1);
+    let scf_config = sci_form_core::scf::scf_loop::ScfConfig::default();
+    let scf = sci_form_core::scf::scf_loop::run_scf(&system, &scf_config);
+    if !scf.converged {
+        return Err(pyo3::exceptions::PyRuntimeError::new_err(
+            "RHF/STO-3G SCF did not converge; CISD requires a converged reference",
+        ));
+    }
+
+    // AO ERIs in the packed layout the CISD driver expects.
+    let basis =
+        sci_form_core::scf::basis::BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
+    let n_basis = basis.n_basis;
+    let engine = sci_form_core::scf::two_electron::TwoElectronIntegrals::compute(&basis);
+    let n_pair = n_basis * (n_basis + 1) / 2;
+    let mut eris = vec![0.0f64; n_pair * (n_pair + 1) / 2];
+    for i in 0..n_basis {
+        for j in 0..n_basis {
+            for k in 0..n_basis {
+                for l in 0..n_basis {
+                    eris[sci_form_core::hf::integrals::eri_index(i, j, k, l, n_basis)] =
+                        engine.get(i, j, k, l);
+                }
+            }
+        }
+    }
+
+    let n_occupied = scf.n_electrons / 2;
+    let result = sci_form_core::hf::compute_cisd(
+        &scf.orbital_energies,
+        &scf.mo_coefficients,
+        &eris,
+        n_basis,
+        n_occupied,
+        n_states,
+    );
+    Ok(CisdResultPy {
+        excitations: result
+            .excitations
+            .iter()
+            .map(|e| CisdExcitationPy {
+                energy: e.energy,
+                energy_ev: e.energy_ev,
+                wavelength_nm: e.wavelength_nm,
+                oscillator_strength: e.oscillator_strength,
+                dominant_transition: e.dominant_transition.iter().map(|t| [t.0, t.1]).collect(),
+                character: e.character.clone(),
+                singles_weight: e.singles_weight,
+            })
+            .collect(),
+        correlation_energy: result.correlation_energy,
+        n_csfs: result.n_csfs,
+        approximation: result.approximation,
+        scf_energy: scf.total_energy,
+        scf_converged: scf.converged,
+        n_basis,
+        n_occupied,
+    })
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(pm3_calculate, m)?)?;
     m.add_function(wrap_pyfunction!(xtb_calculate, m)?)?;
     m.add_function(wrap_pyfunction!(gfn1_calculate, m)?)?;
     m.add_function(wrap_pyfunction!(gfn2_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_cisd, m)?)?;
+    m.add_class::<CisdExcitationPy>()?;
+    m.add_class::<CisdResultPy>()?;
     m.add_class::<Pm3ResultPy>()?;
     m.add_class::<XtbResultPy>()?;
     m.add_class::<Gfn1ResultPy>()?;

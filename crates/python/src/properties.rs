@@ -114,9 +114,69 @@ impl AlignmentResultPy {
     }
 }
 
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct MultiMethodDosResultPy {
+    #[pyo3(get)]
+    energies: Vec<f64>,
+    #[pyo3(get)]
+    total_dos: Vec<f64>,
+    #[pyo3(get)]
+    method: String,
+    #[pyo3(get)]
+    homo_energy: f64,
+    #[pyo3(get)]
+    lumo_energy: f64,
+    #[pyo3(get)]
+    gap: f64,
+    #[pyo3(get)]
+    orbital_energies: Vec<f64>,
+    #[pyo3(get)]
+    sigma: f64,
+}
+#[pymethods]
+impl MultiMethodDosResultPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "MultiMethodDosResult(method={}, n_points={}, gap={:.3} eV)",
+            self.method,
+            self.energies.len(),
+            self.gap
+        )
+    }
+}
+
 #[pyfunction]
 fn charges(smiles: &str) -> PyResult<ChargeResultPy> {
     sci_form_core::compute_charges(smiles)
+        .map(|r| ChargeResultPy {
+            charges: r.charges,
+            iterations: r.iterations,
+            total_charge: r.total_charge,
+            converged: r.converged,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Compute Gasteiger-Marsili charges with configurable iteration parameters.
+///
+/// `max_iter` is the number of electronegativity-equalization sweeps,
+/// `initial_damping` the first damping factor (halved every iteration) and
+/// `convergence_threshold` the max charge-transfer convergence criterion.
+#[pyfunction]
+#[pyo3(signature = (smiles, max_iter=6, initial_damping=0.5, convergence_threshold=1e-10))]
+fn compute_charges_configured(
+    smiles: &str,
+    max_iter: usize,
+    initial_damping: f64,
+    convergence_threshold: f64,
+) -> PyResult<ChargeResultPy> {
+    let config = sci_form_core::charges::gasteiger::GasteigerConfig {
+        max_iter,
+        initial_damping,
+        convergence_threshold,
+    };
+    sci_form_core::compute_charges_configured(smiles, &config)
         .map(|r| ChargeResultPy {
             charges: r.charges,
             iterations: r.iterations,
@@ -187,16 +247,64 @@ fn rmsd(coords: Vec<f64>, reference: Vec<f64>) -> PyResult<AlignmentResultPy> {
     })
 }
 
+/// Compute DOS from the orbital energies of a chosen electronic-structure method.
+///
+/// `method` is one of `eht`, `pm3`, `xtb` (GFN2), `gfn1`, `gfn2` or `hf3c`.
+#[pyfunction]
+#[pyo3(signature = (elements, coords, method="eht", sigma=0.3, e_min=-30.0, e_max=5.0, n_points=500))]
+fn compute_dos_multimethod(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    method: &str,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> PyResult<MultiMethodDosResultPy> {
+    let positions = coords_to_positions(&coords);
+    let dos_method = match method.to_ascii_lowercase().as_str() {
+        "eht" => sci_form_core::dos::multi_method::DosMethod::Eht,
+        "pm3" => sci_form_core::dos::multi_method::DosMethod::Pm3,
+        "xtb" | "gfn0" => sci_form_core::dos::multi_method::DosMethod::Xtb,
+        "gfn1" => sci_form_core::dos::multi_method::DosMethod::Gfn1,
+        "gfn2" => sci_form_core::dos::multi_method::DosMethod::Gfn2,
+        "hf3c" | "hf-3c" => sci_form_core::dos::multi_method::DosMethod::Hf3c,
+        other => {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "unknown DOS method '{}' (expected eht, pm3, xtb, gfn1, gfn2 or hf3c)",
+                other
+            )))
+        }
+    };
+    sci_form_core::dos::multi_method::compute_dos_multimethod(
+        &elements, &positions, dos_method, sigma, e_min, e_max, n_points,
+    )
+    .map(|r| MultiMethodDosResultPy {
+        energies: r.energies,
+        total_dos: r.total_dos,
+        method: format!("{:?}", r.method).to_lowercase(),
+        homo_energy: r.homo_energy,
+        lumo_energy: r.lumo_energy,
+        gap: r.gap,
+        orbital_energies: r.orbital_energies,
+        sigma: r.sigma,
+    })
+    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(charges, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_charges_configured, m)?)?;
     m.add_function(wrap_pyfunction!(sasa, m)?)?;
     m.add_function(wrap_pyfunction!(dipole, m)?)?;
     m.add_function(wrap_pyfunction!(dos, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_dos_multimethod, m)?)?;
     m.add_function(wrap_pyfunction!(rmsd, m)?)?;
     m.add_class::<ChargeResultPy>()?;
     m.add_class::<SasaResultPy>()?;
     m.add_class::<DipoleResultPy>()?;
     m.add_class::<DosResultPy>()?;
+    m.add_class::<MultiMethodDosResultPy>()?;
     m.add_class::<AlignmentResultPy>()?;
     Ok(())
 }

@@ -165,6 +165,46 @@ pub fn eht_orbital_mesh(
     serialize_or_error(&mesh)
 }
 
+/// Compute EHT energy-surface gradients (eV/Å) by central finite differences.
+#[wasm_bindgen]
+pub fn compute_eht_gradient(elements: &str, coords_flat: &str) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::eht::gradients::compute_eht_gradient(&elems, &positions) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Optimize a geometry on the EHT energy surface with the shared BFGS engine.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn optimize_geometry_eht(
+    elements: &str,
+    coords_flat: &str,
+    max_steps: usize,
+    grad_threshold: f64,
+    energy_threshold: f64,
+    step_size: f64,
+) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    let config = sci_form::eht::gradients::EhtOptConfig {
+        max_steps,
+        grad_threshold,
+        energy_threshold,
+        step_size,
+    };
+    match sci_form::eht::gradients::optimize_geometry_eht(&elems, &positions, Some(config)) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
 /// Query EHT support metadata.
 #[wasm_bindgen]
 pub fn eht_support(elements: &str) -> String {

@@ -133,13 +133,16 @@ fn compute_single_aev(
         }
         let fc = cutoff_fn(r_ij, params.radial_cutoff);
 
-        for (s_idx, (&rs, &eta)) in params
-            .radial_shifts
-            .iter()
-            .zip(params.radial_etas.iter())
-            .enumerate()
-        {
-            radial[s_idx] += (-eta * (r_ij - rs).powi(2)).exp() * fc;
+        // The Behler-Parrinello radial block is the full (eta, shift) grid,
+        // not a zip of the two lists: every (eta, shift) pair contributes its
+        // own symmetry function. The layout matches `ani::aev` (eta outer,
+        // shift inner) so both descriptor implementations agree.
+        let n_shifts = params.radial_shifts.len();
+        for (e_idx, &eta) in params.radial_etas.iter().enumerate() {
+            for (s_idx, &rs) in params.radial_shifts.iter().enumerate() {
+                let idx = e_idx * n_shifts + s_idx;
+                radial[idx] += (-eta * (r_ij - rs).powi(2)).exp() * fc;
+            }
         }
     }
 

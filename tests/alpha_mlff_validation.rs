@@ -109,15 +109,19 @@ fn f79_aev_matches_bp() {
             assert_eq!(got.len(), want.len());
             let mut worst = 0.0f64;
             for (a, w) in got.iter().zip(want) {
-                // Layout: radial (shifts×etas, zip-filled head) + angular.
-                let n_fill = params.radial_shifts.len().min(params.radial_etas.len());
-                for (g, x) in a.radial[..n_fill].iter().zip(&w[..n_fill]) {
+                // Layout: the full (eta, shift) radial grid followed by the
+                // angular block. Every (eta, shift) pair contributes its own
+                // symmetry function — the radial block is not a zip of the
+                // two lists.
+                let n_radial = a.radial.len();
+                assert_eq!(
+                    n_radial,
+                    params.radial_shifts.len() * params.radial_etas.len()
+                );
+                for (g, x) in a.radial.iter().zip(&w[..n_radial]) {
                     worst = worst.max((g - x).abs());
                 }
-                for z in &a.radial[n_fill..] {
-                    assert!(z.abs() <= 1e-15, "radial tail nonzero");
-                }
-                for (g, x) in a.angular.iter().zip(&w[n_fill..]) {
+                for (g, x) in a.angular.iter().zip(&w[n_radial..]) {
                     worst = worst.max((g - x).abs());
                 }
             }

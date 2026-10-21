@@ -124,25 +124,26 @@ pub struct NebPathResult {
     pub notes: Vec<String>,
 }
 
+/// Standard atomic weights in unified atomic mass units (IUPAC 2021
+/// conventional values).
+///
+/// The table covers Z = 1..=118. Unknown atomic numbers return 0.0 so
+/// callers can detect them instead of silently simulating a carbon mass.
 pub fn atomic_mass_amu(z: u8) -> f64 {
-    match z {
-        1 => 1.008,
-        5 => 10.81,
-        6 => 12.011,
-        7 => 14.007,
-        8 => 15.999,
-        9 => 18.998,
-        14 => 28.085,
-        15 => 30.974,
-        16 => 32.06,
-        17 => 35.45,
-        35 => 79.904,
-        53 => 126.904,
-        26 => 55.845,
-        46 => 106.42,
-        78 => 195.084,
-        _ => 12.0,
-    }
+    const MASSES: [f64; 119] = [
+        0.0, 1.008, 4.0026, 6.94, 9.0122, 10.81, 12.011, 14.007, 15.999, 18.998, 20.180, 22.990,
+        24.305, 26.982, 28.085, 30.974, 32.06, 35.45, 39.948, 39.098, 40.078, 44.956, 47.867,
+        50.942, 51.996, 54.938, 55.845, 58.933, 58.693, 63.546, 65.38, 69.723, 72.630, 74.922,
+        78.971, 79.904, 83.798, 85.468, 87.62, 88.906, 91.224, 92.906, 95.95, 97.0, 101.07,
+        102.906, 106.42, 107.868, 112.414, 114.818, 118.710, 121.760, 127.60, 126.904, 131.293,
+        132.905, 137.327, 138.905, 140.116, 140.908, 144.242, 145.0, 150.36, 151.964, 157.25,
+        158.925, 162.500, 164.930, 167.259, 168.934, 173.054, 174.967, 178.49, 180.948, 183.84,
+        186.207, 190.23, 192.217, 195.084, 196.967, 200.592, 204.38, 207.2, 208.980, 209.0, 210.0,
+        222.0, 223.0, 226.0, 227.0, 232.038, 231.036, 238.029, 237.0, 244.0, 243.0, 247.0, 247.0,
+        251.0, 252.0, 257.0, 258.0, 259.0, 262.0, 267.0, 268.0, 271.0, 272.0, 270.0, 276.0, 281.0,
+        280.0, 285.0, 284.0, 289.0, 288.0, 293.0, 294.0, 294.0,
+    ];
+    MASSES.get(z as usize).copied().unwrap_or(0.0)
 }
 
 fn sample_standard_normal(rng: &mut StdRng) -> f64 {
@@ -1896,4 +1897,42 @@ pub fn compute_reaction_dynamics(
         n_atoms: r_total,
         notes,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::atomic_mass_amu;
+
+    #[test]
+    fn test_atomic_mass_table_covers_all_elements() {
+        // Every element up to oganesson must have a real mass, and unknown
+        // atomic numbers must not silently fall back to a carbon mass.
+        for z in 1u8..=118 {
+            let m = atomic_mass_amu(z);
+            assert!(m > 0.0, "Z={z} has no mass");
+            assert!(m < 300.0, "Z={z} mass {m} out of range");
+        }
+        assert_eq!(atomic_mass_amu(0), 0.0);
+        assert_eq!(atomic_mass_amu(255), 0.0);
+    }
+
+    #[test]
+    fn test_atomic_mass_spot_values() {
+        for (z, expected) in [
+            (1u8, 1.008),
+            (2, 4.0026),
+            (6, 12.011),
+            (8, 15.999),
+            (26, 55.845),
+            (53, 126.904),
+            (78, 195.084),
+            (92, 238.029),
+        ] {
+            assert!(
+                (atomic_mass_amu(z) - expected).abs() < 1e-9,
+                "Z={z}: {} != {expected}",
+                atomic_mass_amu(z)
+            );
+        }
+    }
 }

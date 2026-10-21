@@ -1,5 +1,7 @@
-//! Materials assembly WASM bindings: unit cell, framework.
+//! Materials assembly WASM bindings: unit cell, framework, space groups,
+//! periodic molecules, hapticity and framework optimization.
 
+use crate::helpers::{json_error, perceive_bonds, serialize_or_error};
 use wasm_bindgen::prelude::*;
 
 /// Create a unit cell and return parameters + volume as JSON.
@@ -51,4 +53,194 @@ pub fn assemble_framework(
         structure = structure.make_supercell(supercell, supercell, supercell);
     }
     crate::helpers::serialize_or_error(&structure)
+}
+
+/// Look up a crystallographic space group by ITC number (1–230).
+#[wasm_bindgen]
+pub fn space_group_by_number(number: u16) -> String {
+    match sci_form::materials::space_groups::space_group_by_number(number) {
+        Some(sg) => serialize_or_error(&sg),
+        None => json_error(&format!("unknown space group number {number}")),
+    }
+}
+
+/// Look up a crystallographic space group by Hermann-Mauguin symbol.
+#[wasm_bindgen]
+pub fn space_group_by_symbol(symbol: &str) -> String {
+    match sci_form::materials::space_groups::space_group_by_symbol(symbol) {
+        Some(sg) => serialize_or_error(&sg),
+        None => json_error(&format!("unknown space group symbol '{symbol}'")),
+    }
+}
+
+/// List all 230 space groups as `[number, symbol]` pairs.
+#[wasm_bindgen]
+pub fn all_space_groups() -> String {
+    let groups: Vec<(u16, String)> = sci_form::materials::space_groups::all_space_groups()
+        .into_iter()
+        .map(|(n, s)| (n, s.to_string()))
+        .collect();
+    serialize_or_error(&groups)
+}
+
+/// Build a periodic molecular graph from fractional coordinates and a unit cell.
+///
+/// `cell_json`: JSON array `[a, b, c, alpha, beta, gamma]` (Å, degrees).
+/// `bond_tolerance`: extra bonding tolerance in Å (0 = default 0.3).
+#[wasm_bindgen]
+pub fn build_periodic_molecule(
+    elements_json: &str,
+    frac_coords_json: &str,
+    cell_json: &str,
+    bond_tolerance: f64,
+) -> String {
+    let elements: Vec<u8> = match serde_json::from_str(elements_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad elements: {e}")),
+    };
+    let frac_coords: Vec<[f64; 3]> = match serde_json::from_str(frac_coords_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad fractional coords: {e}")),
+    };
+    let cell: [f64; 6] = match serde_json::from_str(cell_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad cell: {e}")),
+    };
+    let unit = sci_form::create_unit_cell(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5]);
+    let tolerance = if bond_tolerance > 0.0 {
+        Some(bond_tolerance)
+    } else {
+        None
+    };
+    let pm = sci_form::periodic::build_periodic_molecule(&elements, &frac_coords, &unit, tolerance);
+    serialize_or_error(&pm)
+}
+
+/// Detect haptic (η) metal–ring interactions and metallocene motifs.
+///
+/// `bonds_json`: JSON array of `[i, j]` atom-index pairs; pass `""` to
+/// perceive the bonds from the geometry.
+#[wasm_bindgen]
+pub fn detect_hapticity(elements_json: &str, coords_flat_json: &str, bonds_json: &str) -> String {
+    let (elements, positions) =
+        match crate::helpers::parse_elements_and_positions(elements_json, coords_flat_json) {
+            Ok(v) => v,
+            Err(e) => return json_error(&e),
+        };
+    let bonds = if bonds_json.is_empty() {
+        perceive_bonds(&elements, &positions, 0.3)
+    } else {
+        match serde_json::from_str::<Vec<(usize, usize)>>(bonds_json) {
+            Ok(v) => v,
+            Err(e) => return json_error(&format!("bad bonds: {e}")),
+        }
+    };
+    serialize_or_error(&sci_form::periodic::detect_hapticity(
+        &elements, &positions, &bonds,
+    ))
+}
+
+/// Optimize a molecular/framework geometry with the shared BFGS engine.
+///
+/// The energy/force backend is the UFF force field built from `smiles`;
+/// energies are reported in eV and forces in eV/Å. `cell_json` optionally
+/// enables periodic (minimum-image) optimization and is the JSON array
+/// `[a, b, c, alpha, beta, gamma]`.
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn optimize_framework(
+    smiles: &str,
+    coords_flat_json: &str,
+    method: &str,
+    max_iter: usize,
+    force_tol: f64,
+    energy_tol: f64,
+    max_step: f64,
+    fixed_atoms_json: &str,
+    cell_json: &str,
+) -> String {
+    let mol = match sci_form::parse(smiles) {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
+    };
+    let n = mol.graph.node_count();
+    let flat: Vec<f64> = match serde_json::from_str(coords_flat_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad coords: {e}")),
+    };
+    if flat.len() != n * 3 {
+        return json_error(&format!("coords length {} != 3 * atoms {}", flat.len(), n));
+    }
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[sci_form::graph::NodeIndex::new(i)].element)
+        .collect();
+    let initial_positions: Vec<[f64; 3]> =
+        flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+
+    let opt_method = match method.to_ascii_lowercase().as_str() {
+        "bfgs" => sci_form::materials::geometry_opt::OptMethod::Bfgs,
+        "steepest_descent" | "sd" => sci_form::materials::geometry_opt::OptMethod::SteepestDescent,
+        other => {
+            return json_error(&format!(
+                "unknown optimization method '{other}' (expected bfgs or steepest_descent)"
+            ))
+        }
+    };
+
+    let fixed_atoms: Vec<usize> = if fixed_atoms_json.is_empty() {
+        Vec::new()
+    } else {
+        match serde_json::from_str::<Vec<usize>>(fixed_atoms_json) {
+            Ok(v) => v,
+            Err(e) => return json_error(&format!("bad fixed atoms: {e}")),
+        }
+    };
+
+    let lattice = if cell_json.is_empty() {
+        None
+    } else {
+        let cell: [f64; 6] = match serde_json::from_str(cell_json) {
+            Ok(v) => v,
+            Err(e) => return json_error(&format!("bad cell: {e}")),
+        };
+        Some(
+            sci_form::create_unit_cell(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5])
+                .lattice,
+        )
+    };
+
+    let config = sci_form::materials::geometry_opt::FrameworkOptConfig {
+        method: opt_method,
+        max_iter,
+        force_tol,
+        energy_tol,
+        max_step,
+        fixed_atoms,
+        lattice,
+    };
+
+    let ff = sci_form::forcefield::builder::build_uff_force_field(&mol);
+    const KCAL_PER_EV: f64 = 23.0605;
+    let energy_force = |_els: &[u8], pos: &[[f64; 3]]| -> Result<(f64, Vec<[f64; 3]>), String> {
+        let flat: Vec<f64> = pos.iter().flat_map(|p| p.iter().copied()).collect();
+        let mut grad = vec![0.0f64; flat.len()];
+        let energy_kcal = ff.compute_system_energy_and_gradients(&flat, &mut grad);
+        let mut forces = vec![[0.0f64; 3]; pos.len()];
+        for (i, f) in forces.iter_mut().enumerate() {
+            f[0] = -grad[3 * i] / KCAL_PER_EV;
+            f[1] = -grad[3 * i + 1] / KCAL_PER_EV;
+            f[2] = -grad[3 * i + 2] / KCAL_PER_EV;
+        }
+        Ok((energy_kcal / KCAL_PER_EV, forces))
+    };
+
+    match sci_form::materials::geometry_opt::optimize_framework(
+        &elements,
+        &initial_positions,
+        &energy_force,
+        &config,
+    ) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
 }

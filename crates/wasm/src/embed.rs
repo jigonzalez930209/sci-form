@@ -76,3 +76,29 @@ pub fn parse_smiles(smiles: &str) -> String {
         Err(e) => crate::helpers::json_error(&e.replace('"', "\\'")),
     }
 }
+
+/// Generate a diverse conformer ensemble and cluster it by Butina RMSD.
+///
+/// Embeds `n_conformers` times with consecutive seeds and keeps only the
+/// cluster centroids (RMSD threshold `rmsd_cutoff` in Å).
+#[wasm_bindgen]
+pub fn embed_diverse(
+    smiles: &str,
+    n_conformers: usize,
+    rmsd_cutoff: f64,
+    base_seed: u64,
+) -> String {
+    let results = sci_form::embed_diverse(smiles, n_conformers, rmsd_cutoff, base_seed);
+    serde_json::to_string(&results).unwrap_or_else(|e| crate::helpers::json_error(&e.to_string()))
+}
+
+/// Return the canonical SMILES representation of a molecule.
+#[wasm_bindgen]
+pub fn to_canonical_smiles(smiles: &str) -> String {
+    match sci_form::to_canonical_smiles(smiles) {
+        Ok(s) => {
+            serde_json::to_string(&s).unwrap_or_else(|e| crate::helpers::json_error(&e.to_string()))
+        }
+        Err(e) => crate::helpers::json_error(&e.replace('"', "\\'")),
+    }
+}

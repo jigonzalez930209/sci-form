@@ -3,6 +3,7 @@
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3::PyAny;
 
 #[pyclass]
 #[derive(Clone)]
@@ -78,6 +79,113 @@ impl From<sci_form_core::eht::EhtSupport> for EhtSupportPy {
     }
 }
 
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct EhtGradientPy {
+    #[pyo3(get)]
+    gradients: Vec<[f64; 3]>,
+    #[pyo3(get)]
+    rms_gradient: f64,
+    #[pyo3(get)]
+    max_gradient: f64,
+    #[pyo3(get)]
+    energy: f64,
+}
+#[pymethods]
+impl EhtGradientPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "EhtGradient(n_atoms={}, rms={:.6} eV/A, E={:.4} eV)",
+            self.gradients.len(),
+            self.rms_gradient,
+            self.energy
+        )
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+pub(crate) struct EhtOptResultPy {
+    #[pyo3(get)]
+    positions: Vec<[f64; 3]>,
+    #[pyo3(get)]
+    energy: f64,
+    #[pyo3(get)]
+    n_steps: usize,
+    #[pyo3(get)]
+    converged: bool,
+    #[pyo3(get)]
+    rms_gradient: f64,
+    #[pyo3(get)]
+    energies: Vec<f64>,
+}
+#[pymethods]
+impl EhtOptResultPy {
+    fn __repr__(&self) -> String {
+        format!(
+            "EhtOptResult(n_atoms={}, steps={}, converged={}, E={:.4} eV)",
+            self.positions.len(),
+            self.n_steps,
+            self.converged,
+            self.energy
+        )
+    }
+}
+
+/// Compute EHT energy-surface gradients (eV/Å) by central finite differences.
+#[pyfunction]
+fn compute_eht_gradient(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<EhtGradientPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "coords length must be 3 * len(elements)",
+        ));
+    }
+    let positions = coords_to_positions(&coords);
+    sci_form_core::eht::gradients::compute_eht_gradient(&elements, &positions)
+        .map(|g| EhtGradientPy {
+            gradients: g.gradients.clone(),
+            rms_gradient: g.rms_gradient,
+            max_gradient: g.max_gradient,
+            energy: g.energy,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Optimize a geometry on the EHT energy surface with the shared BFGS engine.
+#[pyfunction]
+#[pyo3(signature = (elements, coords, max_steps=200, grad_threshold=0.01, energy_threshold=1e-6, step_size=0.05))]
+fn optimize_geometry_eht(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    max_steps: usize,
+    grad_threshold: f64,
+    energy_threshold: f64,
+    step_size: f64,
+) -> PyResult<EhtOptResultPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "coords length must be 3 * len(elements)",
+        ));
+    }
+    let positions = coords_to_positions(&coords);
+    let config = sci_form_core::eht::gradients::EhtOptConfig {
+        max_steps,
+        grad_threshold,
+        energy_threshold,
+        step_size,
+    };
+    sci_form_core::eht::gradients::optimize_geometry_eht(&elements, &positions, Some(config))
+        .map(|r| EhtOptResultPy {
+            positions: r.positions.clone(),
+            energy: r.energy,
+            n_steps: r.n_steps,
+            converged: r.converged,
+            rms_gradient: r.rms_gradient,
+            energies: r.energies,
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
 #[pyfunction]
 #[pyo3(signature = (elements, coords, k=1.75))]
 fn eht_calculate(elements: Vec<u8>, coords: Vec<f64>, k: f64) -> PyResult<EhtResultPy> {
@@ -120,7 +228,7 @@ fn eht_or_uff_fallback(
     elements: Vec<u8>,
     coords: Vec<f64>,
     allow_experimental_eht: bool,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     if coords.len() != elements.len() * 3 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "coords length must be 3 * len(elements)",
@@ -134,7 +242,7 @@ fn eht_or_uff_fallback(
         allow_experimental_eht,
     )
     .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
-    let dict = PyDict::new_bound(py);
+    let dict = PyDict::new(py);
     match result {
         sci_form_core::ElectronicWorkflowResult::Eht { result } => {
             dict.set_item("mode", "eht")?;
@@ -183,7 +291,7 @@ fn eht_orbital_mesh(
     mo_index: usize,
     spacing: f64,
     isovalue: f32,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     if coords.len() != elements.len() * 3 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "coords length must be 3 * len(elements)",
@@ -202,7 +310,7 @@ fn eht_orbital_mesh(
         3.0,
     );
     let mesh = sci_form_core::eht::marching_cubes(&grid, isovalue);
-    let dict = PyDict::new_bound(py);
+    let dict = PyDict::new(py);
     dict.set_item("vertices", mesh.vertices)?;
     dict.set_item("normals", mesh.normals)?;
     dict.set_item("indices", mesh.indices)?;
@@ -213,10 +321,14 @@ fn eht_orbital_mesh(
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(eht_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_eht_gradient, m)?)?;
+    m.add_function(wrap_pyfunction!(optimize_geometry_eht, m)?)?;
     m.add_function(wrap_pyfunction!(eht_or_uff_fallback, m)?)?;
     m.add_function(wrap_pyfunction!(eht_support, m)?)?;
     m.add_function(wrap_pyfunction!(eht_orbital_mesh, m)?)?;
     m.add_class::<EhtResultPy>()?;
     m.add_class::<EhtSupportPy>()?;
+    m.add_class::<EhtGradientPy>()?;
+    m.add_class::<EhtOptResultPy>()?;
     Ok(())
 }
