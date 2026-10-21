@@ -136,6 +136,17 @@ impl SimulationBox {
         self.to_cartesian(&best)
     }
 
+    /// Length of the shortest lattice vector (Å).
+    ///
+    /// Used to decide whether a cell list with edge `r` can be searched with
+    /// only the 27 neighbouring cells: that is valid when the shortest box
+    /// vector is at least `2 r` long.
+    pub fn shortest_vector(&self) -> f64 {
+        let l = &self.lattice;
+        let norm = |v: &[f64; 3]| (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
+        norm(&l[0]).min(norm(&l[1])).min(norm(&l[2]))
+    }
+
     /// Squared Cartesian length of a fractional displacement.
     fn frac_dist2(&self, frac: [f64; 3]) -> f64 {
         let d = self.to_cartesian(&frac);

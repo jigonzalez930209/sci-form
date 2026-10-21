@@ -89,6 +89,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinim/rust-cache@v2
+      - name: Verify the generated tables are current
+        run: python3 scripts/validation/gen_space_group_table.py --check
       - name: Run ${{ matrix.gate }} gates
         run: |
           case "${{ matrix.test }}" in

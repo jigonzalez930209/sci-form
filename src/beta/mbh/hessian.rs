@@ -36,6 +36,15 @@ pub struct MbhResult {
 }
 
 /// Atomic masses.
+/// 1 kcal/mol expressed in joules per particle.
+const KCAL_MOL_TO_J_PER_PARTICLE: f64 = 4184.0 / 6.022_140_76e23;
+/// 1 unified atomic mass unit in kilograms.
+const AMU_TO_KG: f64 = 1.660_539_066_60e-27;
+/// 1 square ångström in square metres.
+const ANGSTROM2_TO_M2: f64 = 1e-20;
+/// 1 cm⁻¹ in hertz.
+const CM1_TO_HZ: f64 = 2.997_924_58e10;
+
 fn atomic_mass(z: u8) -> f64 {
     match z {
         1 => 1.008,
@@ -185,10 +194,19 @@ pub fn compute_mbh_frequencies(
     let eigen = h_standard.symmetric_eigen();
 
     // 6. Convert eigenvalues to cm⁻¹
-    // λ in kcal/(mol·amu·Å²) → convert to cm⁻¹
-    // Factor: sqrt(λ * 4184 / (6.022e23 * 1e-20)) / (2π * 2.998e10)
-    // Simplified: ν(cm⁻¹) = 108.59 * sqrt(|λ|) * sign(λ)
-    let conversion = 108.59; // sqrt(kcal/mol / (amu * Å²)) → cm⁻¹
+    //
+    // λ is in kcal/(mol·amu·Å²). The conversion is derived rather than
+    // hard-coded (the audit, P2-45, flagged the magic 108.59):
+    //
+    //   1 kcal/mol  = 4184 J/mol = 4184/N_A J per particle
+    //   1 amu       = 1.66053906660e-27 kg
+    //   1 Å²        = 1e-20 m²
+    //   1 cm⁻¹      = 2.99792458e10 Hz
+    //
+    //   ω = sqrt(λ · k)  with k = (4184/N_A) / (amu · Å²)   [s⁻²]
+    //   ν̃ = ω / (2π c)
+    let conversion = (KCAL_MOL_TO_J_PER_PARTICLE / (AMU_TO_KG * ANGSTROM2_TO_M2)).sqrt()
+        / (2.0 * std::f64::consts::PI * CM1_TO_HZ);
 
     let mut frequencies: Vec<f64> = eigen
         .eigenvalues
