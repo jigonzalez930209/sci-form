@@ -294,7 +294,7 @@ mod mlff_py {
     ) -> PyResult<MlffResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let json = py
-            .import_bound("json")
+            .import("json")
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
         let config_json: String = json
             .call_method1("dumps", (config_dict,))
@@ -984,7 +984,13 @@ mod reaction_dynamics_py {
 // ─── Module registration ─────────────────────────────────────────────────────
 
 pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
-    let m = PyModule::new_bound(parent.py(), "sci_form.alpha")?;
+    // The submodule is created with the bare name so that
+    // `Bound<PyModule>::add_submodule` registers it as the `sci_form.alpha`
+    // attribute. Using the dotted name here makes pyo3 register the
+    // attribute under the invalid identifier "sci_form.alpha", which
+    // leaves `sci_form.alpha` unreachable as an attribute.
+    let m = PyModule::new(parent.py(), "alpha")?;
+    m.setattr("__package__", "sci_form")?;
     m.add("__doc__", "Alpha-tier experimental modules for sci_form.\n\nThese APIs are early-stage and subject to breaking changes.")?;
 
     #[cfg(feature = "alpha-dft")]
@@ -1005,7 +1011,7 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     reaction_dynamics_py::register(&m)?;
 
     parent.add_submodule(&m)?;
-    let sys = parent.py().import_bound("sys")?;
+    let sys = parent.py().import("sys")?;
     sys.getattr("modules")?.set_item("sci_form.alpha", &m)?;
     Ok(())
 }

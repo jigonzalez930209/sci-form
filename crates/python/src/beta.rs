@@ -425,7 +425,13 @@ mod cpm_py {
 // ─── Module registration ─────────────────────────────────────────────────────
 
 pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
-    let m = PyModule::new_bound(parent.py(), "sci_form.beta")?;
+    // The submodule is created with the bare name so that
+    // `Bound<PyModule>::add_submodule` registers it as the `sci_form.beta`
+    // attribute. Using the dotted name here makes pyo3 register the
+    // attribute under the invalid identifier "sci_form.beta", which
+    // leaves `sci_form.beta` unreachable as an attribute.
+    let m = PyModule::new(parent.py(), "beta")?;
+    m.setattr("__package__", "sci_form")?;
     m.add("__doc__", "Beta-tier experimental modules for sci_form.\n\nThese APIs have passed validation but may still change before stable release.")?;
 
     #[cfg(feature = "beta-kpm")]
@@ -440,7 +446,7 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     cpm_py::register(&m)?;
 
     parent.add_submodule(&m)?;
-    let sys = parent.py().import_bound("sys")?;
+    let sys = parent.py().import("sys")?;
     sys.getattr("modules")?.set_item("sci_form.beta", &m)?;
     Ok(())
 }

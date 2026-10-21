@@ -40,10 +40,10 @@ mod transport;
 #[pymodule]
 fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__package__", "sci_form")?;
-    m.add("__path__", PyList::empty_bound(m.py()))?;
+    m.add("__path__", PyList::empty(m.py()))?;
     if let Ok(spec) = m.getattr("__spec__") {
         if !spec.is_none() {
-            spec.setattr("submodule_search_locations", PyList::empty_bound(m.py()))?;
+            spec.setattr("submodule_search_locations", PyList::empty(m.py()))?;
         }
     }
 

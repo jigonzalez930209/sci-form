@@ -26,6 +26,23 @@ pub fn compute_ecfp(smiles: &str, radius: usize, n_bits: usize) -> String {
     }
 }
 
+/// Compute ECFP fingerprints for a batch of SMILES strings.
+///
+/// `smiles_list_json`: JSON array of SMILES strings.
+/// Returns a JSON array of `ECFPFingerprint` objects, in input order.
+#[wasm_bindgen]
+pub fn compute_ecfp_batch(smiles_list_json: &str, radius: usize, n_bits: usize) -> String {
+    let smiles: Vec<String> = match serde_json::from_str(smiles_list_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad smiles list: {e}")),
+    };
+    let refs: Vec<&str> = smiles.iter().map(|s| s.as_str()).collect();
+    match sci_form::compute_ecfp_batch(&refs, radius, n_bits) {
+        Ok(fps) => serialize_or_error(&fps),
+        Err(e) => json_error(&e),
+    }
+}
+
 /// Compute Tanimoto similarity between two ECFP fingerprint JSON objects.
 ///
 /// Returns JSON `{"tanimoto": 0.85}`.
@@ -68,4 +85,17 @@ pub fn compute_rmsd_matrix(conformers_json: &str) -> String {
     };
     let m = sci_form::compute_rmsd_matrix(&conformers);
     serialize_or_error(&m)
+}
+
+/// Filter a conformer ensemble to keep only the diverse cluster centroids.
+///
+/// Returns a JSON array of representative conformer indices.
+#[wasm_bindgen]
+pub fn filter_diverse(conformers_json: &str, rmsd_cutoff: f64) -> String {
+    let conformers: Vec<Vec<f64>> = match serde_json::from_str(conformers_json) {
+        Ok(v) => v,
+        Err(e) => return json_error(&format!("bad conformers: {e}")),
+    };
+    let indices = sci_form::clustering::filter_diverse_conformers(&conformers, rmsd_cutoff);
+    serialize_or_error(&indices)
 }

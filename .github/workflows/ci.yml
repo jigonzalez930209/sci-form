@@ -151,6 +151,14 @@ jobs:
         run: pip install maturin
       - name: Build wheel
         run: cd crates/python && maturin build --release --features "${PYTHON_BINDING_FEATURES}"
+      - name: Install the wheel and run the binding tests
+        run: |
+          python -m venv .venv-ci
+          . .venv-ci/bin/activate
+          pip install --upgrade pip
+          pip install pytest
+          pip install target/wheels/*.whl
+          python -m pytest tests/integration/test_python_integration.py -v
       - uses: actions/upload-artifact@v6
         with:
           name: python-wheel-${{ matrix.os }}

@@ -139,6 +139,14 @@ fn graph_features(smiles: &str) -> PyResult<GraphFeatureAnalysisPy> {
 
 #[pyfunction]
 fn topology_analysis(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<TopologyAnalysisResultPy> {
+    if coords.len() != elements.len() * 3 {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "coords length {} != 3 * elements {} = {}",
+            coords.len(),
+            elements.len(),
+            elements.len() * 3
+        )));
+    }
     let positions = coords_to_positions(&coords);
     let result = sci_form_core::compute_topology(&elements, &positions);
     Ok(TopologyAnalysisResultPy {

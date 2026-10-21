@@ -124,6 +124,233 @@ fn main() {
             n_bits,
         } => calc_cmds::cmd_tanimoto(&smiles1, &smiles2, radius, n_bits),
 
+        // Cross-surface parity commands
+        Commands::EmbedDiverse {
+            smiles,
+            n_conformers,
+            rmsd_cutoff,
+            base_seed,
+        } => embed_cmds::cmd_embed_diverse(&smiles, n_conformers, rmsd_cutoff, base_seed),
+        Commands::CanonicalSmiles { smiles } => embed_cmds::cmd_canonical_smiles(&smiles),
+        Commands::EcfpBatch {
+            smiles_list,
+            radius,
+            n_bits,
+        } => calc_cmds::cmd_ecfp_batch(&smiles_list, radius, n_bits),
+        Commands::ChargesConfigured {
+            smiles,
+            max_iter,
+            initial_damping,
+            convergence_threshold,
+        } => calc_cmds::cmd_charges_configured(
+            &smiles,
+            max_iter,
+            initial_damping,
+            convergence_threshold,
+        ),
+        Commands::EnsembleJCouplings {
+            smiles,
+            conformer_coords,
+            energies_kcal,
+            temperature_k,
+        } => calc_cmds::cmd_ensemble_j_couplings(
+            &smiles,
+            &conformer_coords,
+            &energies_kcal,
+            temperature_k,
+        ),
+        Commands::IrSpectrumBroadened {
+            elements,
+            coords,
+            method,
+            gamma,
+            wn_min,
+            wn_max,
+            n_points,
+            broadening,
+            step_size,
+            smiles,
+        } => calc_cmds::cmd_ir_spectrum_broadened(
+            &elements,
+            &coords,
+            &method,
+            gamma,
+            wn_min,
+            wn_max,
+            n_points,
+            &broadening,
+            step_size,
+            &smiles,
+        ),
+        Commands::Cisd {
+            elements,
+            coords,
+            n_states,
+        } => calc_cmds::cmd_cisd(&elements, &coords, n_states),
+        Commands::DosMultimethod {
+            elements,
+            coords,
+            method,
+            sigma,
+            e_min,
+            e_max,
+            n_points,
+        } => calc_cmds::cmd_dos_multimethod(
+            &elements, &coords, &method, sigma, e_min, e_max, n_points,
+        ),
+        Commands::EhtGradient { elements, coords } => {
+            calc_cmds::cmd_eht_gradient(&elements, &coords)
+        }
+        Commands::OptimizeGeometryEht {
+            elements,
+            coords,
+            max_steps,
+            grad_threshold,
+            energy_threshold,
+            step_size,
+        } => calc_cmds::cmd_optimize_geometry_eht(
+            &elements,
+            &coords,
+            max_steps,
+            grad_threshold,
+            energy_threshold,
+            step_size,
+        ),
+        Commands::AevsTm { elements, coords } => calc_cmds::cmd_aevs_tm(&elements, &coords),
+        Commands::Whim {
+            elements,
+            coords,
+            weighting,
+        } => calc_cmds::cmd_whim(&elements, &coords, &weighting),
+        Commands::Rdf {
+            elements,
+            coords,
+            charges,
+            beta,
+            r_max,
+            n_points,
+        } => calc_cmds::cmd_rdf(&elements, &coords, &charges, beta, r_max, n_points),
+        Commands::Getaway {
+            elements,
+            coords,
+            bonds,
+            max_lag,
+        } => calc_cmds::cmd_getaway(&elements, &coords, &bonds, max_lag),
+        Commands::TrainRandomForest {
+            features,
+            targets,
+            n_trees,
+            max_depth,
+            min_samples_split,
+            min_samples_leaf,
+            sample_fraction,
+            seed,
+        } => calc_cmds::cmd_train_random_forest(
+            &features,
+            &targets,
+            n_trees,
+            max_depth,
+            min_samples_split,
+            min_samples_leaf,
+            sample_fraction,
+            seed,
+        ),
+        Commands::TrainGradientBoosting {
+            features,
+            targets,
+            n_estimators,
+            learning_rate,
+            max_depth,
+            min_samples_split,
+            min_samples_leaf,
+            subsample,
+            seed,
+        } => calc_cmds::cmd_train_gradient_boosting(
+            &features,
+            &targets,
+            n_estimators,
+            learning_rate,
+            max_depth,
+            min_samples_split,
+            min_samples_leaf,
+            subsample,
+            seed,
+        ),
+        Commands::AssignPeaks {
+            frequencies,
+            intensities,
+            elements,
+            mode_displacements,
+        } => {
+            calc_cmds::cmd_assign_peaks(&frequencies, &intensities, &elements, &mode_displacements)
+        }
+        Commands::SpaceGroup { number, symbol } => {
+            calc_cmds::cmd_space_group(number, symbol.as_deref())
+        }
+        Commands::AllSpaceGroups => calc_cmds::cmd_all_space_groups(),
+        Commands::PeriodicMolecule {
+            elements,
+            frac_coords,
+            a,
+            b,
+            c,
+            alpha,
+            beta,
+            gamma,
+            bond_tolerance,
+        } => calc_cmds::cmd_periodic_molecule(
+            &elements,
+            &frac_coords,
+            a,
+            b,
+            c,
+            alpha,
+            beta,
+            gamma,
+            bond_tolerance,
+        ),
+        Commands::Hapticity {
+            elements,
+            coords,
+            bonds,
+        } => calc_cmds::cmd_hapticity(&elements, &coords, &bonds),
+        Commands::OptimizeFramework {
+            smiles,
+            coords,
+            method,
+            max_iter,
+            force_tol,
+            energy_tol,
+            max_step,
+            fixed_atoms,
+            a,
+            b,
+            c,
+            alpha,
+            beta,
+            gamma,
+        } => {
+            let cell = match (a, b, c) {
+                (Some(a), Some(b), Some(c)) => Some([a, b, c, alpha, beta, gamma]),
+                _ => None,
+            };
+            calc_cmds::cmd_optimize_framework(
+                &smiles,
+                &coords,
+                &method,
+                max_iter,
+                force_tol,
+                energy_tol,
+                max_step,
+                &fixed_atoms,
+                cell,
+            )
+        }
+        Commands::FilterDiverse {
+            conformers,
+            rmsd_cutoff,
+        } => embed_cmds::cmd_filter_diverse(&conformers, rmsd_cutoff),
+
         // Experimental commands
         Commands::Eeq {
             elements,

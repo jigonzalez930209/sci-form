@@ -3,6 +3,10 @@
  *
  * All functions accept/return JSON strings.
  * Call `await init()` from the main `sci-form-wasm` package once before use.
+ *
+ * Signatures mirror `crates/wasm/src/beta.rs` exactly: every parameter
+ * declared by the Rust `#[wasm_bindgen]` function is required here, including
+ * the JSON payload arguments (pass `"{}"` for the engine defaults).
  */
 
 // ── B1: KPM ──────────────────────────────────────────────────────────────
@@ -22,7 +26,7 @@
 export declare function beta_compute_kpm_dos(
   elements_json: string,
   coords_flat_json: string,
-  config_json?: string
+  config_json: string
 ): string;
 
 /**
@@ -69,7 +73,7 @@ export declare function beta_compute_mbh_frequencies(
 export declare function beta_solve_eht_randnla(
   elements_json: string,
   coords_flat_json: string,
-  config_json?: string
+  config_json: string
 ): string;
 
 // ── B4: Riemannian ────────────────────────────────────────────────────────

@@ -88,6 +88,37 @@ fn ecfp(smiles: &str, radius: usize, n_bits: usize) -> PyResult<ECFPFingerprintP
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
+/// Compute ECFP fingerprints for a batch of SMILES strings.
+///
+/// Uses the parallelized core batch routine when the `parallel` feature is
+/// enabled. Returns one fingerprint per input SMILES, in input order.
+#[pyfunction]
+#[pyo3(signature = (smiles_list, radius=2, n_bits=2048))]
+fn compute_ecfp_batch(
+    smiles_list: Vec<String>,
+    radius: usize,
+    n_bits: usize,
+) -> PyResult<Vec<ECFPFingerprintPy>> {
+    let refs: Vec<&str> = smiles_list.iter().map(|s| s.as_str()).collect();
+    sci_form_core::compute_ecfp_batch(&refs, radius, n_bits)
+        .map(|fps| {
+            fps.into_iter()
+                .map(|fp| {
+                    let on_bits: Vec<usize> = fp.on_bits.iter().copied().collect();
+                    let density = fp.density();
+                    ECFPFingerprintPy {
+                        n_bits: fp.n_bits,
+                        on_bits,
+                        radius: fp.radius,
+                        density,
+                        inner: fp,
+                    }
+                })
+                .collect()
+        })
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
 /// Compute Tanimoto similarity between two ECFP fingerprints.
 ///
 /// Returns a float in [0.0, 1.0].
@@ -153,6 +184,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<SssrResultPy>()?;
     // ECFP
     m.add_function(wrap_pyfunction!(ecfp, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_ecfp_batch, m)?)?;
     m.add_function(wrap_pyfunction!(tanimoto, m)?)?;
     m.add_class::<ECFPFingerprintPy>()?;
     // Clustering

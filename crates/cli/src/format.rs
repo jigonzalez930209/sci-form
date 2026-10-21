@@ -92,3 +92,58 @@ pub fn parse_elems_coords(elements: &str, coords: &str) -> (Vec<u8>, Vec<f64>, V
     let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     (elems, flat, positions)
 }
+
+/// Perceive covalent bonds from 3D coordinates using covalent radii.
+///
+/// Used by the commands that need a bond list (GETAWAY, hapticity) or
+/// partial charges (RDF) but only receive a geometry.
+pub fn perceive_bonds(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    tolerance: f64,
+) -> Vec<(usize, usize)> {
+    let n = elements.len().min(positions.len());
+    let mut bonds = Vec::new();
+    for i in 0..n {
+        for j in (i + 1)..n {
+            let dx = positions[i][0] - positions[j][0];
+            let dy = positions[i][1] - positions[j][1];
+            let dz = positions[i][2] - positions[j][2];
+            let d = (dx * dx + dy * dy + dz * dz).sqrt();
+            let r_sum = sci_form::graph::get_covalent_radius(elements[i])
+                + sci_form::graph::get_covalent_radius(elements[j]);
+            if d > 0.4 && d < r_sum + tolerance {
+                bonds.push((i, j));
+            }
+        }
+    }
+    bonds
+}
+
+/// Gasteiger-Marsili charges derived from geometry-perceived bonds.
+pub fn gasteiger_charges_from_geometry(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<Vec<f64>, String> {
+    let bonds = perceive_bonds(elements, positions, 0.3);
+    let formal_charges = vec![0i8; elements.len()];
+    let result = sci_form::charges::gasteiger::gasteiger_marsili_charges(
+        elements,
+        &bonds,
+        &formal_charges,
+        6,
+    )?;
+    Ok(result.charges)
+}
+
+/// Parse an optional JSON array of `[i, j]` bond pairs (empty string = none).
+pub fn parse_bond_list(bonds: &str) -> Option<Vec<(usize, usize)>> {
+    if bonds.is_empty() || bonds == "[]" {
+        None
+    } else {
+        Some(serde_json::from_str(bonds).unwrap_or_else(|e| {
+            eprintln!("Bad bonds JSON: {}", e);
+            std::process::exit(1);
+        }))
+    }
+}

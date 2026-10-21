@@ -2,6 +2,7 @@
 
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3::PyAny;
 
 #[pyclass]
 #[derive(Clone)]
@@ -76,19 +77,45 @@ fn embed_batch(smiles_list: Vec<String>, seed: u64, num_threads: usize) -> Vec<C
         .collect()
 }
 
+/// Generate a diverse conformer ensemble and cluster it by Butina RMSD.
+///
+/// Embeds `n_conformers` times with consecutive seeds, then keeps only the
+/// cluster centroids (RMSD threshold `rmsd_cutoff` in Å).
 #[pyfunction]
-fn parse(py: Python<'_>, smiles: &str) -> PyResult<PyObject> {
+#[pyo3(signature = (smiles, n_conformers=10, rmsd_cutoff=1.0, base_seed=42))]
+fn embed_diverse(
+    smiles: &str,
+    n_conformers: usize,
+    rmsd_cutoff: f64,
+    base_seed: u64,
+) -> Vec<ConformerResult> {
+    sci_form_core::embed_diverse(smiles, n_conformers, rmsd_cutoff, base_seed)
+        .into_iter()
+        .map(|r| r.into())
+        .collect()
+}
+
+/// Return the canonical SMILES representation of a molecule.
+///
+/// The output is deterministic regardless of the input atom ordering.
+#[pyfunction]
+fn to_canonical_smiles(smiles: &str) -> PyResult<String> {
+    sci_form_core::to_canonical_smiles(smiles).map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+#[pyfunction]
+fn parse(py: Python<'_>, smiles: &str) -> PyResult<Py<PyAny>> {
     match sci_form_core::parse(smiles) {
         Ok(mol) => {
-            let dict = PyDict::new_bound(py);
+            let dict = PyDict::new(py);
             let n = mol.graph.node_count();
             dict.set_item("num_atoms", n)?;
             dict.set_item("num_bonds", mol.graph.edge_count())?;
-            let mut atoms_list: Vec<PyObject> = Vec::new();
+            let mut atoms_list: Vec<Py<PyAny>> = Vec::new();
             for i in 0..n {
                 let idx = sci_form_core::graph::NodeIndex::new(i);
                 let atom = &mol.graph[idx];
-                let adict = PyDict::new_bound(py);
+                let adict = PyDict::new(py);
                 adict.set_item("element", atom.element)?;
                 adict.set_item("hybridization", format!("{:?}", atom.hybridization))?;
                 adict.set_item("formal_charge", atom.formal_charge)?;
@@ -109,6 +136,8 @@ fn version() -> String {
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(embed, m)?)?;
     m.add_function(wrap_pyfunction!(embed_batch, m)?)?;
+    m.add_function(wrap_pyfunction!(embed_diverse, m)?)?;
+    m.add_function(wrap_pyfunction!(to_canonical_smiles, m)?)?;
     m.add_function(wrap_pyfunction!(parse, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_class::<ConformerResult>()?;

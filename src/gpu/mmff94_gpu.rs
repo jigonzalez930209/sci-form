@@ -373,7 +373,6 @@ pub fn compute_mmff94_nonbonded_with_report(
 /// least-significant bit). 2^16 gives a 1.5e-5 kcal/mol resolution, and the
 /// per-workgroup reduction keeps the number of atomic additions small enough
 /// that the accumulated rounding error stays well below 1e-2 kcal/mol.
-#[cfg(feature = "experimental-gpu")]
 pub const MMFF94_FIXED_POINT_SCALE: f64 = 65_536.0;
 
 #[cfg(feature = "experimental-gpu")]

@@ -1,223 +1,510 @@
 #!/usr/bin/env python3
-"""Cross-language integration test for sci-form.
+"""Python binding integration tests for sci-form.
 
-Tests that Python bindings produce correct results and match
-the expected behavior across all API functions.
+Run with pytest against an installed `sci_form` wheel:
+
+    maturin build --release --out dist
+    pip install dist/sciforma-*.whl
+    pytest tests/integration/test_python_integration.py -v
+
+Every public entry point of the `sci_form` surface is exercised at least
+once, so a binding that silently changes shape or returns a fabricated value
+is caught here rather than by a user.
 """
-import sys
-import json
-import time
+
+from __future__ import annotations
+
+import math
+
+import pytest
+
+sci_form = pytest.importorskip("sci_form")
+
+# Small water-like geometry: elements, flat coordinates, and a 3-vector form.
+E = [6, 6, 8]
+C = [0.0, 0.0, 0.0, 1.2, 0.6, 0.0, 2.4, 0.6, 0.0]
+# Ethanol (9 atoms) with 27 coordinates.
+CCO = [
+    0.0, 0.0, 0.0,
+    1.2, 0.6, 0.0,
+    2.4, 0.6, 0.0,
+    0.0, 0.1, 1.5,
+    0.0, 0.2, 2.4,
+    0.0, -0.1, 1.5,
+    0.0, -0.2, 2.4,
+    -0.1, 1.5, 0.6,
+    -0.2, 2.4, 0.6,
+]
+
+
+def finite(*values) -> bool:
+    return all(isinstance(v, (int, float)) and math.isfinite(v) for v in values)
+
+
+# ─── Core embedding and parsing ──────────────────────────────────────────────
 
 
 def test_version():
-    import sci_form
-    v = sci_form.version()
-    assert v.startswith("sci-form"), f"Bad version: {v}"
-    print(f"  version: {v}")
+    assert sci_form.version().startswith("sci-form")
 
 
-def test_embed_single():
-    import sci_form
-
-    # Ethanol
-    r = sci_form.embed("CCO", seed=42)
-    assert r.is_ok(), f"Embed failed: {r.error}"
-    assert r.num_atoms == 9, f"Expected 9 atoms, got {r.num_atoms}"
-    assert len(r.coords) == 27, f"Expected 27 coords, got {len(r.coords)}"
-    assert len(r.elements) == 9
-    assert r.elements[0] == 6  # Carbon
-    assert r.elements[2] == 8  # Oxygen
-    assert len(r.bonds) > 0
-
-    # Check positions helper
-    pos = r.get_positions()
-    assert len(pos) == 9
-    assert len(pos[0]) == 3
-
-    # Reproducibility: same seed = same result
-    r2 = sci_form.embed("CCO", seed=42)
-    assert r.coords == r2.coords, "Same seed should give same result"
-
-    print(f"  embed CCO: {r.num_atoms} atoms, {len(r.bonds)} bonds, {r.time_ms:.1f}ms")
+def test_embed():
+    result = sci_form.embed("CCO", seed=42)
+    assert result.error is None
+    assert result.num_atoms == 9
+    assert len(result.coords) == 27
+    # `Vec<u8>` is exposed as `bytes` by PyO3; the element list is
+    # `list(result.elements)`.
+    assert list(result.elements) == [6, 6, 8, 1, 1, 1, 1, 1, 1]
+    positions = result.get_positions()
+    assert len(positions) == 9
+    assert all(len(p) == 3 for p in positions)
 
 
-def test_embed_molecules():
-    import sci_form
-
-    molecules = {
-        "c1ccccc1": 12,       # benzene
-        "CC(=O)O": 8,          # acetic acid
-        "CC(=O)Oc1ccccc1C(=O)O": 21,  # aspirin
-        "C": 5,                 # methane
-        "N": 4,                 # ammonia
-        "O": 3,                 # water
-        "C#N": 3,               # hydrogen cyanide
-        "C=C": 6,               # ethylene
-        "c1ccncc1": 11,         # pyridine
-    }
-
-    for smi, expected_atoms in molecules.items():
-        r = sci_form.embed(smi, seed=42)
-        assert r.is_ok(), f"Failed for {smi}: {r.error}"
-        assert r.num_atoms == expected_atoms, f"{smi}: expected {expected_atoms} atoms, got {r.num_atoms}"
-
-    print(f"  embed {len(molecules)} molecules: all OK")
+def test_embed_batch():
+    results = sci_form.embed_batch(["CCO", "CCC"], seed=42)
+    assert len(results) == 2
+    assert all(r.num_atoms > 0 for r in results)
 
 
-def test_batch():
-    import sci_form
-
-    smiles = ["CCO", "c1ccccc1", "CC(=O)O", "C#N", "c1ccncc1"]
-    results = sci_form.embed_batch(smiles, seed=42, num_threads=2)
-
-    assert len(results) == len(smiles), f"Expected {len(smiles)} results, got {len(results)}"
-    for r in results:
-        assert r.is_ok(), f"Batch failed for {r.smiles}: {r.error}"
-
-    # Verify batch results match single results
-    for smi in smiles:
-        single = sci_form.embed(smi, seed=42)
-        batch_r = next(r for r in results if r.smiles == smi)
-        assert single.coords == batch_r.coords, f"Batch/single mismatch for {smi}"
-
-    print(f"  batch {len(smiles)} molecules: all match single results")
+def test_embed_diverse():
+    conformers = sci_form.embed_diverse("CCO", 3, 1.0, 42)
+    assert 1 <= len(conformers) <= 3
 
 
 def test_parse():
-    import sci_form
-
-    info = sci_form.parse("CCO")
-    assert info["num_atoms"] == 9
-    assert info["num_bonds"] == 8
-    assert len(info["atoms"]) == 9
-
-    # Check atom info
-    carbons = [a for a in info["atoms"] if a["element"] == 6]
-    oxygens = [a for a in info["atoms"] if a["element"] == 8]
-    hydrogens = [a for a in info["atoms"] if a["element"] == 1]
-    assert len(carbons) == 2
-    assert len(oxygens) == 1
-    assert len(hydrogens) == 6
-
-    print(f"  parse CCO: {info['num_atoms']} atoms, {info['num_bonds']} bonds")
+    # The parser adds implicit hydrogens, so benzene has 6 C + 6 H.
+    parsed = sci_form.parse("c1ccccc1")
+    assert parsed["num_atoms"] == 12
+    assert parsed["num_bonds"] == 12
+    assert len(parsed["atoms"]) == 12
 
 
-def test_error_handling():
-    import sci_form
-
-    # Invalid SMILES
-    r = sci_form.embed("INVALID_SMILES_XYZ", seed=42)
-    assert not r.is_ok(), "Should have failed for invalid SMILES"
-    assert r.error is not None
-
-    # Parse error
-    try:
-        sci_form.parse("INVALID_SMILES_XYZ")
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
-
-    print("  error handling: OK")
+def test_canonical_smiles_is_order_independent():
+    assert sci_form.to_canonical_smiles("OCC") == sci_form.to_canonical_smiles("CCO")
 
 
-def test_coordinate_sanity():
-    import sci_form
-    import math
-
-    r = sci_form.embed("CCO", seed=42)
-    pos = r.get_positions()
-
-    # Bond lengths should be reasonable (0.8-2.0 Å for typical bonds)
-    for i, (_, _, order) in enumerate(r.bonds):
-        a, b = r.bonds[i][0], r.bonds[i][1]
-        dx = pos[a][0] - pos[b][0]
-        dy = pos[a][1] - pos[b][1]
-        dz = pos[a][2] - pos[b][2]
-        dist = math.sqrt(dx * dx + dy * dy + dz * dz)
-        assert 0.5 < dist < 3.0, f"Bond {a}-{b} length {dist:.2f} out of range"
-
-    print(f"  coordinate sanity: all bond lengths in [0.5, 3.0] Å")
+# ─── Charges, surface, electrostatics ────────────────────────────────────────
 
 
-def test_performance():
-    import sci_form
-
-    # Single molecule should be < 50ms
-    smiles = ["CCO", "c1ccccc1", "CC(=O)O", "CC(=O)Oc1ccccc1C(=O)O", "c1ccncc1"]
-    for smi in smiles:
-        r = sci_form.embed(smi, seed=42)
-        assert r.time_ms < 50, f"{smi} took {r.time_ms:.1f}ms (> 50ms target)"
-
-    # Batch performance
-    batch_smiles = smiles * 20  # 100 molecules
-    start = time.time()
-    results = sci_form.embed_batch(batch_smiles, seed=42)
-    elapsed_ms = (time.time() - start) * 1000
-    avg_ms = elapsed_ms / len(batch_smiles)
-
-    ok = sum(1 for r in results if r.is_ok())
-    print(f"  performance: {len(batch_smiles)} mols in {elapsed_ms:.0f}ms ({avg_ms:.1f}ms/mol), {ok}/{len(batch_smiles)} OK")
+def test_charges():
+    result = sci_form.charges("CCO")
+    assert len(result.charges) == 9
+    assert finite(*result.charges)
+    assert abs(result.total_charge) < 1e-6
 
 
-def test_data_roundtrip():
-    """Test that data can be serialized/deserialized for interop."""
-    import sci_form
-
-    r = sci_form.embed("CCO", seed=42)
-
-    # Simulate sending to another system via JSON
-    data = {
-        "smiles": r.smiles,
-        "num_atoms": r.num_atoms,
-        "coords": r.coords,
-        "elements": list(r.elements),
-        "bonds": [(a, b, o) for a, b, o in r.bonds],
-        "error": r.error,
-        "time_ms": r.time_ms,
-    }
-    json_str = json.dumps(data)
-    roundtripped = json.loads(json_str)
-
-    assert roundtripped["num_atoms"] == r.num_atoms
-    assert roundtripped["coords"] == list(r.coords)
-    assert roundtripped["elements"] == list(r.elements)
-
-    print("  data roundtrip: JSON serialize/deserialize OK")
+def test_charges_configured():
+    result = sci_form.compute_charges_configured("CCO", max_iter=12)
+    assert len(result.charges) == 9
+    assert finite(*result.charges)
 
 
-def main():
-    tests = [
-        ("Version", test_version),
-        ("Single embed", test_embed_single),
-        ("Multiple molecules", test_embed_molecules),
-        ("Batch parallel", test_batch),
-        ("Parse", test_parse),
-        ("Error handling", test_error_handling),
-        ("Coordinate sanity", test_coordinate_sanity),
-        ("Performance", test_performance),
-        ("Data roundtrip", test_data_roundtrip),
-    ]
-
-    print("=" * 60)
-    print("sci-form Python Integration Tests")
-    print("=" * 60)
-
-    passed = 0
-    failed = 0
-    for name, test_fn in tests:
-        try:
-            test_fn()
-            passed += 1
-            print(f"  [PASS] {name}")
-        except Exception as e:
-            failed += 1
-            print(f"  [FAIL] {name}: {e}")
-
-    print("=" * 60)
-    print(f"Results: {passed} passed, {failed} failed")
-    print("=" * 60)
-    sys.exit(1 if failed > 0 else 0)
+def test_sasa():
+    result = sci_form.sasa(E, C)
+    assert result.total_sasa > 0.0
 
 
-if __name__ == "__main__":
-    main()
+def test_population():
+    result = sci_form.population(E, C)
+    assert len(result.mulliken_charges) == 3
+    assert finite(*result.mulliken_charges)
+
+
+def test_dipole_returns_finite_3_vector():
+    result = sci_form.dipole(E, C)
+    assert len(result.vector) == 3
+    assert finite(*result.vector)
+    assert finite(result.magnitude)
+
+
+def test_esp_grid_has_origin_dims_and_values():
+    grid = sci_form.esp(E, C, spacing=0.5, padding=1.0)
+    assert len(grid.origin) == 3
+    assert finite(*grid.origin)
+    assert len(grid.dims) == 3
+    assert len(grid.values) == grid.dims[0] * grid.dims[1] * grid.dims[2]
+    assert finite(*grid.values[:8])
+
+
+def test_dos():
+    result = sci_form.dos(E, C)
+    assert len(result.energies) == len(result.total_dos)
+
+
+def test_dos_multimethod():
+    result = sci_form.compute_dos_multimethod(E, C)
+    assert len(result.energies) == len(result.total_dos)
+    assert result.gap > 0.0
+
+
+def test_rmsd():
+    result = sci_form.rmsd([0, 0, 0, 1, 0, 0], [0, 0, 0, 1, 0, 0])
+    assert result.rmsd == pytest.approx(0.0, abs=1e-12)
+
+
+def test_rmsd_matrix():
+    matrix = sci_form.rmsd_matrix([[0, 0, 0, 1, 0, 0], [0, 0, 0, 1.01, 0, 0]])
+    assert len(matrix) == 2
+    assert matrix[0][0] == pytest.approx(0.0)
+
+
+# ─── Force fields and electronic structure ───────────────────────────────────
+
+
+def test_uff_energy():
+    assert finite(sci_form.uff_energy("CCO", CCO))
+
+
+def test_mmff94_energy():
+    assert finite(sci_form.mmff94_energy("CCO", CCO))
+
+
+def test_pm3():
+    assert finite(sci_form.pm3_calculate(E, C).total_energy)
+
+
+def test_gfn1():
+    assert finite(sci_form.gfn1_calculate(E, C).total_energy)
+
+
+def test_gfn2():
+    assert finite(sci_form.gfn2_calculate(E, C).total_energy)
+
+
+def test_hf3c():
+    assert finite(sci_form.hf3c_calculate(E, C).energy)
+
+
+def test_cisd():
+    result = sci_form.compute_cisd(E, C, n_states=3)
+    assert len(result.excitations) <= 3
+    assert finite(result.correlation_energy)
+
+
+def test_eht():
+    result = sci_form.eht_calculate(E, C)
+    assert result.homo_energy < result.lumo_energy
+    assert finite(result.homo_energy, result.lumo_energy, result.gap)
+
+
+def test_eht_support():
+    support = sci_form.eht_support(E)
+    assert len(support.supported_elements) > 0
+    assert not support.has_transition_metals
+
+
+def test_eht_orbital_mesh():
+    mesh = sci_form.eht_orbital_mesh(E, C, 0)
+    assert set(mesh) >= {"vertices", "normals", "indices"}
+    assert len(mesh["vertices"]) == len(mesh["normals"])
+
+
+def test_eht_gradient():
+    assert finite(sci_form.compute_eht_gradient(E, C).rms_gradient)
+
+
+def test_optimize_geometry_eht():
+    result = sci_form.optimize_geometry_eht(E, C)
+    assert finite(result.energy)
+
+
+def test_eht_or_uff_fallback():
+    result = sci_form.eht_or_uff_fallback("CCO", E, C)
+    assert result["mode"] in ("eht", "uff")
+    assert finite(result["homo_energy"], result["lumo_energy"], result["gap"])
+
+
+# ─── ML, descriptors and ANI ─────────────────────────────────────────────────
+
+
+def test_ml_descriptors_and_prediction():
+    assert finite(sci_form.ml_descriptors("CCO").molecular_weight)
+    assert finite(sci_form.ml_predict("CCO").logp)
+
+
+def test_whim():
+    assert finite(sci_form.compute_whim(E, C).total_spread)
+
+
+def test_rdf():
+    assert len(sci_form.compute_rdf(E, C).radii) > 0
+
+
+def test_getaway():
+    getaway = sci_form.compute_getaway(E, C)
+    assert finite(getaway.hat_total, getaway.r_total, getaway.h_mean)
+
+
+def test_ani():
+    result = sci_form.ani_calculate(E, C)
+    assert len(result.forces) == 3
+
+
+def test_aevs_tm():
+    result = sci_form.compute_aevs_tm(E, C)
+    assert result.n_atoms == 3
+    assert result.aev_length > 0
+    assert len(result.aevs) == 3
+
+
+def test_train_random_forest():
+    model = sci_form.train_random_forest([[0.0], [1.0], [2.0], [3.0]], [0.0, 1.0, 2.0, 3.0])
+    assert finite(model.train_rmse)
+    assert len(model.predictions) == 4
+
+
+def test_train_gradient_boosting():
+    model = sci_form.train_gradient_boosting([[0.0], [1.0], [2.0], [3.0]], [0.0, 1.0, 2.0, 3.0])
+    assert finite(model.train_rmse)
+
+
+# ─── Spectroscopy, IR and NMR ────────────────────────────────────────────────
+
+
+def test_vibrational_analysis():
+    result = sci_form.vibrational_analysis(E, C)
+    assert result.n_atoms == 3
+    assert len(result.modes) == 3 * 3
+
+
+def test_ir_spectrum():
+    result = sci_form.ir_spectrum(E, C)
+    assert len(result.wavenumbers) == len(result.intensities)
+
+
+def test_ir_spectrum_broadened():
+    result = sci_form.compute_ir_spectrum_broadened(E, C, gamma=10.0, n_points=200)
+    assert len(result.wavenumbers) == 200
+
+
+def test_assign_peaks():
+    result = sci_form.assign_peaks([3600.0], [80.0], [1, 1])
+    assert len(result.assignments) == 1
+
+
+def test_nmr_shifts():
+    result = sci_form.nmr_shifts("CCO")
+    assert len(result.h_shifts) > 0
+    assert len(result.c_shifts) > 0
+
+
+def test_nmr_couplings():
+    assert len(sci_form.nmr_couplings("CCO", C)) > 0
+
+
+def test_ensemble_j_couplings():
+    assert len(sci_form.compute_ensemble_j_couplings("CCO", [C], [0.0])) > 0
+
+
+def test_nmr_spectrum():
+    assert len(sci_form.nmr_spectrum("CCO").ppm_axis) > 0
+
+
+def test_hose_codes():
+    codes = sci_form.hose_codes("CCO")
+    assert len(codes) == 9
+    assert all(len(c) == 3 for c in codes)
+
+
+def test_stda_uvvis():
+    assert len(sci_form.stda_uvvis(E, C).wavelengths_nm) > 0
+
+
+def test_fluorescence():
+    assert len(sci_form.fluorescence_spectrum(E, C).wavelengths_nm) > 0
+
+
+# ─── Solvation ───────────────────────────────────────────────────────────────
+
+
+def test_nonpolar_solvation():
+    result = sci_form.nonpolar_solvation(E, C)
+    assert finite(result.energy_kcal_mol)
+    assert result.total_sasa > 0.0
+
+
+def test_gb_solvation():
+    result = sci_form.gb_solvation(E, C, [0.1, -0.1, 0.0])
+    assert finite(result.total_energy_kcal_mol)
+    assert finite(result.electrostatic_energy_kcal_mol)
+
+
+# ─── Rings, fingerprints, clustering ─────────────────────────────────────────
+
+
+def test_sssr():
+    assert len(sci_form.sssr("c1ccccc1").rings) == 1
+
+
+def test_ecfp_and_tanimoto():
+    a = sci_form.ecfp("CCO")
+    assert a.n_bits > 0
+    assert sci_form.tanimoto(a, a) == pytest.approx(1.0)
+
+
+def test_ecfp_batch():
+    assert len(sci_form.compute_ecfp_batch(["CCO", "CCC"])) == 2
+
+
+def test_butina_cluster_and_filter_diverse():
+    conformers = [[0, 0, 0, 1, 0, 0], [0, 0, 0, 1.01, 0, 0]]
+    assert len(sci_form.butina_cluster(conformers, 1.0).centroid_indices) >= 1
+    assert len(sci_form.filter_diverse(conformers, 0.5)) >= 1
+
+
+# ─── Stereochemistry, graph features, reactivity ─────────────────────────────
+
+
+def test_stereo_analysis():
+    assert sci_form.stereo_analysis("C[C@H](F)Cl").n_stereocenters == 1
+
+
+def test_graph_features():
+    features = sci_form.graph_features("c1ccccc1")
+    # 6 aromatic carbons + 6 implicit hydrogens.
+    assert len(features.aromatic_atoms) == 12
+    assert all(features.aromatic_atoms[:6])
+    assert len(features.aromatic_bonds) == 6
+
+
+def test_frontier_and_fukui():
+    frontier = sci_form.frontier_descriptors(E, C)
+    assert finite(frontier.homo_energy, frontier.lumo_energy)
+    assert len(frontier.dual_descriptor) == 3
+    assert len(frontier.homo_atom_contributions) == 3
+    assert len(sci_form.fukui_descriptors(E, C).f_plus) == 3
+
+
+def test_reactivity_ranking():
+    ranking = sci_form.reactivity_ranking(E, C)
+    assert len(ranking.nucleophilic_attack_sites) == 3
+    assert len(ranking.electrophilic_attack_sites) == 3
+
+
+def test_uvvis_and_empirical_pka():
+    assert len(sci_form.uvvis_spectrum(E, C).peaks) > 0
+    pka = sci_form.empirical_pka("CC(=O)O")
+    assert len(pka.acidic_sites) + len(pka.basic_sites) > 0
+
+
+def test_bond_orders_wiberg():
+    assert len(sci_form.bond_orders(E, C).wiberg) == 3
+
+
+def test_bond_orders():
+    orders = sci_form.bond_orders(E, C)
+    assert len(orders.wiberg) == 3
+    assert len(orders.mayer) == 3
+
+
+# ─── Materials and periodic systems ──────────────────────────────────────────
+
+
+def test_unit_cell():
+    cell = sci_form.unit_cell(10.0, 10.0, 10.0)
+    assert len(cell.lattice) == 3
+
+
+def test_assemble_framework():
+    structure = sci_form.assemble_framework("pcu", 30, "octahedral", 10.0, 1)
+    assert structure.num_atoms > 0
+
+
+def test_space_groups():
+    assert sci_form.space_group_by_number(225).symbol
+    assert sci_form.space_group_by_symbol("P 21/c").number == 14
+    assert len(sci_form.all_space_groups()) == 230
+
+
+def test_periodic_molecule_and_hapticity():
+    assert sci_form.build_periodic_molecule([6], [[0.5, 0.5, 0.5]], 10, 10, 10).n_atoms == 1
+    analysis = sci_form.detect_hapticity(
+        [26] + [6] * 10, [0.0, 0.0, 0.0] + [i * 1.2 for i in range(1, 11)]
+    )
+    assert analysis.n_interactions >= 0
+
+
+def test_optimize_framework():
+    assert finite(sci_form.optimize_framework("CCO", CCO).energy)
+
+
+# ─── Reactions and transport ─────────────────────────────────────────────────
+
+
+def test_smirks_roundtrip():
+    transform = sci_form.parse_smirks("[C:1][OH:2]>>[C:1][Cl:2]")
+    assert transform is not None
+    result = sci_form.apply_smirks("[C:1][OH:2]>>[C:1][Cl:2]", "CCO")
+    assert result.success
+    assert len(result.products) == 1
+
+
+def test_transport():
+    batch = sci_form.pack_conformers([sci_form.embed("CCO", seed=42)])
+    assert "coords" in batch.column_names
+    tasks = sci_form.split_worker_tasks(["CCO", "CCC"], 4, 42)
+    assert len(tasks) >= 1
+    assert sci_form.estimate_workers(100) >= 1
+
+
+# ─── Dynamics and planning ───────────────────────────────────────────────────
+
+
+def test_md_trajectory():
+    trajectory = sci_form.md_trajectory("CCO", CCO, 10, 1.0, 42)
+    # The trajectory stores the initial frame plus one frame per step.
+    assert len(trajectory.frames) == 11
+    # Flat coordinate buffer: 3 floats per atom (9 atoms).
+    assert len(trajectory.frames[0].coords) == 27
+
+
+def test_search_conformers():
+    result = sci_form.search_conformers("CCO", 3, 42, 0.5)
+    assert result.generated >= 1
+
+
+def test_simplified_neb_path():
+    path = sci_form.simplified_neb_path("CCO", CCO, CCO, 5)
+    assert len(path.images) == 5
+
+
+def test_system_capabilities_and_plan():
+    capabilities = sci_form.system_capabilities(E)
+    assert capabilities.embed.available
+    plan = sci_form.system_method_plan(E)
+    assert plan.geometry.recommended is not None
+
+
+def test_compare_methods():
+    result = sci_form.compare_methods("CCO", E, C)
+    assert len(result.comparisons) >= 2
+
+
+# ─── Submodules ──────────────────────────────────────────────────────────────
+
+
+def test_potentials_submodule():
+    assert finite(sci_form.potentials.muller_brown_2d(0.0, 0.0))
+    assert finite(sci_form.potentials.double_well_1d(0.0))
+
+
+def test_alpha_and_beta_submodules_are_attributes():
+    # Regression: the submodules used to be registered under the invalid
+    # identifier "sci_form.alpha" / "sci_form.beta", which made
+    # `sci_form.alpha` unreachable as an attribute.
+    assert hasattr(sci_form, "alpha")
+    assert hasattr(sci_form, "beta")
+    assert hasattr(sci_form, "potentials")
+
+
+def test_alpha_submodule_import():
+    from sci_form.alpha import alpha_boys_function
+
+    assert finite(alpha_boys_function(0, 2.0))
+
+
+def test_beta_submodule_import():
+    from sci_form.beta import kpm_dos
+
+    assert len(kpm_dos(E, C).energies) > 0

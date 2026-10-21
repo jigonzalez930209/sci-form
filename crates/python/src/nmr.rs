@@ -283,6 +283,40 @@ fn nmr_couplings(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<JCouplingPy>> {
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
+/// Predict J-couplings averaged over a conformer ensemble (Boltzmann weighting).
+///
+/// `conformer_coords` is a list of conformers, each a flat xyz coordinate
+/// array; `energies_kcal` holds the corresponding conformer energies in
+/// kcal/mol.
+#[pyfunction]
+#[pyo3(signature = (smiles, conformer_coords, energies_kcal, temperature_k=298.15))]
+fn compute_ensemble_j_couplings(
+    smiles: &str,
+    conformer_coords: Vec<Vec<f64>>,
+    energies_kcal: Vec<f64>,
+    temperature_k: f64,
+) -> PyResult<Vec<JCouplingPy>> {
+    sci_form_core::compute_ensemble_j_couplings(
+        smiles,
+        &conformer_coords,
+        &energies_kcal,
+        temperature_k,
+    )
+    .map(|couplings| {
+        couplings
+            .iter()
+            .map(|c| JCouplingPy {
+                h1_index: c.h1_index,
+                h2_index: c.h2_index,
+                j_hz: c.j_hz,
+                n_bonds: c.n_bonds,
+                coupling_type: c.coupling_type.clone(),
+            })
+            .collect()
+    })
+    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
 #[pyfunction]
 #[pyo3(signature = (smiles, coords=vec![], nucleus="1H", gamma=0.02, ppm_min=0.0, ppm_max=12.0, n_points=1000))]
 fn nmr_spectrum(
@@ -337,6 +371,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(nmr_shifts_for_nucleus, m)?)?;
     m.add_function(wrap_pyfunction!(giao_nmr, m)?)?;
     m.add_function(wrap_pyfunction!(nmr_couplings, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_ensemble_j_couplings, m)?)?;
     m.add_function(wrap_pyfunction!(nmr_spectrum, m)?)?;
     m.add_function(wrap_pyfunction!(hose_codes, m)?)?;
     m.add_class::<ChemicalShiftPy>()?;

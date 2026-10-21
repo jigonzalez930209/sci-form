@@ -251,3 +251,30 @@ pub fn cmd_rmsd(coords: &str, reference: &str) {
         result.rmsd, result.rotation
     );
 }
+
+/// Generate a diverse conformer ensemble and cluster it by Butina RMSD.
+pub fn cmd_embed_diverse(smiles: &str, n_conformers: usize, rmsd_cutoff: f64, base_seed: u64) {
+    let results = sci_form::embed_diverse(smiles, n_conformers, rmsd_cutoff, base_seed);
+    println!("{}", serde_json::to_string_pretty(&results).unwrap());
+}
+
+/// Print the canonical SMILES representation of a molecule.
+pub fn cmd_canonical_smiles(smiles: &str) {
+    match sci_form::to_canonical_smiles(smiles) {
+        Ok(s) => println!("{}", s),
+        Err(e) => {
+            eprintln!("Canonical SMILES error: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Filter a conformer ensemble to keep only the diverse cluster centroids.
+pub fn cmd_filter_diverse(conformers: &str, rmsd_cutoff: f64) {
+    let list: Vec<Vec<f64>> = serde_json::from_str(conformers).unwrap_or_else(|e| {
+        eprintln!("Bad conformers JSON: {}", e);
+        std::process::exit(1);
+    });
+    let indices = sci_form::clustering::filter_diverse_conformers(&list, rmsd_cutoff);
+    println!("{}", serde_json::to_string_pretty(&indices).unwrap());
+}

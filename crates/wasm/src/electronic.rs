@@ -111,6 +111,73 @@ pub fn compute_ani(elements_json: &str, coords_flat_json: &str) -> String {
     }
 }
 
+/// Compute CISD excited states from an internal STO-3G RHF calculation.
+///
+/// Runs the shared SCF engine and the validated two-electron integral engine
+/// internally, then feeds the canonical orbitals and ERIs to the CISD driver.
+#[wasm_bindgen]
+pub fn compute_cisd(elements_json: &str, coords_flat_json: &str, n_states: usize) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    let system = sci_form::scf::types::MolecularSystem::from_angstrom(&elements, &positions, 0, 1);
+    let scf_config = sci_form::scf::scf_loop::ScfConfig::default();
+    let scf = sci_form::scf::scf_loop::run_scf(&system, &scf_config);
+    if !scf.converged {
+        return json_error("RHF/STO-3G SCF did not converge; CISD requires a converged reference");
+    }
+
+    let basis =
+        sci_form::scf::basis::BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
+    let n_basis = basis.n_basis;
+    let engine = sci_form::scf::two_electron::TwoElectronIntegrals::compute(&basis);
+    let n_pair = n_basis * (n_basis + 1) / 2;
+    let mut eris = vec![0.0f64; n_pair * (n_pair + 1) / 2];
+    for i in 0..n_basis {
+        for j in 0..n_basis {
+            for k in 0..n_basis {
+                for l in 0..n_basis {
+                    eris[sci_form::hf::integrals::eri_index(i, j, k, l, n_basis)] =
+                        engine.get(i, j, k, l);
+                }
+            }
+        }
+    }
+
+    let n_occupied = scf.n_electrons / 2;
+    let result = sci_form::hf::compute_cisd(
+        &scf.orbital_energies,
+        &scf.mo_coefficients,
+        &eris,
+        n_basis,
+        n_occupied,
+        n_states,
+    );
+    serialize_or_error(&result)
+}
+
+/// Compute ANI-TM atomic environment vectors (24-element extended set).
+///
+/// Uses the built-in transition-metal AEV parameter set.
+#[wasm_bindgen]
+pub fn compute_aevs_tm(elements_json: &str, coords_flat_json: &str) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    let params = sci_form::ani::ani_tm::default_ani_tm_params();
+    let aevs = sci_form::ani::ani_tm::compute_aevs_tm(&elements, &positions, &params);
+    let aev_length = aevs.first().map(|a| a.len()).unwrap_or(0);
+    serialize_or_error(&serde_json::json!({
+        "n_atoms": elements.len(),
+        "aev_length": aev_length,
+        "aevs": aevs,
+    }))
+}
+
 /// **ALPHA** — Run Kohn-Sham DFT calculation.
 ///
 /// `method`: `"svwn"` (LDA) or `"pbe"` (GGA).

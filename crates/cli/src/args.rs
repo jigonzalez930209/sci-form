@@ -227,6 +227,360 @@ pub enum Commands {
         n_bits: usize,
     },
 
+    // ─── Cross-surface parity commands ─────────────────────────────────
+    /// Generate a diverse conformer ensemble and cluster it by Butina RMSD
+    EmbedDiverse {
+        /// SMILES string
+        smiles: String,
+        /// Number of embedding attempts (different seeds)
+        #[arg(long, default_value_t = 10)]
+        n_conformers: usize,
+        /// RMSD clustering cutoff in Å
+        #[arg(long, default_value_t = 1.0)]
+        rmsd_cutoff: f64,
+        /// Base RNG seed (seeds = base_seed..base_seed+n_conformers)
+        #[arg(long, default_value_t = 42)]
+        base_seed: u64,
+    },
+    /// Print the canonical SMILES representation of a molecule
+    CanonicalSmiles { smiles: String },
+    /// Compute ECFP fingerprints for a batch of SMILES (JSON array)
+    EcfpBatch {
+        /// JSON array of SMILES strings
+        smiles_list: String,
+        /// Fingerprint radius (2 = ECFP4, 3 = ECFP6)
+        #[arg(short, long, default_value_t = 2)]
+        radius: usize,
+        /// Bit vector length
+        #[arg(short, long, default_value_t = 2048)]
+        n_bits: usize,
+    },
+    /// Compute Gasteiger-Marsili charges with configurable parameters
+    ChargesConfigured {
+        /// SMILES string
+        smiles: String,
+        /// Number of electronegativity-equalization iterations
+        #[arg(long, default_value_t = 6)]
+        max_iter: usize,
+        /// Initial damping factor (halved every iteration)
+        #[arg(long, default_value_t = 0.5)]
+        initial_damping: f64,
+        /// Convergence threshold for max charge transfer
+        #[arg(long, default_value_t = 1e-10)]
+        convergence_threshold: f64,
+    },
+    /// Predict J-couplings averaged over a conformer ensemble (Boltzmann weighting)
+    EnsembleJCouplings {
+        /// SMILES string
+        smiles: String,
+        /// JSON array of conformers, each a flat xyz coordinate array
+        conformer_coords: String,
+        /// JSON array of conformer energies in kcal/mol
+        energies_kcal: String,
+        /// Temperature in K
+        #[arg(long, default_value_t = 298.15)]
+        temperature_k: f64,
+    },
+    /// Compute a broadened IR spectrum (runs the vibrational analysis internally)
+    IrSpectrumBroadened {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Hessian method: eht, pm3, xtb, uff, ...
+        #[arg(long, default_value = "eht")]
+        method: String,
+        /// Broadening width in cm⁻¹
+        #[arg(long, default_value_t = 15.0)]
+        gamma: f64,
+        /// Minimum wavenumber in cm⁻¹
+        #[arg(long, default_value_t = 400.0)]
+        wn_min: f64,
+        /// Maximum wavenumber in cm⁻¹
+        #[arg(long, default_value_t = 4000.0)]
+        wn_max: f64,
+        /// Number of grid points
+        #[arg(long, default_value_t = 1000)]
+        n_points: usize,
+        /// Broadening type: gaussian or lorentzian
+        #[arg(long, default_value = "lorentzian")]
+        broadening: String,
+        /// Finite-difference step in Å (0 = engine default)
+        #[arg(long, default_value_t = 0.0)]
+        step_size: f64,
+        /// SMILES string (required for method=uff)
+        #[arg(long, default_value = "")]
+        smiles: String,
+    },
+    /// Compute CISD excited states from an internal STO-3G RHF calculation
+    Cisd {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Number of excited states to report
+        #[arg(long, default_value_t = 5)]
+        n_states: usize,
+    },
+    /// Compute DOS from the orbital energies of a chosen electronic-structure method
+    DosMultimethod {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Method: eht, pm3, xtb, gfn1, gfn2 or hf3c
+        #[arg(long, default_value = "eht")]
+        method: String,
+        #[arg(short, long, default_value_t = 0.3)]
+        sigma: f64,
+        #[arg(long, default_value_t = -30.0)]
+        e_min: f64,
+        #[arg(long, default_value_t = 5.0)]
+        e_max: f64,
+        #[arg(short, long, default_value_t = 500)]
+        n_points: usize,
+    },
+    /// Compute EHT energy-surface gradients (central finite differences)
+    EhtGradient {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// Optimize a geometry on the EHT energy surface (shared BFGS engine)
+    OptimizeGeometryEht {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Maximum number of optimization steps
+        #[arg(long, default_value_t = 200)]
+        max_steps: usize,
+        /// RMS gradient convergence threshold in eV/Å
+        #[arg(long, default_value_t = 0.01)]
+        grad_threshold: f64,
+        /// Energy convergence threshold in eV
+        #[arg(long, default_value_t = 1e-6)]
+        energy_threshold: f64,
+        /// Initial step size for steepest descent in Å
+        #[arg(long, default_value_t = 0.05)]
+        step_size: f64,
+    },
+    /// Compute ANI-TM atomic environment vectors (24-element extended set)
+    AevsTm {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// Compute WHIM 3D molecular descriptors
+    Whim {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Weighting: unit, mass, volume, electronegativity or polarizability
+        #[arg(long, default_value = "mass")]
+        weighting: String,
+    },
+    /// Compute radial distribution function (RDF) descriptors
+    Rdf {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// JSON array of partial charges (omit to derive them with Gasteiger)
+        #[arg(long, default_value = "")]
+        charges: String,
+        /// Gaussian smoothing factor in Å⁻²
+        #[arg(long, default_value_t = 100.0)]
+        beta: f64,
+        /// Maximum radius in Å
+        #[arg(long, default_value_t = 12.0)]
+        r_max: f64,
+        /// Number of sampling points
+        #[arg(long, default_value_t = 128)]
+        n_points: usize,
+    },
+    /// Compute GETAWAY 3D molecular descriptors
+    Getaway {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// JSON array of [i, j] bond pairs (omit to perceive bonds from geometry)
+        #[arg(long, default_value = "")]
+        bonds: String,
+        /// Maximum topological distance for the autocorrelations
+        #[arg(long, default_value_t = 8)]
+        max_lag: usize,
+    },
+    /// Train a Random Forest regressor on a feature matrix
+    TrainRandomForest {
+        /// JSON array of feature vectors
+        features: String,
+        /// JSON array of target values
+        targets: String,
+        /// Number of trees
+        #[arg(long, default_value_t = 100)]
+        n_trees: usize,
+        /// Maximum tree depth
+        #[arg(long, default_value_t = 10)]
+        max_depth: usize,
+        /// Minimum samples required to split a node
+        #[arg(long, default_value_t = 5)]
+        min_samples_split: usize,
+        /// Minimum samples required for a leaf
+        #[arg(long, default_value_t = 2)]
+        min_samples_leaf: usize,
+        /// Bootstrap sample fraction (0.0-1.0)
+        #[arg(long, default_value_t = 1.0)]
+        sample_fraction: f64,
+        /// RNG seed
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+    },
+    /// Train a Gradient Boosting regressor on a feature matrix
+    TrainGradientBoosting {
+        /// JSON array of feature vectors
+        features: String,
+        /// JSON array of target values
+        targets: String,
+        /// Number of boosting stages
+        #[arg(long, default_value_t = 100)]
+        n_estimators: usize,
+        /// Learning rate
+        #[arg(long, default_value_t = 0.1)]
+        learning_rate: f64,
+        /// Maximum tree depth
+        #[arg(long, default_value_t = 5)]
+        max_depth: usize,
+        /// Minimum samples required to split a node
+        #[arg(long, default_value_t = 5)]
+        min_samples_split: usize,
+        /// Minimum samples required for a leaf
+        #[arg(long, default_value_t = 2)]
+        min_samples_leaf: usize,
+        /// Row subsample fraction (0.0-1.0)
+        #[arg(long, default_value_t = 0.8)]
+        subsample: f64,
+        /// RNG seed
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+    },
+    /// Assign IR peaks to functional groups (group-frequency tables)
+    AssignPeaks {
+        /// JSON array of vibrational frequencies in cm⁻¹
+        frequencies: String,
+        /// JSON array of IR intensities
+        intensities: String,
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of modes, each an array of [x,y,z] triples (optional)
+        #[arg(long, default_value = "")]
+        mode_displacements: String,
+    },
+    /// Look up a crystallographic space group by number or symbol
+    SpaceGroup {
+        /// ITC number (1-230)
+        #[arg(long)]
+        number: Option<u16>,
+        /// Hermann-Mauguin symbol, e.g. "P 21/c"
+        #[arg(long)]
+        symbol: Option<String>,
+    },
+    /// List all 230 space groups
+    AllSpaceGroups,
+    /// Build a periodic molecular graph from fractional coordinates and a unit cell
+    PeriodicMolecule {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of fractional coordinates
+        frac_coords: String,
+        /// Lattice length a in Å
+        #[arg(long)]
+        a: f64,
+        /// Lattice length b in Å
+        #[arg(long)]
+        b: f64,
+        /// Lattice length c in Å
+        #[arg(long)]
+        c: f64,
+        /// Lattice angle alpha in degrees
+        #[arg(long, default_value_t = 90.0)]
+        alpha: f64,
+        /// Lattice angle beta in degrees
+        #[arg(long, default_value_t = 90.0)]
+        beta: f64,
+        /// Lattice angle gamma in degrees
+        #[arg(long, default_value_t = 90.0)]
+        gamma: f64,
+        /// Extra bonding tolerance in Å (0 = default 0.3)
+        #[arg(long, default_value_t = 0.0)]
+        bond_tolerance: f64,
+    },
+    /// Detect haptic (η) metal-ring interactions and metallocene motifs
+    Hapticity {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// JSON array of [i, j] bond pairs (omit to perceive bonds from geometry)
+        #[arg(long, default_value = "")]
+        bonds: String,
+    },
+    /// Optimize a geometry with the shared BFGS engine (UFF backend)
+    OptimizeFramework {
+        /// SMILES string (used to build the UFF force field)
+        smiles: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Optimization method: bfgs or steepest_descent
+        #[arg(long, default_value = "bfgs")]
+        method: String,
+        /// Maximum number of iterations
+        #[arg(long, default_value_t = 200)]
+        max_iter: usize,
+        /// Force convergence threshold in eV/Å
+        #[arg(long, default_value_t = 0.05)]
+        force_tol: f64,
+        /// Energy convergence threshold in eV
+        #[arg(long, default_value_t = 1e-6)]
+        energy_tol: f64,
+        /// Maximum step size in Å
+        #[arg(long, default_value_t = 0.2)]
+        max_step: f64,
+        /// JSON array of fixed atom indices
+        #[arg(long, default_value = "")]
+        fixed_atoms: String,
+        /// Lattice length a in Å (enables periodic optimization)
+        #[arg(long)]
+        a: Option<f64>,
+        /// Lattice length b in Å
+        #[arg(long)]
+        b: Option<f64>,
+        /// Lattice length c in Å
+        #[arg(long)]
+        c: Option<f64>,
+        /// Lattice angle alpha in degrees
+        #[arg(long, default_value_t = 90.0)]
+        alpha: f64,
+        /// Lattice angle beta in degrees
+        #[arg(long, default_value_t = 90.0)]
+        beta: f64,
+        /// Lattice angle gamma in degrees
+        #[arg(long, default_value_t = 90.0)]
+        gamma: f64,
+    },
+    /// Filter a conformer ensemble to keep only the diverse cluster centroids
+    FilterDiverse {
+        /// JSON array of conformers, each a flat xyz coordinate array
+        conformers: String,
+        /// RMSD clustering cutoff in Å
+        #[arg(long, default_value_t = 1.0)]
+        rmsd_cutoff: f64,
+    },
+
     // ─── Experimental ──────────────────────────────────────────────────
     /// Compute EEQ geometry-dependent charges
     Eeq {

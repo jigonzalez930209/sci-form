@@ -171,14 +171,18 @@ fn classify_geometry(vectors: &[[f64; 3]]) -> (CoordinationGeometryGuess, f64) {
 pub fn analyze_topology(elements: &[u8], positions: &[[f64; 3]]) -> TopologyAnalysisResult {
     let mut metal_centers = Vec::new();
 
-    for (metal_idx, &metal_z) in elements.iter().enumerate() {
+    // Be tolerant of mismatched input lengths: a missing coordinate is
+    // treated as "not a ligand" rather than an out-of-bounds panic.
+    let n_atoms = elements.len().min(positions.len());
+
+    for (metal_idx, &metal_z) in elements.iter().take(n_atoms).enumerate() {
         if !crate::eht::is_transition_metal(metal_z) {
             continue;
         }
 
         let mut ligand_indices = Vec::new();
         let mut vectors = Vec::new();
-        for ligand_idx in 0..elements.len() {
+        for ligand_idx in 0..n_atoms {
             if ligand_idx == metal_idx {
                 continue;
             }

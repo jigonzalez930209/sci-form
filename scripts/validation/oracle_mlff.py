@@ -14,17 +14,21 @@
   are species-agnostic, TorchANI splits by species); MD17/SPICE energy
   benchmarks need trained weights: documented gaps.
 
-Usage: oracle_mlff.py  (writes tests/fixtures/validation/mlff_bp.json)
+Usage:
+    oracle_mlff.py                 # rebuild the fixture from scratch (needs RDKit)
+    oracle_mlff.py --from-fixture  # recompute only the AEV/energy/force fields
+                                   # from the geometries already in the fixture
+                                   # (no RDKit required)
 """
 
 from __future__ import annotations
 
 import json
+import math
+import sys
 from pathlib import Path
 
 import numpy as np
-from rdkit import Chem
-from rdkit.Chem import AllChem
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "tests" / "fixtures" / "validation" / "mlff_bp.json"
@@ -38,7 +42,8 @@ def cutoff(r: float, rc: float) -> float:
 
 def aev_atom(i: int, elements, pos: np.ndarray, p: dict) -> np.ndarray:
     n = len(elements)
-    rad = np.zeros(len(p["radial_shifts"]))
+    n_shifts = len(p["radial_shifts"])
+    rad = np.zeros(len(p["radial_shifts"]) * len(p["radial_etas"]))
     for j in range(n):
         if i == j:
             continue
@@ -46,8 +51,11 @@ def aev_atom(i: int, elements, pos: np.ndarray, p: dict) -> np.ndarray:
         if rij >= p["radial_cutoff"]:
             continue
         fc = cutoff(rij, p["radial_cutoff"])
-        for s, (rs, eta) in enumerate(zip(p["radial_shifts"], p["radial_etas"])):
-            rad[s] += np.exp(-eta * (rij - rs) ** 2) * fc
+        # Full (eta, shift) grid — eta outer, shift inner (same layout as
+        # `src/ml/symmetry_functions.rs` and `src/ani/aev.rs`).
+        for e_idx, eta in enumerate(p["radial_etas"]):
+            for s_idx, rs in enumerate(p["radial_shifts"]):
+                rad[e_idx * n_shifts + s_idx] += np.exp(-eta * (rij - rs) ** 2) * fc
     ang = []
     for rs in p["angular_shifts"]:
         for eta in p["angular_etas"]:
@@ -122,8 +130,8 @@ def main() -> int:
                   "angular_shifts": [1.2], "angular_etas": [5.0],
                   "angular_zetas": [1.0, 2.0]},
     }
-    # Tiny nets sized for the RUST layout (256 radial incl. 240 structural
-    # zeros + 16 angular = 272): exact activations for H/C/N/O + GELU net.
+    # Tiny nets sized for the RUST layout (256 radial + 16 angular = 272):
+    # exact activations for H/C/N/O + GELU net.
     AEV_DIM = 256 + 16
     nets: dict[str, list[dict]] = {}
     for z in (1, 6, 7, 8):
@@ -144,8 +152,10 @@ def main() -> int:
          "bias": rw.standard_normal(1).tolist(), "act": "linear"},
     ]
 
-    def full_aev(v32: np.ndarray) -> np.ndarray:
-        return np.concatenate([v32[:16], np.zeros(240), v32[16:]])
+    def full_aev(aev: np.ndarray) -> np.ndarray:
+        # `aev_atom` now produces the full 256-slot radial block directly,
+        # so no zero padding is needed to reach the Rust layout.
+        return aev
     cases = []
     for mol in mols:
         pos = np.array(mol["coords"])
@@ -201,5 +211,58 @@ def main() -> int:
     return 0
 
 
+def regenerate_from_fixture() -> int:
+    """Recompute the reference AEVs, energies and forces from the geometries
+    already stored in the fixture.
+
+    This keeps the fixture regenerable without RDKit (the geometries are the
+    only part that needs it) and makes descriptor-layout changes auditable.
+    """
+    payload = json.loads(OUT.read_text())
+    params = payload["params"]
+    nets = payload["nets"]
+
+    for case in payload["cases"]:
+        pos = np.array(case["coords"])
+        elements = case["elements"]
+        case["aev_default"] = [
+            aev_atom(i, elements, pos, params["default"]).tolist() for i in range(len(pos))
+        ]
+        case["aev_small"] = [
+            aev_atom(i, elements, pos, params["small"]).tolist() for i in range(len(pos))
+        ]
+        aevs = [np.array(v) for v in case["aev_default"]]
+        e = sum(forward(a, nets[str(z)]) for a, z in zip(aevs, elements))
+        h = 1e-5
+        f = np.zeros_like(pos)
+        for i in range(len(pos)):
+            for d in range(3):
+                pp, pm = pos.copy(), pos.copy()
+                pp[i, d] += h
+                pm[i, d] -= h
+                ap = [aev_atom(j, elements, pp, params["default"]) for j in range(len(pos))]
+                am = [aev_atom(j, elements, pm, params["default"]) for j in range(len(pos))]
+                ep = sum(forward(a, nets[str(z)]) for a, z in zip(ap, elements))
+                em = sum(forward(a, nets[str(z)]) for a, z in zip(am, elements))
+                f[i, d] = -(ep - em) / (2 * h)
+        case["energy_ref"] = float(e)
+        case["forces_ref"] = f.tolist()
+        if 6 in elements:
+            case["gelu_energy_ref"] = float(
+                sum(
+                    forward(a, nets["6-gelu"])
+                    for a, z in zip(aevs, elements)
+                    if z == 6
+                )
+            )
+        print(f"{case['smiles']}: E={e:.6f} n={len(pos)}")
+
+    OUT.write_text(json.dumps(payload) + "\n")
+    print(f"wrote {OUT} ({len(payload['cases'])} molecules)")
+    return 0
+
+
 if __name__ == "__main__":
+    if "--from-fixture" in sys.argv:
+        raise SystemExit(regenerate_from_fixture())
     raise SystemExit(main())

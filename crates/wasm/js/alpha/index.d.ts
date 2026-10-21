@@ -3,6 +3,11 @@
  *
  * All functions accept/return JSON strings except where noted.
  * Call `await init()` from the main `sci-form-wasm` package once before use.
+ *
+ * Signatures mirror `crates/wasm/src/alpha.rs` and
+ * `crates/wasm/src/dynamics_live.rs` exactly: every parameter declared by the
+ * Rust `#[wasm_bindgen]` function is required here, including the JSON
+ * payload arguments (pass `"{}"` or `""` for the engine defaults).
  */
 
 // ── A1: Kohn-Sham DFT ─────────────────────────────────────────────────────
@@ -20,7 +25,7 @@
 export declare function alpha_compute_dft(
   elements_json: string,
   coords_flat_json: string,
-  method?: string
+  method: string
 ): string;
 
 // ── A2: ReaxFF ────────────────────────────────────────────────────────────
@@ -73,7 +78,7 @@ export declare function alpha_compute_mlff(
 export declare function alpha_compute_aevs(
   elements_json: string,
   coords_flat_json: string,
-  params_json?: string
+  params_json: string
 ): string;
 
 // ── A4: Obara-Saika ERIs ─────────────────────────────────────────────────
@@ -150,6 +155,23 @@ export declare function alpha_gsm_interpolate(
 ): string;
 
 /**
+ * Plan which GSM backends are available for a molecule.
+ * @returns JSON GsmBackendPlan
+ */
+export declare function alpha_gsm_backend_plan(smiles: string): string;
+
+/**
+ * Compare one or more GSM backends on the same geometry.
+ * @param methods_json JSON array of backend names, or `"[]"` for all
+ * @returns JSON GsmBackendComparison
+ */
+export declare function alpha_gsm_compare_backends(
+  smiles: string,
+  coords_flat_json: string,
+  methods_json: string
+): string;
+
+/**
  * Find transition state using Growing String Method with UFF energy.
  * @param config_json JSON `GsmConfig` or `"{}"`
  * @returns JSON `GsmResult`:
@@ -159,7 +181,20 @@ export declare function alpha_gsm_find_ts(
   smiles: string,
   reactant_coords_json: string,
   product_coords_json: string,
-  config_json?: string
+  config_json: string
+): string;
+
+/**
+ * Find transition state using a specific GSM energy backend.
+ * @param method Backend name, e.g. `"uff"`, `"pm3"`, `"gfn2"`, `"hf3c"`.
+ * @returns JSON `GsmResult`
+ */
+export declare function alpha_gsm_find_ts_with_method(
+  smiles: string,
+  reactant_coords_json: string,
+  product_coords_json: string,
+  config_json: string,
+  method: string
 ): string;
 
 // ── A7: SDR Embedding ────────────────────────────────────────────────────
@@ -174,7 +209,7 @@ export declare function alpha_gsm_find_ts(
 export declare function alpha_sdr_embed(
   distance_pairs_json: string,
   n_atoms: number,
-  config_json?: string
+  config_json: string
 ): string;
 
 // ── A8: Live MD ───────────────────────────────────────────────────────────
@@ -183,17 +218,132 @@ export declare function alpha_sdr_embed(
 export declare class LiveSimulation {
   constructor(smiles: string, coords_flat: string, backend: string);
   step(n_steps: number, dt_fs: number): void;
-  apply_thermostat(target_temp: number, coupling: number): void;
-  apply_steering_force(atom_index: number, target: [number, number, number], k: number): void;
+  apply_thermostat(target_temp: number, tau_fs: number, dt_fs: number): void;
+  apply_steering_force(
+    atom_index: number,
+    tx: number,
+    ty: number,
+    tz: number,
+    spring_k: number
+  ): void;
   clear_steering(): void;
+  num_atoms(): number;
   positions_json(): string;
   positions_ptr(): number;
   temperature(): number;
   potential_energy(): number;
   kinetic_energy(): number;
   step_count(): number;
-  set_temperature(temp: number): void;
+  set_temperature(temperature: number, seed: number): void;
 }
+
+// ── A9: Reaction dynamics (3D) ────────────────────────────────────────────
+
+/**
+ * Compute a full 3D reaction-dynamics path (approach + NEB + departure).
+ * @param reactant_smiles_json JSON array of reactant SMILES
+ * @param product_smiles_json JSON array of product SMILES
+ * @param config_json JSON `ReactionDynamics3DConfig`, `""` or `"{}"` for defaults
+ * @returns JSON `ReactionDynamics3DResult`
+ */
+export declare function compute_reaction_dynamics_3d(
+  reactant_smiles_json: string,
+  product_smiles_json: string,
+  config_json: string
+): string;
+
+/**
+ * Compute the approach phase only (no products required).
+ * @param reactant_smiles_json JSON array of reactant SMILES
+ * @param config_json JSON `ReactionDynamics3DConfig`, `""` or `"{}"` for defaults
+ * @returns JSON `ReactionDynamics3DResult` with `phase = "approach"`
+ */
+export declare function compute_approach_dynamics(
+  reactant_smiles_json: string,
+  config_json: string
+): string;
+
+// ── Render bridge: chart utilities ────────────────────────────────────────
+
+/** Build an EDL profile chart from an `EdlProfileResult` JSON payload. */
+export declare function alpha_render_edl_profile_chart(profile_json: string): string;
+
+/** Build a capacitance-scan chart from a `CpmEdlScanResult` JSON payload. */
+export declare function alpha_render_capacitance_scan_chart(scan_json: string): string;
+
+/** Build a periodic-DOS chart from a `PeriodicKpmDosResult` JSON payload. */
+export declare function alpha_render_periodic_dos_chart(dos_json: string): string;
+
+/** Build a band-structure chart from a `BandStructureAdapterResult` JSON payload. */
+export declare function alpha_render_band_structure_chart(bs_json: string): string;
+
+/** Build a microkinetic population chart from a `MicrokineticTrace` JSON payload. */
+export declare function alpha_render_microkinetic_population_chart(
+  trace_json: string
+): string;
+
+/** Build an Arrhenius chart from a JSON array of `ElementaryRateResult`. */
+export declare function alpha_render_arrhenius_chart(results_json: string): string;
+
+/** Build GSM path trajectory frames from coords + energies JSON payloads. */
+export declare function alpha_render_gsm_path_trajectory(
+  coords_json: string,
+  energies_json: string
+): string;
+
+/** Pack a chart payload into the columnar transport format. */
+export declare function alpha_render_pack_chart_payload(chart_json: string): string;
+
+/** Verify a chart payload survives a pack/unpack round trip. */
+export declare function alpha_render_verify_chart_round_trip(
+  chart_json: string,
+  tol: number
+): boolean;
+
+// ── Periodic linear (k-meshes, BZ integration, EHT band structure) ─────────
+
+/** Build a Monkhorst-Pack (or gamma-centred) k-mesh. */
+export declare function alpha_periodic_monkhorst_pack(config_json: string): string;
+
+/** Bloch phase for a fractional k-point and a lattice translation. */
+export declare function alpha_periodic_bloch_phase(
+  k_fractional_json: string,
+  translation_json: string
+): string;
+
+/** Brillouin-zone weighted integral of a scalar field. */
+export declare function alpha_periodic_bz_integrate_scalar(
+  values_json: string,
+  weights_json: string
+): number;
+
+/** Brillouin-zone weighted integral of a vector field. */
+export declare function alpha_periodic_bz_integrate_vector(
+  vectors_json: string,
+  weights_json: string
+): string;
+
+/** Validate that the k-mesh weights sum to one. */
+export declare function alpha_periodic_validate_kmesh_weights(
+  kmesh_json: string,
+  tol: number
+): boolean;
+
+/** EHT band structure along a k-path. */
+export declare function alpha_periodic_band_structure_eht(
+  elements_json: string,
+  coords_flat_json: string,
+  lattice_json: string,
+  config_json: string,
+  n_electrons: number
+): string;
+
+/** Validate the electron count implied by a periodic DOS result. */
+export declare function alpha_periodic_validate_electron_count(
+  dos_json: string,
+  fermi_energy_ev: number,
+  expected_electrons: number
+): number;
 
 // ── Metadata ─────────────────────────────────────────────────────────────
 
