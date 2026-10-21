@@ -106,7 +106,9 @@ pub fn compute_cpm_charges(
     positions: &[[f64; 3]],
     config: &CpmConfig,
 ) -> CpmResult {
-    let n = elements.len();
+    // Tolerate a short coordinate array: atoms without a coordinate are
+    // treated as isolated (no Coulomb coupling) instead of panicking.
+    let n = elements.len().min(positions.len());
     let mut charges = vec![0.0; n];
     let _converged = false;
 

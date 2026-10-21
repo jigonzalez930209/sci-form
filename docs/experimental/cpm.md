@@ -111,10 +111,12 @@ let surface = compute_cpm_surface(&elements, &positions, mu_min, mu_max, n_point
 ## Tests
 
 ```bash
-cargo test --features experimental-cpm --test regression -- test_cpm
+cargo test --features beta-cpm --test experimental_gates -- test_cpm
 ```
 
-8 integration tests covering: charge equilibration convergence, total charge response to potential, monotonic charge-potential relationship, grand potential computation, capacitance positivity, electrochemical surface scanning, solvent dielectric effects, and multi-element systems.
+9 integration tests (`tests/experimental/test_cpm.rs`) covering: charge equilibration convergence, total charge response to potential, monotonic charge-potential relationship, grand potential computation, capacitance positivity, electrochemical surface scanning, solvent dielectric effects, multi-element systems, and the LAMMPS bilayer comparison.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.
 
 ## Validation vs LAMMPS (F95, 2026-10-13)
 

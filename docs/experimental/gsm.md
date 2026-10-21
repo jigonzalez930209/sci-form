@@ -119,7 +119,9 @@ and the barrier collapses to 0.02). pyGSM/Transition1x not run.
 ## Tests
 
 ```bash
-cargo test --features experimental-gsm --test regression -- test_gsm
+cargo test --features "beta-cpm alpha-gsm" --test experimental_gates -- test_gsm
 ```
 
-8 integration tests covering: linear interpolation, quarter-point interpolation, string growth, transition state finding on a double-well potential, path ordering, energy evaluation counting, symmetric barrier detection, and saddle point refinement.
+8 integration tests (`tests/experimental/test_gsm.rs`) covering: linear interpolation, quarter-point interpolation, string growth, transition state finding on a double-well potential, path ordering, energy evaluation counting, symmetric barrier detection, and saddle point refinement.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

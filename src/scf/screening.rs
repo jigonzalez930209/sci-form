@@ -4,6 +4,11 @@
 //!   |(μν|λσ)| ≤ Q_μν · Q_λσ
 //!
 //! where Q_μν = sqrt(|(μν|μν)|).
+//!
+//! NOTE: this module is currently *not* wired into the production SCF loop;
+//! it is a tested building block for a future ERI-screening integration. The
+//! audit (reports/auditoria-total.md, P2-30) flagged it as unreachable, so
+//! this note records the status explicitly rather than leaving it implicit.
 
 use super::basis::BasisSet;
 use super::obara_saika::ShellPairData;

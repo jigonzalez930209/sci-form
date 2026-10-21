@@ -1,28 +1,72 @@
 # Benchmarks
 
-Comprehensive comparison of sci-form against RDKit, the gold standard for 3D molecular conformer generation.
+This page reports how `sci-form` compares against RDKit, the reference implementation for 3D molecular conformer generation.
+
+## How these numbers were produced
+
+There are **three different tiers** of evidence in this page. They are not interchangeable, so each section below states which tier it belongs to.
+
+### Tier 1 — committed fixture + a test that runs in CI
+
+The molecule corpus is committed to git and a Rust test recomputes the numbers on every CI run. These are the numbers you can trust to still hold.
+
+| What | Fixture | Test | CI job |
+|------|---------|------|--------|
+| 131-molecule embed / geometry-quality sweep | `tests/fixtures/diverse_molecules.smi` | `tests/regression/test_diverse_molecules.rs::test_diverse_molecules` | `validation` → `regression` |
+| GDB-20 ensemble RMSD vs RDKit | `tests/fixtures/gdb20_ensemble_300.json` + `tests/fixtures/gdb20_reference_1k.json` | `tests/regression/test_ensemble_rmsd.rs::test_ensemble_rmsd` | `validation` → `regression` |
+| Bounds / embedding / 3D-FF / BFGS / SMARTS parity | `tests/fixtures/validation/*.json` | `tests/rdkit_parity.rs` | `validation` → `rdkit-parity` |
+| CIP / ML descriptors / canonical SMILES / ALPB / variable cell | `tests/fixtures/validation/*.json` | `tests/rdkit_chem_parity.rs` | `validation` → `rdkit-chem-parity` |
+
+Run them yourself:
+
+```bash
+cargo test --release --test regression test_diverse_molecules -- --nocapture
+cargo test --release --test regression test_ensemble_rmsd -- --nocapture
+```
+
+### Tier 2 — Python scripts that need RDKit and are **not** re-run by CI
+
+These scripts live in `scripts/` and need `rdkit` (and, for some of them, `pyscf`, `torch`/`torchani` or `openbabel`) installed. They also need a release build of the CLI at `target/release/sci-form`. **No CI job installs RDKit or executes these scripts**, so their output is not refreshed automatically and can drift from the current code.
+
+| Script | What it does | Input |
+|--------|--------------|-------|
+| `scripts/benchmark_diverse.py` | sci-form vs RDKit on the 131-molecule corpus, heavy-atom pairwise-distance RMSD, minimum over all seed pairs | `tests/fixtures/diverse_molecules.smi` |
+| `scripts/benchmark_rdkit.py` | RDKit ETKDG reference conformers for a random sample of 100 SMILES | `scripts/10k_smiles.smi` |
+| `scripts/benchmark_100.py` | Three-way comparison (sci-form / RDKit / PySCF, optionally TorchANI) | `scripts/10k_smiles.smi` |
+| `scripts/three_way_comparison.py` | sci-form vs RDKit vs OpenBabel on GDB-20 | GDB-20 reference fixture |
+| `scripts/generate_chembl_reference.py` | RDKit reference conformers for the ChemBL 10K set | `data/chembl_10k_largest.smi` |
+
+### Tier 3 — numbers in this page that cannot be traced to a committed artifact
+
+Some of the figures below (notably the RDKit RMSD averages and the per-category breakdown) were recorded from a local run of a Tier 2 script. **The output of that run is not committed**, so those numbers cannot be re-derived from the repository alone, and no CI job re-runs them. They are reported here as historical measurements, with the script that produces them named so they can be regenerated on demand.
+
+---
 
 ## Methodology
 
-All comparisons use **heavy-atom pairwise-distance RMSD** — the root-mean-square deviation of all pairwise distances between non-hydrogen atoms. This metric is alignment-free (no superposition needed) and focuses on the chemically important scaffold geometry.
+All RDKit comparisons use **heavy-atom pairwise-distance RMSD** — the root-mean-square deviation of all pairwise distances between non-hydrogen atoms. This metric is alignment-free (no superposition needed) and focuses on the chemically important scaffold geometry.
 
-$$\text{RMSD}_{\text{pairwise}} = \sqrt{\frac{1}{|\mathcal{P}|}\sum_{(i,j) \in \mathcal{P}} (d_{ij}^{\text{sci-form}} - d_{ij}^{\text{RDKit}})^2}$$
+$$\text{RMSD}_{\text{pairwise}} = \sqrt{\frac{1}{|\mathcal{P}|}\sum_{(i,j) \in \mathcal{P}} (d_{ij}^{\text{sci-form}} - d_{ij}^{\text{RDKit}})^2)}$$
 
 where $\mathcal{P}$ is the set of all heavy-atom pairs.
 
+---
+
 ## Diverse Molecule Benchmark
 
-131 curated molecules spanning 27 chemical categories, from simple alkanes to macrocycles and metal-containing compounds.
+**Tier 1.** 131 curated molecules spanning 27 chemical categories, from simple alkanes to macrocycles and metal-containing compounds. The corpus is `tests/fixtures/diverse_molecules.smi`; the numbers below are what `test_diverse_molecules` prints on the current code (single seed, seed 42).
 
 ### Overall Results
 
 | Metric | Value |
 |--------|-------|
 | Total molecules | 131 |
-| Parse success | **100%** |
-| Embed success | **97.7%** (128/131) |
-| Geometry quality | **97.7%** |
-| Throughput | **60 mol/s** |
+| Categories | 27 |
+| Parse success | **100%** (131/131) |
+| Embed success | **99.2%** (130/131) |
+| Geometry quality | **99.2%** (130/131) |
+
+Throughput is machine-dependent and is printed by the test itself (138.9 mol/s on the machine that produced the table above; the test previously reported ≈60 mol/s on an 8-core consumer CPU).
 
 ### Per-Category Results
 
@@ -30,19 +74,31 @@ where $\mathcal{P}$ is the set of all heavy-atom pairs.
 
 ### Embed Failures
 
-Only 3 molecules fail to embed (out of 131):
+Only **one** molecule currently fails to embed (out of 131):
 
 | Molecule | Category | Reason |
 |----------|----------|--------|
-| Pyrene | polycyclic | 4-ring fused polyaromatic |
-| Cubane | strained | Extreme 90° angles in 4-rings |
-| Fluoranthene | polycyclic | Fused 5-6-6-5 ring system |
+| Cubane (`C12C3C4C1C5C3C2C45`) | strained | Extreme 90° angles in 4-rings — "Failed to generate valid conformer after 160 iterations" |
 
-These are well-known hard cases for distance geometry due to their extreme geometric constraints.
+Every other category embeds at 100%.
+
+> **Historical note:** earlier revisions of this page reported 97.7% embed success with three failures (pyrene, cubane, fluoranthene). Two of those three now embed successfully; the numbers above are the current output of the Tier 1 test.
+
+---
 
 ## RDKit Comparison
 
-Heavy-atom pairwise-distance RMSD between sci-form and RDKit conformers. Multi-seed ensemble comparison (5 seeds per molecule, minimum RMSD reported).
+**Tier 3.** Heavy-atom pairwise-distance RMSD between sci-form and RDKit conformers, multi-seed ensemble comparison (5 seeds per molecule: 42, 0, 1, 2, 3), minimum RMSD over all 5 × 5 seed pairs.
+
+Regenerate with:
+
+```bash
+pip install rdkit numpy
+cargo build --release -p sci-form-cli
+python scripts/benchmark_diverse.py tests/fixtures/diverse_molecules.smi 5
+```
+
+The recorded run reported:
 
 ### Overall Results
 
@@ -68,40 +124,41 @@ Heavy-atom pairwise-distance RMSD between sci-form and RDKit conformers. Multi-s
 | strained | 0.182 Å | Cubane, cyclopropane |
 | polycyclic | 0.112 Å | Fused aromatic systems |
 
+These figures are **not** produced by any test in the repository and are not regenerated by CI. Treat them as a snapshot of one local run.
+
+---
+
 ## GDB-20 Ensemble Comparison
 
-Large-scale validation on 500 molecules from the GDB-20 database (molecules with up to 20 heavy atoms), using an ensemble of 5 sci-form seeds compared against 21 RDKit seeds. The minimum RMSD across all seed combinations is reported.
+**Tier 1 for the corpus, Tier 3 for the statistics.** Large-scale validation against RDKit on the GDB-20 database (molecules with up to 20 heavy atoms).
 
-### Results
+The committed corpus is `tests/fixtures/gdb20_ensemble_300.json`: **300 molecules**, each with **21 RDKit conformers** (seeds 42 and 0–19). `tests/fixtures/gdb20_reference_1k.json` holds the single-seed (seed 42) RDKit reference for 1000 GDB-20 molecules and is used for the torsion data.
 
-| Metric | All-atom | Heavy-atom |
-|--------|----------|------------|
-| Embed success | 100% | 100% |
-| Average min-RMSD | 0.063 Å | 0.024 Å |
-| > 0.1 Å | 13.00% | 9.20% |
-| > 0.3 Å | 6.80% | 1.00% |
-| > 0.5 Å | 1.60% | **0.00%** |
-| > 0.7 Å | 0.00% | 0.00% |
+The test is:
 
-### min-RMSD Distribution (all atoms)
+```bash
+cargo test --release --test regression test_ensemble_rmsd -- --nocapture
+```
 
-| Range | Count | Share |
-|-------|-------|-------|
-| 0.00–0.05 Å | 419 | **83.80%** |
-| 0.05–0.10 Å | 16 | 3.20% |
-| 0.10–0.20 Å | 16 | 3.20% |
-| 0.20–0.30 Å | 15 | 3.00% |
-| 0.30–0.50 Å | 26 | 5.20% |
-| 0.50–0.70 Å | 8 | 1.60% |
-| > 0.70 Å | 0 | 0.00% |
+It prints, for the ensemble comparison, the minimum RMSD across all RDKit seeds, both all-atom and heavy-atom, together with the fraction above 0.1 / 0.3 / 0.5 Å.
 
-### Ensemble Rescue Rate
+By default the test uses **one** sci-form seed (42). Increase it with environment variables:
 
-Of molecules with single-seed RMSD > 0.5 Å, the multi-seed ensemble rescued **88.4%** (61/69) to below 0.5 Å. Only 8 molecules remain above the threshold after ensemble selection.
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `OUR_SEEDS` | `1` | sci-form seeds to try (`21` → seeds 42, 0–19, matching the RDKit ensemble) |
+| `GDB20_LIMIT` | `300` | Number of molecules to process (`0` → all) |
+| `OWN_TORSIONS` | `0` | `1` uses sci-form's own SMARTS matcher instead of the RDKit oracle torsions |
+
+> **Historical note:** earlier revisions of this page reported a 500-molecule run with a 5-seed sci-form ensemble and a min-RMSD distribution (83.80% below 0.05 Å) plus an "88.4% ensemble rescue rate". Those figures correspond to a local run with `OUR_SEEDS=5` over a 500-molecule sample. The committed fixture holds 300 molecules, and the numbers are **not** pinned by an assertion in the test — the test prints them rather than asserting on them. Re-run the test with the environment variables above to reproduce the current values.
+
+---
 
 ## ChemBL 10K Benchmark
 
-Stress test on 10,000 molecules from the ChemBL database with practical pharmaceutical relevance (up to 100 atoms).
+**Tier 2.** Stress test on 10,000 molecules from the ChemBL database with practical pharmaceutical relevance (up to 100 atoms). The corpus is committed as `data/chembl_10k_practical.smi` (and `data/chembl_10k_practical_asc.smi`). The RDKit reference conformers are produced by `scripts/generate_chembl_reference.py`, which writes `tests/fixtures/chembl_10k_reference.json` — that file is **not committed**, so the sweep has to be regenerated locally.
+
+A recorded run reported:
 
 | Metric | Value |
 |--------|-------|
@@ -112,11 +169,17 @@ Stress test on 10,000 molecules from the ChemBL database with practical pharmace
 
 Lower throughput is expected for larger molecules due to $O(N^3)$ scaling of Floyd-Warshall and eigendecomposition.
 
+No CI job re-runs this sweep, and no committed artifact stores its result.
+
+---
+
 ## Performance Scaling
 
 <SvgDiagram src="/svg/benchmarks-success.svg" alt="benchmarks-success" />
 
 The dominant cost is the Floyd-Warshall triangle smoothing ($O(N^3)$) and the BFGS optimization (each iteration is $O(N^2)$ for the inverse Hessian update).
+
+---
 
 ## Property Calculation Performance
 
@@ -124,11 +187,11 @@ The dominant cost is the Floyd-Warshall triangle smoothing ($O(N^3)$) and the BF
 
 | Dataset | Molecules | Success | Throughput |
 |---------|-----------|---------|------------|
-| Diverse (131 molecules) | 131 | 97.7% | 60 mol/s |
-| ChemBL 10K | 10,000 | 97.5% | 2.1 mol/s |
-| GDB-20 (500 sample) | 500 | 100% | ~50 mol/s |
+| Diverse (131 molecules) | 131 | 99.2% | machine-dependent; printed by the test |
+| ChemBL 10K | 10,000 | 97.5% | 2.1 mol/s (recorded run) |
+| GDB-20 (300 sample) | 300 | 100% | machine-dependent |
 
-Single-seed mode, no ensemble. Throughput measured on consumer hardware (8-core).
+Single-seed mode, no ensemble.
 
 ### Electronic Structure (EHT)
 
@@ -166,6 +229,8 @@ Full pipeline (embed + charges + EHT + ESP + DOS + SASA + dipole) on a drug-like
 | Dipole | < 1 ms |
 | **Total** | **~38 ms** |
 
+---
+
 ## Experimental Quantum Engine Benchmarks
 
 The isolated `experimental_2` stack adds a Roothaan-Hall RHF/STO-3G implementation with explicit two-electron integrals and rayon-parallel ERI construction.
@@ -173,9 +238,11 @@ The isolated `experimental_2` stack adds a Roothaan-Hall RHF/STO-3G implementati
 ### Regression Coverage
 
 | Suite | Scope | Result |
-|------|-------|--------|
+|-------|-------|--------|
 | `test_experimental_comparison` | SCF correctness, legacy-vs-experimental comparison, NIST references, spectroscopy smoke checks | **54 passed, 0 failed** |
 | `test_extended_molecules` | Complex molecules, NMR/IR/UV-Vis reference checks, ML properties, drug-like molecules | **14 passed, 0 failed, 7 ignored** |
+
+Both suites live in `tests/regression/` and run in the CI `regression` gate.
 
 ### Parallel ERI Speedups
 

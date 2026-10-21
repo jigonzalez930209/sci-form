@@ -1,5 +1,7 @@
 # CLI
 
+This is the **guide**: a task-oriented tour of the `sci-form` binary. For the exhaustive list of every subcommand, flag and default, see the [CLI reference](../api/cli.md).
+
 ## Installation
 
 Download prebuilt binaries from [GitHub Releases](https://github.com/jigonzalez930209/sci-form/releases), or build from source:
@@ -8,11 +10,37 @@ Download prebuilt binaries from [GitHub Releases](https://github.com/jigonzalez9
 cargo install sci-form-cli
 ```
 
-## Commands
+The binary exposes 90 subcommands. 56 are always available; the other 34 are compiled in only when the corresponding Cargo feature is enabled:
 
-### `embed` — Single molecule
+```bash
+cargo install sci-form-cli --features alpha-gsm,alpha-edl,alpha-kinetics,alpha-periodic-linear
+```
 
-Generate a 3D conformer for one SMILES string.
+Use `sci-form --help` to list what a given build actually contains.
+
+## The two calling conventions
+
+Almost every command takes one of two argument shapes:
+
+| Shape | Meaning | Example |
+|-------|---------|---------|
+| `<SMILES>` | a molecule, parsed from SMILES | `sci-form charges "CCO"` |
+| `<ELEMENTS_JSON> <COORDS_JSON>` | a geometry: atomic numbers plus a flat `[x, y, z, ...]` array in Å | `sci-form eht "[8,1,1]" "[0,0,0,0.757,0.586,0,-0.757,0.586,0]"` |
+
+Most commands print JSON on stdout; `parse`, `info` and the chart commands print plain text.
+
+**Negative option values** must be attached with `=`, because the argument parser would otherwise read `-4.44` as a flag:
+
+```bash
+sci-form cpm "[6,8,1,1,1,1,1,1,1]" "[...]" --mu-ev=-4.44     # correct
+sci-form cpm "[6,8,1,1,1,1,1,1,1]" "[...]" --mu-ev -4.44      # usage error
+```
+
+---
+
+## Embedding
+
+### `embed` — one molecule
 
 ```bash
 sci-form embed "CCO" --format xyz
@@ -29,11 +57,11 @@ $ sci-form embed "CCO"
 {
   "smiles": "CCO",
   "num_atoms": 9,
-  "coords": [0.123, -0.456, ...],
+  "coords": [-0.893, 0.069, 0.064, "..."],
   "elements": [6, 6, 8, 1, 1, 1, 1, 1, 1],
-  "bonds": [[0, 1, "SINGLE"], ...],
+  "bonds": [[0, 1, "SINGLE"], "..."],
   "error": null,
-  "time_ms": 12.3
+  "time_ms": 9.27
 }
 ```
 
@@ -42,10 +70,10 @@ $ sci-form embed "CCO"
 $ sci-form embed "CCO" -f xyz
 9
 CCO
- C     0.764735     0.013411    -0.082862
- C    -0.718153     0.048620     0.089507
- O    -1.168543    -0.490543     1.323891
- ...
+C     -0.893064     0.069264     0.063601
+C      0.525542    -0.422006    -0.147153
+O      1.389964     0.450482     0.467233
+...
 ```
 
 **SDF output**:
@@ -53,13 +81,13 @@ CCO
 $ sci-form embed "CCO" -f sdf > ethanol.sdf
 ```
 
-### `batch` — Multiple molecules
+### `batch` — many molecules
 
-Process many molecules from a file or stdin.
+The input path is an option, not a positional argument.
 
 ```bash
 # From file
-sci-form batch -i molecules.smi -o output.sdf -f sdf -t 8
+sci-form batch -i molecules.smi -o conformers.sdf -f sdf -t 8
 
 # From stdin
 cat molecules.smi | sci-form batch -f xyz > output.xyz
@@ -76,218 +104,220 @@ sci-form batch -i molecules.smi -f json
 | `--threads, -t` | 0 (auto) | Number of threads |
 | `--format, -f` | json | Output format: `json`, `xyz`, `sdf` |
 
+### `embed-diverse` and `filter-diverse`
+
+Generate an ensemble and cluster it by Butina RMSD, then keep only the cluster centroids.
+
+```bash
+sci-form embed-diverse "CCO" --n-conformers 20 --rmsd-cutoff 0.8
+sci-form filter-diverse '[[0,0,0, 1,0,0], [0,0,0, 1.05,0,0]]' --rmsd-cutoff 1.0
+```
+
 ### `parse` — SMILES analysis
 
-Parse a SMILES string and show molecular structure (no 3D generation).
+Plain text, not JSON:
 
 ```bash
-$ sci-form parse "c1ccccc1" | jq .
-{
-  "num_atoms": 12,
-  "num_bonds": 12,
-  "smiles": "c1ccccc1"
-}
+$ sci-form parse "c1ccccc1"
+Atoms: 12, Bonds: 12
+    0: elem= 6 hyb=SP2 charge=0 h=0
+    ...
 ```
 
-### `charges` — Gasteiger-Marsili partial charges
+---
+
+## Electronic structure
 
 ```bash
-$ sci-form charges "CCO"
-{
-  "charges": [-0.032, 0.081, -0.329, ...],
-  "total_charge": 0.0,
-  "iterations": 8
-}
+# EHT (Extended Hückel)
+sci-form eht "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]" --k 1.75
+
+# Semi-empirical and tight binding
+sci-form pm3  "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
+sci-form xtb  "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"   # GFN0-xTB
+sci-form gfn1 "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
+sci-form gfn2 "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
+sci-form hf3c "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
+
+# CISD excited states from an internal STO-3G RHF calculation
+sci-form cisd "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]" --n-states 5
+
+# Gradients and geometry optimization on the EHT surface
+sci-form eht-gradient        "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
+sci-form optimize-geometry-eht "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
 ```
 
-### `eht` — Extended Hückel Theory
-
-Compute EHT electronic structure from atomic numbers and coordinates.
+Orbitals and derived quantities:
 
 ```bash
-sci-form eht "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08,-0.72,0.05,0.09,...]" --k 1.75
+sci-form population "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"   # Mulliken + Löwdin
+sci-form dipole     "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"   # Debye
+sci-form esp        "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]" --spacing 0.5 --padding 3.0
+sci-form dos        "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]" --sigma 0.3 -n 500
+sci-form dos-multimethod "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]" --method gfn2
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--k` | 1.75 | Wolfsberg-Helmholz parameter |
+`dos-multimethod` accepts `--method eht|pm3|xtb|gfn1|gfn2|hf3c`; `dos` is EHT-only.
 
-### `population` — Mulliken & Löwdin analysis
+> The `ani` and `aevs-tm` commands exercise the ANI engine, but the CLI builds an internally generated test network, so **the reported energies are not physically meaningful ANI-2x values**. See [Machine Learning Potentials](../algorithm/machine-learning-potentials.md).
+
+---
+
+## Force fields and optimization
 
 ```bash
-sci-form population "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08,...]"
-# Output: mulliken_charges, lowdin_charges, homo_energy, lumo_energy, gap
+# UFF energy (kcal/mol)
+sci-form uff "CCO" "[0.76,0.01,-0.08, ...]"
+
+# BFGS minimization with the UFF backend
+sci-form optimize-framework "CCO" "[0.76,0.01,-0.08, ...]" \
+  --method bfgs --max-iter 200 --force-tol 0.05
+
+# Constrained / periodic optimization
+sci-form optimize-framework "CCO" "[...]" --fixed-atoms "[0,1]" --a 10 --b 10 --c 10
 ```
 
-### `dipole` — Molecular dipole moment
+---
+
+## Molecular properties
 
 ```bash
-sci-form dipole "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08,...]"
-# Output: magnitude (Debye), vector [x, y, z]
-```
+# Charges
+sci-form charges             "CCO"
+sci-form charges-configured  "CCO" --max-iter 12 --initial-damping 0.7
+sci-form eeq                 "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]" --total-charge 0
 
-### `esp` — Electrostatic potential grid
+# Surface and solvation
+sci-form sasa      "[6,8,1,1,1,1,1,1,1]" "[...]" --probe-radius 1.4
+sci-form solvation "[6,8,1,1,1,1,1,1,1]" "[...]" --charges "[...]"
 
-```bash
-sci-form esp "[6,8,1,1,1,1,1,1,1]" "[...]" --spacing 0.5 --padding 3.0
-```
+# Topology
+sci-form sssr "c1ccc2ccccc2c1"
+sci-form stereo "C(F)(Cl)(Br)I"
+sci-form stereo "C/C=C/C" --coords "[$(sci-form embed 'C/C=C/C' | jq '.coords')]"
+sci-form canonical-smiles "C(F)(Cl)(Br)I"
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--spacing` | 0.5 | Grid spacing (Å) |
-| `--padding` | 3.0 | Padding around molecule (Å) |
+# Fingerprints
+sci-form ecfp        "c1ccccc1" --radius 2 --n-bits 2048
+sci-form ecfp-batch  '["CCO", "c1ccccc1"]'
+sci-form tanimoto    "c1ccccc1" "Cc1ccccc1"
 
-### `dos` — Density of states
-
-```bash
-sci-form dos "[6,8,1,1,1,1,1,1,1]" "[...]" --sigma 0.3 --e-min -30 --e-max 5 -n 500
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--sigma` | 0.3 | Gaussian broadening (eV) |
-| `--e-min` | -30.0 | Energy range minimum (eV) |
-| `--e-max` | 5.0 | Energy range maximum (eV) |
-| `-n` | 500 | Number of grid points |
-
-### `rmsd` — RMSD alignment
-
-Compute RMSD between two coordinate sets (flat arrays).
-
-```bash
+# Alignment
 sci-form rmsd "[0.1,0.2,0.3,...]" "[0.15,0.22,0.31,...]"
-# Output: {"rmsd": 0.034, "aligned_coords": [...]}
 ```
 
-### `uff` — UFF force field energy
+3D descriptors and the bundled regressors:
 
 ```bash
-sci-form uff "CCO" "[0.76,0.01,-0.08,...]"
-# Output: {"energy": 12.3}  (kcal/mol)
+sci-form whim    "[6,8,1,1,1,1,1,1,1]" "[...]" --weighting mass
+sci-form rdf     "[6,8,1,1,1,1,1,1,1]" "[...]" --r-max 12 --n-points 128
+sci-form getaway "[6,8,1,1,1,1,1,1,1]" "[...]" --max-lag 8
+
+sci-form train-random-forest      '[[0.1,0.2],[0.3,0.4]]' '[1.0,1.2]' --n-trees 50
+sci-form train-gradient-boosting  '[[0.1,0.2],[0.3,0.4]]' '[1.0,1.2]' --n-estimators 50
 ```
 
-### `sasa` — Solvent-accessible surface area
+---
+
+## Spectroscopy
 
 ```bash
-sci-form sasa "[6,8,1,1,1,1,1,1,1]" "[...]" --probe-radius 1.4
-# Output: total_sasa (ų), per_atom_sasa
+# Broadened IR spectrum (the vibrational analysis runs internally)
+sci-form ir-spectrum-broadened "[6,8,1,1,1,1,1,1,1]" "[...]" \
+  --method eht --gamma 15 --broadening lorentzian --n-points 1000
+
+# Peak assignment from frequencies + intensities
+sci-form assign-peaks '[3000, 1600, 1400]' '[12.0, 30.0, 8.0]' "[6,8,1,1,1,1,1,1,1]"
+
+# J-couplings averaged over a Boltzmann-weighted ensemble
+sci-form ensemble-j-couplings "CCO" '[[0.0,0.0,0.0, ...]]' '[-12.3]' --temperature-k 298.15
 ```
 
-### `ani` — ANI neural network potential
+---
 
-ANI-2x supports H, C, N, O, F, S, Cl.
-
-```bash
-sci-form ani "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08,...]"
-# Output: energy (eV), forces per atom
-```
-
-### `hf3c` — Hartree-Fock 3c calculation
-
-Minimal-basis HF with D3 dispersion, gCP counterpoise, and SRB short-range corrections.
+## Materials
 
 ```bash
-sci-form hf3c "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08,...]"
-# Output: energy, hf_energy, d3_energy, gcp_energy, srb_energy, orbital_energies, converged
-```
-
-### `stereo` — Stereochemistry analysis
-
-Detect R/S stereocenters, E/Z double bonds, atropisomeric axes, and helical chirality.
-
-```bash
-$ sci-form stereo "C(F)(Cl)(Br)I"
-{
-  "stereocenters": [{"atom_index": 0, "configuration": "R", ...}],
-  "double_bonds": [],
-  "n_stereocenters": 1,
-  "n_double_bonds": 0
-}
-
-# With 3D coordinates for geometric assignment
-sci-form stereo "C/C=C/C" --coords "[...]"
-```
-
-### `solvation` — Solvation energy
-
-Non-polar (SASA-based) solvation, optionally with Generalized Born electrostatics.
-
-```bash
-# Non-polar only
-sci-form solvation "[8,1,1]" "[0,0,0,0.757,0.586,0,-0.757,0.586,0]"
-
-# With GB electrostatic solvation (provide charges)
-sci-form solvation "[8,1,1]" "[...]" --charges "[-0.8,0.4,0.4]"
-```
-
-### `sssr` — Ring perception
-
-Smallest Set of Smallest Rings (Horton's algorithm).
-
-```bash
-$ sci-form sssr "c1ccc2ccccc2c1"   # naphthalene
-{
-  "rings": [[0,1,2,3,4,9], [4,5,6,7,8,9]],
-  "ring_size_histogram": {"6": 2}
-}
-```
-
-### `ecfp` — ECFP fingerprints
-
-Extended-Connectivity Fingerprints (Morgan algorithm).
-
-```bash
-sci-form ecfp "CCO" --radius 2 --n-bits 2048
-# Output: {n_bits, on_bits, radius, raw_features}
-```
-
-### `tanimoto` — Fingerprint similarity
-
-Compute Tanimoto similarity between two SMILES.
-
-```bash
-$ sci-form tanimoto "c1ccccc1" "Cc1ccccc1"
-{"tanimoto": 0.714}
-```
-
-### `cell` — Create unit cell
-
-```bash
+# Unit cell
 sci-form cell --a 5.43 --b 5.43 --c 5.43 --alpha 90 --beta 90 --gamma 90
-# Output: volume, lattice vectors, fractional ↔ Cartesian matrices
-```
 
-### `assemble` — Framework assembly
-
-Build MOF/COF crystal structures from topology and building blocks.
-
-```bash
+# Framework assembly (pcu, dia or sql)
 sci-form assemble --topology pcu --metal 30 --geometry octahedral --a 10.0
-# Output: num_atoms, elements, coordinates, unit cell, space group
+
+# Crystallography
+sci-form space-group --number 14
+sci-form space-group --symbol "P 21/c"
+sci-form all-space-groups
+
+# Periodic molecular graph
+sci-form periodic-molecule "[6,6]" "[0.0,0.0,0.0, 0.5,0.5,0.0]" --a 2.5 --b 2.5 --c 2.5
+
+# Hapticity (η-counting of metal-ring contacts)
+sci-form hapticity "[6,6,6,6,6,26]" "[...]" --bonds "[[0,1],[1,2],[2,3],[3,4],[4,0],[0,5]]"
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--topology` | required | `pcu`, `dia`, `sql` |
-| `--metal` | required | Atomic number of metal node |
-| `--geometry` | required | `linear`, `trigonal`, `tetrahedral`, `square_planar`, `octahedral` |
-| `--a` | required | Lattice parameter a (Å) |
-| `--supercell` | 1 | Supercell expansion factor |
+---
 
-### `info` — Version
+## Reactions
 
 ```bash
-$ sci-form info
-sci-form 0.15.2
+# Simplified NEB-like path between two geometries
+sci-form simplified-neb-path "CCO" "[start coords]" "[end coords]" \
+  --n-images 8 --n-iter 50 --method uff
+
+# Single-point energy / gradient with any NEB-capable backend
+sci-form neb-energy   "CCO" "[...]" --method mmff94
+sci-form neb-gradient "CCO" "[...]" --method gfn2
 ```
+
+The GSM (growing string method) commands need the `alpha-gsm` feature:
+
+```bash
+sci-form gsm-backend-plan  "CCO"
+sci-form gsm-compare-backends "CCO" "[...]" --methods '["uff","gfn2"]'
+```
+
+The full 3D reaction-dynamics path needs `alpha-reaction-dynamics`:
+
+```bash
+sci-form reaction-dynamics3d '["[Cl-]", "CBr"]' '["ClC", "[Br-]"]' \
+  --method gfn2 --n-images 30 --smirks '[C:1][Br:2].[Cl-:3]>>[C:1][Cl:3].[Br-:2]'
+```
+
+---
+
+## Experimental and alpha surfaces
+
+These commands are feature-gated. Build the binary with the matching feature:
+
+```bash
+cargo install sci-form-cli --features experimental-alpb,experimental-d4,experimental-cpm,alpha-edl,alpha-kinetics
+```
+
+```bash
+# Solvation, dispersion and electrochemistry
+sci-form alpb "[6,8,1,1,1,1,1,1,1]" "[...]" --dielectric 78.5
+sci-form d4   "[6,8,1,1,1,1,1,1,1]" "[...]" --three-body
+sci-form cpm  "[6,8,1,1,1,1,1,1,1]" "[...]" --mu-ev=-4.44
+
+# Electrical double layer
+sci-form edl-profile --model gouy-chapman-stern --potential 0.05 --ionic-strength 0.1
+sci-form edl-capacitance-scan --v-min=-0.5 --v-max=0.5
+
+# Kinetics
+sci-form htst-rate --activation-free-energy 0.35 --reaction-free-energy=-0.12
+sci-form solve-microkinetic-network --n-steps 50
+```
+
+---
 
 ## Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | Invalid SMILES or embedding failure |
-| 2 | I/O error |
+| 1 | Runtime failure: invalid SMILES, embedding failure, missing input file, I/O error, or a failed calculation |
+| 2 | Usage error reported by the argument parser (unknown subcommand, missing or invalid flag) |
 
 ## Pipeline Examples
 
@@ -301,9 +331,12 @@ sci-form batch -i molecules.smi | jq -c 'select(.error == null)'
 # Batch statistics
 sci-form batch -i molecules.smi | jq -s '{total:length, success:[.[]|select(.error==null)]|length}'
 
-# Embed → PM3 pipeline (using coordinate extraction with jq)
-COORDS=$(sci-form embed "CCO" | jq -c '.coords')
-ELEMS=$(sci-form embed "CCO" | jq -c '.elements')
+# Embed → charges → EHT pipeline
+RESULT=$(sci-form embed "CCO")
+COORDS=$(echo "$RESULT" | jq -c '.coords')
+ELEMS=$(echo "$RESULT" | jq -c '.elements')
+sci-form charges "CCO"
+sci-form eht "$ELEMS" "$COORDS" --k 1.75
 
 # Parallel batch with GNU Parallel
 cat huge.smi | parallel -j8 --pipe -N100 sci-form batch /dev/stdin > results.json

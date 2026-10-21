@@ -514,7 +514,34 @@ console.log(`Dominant IR band: ${peak_wn.toFixed(1)} cm⁻¹`);
 
 ### `compute_ir_spectrum_broadened`
 
-> **Rust-only.** This function exists in the Rust API but is not currently exposed through the WASM/TypeScript bindings.
+```typescript
+function compute_ir_spectrum_broadened(
+  elements_json: string,
+  coords_flat_json: string,
+  method: string,
+  gamma: number,
+  wn_min: number,
+  wn_max: number,
+  n_points: number,
+  broadening: string,
+  step_size: number,
+  smiles: string
+): string
+```
+
+Broadened IR spectrum; the vibrational analysis is run internally.
+`method` selects the Hessian method (`eht`, `pm3`, `xtb`, `uff`, …),
+`broadening` is `gaussian` or `lorentzian`, `step_size` is the
+finite-difference step in Å (`0` uses the engine default) and `smiles` is
+required when `method` is `uff`.
+
+```typescript
+const spec = JSON.parse(sciForm.compute_ir_spectrum_broadened(
+  JSON.stringify(elements),
+  JSON.stringify(coords),
+  "eht", 15.0, 400.0, 4000.0, 1000, "lorentzian", 0.0, ""
+));
+```
 
 ### `predict_nmr_shifts`
 
@@ -603,7 +630,19 @@ Returns JSON array of `JCoupling { h1_index, h2_index, j_hz, n_bonds, coupling_t
 
 ### `compute_ensemble_j_couplings`
 
-> **Rust-only.** This function exists in the Rust API but is not currently exposed through the WASM/TypeScript bindings.
+```typescript
+function compute_ensemble_j_couplings(
+  smiles: string,
+  conformer_coords_json: string,
+  energies_kcal_json: string,
+  temperature_k: number
+): string
+```
+
+J-couplings averaged over a conformer ensemble with Boltzmann weighting.
+`conformer_coords_json` is a JSON array of conformers, each a flat xyz array;
+`energies_kcal_json` is a JSON array of the matching conformer energies in
+kcal/mol. Returns the JSON array of `JCoupling` objects.
 
 ### `compute_nmr_spectrum`
 

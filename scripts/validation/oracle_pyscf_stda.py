@@ -284,9 +284,14 @@ def solve_singles(amat: np.ndarray, n_occ: int, n_virt: int, n_roots: int):
 
 
 def stda_reference(
-    mol, mf, mo_energy: np.ndarray, coeff: np.ndarray, overlap: np.ndarray
+    mol, mf, mo_energy: np.ndarray, coeff: np.ndarray, overlap: np.ndarray,
+    mo_eri: np.ndarray | None = None, exchange: bool = False,
 ):
-    """Faithful port of sci-form's `compute_stda` (monopole Coulomb, no exchange).
+    """Faithful port of sci-form's `compute_stda` (monopole Coulomb).
+
+    With `exchange=True` the Tamm-Dancoff exchange term `-2 ax (ij|ab)`
+    (ax = 0.5, i.e. `-(ij|ab)`) is added to the A matrix; this is the
+    variant implemented by sci-form's `compute_stda_with_exchange`.
 
     Returns (energies in eV, oscillator strengths, active space).
     """
@@ -330,17 +335,20 @@ def stda_reference(
         il1, al1 = occ_idx.index(i1), virt_idx.index(a1)
         amat[k1, k1] = mo_energy[a1] - mo_energy[i1]
         for k2, (i2, a2) in enumerate(pairs):
-            if norms[k1] * norms[k2] < PRESCREEN_THRESHOLD:
-                continue
-            il2, al2 = occ_idx.index(i2), virt_idx.index(a2)
-            jval = 0.0
-            for atom_a in range(mol.natm):
-                qia = q[il1, al1, atom_a]
-                if abs(qia) < PRESCREEN_THRESHOLD:
-                    continue
-                for atom_b in range(mol.natm):
-                    jval += qia * gamma[atom_a, atom_b] * q[il2, al2, atom_b]
-            amat[k1, k2] += 2.0 * jval
+            # Cauchy-Schwarz prescreening of the *monopole* term only; the
+            # exchange integrals are not screened.
+            if norms[k1] * norms[k2] >= PRESCREEN_THRESHOLD:
+                il2, al2 = occ_idx.index(i2), virt_idx.index(a2)
+                jval = 0.0
+                for atom_a in range(mol.natm):
+                    qia = q[il1, al1, atom_a]
+                    if abs(qia) < PRESCREEN_THRESHOLD:
+                        continue
+                    for atom_b in range(mol.natm):
+                        jval += qia * gamma[atom_a, atom_b] * q[il2, al2, atom_b]
+                amat[k1, k2] += 2.0 * jval
+            if exchange:
+                amat[k1, k2] -= mo_eri[i1, i2, a1, a2]
 
     values, vectors = np.linalg.eigh(amat)
     order = np.argsort(values)
@@ -439,6 +447,11 @@ def run() -> Report:
         )
         assert occ_ref == occ_idx and virt_ref == virt_idx
 
+        # --- sTDA reference port with the exchange term -------------------
+        stda_ex_ev, stda_ex_osc, _, _ = stda_reference(
+            mol, mf, mo_energy, coeff, overlap, mo_eri=mo_eri, exchange=True
+        )
+
         cases.append(
             {
                 "name": case["name"],
@@ -460,6 +473,8 @@ def run() -> Report:
                 "tda_noex_active_oscillator": noex_osc,
                 "stda_ref_ev": [float(x) for x in stda_ev],
                 "stda_ref_oscillator": [float(x) for x in stda_osc],
+                "stda_ex_ref_ev": [float(x) for x in stda_ex_ev],
+                "stda_ex_ref_oscillator": [float(x) for x in stda_ex_osc],
             }
         )
 

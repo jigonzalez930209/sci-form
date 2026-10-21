@@ -83,7 +83,9 @@ matrix method and materials assembly vs real MOF structures unmet.
 ## Tests
 
 ```bash
-cargo test --features experimental-cga --test regression -- test_cga
+cargo test --features "beta-cpm alpha-cga" --test experimental_gates -- test_cga
 ```
 
-Covers: multivector algebra, motor construction, point embedding round-trips, dihedral rotations, and materials assembly comparison.
+20 integration tests (`tests/experimental/test_cga.rs`) covering: multivector algebra, motor construction, point embedding round-trips, dihedral rotations, and materials assembly comparison.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

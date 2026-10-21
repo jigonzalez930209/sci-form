@@ -40,12 +40,12 @@ Validation checks currently enforce:
 Reference fixture and test implementation:
 
 - Fixture: `tests/fixtures/eht_metal_reference.json`
-- Test: `tests/test_eht_metal_references.rs`
+- Test: `tests/regression/test_eht_metal_references.rs` (part of the `regression` test target)
 
 Run locally:
 
 ```bash
-cargo test --release --test test_eht_metal_references
+cargo test --release --test regression test_eht_metal_references
 ```
 
 ## Experimental Geometry Benchmark (<1% Error)
@@ -58,12 +58,12 @@ To validate representative transition-metal systems against experimental structu
 The benchmark fixture stores target metal-ligand distances and a strict maximum relative error of 1%:
 
 - Fixture: `tests/fixtures/metal_experimental_geometry.json`
-- Test: `tests/test_metal_experimental_geometry.rs`
+- Test: `tests/regression/test_metal_experimental_geometry.rs` (part of the `regression` test target)
 
 Run locally:
 
 ```bash
-cargo test --release --test test_metal_experimental_geometry
+cargo test --release --test regression test_metal_experimental_geometry
 ```
 
 The test computes average metal-ligand distances from platform geometry outputs and enforces:

@@ -42,8 +42,6 @@ pub fn strained_lattice(lattice: &[[f64; 3]; 3], strain: &[[f64; 3]; 3]) -> [[f6
         for i in 0..3 {
             let mut v = lattice[k][i];
             for j in 0..3 {
-                let eps = if i == j { strain[i][j] } else { 0.0 };
-                let _ = eps;
                 v += strain[i][j] * lattice[k][j];
             }
             out[k][i] = v;

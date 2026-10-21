@@ -78,7 +78,9 @@ exact incl. exercised fallback at N=96.
 ## Tests
 
 ```bash
-cargo test --features experimental-randnla --test regression -- test_randnla
+cargo test --features "beta-cpm beta-randnla" --test experimental_gates -- test_randnla
 ```
 
-Covers: sketch matrix statistics, Nyström reconstruction error, randomized SVD accuracy, and EHT eigenvalue comparison against exact diagonalization for benzene and naphthalene.
+8 integration tests (`tests/experimental/test_randnla.rs`) covering: sketch matrix statistics, Nyström reconstruction error, randomized SVD accuracy, and EHT eigenvalue comparison against exact diagonalization for benzene and naphthalene.
+
+These tests live in the `experimental_gates` target — see [Overview](./overview.md#run-tests) for the full command matrix.

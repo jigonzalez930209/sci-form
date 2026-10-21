@@ -75,6 +75,13 @@ export default defineConfig({
             { text: '3D Reaction Viewer', link: '/guide/reaction-viewer' },
           ],
         },
+        {
+          text: 'Advanced',
+          items: [
+            { text: 'Reaction Backends', link: '/guide/reaction-backends' },
+            { text: 'Portabilidad del backend GPU', link: '/guide/gpu-portabilidad' },
+          ],
+        },
       ],
       '/algorithm/': [
         {
@@ -96,6 +103,7 @@ export default defineConfig({
           items: [
             { text: 'Extended Hückel Theory', link: '/algorithm/extended-huckel-theory' },
             { text: 'HF-3c Quantum Engine', link: '/algorithm/hf3c-quantum-engine' },
+            { text: 'Kohn–Sham DFT', link: '/algorithm/ks-dft' },
             { text: 'Machine Learning Potentials', link: '/algorithm/machine-learning-potentials' },
             { text: 'Electrostatic Potential', link: '/algorithm/electrostatic-potential' },
             { text: 'Density of States', link: '/algorithm/density-of-states' },
@@ -109,6 +117,7 @@ export default defineConfig({
           text: 'Spectroscopy (Track D)',
           items: [
             { text: 'UV-Vis Spectroscopy', link: '/algorithm/uvvis-spectroscopy' },
+            { text: 'Fluorescence', link: '/algorithm/fluorescence' },
             { text: 'IR Spectroscopy', link: '/algorithm/ir-spectroscopy' },
             { text: 'NMR Spectroscopy', link: '/algorithm/nmr-spectroscopy' },
           ],
@@ -119,6 +128,12 @@ export default defineConfig({
             { text: 'Materials Assembly', link: '/algorithm/materials-assembly' },
             { text: 'Web Transport', link: '/algorithm/web-transport' },
             { text: 'WebGPU Validation', link: '/algorithm/webgpu-validation' },
+          ],
+        },
+        {
+          text: 'Roadmaps',
+          items: [
+            { text: 'Quantum Validation Roadmap', link: '/algorithm/quantum-validation-roadmap' },
           ],
         },
       ],
@@ -138,6 +153,9 @@ export default defineConfig({
           text: 'Experimental Modules',
           items: [
             { text: 'Overview', link: '/experimental/overview' },
+            { text: 'Alpha Modules', link: '/experimental/alpha' },
+            { text: 'Beta Modules', link: '/experimental/beta' },
+            { text: 'EDL — Electrical Double Layer', link: '/experimental/edl' },
           ],
         },
         {
@@ -175,6 +193,17 @@ export default defineConfig({
             { text: 'Python', link: '/api/python' },
             { text: 'TypeScript / JS', link: '/api/typescript' },
             { text: 'CLI', link: '/api/cli' },
+            { text: 'Complete Supported Reference', link: '/api/complete-supported-reference' },
+          ],
+        },
+      ],
+      '/': [
+        {
+          text: 'Roadmaps',
+          items: [
+            { text: 'Dynamics & Reactivity', link: '/dynamics_reactivity_roadmap' },
+            { text: 'NMR — Detailed Plan', link: '/nmr_detailed_roadmap' },
+            { text: 'Spectroscopy (Track D)', link: '/spectroscopy_roadmap' },
           ],
         },
       ],

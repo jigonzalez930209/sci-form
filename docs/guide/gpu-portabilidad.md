@@ -196,7 +196,30 @@ Con eso queda cerrado el camino híbrido de punta a punta:
 - GPU vía WebGPU
 - modo `hybrid` para repartir trabajo entre ambos en kernels volumétricos y rutas experimentales
 
-Hay un ejemplo mínimo ya preparado en [crates/wasm/examples/vite-webgpu-hybrid](https://github.com/jigonzalez930209/sci-form/tree/main/crates/wasm/examples/vite-webgpu-hybrid).
+**Sobre el ejemplo de navegador:** no hay ningún ejemplo mínimo en el
+repositorio. La carpeta `crates/wasm/examples/vite-webgpu-hybrid/` que las
+versiones anteriores de este documento enlazaban **no existe en git**, y los
+scripts npm `webgpu:benchmark:dev`, `webgpu:benchmark:build` y
+`webgpu:benchmark:preview` apuntan a ella, por lo que fallan. Lo mismo ocurre
+con `npm run webgpu:test`, que necesita esa carpeta para construir el harness
+que luego conduce con Playwright.
+
+Lo que sí existe y es reproducible:
+
+- el paquete WASM con la feature `experimental-gpu` compilada (comando del
+  paso 1 de arriba),
+- los exports `init_webgpu()` y `webgpu_status()`,
+- las superficies aceleradas que aceptan `execution_mode`
+  (`compute_esp_grid_accelerated`, `eht_orbital_grid_accelerated`,
+  `eht_density_grid_accelerated`, `compute_orbital_mesh_accelerated`,
+  `compute_eeq_charges_accelerated`, `compute_d4_energy_accelerated`,
+  `compute_cpm_charges_accelerated`),
+- el comparador de informes `tests/integration/compare_webgpu_reports.js` con
+  su política `tests/fixtures/webgpu_regression_policy.json`.
+
+La validación numérica de la ruta WebGPU que hoy se ejecuta en CI es la de
+lateral Rust (gates GPU↔CPU en `src/gpu/`), no la de un navegador. Los
+detalles están en [WebGPU Validation](../algorithm/webgpu-validation.md).
 
 ## Resumen práctico actualizado
 

@@ -62,3 +62,5 @@ capacitances, worst 2.0e-14 (tolerance 1e-9). Fixture
 ```bash
 cargo test --test alpha_edl_validation
 ```
+
+4 tests in `tests/alpha_edl_validation.rs` (gate F86) comparing the Gouy-Chapman, Grahame-inverted Stern split, Helmholtz compact capacitor and Stern series capacitance against the analytic closed forms in the fixture `tests/fixtures/validation/edl_analytic.json` (oracle `scripts/validation/oracle_edl.py`).
