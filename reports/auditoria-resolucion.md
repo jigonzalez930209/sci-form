@@ -19,7 +19,7 @@ Métricas antes → después:
 
 | Métrica | Antes | Después |
 |---|---|---|
-| Tests unitarios | 839 pass, 1 fail (flakey), 2 ignored | **845 pass, 0 fail, 2 ignored** |
+| Tests unitarios | 839 pass, 1 fail (flakey), 2 ignored | **844 pass, 0 fail, 2 ignored** |
 | Gates de validación cruzada | 38 (5 ficticios) | **111 reales** (F01–F95 + F64–F87 nuevos) |
 | Fichas con métrica medida en `summary.json` | 47 | **114** (107 pass, 0 fail, 7 pending) |
 | `clippy --workspace --all-targets -D warnings` | **363 errores** (CI rojo) | **0** |
