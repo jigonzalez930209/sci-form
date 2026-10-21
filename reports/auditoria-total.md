@@ -4,6 +4,12 @@
 **Método:** lectura de código fuente por 7 subagentes de dominio + verificación mecánica (LOC, API pública, gates, cobertura) + ejecución real de la suite + verificación directa de afirmaciones documentales contra el código.
 
 ---
+> **Este documento describe el estado ORIGINAL de la auditoría (2026-10-20).**
+> El estado de resolución posterior —qué se corrigió, con qué evidencia y qué
+> sigue abierto— está en **`reports/auditoria-resolucion.md`**.
+> Los 10 P0 están cerrados; de los 30 P1 quedan 4 abiertos y de los 60 P2
+> quedan 13 (todos con justificación documentada).
+
 
 ## 0. RESUMEN EJECUTIVO
 

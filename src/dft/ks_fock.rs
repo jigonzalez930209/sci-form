@@ -205,6 +205,8 @@ pub fn solve_ks_dft(
     let mut density = build_density_matrix(&c, n_occupied);
 
     let mut total_energy = 0.0;
+    // Coulomb (Hartree) energy of the converged density, in Hartree.
+    let mut j_energy = 0.0;
     let mut converged = false;
     let mut xc_energy = 0.0;
     let mut final_orbital_energies = orbital_energies.clone();
@@ -234,8 +236,8 @@ pub fn solve_ks_dft(
         // KS Fock matrix: F = H_core + J + V_XC
         let fock = h_core + &j_matrix + &vxc;
 
-        // Compute Coulomb energy
-        let j_energy = 0.5 * (&density * &j_matrix).trace();
+        // Compute Coulomb (Hartree) energy
+        j_energy = 0.5 * (&density * &j_matrix).trace();
 
         // Total electronic energy
         let one_electron_energy = (&density * h_core).trace();
@@ -310,7 +312,7 @@ pub fn solve_ks_dft(
         electronic_energy: total_energy - v_nuc,
         nuclear_repulsion: v_nuc,
         xc_energy,
-        coulomb_energy: 0.0, // approximate
+        coulomb_energy: j_energy,
         total_energy,
         total_energy_ev: total_energy * HARTREE_TO_EV,
         homo_energy: homo_ev,
@@ -410,6 +412,8 @@ fn solve_uks(
     let mut p_b = build_spin_density(&c_b, n_beta);
     let mut total_energy = 0.0;
     let mut xc_energy = 0.0;
+    // Coulomb (Hartree) energy of the converged total density, in Hartree.
+    let mut j_energy = 0.0;
     let mut converged = false;
     let mut iterations = 0;
     let mut e_a = vec![0.0; n_basis];
@@ -423,7 +427,7 @@ fn solve_uks(
         xc_energy = exc;
         let fa = &core.core_hamiltonian + &j_matrix + &vxa;
         let fb = &core.core_hamiltonian + &j_matrix + &vxb;
-        let j_energy = 0.5 * (&p_tot * &j_matrix).trace();
+        j_energy = 0.5 * (&p_tot * &j_matrix).trace();
         let e1 = (&p_tot * &core.core_hamiltonian).trace();
         let new_total = e1 + j_energy + xc_energy + v_nuc;
         if iter > 0 && (new_total - total_energy).abs() < config.energy_threshold {
@@ -499,7 +503,7 @@ fn solve_uks(
         electronic_energy: total_energy - v_nuc,
         nuclear_repulsion: v_nuc,
         xc_energy,
-        coulomb_energy: 0.0,
+        coulomb_energy: j_energy,
         total_energy,
         total_energy_ev: total_energy * HARTREE_TO_EV,
         homo_energy: homo_ev,
@@ -524,7 +528,26 @@ fn solve_uks(
 mod tests {
     use super::*;
 
+    /// The Coulomb (Hartree) energy must be a real quantity, not the 0.0
+    /// placeholder it used to be (audit P2-41).
     #[test]
+    fn test_coulomb_energy_is_reported() {
+        let elements = [1u8, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.74]];
+        let config = DftConfig::default();
+        let r = solve_ks_dft(&elements, &positions, &config).expect("KS-DFT");
+        assert!(
+            r.coulomb_energy.is_finite(),
+            "coulomb energy is not finite: {}",
+            r.coulomb_energy
+        );
+        assert!(
+            r.coulomb_energy > 0.0,
+            "coulomb energy should be positive for a bound system: {}",
+            r.coulomb_energy
+        );
+    }
+
     fn dft_config_default_is_svwn() {
         let config = DftConfig::default();
         assert_eq!(config.method, DftMethod::Svwn);
