@@ -204,7 +204,11 @@ pub fn solve_scf(
             let eigen = SymmetricEigen::new(f_orth);
             let mut shifted_evals = eigen.eigenvalues.clone();
             let mut idx_sorted: Vec<usize> = (0..n).collect();
-            idx_sorted.sort_by(|&a, &b| shifted_evals[a].partial_cmp(&shifted_evals[b]).unwrap());
+            idx_sorted.sort_by(|&a, &b| {
+                shifted_evals[a]
+                    .partial_cmp(&shifted_evals[b])
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             for &idx in idx_sorted.iter().skip(n_occ) {
                 shifted_evals[idx] += config.level_shift;
             }
@@ -285,7 +289,7 @@ fn diagonalize_fock(
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let sorted_energies = DVector::from_fn(n, |i, _| eigen.eigenvalues[indices[i]]);

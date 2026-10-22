@@ -50,9 +50,10 @@ pub fn evaluate_density_with_report(
     density: &DMatrix<f64>,
     params: &GridParams,
 ) -> (Vec<f64>, OrbitalGridReport) {
-    let ctx = GpuContext::best_available();
+    let ctx = GpuContext::shared();
+    let mut gpu_failure_reason: Option<String> = None;
     if ctx.is_gpu_available() {
-        match evaluate_density_gpu(&ctx, basis, density, params) {
+        match evaluate_density_gpu(ctx, basis, density, params) {
             Ok(grid) => {
                 return (
                     grid,
@@ -65,7 +66,10 @@ pub fn evaluate_density_with_report(
                     },
                 );
             }
-            Err(_err) => {}
+            Err(reason) => {
+                // Keep the reason so the fallback is not silent (blocker A-H2).
+                gpu_failure_reason = Some(reason);
+            }
         }
     }
 
@@ -77,10 +81,11 @@ pub fn evaluate_density_with_report(
             used_gpu: false,
             attempted_gpu: ctx.is_gpu_available(),
             n_points: params.n_points(),
-            note: if ctx.is_gpu_available() {
-                "GPU available but density-grid dispatch failed; CPU fallback used".to_string()
-            } else {
-                "CPU density-grid evaluation (GPU not available)".to_string()
+            note: match gpu_failure_reason {
+                Some(reason) => format!(
+                    "GPU density-grid dispatch failed ({reason}); the CPU implementation was used."
+                ),
+                None => "CPU density-grid evaluation (GPU not available)".to_string(),
             },
         },
     )

@@ -302,7 +302,8 @@ mod orbital_mesh {
             &positions,
             0.4,
             3.0,
-        );
+        )
+        .unwrap();
 
         assert!(grid.dims[0] > 0 && grid.dims[1] > 0 && grid.dims[2] > 0);
         assert!(!grid.values.is_empty());
@@ -369,7 +370,8 @@ mod orbital_mesh {
             &positions,
             0.4,
             3.0,
-        );
+        )
+        .unwrap();
 
         let dual = sci_form::eht::marching_cubes_dual(&grid, 0.02);
 
@@ -483,7 +485,8 @@ mod reaction_pipeline {
                 positions,
                 0.4,
                 3.0,
-            );
+            )
+            .unwrap();
             let mesh = sci_form::eht::marching_cubes(&grid, 0.03);
             assert!(
                 mesh.num_triangles > 0,
@@ -588,7 +591,8 @@ mod smirks_mesh {
             &r_pos,
             0.4,
             3.0,
-        );
+        )
+        .unwrap();
 
         let dual = sci_form::eht::marching_cubes_dual(&grid, 0.02);
         let total_tri = dual.positive.num_triangles + dual.negative.num_triangles;
@@ -602,7 +606,8 @@ mod smirks_mesh {
             &r_pos,
             0.4,
             3.0,
-        );
+        )
+        .unwrap();
         let lumo_mesh = sci_form::eht::marching_cubes(&lumo_grid, 0.02);
 
         eprintln!(
@@ -716,7 +721,8 @@ mod dynamics_mesh {
             &positions,
             0.4,
             3.0,
-        );
+        )
+        .unwrap();
         let mesh = sci_form::eht::marching_cubes(&grid, 0.03);
 
         assert!(

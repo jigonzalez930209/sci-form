@@ -102,6 +102,16 @@ pub fn compute_npa(
     if basis_atom_map.len() != n_basis {
         return Err("basis_atom_map length must match basis size".to_string());
     }
+    if let Some((mu, &atom)) = basis_atom_map
+        .iter()
+        .enumerate()
+        .find(|(_, &atom)| atom >= n_atoms)
+    {
+        return Err(format!(
+            "basis_atom_map[{}] = {} references an atom outside 0..{}",
+            mu, atom, n_atoms
+        ));
+    }
 
     // Step 1: Compute S^{-1/2} for Löwdin orthogonalization
     let s_eigen = nalgebra::SymmetricEigen::new(overlap.clone());
@@ -310,7 +320,7 @@ pub fn compute_nbo(
 /// Classify eigenvalues by angular momentum shell.
 fn classify_shell_populations(eigenvalues: &nalgebra::DVector<f64>, z: u8) -> (f64, f64, f64) {
     let mut sorted: Vec<f64> = eigenvalues.iter().copied().collect();
-    sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    sorted.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
 
     let (n_s, n_p, n_d) = shell_count(z);
 

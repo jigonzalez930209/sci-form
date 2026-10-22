@@ -54,9 +54,9 @@ pub enum Commands {
         elements: String,
         /// JSON array of flat xyz coords
         coords: String,
-        /// Wolfsberg-Helmholtz constant (0 = default 1.75)
-        #[arg(short, long, default_value_t = 0.0)]
-        k: f64,
+        /// Wolfsberg-Helmholtz constant (omit the flag for the default 1.75)
+        #[arg(short, long)]
+        k: Option<f64>,
     },
     /// Compute Gasteiger-Marsili partial charges from SMILES
     Charges { smiles: String },
@@ -188,9 +188,10 @@ pub enum Commands {
     Stereo {
         /// SMILES string
         smiles: String,
-        /// JSON array of flat xyz coords (optional, empty for topology-only)
-        #[arg(short, long, default_value = "[]")]
-        coords: String,
+        /// JSON array of flat xyz coords; omit the flag for a topology-only
+        /// analysis
+        #[arg(short, long)]
+        coords: Option<String>,
     },
     /// Compute non-polar solvation energy (SASA + ASP)
     Solvation {
@@ -198,9 +199,10 @@ pub enum Commands {
         elements: String,
         /// JSON array of flat xyz coords
         coords: String,
-        /// JSON array of partial charges (for GB; omit for non-polar only)
-        #[arg(short, long, default_value = "")]
-        charges: String,
+        /// JSON array of partial charges (for GB); omit the flag for the
+        /// non-polar contribution only
+        #[arg(short, long)]
+        charges: Option<String>,
         /// Probe radius in Å
         #[arg(short, long, default_value_t = 1.4)]
         probe_radius: f64,
@@ -305,12 +307,12 @@ pub enum Commands {
         /// Broadening type: gaussian or lorentzian
         #[arg(long, default_value = "lorentzian")]
         broadening: String,
-        /// Finite-difference step in Å (0 = engine default)
-        #[arg(long, default_value_t = 0.0)]
-        step_size: f64,
+        /// Finite-difference step in Å; omit the flag for the engine default
+        #[arg(long)]
+        step_size: Option<f64>,
         /// SMILES string (required for method=uff)
-        #[arg(long, default_value = "")]
-        smiles: String,
+        #[arg(long)]
+        smiles: Option<String>,
     },
     /// Compute CISD excited states from an internal STO-3G RHF calculation
     Cisd {
@@ -389,9 +391,10 @@ pub enum Commands {
         elements: String,
         /// JSON array of flat xyz coords
         coords: String,
-        /// JSON array of partial charges (omit to derive them with Gasteiger)
-        #[arg(long, default_value = "")]
-        charges: String,
+        /// JSON array of partial charges; omit the flag to derive them with
+        /// Gasteiger
+        #[arg(long)]
+        charges: Option<String>,
         /// Gaussian smoothing factor in Å⁻²
         #[arg(long, default_value_t = 100.0)]
         beta: f64,
@@ -408,9 +411,10 @@ pub enum Commands {
         elements: String,
         /// JSON array of flat xyz coords
         coords: String,
-        /// JSON array of [i, j] bond pairs (omit to perceive bonds from geometry)
-        #[arg(long, default_value = "")]
-        bonds: String,
+        /// JSON array of [i, j] bond pairs; omit the flag to perceive bonds
+        /// from the geometry
+        #[arg(long)]
+        bonds: Option<String>,
         /// Maximum topological distance for the autocorrelations
         #[arg(long, default_value_t = 8)]
         max_lag: usize,
@@ -476,9 +480,10 @@ pub enum Commands {
         intensities: String,
         /// JSON array of atomic numbers
         elements: String,
-        /// JSON array of modes, each an array of [x,y,z] triples (optional)
-        #[arg(long, default_value = "")]
-        mode_displacements: String,
+        /// JSON array of modes, each an array of [x,y,z] triples; omit the
+        /// flag when the modes are unknown
+        #[arg(long)]
+        mode_displacements: Option<String>,
     },
     /// Look up a crystallographic space group by number or symbol
     SpaceGroup {
@@ -515,9 +520,9 @@ pub enum Commands {
         /// Lattice angle gamma in degrees
         #[arg(long, default_value_t = 90.0)]
         gamma: f64,
-        /// Extra bonding tolerance in Å (0 = default 0.3)
-        #[arg(long, default_value_t = 0.0)]
-        bond_tolerance: f64,
+        /// Extra bonding tolerance in Å; omit the flag for the default 0.3
+        #[arg(long)]
+        bond_tolerance: Option<f64>,
     },
     /// Detect haptic (η) metal-ring interactions and metallocene motifs
     Hapticity {
@@ -525,9 +530,10 @@ pub enum Commands {
         elements: String,
         /// JSON array of flat xyz coords
         coords: String,
-        /// JSON array of [i, j] bond pairs (omit to perceive bonds from geometry)
-        #[arg(long, default_value = "")]
-        bonds: String,
+        /// JSON array of [i, j] bond pairs; omit the flag to perceive bonds
+        /// from the geometry
+        #[arg(long)]
+        bonds: Option<String>,
     },
     /// Optimize a geometry with the shared BFGS engine (UFF backend)
     OptimizeFramework {
@@ -550,9 +556,9 @@ pub enum Commands {
         /// Maximum step size in Å
         #[arg(long, default_value_t = 0.2)]
         max_step: f64,
-        /// JSON array of fixed atom indices
-        #[arg(long, default_value = "")]
-        fixed_atoms: String,
+        /// JSON array of fixed atom indices; omit the flag to fix no atom
+        #[arg(long)]
+        fixed_atoms: Option<String>,
         /// Lattice length a in Å (enables periodic optimization)
         #[arg(long)]
         a: Option<f64>,
@@ -595,8 +601,8 @@ pub enum Commands {
     Alpb {
         elements: String,
         coords: String,
-        #[arg(short, long, default_value = "")]
-        charges: String,
+        #[arg(short, long)]
+        charges: Option<String>,
         #[arg(short, long, default_value_t = 78.5)]
         dielectric: f64,
     },
@@ -960,9 +966,9 @@ pub enum Commands {
     AssemblePeriodicOperators {
         /// JSON array of real-space Hamiltonian blocks
         hamiltonian_blocks: String,
-        /// JSON array of real-space overlap blocks (optional)
-        #[arg(default_value = "")]
-        overlap_blocks: String,
+        /// JSON array of real-space overlap blocks; omit the flag for a
+        /// non-overlapping operator
+        overlap_blocks: Option<String>,
         /// Mesh divisions along the first reciprocal axis
         #[arg(long, default_value_t = 2)]
         nx: usize,
@@ -1002,9 +1008,9 @@ pub enum Commands {
         smiles: String,
         /// JSON array of flat xyz coords
         coords: String,
-        /// JSON array of backend names, or [] for all
-        #[arg(long, default_value = "[]")]
-        methods: String,
+        /// JSON array of backend names; omit the flag for all backends
+        #[arg(long)]
+        methods: Option<String>,
     },
 
     // ─── KINETICS COMMANDS ────────────────────

@@ -18,7 +18,7 @@ mod eeq_py {
 
     use pyo3::prelude::*;
 
-    #[pyclass]
+    #[pyclass(name = "EeqChargeResult")]
     #[derive(Clone)]
     pub struct EeqChargeResultPy {
         #[pyo3(get)]
@@ -29,7 +29,7 @@ mod eeq_py {
         pub total_charge: f64,
     }
 
-    #[pyclass]
+    #[pyclass(name = "EeqEnergyResult")]
     #[derive(Clone)]
     pub struct EeqEnergyResultPy {
         #[pyo3(get)]
@@ -43,7 +43,7 @@ mod eeq_py {
     /// Compute EEQ geometry-dependent charges.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, total_charge=0.0))]
-    pub fn eeq_charges(
+    pub fn compute_eeq_charges(
         elements: Vec<u8>,
         coords: Vec<f64>,
         total_charge: f64,
@@ -64,7 +64,7 @@ mod eeq_py {
     /// Compute EEQ electrostatic energy.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, total_charge=0.0))]
-    pub fn eeq_energy(
+    pub fn compute_eeq_energy(
         elements: Vec<u8>,
         coords: Vec<f64>,
         total_charge: f64,
@@ -83,8 +83,8 @@ mod eeq_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(eeq_charges, m)?)?;
-        m.add_function(wrap_pyfunction!(eeq_energy, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_eeq_charges, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_eeq_energy, m)?)?;
         Ok(())
     }
 }
@@ -99,7 +99,7 @@ mod alpb_py {
 
     use pyo3::prelude::*;
 
-    #[pyclass]
+    #[pyclass(name = "AlpbResult")]
     #[derive(Clone)]
     pub struct AlpbResultPy {
         #[pyo3(get)]
@@ -114,7 +114,7 @@ mod alpb_py {
         pub alpb_factor: f64,
     }
 
-    #[pyclass]
+    #[pyclass(name = "AlpbBornRadii")]
     #[derive(Clone)]
     pub struct AlpbBornRadiiPy {
         #[pyo3(get)]
@@ -126,7 +126,7 @@ mod alpb_py {
     /// Compute ALPB implicit solvation energy.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, charges, solvent_dielectric=78.5, probe_radius=1.4, surface_tension=0.005))]
-    pub fn alpb_solvation(
+    pub fn compute_alpb_solvation(
         elements: Vec<u8>,
         coords: Vec<f64>,
         charges: Vec<f64>,
@@ -155,7 +155,7 @@ mod alpb_py {
     /// Compute ALPB-style Born radii.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, probe_radius=1.4))]
-    pub fn alpb_born_radii(
+    pub fn compute_alpb_born_radii(
         elements: Vec<u8>,
         coords: Vec<f64>,
         probe_radius: f64,
@@ -169,8 +169,8 @@ mod alpb_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(alpb_solvation, m)?)?;
-        m.add_function(wrap_pyfunction!(alpb_born_radii, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_alpb_solvation, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_alpb_born_radii, m)?)?;
         Ok(())
     }
 }
@@ -185,7 +185,7 @@ mod d4_py {
 
     use pyo3::prelude::*;
 
-    #[pyclass]
+    #[pyclass(name = "D4Result")]
     #[derive(Clone)]
     pub struct D4ResultPy {
         #[pyo3(get)]
@@ -203,7 +203,7 @@ mod d4_py {
     /// Compute DFT-D4 dispersion energy.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, s6=1.0, s8=0.95, a1=0.45, a2=4.0, three_body=false))]
-    pub fn d4_energy(
+    pub fn compute_d4_energy(
         elements: Vec<u8>,
         coords: Vec<f64>,
         s6: f64,
@@ -232,14 +232,19 @@ mod d4_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(d4_energy, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_d4_energy, m)?)?;
         Ok(())
     }
 }
 
 // ─── E10: CPM ──────────────────────────────────────────────────────────────
 
-#[cfg(feature = "experimental-cpm")]
+// The CPM charges are exposed whenever the core's CPM module is available.
+// `experimental-cpm` is a legacy alias of `beta-cpm`, so the two features are
+// equivalent; gating on both makes `sci_form.compute_cpm_charges` (and its
+// deprecated alias `sci_form.cpm_charges`) available in every build that
+// ships the core CPM code (blocker C-C3).
+#[cfg(any(feature = "experimental-cpm", feature = "beta-cpm"))]
 mod cpm_py {
     // `#[pyfunction]` expands to `Err(err.into())`, which newer clippy
     // versions flag as a useless `PyErr` -> `PyErr` conversion.
@@ -247,7 +252,7 @@ mod cpm_py {
 
     use pyo3::prelude::*;
 
-    #[pyclass]
+    #[pyclass(name = "CpmResult")]
     #[derive(Clone)]
     pub struct CpmResultPy {
         #[pyo3(get)]
@@ -266,7 +271,7 @@ mod cpm_py {
         pub converged: bool,
     }
 
-    #[pyclass]
+    #[pyclass(name = "CpmSurface")]
     #[derive(Clone)]
     pub struct CpmSurfacePy {
         #[pyo3(get)]
@@ -284,7 +289,7 @@ mod cpm_py {
     /// Compute CPM charges at a given electrochemical potential.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, mu_ev=-4.44, dielectric=78.5))]
-    pub fn cpm_charges(
+    pub fn compute_cpm_charges(
         elements: Vec<u8>,
         coords: Vec<f64>,
         mu_ev: f64,
@@ -313,7 +318,7 @@ mod cpm_py {
     /// Scan electrochemical surface over a potential range.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, mu_min=-5.5, mu_max=-3.5, n_points=10, dielectric=78.5))]
-    pub fn cpm_surface(
+    pub fn compute_cpm_surface(
         elements: Vec<u8>,
         coords: Vec<f64>,
         mu_min: f64,
@@ -335,8 +340,10 @@ mod cpm_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(cpm_charges, m)?)?;
-        m.add_function(wrap_pyfunction!(cpm_surface, m)?)?;
+        m.add_class::<CpmResultPy>()?;
+        m.add_class::<CpmSurfacePy>()?;
+        m.add_function(wrap_pyfunction!(compute_cpm_charges, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_cpm_surface, m)?)?;
         Ok(())
     }
 }
@@ -352,7 +359,7 @@ pub(crate) fn register(_m: &Bound<'_, PyModule>) -> PyResult<()> {
     #[cfg(feature = "experimental-d4")]
     d4_py::register(_m)?;
 
-    #[cfg(feature = "experimental-cpm")]
+    #[cfg(any(feature = "experimental-cpm", feature = "beta-cpm"))]
     cpm_py::register(_m)?;
 
     #[cfg(feature = "alpha-edl")]
@@ -392,7 +399,7 @@ mod alpha_edl_py {
 
     use pyo3::prelude::*;
 
-    #[pyclass]
+    #[pyclass(name = "EdlProfileResult")]
     #[derive(Clone)]
     pub struct EdlProfileResultPy {
         #[pyo3(get)]
@@ -431,7 +438,7 @@ mod alpha_edl_py {
         extent_angstrom = 12.0
     ))]
     #[allow(clippy::too_many_arguments)]
-    pub fn edl_profile(
+    pub fn compute_edl_profile(
         surface_potential_v: f64,
         model: &str,
         ionic_strength_m: f64,
@@ -448,8 +455,8 @@ mod alpha_edl_py {
             "gouy-chapman" => EdlModel::GouyChapman,
             "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
             _ => {
-                return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Unknown EDL model: {}. Use helmholtz, gouy-chapman, or gcs",
+                return Err(crate::errors::value_error(format!(
+                    "Invalid 'model' '{}'. Supported: 'helmholtz', 'gouy-chapman', 'gouy-chapman-stern', 'gcs'.",
                     model
                 )))
             }
@@ -468,7 +475,7 @@ mod alpha_edl_py {
             ..Default::default()
         };
         let result = compute_edl_profile(surface_potential_v, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(EdlProfileResultPy {
             distance_axis_angstrom: result.distance_axis_angstrom,
             electrostatic_potential_v: result.electrostatic_potential_v,
@@ -486,7 +493,7 @@ mod alpha_edl_py {
     /// Scan EDL capacitance over a range of surface potentials.
     #[pyfunction]
     #[pyo3(signature = (v_min, v_max, n_points, ionic_strength_m = 0.1, model = "gcs"))]
-    pub fn edl_capacitance_scan(
+    pub fn compute_edl_capacitance_scan(
         v_min: f64,
         v_max: f64,
         n_points: usize,
@@ -499,8 +506,8 @@ mod alpha_edl_py {
             "gouy-chapman" => EdlModel::GouyChapman,
             "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
             _ => {
-                return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Unknown EDL model: {}",
+                return Err(crate::errors::value_error(format!(
+                    "Invalid 'model' '{}'. Supported: 'helmholtz', 'gouy-chapman', 'gouy-chapman-stern', 'gcs'.",
                     model
                 )))
             }
@@ -511,13 +518,13 @@ mod alpha_edl_py {
             ..Default::default()
         };
         scan_edl_capacitance(v_min, v_max, n_points, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+            .map_err(crate::errors::engine_error)
     }
 
     /// Compute Helmholtz-only profile (linearcompact compact layer only, no diffuse response).
     #[pyfunction]
     #[pyo3(signature = (surface_potential_v, ionic_strength_m = 0.1, temperature_k = 298.15))]
-    pub fn edl_helmholtz(
+    pub fn compute_helmholtz_profile(
         surface_potential_v: f64,
         ionic_strength_m: f64,
         temperature_k: f64,
@@ -530,7 +537,7 @@ mod alpha_edl_py {
             ..Default::default()
         };
         let result = compute_helmholtz_profile(surface_potential_v, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(EdlProfileResultPy {
             distance_axis_angstrom: result.distance_axis_angstrom,
             electrostatic_potential_v: result.electrostatic_potential_v,
@@ -548,7 +555,7 @@ mod alpha_edl_py {
     /// Compute Gouy-Chapman profile (diffuse layer only).
     #[pyfunction]
     #[pyo3(signature = (surface_potential_v, ionic_strength_m = 0.1, temperature_k = 298.15))]
-    pub fn edl_gouy_chapman(
+    pub fn compute_gouy_chapman_profile(
         surface_potential_v: f64,
         ionic_strength_m: f64,
         temperature_k: f64,
@@ -561,7 +568,7 @@ mod alpha_edl_py {
             ..Default::default()
         };
         let result = compute_gouy_chapman_profile(surface_potential_v, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(EdlProfileResultPy {
             distance_axis_angstrom: result.distance_axis_angstrom,
             electrostatic_potential_v: result.electrostatic_potential_v,
@@ -579,7 +586,7 @@ mod alpha_edl_py {
     /// Compute Gouy-Chapman-Stern profile (compact + diffuse layers).
     #[pyfunction]
     #[pyo3(signature = (surface_potential_v, ionic_strength_m = 0.1, temperature_k = 298.15, stern_thickness_a = 3.0))]
-    pub fn edl_gcs(
+    pub fn compute_gcs_profile(
         surface_potential_v: f64,
         ionic_strength_m: f64,
         temperature_k: f64,
@@ -594,7 +601,7 @@ mod alpha_edl_py {
             ..Default::default()
         };
         let result = compute_gcs_profile(surface_potential_v, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(EdlProfileResultPy {
             distance_axis_angstrom: result.distance_axis_angstrom,
             electrostatic_potential_v: result.electrostatic_potential_v,
@@ -610,11 +617,11 @@ mod alpha_edl_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(edl_profile, m)?)?;
-        m.add_function(wrap_pyfunction!(edl_capacitance_scan, m)?)?;
-        m.add_function(wrap_pyfunction!(edl_helmholtz, m)?)?;
-        m.add_function(wrap_pyfunction!(edl_gouy_chapman, m)?)?;
-        m.add_function(wrap_pyfunction!(edl_gcs, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_edl_profile, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_edl_capacitance_scan, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_helmholtz_profile, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_gouy_chapman_profile, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_gcs_profile, m)?)?;
         Ok(())
     }
 }
@@ -714,7 +721,7 @@ mod alpha_periodic_py {
     use super::kmesh_support::{matrix_rows, parse_centering, symmetric_eigenvalues};
     use super::periodic_blocks::{as_core_refs, parse_blocks};
 
-    #[pyclass]
+    #[pyclass(name = "KMeshResult")]
     #[derive(Clone)]
     pub struct KMeshResultPy {
         #[pyo3(get)]
@@ -730,20 +737,20 @@ mod alpha_periodic_py {
     /// Generate a Monkhorst-Pack or Gamma-centered k-mesh.
     #[pyfunction]
     #[pyo3(signature = (grid, centering = "monkhorst-pack"))]
-    pub fn kmesh(grid: [usize; 3], centering: &str) -> PyResult<KMeshResultPy> {
+    pub fn compute_kmesh(grid: [usize; 3], centering: &str) -> PyResult<KMeshResultPy> {
         use sci_form_core::alpha::periodic_linear::*;
         let c = match centering {
             "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
             "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
             _ => {
-                return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Unknown centering: {}. Use monkhorst-pack or gamma",
+                return Err(crate::errors::value_error(format!(
+                    "Invalid 'centering' '{}'. Supported: 'monkhorst-pack', 'mp', 'gamma', 'gamma-centered'.",
                     centering
                 )))
             }
         };
         let mesh = monkhorst_pack_mesh(&KMeshConfig { grid, centering: c })
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(KMeshResultPy {
             n_points: mesh.points.len(),
             grid,
@@ -781,12 +788,12 @@ mod alpha_periodic_py {
         fermi_energy_ev: Option<f64>,
     ) -> PyResult<String> {
         use sci_form_core::alpha::periodic_linear::*;
-        let blocks = parse_blocks(blocks_json).map_err(pyo3::exceptions::PyValueError::new_err)?;
+        let blocks = parse_blocks(blocks_json).map_err(crate::errors::value_error)?;
         let centering =
-            parse_centering(centering).map_err(pyo3::exceptions::PyValueError::new_err)?;
+            parse_centering(centering).map_err(crate::errors::value_error)?;
         let kmesh_config = KMeshConfig { grid, centering };
         let mesh = monkhorst_pack_mesh(&kmesh_config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let hamiltonian_refs = as_core_refs(&blocks);
         let (hamiltonians, _overlaps) =
             sci_form_core::kmesh::assemble_periodic_operators(&hamiltonian_refs, &[], &mesh);
@@ -800,7 +807,7 @@ mod alpha_periodic_py {
             ..Default::default()
         };
         let result = compute_periodic_kpm_dos_from_operators(&hamiltonians, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(serde_json::json!({
             "energies_ev": result.energies_ev,
             "total_dos": result.total_dos,
@@ -841,14 +848,14 @@ mod alpha_periodic_py {
     ) -> PyResult<String> {
         use sci_form_core::alpha::periodic_linear::*;
         let hamiltonian_blocks = parse_blocks(hamiltonian_blocks_json)
-            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            .map_err(crate::errors::value_error)?;
         let overlap_blocks =
-            parse_blocks(overlap_blocks_json).map_err(pyo3::exceptions::PyValueError::new_err)?;
+            parse_blocks(overlap_blocks_json).map_err(crate::errors::value_error)?;
         let centering =
-            parse_centering(centering).map_err(pyo3::exceptions::PyValueError::new_err)?;
+            parse_centering(centering).map_err(crate::errors::value_error)?;
         let kmesh_config = KMeshConfig { grid, centering };
         let mesh = monkhorst_pack_mesh(&kmesh_config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let hamiltonian_refs = as_core_refs(&hamiltonian_blocks);
         let overlap_refs = as_core_refs(&overlap_blocks);
         let (hamiltonians, overlaps) = sci_form_core::kmesh::assemble_periodic_operators(
@@ -867,7 +874,7 @@ mod alpha_periodic_py {
             n_electrons,
             &config,
         )
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        .map_err(crate::errors::engine_error)?;
         Ok(serde_json::json!({
             "n_kpoints": result.diagnostics.n_kpoints,
             "sketch_size": sketch_size,
@@ -907,7 +914,7 @@ mod alpha_periodic_py {
         k_y: f64,
         k_z: f64,
     ) -> PyResult<String> {
-        let blocks = parse_blocks(blocks_json).map_err(pyo3::exceptions::PyValueError::new_err)?;
+        let blocks = parse_blocks(blocks_json).map_err(crate::errors::value_error)?;
         let refs = as_core_refs(&blocks);
         let hamiltonian = sci_form_core::kmesh::build_bloch_hamiltonian(&refs, [k_x, k_y, k_z]);
         let n = hamiltonian.nrows();
@@ -937,19 +944,19 @@ mod alpha_periodic_py {
         centering: &str,
     ) -> PyResult<String> {
         let hamiltonian_blocks = parse_blocks(hamiltonian_blocks_json)
-            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            .map_err(crate::errors::value_error)?;
         let overlap_blocks = if overlap_blocks_json.trim().is_empty() {
             Vec::new()
         } else {
-            parse_blocks(overlap_blocks_json).map_err(pyo3::exceptions::PyValueError::new_err)?
+            parse_blocks(overlap_blocks_json).map_err(crate::errors::value_error)?
         };
         let centering =
-            parse_centering(centering).map_err(pyo3::exceptions::PyValueError::new_err)?;
+            parse_centering(centering).map_err(crate::errors::value_error)?;
         let mesh = sci_form_core::kmesh::monkhorst_pack_mesh(&sci_form_core::kmesh::KMeshConfig {
             grid,
             centering,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        .map_err(crate::errors::engine_error)?;
         let hamiltonian_refs = as_core_refs(&hamiltonian_blocks);
         let overlap_refs = as_core_refs(&overlap_blocks);
         let (hamiltonians, overlaps) = sci_form_core::kmesh::assemble_periodic_operators(
@@ -977,7 +984,7 @@ mod alpha_periodic_py {
     #[pyfunction]
     pub fn bz_integrate_scalar(values: Vec<f64>, weights: Vec<f64>) -> PyResult<f64> {
         if values.len() != weights.len() {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "values and weights must have same length",
             ));
         }
@@ -988,7 +995,7 @@ mod alpha_periodic_py {
     #[pyfunction]
     pub fn bz_integrate_vector(vectors: Vec<Vec<f64>>, weights: Vec<f64>) -> PyResult<Vec<f64>> {
         if vectors.len() != weights.len() {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "vectors and weights must have same length",
             ));
         }
@@ -1031,7 +1038,7 @@ mod alpha_periodic_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(kmesh, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_kmesh, m)?)?;
         m.add_function(wrap_pyfunction!(compute_periodic_dos, m)?)?;
         m.add_function(wrap_pyfunction!(solve_periodic_randnla, m)?)?;
         m.add_function(wrap_pyfunction!(bloch_phase, m)?)?;
@@ -1057,7 +1064,7 @@ mod alpha_kinetics_py {
 
     use super::kinetics_support::network_config;
 
-    #[pyclass]
+    #[pyclass(name = "HtstRateResult")]
     #[derive(Clone)]
     pub struct HtstRateResultPy {
         #[pyo3(get)]
@@ -1079,7 +1086,7 @@ mod alpha_kinetics_py {
         prefactor_s_inv = None,
         step_id = "step"
     ))]
-    pub fn htst_rate(
+    pub fn compute_htst_rate(
         activation_free_energy_ev: f64,
         reaction_free_energy_ev: f64,
         temperature_k: f64,
@@ -1098,7 +1105,7 @@ mod alpha_kinetics_py {
             pressure_bar: 1.0,
         };
         let result =
-            evaluate_htst_rate(&step, state).map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            evaluate_htst_rate(&step, state).map_err(crate::errors::engine_error)?;
         Ok(HtstRateResultPy {
             step_id: result.step_id,
             forward_rate_s_inv: result.forward_rate_s_inv,
@@ -1116,7 +1123,7 @@ mod alpha_kinetics_py {
         prefactor_s_inv = None,
         step_id = "step"
     ))]
-    pub fn htst_temperature_sweep(
+    pub fn compute_htst_sweep(
         activation_free_energy_ev: f64,
         reaction_free_energy_ev: f64,
         temperatures_k: Vec<f64>,
@@ -1131,7 +1138,7 @@ mod alpha_kinetics_py {
             prefactor_s_inv,
         };
         let results = evaluate_htst_temperature_sweep(&step, &temperatures_k, 1.0)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(results
             .into_iter()
             .map(|r| HtstRateResultPy {
@@ -1155,9 +1162,9 @@ mod alpha_kinetics_py {
     ) -> PyResult<String> {
         use sci_form_core::alpha::kinetics::*;
         let config = network_config(network_json, n_steps)
-            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            .map_err(crate::errors::value_error)?;
         let trace = solve_microkinetic_network(&config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
         Ok(serde_json::json!({
             "max_population": diagnostics.max_population,
@@ -1178,9 +1185,9 @@ mod alpha_kinetics_py {
     ) -> PyResult<String> {
         use sci_form_core::alpha::kinetics::*;
         let config = network_config(network_json, n_steps)
-            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            .map_err(crate::errors::value_error)?;
         let trace = solve_microkinetic_network(&config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
         let last = trace.frames.last();
         Ok(serde_json::json!({
@@ -1206,9 +1213,9 @@ mod alpha_kinetics_py {
     ) -> PyResult<String> {
         use sci_form_core::alpha::kinetics::*;
         let config = network_config(network_json, n_steps)
-            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            .map_err(crate::errors::value_error)?;
         let trace = solve_microkinetic_steady_state(&config, tol)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
         let last = trace.frames.last();
         Ok(serde_json::json!({
@@ -1248,8 +1255,12 @@ mod alpha_kinetics_py {
     ) -> PyResult<String> {
         use sci_form_core::alpha::gsm::GsmEnergyBackend;
         use sci_form_core::alpha::kinetics::*;
-        let backend: GsmEnergyBackend = method.parse().map_err(|e: String| {
-            pyo3::exceptions::PyValueError::new_err(format!("unknown GSM backend: {e}"))
+        let backend: GsmEnergyBackend = method.parse().map_err(|_e: String| {
+            crate::errors::value_error(crate::errors::invalid_value(
+                "'method'",
+                method,
+                &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
+            ))
         })?;
         let config = HtstAdapterConfig {
             step_id: step_id.to_string(),
@@ -1266,7 +1277,7 @@ mod alpha_kinetics_py {
             backend,
             &config,
         )
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))?;
         Ok(serde_json::json!({
             "method": backend.as_str(),
             "step_id": result.rate.step_id,
@@ -1287,8 +1298,8 @@ mod alpha_kinetics_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(htst_rate, m)?)?;
-        m.add_function(wrap_pyfunction!(htst_temperature_sweep, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_htst_rate, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_htst_sweep, m)?)?;
         m.add_function(wrap_pyfunction!(extract_kinetics_diagnostics, m)?)?;
         m.add_function(wrap_pyfunction!(solve_microkinetic_network, m)?)?;
         m.add_function(wrap_pyfunction!(solve_microkinetic_steady_state, m)?)?;
@@ -1350,7 +1361,7 @@ mod alpha_render_py {
 
     use pyo3::prelude::*;
 
-    #[pyclass]
+    #[pyclass(name = "ChartSeries")]
     #[derive(Clone)]
     pub struct ChartSeriesPy {
         #[pyo3(get)]
@@ -1367,7 +1378,7 @@ mod alpha_render_py {
         pub y_unit: String,
     }
 
-    #[pyclass]
+    #[pyclass(name = "TrajectoryFrame")]
     #[derive(Clone)]
     pub struct TrajectoryFramePy {
         #[pyo3(get)]
@@ -1376,7 +1387,7 @@ mod alpha_render_py {
         pub coords: Vec<f64>,
     }
 
-    #[pyclass]
+    #[pyclass(name = "ChartPayload")]
     #[derive(Clone)]
     pub struct ChartPayloadPy {
         #[pyo3(get)]
@@ -1394,7 +1405,7 @@ mod alpha_render_py {
     /// real chart in `data`.
     #[pyfunction]
     pub fn chart_to_json(chart_json: &str) -> PyResult<String> {
-        let chart = parse_chart(chart_json).map_err(pyo3::exceptions::PyValueError::new_err)?;
+        let chart = parse_chart(chart_json).map_err(crate::errors::value_error)?;
         Ok(serde_json::json!({
             "format": "json",
             "version": "1.0",
@@ -1425,7 +1436,7 @@ mod alpha_render_py {
     #[pyfunction]
     pub fn pack_chart_payload(chart_json: &str) -> PyResult<String> {
         use sci_form_core::render_bridge::{pack_chart_payload, verify_chart_round_trip};
-        let chart = parse_chart(chart_json).map_err(pyo3::exceptions::PyValueError::new_err)?;
+        let chart = parse_chart(chart_json).map_err(crate::errors::value_error)?;
         let batch = pack_chart_payload(&chart);
         Ok(serde_json::json!({
             "n_columns": batch.float_columns.len(),
@@ -1501,7 +1512,7 @@ mod alpha_edl_chart_py {
     /// Build an EDL profile chart payload from a given surface potential and config.
     #[pyfunction]
     #[pyo3(signature = (surface_potential_v, ionic_strength_m = 0.1))]
-    pub fn edl_chart(surface_potential_v: f64, ionic_strength_m: f64) -> PyResult<ChartPayloadPy> {
+    pub fn compute_edl_chart(surface_potential_v: f64, ionic_strength_m: f64) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::edl::*;
         use sci_form_core::alpha::render_bridge::edl_profile_chart;
         let config = EdlConfig {
@@ -1510,7 +1521,7 @@ mod alpha_edl_chart_py {
             ..Default::default()
         };
         let profile = compute_gouy_chapman_profile(surface_potential_v, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(to_py_chart(&edl_profile_chart(&profile)))
     }
 
@@ -1521,7 +1532,7 @@ mod alpha_edl_chart_py {
     /// real values instead of placeholders.
     #[pyfunction]
     #[pyo3(signature = (v_min, v_max, n_points, ionic_strength_m = 0.1, model = "gcs"))]
-    pub fn capacitance_chart(
+    pub fn compute_capacitance_chart(
         v_min: f64,
         v_max: f64,
         n_points: usize,
@@ -1535,8 +1546,8 @@ mod alpha_edl_chart_py {
             "gouy-chapman" => EdlModel::GouyChapman,
             "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
             _ => {
-                return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                    "Unknown EDL model: {}",
+                return Err(crate::errors::value_error(format!(
+                    "Invalid 'model' '{}'. Supported: 'helmholtz', 'gouy-chapman', 'gouy-chapman-stern', 'gcs'.",
                     model
                 )))
             }
@@ -1547,13 +1558,13 @@ mod alpha_edl_chart_py {
             ..Default::default()
         };
         let scan = scan_edl_capacitance(v_min, v_max, n_points, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let mut potentials = Vec::with_capacity(scan.len());
         let mut capacitances = Vec::with_capacity(scan.len());
         let mut charges = Vec::with_capacity(scan.len());
         for (potential, capacitance) in &scan {
             let profile = compute_edl_profile(*potential, &config)
-                .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+                .map_err(crate::errors::engine_error)?;
             potentials.push(*potential);
             capacitances.push(*capacitance);
             charges.push(integrated_charge_c_per_m2(&profile));
@@ -1598,8 +1609,8 @@ mod alpha_edl_chart_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(edl_chart, m)?)?;
-        m.add_function(wrap_pyfunction!(capacitance_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_edl_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_capacitance_chart, m)?)?;
         Ok(())
     }
 }
@@ -1623,13 +1634,13 @@ mod alpha_kinetics_chart_py {
     /// forward rates are supplied by the caller and are used verbatim.
     #[pyfunction]
     #[pyo3(signature = (temperatures_k, rates_s_inv))]
-    pub fn arrhenius_chart(
+    pub fn compute_arrhenius_chart(
         temperatures_k: Vec<f64>,
         rates_s_inv: Vec<f64>,
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         if temperatures_k.len() != rates_s_inv.len() {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "temperatures and rates must have the same length",
             ));
         }
@@ -1661,7 +1672,7 @@ mod alpha_kinetics_chart_py {
         prefactor_s_inv = None,
         step_id = "thermal"
     ))]
-    pub fn thermal_prop_chart(
+    pub fn compute_thermal_prop_chart(
         activation_free_energy_ev: f64,
         reaction_free_energy_ev: f64,
         temperatures_k: Vec<f64>,
@@ -1669,7 +1680,7 @@ mod alpha_kinetics_chart_py {
         step_id: &str,
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
-        use sci_form_core::alpha::render_bridge::arrhenius_chart;
+        use sci_form_core::alpha::render_bridge::arrhenius_chart as core_arrhenius_chart;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let step = ElementaryStep {
             step_id: step_id.to_string(),
@@ -1678,8 +1689,8 @@ mod alpha_kinetics_chart_py {
             prefactor_s_inv,
         };
         let results = evaluate_htst_temperature_sweep(&step, &temperatures_k, 1.0)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
-        let base = arrhenius_chart(&results);
+            .map_err(crate::errors::engine_error)?;
+        let base = core_arrhenius_chart(&results);
         let x: Vec<f64> = results
             .iter()
             .map(|r| 1000.0 / r.state.temperature_k)
@@ -1711,18 +1722,18 @@ mod alpha_kinetics_chart_py {
     /// simulated trajectory.
     #[pyfunction]
     #[pyo3(signature = (network_json = None, n_steps = 50))]
-    pub fn phase_portrait_chart(
+    pub fn compute_phase_portrait_chart(
         network_json: Option<&str>,
         n_steps: usize,
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::kinetics::solve_microkinetic_network;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let config = network_config(network_json, n_steps)
-            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            .map_err(crate::errors::value_error)?;
         let trace = solve_microkinetic_network(&config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         if config.species.len() < 2 {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "a phase portrait needs a network with at least two species",
             ));
         }
@@ -1759,9 +1770,9 @@ mod alpha_kinetics_chart_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(arrhenius_chart, m)?)?;
-        m.add_function(wrap_pyfunction!(thermal_prop_chart, m)?)?;
-        m.add_function(wrap_pyfunction!(phase_portrait_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_arrhenius_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_thermal_prop_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_phase_portrait_chart, m)?)?;
         Ok(())
     }
 }
@@ -1789,7 +1800,7 @@ mod alpha_periodic_chart_py {
     /// The band energies come from the core periodic band-structure adapter.
     #[pyfunction]
     #[pyo3(signature = (elements, coords, lattice, n_kpoints_per_segment = 20))]
-    pub fn band_structure_chart(
+    pub fn compute_band_structure_chart(
         elements: Vec<u8>,
         coords: Vec<f64>,
         lattice: Vec<f64>,
@@ -1798,14 +1809,14 @@ mod alpha_periodic_chart_py {
         use sci_form_core::alpha::periodic_linear::*;
         use sci_form_core::alpha::render_bridge::band_structure_chart as build_chart;
         if !coords.len().is_multiple_of(3) {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "coords length must be a multiple of three",
             ));
         }
         let positions = positions_from_flat(&coords);
-        let lattice = parse_lattice(&lattice).map_err(pyo3::exceptions::PyValueError::new_err)?;
+        let lattice = parse_lattice(&lattice).map_err(crate::errors::value_error)?;
         let n_electrons = sci_form_core::eht::solve_eht(&elements, &positions, None)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?
+            .map_err(crate::errors::engine_error)?
             .n_electrons;
         let config = BandStructureAdapterConfig {
             n_kpoints_per_segment,
@@ -1813,14 +1824,14 @@ mod alpha_periodic_chart_py {
         };
         let bands =
             compute_band_structure_adapter(&elements, &positions, &lattice, n_electrons, &config)
-                .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+                .map_err(crate::errors::engine_error)?;
         Ok(to_py_chart(&build_chart(&bands)))
     }
 
     /// Build a DOS chart from a periodic KPM result.
     #[pyfunction]
     #[pyo3(signature = (energies, dos_values))]
-    pub fn density_of_states_chart(
+    pub fn compute_dos_chart(
         energies: Vec<f64>,
         dos_values: Vec<f64>,
     ) -> PyResult<ChartPayloadPy> {
@@ -1844,7 +1855,7 @@ mod alpha_periodic_chart_py {
     /// adapter, interpolated to `n_points_per_segment` points per segment.
     #[pyfunction]
     #[pyo3(signature = (n_points_per_segment = 20))]
-    pub fn kpoint_path_chart(n_points_per_segment: usize) -> PyResult<ChartPayloadPy> {
+    pub fn compute_kpoint_path_chart(n_points_per_segment: usize) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::periodic_linear::BandStructureAdapterConfig;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let path = BandStructureAdapterConfig::default().path;
@@ -1888,14 +1899,14 @@ mod alpha_periodic_chart_py {
     /// energy is extracted by bisection.
     #[pyfunction]
     #[pyo3(signature = (blocks_json, fermi_energy_ev = None, n_kx = 24, n_ky = 24))]
-    pub fn fermi_surface_chart(
+    pub fn compute_fermi_surface_chart(
         blocks_json: &str,
         fermi_energy_ev: Option<f64>,
         n_kx: usize,
         n_ky: usize,
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
-        let blocks = parse_blocks(blocks_json).map_err(pyo3::exceptions::PyValueError::new_err)?;
+        let blocks = parse_blocks(blocks_json).map_err(crate::errors::value_error)?;
         let refs = as_core_refs(&blocks);
         let (contour_x, contour_y, fermi) = fermi_contour(&refs, fermi_energy_ev, n_kx, n_ky);
         let chart = ChartPayload {
@@ -1913,10 +1924,10 @@ mod alpha_periodic_chart_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(band_structure_chart, m)?)?;
-        m.add_function(wrap_pyfunction!(density_of_states_chart, m)?)?;
-        m.add_function(wrap_pyfunction!(kpoint_path_chart, m)?)?;
-        m.add_function(wrap_pyfunction!(fermi_surface_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_band_structure_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_dos_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_kpoint_path_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_fermi_surface_chart, m)?)?;
         Ok(())
     }
 }
@@ -2108,7 +2119,7 @@ mod alpha_gsm_chart_py {
     /// accumulated path length of the string.
     #[pyfunction]
     #[pyo3(signature = (smiles, reactant_coords, product_coords, method = "uff"))]
-    pub fn trajectory_chart(
+    pub fn compute_trajectory_chart(
         smiles: &str,
         reactant_coords: Vec<f64>,
         product_coords: Vec<f64>,
@@ -2116,7 +2127,7 @@ mod alpha_gsm_chart_py {
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let result = gsm_path(smiles, &reactant_coords, &product_coords, method)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))?;
         let distances = path_distances(&result.path_coords);
         let index: Vec<f64> = (0..result.path_energies.len()).map(|i| i as f64).collect();
         let chart = ChartPayload {
@@ -2160,7 +2171,7 @@ mod alpha_gsm_chart_py {
     /// shows the potential energy along that coordinate.
     #[pyfunction]
     #[pyo3(signature = (smiles, reactant_coords, product_coords, method = "uff"))]
-    pub fn reaction_coordinate_chart(
+    pub fn compute_reaction_coordinate_chart(
         smiles: &str,
         reactant_coords: Vec<f64>,
         product_coords: Vec<f64>,
@@ -2168,7 +2179,7 @@ mod alpha_gsm_chart_py {
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let result = gsm_path(smiles, &reactant_coords, &product_coords, method)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))?;
         let distances = path_distances(&result.path_coords);
         let chart = ChartPayload {
             title: "Reaction Coordinate".to_string(),
@@ -2196,7 +2207,13 @@ mod alpha_gsm_chart_py {
         };
         let backend: GsmEnergyBackend = method
             .parse()
-            .map_err(|e: String| format!("unknown GSM backend '{method}': {e}"))?;
+            .map_err(|_e: String| {
+                crate::errors::invalid_value(
+                    "'method'",
+                    method,
+                    &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
+                )
+            })?;
         find_transition_state_with_backend(
             smiles,
             reactant,
@@ -2227,8 +2244,8 @@ mod alpha_gsm_chart_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(trajectory_chart, m)?)?;
-        m.add_function(wrap_pyfunction!(reaction_coordinate_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_trajectory_chart, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_reaction_coordinate_chart, m)?)?;
         Ok(())
     }
 }
@@ -2247,7 +2264,7 @@ mod kmesh_support {
             "monkhorst-pack" | "mp" => Ok(KMeshCentering::MonkhorstPack),
             "gamma" | "gamma-centered" => Ok(KMeshCentering::GammaCentered),
             _ => Err(format!(
-                "Unknown centering: {centering}. Use monkhorst-pack or gamma"
+                "Invalid 'centering' '{centering}'. Supported: 'monkhorst-pack', 'mp', 'gamma', 'gamma-centered'."
             )),
         }
     }

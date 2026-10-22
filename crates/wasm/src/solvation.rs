@@ -1,6 +1,6 @@
 //! WASM bindings for solvation energy calculations.
 
-use crate::helpers::{json_error, parse_elements_and_positions, serialize_or_error};
+use crate::helpers::{bad_json, json_error, parse_elements_and_positions, serialize_or_error};
 use wasm_bindgen::prelude::*;
 
 /// Non-polar solvation energy from SASA with atomic solvation parameters.
@@ -35,7 +35,7 @@ pub fn compute_gb_solvation(
     };
     let q: Vec<f64> = match serde_json::from_str(charges) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad charges: {e}")),
+        Err(e) => return json_error(&bad_json("'charges'", charges, &e)),
     };
     let r = sci_form::compute_gb_solvation(
         &elems,

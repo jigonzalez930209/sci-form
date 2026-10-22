@@ -1,8 +1,9 @@
 //! ML molecular descriptors and property prediction bindings.
 
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
-#[pyclass]
+#[pyclass(name = "MolecularDescriptors")]
 #[derive(Clone)]
 pub(crate) struct MolecularDescriptorsPy {
     #[pyo3(get)]
@@ -33,7 +34,7 @@ pub(crate) struct MolecularDescriptorsPy {
     sum_polarizability: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "MlPropertyResult")]
 #[derive(Clone)]
 pub(crate) struct MlPropertyResultPy {
     #[pyo3(get)]
@@ -53,7 +54,7 @@ pub(crate) struct MlPropertyResultPy {
 /// Elements and (i, j, order) bonds extracted from a SMILES string.
 type MolElementsAndBonds = (Vec<u8>, Vec<(usize, usize, u8)>);
 
-#[pyclass]
+#[pyclass(name = "WhimDescriptors")]
 #[derive(Clone)]
 pub(crate) struct WhimDescriptorsPy {
     #[pyo3(get)]
@@ -85,7 +86,7 @@ impl WhimDescriptorsPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "RdfDescriptors")]
 #[derive(Clone)]
 pub(crate) struct RdfDescriptorsPy {
     #[pyo3(get)]
@@ -115,7 +116,7 @@ impl RdfDescriptorsPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "GetawayDescriptors")]
 #[derive(Clone)]
 pub(crate) struct GetawayDescriptorsPy {
     #[pyo3(get)]
@@ -149,7 +150,7 @@ impl GetawayDescriptorsPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "RegressionModel")]
 #[derive(Clone)]
 pub(crate) struct RegressionModelPy {
     /// Model predictions for the supplied feature rows.
@@ -179,7 +180,8 @@ impl RegressionModelPy {
 }
 
 fn parse_mol_for_ml(smiles: &str) -> PyResult<MolElementsAndBonds> {
-    let mol = sci_form_core::parse(smiles).map_err(pyo3::exceptions::PyValueError::new_err)?;
+    let mol = sci_form_core::parse(smiles)
+        .map_err(|e| crate::errors::value_error(crate::errors::smiles_error(&e, smiles)))?;
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[sci_form_core::graph::NodeIndex::new(i)].element)
@@ -203,7 +205,7 @@ fn parse_mol_for_ml(smiles: &str) -> PyResult<MolElementsAndBonds> {
 }
 
 #[pyfunction]
-fn ml_descriptors(smiles: &str) -> PyResult<MolecularDescriptorsPy> {
+fn compute_ml_descriptors(smiles: &str) -> PyResult<MolecularDescriptorsPy> {
     let (elements, bonds) = parse_mol_for_ml(smiles)?;
     let desc = sci_form_core::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     Ok(MolecularDescriptorsPy {
@@ -224,7 +226,7 @@ fn ml_descriptors(smiles: &str) -> PyResult<MolecularDescriptorsPy> {
 }
 
 #[pyfunction]
-fn ml_predict(smiles: &str) -> PyResult<MlPropertyResultPy> {
+fn predict_ml_properties(smiles: &str) -> PyResult<MlPropertyResultPy> {
     let (elements, bonds) = parse_mol_for_ml(smiles)?;
     let desc = sci_form_core::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     let result = sci_form_core::predict_ml_properties(&desc);
@@ -257,9 +259,9 @@ fn compute_whim(
         "electronegativity" | "en" => sci_form_core::ml::whim::WhimWeighting::Electronegativity,
         "polarizability" => sci_form_core::ml::whim::WhimWeighting::Polarizability,
         other => {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "unknown WHIM weighting '{}' (expected unit, mass, volume, \
-                 electronegativity or polarizability)",
+            return Err(crate::errors::value_error(format!(
+                "Invalid 'weighting' '{}'. Supported: 'unit', 'unweighted', 'mass', \
+                 'volume', 'vdw', 'electronegativity', 'en', 'polarizability'.",
                 other
             )))
         }
@@ -296,7 +298,7 @@ fn compute_rdf(
     let q = match charges {
         Some(q) => q,
         None => crate::system::gasteiger_charges_from_geometry(&elements, &positions)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?,
+            .map_err(crate::errors::engine_error)?,
     };
     let d = sci_form_core::ml::rdf_descriptors::compute_rdf(
         &elements, &positions, &q, beta, r_max, n_points,
@@ -330,7 +332,7 @@ fn compute_getaway(
             let mut out = Vec::with_capacity(b.len());
             for (k, pair) in b.iter().enumerate() {
                 if pair.len() != 2 {
-                    return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    return Err(crate::errors::value_error(format!(
                         "bonds[{}] must have exactly 2 atom indices, got {}",
                         k,
                         pair.len()
@@ -370,7 +372,7 @@ fn rmse(predictions: &[f64], targets: &[f64]) -> f64 {
 
 /// Train a Random Forest regressor and return its training-set predictions.
 #[pyfunction]
-#[pyo3(signature = (features, targets, n_trees=100, max_depth=10, min_samples_split=5, min_samples_leaf=2, sample_fraction=1.0, seed=42))]
+#[pyo3(signature = (features, targets, n_trees=100, max_depth=10, min_samples_split=5, min_samples_leaf=2, sample_fraction=1.0, seed=42, options=None))]
 fn train_random_forest(
     features: Vec<Vec<f64>>,
     targets: Vec<f64>,
@@ -380,9 +382,28 @@ fn train_random_forest(
     min_samples_leaf: usize,
     sample_fraction: f64,
     seed: u64,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<RegressionModelPy> {
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3).
+    const KEYS: &[&str] = &[
+        "n_trees",
+        "max_depth",
+        "min_samples_split",
+        "min_samples_leaf",
+        "sample_fraction",
+        "seed",
+    ];
+    crate::options::reject_unknown(options, KEYS)?;
+    let n_trees = crate::options::usize_from(options, "n_trees", n_trees)?;
+    let max_depth = crate::options::usize_from(options, "max_depth", max_depth)?;
+    let min_samples_split =
+        crate::options::usize_from(options, "min_samples_split", min_samples_split)?;
+    let min_samples_leaf = crate::options::usize_from(options, "min_samples_leaf", min_samples_leaf)?;
+    let sample_fraction = crate::options::f64_from(options, "sample_fraction", sample_fraction)?;
+    let seed = crate::options::usize_from(options, "seed", seed as usize)? as u64;
     if features.len() != targets.len() {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "features length {} != targets length {}",
             features.len(),
             targets.len()
@@ -413,7 +434,7 @@ fn train_random_forest(
 
 /// Train a Gradient Boosting regressor and return its training-set predictions.
 #[pyfunction]
-#[pyo3(signature = (features, targets, n_estimators=100, learning_rate=0.1, max_depth=5, min_samples_split=5, min_samples_leaf=2, subsample=0.8, seed=42))]
+#[pyo3(signature = (features, targets, n_estimators=100, learning_rate=0.1, max_depth=5, min_samples_split=5, min_samples_leaf=2, subsample=0.8, seed=42, options=None))]
 fn train_gradient_boosting(
     features: Vec<Vec<f64>>,
     targets: Vec<f64>,
@@ -424,9 +445,30 @@ fn train_gradient_boosting(
     min_samples_leaf: usize,
     subsample: f64,
     seed: u64,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<RegressionModelPy> {
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3).
+    const KEYS: &[&str] = &[
+        "n_estimators",
+        "learning_rate",
+        "max_depth",
+        "min_samples_split",
+        "min_samples_leaf",
+        "subsample",
+        "seed",
+    ];
+    crate::options::reject_unknown(options, KEYS)?;
+    let n_estimators = crate::options::usize_from(options, "n_estimators", n_estimators)?;
+    let learning_rate = crate::options::f64_from(options, "learning_rate", learning_rate)?;
+    let max_depth = crate::options::usize_from(options, "max_depth", max_depth)?;
+    let min_samples_split =
+        crate::options::usize_from(options, "min_samples_split", min_samples_split)?;
+    let min_samples_leaf = crate::options::usize_from(options, "min_samples_leaf", min_samples_leaf)?;
+    let subsample = crate::options::f64_from(options, "subsample", subsample)?;
+    let seed = crate::options::usize_from(options, "seed", seed as usize)? as u64;
     if features.len() != targets.len() {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "features length {} != targets length {}",
             features.len(),
             targets.len()
@@ -457,8 +499,8 @@ fn train_gradient_boosting(
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(ml_descriptors, m)?)?;
-    m.add_function(wrap_pyfunction!(ml_predict, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_ml_descriptors, m)?)?;
+    m.add_function(wrap_pyfunction!(predict_ml_properties, m)?)?;
     m.add_function(wrap_pyfunction!(compute_whim, m)?)?;
     m.add_function(wrap_pyfunction!(compute_rdf, m)?)?;
     m.add_function(wrap_pyfunction!(compute_getaway, m)?)?;

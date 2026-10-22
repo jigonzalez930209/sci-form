@@ -63,7 +63,7 @@ fn compute_eht_mesh(
         positions,
         spacing,
         padding,
-    );
+    )?;
     let mesh = eht::marching_cubes(&grid, isovalue);
 
     Ok(OrbitalMeshResult {
@@ -97,7 +97,7 @@ fn compute_pm3_mesh(
         positions,
         spacing,
         padding,
-    );
+    )?;
     let mesh = eht::marching_cubes(&grid, isovalue);
 
     let homo_idx = if pm3.n_electrons > 0 {
@@ -137,7 +137,7 @@ fn compute_xtb_mesh(
         positions,
         spacing,
         padding,
-    );
+    )?;
     let mesh = eht::marching_cubes(&grid, isovalue);
 
     let homo_idx = if xtb.n_electrons > 0 {
@@ -178,7 +178,7 @@ fn compute_hf3c_mesh(
         positions,
         spacing,
         padding,
-    );
+    )?;
     let mesh = eht::marching_cubes(&grid, isovalue);
 
     // Count electrons for HOMO index
@@ -224,6 +224,13 @@ pub fn compute_orbital_mesh(
     padding: f64,
     isovalue: f32,
 ) -> Result<OrbitalMeshResult, String> {
+    crate::validation::validate_geometry(elements, positions)?;
+    if !spacing.is_finite() || spacing <= 0.0 {
+        return Err(format!(
+            "spacing must be a finite positive number (got {})",
+            spacing
+        ));
+    }
     match method {
         MeshMethod::Eht => {
             compute_eht_mesh(elements, positions, mo_index, spacing, padding, isovalue)

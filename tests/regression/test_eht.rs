@@ -121,7 +121,7 @@ fn test_h2_orbital_to_mesh() {
     let basis = eht::basis::build_basis(&elems, &pos);
 
     // Generate volumetric grid for bonding orbital (MO 0)
-    let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &pos, 0.2, 3.0);
+    let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &pos, 0.2, 3.0).unwrap();
 
     assert!(!grid.values.is_empty(), "Grid should have values");
     assert_eq!(
@@ -166,7 +166,7 @@ fn test_water_homo_visualization() {
     let basis = eht::basis::build_basis(&elems, &pos);
 
     let homo = result.homo_index;
-    let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, homo, &pos, 0.25, 3.0);
+    let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, homo, &pos, 0.25, 3.0).unwrap();
 
     // HOMO should have both positive and negative lobes
     let has_positive = grid.values.iter().any(|&v| v > 0.01);
@@ -209,7 +209,7 @@ fn test_mesh_serialization() {
     let (elems, pos) = h2_molecule();
     let result = solve_eht(&elems, &pos, None).unwrap();
     let basis = eht::basis::build_basis(&elems, &pos);
-    let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &pos, 0.3, 3.0);
+    let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &pos, 0.3, 3.0).unwrap();
     let mesh = marching_cubes(&grid, 0.02);
 
     let json = serde_json::to_string(&mesh).expect("IsosurfaceMesh should serialize");

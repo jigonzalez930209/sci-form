@@ -32,13 +32,58 @@ impl CellList {
     /// Build a cell list from atom positions.
     ///
     /// `positions` is a slice of `[x, y, z]` arrays.
+    ///
+    /// This constructor never panics: the number of cells per axis and their
+    /// product are computed with checked arithmetic and clamped, so a
+    /// pathological geometry (or a non-finite coordinate) cannot overflow the
+    /// allocation.  Use [`CellList::try_new`] to get a proper error message
+    /// for a non-finite coordinate.
     pub fn new(positions: &[[f64; 3]], cutoff: f64) -> Self {
+        match Self::try_new(positions, cutoff) {
+            Ok(list) => list,
+            Err(_) => {
+                // Fall back to a single cell: correctness (every pair is
+                // checked) is preserved, only the speed-up is lost.
+                let mut cells = vec![Vec::new(); 1];
+                cells[0].extend(0..positions.len());
+                CellList {
+                    cutoff,
+                    cutoff_sq: cutoff * cutoff,
+                    _cell_size: cutoff,
+                    n_cells: [1, 1, 1],
+                    _origin: [0.0, 0.0, 0.0],
+                    cells,
+                }
+            }
+        }
+    }
+
+    /// Build a cell list from atom positions, reporting invalid input.
+    ///
+    /// Returns `Err` when a coordinate is not finite (a `NaN`/`Inf` used to
+    /// blow up the cell count and abort the process with a capacity
+    /// overflow) or when the required number of cells does not fit in a
+    /// `usize`.
+    pub fn try_new(positions: &[[f64; 3]], cutoff: f64) -> Result<Self, String> {
+        if !cutoff.is_finite() || cutoff <= 0.0 {
+            return Err(format!(
+                "cutoff must be a finite positive number (got {})",
+                cutoff
+            ));
+        }
         let padding = 0.01;
         let mut min = [f64::INFINITY; 3];
         let mut max = [f64::NEG_INFINITY; 3];
 
-        for pos in positions {
+        for (atom, pos) in positions.iter().enumerate() {
             for d in 0..3 {
+                if !pos[d].is_finite() {
+                    let axis_name = ["x", "y", "z"][d];
+                    return Err(format!(
+                        "atom {} has a non-finite {}-coordinate ({}) (NaN and Inf are not valid Cartesian coordinates)",
+                        atom, axis_name, pos[d]
+                    ));
+                }
                 if pos[d] < min[d] {
                     min[d] = pos[d];
                 }
@@ -50,13 +95,27 @@ impl CellList {
 
         let origin = [min[0] - padding, min[1] - padding, min[2] - padding];
         let cell_size = cutoff;
-        let n_cells = [
-            ((max[0] - origin[0] + padding) / cell_size).ceil().max(1.0) as usize,
-            ((max[1] - origin[1] + padding) / cell_size).ceil().max(1.0) as usize,
-            ((max[2] - origin[2] + padding) / cell_size).ceil().max(1.0) as usize,
-        ];
+        let mut n_cells = [1usize; 3];
+        for d in 0..3 {
+            let extent = (max[d] - origin[d] + padding) / cell_size;
+            if !extent.is_finite() {
+                return Err(format!(
+                    "cell count along axis {} is not finite (the geometry does not fit in a cell list with cutoff {})",
+                    d, cell_size
+                ));
+            }
+            n_cells[d] = (extent.ceil().max(1.0) as usize).max(1);
+        }
 
-        let total = n_cells[0] * n_cells[1] * n_cells[2];
+        let total = n_cells[0]
+            .checked_mul(n_cells[1])
+            .and_then(|v| v.checked_mul(n_cells[2]))
+            .ok_or_else(|| {
+                format!(
+                    "cell count {}x{}x{} overflows usize (cutoff {} is too small for this geometry)",
+                    n_cells[0], n_cells[1], n_cells[2], cell_size
+                )
+            })?;
         let mut cells = vec![Vec::new(); total];
 
         for (idx, pos) in positions.iter().enumerate() {
@@ -64,14 +123,14 @@ impl CellList {
             cells[ci].push(idx);
         }
 
-        CellList {
+        Ok(CellList {
             cutoff,
             cutoff_sq: cutoff * cutoff,
             _cell_size: cell_size,
             n_cells,
             _origin: origin,
             cells,
-        }
+        })
     }
 
     fn cell_index_static(

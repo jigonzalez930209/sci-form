@@ -1,7 +1,7 @@
 //! WASM bindings for ring detection (SSSR), ECFP fingerprints, Tanimoto
 //! similarity, and Butina clustering.
 
-use crate::helpers::{json_error, serialize_or_error};
+use crate::helpers::{bad_json, json_error, serialize_or_error};
 use wasm_bindgen::prelude::*;
 
 /// Compute the Smallest Set of Smallest Rings (SSSR) for a SMILES string.
@@ -34,7 +34,7 @@ pub fn compute_ecfp(smiles: &str, radius: usize, n_bits: usize) -> String {
 pub fn compute_ecfp_batch(smiles_list_json: &str, radius: usize, n_bits: usize) -> String {
     let smiles: Vec<String> = match serde_json::from_str(smiles_list_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad smiles list: {e}")),
+        Err(e) => return json_error(&bad_json("'smiles list'", smiles_list_json, &e)),
     };
     let refs: Vec<&str> = smiles.iter().map(|s| s.as_str()).collect();
     match sci_form::compute_ecfp_batch(&refs, radius, n_bits) {
@@ -50,11 +50,11 @@ pub fn compute_ecfp_batch(smiles_list_json: &str, radius: usize, n_bits: usize) 
 pub fn compute_tanimoto(fp1_json: &str, fp2_json: &str) -> String {
     let fp1: sci_form::rings::ecfp::ECFPFingerprint = match serde_json::from_str(fp1_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad fp1: {e}")),
+        Err(e) => return json_error(&bad_json("'fp1'", fp1_json, &e)),
     };
     let fp2: sci_form::rings::ecfp::ECFPFingerprint = match serde_json::from_str(fp2_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad fp2: {e}")),
+        Err(e) => return json_error(&bad_json("'fp2'", fp2_json, &e)),
     };
     let t = sci_form::compute_tanimoto(&fp1, &fp2);
     format!("{{\"tanimoto\":{t}}}")
@@ -68,7 +68,7 @@ pub fn compute_tanimoto(fp1_json: &str, fp2_json: &str) -> String {
 pub fn butina_cluster(conformers_json: &str, rmsd_cutoff: f64) -> String {
     let conformers: Vec<Vec<f64>> = match serde_json::from_str(conformers_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad conformers: {e}")),
+        Err(e) => return json_error(&bad_json("'conformers'", conformers_json, &e)),
     };
     let r = sci_form::butina_cluster(&conformers, rmsd_cutoff);
     serialize_or_error(&r)
@@ -81,7 +81,7 @@ pub fn butina_cluster(conformers_json: &str, rmsd_cutoff: f64) -> String {
 pub fn compute_rmsd_matrix(conformers_json: &str) -> String {
     let conformers: Vec<Vec<f64>> = match serde_json::from_str(conformers_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad conformers: {e}")),
+        Err(e) => return json_error(&bad_json("'conformers'", conformers_json, &e)),
     };
     let m = sci_form::compute_rmsd_matrix(&conformers);
     serialize_or_error(&m)
@@ -94,7 +94,7 @@ pub fn compute_rmsd_matrix(conformers_json: &str) -> String {
 pub fn filter_diverse(conformers_json: &str, rmsd_cutoff: f64) -> String {
     let conformers: Vec<Vec<f64>> = match serde_json::from_str(conformers_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad conformers: {e}")),
+        Err(e) => return json_error(&bad_json("'conformers'", conformers_json, &e)),
     };
     let indices = sci_form::clustering::filter_diverse_conformers(&conformers, rmsd_cutoff);
     serialize_or_error(&indices)

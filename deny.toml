@@ -1,0 +1,76 @@
+# cargo-deny configuration for the sci-form workspace.
+#
+# Run locally with:  cargo deny check advisories bans licenses
+# Enforced in CI by the `audit` job in .github/workflows/ci.yml.
+#
+# Policy:
+#   * advisories — every advisory is an error. The single exception is
+#     RUSTSEC-2024-0436 (`paste` is unmaintained), which is a transitive
+#     dependency of `simba` -> `nalgebra` and has no safe upgrade; it is
+#     explicitly ignored below with the reason recorded.
+#   * licenses  — only permissive, OSI-approved licences are allowed.
+#   * bans      — duplicate versions are warned about (not denied) so a new
+#     duplicate is visible in the CI log instead of passing unnoticed.
+#
+# Known dependency skew (not visible to the `bans` check, which analyses one
+# target at a time and therefore never sees both majors in the same graph):
+# `Cargo.lock` carries `wgpu 0.19.4` (native GPU path, src/gpu/) and
+# `wgpu 29.0.0` (WASM crate), with the duplicated naga / ash / bit-set /
+# bit-vec / wgpu-core / wgpu-hal trees that come with them. The two majors are
+# API-incompatible, so converging them is a source migration of the whole
+# src/gpu/ tree and not a lockfile change — see the comment in
+# `crates/wasm/Cargo.toml` and blocker B-H2 in reports/v1.0-blockers.md.
+
+[graph]
+# The audit covers the default feature set of every workspace member plus the
+# optional features that the CI jobs build (the GPU path included), so a
+# dependency that only appears behind a feature flag cannot hide an advisory.
+all-features = true
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "wasm32-unknown-unknown",
+]
+
+[advisories]
+version = 2
+ignore = [
+    # `paste` is archived upstream and has no safe upgrade. It is pulled in by
+    # `simba`, which is pulled in by `nalgebra` (a direct dependency of
+    # sci-form). The fork `pastey` is not a drop-in replacement for
+    # simba's usage, and nalgebra 0.33 (which drops simba) is not released
+    # yet, so the advisory cannot be cleared without dropping nalgebra.
+    #
+    # Risk accepted: `paste` only expands `macro_rules!` at compile time; it
+    # performs no I/O and executes no unsafe code. Re-check when nalgebra
+    # releases a version without `simba`.
+    { id = "RUSTSEC-2024-0436", reason = "unmaintained transitive dep of nalgebra via simba; no safe upgrade available" },
+]
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "CC0-1.0",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+deny = [
+    # Not used by this workspace; listed so it can never be pulled in
+    # silently.
+    { name = "openssl", reason = "not needed; the project has no TLS requirement" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

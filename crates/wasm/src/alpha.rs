@@ -11,7 +11,9 @@
 //! matching feature flag are available in a given build.
 
 #[allow(unused_imports)]
-use crate::helpers::{json_error, parse_elements_and_positions, parse_flat_coords};
+use crate::helpers::{
+    bad_json, json_error, parse_elements_and_positions, parse_flat_coords, smiles_error,
+};
 #[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
@@ -164,7 +166,7 @@ pub fn alpha_compute_reaxff_gradient(elements_json: &str, coords_flat_json: &str
     };
     let elems: Vec<u8> = match serde_json::from_str(elements_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad elements: {}", e)),
+        Err(e) => return json_error(&bad_json("'elements'", elements_json, &e)),
     };
     let params = sci_form::forcefield::reaxff::params::ReaxffParams::default_chon();
     match sci_form::forcefield::reaxff::gradients::compute_reaxff_gradient(&flat, &elems, &params) {
@@ -189,7 +191,7 @@ pub fn alpha_compute_reaxff_energy(elements_json: &str, coords_flat_json: &str) 
     };
     let elems: Vec<u8> = match serde_json::from_str(elements_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad elements: {}", e)),
+        Err(e) => return json_error(&bad_json("'elements'", elements_json, &e)),
     };
     let params = sci_form::forcefield::reaxff::params::ReaxffParams::default_chon();
     let atom_params = build_reaxff_atom_params(&elems);
@@ -279,7 +281,7 @@ pub fn alpha_compute_mlff(
     };
     let config: sci_form::mlff::MlffConfig = match serde_json::from_str(config_json) {
         Ok(c) => c,
-        Err(e) => return json_error(&format!("bad mlff config: {}", e)),
+        Err(e) => return json_error(&bad_json("'mlff config'", config_json, &e)),
     };
     match sci_form::mlff::compute_mlff(&elems, &positions, &config) {
         Ok(r) => serde_json::to_string(&r).unwrap_or_else(|e| json_error(&e.to_string())),
@@ -309,7 +311,7 @@ pub fn alpha_compute_aevs(
         } else {
             match serde_json::from_str(params_json) {
                 Ok(p) => p,
-                Err(e) => return json_error(&format!("bad params: {}", e)),
+                Err(e) => return json_error(&bad_json("'params'", params_json, &e)),
             }
         };
     let aevs = sci_form::mlff::compute_aevs(&elems, &positions, &params);
@@ -355,7 +357,7 @@ pub fn alpha_eri_ssss(
         center: [f64; 3],
     }
     let parse_shell = |s: &str| -> Result<Shell, String> {
-        serde_json::from_str(s).map_err(|e| format!("bad shell: {}", e))
+        serde_json::from_str(s).map_err(|e| bad_json("'shell'", s, &e))
     };
     let (a, b, c, d) = match (
         parse_shell(shell_a_json),
@@ -389,11 +391,11 @@ pub fn alpha_schwarz_bound(
 ) -> String {
     let ca: [f64; 3] = match serde_json::from_str(center_a_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad center_a: {}", e)),
+        Err(e) => return json_error(&bad_json("'center a'", center_a_json, &e)),
     };
     let cb: [f64; 3] = match serde_json::from_str(center_b_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad center_b: {}", e)),
+        Err(e) => return json_error(&bad_json("'center b'", center_b_json, &e)),
     };
     let v = sci_form::scf::obara_saika::schwarz_bound(alpha, ca, beta, cb);
     serde_json::json!({ "schwarz_bound": v }).to_string()
@@ -424,15 +426,15 @@ pub fn alpha_rotate_dihedral_cga(
     };
     let indices: Vec<usize> = match serde_json::from_str(subtree_indices_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad indices: {}", e)),
+        Err(e) => return json_error(&bad_json("'indices'", subtree_indices_json, &e)),
     };
     let a: [f64; 3] = match serde_json::from_str(axis_a_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad axis_a: {}", e)),
+        Err(e) => return json_error(&bad_json("'axis a'", axis_a_json, &e)),
     };
     let b: [f64; 3] = match serde_json::from_str(axis_b_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad axis_b: {}", e)),
+        Err(e) => return json_error(&bad_json("'axis b'", axis_b_json, &e)),
     };
 
     let motor = sci_form::alpha::cga::dihedral_motor(a, b, angle_rad);
@@ -462,14 +464,14 @@ pub fn alpha_refine_torsion_cga(
     };
     let torsion: Vec<usize> = match serde_json::from_str(torsion_indices_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad torsion_indices: {}", e)),
+        Err(e) => return json_error(&bad_json("'torsion indices'", torsion_indices_json, &e)),
     };
     if torsion.len() != 4 {
         return json_error("torsion_indices must have exactly 4 elements");
     }
     let mol = match sci_form::parse(smiles) {
         Ok(m) => m,
-        Err(e) => return json_error(&format!("parse error: {}", e)),
+        Err(e) => return json_error(&smiles_error(&e, smiles)),
     };
     let bonds: Vec<(usize, usize)> = mol
         .graph
@@ -519,11 +521,11 @@ pub fn alpha_refine_torsion_cga(
 pub fn alpha_gsm_interpolate(reactant_json: &str, product_json: &str, t: f64) -> String {
     let reactant: Vec<f64> = match serde_json::from_str(reactant_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad reactant: {}", e)),
+        Err(e) => return json_error(&bad_json("'reactant'", reactant_json, &e)),
     };
     let product: Vec<f64> = match serde_json::from_str(product_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad product: {}", e)),
+        Err(e) => return json_error(&bad_json("'product'", product_json, &e)),
     };
     let node = sci_form::alpha::gsm::interpolate_node(&reactant, &product, t);
     serde_json::json!({ "coords": node }).to_string()
@@ -551,7 +553,7 @@ pub fn alpha_gsm_compare_backends(
 ) -> String {
     let coords: Vec<f64> = match serde_json::from_str(coords_flat_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad coords: {}", e)),
+        Err(e) => return json_error(&bad_json("'coords'", coords_flat_json, &e)),
     };
     let methods: Vec<sci_form::alpha::gsm::GsmEnergyBackend> =
         if methods_json.trim().is_empty() || methods_json == "null" {
@@ -559,7 +561,7 @@ pub fn alpha_gsm_compare_backends(
         } else {
             let raw_methods: Vec<String> = match serde_json::from_str(methods_json) {
                 Ok(v) => v,
-                Err(e) => return json_error(&format!("bad methods: {}", e)),
+                Err(e) => return json_error(&bad_json("'methods'", methods_json, &e)),
             };
             let mut parsed = Vec::with_capacity(raw_methods.len());
             for method in raw_methods {
@@ -615,11 +617,11 @@ pub fn alpha_gsm_find_ts_with_method(
 ) -> String {
     let reactant: Vec<f64> = match serde_json::from_str(reactant_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad reactant: {}", e)),
+        Err(e) => return json_error(&bad_json("'reactant'", reactant_coords_json, &e)),
     };
     let product: Vec<f64> = match serde_json::from_str(product_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad product: {}", e)),
+        Err(e) => return json_error(&bad_json("'product'", product_coords_json, &e)),
     };
     let config: sci_form::alpha::gsm::GsmConfig =
         if config_json.trim().is_empty() || config_json == "null" || config_json == "{}" {
@@ -627,7 +629,7 @@ pub fn alpha_gsm_find_ts_with_method(
         } else {
             match serde_json::from_str(config_json) {
                 Ok(c) => c,
-                Err(e) => return json_error(&format!("bad gsm config: {}", e)),
+                Err(e) => return json_error(&bad_json("'gsm config'", config_json, &e)),
             }
         };
 
@@ -674,7 +676,7 @@ pub fn alpha_sdr_embed(distance_pairs_json: &str, n_atoms: usize, config_json: &
     // distance_pairs: [[i, j, d], ...]
     let raw_pairs: Vec<[f64; 3]> = match serde_json::from_str(distance_pairs_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad distance_pairs: {}", e)),
+        Err(e) => return json_error(&bad_json("'distance pairs'", distance_pairs_json, &e)),
     };
     let distance_pairs: Vec<(usize, usize, f64)> = raw_pairs
         .iter()
@@ -687,7 +689,7 @@ pub fn alpha_sdr_embed(distance_pairs_json: &str, n_atoms: usize, config_json: &
         } else {
             match serde_json::from_str(config_json) {
                 Ok(c) => c,
-                Err(e) => return json_error(&format!("bad sdr config: {}", e)),
+                Err(e) => return json_error(&bad_json("'sdr config'", config_json, &e)),
             }
         };
 
@@ -757,11 +759,11 @@ pub fn compute_reaction_dynamics_3d(
 ) -> String {
     let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad reactant_smiles: {}", e)),
+        Err(e) => return json_error(&bad_json("'reactant smiles'", reactant_smiles_json, &e)),
     };
     let products: Vec<String> = match serde_json::from_str(product_smiles_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad product_smiles: {}", e)),
+        Err(e) => return json_error(&bad_json("'product smiles'", product_smiles_json, &e)),
     };
 
     let config: sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig =
@@ -770,7 +772,7 @@ pub fn compute_reaction_dynamics_3d(
         } else {
             match serde_json::from_str(config_json) {
                 Ok(c) => c,
-                Err(e) => return json_error(&format!("bad config: {}", e)),
+                Err(e) => return json_error(&bad_json("'config'", config_json, &e)),
             }
         };
 
@@ -805,7 +807,7 @@ pub fn compute_reaction_dynamics_3d(
 pub fn compute_approach_dynamics(reactant_smiles_json: &str, config_json: &str) -> String {
     let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad reactant_smiles: {}", e)),
+        Err(e) => return json_error(&bad_json("'reactant smiles'", reactant_smiles_json, &e)),
     };
 
     let mut config: sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig =
@@ -814,7 +816,7 @@ pub fn compute_approach_dynamics(reactant_smiles_json: &str, config_json: &str) 
         } else {
             match serde_json::from_str(config_json) {
                 Ok(c) => c,
-                Err(e) => return json_error(&format!("bad config: {}", e)),
+                Err(e) => return json_error(&bad_json("'config'", config_json, &e)),
             }
         };
 
@@ -841,6 +843,10 @@ pub fn compute_approach_dynamics(reactant_smiles_json: &str, config_json: &str) 
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
 #[wasm_bindgen]
+/// Build an EDL profile chart from an `EdlProfileResult` JSON payload.
+///
+/// @param profile_json  JSON `EdlProfileResult`
+/// @returns JSON chart payload
 pub fn alpha_render_edl_profile_chart(profile_json: &str) -> String {
     use sci_form::alpha::edl::EdlProfileResult;
     match serde_json::from_str::<EdlProfileResult>(profile_json) {
@@ -848,12 +854,16 @@ pub fn alpha_render_edl_profile_chart(profile_json: &str) -> String {
             let chart = sci_form::alpha::render_bridge::edl_profile_chart(&profile);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
-        Err(e) => json_error(&format!("invalid EdlProfileResult JSON: {e}")),
+        Err(e) => json_error(&bad_json("'EdlProfileResult'", profile_json, &e)),
     }
 }
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
 #[wasm_bindgen]
+/// Build a capacitance-scan chart from a `CpmEdlScanResult` JSON payload.
+///
+/// @param scan_json  JSON `CpmEdlScanResult`
+/// @returns JSON chart payload
 pub fn alpha_render_capacitance_scan_chart(scan_json: &str) -> String {
     use sci_form::alpha::edl::CpmEdlScanResult;
     match serde_json::from_str::<CpmEdlScanResult>(scan_json) {
@@ -861,12 +871,16 @@ pub fn alpha_render_capacitance_scan_chart(scan_json: &str) -> String {
             let chart = sci_form::alpha::render_bridge::capacitance_scan_chart(&scan);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
-        Err(e) => json_error(&format!("invalid CpmEdlScanResult JSON: {e}")),
+        Err(e) => json_error(&bad_json("'CpmEdlScanResult'", scan_json, &e)),
     }
 }
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 #[wasm_bindgen]
+/// Build a periodic-DOS chart from a `PeriodicKpmDosResult` JSON payload.
+///
+/// @param dos_json  JSON `PeriodicKpmDosResult`
+/// @returns JSON chart payload
 pub fn alpha_render_periodic_dos_chart(dos_json: &str) -> String {
     use sci_form::alpha::periodic_linear::PeriodicKpmDosResult;
     match serde_json::from_str::<PeriodicKpmDosResult>(dos_json) {
@@ -874,12 +888,16 @@ pub fn alpha_render_periodic_dos_chart(dos_json: &str) -> String {
             let chart = sci_form::alpha::render_bridge::periodic_dos_chart(&dos);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
-        Err(e) => json_error(&format!("invalid PeriodicKpmDosResult JSON: {e}")),
+        Err(e) => json_error(&bad_json("'PeriodicKpmDosResult'", dos_json, &e)),
     }
 }
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 #[wasm_bindgen]
+/// Build a band-structure chart from a `BandStructureAdapterResult` JSON payload.
+///
+/// @param bs_json  JSON `BandStructureAdapterResult`
+/// @returns JSON chart payload
 pub fn alpha_render_band_structure_chart(bs_json: &str) -> String {
     use sci_form::alpha::periodic_linear::BandStructureAdapterResult;
     match serde_json::from_str::<BandStructureAdapterResult>(bs_json) {
@@ -887,12 +905,16 @@ pub fn alpha_render_band_structure_chart(bs_json: &str) -> String {
             let chart = sci_form::alpha::render_bridge::band_structure_chart(&bs);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
-        Err(e) => json_error(&format!("invalid BandStructureAdapterResult JSON: {e}")),
+        Err(e) => json_error(&bad_json("'BandStructureAdapterResult'", bs_json, &e)),
     }
 }
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
 #[wasm_bindgen]
+/// Build a microkinetic population chart from a `MicrokineticTrace` JSON payload.
+///
+/// @param trace_json  JSON `MicrokineticTrace`
+/// @returns JSON chart payload
 pub fn alpha_render_microkinetic_population_chart(trace_json: &str) -> String {
     use sci_form::alpha::kinetics::MicrokineticTrace;
     match serde_json::from_str::<MicrokineticTrace>(trace_json) {
@@ -900,12 +922,16 @@ pub fn alpha_render_microkinetic_population_chart(trace_json: &str) -> String {
             let chart = sci_form::alpha::render_bridge::microkinetic_population_chart(&trace);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
-        Err(e) => json_error(&format!("invalid MicrokineticTrace JSON: {e}")),
+        Err(e) => json_error(&bad_json("'MicrokineticTrace'", trace_json, &e)),
     }
 }
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
 #[wasm_bindgen]
+/// Build an Arrhenius chart from a JSON array of `ElementaryRateResult`.
+///
+/// @param results_json  JSON array of `ElementaryRateResult`
+/// @returns JSON chart payload
 pub fn alpha_render_arrhenius_chart(results_json: &str) -> String {
     use sci_form::alpha::kinetics::ElementaryRateResult;
     match serde_json::from_str::<Vec<ElementaryRateResult>>(results_json) {
@@ -913,20 +939,25 @@ pub fn alpha_render_arrhenius_chart(results_json: &str) -> String {
             let chart = sci_form::alpha::render_bridge::arrhenius_chart(&results);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
-        Err(e) => json_error(&format!("invalid ElementaryRateResult JSON: {e}")),
+        Err(e) => json_error(&bad_json("'ElementaryRateResult'", results_json, &e)),
     }
 }
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
 #[wasm_bindgen]
+/// Build GSM path trajectory frames from coords + energies JSON payloads.
+///
+/// @param coords_json  JSON array of flat coordinate frames
+/// @param energies_json  JSON array of frame energies
+/// @returns JSON array of trajectory frames
 pub fn alpha_render_gsm_path_trajectory(coords_json: &str, energies_json: &str) -> String {
     let coords: Vec<Vec<f64>> = match serde_json::from_str(coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("invalid coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'coords'", coords_json, &e)),
     };
     let energies: Vec<f64> = match serde_json::from_str(energies_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("invalid energies JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'energies'", energies_json, &e)),
     };
     let frames = sci_form::alpha::render_bridge::gsm_path_trajectory(&coords, &energies);
     serde_json::to_string(&frames).unwrap_or_else(|e| json_error(&e.to_string()))
@@ -934,6 +965,10 @@ pub fn alpha_render_gsm_path_trajectory(coords_json: &str, energies_json: &str) 
 
 #[cfg(feature = "alpha-render-bridge")]
 #[wasm_bindgen]
+/// Pack a chart payload into the columnar transport format.
+///
+/// @param chart_json  JSON `ChartPayload`
+/// @returns JSON packed batch
 pub fn alpha_render_pack_chart_payload(chart_json: &str) -> String {
     use sci_form::alpha::render_bridge::ChartPayload;
     match serde_json::from_str::<ChartPayload>(chart_json) {
@@ -941,12 +976,17 @@ pub fn alpha_render_pack_chart_payload(chart_json: &str) -> String {
             let batch = sci_form::alpha::render_bridge::pack_chart_payload(&chart);
             serde_json::to_string(&batch).unwrap_or_else(|e| json_error(&e.to_string()))
         }
-        Err(e) => json_error(&format!("invalid ChartPayload JSON: {e}")),
+        Err(e) => json_error(&bad_json("'ChartPayload'", chart_json, &e)),
     }
 }
 
 #[cfg(feature = "alpha-render-bridge")]
 #[wasm_bindgen]
+/// Verify a chart payload survives a pack/unpack round trip.
+///
+/// @param chart_json  JSON `ChartPayload`
+/// @param tol  Comparison tolerance
+/// @returns `true` when the round trip is lossless within `tol`
 pub fn alpha_render_verify_chart_round_trip(chart_json: &str, tol: f64) -> bool {
     use sci_form::alpha::render_bridge::ChartPayload;
     match serde_json::from_str::<ChartPayload>(chart_json) {
@@ -959,6 +999,10 @@ pub fn alpha_render_verify_chart_round_trip(chart_json: &str, tol: f64) -> bool 
 
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
+/// Build a Monkhorst-Pack (or gamma-centred) k-mesh.
+///
+/// @param config_json  JSON `KMeshConfig` or `"{}"`
+/// @returns JSON k-mesh
 pub fn alpha_periodic_monkhorst_pack(config_json: &str) -> String {
     use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
     match serde_json::from_str::<KMeshConfig>(config_json) {
@@ -966,21 +1010,26 @@ pub fn alpha_periodic_monkhorst_pack(config_json: &str) -> String {
             Ok(mesh) => serde_json::to_string(&mesh).unwrap_or_else(|e| json_error(&e.to_string())),
             Err(e) => json_error(&e),
         },
-        Err(e) => json_error(&format!("invalid KMeshConfig JSON: {e}")),
+        Err(e) => json_error(&bad_json("'KMeshConfig'", config_json, &e)),
     }
 }
 
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
+/// Bloch phase for a fractional k-point and a lattice translation.
+///
+/// @param k_fractional_json  JSON `[kx, ky, kz]`
+/// @param translation_json  JSON `[tx, ty, tz]`
+/// @returns JSON Bloch phase
 pub fn alpha_periodic_bloch_phase(k_fractional_json: &str, translation_json: &str) -> String {
     use sci_form::alpha::periodic_linear::bloch_phase;
     let k: [f64; 3] = match serde_json::from_str(k_fractional_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("invalid k-point JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'k-point'", k_fractional_json, &e)),
     };
     let r: [i32; 3] = match serde_json::from_str(translation_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("invalid translation JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'translation'", translation_json, &e)),
     };
     let (re, im) = bloch_phase(k, r);
     serde_json::json!({ "re": re, "im": im }).to_string()
@@ -988,6 +1037,11 @@ pub fn alpha_periodic_bloch_phase(k_fractional_json: &str, translation_json: &st
 
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
+/// Brillouin-zone weighted integral of a scalar field.
+///
+/// @param values_json  JSON array of scalars
+/// @param weights_json  JSON array of k-point weights
+/// @returns the weighted integral
 pub fn alpha_periodic_bz_integrate_scalar(values_json: &str, weights_json: &str) -> f64 {
     use sci_form::alpha::periodic_linear::bz_integrate_scalar;
     let values: Vec<f64> = serde_json::from_str(values_json).unwrap_or_default();
@@ -997,6 +1051,11 @@ pub fn alpha_periodic_bz_integrate_scalar(values_json: &str, weights_json: &str)
 
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
+/// Brillouin-zone weighted integral of a vector field.
+///
+/// @param vectors_json  JSON array of `[x, y, z]`
+/// @param weights_json  JSON array of k-point weights
+/// @returns JSON `[x, y, z]` integral
 pub fn alpha_periodic_bz_integrate_vector(vectors_json: &str, weights_json: &str) -> String {
     use sci_form::alpha::periodic_linear::bz_integrate_vector;
     let vectors: Vec<Vec<f64>> = serde_json::from_str(vectors_json).unwrap_or_default();
@@ -1007,6 +1066,11 @@ pub fn alpha_periodic_bz_integrate_vector(vectors_json: &str, weights_json: &str
 
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
+/// Validate that the k-mesh weights sum to one.
+///
+/// @param kmesh_json  JSON `KMesh`
+/// @param tol  Tolerance
+/// @returns `true` when the weights are normalised within `tol`
 pub fn alpha_periodic_validate_kmesh_weights(kmesh_json: &str, tol: f64) -> bool {
     use sci_form::alpha::periodic_linear::{validate_kmesh_weights, KMesh};
     match serde_json::from_str::<KMesh>(kmesh_json) {
@@ -1033,11 +1097,11 @@ pub fn alpha_periodic_band_structure_eht(
     };
     let lattice: [[f64; 3]; 3] = match serde_json::from_str(lattice_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("invalid lattice JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'lattice'", lattice_json, &e)),
     };
     let config: BandStructureConfig = match serde_json::from_str(config_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("invalid BandStructureConfig JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'BandStructureConfig'", config_json, &e)),
     };
     match compute_band_structure(&elements, &positions, &lattice, &config, n_electrons) {
         Ok(bs) => serde_json::to_string(&bs).unwrap_or_else(|e| json_error(&e.to_string())),
@@ -1047,6 +1111,12 @@ pub fn alpha_periodic_band_structure_eht(
 
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
+/// Validate the electron count implied by a periodic DOS result.
+///
+/// @param dos_json  JSON `PeriodicKpmDosResult`
+/// @param fermi_energy_ev  Fermi energy in eV
+/// @param expected_electrons  Expected number of electrons
+/// @returns the number of electrons found
 pub fn alpha_periodic_validate_electron_count(
     dos_json: &str,
     fermi_energy_ev: f64,

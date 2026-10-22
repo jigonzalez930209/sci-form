@@ -6,7 +6,7 @@
 use crate::embed::ConformerResult;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "RecordBatch")]
 #[derive(Clone)]
 pub(crate) struct RecordBatchPy {
     #[pyo3(get)]

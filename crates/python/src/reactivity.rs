@@ -3,7 +3,7 @@
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "FukuiDescriptors")]
 #[derive(Clone)]
 pub(crate) struct FukuiDescriptorsPy {
     #[pyo3(get)]
@@ -45,7 +45,7 @@ impl FukuiDescriptorsPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "ReactivitySiteScore")]
 #[derive(Clone)]
 pub(crate) struct ReactivitySiteScorePy {
     #[pyo3(get)]
@@ -54,7 +54,7 @@ pub(crate) struct ReactivitySiteScorePy {
     score: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "ReactivityRanking")]
 #[derive(Clone)]
 pub(crate) struct ReactivityRankingPy {
     #[pyo3(get)]
@@ -79,7 +79,7 @@ impl ReactivityRankingPy {
 }
 
 #[pyfunction]
-fn fukui_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FukuiDescriptorsPy> {
+fn compute_fukui_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FukuiDescriptorsPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_fukui_descriptors(&elements, &positions)
         .map(|r| FukuiDescriptorsPy {
@@ -98,11 +98,11 @@ fn fukui_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FukuiDescr
             num_atoms: r.num_atoms,
             validity_notes: r.validity_notes,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn reactivity_ranking(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReactivityRankingPy> {
+fn compute_reactivity_ranking(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReactivityRankingPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_reactivity_ranking(&elements, &positions)
         .map(|r| {
@@ -122,12 +122,12 @@ fn reactivity_ranking(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Reactivit
                 notes: r.notes,
             }
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(fukui_descriptors, m)?)?;
-    m.add_function(wrap_pyfunction!(reactivity_ranking, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_fukui_descriptors, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_reactivity_ranking, m)?)?;
     m.add_class::<FukuiDescriptorsPy>()?;
     m.add_class::<ReactivitySiteScorePy>()?;
     m.add_class::<ReactivityRankingPy>()?;

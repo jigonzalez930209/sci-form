@@ -67,6 +67,7 @@ pub fn compute_ani(
             positions.len()
         ));
     }
+    crate::validation::validate_geometry(elements, positions)?;
 
     // Validate species support
     for &z in elements {
@@ -81,7 +82,7 @@ pub fn compute_ani(
     let params = default_ani2x_params();
 
     // Build neighbor list
-    let cell_list = CellList::new(positions, config.cutoff);
+    let cell_list = CellList::try_new(positions, config.cutoff)?;
     let neighbors = cell_list.find_neighbors(positions);
 
     // Compute AEVs

@@ -84,7 +84,19 @@ pub fn compute_stda_j_matrix_gpu(
         .outputs
         .into_iter()
         .last()
-        .unwrap_or_default();
+        .ok_or_else(|| "sTDA GPU dispatch returned no output buffer".to_string())?;
+
+    // The read-back must have exactly `n_atoms * n_singles` f32 values.
+    let expected_gamma_q_bytes = n_atoms
+        .checked_mul(n_singles)
+        .and_then(|count| count.checked_mul(std::mem::size_of::<f32>()))
+        .ok_or_else(|| "sTDA GPU dispatch size overflow".to_string())?;
+    if gamma_q_result.len() != expected_gamma_q_bytes {
+        return Err(format!(
+            "sTDA GPU readback has {} bytes, expected {expected_gamma_q_bytes}",
+            gamma_q_result.len()
+        ));
+    }
 
     // Step 2: A_off = 2 · Q^T · GammaQ
     let result_bytes = vec![0u8; n_singles * n_singles * 4];
@@ -127,10 +139,22 @@ pub fn compute_stda_j_matrix_gpu(
         .outputs
         .into_iter()
         .last()
-        .unwrap_or_default();
+        .ok_or_else(|| "sTDA GPU dispatch returned no output buffer".to_string())?;
 
-    // Convert f32 result back to f64 with 2× scaling
-    let a_off_f32: &[f32] = bytemuck_cast_from_u8(&a_off_bytes);
+    // Convert f32 result back to f64 with 2× scaling.
+    // The read-back must have exactly `n_singles * n_singles` f32 values;
+    // anything else is an error instead of a silently wrong (zero) matrix.
+    let expected_bytes = n_singles
+        .checked_mul(n_singles)
+        .and_then(|count| count.checked_mul(std::mem::size_of::<f32>()))
+        .ok_or_else(|| "sTDA GPU dispatch size overflow".to_string())?;
+    if a_off_bytes.len() != expected_bytes {
+        return Err(format!(
+            "sTDA GPU readback has {} bytes, expected {expected_bytes}",
+            a_off_bytes.len()
+        ));
+    }
+    let a_off_f32 = bytemuck_cast_from_u8(&a_off_bytes)?;
     Ok(a_off_f32.iter().map(|&x| 2.0 * x as f64).collect())
 }
 
@@ -168,13 +192,35 @@ fn bytemuck_cast_f32(data: &[f32]) -> Vec<u8> {
     data.iter().flat_map(|x| x.to_ne_bytes()).collect()
 }
 
-fn bytemuck_cast_from_u8(data: &[u8]) -> &[f32] {
-    // Safety: data alignment is guaranteed by GPU buffer alignment
+/// Reinterpret a byte buffer as `f32` values.
+///
+/// The buffer comes from a GPU read-back and is therefore a plain `Vec<u8>`,
+/// which — unlike a GPU buffer — carries **no** alignment guarantee.  The
+/// real invariant is the `prefix.is_empty() && suffix.is_empty()` test below:
+/// it is only satisfied when every byte of `data` belongs to a `f32` value.
+///
+/// A misaligned or wrongly sized read-back is an **error**: the previous
+/// implementation returned an empty slice, which the caller silently turned
+/// into an all-zero sTDA matrix (blocker A-M2 / A-H2).
+fn bytemuck_cast_from_u8(data: &[u8]) -> Result<&[f32], String> {
+    // SAFETY: `align_to` is sound for any element type: it splits `data`
+    // into a prefix that cannot be reinterpreted as `f32`, a middle slice
+    // whose alignment matches the alignment of `data`, and a suffix.  We
+    // only use the middle slice when the prefix and the suffix are empty,
+    // i.e. when the whole buffer is a sequence of `f32` values.  `f32` is a
+    // plain-old-data type (no padding, no invalid bit patterns), so
+    // reinterpreting the bytes is sound.  The lifetime of the returned
+    // slice is tied to `data`, so no dangling reference can be produced.
     let (prefix, result, suffix) = unsafe { data.align_to::<f32>() };
     if prefix.is_empty() && suffix.is_empty() {
-        result
+        Ok(result)
     } else {
-        &[]
+        Err(format!(
+            "GPU readback buffer is not 4-byte aligned: {} leading and {} trailing byte(s) \
+             could not be reinterpreted as f32",
+            prefix.len(),
+            suffix.len()
+        ))
     }
 }
 
@@ -232,3 +278,37 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     c[row * dims.N + col] = sum;
 }
 "#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A-M2 regression test: a misaligned or wrongly sized GPU read-back
+    /// must be an **error**, not a silently empty (and therefore wrong) sTDA
+    /// matrix.
+    #[test]
+    fn test_bytemuck_cast_from_u8_rejects_bad_buffers() {
+        let bytes = vec![0u8; 16];
+
+        // A slice that starts one byte into the allocation is not 4-byte
+        // aligned: the reinterpretation must be refused.
+        let misaligned = &bytes[1..];
+        assert!(
+            bytemuck_cast_from_u8(misaligned).is_err(),
+            "a misaligned read-back buffer must be an error"
+        );
+
+        // A length that is not a multiple of 4 leaves trailing bytes that
+        // cannot be part of an f32 value.
+        let partial = &bytes[..5];
+        assert!(
+            bytemuck_cast_from_u8(partial).is_err(),
+            "a partial f32 read-back buffer must be an error"
+        );
+
+        // A correctly sized and aligned buffer is accepted.
+        let aligned = bytemuck_cast_from_u8(&bytes)
+            .expect("an aligned, correctly sized read-back buffer is accepted");
+        assert_eq!(aligned.len(), 4);
+    }
+}

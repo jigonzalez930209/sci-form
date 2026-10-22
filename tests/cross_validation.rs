@@ -1252,7 +1252,7 @@ mod f38_uhf_rohf {
 
             // sci-form starts from the H_core guess, so the apples-to-apples
             // reference is PySCF's UHF run with init_guess='hcore'.
-            let result = run_uhf(&system, &UhfConfig::default());
+            let result = run_uhf(&system, &UhfConfig::default()).expect("UHF must run");
             assert!(result.converged, "{}: UHF did not converge", case.name);
 
             let e_err = (result.total_energy - case.uhf_hcore.e_tot).abs();
@@ -1284,7 +1284,7 @@ mod f38_uhf_rohf {
             // ROHF path: the projection is exact only for the single-electron
             // case (H2+), where it must reproduce the PySCF ROHF energy.
             if case.name == "H2+ doublet" {
-                let rohf = run_rohf(&system);
+                let rohf = run_rohf(&system).expect("ROHF must run");
                 assert!(rohf.converged, "{}: ROHF did not converge", case.name);
                 assert!(
                     (rohf.total_energy - case.rohf.e_tot).abs() <= 1e-6,

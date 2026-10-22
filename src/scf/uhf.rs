@@ -241,7 +241,7 @@ fn diag_fock(fock: &DMatrix<f64>, x: &DMatrix<f64>, n_basis: usize) -> (DMatrix<
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let mut c_ortho = DMatrix::zeros(n_basis, n_basis);
@@ -412,7 +412,12 @@ fn run_uhf_loop(
 /// Set `multiplicity = 1` for closed-shell (equivalent to RHF),
 /// `multiplicity = 2` for doublet (radical), `multiplicity = 3` for
 /// triplet, etc.
-pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> UhfResult {
+pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> Result<UhfResult, String> {
+    // Reject a geometry with non-finite coordinates and a charge/multiplicity
+    // combination that does not match the real electron count *before* any
+    // matrix is built (an inconsistent `charge` used to underflow the
+    // electron count and index out of bounds).
+    system.validate()?;
     let n_electrons = system.n_electrons();
     let n_unpaired = (system.multiplicity as usize).saturating_sub(1);
     let n_alpha = (n_electrons + n_unpaired) / 2;
@@ -559,7 +564,7 @@ pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> UhfResult {
         &system.atomic_numbers,
     );
 
-    UhfResult {
+    Ok(UhfResult {
         alpha_orbital_energies: e_alpha,
         beta_orbital_energies: e_beta,
         alpha_coefficients: c_alpha,
@@ -584,11 +589,11 @@ pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> UhfResult {
         overlap_matrix: s.clone(),
         alpha_fock: f_alpha,
         beta_fock: f_beta,
-    }
+    })
 }
 
 /// Convenience: run UHF with parallel ERI.
-pub fn run_uhf_parallel(system: &MolecularSystem) -> UhfResult {
+pub fn run_uhf_parallel(system: &MolecularSystem) -> Result<UhfResult, String> {
     run_uhf(
         system,
         &UhfConfig {
@@ -599,7 +604,7 @@ pub fn run_uhf_parallel(system: &MolecularSystem) -> UhfResult {
 }
 
 /// Convenience: run ROHF (restricted open-shell).
-pub fn run_rohf(system: &MolecularSystem) -> UhfResult {
+pub fn run_rohf(system: &MolecularSystem) -> Result<UhfResult, String> {
     run_uhf(
         system,
         &UhfConfig {

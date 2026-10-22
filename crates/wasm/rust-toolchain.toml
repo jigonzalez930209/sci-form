@@ -1,4 +1,32 @@
+# Toolchain used to build the sci-form-wasm npm package.
+#
+# WHY NIGHTLY (and not the `stable` the CI workflow used to ask for):
+# the `parallel` feature pulls in `wasm-bindgen-rayon`, whose guard is
+#
+#     #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+#     compile_error!("Did you forget to enable `atomics` and `bulk-memory` ...");
+#
+# The `atomics` target feature is *nightly-only* on wasm32.  On stable,
+#
+#     rustc --print cfg --target wasm32-unknown-unknown \
+#           -C target-feature=+atomics,+bulk-memory,+mutable-globals
+#
+# only prints an "unstable feature specified for `-Ctarget-feature`" warning
+# and does NOT report `target_feature="atomics"`, so wasm-bindgen-rayon
+# refuses to compile and the whole WASM build fails.
+#
+# The pin used to be `nightly-2025-03-15` (19 months old).  Because a
+# rustup *directory* override always wins over the toolchain a workflow
+# installs, the build silently used that old nightly instead of the
+# `stable` the workflow asked for.  The pin is now `nightly-2026-05-24`
+# (rustc 1.98.0-nightly) and the CI workflow installs the very same
+# channel, so the declared toolchain and the one that actually builds the
+# package are the same.
+#
+# Bump this pin (and the matching `dtolnay/rust-toolchain@...` in
+# .github/workflows/ci.yml and release.yml) when the WASM dependencies need
+# a newer compiler.
 [toolchain]
-channel = "nightly-2025-03-15"
+channel = "nightly-2026-05-24"
 components = ["rust-src"]
 targets = ["wasm32-unknown-unknown"]

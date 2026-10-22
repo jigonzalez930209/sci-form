@@ -10,8 +10,13 @@ use serde::{Deserialize, Serialize};
 use super::hessian::{compute_numerical_hessian, HessianMethod};
 
 /// Atomic masses in amu for elements 1–86 (H through Rn).
-fn atomic_mass(z: u8) -> f64 {
-    match z {
+///
+/// Returns an error for an unknown or non-positive atomic number: the
+/// previous fallback (`z as f64 * 1.5`) returned `0.0` for `Z = 0`, which
+/// made `disp = … / sqrt_m` divide by zero and produced `inf`/`NaN`
+/// intensities (blocker A-H4).
+fn atomic_mass(z: u8) -> Result<f64, String> {
+    let mass = match z {
         1 => 1.00794,
         2 => 4.00260,
         3 => 6.941,
@@ -100,8 +105,36 @@ fn atomic_mass(z: u8) -> f64 {
         84 => 209.0,
         85 => 210.0,
         86 => 222.0,
-        _ => z as f64 * 1.5, // rough fallback for actinides and transactinides
+        // Rough fallback for the actinides and transactinides.  It is only
+        // valid for a *positive* atomic number: `Z = 0` (a dummy atom) has
+        // no mass at all and must be rejected instead of producing a zero
+        // mass (which would divide by zero below).
+        _ => {
+            if z == 0 {
+                return Err(
+                    "cannot build a mass-weighted Hessian for an atom with atomic number 0"
+                        .to_string(),
+                );
+            }
+            z as f64 * 1.5
+        }
+    };
+
+    if !(mass.is_finite() && mass > 0.0) {
+        return Err(format!(
+            "invalid atomic mass {mass} amu for atomic number {z}; the mass-weighted \
+             Hessian would divide by zero"
+        ));
     }
+    Ok(mass)
+}
+
+/// Masses of every atom, with an explicit error for an unknown element.
+fn atomic_masses(elements: &[u8]) -> Result<Vec<f64>, String> {
+    elements
+        .iter()
+        .map(|&z| atomic_mass(z))
+        .collect::<Result<Vec<f64>, String>>()
 }
 
 /// A single vibrational normal mode.
@@ -129,6 +162,14 @@ pub struct VibrationalAnalysis {
     pub modes: Vec<VibrationalMode>,
     /// Number of real vibrational modes (excluding translation/rotation).
     pub n_real_modes: usize,
+    /// Number of *real* modes with a negative (imaginary) frequency.
+    ///
+    /// A negative frequency means the geometry is not a stationary point of
+    /// the underlying potential-energy surface.  Before v1.0 the EHT path
+    /// returned such modes silently, so the caller could not tell a broken
+    /// spectrum from a physical one (blocker A-H5).
+    #[serde(default)]
+    pub n_imaginary_modes: usize,
     /// Zero-point vibrational energy in eV.
     pub zpve_ev: f64,
     /// Thermochemistry at 298.15 K (if computed).
@@ -555,7 +596,7 @@ fn compute_ir_intensities_sequential(
 ) -> Result<Vec<f64>, String> {
     let n_atoms = elements.len();
     let n_modes = normal_modes.ncols();
-    let masses: Vec<f64> = elements.iter().map(|&z| atomic_mass(z)).collect();
+    let masses = atomic_masses(elements)?;
 
     let mut intensities = Vec::with_capacity(n_modes);
 
@@ -601,7 +642,7 @@ fn compute_ir_intensities_parallel(
 
     let n_atoms = elements.len();
     let n_modes = normal_modes.ncols();
-    let masses: Vec<f64> = elements.iter().map(|&z| atomic_mass(z)).collect();
+    let masses = atomic_masses(elements)?;
 
     let results: Vec<Result<f64, String>> = (0..n_modes)
         .into_par_iter()
@@ -849,7 +890,7 @@ pub fn build_vibrational_analysis_from_hessian(
     let n3 = 3 * n_atoms;
 
     // 2. Build mass-weighted Hessian: H'_{ij} = H_{ij} / sqrt(m_i * m_j)
-    let masses: Vec<f64> = elements.iter().map(|&z| atomic_mass(z)).collect();
+    let masses = atomic_masses(elements)?;
     let mut mw_hessian = DMatrix::zeros(n3, n3);
     for i in 0..n3 {
         let mi = masses[i / 3];
@@ -912,6 +953,7 @@ pub fn build_vibrational_analysis_from_hessian(
     // 7. Build mode list
     let mut modes = Vec::with_capacity(n3);
     let mut n_real = 0;
+    let mut n_imaginary = 0;
     let mut zpve = 0.0;
 
     for k in 0..n3 {
@@ -924,6 +966,8 @@ pub fn build_vibrational_analysis_from_hessian(
             if freq > 0.0 {
                 // ZPVE contribution: (1/2)hν in eV
                 zpve += 0.5 * freq / EV_TO_CM1;
+            } else {
+                n_imaginary += 1;
             }
         }
 
@@ -945,15 +989,52 @@ pub fn build_vibrational_analysis_from_hessian(
     // Compute thermochemistry at 298.15 K
     let thermochemistry = Some(compute_thermochemistry(&frequencies, 298.15));
 
+    // A-H5: the EHT Hamiltonian of this crate is a *one-electron* model
+    // (Wolfsberg–Helmholz off-diagonal elements over a constant VSIP
+    // diagonal).  It has no electron–electron repulsion and therefore no
+    // repulsive wall: the occupied-band energy `2·Σ_occ ε_i` decreases
+    // monotonically as atoms approach, so the potential-energy surface has no
+    // minimum and its curvature (the Hessian) has the wrong sign in the
+    // bond-stretch and bending directions.  The resulting frequencies are
+    // therefore NOT physical force constants, and imaginary modes are the
+    // expected outcome rather than a numerical accident.
+    //
+    // The failure is reported loudly instead of being returned as if it were
+    // a normal spectrum.  A correct EHT force field needs the
+    // density-dependent electron–electron term of the original Extended
+    // Hückel formulation, which lives in `src/eht/` (outside the scope of
+    // this fix).  Use PM3 or xTB for vibrational analysis.
+    let mut notes: Vec<String> = Vec::new();
+    if method == HessianMethod::Eht {
+        notes.push(
+            "WARNING: the EHT vibrational analysis is not physically meaningful. The EHT \
+             Hamiltonian implemented in this crate is a one-electron model without \
+             electron-electron repulsion, so the potential-energy surface has no minimum and \
+             its second derivative does not define force constants: imaginary (negative) \
+             frequencies are expected. Use the PM3 or xTB method for vibrational analysis."
+                .to_string(),
+        );
+    }
+    if n_imaginary > 0 {
+        notes.push(format!(
+            "{n_imaginary} of the {n_real} real vibrational modes have an imaginary \
+             (negative) frequency: the geometry is not a stationary point of the \
+             potential-energy surface used for the Hessian."
+        ));
+    }
+
     Ok(VibrationalAnalysis {
         n_atoms,
         elements: elements.to_vec(),
         modes,
         n_real_modes: n_real,
+        n_imaginary_modes: n_imaginary,
         zpve_ev: zpve,
         thermochemistry,
         method: method_name.to_string(),
-        notes: vec![
+        notes: {
+            let mut all = notes;
+            all.extend([
             format!(
                 "Numerical Hessian computed with {} using central finite differences (δ = {} Å).",
                 method_name, delta
@@ -977,7 +1058,9 @@ pub fn build_vibrational_analysis_from_hessian(
                 }
                 _ => "Semiempirical Hessian values were interpreted on the shared eV·Å⁻² frequency scale.".to_string(),
             },
-        ],
+            ]);
+            all
+        },
     })
 }
 
@@ -1148,9 +1231,125 @@ mod tests {
 
     #[test]
     fn test_atomic_masses_known_elements() {
-        assert!((atomic_mass(1) - 1.00794).abs() < 0.001);
-        assert!((atomic_mass(6) - 12.011).abs() < 0.01);
-        assert!((atomic_mass(8) - 15.999).abs() < 0.01);
+        assert!((atomic_mass(1).unwrap() - 1.00794).abs() < 0.001);
+        assert!((atomic_mass(6).unwrap() - 12.011).abs() < 0.01);
+        assert!((atomic_mass(8).unwrap() - 15.999).abs() < 0.01);
+    }
+
+    /// A-H4 regression test: an unknown element must be an explicit error,
+    /// never a zero mass (which divided by zero downstream).
+    #[test]
+    fn test_atomic_mass_rejects_zero_atomic_number() {
+        let error = atomic_mass(0).expect_err("Z = 0 has no mass");
+        assert!(
+            error.contains("atomic number 0"),
+            "the error must name the offending element, got: {error}"
+        );
+
+        // The same must hold for the mass vector used by the analysis.
+        let error = atomic_masses(&[6, 0, 1]).expect_err("Z = 0 has no mass");
+        assert!(error.contains("atomic number 0"));
+
+        // A heavy element outside the table still gets a positive fallback
+        // mass (the actinides).
+        assert!(atomic_mass(93).unwrap() > 0.0);
+    }
+
+    /// A-H4 regression test: the vibrational analysis must reject a dummy
+    /// atom instead of returning `inf`/`NaN` intensities.
+    #[test]
+    fn test_vibrational_analysis_rejects_zero_atomic_number() {
+        let elements = [8u8, 1, 0];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let hessian = DMatrix::<f64>::zeros(9, 9);
+        let error = build_vibrational_analysis_from_hessian(
+            &elements,
+            &positions,
+            &hessian,
+            HessianMethod::Xtb,
+            0.005,
+            None,
+        )
+        .expect_err("a dummy atom must be rejected");
+        assert!(
+            error.contains("atomic number 0"),
+            "the error must name the offending element, got: {error}"
+        );
+    }
+
+    /// Staggered ethane (C–C = 1.528 Å, C–H = 1.093 Å).
+    ///
+    /// The geometry is hard-coded so the test does not depend on the
+    /// embedding code path.
+    fn staggered_ethane() -> (Vec<u8>, Vec<[f64; 3]>) {
+        let mut elements = vec![6u8, 6u8];
+        let mut positions = vec![[0.0, 0.0, -0.764], [0.0, 0.0, 0.764]];
+
+        let r = 1.093f64;
+        let rho = r * 70.0f64.to_radians().sin();
+        let dz = r * 70.0f64.to_radians().cos();
+
+        for i in 0..3 {
+            let angle = (120.0 * i as f64).to_radians();
+            elements.push(1);
+            positions.push([rho * angle.cos(), rho * angle.sin(), -0.764 + dz]);
+        }
+        for i in 0..3 {
+            let angle = (60.0 + 120.0 * i as f64).to_radians();
+            elements.push(1);
+            positions.push([rho * angle.cos(), rho * angle.sin(), 0.764 - dz]);
+        }
+
+        (elements, positions)
+    }
+
+    /// A-H5 regression test: the EHT vibrational analysis must not return a
+    /// silently wrong spectrum.
+    ///
+    /// The EHT Hamiltonian of this crate is a one-electron model, so the
+    /// occupied-band energy has no repulsive wall and the Hessian has the
+    /// wrong sign in the bending/torsion directions: imaginary modes are
+    /// the expected outcome.  The analysis must report them (`n_imaginary_modes`)
+    /// and warn about them (`notes`), and the physical reference (xTB on the
+    /// same geometry) must not have any.
+    #[test]
+    fn test_eht_vibrational_analysis_reports_its_limitation() {
+        let (elements, positions) = staggered_ethane();
+
+        let eht =
+            compute_vibrational_analysis(&elements, &positions, HessianMethod::Eht, Some(0.005))
+                .expect("the EHT analysis itself must still run");
+
+        assert!(
+            eht.n_imaginary_modes > 0,
+            "the EHT one-electron model is expected to produce imaginary modes"
+        );
+        assert!(
+            eht.notes
+                .iter()
+                .any(|note| note.contains("not physically meaningful")),
+            "the EHT analysis must warn about its limitation, got: {:?}",
+            eht.notes
+        );
+        assert!(
+            eht.notes.iter().any(|note| note.contains("imaginary")),
+            "the number of imaginary modes must be reported, got: {:?}",
+            eht.notes
+        );
+
+        // Physical reference: the same molecule with xTB.
+        let xtb =
+            compute_vibrational_analysis(&elements, &positions, HessianMethod::Xtb, Some(0.005))
+                .expect("the xTB analysis must succeed");
+        assert_eq!(
+            xtb.n_imaginary_modes, 0,
+            "xTB must give physical frequencies for ethane"
+        );
+        assert!(xtb
+            .modes
+            .iter()
+            .filter(|mode| mode.is_real)
+            .all(|mode| mode.frequency_cm1 > 0.0));
     }
 
     #[test]

@@ -6,21 +6,21 @@ Add sci-form to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sci-form = "0.9"
+sci-form = "0.15"
 ```
 
 For parallel batch processing, enable the `parallel` feature:
 
 ```toml
 [dependencies]
-sci-form = { version = "0.9", features = ["parallel"] }
+sci-form = { version = "0.15", features = ["parallel"] }
 ```
 
 For GPU acceleration (experimental):
 
 ```toml
 [dependencies]
-sci-form = { version = "0.9", features = ["experimental-gpu"] }
+sci-form = { version = "0.15", features = ["experimental-gpu"] }
 ```
 
 ## Core Types

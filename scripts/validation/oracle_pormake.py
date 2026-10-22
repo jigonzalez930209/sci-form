@@ -21,6 +21,7 @@ Usage:
 from __future__ import annotations
 
 import re
+import tempfile
 import time
 from collections import Counter
 from pathlib import Path
@@ -144,7 +145,7 @@ def build_mof5() -> dict:
     cell = [float(x) for x in atoms.cell.lengths()]
     symbols = atoms.get_chemical_symbols()
     comp = dict(Counter(symbols))
-    tmp = Path("/tmp/opencode/pormake_mof5.cif")
+    tmp = Path(tempfile.gettempdir()) / "pormake_mof5.cif"
     fw.write_cif(str(tmp))
     return {
         "cell_lengths": cell,
@@ -159,9 +160,9 @@ def build_mof5() -> dict:
 def zeo_reference(cif_text: str) -> dict:
     import pyzeo
 
-    tmp = Path("/tmp/opencode/pormake_mof5.cif")
+    tmp = Path(tempfile.gettempdir()) / "pormake_mof5.cif"
     tmp.write_text(cif_text)
-    rad = Path("/tmp/opencode/sc_radii.rad")
+    rad = Path(tempfile.gettempdir()) / "sc_radii.rad"
     rad.write_text(
         "".join(
             f"{sym} {r}\n"
@@ -183,7 +184,7 @@ def zeo_reference(cif_text: str) -> dict:
     # Voronoi vertices that crash raw voro++ ("Unable to add edge").
     pyzeo.high_accuracy_atomnet(atmnet)
     atmnet.perform_voronoi_decomposition()
-    dia = Path("/tmp/opencode/pormake_mof5.dia")
+    dia = Path(tempfile.gettempdir()) / "pormake_mof5.dia"
     atmnet.calculate_free_sphere_parameters(str(dia))
     nums = [float(x) for x in dia.read_text().split()[-3:]]
     out["lcd_diameter"] = nums[0]

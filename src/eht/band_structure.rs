@@ -77,6 +77,7 @@ pub fn compute_band_structure(
     config: &BandStructureConfig,
     n_electrons: usize,
 ) -> Result<BandStructure, String> {
+    crate::validation::validate_geometry(elements, positions)?;
     if elements.is_empty() {
         return Err("No atoms provided".to_string());
     }
@@ -303,7 +304,7 @@ fn solve_generalized_eigen(h: &DMatrix<f64>, s: &DMatrix<f64>) -> Result<Vec<f64
     let eigen = nalgebra::SymmetricEigen::new(h_prime);
 
     let mut eigenvalues: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
-    eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
     Ok(eigenvalues)
 }
@@ -326,7 +327,7 @@ fn estimate_fermi_energy(bands: &[Vec<f64>], n_occupied: usize) -> f64 {
         })
         .collect();
 
-    all_occupied.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    all_occupied.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     if all_occupied.is_empty() {
         return 0.0;
     }

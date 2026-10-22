@@ -140,12 +140,52 @@ pub struct HessianResult {
     pub normal_modes: DMatrix<f64>,
     /// Number of imaginary frequencies.
     pub n_imaginary: usize,
+    /// Error message when the calculation could not be run at all
+    /// (invalid geometry). `None` for a completed calculation.
+    pub error: Option<String>,
 }
 
 /// Build the Cartesian Hessian by semi-numerical differentiation.
 ///
 /// Cost: 6N gradient evaluations for N atoms.
 pub fn compute_hessian(
+    system: &MolecularSystem,
+    scf_config: &ScfConfig,
+    grad_step: f64,
+    hess_step: f64,
+) -> HessianResult {
+    match try_compute_hessian(system, scf_config, grad_step, hess_step) {
+        Ok(result) => result,
+        Err(error) => failed_hessian_result(error),
+    }
+}
+
+/// Build the Cartesian Hessian, reporting an invalid geometry as an error.
+pub fn try_compute_hessian(
+    system: &MolecularSystem,
+    scf_config: &ScfConfig,
+    grad_step: f64,
+    hess_step: f64,
+) -> Result<HessianResult, String> {
+    system.validate_geometry()?;
+    Ok(compute_hessian_impl(
+        system, scf_config, grad_step, hess_step,
+    ))
+}
+
+/// The "nothing was computed" Hessian returned for an invalid system.
+fn failed_hessian_result(error: String) -> HessianResult {
+    HessianResult {
+        hessian: DMatrix::zeros(0, 0),
+        mass_weighted_hessian: DMatrix::zeros(0, 0),
+        frequencies: Vec::new(),
+        normal_modes: DMatrix::zeros(0, 0),
+        n_imaginary: 0,
+        error: Some(error),
+    }
+}
+
+fn compute_hessian_impl(
     system: &MolecularSystem,
     scf_config: &ScfConfig,
     grad_step: f64,
@@ -209,7 +249,8 @@ pub fn compute_hessian(
         })
         .collect();
 
-    freq_eigenvalue_pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    freq_eigenvalue_pairs
+        .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
     let frequencies: Vec<f64> = freq_eigenvalue_pairs.iter().map(|(f, _)| *f).collect();
     let n_imaginary = frequencies.iter().filter(|&&f| f < -10.0).count();
@@ -227,6 +268,7 @@ pub fn compute_hessian(
         frequencies,
         normal_modes,
         n_imaginary,
+        error: None,
     }
 }
 
@@ -236,6 +278,33 @@ pub fn compute_hessian(
 /// gradient pair, so the 6N gradient evaluations run in parallel.
 #[cfg(feature = "parallel")]
 pub fn compute_hessian_parallel(
+    system: &MolecularSystem,
+    scf_config: &ScfConfig,
+    grad_step: f64,
+    hess_step: f64,
+) -> HessianResult {
+    match try_compute_hessian_parallel(system, scf_config, grad_step, hess_step) {
+        Ok(result) => result,
+        Err(error) => failed_hessian_result(error),
+    }
+}
+
+/// Parallel Hessian computation, reporting an invalid geometry as an error.
+#[cfg(feature = "parallel")]
+pub fn try_compute_hessian_parallel(
+    system: &MolecularSystem,
+    scf_config: &ScfConfig,
+    grad_step: f64,
+    hess_step: f64,
+) -> Result<HessianResult, String> {
+    system.validate_geometry()?;
+    Ok(compute_hessian_parallel_impl(
+        system, scf_config, grad_step, hess_step,
+    ))
+}
+
+#[cfg(feature = "parallel")]
+fn compute_hessian_parallel_impl(
     system: &MolecularSystem,
     scf_config: &ScfConfig,
     grad_step: f64,
@@ -312,7 +381,8 @@ pub fn compute_hessian_parallel(
         })
         .collect();
 
-    freq_eigenvalue_pairs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    freq_eigenvalue_pairs
+        .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
     let frequencies: Vec<f64> = freq_eigenvalue_pairs.iter().map(|(f, _)| *f).collect();
     let n_imaginary = frequencies.iter().filter(|&&f| f < -10.0).count();
@@ -330,6 +400,7 @@ pub fn compute_hessian_parallel(
         frequencies,
         normal_modes,
         n_imaginary,
+        error: None,
     }
 }
 

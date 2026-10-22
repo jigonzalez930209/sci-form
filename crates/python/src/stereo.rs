@@ -2,7 +2,7 @@
 
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "Stereocenter")]
 #[derive(Clone)]
 pub(crate) struct StereocenterPy {
     #[pyo3(get)]
@@ -17,7 +17,7 @@ pub(crate) struct StereocenterPy {
     configuration: Option<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "DoubleBondStereo")]
 #[derive(Clone)]
 pub(crate) struct DoubleBondStereoPy {
     #[pyo3(get)]
@@ -32,7 +32,7 @@ pub(crate) struct DoubleBondStereoPy {
     high_priority_sub2: Option<usize>,
 }
 
-#[pyclass]
+#[pyclass(name = "StereoAnalysis")]
 #[derive(Clone)]
 pub(crate) struct StereoAnalysisPy {
     #[pyo3(get)]
@@ -48,7 +48,7 @@ pub(crate) struct StereoAnalysisPy {
 /// Analyze stereochemistry: detect R/S stereocenters and E/Z double bonds.
 #[pyfunction]
 #[pyo3(signature = (smiles, coords=vec![]))]
-fn stereo_analysis(smiles: &str, coords: Vec<f64>) -> PyResult<StereoAnalysisPy> {
+fn analyze_stereo(smiles: &str, coords: Vec<f64>) -> PyResult<StereoAnalysisPy> {
     sci_form_core::analyze_stereo(smiles, &coords)
         .map(|r| StereoAnalysisPy {
             stereocenters: r
@@ -76,11 +76,11 @@ fn stereo_analysis(smiles: &str, coords: Vec<f64>) -> PyResult<StereoAnalysisPy>
             n_stereocenters: r.n_stereocenters,
             n_double_bonds: r.n_double_bonds,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(stereo_analysis, m)?)?;
+    m.add_function(wrap_pyfunction!(analyze_stereo, m)?)?;
     m.add_class::<StereocenterPy>()?;
     m.add_class::<DoubleBondStereoPy>()?;
     m.add_class::<StereoAnalysisPy>()?;

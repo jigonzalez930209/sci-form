@@ -17,8 +17,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from pathlib import Path
+
+from refdata import ref_data_dir, skip
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "src" / "charges_eeq" / "eeq2019_data.rs"
@@ -40,11 +43,44 @@ def parse_multicharge_array(path: Path, name: str) -> list[float]:
     return vals
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source-dir", type=Path, default=Path("/tmp/opencode/multicharge"))
-    ap.add_argument("--dftd4-dir", type=Path, default=Path("/tmp/opencode/dftd4-430"))
+    ap.add_argument(
+        "--source-dir",
+        type=Path,
+        default=ref_data_dir() / "multicharge",
+        help="grimme-lab/multicharge checkout (default: $SCIFORM_REF_DATA/multicharge)",
+    )
+    ap.add_argument(
+        "--dftd4-dir",
+        type=Path,
+        default=ref_data_dir() / "dftd4-430",
+        help="dftd4 v4.3.0 source tree (default: $SCIFORM_REF_DATA/dftd4-430)",
+    )
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
     args = ap.parse_args()
+
+    missing = [
+        p
+        for p in (
+            args.source_dir / "eeq2019.f90",
+            args.dftd4_dir / "covrad.f90",
+        )
+        if not p.exists()
+    ]
+    if missing:
+        msg = (
+            f"the upstream sources are not available ({', '.join(str(p) for p in missing)}); "
+            f"set SCIFORM_REF_DATA or pass --source-dir/--dftd4-dir"
+        )
+        if args.check:
+            return skip(msg)
+        raise SystemExit(f"error: {msg}")
 
     chi = parse_multicharge_array(args.source_dir / "eeq2019.f90", "eeq_chi")
     eta = parse_multicharge_array(args.source_dir / "eeq2019.f90", "eeq_eta")
@@ -108,9 +144,21 @@ def main() -> None:
         covrad,
         "Pyykko covalent radii (Angstrom) for the CN cutoff.",
     )
+    if args.check:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != out:
+            print(
+                f"{OUT.relative_to(REPO)} is out of date — "
+                f"run scripts/validation/gen_eeq2019_params.py"
+            )
+            return 1
+        print(f"{OUT.relative_to(REPO)} is up to date")
+        return 0
+
     OUT.write_text(out)
     print(f"wrote {OUT} (MAX_ELEM={MAX_ELEM})")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

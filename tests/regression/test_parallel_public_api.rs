@@ -57,7 +57,8 @@ mod parallel_public_api_tests {
                         seed,
                         num_threads: 2,
                     };
-                    let result = embed_batch(&["CCO", "O", "c1ccccc1"], &config);
+                    let result = embed_batch(&["CCO", "O", "c1ccccc1"], &config)
+                        .expect("embed_batch must succeed");
                     if result.len() != 3 || result.iter().any(|item| item.error.is_some()) {
                         failures
                             .lock()

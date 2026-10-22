@@ -25,8 +25,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from pathlib import Path
+
+from refdata import ref_data_dir, skip
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "src" / "charges_eeq" / "eeqbc_data.rs"
@@ -58,13 +61,47 @@ def rust_array(name: str, values: list[float], doc: str) -> str:
     return "\n".join(lines)
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--multicharge-dir", type=Path, default=Path("/tmp/opencode/multicharge-src"))
-    ap.add_argument("--mctc-dir", type=Path, default=Path("/tmp/opencode/mctc-lib-src"))
+    ap.add_argument(
+        "--multicharge-dir",
+        type=Path,
+        default=ref_data_dir() / "multicharge-src",
+        help="grimme-lab/multicharge checkout (default: $SCIFORM_REF_DATA/multicharge-src)",
+    )
+    ap.add_argument(
+        "--mctc-dir",
+        type=Path,
+        default=ref_data_dir() / "mctc-lib-src",
+        help="grimme-lab/mctc-lib checkout (default: $SCIFORM_REF_DATA/mctc-lib-src)",
+    )
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
     args = ap.parse_args()
 
     param = args.multicharge_dir / "src/multicharge/param/eeqbc2025.f90"
+    missing = [
+        p
+        for p in (
+            param,
+            args.mctc_dir / "src/mctc/data/vdwrad.f90",
+            args.mctc_dir / "src/mctc/data/paulingen.f90",
+        )
+        if not p.exists()
+    ]
+    if missing:
+        msg = (
+            f"the upstream sources are not available ({', '.join(str(p) for p in missing)}); "
+            f"set SCIFORM_REF_DATA or pass --multicharge-dir/--mctc-dir"
+        )
+        if args.check:
+            return skip(msg)
+        raise SystemExit(f"error: {msg}")
+
     chi = parse_array(param, "eeqbc_chi", MAX_ELEM)
     eta = parse_array(param, "eeqbc_eta", MAX_ELEM)
     rad = parse_array(param, "eeqbc_rad", MAX_ELEM)
@@ -133,9 +170,22 @@ def main() -> None:
         rust_array("EEQBC_PAULING_EN", en, "Pauling electronegativities (F = 3.98), Z = 1..118."),
         "",
     ]
-    OUT.write_text("\n".join(parts))
+    text = "\n".join(parts)
+    if args.check:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != text:
+            print(
+                f"{OUT.relative_to(REPO)} is out of date — "
+                f"run scripts/validation/gen_eeqbc_params.py"
+            )
+            return 1
+        print(f"{OUT.relative_to(REPO)} is up to date")
+        return 0
+
+    OUT.write_text(text)
     print(f"wrote {OUT.relative_to(REPO)} ({len(chi)} elements, {n_pairs} vdW pairs, {len(en)} EN)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

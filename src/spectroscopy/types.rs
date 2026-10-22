@@ -71,6 +71,9 @@ pub struct SpectroscopyResult {
     pub transitions: Vec<TransitionInfo>,
     /// Method used.
     pub method: String,
+    /// Error message when the calculation could not be run at all
+    /// (invalid geometry). `None` for a completed calculation.
+    pub error: Option<String>,
 }
 
 /// NMR shielding tensor for a single nucleus.

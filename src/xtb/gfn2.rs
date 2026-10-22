@@ -165,13 +165,7 @@ pub(crate) fn build_gfn2_basis_map(elements: &[u8]) -> Vec<(usize, usize, u8, u8
 /// Uses the official GFN2-xTB parametrization with consistent Hartree/bohr
 /// internal units. Returns all energies in eV.
 pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result, String> {
-    if elements.len() != positions.len() {
-        return Err(format!(
-            "elements ({}) and positions ({}) length mismatch",
-            elements.len(),
-            positions.len()
-        ));
-    }
+    crate::validation::validate_geometry(elements, positions)?;
     for &z in elements {
         if gfn2_params::get_gfn2_params(z).is_none() {
             return Err(format!("Element Z={} not supported by GFN2-xTB", z));
@@ -480,7 +474,7 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
         let f_dbg = &s_half_inv_dbg * &h_mat * &s_half_inv_dbg;
         let eig_dbg = f_dbg.symmetric_eigen();
         let mut h0_evals: Vec<f64> = eig_dbg.eigenvalues.iter().cloned().collect();
-        h0_evals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        h0_evals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         eprintln!("--- H0 eigenvalues (Hartree) ---");
         for (i, e) in h0_evals.iter().enumerate() {
             eprintln!("  ε_H0[{}] = {:.10} ({:.6} eV)", i, e, e * EV_PER_HARTREE);

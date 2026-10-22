@@ -686,10 +686,13 @@ mod tests {
     fn test_recursive_smarts() {
         let p = parse_smarts("[$([CX3]=O):1][NX3H1:2]!@;-[c:3][cH1:4]").unwrap();
         assert_eq!(p.atoms.len(), 4);
+        assert!(
+            matches!(p.atoms[0].query, AtomQuery::Recursive(_)),
+            "expected a recursive query, got {:?}",
+            p.atoms[0].query
+        );
         if let AtomQuery::Recursive(ref inner) = p.atoms[0].query {
             assert_eq!(inner.atoms.len(), 2); // CX3 and O
-        } else {
-            panic!("expected recursive");
         }
     }
 
@@ -705,13 +708,16 @@ mod tests {
         let p = parse_smarts("[C@@H:1]").unwrap();
         assert_eq!(p.atoms.len(), 1);
         assert_eq!(p.atoms[0].map_idx, Some(1));
+        assert!(
+            matches!(p.atoms[0].query, AtomQuery::And(_)),
+            "expected an AND query for a chiral atom, got {:?}",
+            p.atoms[0].query
+        );
         if let AtomQuery::And(ref parts) = p.atoms[0].query {
             assert!(parts
                 .iter()
                 .any(|q| matches!(q, AtomQuery::Chiral(ChiralType::TetrahedralCW))));
             assert!(parts.iter().any(|q| matches!(q, AtomQuery::TotalH(1))));
-        } else {
-            panic!("expected AND query for chiral atom");
         }
     }
 

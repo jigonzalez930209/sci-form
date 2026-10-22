@@ -1,6 +1,6 @@
 //! Embed, batch, parse, info, charges, uff, rmsd command handlers.
 
-use crate::format::{format_sdf, format_xyz};
+use crate::format::{fail, format_sdf, format_xyz};
 use std::io::{self, BufRead, BufReader, Write};
 use std::time::Instant;
 
@@ -9,13 +9,20 @@ const BATCH_CHUNK: usize = 512;
 
 pub fn cmd_embed(smiles: &str, seed: u64, format: &str) {
     let result = sci_form::embed(smiles, seed);
+    // A failed embed exits with a non-zero status and prints the reason on
+    // stderr; it never prints a result object that looks successful
+    // (blocker C-M4).
+    if let Some(ref e) = result.error {
+        fail(format!(
+            "Embedding failed for SMILES '{}': {}",
+            crate::format::truncate(smiles, 120),
+            e
+        ));
+    }
     match format {
         "xyz" => print!("{}", format_xyz(&result)),
         "sdf" => print!("{}", format_sdf(&result)),
         _ => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
-    }
-    if result.error.is_some() {
-        std::process::exit(1);
     }
 }
 
@@ -93,7 +100,14 @@ pub fn cmd_batch(
             return;
         }
         let smiles_refs: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
-        let results = sci_form::embed_batch(&smiles_refs, &config);
+        let results = match sci_form::embed_batch(&smiles_refs, &config) {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("batch failed: {e}");
+                *fail += chunk.len();
+                return;
+            }
+        };
         for r in &results {
             if r.error.is_none() {
                 *ok += 1;
@@ -224,8 +238,7 @@ pub fn cmd_charges(smiles: &str) {
 
 pub fn cmd_uff(smiles: &str, coords: &str) {
     let flat: Vec<f64> = serde_json::from_str(coords).unwrap_or_else(|e| {
-        eprintln!("Bad coords JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'coords'", coords, &e));
     });
     match sci_form::compute_uff_energy(smiles, &flat) {
         Ok(energy) => println!("{{\"energy\":{:.6},\"unit\":\"kcal/mol\"}}", energy),
@@ -236,20 +249,26 @@ pub fn cmd_uff(smiles: &str, coords: &str) {
     }
 }
 
+/// Compute the RMSD between two coordinate sets after a Kabsch alignment.
+///
+/// A length mismatch (or a length that is not a multiple of 3) is an error:
+/// the command prints a message on stderr and exits with a non-zero status.
+/// A `NaN` RMSD is never printed, because it is not valid JSON
+/// (blocker C-C4).
 pub fn cmd_rmsd(coords: &str, reference: &str) {
     let c: Vec<f64> = serde_json::from_str(coords).unwrap_or_else(|e| {
-        eprintln!("Bad coords JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'coords'", coords, &e));
     });
     let r: Vec<f64> = serde_json::from_str(reference).unwrap_or_else(|e| {
-        eprintln!("Bad reference JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'reference'", reference, &e));
     });
-    let result = sci_form::alignment::align_coordinates(&c, &r);
-    println!(
-        "{{\"rmsd\":{:.6},\"rotation\":{:?}}}",
-        result.rmsd, result.rotation
-    );
+    match sci_form::alignment::try_align_coordinates(&c, &r) {
+        Ok(result) => println!(
+            "{{\"rmsd\":{:.6},\"rotation\":{:?}}}",
+            result.rmsd, result.rotation
+        ),
+        Err(e) => fail(e),
+    }
 }
 
 /// Generate a diverse conformer ensemble and cluster it by Butina RMSD.
@@ -272,8 +291,7 @@ pub fn cmd_canonical_smiles(smiles: &str) {
 /// Filter a conformer ensemble to keep only the diverse cluster centroids.
 pub fn cmd_filter_diverse(conformers: &str, rmsd_cutoff: f64) {
     let list: Vec<Vec<f64>> = serde_json::from_str(conformers).unwrap_or_else(|e| {
-        eprintln!("Bad conformers JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'conformers'", conformers, &e));
     });
     let indices = sci_form::clustering::filter_diverse_conformers(&list, rmsd_cutoff);
     println!("{}", serde_json::to_string_pretty(&indices).unwrap());

@@ -2,7 +2,7 @@
 
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "NonPolarSolvation")]
 #[derive(Clone)]
 pub(crate) struct NonPolarSolvationPy {
     #[pyo3(get)]
@@ -15,7 +15,7 @@ pub(crate) struct NonPolarSolvationPy {
     total_sasa: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "GbSolvation")]
 #[derive(Clone)]
 pub(crate) struct GbSolvationPy {
     #[pyo3(get)]
@@ -37,7 +37,7 @@ pub(crate) struct GbSolvationPy {
 /// Non-polar solvation energy from SASA with atomic solvation parameters.
 #[pyfunction]
 #[pyo3(signature = (elements, coords, probe_radius=1.4))]
-fn nonpolar_solvation(
+fn compute_nonpolar_solvation(
     elements: Vec<u8>,
     coords: Vec<f64>,
     probe_radius: f64,
@@ -55,7 +55,7 @@ fn nonpolar_solvation(
 /// Generalized Born solvation energy (electrostatic + non-polar).
 #[pyfunction]
 #[pyo3(signature = (elements, coords, charges, solvent_dielectric=78.5, solute_dielectric=1.0, probe_radius=1.4))]
-fn gb_solvation(
+fn compute_gb_solvation(
     elements: Vec<u8>,
     coords: Vec<f64>,
     charges: Vec<f64>,
@@ -84,8 +84,8 @@ fn gb_solvation(
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(nonpolar_solvation, m)?)?;
-    m.add_function(wrap_pyfunction!(gb_solvation, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_nonpolar_solvation, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_gb_solvation, m)?)?;
     m.add_class::<NonPolarSolvationPy>()?;
     m.add_class::<GbSolvationPy>()?;
     Ok(())

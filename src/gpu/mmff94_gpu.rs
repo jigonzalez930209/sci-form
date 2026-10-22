@@ -334,7 +334,9 @@ pub fn compute_mmff94_nonbonded_tiled_cpu(
 /// Evaluate MMFF94 non-bonded energy with a transparent GPU → CPU fallback.
 ///
 /// Tries the GPU when a device is available (and the system fits), otherwise
-/// evaluates on the CPU and reports why in `backend`.
+/// evaluates on the CPU and reports why in `backend`.  When the GPU dispatch
+/// fails, the failure reason is included in the report instead of being
+/// dropped (blocker A-H2).
 #[cfg(feature = "experimental-gpu")]
 pub fn compute_mmff94_nonbonded_with_report(
     coords: &[f64],
@@ -343,25 +345,37 @@ pub fn compute_mmff94_nonbonded_with_report(
     vdw_epsilon: &[f64],
     exclusions_14: &[(usize, usize)],
 ) -> Mmff94GpuResult {
-    let ctx = GpuContext::best_available();
+    let ctx = GpuContext::shared();
     if ctx.is_gpu_available() {
-        if let Ok(result) = compute_mmff94_nonbonded_gpu(
-            &ctx,
+        match compute_mmff94_nonbonded_gpu(
+            ctx,
             coords,
             charges,
             vdw_radii,
             vdw_epsilon,
             exclusions_14,
         ) {
-            return result;
+            Ok(result) => return result,
+            Err(reason) => {
+                return compute_mmff94_nonbonded_cpu(
+                    coords,
+                    charges,
+                    vdw_radii,
+                    vdw_epsilon,
+                    exclusions_14,
+                    &format!("GPU dispatch failed ({reason}); the CPU implementation was used."),
+                );
+            }
         }
     }
-    let note = if ctx.is_gpu_available() {
-        "GPU dispatch failed"
-    } else {
-        "GPU not available"
-    };
-    compute_mmff94_nonbonded_cpu(coords, charges, vdw_radii, vdw_epsilon, exclusions_14, note)
+    compute_mmff94_nonbonded_cpu(
+        coords,
+        charges,
+        vdw_radii,
+        vdw_epsilon,
+        exclusions_14,
+        "GPU not available; the CPU implementation was used.",
+    )
 }
 
 /// WGSL compute shader for MMFF94 non-bonded interactions.

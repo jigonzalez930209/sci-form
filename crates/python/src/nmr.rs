@@ -1,8 +1,9 @@
 //! NMR: chemical shifts, J-couplings, spectra, HOSE codes.
 
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
-#[pyclass]
+#[pyclass(name = "ChemicalShift")]
 #[derive(Clone)]
 pub(crate) struct ChemicalShiftPy {
     #[pyo3(get)]
@@ -17,7 +18,7 @@ pub(crate) struct ChemicalShiftPy {
     confidence: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "NmrShiftResult")]
 #[derive(Clone)]
 pub(crate) struct NmrShiftResultPy {
     #[pyo3(get)]
@@ -46,7 +47,7 @@ pub(crate) struct NmrShiftResultPy {
     notes: Vec<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "NucleusShiftSeries")]
 #[derive(Clone)]
 pub(crate) struct NucleusShiftSeriesPy {
     #[pyo3(get)]
@@ -55,7 +56,7 @@ pub(crate) struct NucleusShiftSeriesPy {
     shifts: Vec<ChemicalShiftPy>,
 }
 
-#[pyclass]
+#[pyclass(name = "JCoupling")]
 #[derive(Clone)]
 pub(crate) struct JCouplingPy {
     #[pyo3(get)]
@@ -70,7 +71,7 @@ pub(crate) struct JCouplingPy {
     coupling_type: String,
 }
 
-#[pyclass]
+#[pyclass(name = "NmrPeak")]
 #[derive(Clone)]
 pub(crate) struct NmrPeakPy {
     #[pyo3(get)]
@@ -85,7 +86,7 @@ pub(crate) struct NmrPeakPy {
     environment: String,
 }
 
-#[pyclass]
+#[pyclass(name = "NmrSpectrum")]
 #[derive(Clone)]
 pub(crate) struct NmrSpectrumPy {
     #[pyo3(get)]
@@ -102,7 +103,7 @@ pub(crate) struct NmrSpectrumPy {
     notes: Vec<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "GiaoNmrEntry")]
 #[derive(Clone)]
 pub(crate) struct GiaoNmrEntryPy {
     #[pyo3(get)]
@@ -119,7 +120,7 @@ pub(crate) struct GiaoNmrEntryPy {
     chemical_shift: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "GiaoNmrResult")]
 #[derive(Clone)]
 pub(crate) struct GiaoNmrResultPy {
     #[pyo3(get)]
@@ -211,7 +212,7 @@ fn map_giao_result(result: sci_form_core::GiaoNmrResult) -> GiaoNmrResultPy {
 }
 
 #[pyfunction]
-fn nmr_shifts(smiles: &str) -> PyResult<NmrShiftResultPy> {
+fn predict_nmr_shifts(smiles: &str) -> PyResult<NmrShiftResultPy> {
     sci_form_core::predict_nmr_shifts(smiles)
         .map(|r| NmrShiftResultPy {
             h_shifts: map_shifts(&r.h_shifts),
@@ -227,19 +228,19 @@ fn nmr_shifts(smiles: &str) -> PyResult<NmrShiftResultPy> {
             other_shifts: map_shift_series(&r.other_shifts),
             notes: r.notes,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 #[pyfunction]
-fn nmr_shifts_for_nucleus(smiles: &str, nucleus: &str) -> PyResult<Vec<ChemicalShiftPy>> {
+fn predict_nmr_shifts_for_nucleus(smiles: &str, nucleus: &str) -> PyResult<Vec<ChemicalShiftPy>> {
     sci_form_core::predict_nmr_shifts_for_nucleus(smiles, nucleus)
         .map(|shifts| map_shifts(&shifts))
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 #[pyfunction]
-#[pyo3(signature = (elements, coords, nucleus="1H", charge=0, multiplicity=1, max_scf_iter=100, allow_basis_fallback=false, use_parallel_eri=false))]
-fn giao_nmr(
+#[pyo3(signature = (elements, coords, nucleus="1H", charge=0, multiplicity=1, max_scf_iter=100, allow_basis_fallback=false, use_parallel_eri=false, options=None))]
+fn compute_giao_nmr(
     elements: Vec<u8>,
     coords: Vec<f64>,
     nucleus: &str,
@@ -248,7 +249,25 @@ fn giao_nmr(
     max_scf_iter: usize,
     allow_basis_fallback: bool,
     use_parallel_eri: bool,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<GiaoNmrResultPy> {
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3).
+    const KEYS: &[&str] = &[
+        "nucleus",
+        "charge",
+        "multiplicity",
+        "max_scf_iter",
+        "allow_basis_fallback",
+        "use_parallel_eri",
+    ];
+    crate::options::reject_unknown(options, KEYS)?;
+    let nucleus = &crate::options::str_from(options, "nucleus", nucleus)?;
+    let nucleus = nucleus.as_str();
+    let charge = crate::options::usize_from(options, "charge", charge.max(0) as usize)? as i32;
+    let multiplicity =
+        crate::options::usize_from(options, "multiplicity", multiplicity as usize)?.max(1) as u32;
+    let max_scf_iter = crate::options::usize_from(options, "max_scf_iter", max_scf_iter)?;
     let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     let config = sci_form_core::GiaoNmrConfig {
         charge,
@@ -260,13 +279,28 @@ fn giao_nmr(
 
     sci_form_core::compute_giao_nmr_configured(&elements, &positions, nucleus, &config)
         .map(map_giao_result)
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
 #[pyo3(signature = (smiles, coords=vec![]))]
-fn nmr_couplings(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<JCouplingPy>> {
+fn predict_nmr_couplings(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<JCouplingPy>> {
     let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    if !positions.is_empty() {
+        // The core validates the geometry too, but its message leaks the
+        // Rust field name `positions`; the binding reports the canonical
+        // message instead (blocker C-H9).
+        let n_atoms = sci_form_core::parse(smiles)
+            .map(|m| m.graph.node_count())
+            .map_err(|e| crate::errors::value_error(crate::errors::smiles_error(&e, smiles)))?;
+        if positions.len() != n_atoms {
+            return Err(crate::errors::value_error(format!(
+                "Invalid 'coords' length {}. Expected {} values (3 per atom).",
+                coords.len(),
+                n_atoms * 3
+            )));
+        }
+    }
     sci_form_core::predict_nmr_couplings(smiles, &positions)
         .map(|couplings| {
             couplings
@@ -280,7 +314,7 @@ fn nmr_couplings(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<JCouplingPy>> {
                 })
                 .collect()
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 /// Predict J-couplings averaged over a conformer ensemble (Boltzmann weighting).
@@ -314,12 +348,12 @@ fn compute_ensemble_j_couplings(
             })
             .collect()
     })
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 #[pyfunction]
 #[pyo3(signature = (smiles, coords=vec![], nucleus="1H", gamma=0.02, ppm_min=0.0, ppm_max=12.0, n_points=1000))]
-fn nmr_spectrum(
+fn compute_nmr_spectrum(
     smiles: &str,
     coords: Vec<f64>,
     nucleus: &str,
@@ -350,12 +384,12 @@ fn nmr_spectrum(
         gamma: r.gamma,
         notes: r.notes,
     })
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 #[pyfunction]
 #[pyo3(signature = (smiles, max_radius=2))]
-fn hose_codes(smiles: &str, max_radius: usize) -> PyResult<Vec<(usize, u8, String)>> {
+fn compute_hose_codes(smiles: &str, max_radius: usize) -> PyResult<Vec<(usize, u8, String)>> {
     sci_form_core::compute_hose_codes(smiles, max_radius)
         .map(|codes| {
             codes
@@ -363,17 +397,17 @@ fn hose_codes(smiles: &str, max_radius: usize) -> PyResult<Vec<(usize, u8, Strin
                 .map(|c| (c.atom_index, c.element, c.full_code.clone()))
                 .collect()
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(nmr_shifts, m)?)?;
-    m.add_function(wrap_pyfunction!(nmr_shifts_for_nucleus, m)?)?;
-    m.add_function(wrap_pyfunction!(giao_nmr, m)?)?;
-    m.add_function(wrap_pyfunction!(nmr_couplings, m)?)?;
+    m.add_function(wrap_pyfunction!(predict_nmr_shifts, m)?)?;
+    m.add_function(wrap_pyfunction!(predict_nmr_shifts_for_nucleus, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_giao_nmr, m)?)?;
+    m.add_function(wrap_pyfunction!(predict_nmr_couplings, m)?)?;
     m.add_function(wrap_pyfunction!(compute_ensemble_j_couplings, m)?)?;
-    m.add_function(wrap_pyfunction!(nmr_spectrum, m)?)?;
-    m.add_function(wrap_pyfunction!(hose_codes, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_nmr_spectrum, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_hose_codes, m)?)?;
     m.add_class::<ChemicalShiftPy>()?;
     m.add_class::<NucleusShiftSeriesPy>()?;
     m.add_class::<NmrShiftResultPy>()?;

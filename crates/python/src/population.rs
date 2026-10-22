@@ -3,7 +3,7 @@
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "PopulationResult")]
 #[derive(Clone)]
 pub(crate) struct PopulationResultPy {
     #[pyo3(get)]
@@ -37,7 +37,7 @@ impl PopulationResultPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "BondOrderResult")]
 #[derive(Clone)]
 pub(crate) struct BondOrderResultPy {
     #[pyo3(get)]
@@ -66,7 +66,7 @@ impl BondOrderResultPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "FrontierDescriptors")]
 #[derive(Clone)]
 pub(crate) struct FrontierDescriptorsPy {
     #[pyo3(get)]
@@ -95,7 +95,7 @@ impl FrontierDescriptorsPy {
 }
 
 #[pyfunction]
-fn population(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<PopulationResultPy> {
+fn compute_population(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<PopulationResultPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_population(&elements, &positions)
         .map(|r| PopulationResultPy {
@@ -110,11 +110,11 @@ fn population(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<PopulationResultP
             gap: r.gap,
             warnings: r.warnings,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn bond_orders(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<BondOrderResultPy> {
+fn compute_bond_orders(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<BondOrderResultPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_bond_orders(&elements, &positions)
         .map(|r| BondOrderResultPy {
@@ -126,11 +126,11 @@ fn bond_orders(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<BondOrderResultP
             mayer_valence: r.mayer_valence,
             num_atoms: r.num_atoms,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn frontier_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FrontierDescriptorsPy> {
+fn compute_frontier_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FrontierDescriptorsPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_frontier_descriptors(&elements, &positions)
         .map(|r| FrontierDescriptorsPy {
@@ -142,13 +142,13 @@ fn frontier_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Frontie
             gap: r.gap,
             num_atoms: r.num_atoms,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(population, m)?)?;
-    m.add_function(wrap_pyfunction!(bond_orders, m)?)?;
-    m.add_function(wrap_pyfunction!(frontier_descriptors, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_population, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_bond_orders, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_frontier_descriptors, m)?)?;
     m.add_class::<PopulationResultPy>()?;
     m.add_class::<BondOrderResultPy>()?;
     m.add_class::<FrontierDescriptorsPy>()?;

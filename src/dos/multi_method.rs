@@ -114,7 +114,7 @@ pub fn compute_dos_multimethod(
     };
 
     // Compute DOS with Gaussian broadening
-    let dos = compute_dos(&orbital_energies, sigma, e_min, e_max, n_points);
+    let dos = compute_dos(&orbital_energies, sigma, e_min, e_max, n_points)?;
 
     Ok(MultiMethodDosResult {
         energies: dos.energies,

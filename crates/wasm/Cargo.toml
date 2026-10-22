@@ -2,10 +2,29 @@
 name = "sci-form-wasm"
 version = "0.15.2"
 edition = "2021"
+# MSRV — same floor as the core crate (see the root Cargo.toml).
+# NOTE: the `experimental-gpu` feature pulls in wgpu 29, whose own MSRV is
+# 1.87; the crate without that feature builds on 1.82.
+rust-version = "1.87"
 description = "WASM/TypeScript bindings for high-performance 3D molecular conformer generation"
 license = "MIT"
 repository = "https://github.com/jigonzalez930209/sci-form"
+homepage = "https://sci-form.dev"
+documentation = "https://docs.rs/sci-form-wasm"
 readme = "../../README.md"
+keywords = ["chemistry", "conformer", "wasm", "webassembly", "molecule"]
+categories = ["science", "api-bindings", "wasm"]
+# Allow-list: the npm package is assembled from these sources by
+# `crates/wasm/build.sh`; the build outputs (pkg/, pkg-node/) are generated
+# and must never be committed into the crate.
+include = [
+    "src/**",
+    "js/**",
+    "ts/**",
+    "Cargo.toml",
+    "build.sh",
+    "README.md",
+]
 
 [lib]
 crate-type = ["cdylib"]

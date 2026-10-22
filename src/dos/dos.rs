@@ -25,20 +25,51 @@ pub struct DosResult {
     pub sigma: f64,
 }
 
+/// Validate the DOS grid parameters.
+///
+/// A `n_points` of `0` or `1` used to underflow the `n_points - 1` step
+/// denominator and produce an empty / degenerate curve, and a `sigma` of `0`
+/// produced `inf`/`NaN` intensities.  Both are rejected now.
+fn validate_dos_params(sigma: f64, e_min: f64, e_max: f64, n_points: usize) -> Result<(), String> {
+    if n_points < 2 {
+        return Err(format!("n_points must be >= 2 (got {})", n_points));
+    }
+    if !sigma.is_finite() || sigma <= 0.0 {
+        return Err(format!(
+            "sigma must be a finite positive number (got {})",
+            sigma
+        ));
+    }
+    if !e_min.is_finite() || !e_max.is_finite() {
+        return Err(format!(
+            "energy window must be finite (got e_min={}, e_max={})",
+            e_min, e_max
+        ));
+    }
+    if e_max < e_min {
+        return Err(format!(
+            "e_max ({}) must not be smaller than e_min ({})",
+            e_max, e_min
+        ));
+    }
+    Ok(())
+}
+
 /// Compute total density of states from EHT orbital energies.
 ///
 /// `orbital_energies`: eigenvalues from EHT (eV).
 /// `sigma`: Gaussian smearing width (eV).
 /// `e_min`, `e_max`: energy window.
-/// `n_points`: grid resolution.
+/// `n_points`: grid resolution (must be >= 2).
 pub fn compute_dos(
     orbital_energies: &[f64],
     sigma: f64,
     e_min: f64,
     e_max: f64,
     n_points: usize,
-) -> DosResult {
-    let step = (e_max - e_min) / (n_points - 1).max(1) as f64;
+) -> Result<DosResult, String> {
+    validate_dos_params(sigma, e_min, e_max, n_points)?;
+    let step = (e_max - e_min) / n_points.saturating_sub(1).max(1) as f64;
     let energies: Vec<f64> = (0..n_points).map(|i| e_min + i as f64 * step).collect();
 
     let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
@@ -54,12 +85,12 @@ pub fn compute_dos(
         })
         .collect();
 
-    DosResult {
+    Ok(DosResult {
         energies,
         total_dos,
         pdos: Vec::new(),
         sigma,
-    }
+    })
 }
 
 /// Compute total DOS using rayon over the energy grid.
@@ -70,10 +101,11 @@ pub fn compute_dos_parallel(
     e_min: f64,
     e_max: f64,
     n_points: usize,
-) -> DosResult {
+) -> Result<DosResult, String> {
     use rayon::prelude::*;
 
-    let step = (e_max - e_min) / (n_points - 1).max(1) as f64;
+    validate_dos_params(sigma, e_min, e_max, n_points)?;
+    let step = (e_max - e_min) / n_points.saturating_sub(1).max(1) as f64;
     let energies: Vec<f64> = (0..n_points).map(|i| e_min + i as f64 * step).collect();
 
     let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
@@ -89,12 +121,12 @@ pub fn compute_dos_parallel(
         })
         .collect();
 
-    DosResult {
+    Ok(DosResult {
         energies,
         total_dos,
         pdos: Vec::new(),
         sigma,
-    }
+    })
 }
 
 /// Compute atom-projected DOS from EHT results.
@@ -106,7 +138,7 @@ pub fn compute_dos_parallel(
 /// `n_electrons`: number of electrons.
 /// `sigma`: Gaussian smearing width (eV).
 /// `e_min`, `e_max`: energy window.
-/// `n_points`: grid resolution.
+/// `n_points`: grid resolution (must be >= 2).
 #[allow(clippy::too_many_arguments)]
 pub fn compute_pdos(
     elements: &[u8],
@@ -118,7 +150,9 @@ pub fn compute_pdos(
     e_min: f64,
     e_max: f64,
     n_points: usize,
-) -> DosResult {
+) -> Result<DosResult, String> {
+    validate_dos_params(sigma, e_min, e_max, n_points)?;
+    crate::validation::validate_flat_geometry(elements, positions)?;
     let n_atoms = elements.len();
     let pos_arr: Vec<[f64; 3]> = positions
         .chunks_exact(3)
@@ -158,7 +192,7 @@ pub fn compute_pdos(
         }
     }
 
-    let step = (e_max - e_min) / (n_points - 1).max(1) as f64;
+    let step = (e_max - e_min) / n_points.saturating_sub(1).max(1) as f64;
     let energies: Vec<f64> = (0..n_points).map(|i| e_min + i as f64 * step).collect();
 
     let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
@@ -189,12 +223,12 @@ pub fn compute_pdos(
 
     let _ = n_electrons; // used contextually; weight already normalized via Mulliken
 
-    DosResult {
+    Ok(DosResult {
         energies,
         total_dos,
         pdos,
         sigma,
-    }
+    })
 }
 
 /// Compute atom-projected DOS using rayon for orbital weights and atom-grid accumulation.
@@ -210,9 +244,11 @@ pub fn compute_pdos_parallel(
     e_min: f64,
     e_max: f64,
     n_points: usize,
-) -> DosResult {
+) -> Result<DosResult, String> {
     use rayon::prelude::*;
 
+    validate_dos_params(sigma, e_min, e_max, n_points)?;
+    crate::validation::validate_flat_geometry(elements, positions)?;
     let n_atoms = elements.len();
     let pos_arr: Vec<[f64; 3]> = positions
         .chunks_exact(3)
@@ -252,7 +288,7 @@ pub fn compute_pdos_parallel(
         })
         .collect();
 
-    let step = (e_max - e_min) / (n_points - 1).max(1) as f64;
+    let step = (e_max - e_min) / n_points.saturating_sub(1).max(1) as f64;
     let energies: Vec<f64> = (0..n_points).map(|i| e_min + i as f64 * step).collect();
 
     let norm = 1.0 / (sigma * (2.0 * std::f64::consts::PI).sqrt());
@@ -286,12 +322,12 @@ pub fn compute_pdos_parallel(
 
     let _ = n_electrons;
 
-    DosResult {
+    Ok(DosResult {
         energies,
         total_dos,
         pdos,
         sigma,
-    }
+    })
 }
 
 /// Compute mean-squared error between two DOS curves.
@@ -364,7 +400,7 @@ mod tests {
     #[test]
     fn test_dos_single_level() {
         // Single orbital at 0 eV → DOS should peak at 0.
-        let res = compute_dos(&[0.0], 0.1, -1.0, 1.0, 201);
+        let res = compute_dos(&[0.0], 0.1, -1.0, 1.0, 201).unwrap();
         assert_eq!(res.energies.len(), 201);
         assert_eq!(res.total_dos.len(), 201);
         // Peak should be at mid-point (index 100)
@@ -372,7 +408,7 @@ mod tests {
             .total_dos
             .iter()
             .enumerate()
-            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
             .unwrap()
             .0;
         assert_eq!(peak_idx, 100);
@@ -381,7 +417,7 @@ mod tests {
     #[test]
     fn test_dos_integral_approx_one() {
         // Integral of DOS for one level ≈ 1 (normalized Gaussian).
-        let res = compute_dos(&[0.0], 0.2, -3.0, 3.0, 1001);
+        let res = compute_dos(&[0.0], 0.2, -3.0, 3.0, 1001).unwrap();
         let de = (3.0 - (-3.0)) / 1000.0;
         let integral: f64 = res.total_dos.iter().sum::<f64>() * de;
         assert!((integral - 1.0).abs() < 0.01, "integral = {integral}");
@@ -389,7 +425,7 @@ mod tests {
 
     #[test]
     fn test_dos_two_peaks() {
-        let res = compute_dos(&[-5.0, 5.0], 0.3, -10.0, 10.0, 501);
+        let res = compute_dos(&[-5.0, 5.0], 0.3, -10.0, 10.0, 501).unwrap();
         // Should have two peaks, one near index ~125, one near ~375
         let mid = res.total_dos[250];
         let left_peak = res.total_dos[125];
@@ -415,7 +451,8 @@ mod tests {
             -20.0,
             5.0,
             201,
-        );
+        )
+        .unwrap();
         assert_eq!(res.pdos.len(), 2);
         // Both H atoms should have nearly equal PDOS at peaks.
         // The peak region is where DOS > 10% of max.
@@ -453,7 +490,8 @@ mod tests {
             -30.0,
             5.0,
             201,
-        );
+        )
+        .unwrap();
         for i in 0..201 {
             let pdos_sum: f64 = res.pdos.iter().map(|p| p[i]).sum();
             let diff = (pdos_sum - res.total_dos[i]).abs();
@@ -481,7 +519,7 @@ mod tests {
 
     #[test]
     fn test_export_dos_json_roundtrip() {
-        let res = compute_dos(&[0.0, -5.0], 0.3, -10.0, 5.0, 51);
+        let res = compute_dos(&[0.0, -5.0], 0.3, -10.0, 5.0, 51).unwrap();
         let json = export_dos_json(&res);
 
         // Should be valid JSON
@@ -508,7 +546,8 @@ mod tests {
             -20.0,
             5.0,
             51,
-        );
+        )
+        .unwrap();
         let json = export_dos_json(&res);
         let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
         assert!(parsed["pdos"].is_object());

@@ -1,4 +1,59 @@
 //! Output formatting and shared parse helpers.
+//!
+//! # Error message style
+//!
+//! Every user-facing error follows one template (blocker C-H9):
+//!
+//! ```text
+//! <What failed> '<actual value>'. Supported: 'a', 'b', 'c'.
+//! ```
+//!
+//! All literals are quoted, the offending input is always included and the
+//! valid values are always listed when there is a fixed set.  Rust internal
+//! names never leak into a CLI message.
+//!
+//! # Optional-argument convention
+//!
+//! An optional argument is **absent**, never an empty string, an empty JSON
+//! array or a magic number (blocker C-M5).  `--flag` omitted means "not
+//! given"; the engine default applies.
+
+/// Format the canonical "invalid value" error message.
+///
+/// `<what> '<value>'. Supported: 'a', 'b', 'c'.`
+pub fn invalid_value(what: &str, value: &str, supported: &[&str]) -> String {
+    if supported.is_empty() {
+        return format!("Invalid {what} '{value}'.");
+    }
+    let list = supported
+        .iter()
+        .map(|s| format!("'{s}'"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("Invalid {what} '{value}'. Supported: {list}.")
+}
+
+/// Truncate a long string for inclusion in an error message.
+pub fn truncate(value: &str, max_chars: usize) -> String {
+    let trimmed = value.trim();
+    if trimmed.chars().count() <= max_chars {
+        return trimmed.to_string();
+    }
+    let head: String = trimmed.chars().take(max_chars).collect();
+    format!("{head}…")
+}
+
+/// Format the canonical "malformed JSON argument" error message.
+pub fn bad_json(what: &str, value: &str, err: &serde_json::Error) -> String {
+    let fragment = truncate(value, 80);
+    format!("Invalid {what} JSON '{fragment}'. ({err})")
+}
+
+/// Print an error message to stderr and exit with a non-zero status.
+pub fn fail(message: impl AsRef<str>) -> ! {
+    eprintln!("{}", message.as_ref());
+    std::process::exit(1);
+}
 
 pub fn format_xyz(result: &sci_form::ConformerResult) -> String {
     if result.error.is_some() || result.coords.is_empty() {
@@ -82,12 +137,10 @@ pub fn element_symbol(atomic_num: u8) -> &'static str {
 /// Parse JSON elements + coords, exit on error.
 pub fn parse_elems_coords(elements: &str, coords: &str) -> (Vec<u8>, Vec<f64>, Vec<[f64; 3]>) {
     let elems: Vec<u8> = serde_json::from_str(elements).unwrap_or_else(|e| {
-        eprintln!("Bad elements JSON: {}", e);
-        std::process::exit(1);
+        fail(bad_json("'elements'", elements, &e));
     });
     let flat: Vec<f64> = serde_json::from_str(coords).unwrap_or_else(|e| {
-        eprintln!("Bad coords JSON: {}", e);
-        std::process::exit(1);
+        fail(bad_json("'coords'", coords, &e));
     });
     let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     (elems, flat, positions)
@@ -136,14 +189,59 @@ pub fn gasteiger_charges_from_geometry(
     Ok(result.charges)
 }
 
-/// Parse an optional JSON array of `[i, j]` bond pairs (empty string = none).
-pub fn parse_bond_list(bonds: &str) -> Option<Vec<(usize, usize)>> {
-    if bonds.is_empty() || bonds == "[]" {
-        None
-    } else {
-        Some(serde_json::from_str(bonds).unwrap_or_else(|e| {
-            eprintln!("Bad bonds JSON: {}", e);
-            std::process::exit(1);
-        }))
+/// Parse an optional JSON array of `[i, j]` bond pairs.
+///
+/// `None` means "not given": the bonds are perceived from the geometry.
+pub fn parse_bond_list(bonds: Option<&str>) -> Option<Vec<(usize, usize)>> {
+    let raw = bonds?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
     }
+    Some(serde_json::from_str(trimmed).unwrap_or_else(|e| {
+        fail(bad_json("'bonds'", trimmed, &e));
+    }))
+}
+
+/// Parse an optional JSON array of numbers.
+///
+/// `None` means "not given".
+pub fn parse_f64_list(values: Option<&str>, what: &str) -> Option<Vec<f64>> {
+    let raw = values?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(serde_json::from_str(trimmed).unwrap_or_else(|e| {
+        fail(bad_json(what, trimmed, &e));
+    }))
+}
+
+/// Parse an optional JSON array of integers.
+///
+/// `None` means "not given".
+pub fn parse_usize_list(values: Option<&str>, what: &str) -> Option<Vec<usize>> {
+    let raw = values?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(serde_json::from_str(trimmed).unwrap_or_else(|e| {
+        fail(bad_json(what, trimmed, &e));
+    }))
+}
+
+/// Parse an optional JSON array of strings.
+///
+/// `None` means "not given": every available backend is used.
+#[allow(dead_code)]
+pub fn parse_string_list(values: Option<&str>, what: &str) -> Option<Vec<String>> {
+    let raw = values?;
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(serde_json::from_str(trimmed).unwrap_or_else(|e| {
+        fail(bad_json(what, trimmed, &e));
+    }))
 }

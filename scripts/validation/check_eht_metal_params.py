@@ -21,12 +21,20 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 PARAMS = REPO / "src" / "eht" / "params.rs"
-DEFAULT_REF = Path("/tmp/opencode/yaehmop/tightbind/eht_parms.dat")
+# The YAeHMOP table is not vendored: point SCIFORM_REF_DATA at the
+# distribution, or pass --ref PATH.
+DEFAULT_REF = (
+    Path(os.environ.get("SCIFORM_REF_DATA", REPO / ".cache" / "refdata"))
+    / "yaehmop"
+    / "tightbind"
+    / "eht_parms.dat"
+)
 
 TOL_VSIP = 0.02  # eV
 TOL_ZETA = 0.02

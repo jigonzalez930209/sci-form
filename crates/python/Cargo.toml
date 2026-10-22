@@ -2,7 +2,24 @@
 name = "sci-form-python"
 version = "0.15.2"
 edition = "2021"
+# MSRV — same floor as the core crate (see the root Cargo.toml).
+rust-version = "1.87"
 description = "Python bindings for sci-form 3D conformer generation"
+license = "MIT"
+repository = "https://github.com/jigonzalez930209/sci-form"
+homepage = "https://sci-form.dev"
+documentation = "https://docs.rs/sci-form-python"
+readme = "../../README.md"
+keywords = ["chemistry", "conformer", "python", "molecule", "etkdg"]
+categories = ["science", "api-bindings"]
+# Allow-list: the wheel is built from these sources; nothing else belongs in
+# the sdist.
+include = [
+    "src/**",
+    "Cargo.toml",
+    "README.md",
+    "pyproject.toml",
+]
 
 [lib]
 name = "sci_form"

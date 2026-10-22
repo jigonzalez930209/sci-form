@@ -834,7 +834,8 @@ fn f69_powder_xrd_matches_pymatgen() {
         let elements: Vec<u8> = case.elements.iter().map(|s| atomic_number(s)).collect();
         assert_eq!(elements.len(), case.frac_coords.len());
 
-        let ours = simulate_powder_xrd(&cell, &elements, &case.frac_coords, 90.0);
+        let ours = simulate_powder_xrd(&cell, &elements, &case.frac_coords, 90.0)
+            .expect("the powder XRD simulation must succeed");
         assert_eq!(
             ours.two_theta.len(),
             case.two_theta.len(),

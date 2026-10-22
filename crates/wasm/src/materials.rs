@@ -1,7 +1,7 @@
 //! Materials assembly WASM bindings: unit cell, framework, space groups,
 //! periodic molecules, hapticity and framework optimization.
 
-use crate::helpers::{json_error, perceive_bonds, serialize_or_error};
+use crate::helpers::{bad_json, json_error, perceive_bonds, serialize_or_error, smiles_error};
 use wasm_bindgen::prelude::*;
 
 /// Create a unit cell and return parameters + volume as JSON.
@@ -37,13 +37,25 @@ pub fn assemble_framework(
         "tetrahedral" => sci_form::materials::CoordinationGeometry::Tetrahedral,
         "square_planar" => sci_form::materials::CoordinationGeometry::SquarePlanar,
         "octahedral" => sci_form::materials::CoordinationGeometry::Octahedral,
-        _ => return crate::helpers::json_error(&format!("unknown geometry: {}", geometry)),
+        _ => {
+            return crate::helpers::json_error(&crate::helpers::invalid_value(
+                "'geometry'",
+                geometry,
+                &["linear", "trigonal", "tetrahedral", "square_planar", "octahedral"],
+            ))
+        }
     };
     let topo = match topology {
         "pcu" => sci_form::materials::Topology::pcu(),
         "dia" => sci_form::materials::Topology::dia(),
         "sql" => sci_form::materials::Topology::sql(),
-        _ => return crate::helpers::json_error(&format!("unknown topology: {}", topology)),
+        _ => {
+            return crate::helpers::json_error(&crate::helpers::invalid_value(
+                "'topology'",
+                topology,
+                &["pcu", "dia", "sql"],
+            ))
+        }
     };
     let node = sci_form::materials::Sbu::metal_node(metal, 0.0, geom);
     let linker = sci_form::materials::Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
@@ -60,7 +72,11 @@ pub fn assemble_framework(
 pub fn space_group_by_number(number: u16) -> String {
     match sci_form::materials::space_groups::space_group_by_number(number) {
         Some(sg) => serialize_or_error(&sg),
-        None => json_error(&format!("unknown space group number {number}")),
+        None => json_error(&crate::helpers::invalid_value(
+            "'number'",
+            &number.to_string(),
+            &["1-230"],
+        )),
     }
 }
 
@@ -69,7 +85,11 @@ pub fn space_group_by_number(number: u16) -> String {
 pub fn space_group_by_symbol(symbol: &str) -> String {
     match sci_form::materials::space_groups::space_group_by_symbol(symbol) {
         Some(sg) => serialize_or_error(&sg),
-        None => json_error(&format!("unknown space group symbol '{symbol}'")),
+        None => json_error(&crate::helpers::invalid_value(
+            "'symbol'",
+            symbol,
+            &["a Hermann-Mauguin symbol, e.g. 'P 21/c'"],
+        )),
     }
 }
 
@@ -96,15 +116,15 @@ pub fn build_periodic_molecule(
 ) -> String {
     let elements: Vec<u8> = match serde_json::from_str(elements_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad elements: {e}")),
+        Err(e) => return json_error(&bad_json("'elements'", elements_json, &e)),
     };
     let frac_coords: Vec<[f64; 3]> = match serde_json::from_str(frac_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad fractional coords: {e}")),
+        Err(e) => return json_error(&bad_json("'fractional coords'", frac_coords_json, &e)),
     };
     let cell: [f64; 6] = match serde_json::from_str(cell_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad cell: {e}")),
+        Err(e) => return json_error(&bad_json("'cell'", cell_json, &e)),
     };
     let unit = sci_form::create_unit_cell(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5]);
     let tolerance = if bond_tolerance > 0.0 {
@@ -132,7 +152,7 @@ pub fn detect_hapticity(elements_json: &str, coords_flat_json: &str, bonds_json:
     } else {
         match serde_json::from_str::<Vec<(usize, usize)>>(bonds_json) {
             Ok(v) => v,
-            Err(e) => return json_error(&format!("bad bonds: {e}")),
+            Err(e) => return json_error(&bad_json("'bonds'", bonds_json, &e)),
         }
     };
     serialize_or_error(&sci_form::periodic::detect_hapticity(
@@ -161,12 +181,12 @@ pub fn optimize_framework(
 ) -> String {
     let mol = match sci_form::parse(smiles) {
         Ok(m) => m,
-        Err(e) => return json_error(&e),
+        Err(e) => return json_error(&smiles_error(&e, smiles)),
     };
     let n = mol.graph.node_count();
     let flat: Vec<f64> = match serde_json::from_str(coords_flat_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad coords: {e}")),
+        Err(e) => return json_error(&bad_json("'coords'", coords_flat_json, &e)),
     };
     if flat.len() != n * 3 {
         return json_error(&format!("coords length {} != 3 * atoms {}", flat.len(), n));
@@ -181,8 +201,10 @@ pub fn optimize_framework(
         "bfgs" => sci_form::materials::geometry_opt::OptMethod::Bfgs,
         "steepest_descent" | "sd" => sci_form::materials::geometry_opt::OptMethod::SteepestDescent,
         other => {
-            return json_error(&format!(
-                "unknown optimization method '{other}' (expected bfgs or steepest_descent)"
+            return json_error(&crate::helpers::invalid_value(
+                "'method'",
+                other,
+                &["bfgs", "steepest_descent", "sd"],
             ))
         }
     };
@@ -192,7 +214,7 @@ pub fn optimize_framework(
     } else {
         match serde_json::from_str::<Vec<usize>>(fixed_atoms_json) {
             Ok(v) => v,
-            Err(e) => return json_error(&format!("bad fixed atoms: {e}")),
+            Err(e) => return json_error(&bad_json("'fixed atoms'", fixed_atoms_json, &e)),
         }
     };
 
@@ -201,7 +223,7 @@ pub fn optimize_framework(
     } else {
         let cell: [f64; 6] = match serde_json::from_str(cell_json) {
             Ok(v) => v,
-            Err(e) => return json_error(&format!("bad cell: {e}")),
+            Err(e) => return json_error(&bad_json("'cell'", cell_json, &e)),
         };
         Some(
             sci_form::create_unit_cell(cell[0], cell[1], cell[2], cell[3], cell[4], cell[5])

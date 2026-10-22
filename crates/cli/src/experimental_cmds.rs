@@ -8,24 +8,25 @@
 use crate::format::parse_elems_coords;
 
 fn parse_flat_coords_json(coords: &str) -> Vec<f64> {
-    serde_json::from_str(coords).unwrap_or_else(|e| {
-        eprintln!("Bad coords JSON: {}", e);
-        std::process::exit(1);
-    })
+    crate::format::parse_f64_list(Some(coords), "'coords'").unwrap_or_default()
 }
 
+/// Parse the `--methods` argument.
+///
+/// `None` means "not given": every available backend is used (blocker C-M5).
 #[cfg(feature = "alpha-gsm")]
-fn parse_gsm_methods_json(methods: &str) -> Vec<sci_form::alpha::gsm::GsmEnergyBackend> {
-    let raw_methods: Vec<String> = serde_json::from_str(methods).unwrap_or_else(|e| {
-        eprintln!("Bad methods JSON: {}", e);
-        std::process::exit(1);
-    });
+fn parse_gsm_methods_json(
+    methods: Option<&str>,
+) -> Vec<sci_form::alpha::gsm::GsmEnergyBackend> {
+    let raw_methods: Vec<String> = match crate::format::parse_string_list(methods, "'methods'") {
+        Some(m) => m,
+        None => Vec::new(),
+    };
     raw_methods
         .into_iter()
         .map(|method| {
             method.parse().unwrap_or_else(|e| {
-                eprintln!("{}", e);
-                std::process::exit(1);
+                crate::format::fail(format!("{e}"));
             })
         })
         .collect()
@@ -51,15 +52,14 @@ pub fn cmd_eeq(elements: &str, coords: &str, total_charge: f64) {
 
 /// ALPB implicit solvation.
 #[cfg(feature = "experimental-alpb")]
-pub fn cmd_alpb(elements: &str, coords: &str, charges_str: &str, dielectric: f64) {
+pub fn cmd_alpb(elements: &str, coords: &str, charges_str: Option<&str>, dielectric: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let charges: Vec<f64> = if charges_str.is_empty() {
-        vec![0.0; elems.len()]
-    } else {
-        serde_json::from_str(charges_str).unwrap_or_else(|e| {
-            eprintln!("bad charges JSON: {}", e);
-            std::process::exit(1);
-        })
+    // `--charges` omitted means "neutral charges" (blocker C-M5).
+    let charges: Vec<f64> = match charges_str {
+        None => vec![0.0; elems.len()],
+        Some(raw) => serde_json::from_str(raw).unwrap_or_else(|e| {
+            crate::format::fail(crate::format::bad_json("'charges'", raw, &e));
+        }),
     };
     let config = sci_form::solvation_alpb::AlpbConfig {
         solvent_dielectric: dielectric,
@@ -148,7 +148,11 @@ pub fn cmd_edl_profile(
         "gouy-chapman" => EdlModel::GouyChapman,
         "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
         _ => {
-            eprintln!("Unknown EDL model: {}", model);
+            crate::format::fail(crate::format::invalid_value(
+                "'model'",
+                model,
+                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
+            ));
             std::process::exit(1);
         }
     };
@@ -201,7 +205,11 @@ pub fn cmd_edl_capacitance_scan(
         "gouy-chapman" => EdlModel::GouyChapman,
         "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
         _ => {
-            eprintln!("Unknown EDL model: {}", model);
+            crate::format::fail(crate::format::invalid_value(
+                "'model'",
+                model,
+                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
+            ));
             std::process::exit(1);
         }
     };
@@ -273,7 +281,7 @@ pub fn cmd_gsm_backend_plan(smiles: &str) {
 
 /// Compare GSM backends on the same geometry.
 #[cfg(feature = "alpha-gsm")]
-pub fn cmd_gsm_compare_backends(smiles: &str, coords: &str, methods: &str) {
+pub fn cmd_gsm_compare_backends(smiles: &str, coords: &str, methods: Option<&str>) {
     let flat = parse_flat_coords_json(coords);
     let parsed_methods = parse_gsm_methods_json(methods);
     match sci_form::alpha::gsm::compare_gsm_backends(smiles, &flat, &parsed_methods) {
@@ -361,7 +369,11 @@ pub fn cmd_kmesh(grid: [usize; 3], centering: &str) {
         "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
         "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
         _ => {
-            eprintln!("Unknown centering: {}", centering);
+            crate::format::fail(crate::format::invalid_value(
+                "'centering'",
+                centering,
+                &["monkhorst-pack", "mp", "gamma", "gamma-centered"],
+            ));
             std::process::exit(1);
         }
     };
@@ -564,7 +576,11 @@ pub fn cmd_capacitance_chart(
         "gouy-chapman" => EdlModel::GouyChapman,
         "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
         _ => {
-            eprintln!("Unknown EDL model: {}", model);
+            crate::format::fail(crate::format::invalid_value(
+                "'model'",
+                model,
+                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
+            ));
             std::process::exit(1);
         }
     };
@@ -760,7 +776,7 @@ pub fn cmd_band_structure_chart(
     use sci_form::alpha::render_bridge::band_structure_chart;
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let lattice_values: Vec<f64> = serde_json::from_str(lattice).unwrap_or_else(|e| {
-        eprintln!("Bad lattice JSON: {}", e);
+        crate::format::fail(crate::format::bad_json("'lattice'", lattice, &e));
         std::process::exit(1);
     });
     if lattice_values.len() != 9 {
@@ -925,7 +941,11 @@ fn parse_centering(centering: &str) -> sci_form::kmesh::KMeshCentering {
         "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
         "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
         _ => {
-            eprintln!("Unknown centering: {centering}");
+            crate::format::fail(crate::format::invalid_value(
+                "'centering'",
+                centering,
+                &["monkhorst-pack", "mp", "gamma", "gamma-centered"],
+            ));
             std::process::exit(1);
         }
     }
@@ -1160,7 +1180,11 @@ fn gsm_path(
     let backend: GsmEnergyBackend = match method.parse() {
         Ok(backend) => backend,
         Err(e) => {
-            eprintln!("Unknown GSM backend '{method}': {e}");
+            crate::format::fail(crate::format::invalid_value(
+                "'method'",
+                method,
+                &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
+            ));
             std::process::exit(1);
         }
     };
@@ -1425,16 +1449,16 @@ pub fn cmd_build_bloch_hamiltonian(blocks: &str, k_x: f64, k_y: f64, k_z: f64) {
 #[cfg(feature = "alpha-periodic-linear")]
 pub fn cmd_assemble_periodic_operators(
     hamiltonian_blocks: &str,
-    overlap_blocks: &str,
+    overlap_blocks: Option<&str>,
     grid: [usize; 3],
     centering: &str,
 ) {
     use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
     let hamiltonian_blocks = parse_blocks(hamiltonian_blocks);
-    let overlap_blocks = if overlap_blocks.trim().is_empty() {
-        Vec::new()
-    } else {
-        parse_blocks(overlap_blocks)
+    // `--overlap-blocks` omitted means "no overlap operator" (blocker C-M5).
+    let overlap_blocks = match overlap_blocks {
+        None => Vec::new(),
+        Some(raw) => parse_blocks(raw),
     };
     let centering = parse_centering(centering);
     let mesh = match monkhorst_pack_mesh(&KMeshConfig { grid, centering }) {

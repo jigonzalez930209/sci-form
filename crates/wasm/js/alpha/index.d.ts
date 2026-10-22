@@ -216,9 +216,16 @@ export declare function alpha_sdr_embed(
 
 /** Live interactive molecular dynamics simulation handle. */
 export declare class LiveSimulation {
+  /** Create a simulation from a SMILES, flat coords and a backend name. */
   constructor(smiles: string, coords_flat: string, backend: string);
+  /** Advance the simulation by `n_steps` with a `dt_fs` femtosecond step. */
   step(n_steps: number, dt_fs: number): void;
+  /** Apply a Berendsen thermostat coupling towards `target_temp` K. */
   apply_thermostat(target_temp: number, tau_fs: number, dt_fs: number): void;
+  /**
+   * Apply a harmonic steering force pulling `atom_index` towards
+   * `(tx, ty, tz)` with a force constant of `spring_k`.
+   */
   apply_steering_force(
     atom_index: number,
     tx: number,
@@ -226,15 +233,32 @@ export declare class LiveSimulation {
     tz: number,
     spring_k: number
   ): void;
+  /** Clear the accumulated steering forces (call before the next IMD frame). */
   clear_steering(): void;
+  /** Number of atoms in the simulation. */
   num_atoms(): number;
+  /** Current flat positions as a JSON array `[x0, y0, z0, ...]`. */
   positions_json(): string;
+  /**
+   * Pointer to the flat position buffer inside WASM memory; build a
+   * `Float64Array` view of length `num_atoms() * 3` over it.
+   */
   positions_ptr(): number;
+  /** Current kinetic temperature in Kelvin. */
   temperature(): number;
+  /** Current potential energy (from the last force computation). */
   potential_energy(): number;
+  /** Current kinetic energy. */
   kinetic_energy(): number;
+  /** Number of integration steps taken so far. */
   step_count(): number;
-  set_temperature(temperature: number, seed: number): void;
+  /**
+   * Reset the velocities from a Maxwell-Boltzmann distribution at
+   * `temperature` K.
+   *
+   * `seed` is a **64-bit** seed, so it is a JavaScript `BigInt` (e.g. `42n`).
+   */
+  set_temperature(temperature: number, seed: bigint): void;
 }
 
 // ── A9: Reaction dynamics (3D) ────────────────────────────────────────────

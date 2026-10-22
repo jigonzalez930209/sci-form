@@ -24,6 +24,8 @@ import argparse
 import re
 from pathlib import Path
 
+from refdata import skip
+
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "src" / "materials" / "topology_data.rs"
 
@@ -101,12 +103,23 @@ def parse_cgd(path: Path) -> dict:
     }
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--check", action="store_true")
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
     args = ap.parse_args()
 
-    topo_dir = topology_dir()
+    try:
+        topo_dir = topology_dir()
+    except ImportError as exc:
+        msg = f"the pormake package is not installed ({exc}); `pip install pormake`"
+        if args.check:
+            return skip(msg)
+        raise SystemExit(f"error: {msg}")
     nets = []
     for name in NETS:
         path = topo_dir / f"{name}.cgd"
@@ -115,14 +128,12 @@ def main() -> None:
             continue
         nets.append(parse_cgd(path))
 
-    if args.check:
-        for net in nets:
-            print(
-                f"{net['name']}: nodes={len(net['nodes'])} "
-                f"cn={[n['cn'] for n in net['nodes']]} "
-                f"edges={len(net['edges'])} edge_centres={net['n_edge_types']}"
-            )
-        return
+    for net in nets:
+        print(
+            f"{net['name']}: nodes={len(net['nodes'])} "
+            f"cn={[n['cn'] for n in net['nodes']]} "
+            f"edges={len(net['edges'])} edge_centres={net['n_edge_types']}"
+        )
 
     out = [
         "//! RCSR topology nets imported from pormake (generated).",
@@ -213,9 +224,22 @@ def main() -> None:
         out.append(f"        n_edge_types: {net['n_edge_types']},")
         out.append("    },")
     out.append("];")
-    OUT.write_text("\n".join(out) + "\n")
+    text = "\n".join(out) + "\n"
+    if args.check:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != text:
+            print(
+                f"{OUT.relative_to(REPO)} is out of date — "
+                f"run scripts/validation/gen_topologies.py"
+            )
+            return 1
+        print(f"{OUT.relative_to(REPO)} is up to date")
+        return 0
+
+    OUT.write_text(text)
     print(f"wrote {OUT} ({len(nets)} nets)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -14,9 +14,10 @@ pub fn compute_esp_grid_with_report(
     mulliken_charges: &[f64],
     config: EspGridConfig,
 ) -> (EspGrid, OrbitalGridReport) {
-    let ctx = GpuContext::best_available();
+    let ctx = GpuContext::shared();
+    let mut gpu_failure_reason: Option<String> = None;
     if ctx.is_gpu_available() {
-        match compute_esp_grid_gpu(&ctx, positions, mulliken_charges, config) {
+        match compute_esp_grid_gpu(ctx, positions, mulliken_charges, config) {
             Ok(grid) => {
                 let n_points = grid.dims[0] * grid.dims[1] * grid.dims[2];
                 return (
@@ -30,7 +31,10 @@ pub fn compute_esp_grid_with_report(
                     },
                 );
             }
-            Err(_err) => {}
+            Err(reason) => {
+                // Keep the reason so the fallback is not silent (blocker A-H2).
+                gpu_failure_reason = Some(reason);
+            }
         }
     }
 
@@ -54,10 +58,11 @@ pub fn compute_esp_grid_with_report(
             used_gpu: false,
             attempted_gpu: ctx.is_gpu_available(),
             n_points,
-            note: if ctx.is_gpu_available() {
-                "GPU available but ESP-grid dispatch failed; CPU fallback used".to_string()
-            } else {
-                "CPU ESP-grid evaluation (GPU not available)".to_string()
+            note: match gpu_failure_reason {
+                Some(reason) => format!(
+                    "GPU ESP-grid dispatch failed ({reason}); the CPU implementation was used."
+                ),
+                None => "CPU ESP-grid evaluation (GPU not available)".to_string(),
             },
         },
     )

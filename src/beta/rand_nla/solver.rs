@@ -150,7 +150,11 @@ fn solve_exact_with_info(
 fn sort_eigenpairs(energies: &DVector<f64>, c: &DMatrix<f64>) -> (DVector<f64>, DMatrix<f64>) {
     let n = energies.len();
     let mut indices: Vec<usize> = (0..n).collect();
-    indices.sort_by(|&a, &b| energies[a].partial_cmp(&energies[b]).unwrap());
+    indices.sort_by(|&a, &b| {
+        energies[a]
+            .partial_cmp(&energies[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let mut sorted_energies = DVector::zeros(n);
     let mut sorted_c = DMatrix::zeros(c.nrows(), n);

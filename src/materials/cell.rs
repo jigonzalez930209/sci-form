@@ -383,7 +383,14 @@ pub fn simulate_powder_xrd(
     elements: &[u8],
     frac_coords: &[[f64; 3]],
     two_theta_max: f64,
-) -> PowderXrdResult {
+) -> Result<PowderXrdResult, String> {
+    crate::validation::validate_geometry(elements, frac_coords)?;
+    if !two_theta_max.is_finite() || two_theta_max <= 0.0 {
+        return Err(format!(
+            "two_theta_max must be a finite positive number (got {})",
+            two_theta_max
+        ));
+    }
     let lambda = 1.54184; // Cu-Kα weighted average in Å (pymatgen convention)
 
     // Max h, k, l to consider
@@ -465,7 +472,7 @@ pub fn simulate_powder_xrd(
     }
 
     // Merge equivalent reflections (within 0.01° of 2θ)
-    reflections.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    reflections.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
     let mut merged_theta: Vec<f64> = Vec::new();
     let mut merged_intensity = Vec::new();
@@ -496,12 +503,12 @@ pub fn simulate_powder_xrd(
         *i = *i / max_i * 100.0;
     }
 
-    PowderXrdResult {
+    Ok(PowderXrdResult {
         two_theta: merged_theta,
         intensities: merged_intensity,
         miller_indices: merged_hkl,
         d_spacings: merged_d,
-    }
+    })
 }
 
 /// A symmetry operation (rotation + translation in fractional coords).

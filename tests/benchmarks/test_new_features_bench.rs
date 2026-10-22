@@ -109,7 +109,7 @@ fn test_bench_3d_descriptors() {
     let n_iters = 1000;
     for _ in 0..n_iters {
         for conf in &conformers {
-            let _ = sci_form::ml::compute_3d_descriptors(&conf.elements, &conf.coords);
+            let _ = sci_form::ml::compute_3d_descriptors(&conf.elements, &conf.coords).unwrap();
         }
     }
     let total_us = t0.elapsed().as_micros();
@@ -123,7 +123,9 @@ fn test_bench_3d_descriptors() {
     );
 
     // Validate one
-    let desc = sci_form::ml::compute_3d_descriptors(&conformers[0].elements, &conformers[0].coords);
+    let desc =
+        sci_form::ml::compute_3d_descriptors(&conformers[0].elements, &conformers[0].coords)
+            .unwrap();
     assert!(desc.radius_of_gyration > 0.0);
     assert!(desc.span > 0.0);
 }
@@ -229,12 +231,12 @@ fn test_bench_powder_xrd() {
     let t0 = Instant::now();
     let n_iters = 50;
     for _ in 0..n_iters {
-        let _ = simulate_powder_xrd(&cell, &elements, &frac_coords, 90.0);
+        let _ = simulate_powder_xrd(&cell, &elements, &frac_coords, 90.0).unwrap();
     }
     let per_ms = t0.elapsed().as_millis() as f64 / n_iters as f64;
     println!("Powder XRD (8 atoms, 90°): {:.2} ms/simulation", per_ms);
 
-    let xrd = simulate_powder_xrd(&cell, &elements, &frac_coords, 90.0);
+    let xrd = simulate_powder_xrd(&cell, &elements, &frac_coords, 90.0).unwrap();
     println!("  {} reflections", xrd.two_theta.len());
     assert!(!xrd.two_theta.is_empty());
 }

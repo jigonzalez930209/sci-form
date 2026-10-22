@@ -48,6 +48,26 @@ impl<'a> SmilesParser<'a> {
         self.pos += 1;
     }
 
+    /// Build a parse error that points at the current position.
+    ///
+    /// The message names the offending character and shows a short window of
+    /// the input, so the user can find the problem without counting
+    /// characters by hand.
+    fn error_here(&self, expected: &str) -> String {
+        let ch = self
+            .input
+            .get(self.pos)
+            .map(|c| (*c as char).to_string())
+            .unwrap_or_else(|| "end of input".to_string());
+        let start = self.pos.saturating_sub(8);
+        let end = (self.pos + 8).min(self.input.len());
+        let fragment: String = String::from_utf8_lossy(&self.input[start..end]).into_owned();
+        format!(
+            "Expected {expected} at position {} (found '{ch}') in \"{fragment}\"",
+            self.pos
+        )
+    }
+
     fn parse_chain(&mut self, mut prev_node: Option<NodeIndex>) -> Result<(), String> {
         let mut prev_bond_order = BondOrder::Single;
         let mut prev_bond_stereo = BondStereo::None;
@@ -71,7 +91,9 @@ impl<'a> SmilesParser<'a> {
         };
 
         while self.pos < self.input.len() {
-            let c = self.peek().unwrap();
+            let c = self
+                .peek()
+                .ok_or_else(|| "Unexpected end of SMILES input".to_string())?;
             match c {
                 b'(' => {
                     self.advance();
@@ -79,7 +101,7 @@ impl<'a> SmilesParser<'a> {
                     if self.peek() == Some(b')') {
                         self.advance();
                     } else {
-                        return Err("Expected ')'".to_string());
+                        return Err(self.error_here("')'"));
                     }
                 }
                 b')' => {
@@ -241,7 +263,9 @@ impl<'a> SmilesParser<'a> {
 
     fn parse_organic_subset(&mut self) -> Result<NodeIndex, String> {
         let mut elem_str = String::new();
-        let c = self.peek().unwrap();
+        let c = self
+            .peek()
+            .ok_or_else(|| "Unexpected end of SMILES input".to_string())?;
         self.advance();
         elem_str.push(c as char);
         if let Some(nc) = self.peek() {
@@ -256,7 +280,12 @@ impl<'a> SmilesParser<'a> {
 
         // Handle aromatic
         let mut aromatic = false;
-        if elem_str.chars().next().unwrap().is_lowercase() {
+        if elem_str
+            .chars()
+            .next()
+            .ok_or_else(|| "empty atom: expected an element symbol".to_string())?
+            .is_lowercase()
+        {
             aromatic = true;
             elem_str = elem_str.to_uppercase();
         }
@@ -329,7 +358,14 @@ impl<'a> SmilesParser<'a> {
             }
         }
 
-        if elem_str.chars().next().unwrap().is_lowercase() {
+        if elem_str
+            .chars()
+            .next()
+            .ok_or_else(|| {
+                "empty bracket atom: expected an element symbol between '[' and ']'".to_string()
+            })?
+            .is_lowercase()
+        {
             aromatic = true;
             elem_str = elem_str.to_uppercase();
         }
@@ -497,7 +533,7 @@ impl<'a> SmilesParser<'a> {
         if self.peek() == Some(b']') {
             self.advance();
         } else {
-            return Err("Expected ']'".to_string());
+            return Err(self.error_here("']'"));
         }
 
         let atom = Atom {

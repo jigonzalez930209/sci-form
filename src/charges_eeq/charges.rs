@@ -256,6 +256,11 @@ pub fn get_eeq_params(z: u8) -> EeqParams {
 pub fn fractional_coordination(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
     let n = elements.len();
     let mut cn = vec![0.0; n];
+    if positions.len() < n {
+        // A length mismatch used to index out of bounds; there is no
+        // meaningful coordination number without a position per atom.
+        return cn;
+    }
 
     for i in 0..n {
         let pi = get_eeq_params(elements[i]);
@@ -322,6 +327,17 @@ pub fn compute_eeq_charges(
     let n = elements.len();
 
     if n == 0 {
+        return EeqChargeResult {
+            charges: vec![],
+            coordination_numbers: vec![],
+            total_charge: config.total_charge,
+        };
+    }
+
+    if positions.len() != n {
+        // A length mismatch used to index out of bounds.  Report an empty
+        // result (the caller can detect it: 0 charges for n > 0 atoms)
+        // instead of panicking.
         return EeqChargeResult {
             charges: vec![],
             coordination_numbers: vec![],

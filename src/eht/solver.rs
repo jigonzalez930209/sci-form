@@ -73,7 +73,11 @@ pub fn solve_generalized_eigenproblem(
 
     // Sort by energy (ascending)
     let mut indices: Vec<usize> = (0..n).collect();
-    indices.sort_by(|&a, &b| energies[a].partial_cmp(&energies[b]).unwrap());
+    indices.sort_by(|&a, &b| {
+        energies[a]
+            .partial_cmp(&energies[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let mut sorted_energies = DVector::zeros(n);
     let mut sorted_c = DMatrix::zeros(n, n);
@@ -133,9 +137,7 @@ pub fn solve_eht(
     use super::hamiltonian::build_hamiltonian;
     use super::overlap::build_overlap_matrix;
 
-    if elements.len() != positions.len() {
-        return Err("Element and position arrays must have equal length".to_string());
-    }
+    crate::validation::validate_geometry(elements, positions)?;
 
     let support = analyze_eht_support(elements);
     if !support.unsupported_elements.is_empty() {

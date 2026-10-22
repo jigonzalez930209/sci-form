@@ -22,8 +22,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from pathlib import Path
+
+from refdata import ref_data_dir, skip
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "src" / "xtb" / "d4_data.rs"
@@ -106,13 +109,44 @@ def parse_fortran_array(path: Path, name: str) -> list[float]:
     return vals
 
 
-def main() -> None:
+def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source-dir", type=Path, default=Path("/tmp/opencode/dftd4-430"))
-    ap.add_argument("--check", action="store_true", help="verify against the committed table and exit")
+    ap.add_argument(
+        "--source-dir",
+        type=Path,
+        default=ref_data_dir() / "dftd4-430",
+        help="dftd4 v4.3.0 source tree (default: $SCIFORM_REF_DATA/dftd4-430)",
+    )
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
     args = ap.parse_args()
 
     src = args.source_dir
+    missing = [
+        p
+        for p in (
+            src / "reference.inc",
+            src / "r4r2.f90",
+            src / "hardness.f90",
+            src / "zeff.f90",
+            src / "covrad.f90",
+            src / "en.f90",
+        )
+        if not p.exists()
+    ]
+    if missing:
+        msg = (
+            f"the dftd4 sources are not available ({', '.join(str(p) for p in missing)}); "
+            f"set SCIFORM_REF_DATA or pass --source-dir"
+        )
+        if args.check:
+            return skip(msg)
+        raise SystemExit(f"error: {msg}")
+
     refs = parse_reference_inc(src / "reference.inc")
     r4r2_raw = parse_fortran_array(src / "r4r2.f90", "r4_over_r2")
     hardness = parse_fortran_array(src / "hardness.f90", "chemical_hardness")
@@ -155,10 +189,6 @@ def main() -> None:
         for z in range(86):
             if prev[z] != refs["refn"].get(z + 1, 0):
                 print(f"[warn] REFN[Z={z + 1}]: committed {prev[z]} vs source {refs['refn'].get(z + 1)}")
-    if args.check:
-        print("check done")
-        return
-
     # --- emit ---------------------------------------------------------------
     def flat3(table: dict, default: float = 0.0) -> list[float]:
         out = []
@@ -270,9 +300,21 @@ pub const NFREQ: usize = {NFREQ};
     out += "\n/// Secondary reference polarizabilities.\n"
     out += emit_f64("SECAIW", secaiw, per_line=4)
 
+    if args.check:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != out:
+            print(
+                f"{OUT.relative_to(REPO)} is out of date — "
+                f"run scripts/validation/gen_d4_refs.py"
+            )
+            return 1
+        print(f"{OUT.relative_to(REPO)} is up to date")
+        return 0
+
     OUT.write_text(out)
     print(f"wrote {OUT} (MAX_ELEM={MAX_ELEM})")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

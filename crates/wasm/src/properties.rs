@@ -160,8 +160,10 @@ pub fn compute_dos_multimethod(
         "gfn2" => sci_form::dos::multi_method::DosMethod::Gfn2,
         "hf3c" | "hf-3c" => sci_form::dos::multi_method::DosMethod::Hf3c,
         other => {
-            return json_error(&format!(
-                "unknown DOS method '{other}' (expected eht, pm3, xtb, gfn1, gfn2 or hf3c)"
+            return json_error(&invalid_value(
+                "'method'",
+                other,
+                &["eht", "pm3", "xtb", "gfn1", "gfn2", "hf3c"],
             ))
         }
     };
@@ -174,16 +176,65 @@ pub fn compute_dos_multimethod(
 }
 
 /// Compute RMSD between two coordinate sets after Kabsch alignment.
+///
+/// Returns JSON `{"rmsd": 0.123456}` on success, or the canonical
+/// `{"error": "..."}` payload when the two coordinate sets cannot be
+/// compared (different lengths, or a length that is not a multiple of 3).
+/// A `NaN` RMSD is never emitted — it is not valid JSON (blocker C-C4).
 #[wasm_bindgen]
 pub fn compute_rmsd(coords: &str, reference: &str) -> String {
     let c: Vec<f64> = match serde_json::from_str(coords) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad coords: {}", e)),
+        Err(e) => return json_error(&bad_json("'coords'", coords, &e)),
     };
     let r: Vec<f64> = match serde_json::from_str(reference) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad reference: {}", e)),
+        Err(e) => return json_error(&bad_json("'reference'", reference, &e)),
     };
-    let result = sci_form::alignment::align_coordinates(&c, &r);
-    format!("{{\"rmsd\":{:.6}}}", result.rmsd)
+    match sci_form::alignment::try_align_coordinates(&c, &r) {
+        Ok(result) => format!("{{\"rmsd\":{:.6}}}", result.rmsd),
+        Err(e) => json_error(&e),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// C-C4: a length mismatch must produce a parseable error payload, never
+    /// a `NaN` RMSD (which is not valid JSON).
+    #[test]
+    fn compute_rmsd_reports_a_length_mismatch_as_an_error() {
+        let payload = compute_rmsd("[0,0,0,1,0,0]", "[0,0,0]");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&payload).expect("the error payload must be valid JSON");
+        let message = parsed
+            .get("error")
+            .and_then(|v| v.as_str())
+            .expect("the payload must carry an error");
+        assert!(
+            message.contains("different length"),
+            "the message must explain the mismatch, got: {message}"
+        );
+        assert!(!payload.contains("NaN"), "a NaN must never be emitted");
+    }
+
+    /// C-C4: a valid comparison still returns the RMSD.
+    #[test]
+    fn compute_rmsd_returns_the_rmsd_for_matching_structures() {
+        let payload = compute_rmsd("[0,0,0,1,0,0]", "[0,0,0,1,0,0]");
+        let parsed: serde_json::Value = serde_json::from_str(&payload).expect("valid JSON");
+        let rmsd = parsed.get("rmsd").and_then(|v| v.as_f64()).expect("an rmsd");
+        assert!(rmsd.is_finite());
+        assert!(rmsd < 1e-9);
+    }
+
+    /// C-C1: a malformed JSON argument must produce a parseable error.
+    #[test]
+    fn compute_rmsd_reports_malformed_json_as_an_error() {
+        let payload = compute_rmsd("\"abc\"", "[0,0,0]");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&payload).expect("the error payload must be valid JSON");
+        assert!(parsed.get("error").is_some());
+    }
 }

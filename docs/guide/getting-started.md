@@ -92,7 +92,3 @@ sci-form parse "c1ccccc1"
 ```
 
 → See the [CLI guide](/guide/cli) for all commands and options.
-
-```
-
-→ See the [CLI guide](/guide/cli) for all subcommands.

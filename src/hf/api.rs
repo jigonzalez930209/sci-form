@@ -151,12 +151,7 @@ pub fn solve_hf3c(
     positions: &[[f64; 3]],
     config: &HfConfig,
 ) -> Result<Hf3cResult, String> {
-    if elements.len() != positions.len() {
-        return Err("elements/positions length mismatch".to_string());
-    }
-    if elements.is_empty() {
-        return Err("empty molecule".to_string());
-    }
+    crate::validation::validate_geometry(elements, positions)?;
 
     // Convert positions to Bohr
     let pos_bohr: Vec<[f64; 3]> = positions

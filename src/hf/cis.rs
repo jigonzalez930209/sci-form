@@ -31,6 +31,9 @@ pub struct Excitation {
 pub struct CisResult {
     /// Electronic excitations, sorted by energy.
     pub excitations: Vec<Excitation>,
+    /// Error message when the calculation could not be run at all
+    /// (invalid geometry). `None` for a completed calculation.
+    pub error: Option<String>,
 }
 
 /// Hartree to eV conversion.
@@ -124,12 +127,24 @@ fn compute_cis_inner(
     basis_to_atom: Option<&[usize]>,
     ao_dipoles: Option<&[DMatrix<f64>; 3]>,
 ) -> CisResult {
+    // The optional positions feed the monopole transition-dipole model: a
+    // non-finite coordinate there would silently poison the oscillator
+    // strengths.
+    if let Some(pos) = positions_bohr {
+        if let Err(error) = crate::validation::validate_coords_finite(pos) {
+            return CisResult {
+                excitations: Vec::new(),
+                error: Some(error),
+            };
+        }
+    }
     let n_virtual = n_basis - n_occupied;
     let n_singles = n_occupied * n_virtual;
 
     if n_singles == 0 {
         return CisResult {
             excitations: Vec::new(),
+            error: None,
         };
     }
 
@@ -171,7 +186,7 @@ fn compute_cis_inner(
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let n_out = n_states.min(n_singles);
@@ -191,7 +206,11 @@ fn compute_cis_inner(
         let (dom_idx, _) = col
             .iter()
             .enumerate()
-            .max_by(|(_, a), (_, b)| a.abs().partial_cmp(&b.abs()).unwrap())
+            .max_by(|(_, a), (_, b)| {
+                a.abs()
+                    .partial_cmp(&b.abs())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .unwrap();
         let dom_i = dom_idx / n_virtual;
         let dom_a = dom_idx % n_virtual + n_occupied;
@@ -281,7 +300,10 @@ fn compute_cis_inner(
         });
     }
 
-    CisResult { excitations }
+    CisResult {
+        excitations,
+        error: None,
+    }
 }
 
 /// Compute MO-basis ERI from AO-basis ERIs using half-transformed intermediates.

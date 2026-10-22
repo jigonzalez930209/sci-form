@@ -104,13 +104,13 @@ fn main() {
         Commands::Gfn1 { elements, coords } => calc_cmds::cmd_gfn1(&elements, &coords),
         Commands::Gfn2 { elements, coords } => calc_cmds::cmd_gfn2(&elements, &coords),
         Commands::Hf3c { elements, coords } => calc_cmds::cmd_hf3c(&elements, &coords),
-        Commands::Stereo { smiles, coords } => calc_cmds::cmd_stereo(&smiles, &coords),
+        Commands::Stereo { smiles, coords } => calc_cmds::cmd_stereo(&smiles, coords.as_deref()),
         Commands::Solvation {
             elements,
             coords,
             charges,
             probe_radius,
-        } => calc_cmds::cmd_solvation(&elements, &coords, &charges, probe_radius),
+        } => calc_cmds::cmd_solvation(&elements, &coords, charges.as_deref(), probe_radius),
         Commands::Sssr { smiles } => calc_cmds::cmd_sssr(&smiles),
         Commands::Ecfp {
             smiles,
@@ -180,7 +180,7 @@ fn main() {
             n_points,
             &broadening,
             step_size,
-            &smiles,
+            smiles.as_deref(),
         ),
         Commands::Cisd {
             elements,
@@ -229,13 +229,13 @@ fn main() {
             beta,
             r_max,
             n_points,
-        } => calc_cmds::cmd_rdf(&elements, &coords, &charges, beta, r_max, n_points),
+        } => calc_cmds::cmd_rdf(&elements, &coords, charges.as_deref(), beta, r_max, n_points),
         Commands::Getaway {
             elements,
             coords,
             bonds,
             max_lag,
-        } => calc_cmds::cmd_getaway(&elements, &coords, &bonds, max_lag),
+        } => calc_cmds::cmd_getaway(&elements, &coords, bonds.as_deref(), max_lag),
         Commands::TrainRandomForest {
             features,
             targets,
@@ -282,7 +282,12 @@ fn main() {
             elements,
             mode_displacements,
         } => {
-            calc_cmds::cmd_assign_peaks(&frequencies, &intensities, &elements, &mode_displacements)
+            calc_cmds::cmd_assign_peaks(
+                &frequencies,
+                &intensities,
+                &elements,
+                mode_displacements.as_deref(),
+            )
         }
         Commands::SpaceGroup { number, symbol } => {
             calc_cmds::cmd_space_group(number, symbol.as_deref())
@@ -313,7 +318,7 @@ fn main() {
             elements,
             coords,
             bonds,
-        } => calc_cmds::cmd_hapticity(&elements, &coords, &bonds),
+        } => calc_cmds::cmd_hapticity(&elements, &coords, bonds.as_deref()),
         Commands::OptimizeFramework {
             smiles,
             coords,
@@ -342,7 +347,7 @@ fn main() {
                 force_tol,
                 energy_tol,
                 max_step,
-                &fixed_atoms,
+                fixed_atoms.as_deref(),
                 cell,
             )
         }
@@ -363,7 +368,7 @@ fn main() {
             coords,
             charges,
             dielectric,
-        } => experimental_cmds::cmd_alpb(&elements, &coords, &charges, dielectric),
+        } => experimental_cmds::cmd_alpb(&elements, &coords, charges.as_deref(), dielectric),
         #[cfg(feature = "experimental-d4")]
         Commands::D4 {
             elements,
@@ -634,7 +639,7 @@ fn main() {
             smiles,
             coords,
             methods,
-        } => experimental_cmds::cmd_gsm_compare_backends(&smiles, &coords, &methods),
+        } => experimental_cmds::cmd_gsm_compare_backends(&smiles, &coords, methods.as_deref()),
 
         // ─── KINETICS ──────────
         #[cfg(feature = "alpha-kinetics")]

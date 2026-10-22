@@ -34,6 +34,13 @@ pub struct XtbResult {
     pub scc_iterations: usize,
     /// Whether SCC converged.
     pub converged: bool,
+    /// Provenance notes: which backends were used and why a fallback was
+    /// taken.
+    ///
+    /// Before v1.0 a failing GPU path silently fell back to the CPU without
+    /// telling the caller (blocker A-H2).
+    #[serde(default)]
+    pub notes: Vec<String>,
 }
 
 pub(crate) const ANGSTROM_TO_BOHR: f64 = 1.889_725_988_6;
@@ -275,9 +282,15 @@ pub(crate) fn solve_xtb_with_state(
     }
 
     // Pre-compute atom-pair gamma matrix (GPU-accelerated when available)
+    #[allow(unused_mut)]
+    let mut notes: Vec<String> = Vec::new();
+
     let gamma_atoms = {
         let mut gm = vec![vec![0.0f64; n_atoms]; n_atoms];
 
+        // The GPU path is an optimisation of the gamma matrix; when it is
+        // unavailable or fails, the CPU kernel is used.  The reason is
+        // recorded in `notes` so the caller is told (blocker A-H2).
         #[cfg(feature = "experimental-gpu")]
         let gpu_ok = {
             let eta_vec: Vec<f64> = (0..n_atoms)
@@ -294,21 +307,30 @@ pub(crate) fn solve_xtb_with_state(
                 })
                 .collect();
             if n_atoms >= 8 {
-                if let Ok(ctx) = crate::gpu::context::GpuContext::try_create() {
-                    if let Ok(gpu_gamma) =
-                        super::gpu::build_xtb_gamma_gpu(&ctx, &eta_vec, &pos_bohr)
-                    {
-                        for a in 0..n_atoms {
-                            for b in 0..n_atoms {
-                                gm[a][b] = gpu_gamma[(a, b)];
-                            }
-                        }
-                        true
-                    } else {
-                        false
-                    }
-                } else {
+                let ctx = crate::gpu::context::GpuContext::shared();
+                if !ctx.is_gpu_available() {
+                    notes.push(
+                        "The GPU gamma-matrix kernel was unavailable; the CPU kernel was used."
+                            .to_string(),
+                    );
                     false
+                } else {
+                    match super::gpu::build_xtb_gamma_gpu(ctx, &eta_vec, &pos_bohr) {
+                        Ok(gpu_gamma) => {
+                            for a in 0..n_atoms {
+                                for b in 0..n_atoms {
+                                    gm[a][b] = gpu_gamma[(a, b)];
+                                }
+                            }
+                            true
+                        }
+                        Err(reason) => {
+                            notes.push(format!(
+                                "The GPU gamma-matrix kernel failed ({reason}); the CPU kernel was used."
+                            ));
+                            false
+                        }
+                    }
                 }
             } else {
                 false
@@ -492,6 +514,7 @@ pub(crate) fn solve_xtb_with_state(
             mulliken_charges: charges,
             scc_iterations: scc_iter,
             converged,
+            notes,
         },
         state,
     ))

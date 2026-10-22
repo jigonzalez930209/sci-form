@@ -96,7 +96,7 @@ impl SmirksResult {
 fn parse_smirks(smirks: &str) -> PyResult<SmirksTransform> {
     match sci_form_core::smirks::parse_smirks(smirks) {
         Ok(transform) => Ok(transform.into()),
-        Err(e) => Err(pyo3::exceptions::PyValueError::new_err(e)),
+        Err(e) => Err(crate::errors::value_error(e)),
     }
 }
 
@@ -119,7 +119,7 @@ fn parse_smirks(smirks: &str) -> PyResult<SmirksTransform> {
 fn apply_smirks(smirks: &str, smiles: &str) -> PyResult<SmirksResult> {
     match sci_form_core::smirks::apply_smirks(smirks, smiles) {
         Ok(result) => Ok(result.into()),
-        Err(e) => Err(pyo3::exceptions::PyValueError::new_err(e)),
+        Err(e) => Err(crate::errors::value_error(e)),
     }
 }
 

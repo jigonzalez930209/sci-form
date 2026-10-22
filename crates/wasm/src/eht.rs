@@ -48,7 +48,7 @@ fn orbital_grid_from_coefficients(
 ) -> Result<sci_form::eht::VolumetricGrid, String> {
     let (elems, positions) = parse_elements_and_positions(elements, coords_flat)?;
     let coefficients: Vec<Vec<f64>> =
-        serde_json::from_str(coefficients_json).map_err(|e| format!("bad coefficients: {}", e))?;
+        serde_json::from_str(coefficients_json).map_err(|e| bad_json("'coefficients'", coefficients_json, &e))?;
     let basis = sci_form::eht::basis::build_basis(&elems, &positions);
 
     if basis.is_empty() {
@@ -89,14 +89,15 @@ fn orbital_grid_from_coefficients(
 
     #[cfg(not(feature = "parallel"))]
     {
-        Ok(sci_form::eht::evaluate_orbital_on_grid(
+        sci_form::eht::evaluate_orbital_on_grid(
             &basis,
             &coefficients,
             mo_index,
             &positions,
             spacing,
             3.0,
-        ))
+        )
+        .map_err(|e| json_error(&e))
     }
 }
 
@@ -118,9 +119,31 @@ pub fn eht_calculate(elements: &str, coords_flat: &str, k: f64) -> String {
     }
 }
 
+/// Solve the extended Hückel problem for a geometry.
+///
+/// Alias of [`eht_calculate`], the name of the Rust root function
+/// `sci_form::eht::solve_eht` (blocker C-H1).
+#[wasm_bindgen]
+pub fn solve_eht(elements: &str, coords_flat: &str, k: f64) -> String {
+    eht_calculate(elements, coords_flat, k)
+}
+
 /// Run EHT or route to UFF fallback based on support/confidence.
 #[wasm_bindgen]
 pub fn eht_or_uff_fallback(
+    smiles: &str,
+    elements: &str,
+    coords_flat: &str,
+    allow_experimental_eht: bool,
+) -> String {
+    compute_eht_or_uff_fallback(smiles, elements, coords_flat, allow_experimental_eht)
+}
+
+/// Run EHT or route to UFF fallback based on support/confidence.
+///
+/// Canonical name matching the Rust root (`sci_form::compute_eht_or_uff_fallback`).
+#[wasm_bindgen]
+pub fn compute_eht_or_uff_fallback(
     smiles: &str,
     elements: &str,
     coords_flat: &str,
@@ -206,6 +229,10 @@ pub fn optimize_geometry_eht(
 }
 
 /// Query EHT support metadata.
+///
+/// The Rust root calls this `get_eht_support`; the `get_` prefix is not
+/// idiomatic and is dropped here (blocker C-M7).  The Rust name is kept as
+/// an alias below.
 #[wasm_bindgen]
 pub fn eht_support(elements: &str) -> String {
     let elems: Vec<u8> = match parse_elements(elements) {
@@ -213,6 +240,15 @@ pub fn eht_support(elements: &str) -> String {
         Err(e) => return json_error(&e),
     };
     serialize_or_error(&sci_form::get_eht_support(&elems))
+}
+
+/// Query EHT support metadata.
+///
+/// **Alias** of [`eht_support`] matching the Rust root name
+/// `sci_form::get_eht_support`.
+#[wasm_bindgen]
+pub fn get_eht_support(elements: &str) -> String {
+    eht_support(elements)
 }
 
 /// Compute orbital grid as Float32Array (typed-array transfer).
@@ -281,7 +317,11 @@ pub fn eht_volumetric_grid_info(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let (origin, dims) = sci_form::eht::volume::compute_grid_extents(&positions, padding, spacing);
+    let (origin, dims) = match sci_form::eht::volume::compute_grid_extents(&positions, padding, spacing)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
     grid_info_json(origin, spacing, dims)
 }
 

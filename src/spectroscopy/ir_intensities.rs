@@ -57,6 +57,36 @@ pub fn compute_ir_intensities(
     hessian_result: &HessianResult,
     config: &IrConfig,
 ) -> IrResult {
+    match try_compute_ir_intensities(system, hessian_result, config) {
+        Ok(result) => result,
+        Err(error) => IrResult {
+            frequencies: Vec::new(),
+            intensities: Vec::new(),
+            n_modes: 0,
+            error: Some(error),
+        },
+    }
+}
+
+/// Compute IR spectrum from Hessian results and SCF data, reporting an
+/// invalid geometry as an error.
+pub fn try_compute_ir_intensities(
+    system: &MolecularSystem,
+    hessian_result: &HessianResult,
+    config: &IrConfig,
+) -> Result<IrResult, String> {
+    system.validate_geometry()?;
+    if let Some(error) = &hessian_result.error {
+        return Err(error.clone());
+    }
+    Ok(compute_ir_intensities_impl(system, hessian_result, config))
+}
+
+fn compute_ir_intensities_impl(
+    system: &MolecularSystem,
+    hessian_result: &HessianResult,
+    config: &IrConfig,
+) -> IrResult {
     let n_atoms = system.n_atoms();
     let n_coords = n_atoms * 3;
 
@@ -139,7 +169,11 @@ pub fn compute_ir_intensities(
         });
     }
 
-    peaks.sort_by(|a, b| a.frequency.partial_cmp(&b.frequency).unwrap());
+    peaks.sort_by(|a, b| {
+        a.frequency
+            .partial_cmp(&b.frequency)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let frequencies: Vec<f64> = peaks.iter().map(|p| p.frequency).collect();
     let intensities: Vec<f64> = peaks.iter().map(|p| p.intensity).collect();
@@ -148,6 +182,7 @@ pub fn compute_ir_intensities(
         frequencies,
         intensities,
         n_modes: peaks.len(),
+        error: None,
     }
 }
 

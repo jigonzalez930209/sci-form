@@ -3,7 +3,7 @@
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "OrbitalMeshResult")]
 #[derive(Clone)]
 pub(crate) struct OrbitalMeshResultPy {
     #[pyo3(get)]
@@ -37,7 +37,7 @@ pub(crate) struct OrbitalMeshResultPy {
 /// `isovalue`: isosurface threshold.
 #[pyfunction]
 #[pyo3(signature = (elements, coords, method="eht", mo_index=0, spacing=0.2, padding=3.0, isovalue=0.02))]
-fn orbital_mesh(
+fn compute_orbital_mesh(
     elements: Vec<u8>,
     coords: Vec<f64>,
     method: &str,
@@ -47,7 +47,7 @@ fn orbital_mesh(
     isovalue: f32,
 ) -> PyResult<OrbitalMeshResultPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -68,11 +68,11 @@ fn orbital_mesh(
         orbital_energies: r.orbital_energies,
         gap: r.gap,
     })
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    .map_err(crate::errors::engine_error)
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(orbital_mesh, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_orbital_mesh, m)?)?;
     m.add_class::<OrbitalMeshResultPy>()?;
     Ok(())
 }

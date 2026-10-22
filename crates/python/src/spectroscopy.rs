@@ -2,8 +2,9 @@
 
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
-#[pyclass]
+#[pyclass(name = "StdaExcitation")]
 #[derive(Clone)]
 pub(crate) struct StdaExcitationPy {
     #[pyo3(get)]
@@ -20,7 +21,7 @@ pub(crate) struct StdaExcitationPy {
     transition_dipole: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "StdaUvVisSpectrum")]
 #[derive(Clone)]
 pub(crate) struct StdaUvVisSpectrumPy {
     #[pyo3(get)]
@@ -39,7 +40,7 @@ pub(crate) struct StdaUvVisSpectrumPy {
     notes: Vec<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "VibrationalMode")]
 #[derive(Clone)]
 pub(crate) struct VibrationalModePy {
     #[pyo3(get)]
@@ -52,7 +53,7 @@ pub(crate) struct VibrationalModePy {
     is_real: bool,
 }
 
-#[pyclass]
+#[pyclass(name = "VibrationalAnalysis")]
 #[derive(Clone)]
 pub(crate) struct VibrationalAnalysisPy {
     #[pyo3(get)]
@@ -69,7 +70,7 @@ pub(crate) struct VibrationalAnalysisPy {
     notes: Vec<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "IrPeak")]
 #[derive(Clone)]
 pub(crate) struct IrPeakPy {
     #[pyo3(get)]
@@ -80,7 +81,7 @@ pub(crate) struct IrPeakPy {
     mode_index: usize,
 }
 
-#[pyclass]
+#[pyclass(name = "IrSpectrum")]
 #[derive(Clone)]
 pub(crate) struct IrSpectrumPy {
     #[pyo3(get)]
@@ -97,7 +98,7 @@ pub(crate) struct IrSpectrumPy {
 
 #[pyfunction]
 #[pyo3(signature = (elements, coords, sigma=0.3, e_min=1.0, e_max=8.0, n_points=500, broadening="gaussian"))]
-fn stda_uvvis(
+fn compute_stda_uvvis(
     elements: Vec<u8>,
     coords: Vec<f64>,
     sigma: f64,
@@ -107,7 +108,7 @@ fn stda_uvvis(
     broadening: &str,
 ) -> PyResult<StdaUvVisSpectrumPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -139,10 +140,10 @@ fn stda_uvvis(
             broadening: format!("{:?}", r.broadening),
             notes: r.notes,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
-#[pyclass]
+#[pyclass(name = "FluorescenceSpectrum")]
 #[derive(Clone)]
 pub(crate) struct FluorescenceSpectrumPy {
     #[pyo3(get)]
@@ -174,8 +175,8 @@ pub(crate) struct FluorescenceSpectrumPy {
 }
 
 #[pyfunction]
-#[pyo3(signature = (elements, coords, sigma=0.25, e_min=0.5, e_max=8.0, n_points=400, stokes_ev=0.0, refractive_index=1.0, dark_threshold=1e-3, broadening="gaussian"))]
-fn fluorescence_spectrum(
+#[pyo3(signature = (elements, coords, sigma=0.25, e_min=0.5, e_max=8.0, n_points=400, stokes_ev=0.0, refractive_index=1.0, dark_threshold=1e-3, broadening="gaussian", options=None))]
+fn compute_fluorescence(
     elements: Vec<u8>,
     coords: Vec<f64>,
     sigma: f64,
@@ -186,9 +187,32 @@ fn fluorescence_spectrum(
     refractive_index: f64,
     dark_threshold: f64,
     broadening: &str,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<FluorescenceSpectrumPy> {
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3).
+    const KEYS: &[&str] = &[
+        "sigma",
+        "e_min",
+        "e_max",
+        "n_points",
+        "stokes_ev",
+        "refractive_index",
+        "dark_threshold",
+        "broadening",
+    ];
+    crate::options::reject_unknown(options, KEYS)?;
+    let sigma = crate::options::f64_from(options, "sigma", sigma)?;
+    let e_min = crate::options::f64_from(options, "e_min", e_min)?;
+    let e_max = crate::options::f64_from(options, "e_max", e_max)?;
+    let n_points = crate::options::usize_from(options, "n_points", n_points)?;
+    let stokes_ev = crate::options::f64_from(options, "stokes_ev", stokes_ev)?;
+    let refractive_index = crate::options::f64_from(options, "refractive_index", refractive_index)?;
+    let dark_threshold = crate::options::f64_from(options, "dark_threshold", dark_threshold)?;
+    let broadening = &crate::options::str_from(options, "broadening", broadening)?;
+    let broadening = broadening.as_str();
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -225,12 +249,12 @@ fn fluorescence_spectrum(
             to_mo: r.to_mo,
             notes: r.notes,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
 #[pyo3(signature = (elements, coords, method="eht", step_size=None, smiles=None))]
-fn vibrational_analysis(
+fn compute_vibrational_analysis(
     elements: Vec<u8>,
     coords: Vec<f64>,
     method: &str,
@@ -238,7 +262,7 @@ fn vibrational_analysis(
     smiles: Option<&str>,
 ) -> PyResult<VibrationalAnalysisPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -248,7 +272,7 @@ fn vibrational_analysis(
 
     let analysis = if method.eq_ignore_ascii_case("uff") {
         let smiles = smiles.ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("UFF vibrational analysis requires smiles=...")
+            crate::errors::value_error("UFF vibrational analysis requires smiles=...")
         })?;
         sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
     } else {
@@ -272,12 +296,12 @@ fn vibrational_analysis(
             method: r.method.clone(),
             notes: r.notes.clone(),
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, step_size=None, smiles=None))]
-fn ir_spectrum(
+#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, step_size=None, smiles=None, options=None))]
+fn compute_ir_spectrum(
     elements: Vec<u8>,
     coords: Vec<f64>,
     method: &str,
@@ -287,9 +311,29 @@ fn ir_spectrum(
     n_points: usize,
     step_size: Option<f64>,
     smiles: Option<&str>,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<IrSpectrumPy> {
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3).
+    const KEYS: &[&str] = &[
+        "method",
+        "gamma",
+        "wn_min",
+        "wn_max",
+        "n_points",
+        "step_size",
+        "smiles",
+    ];
+    crate::options::reject_unknown(options, KEYS)?;
+    let method = &crate::options::str_from(options, "method", method)?;
+    let method = method.as_str();
+    let gamma = crate::options::f64_from(options, "gamma", gamma)?;
+    let wn_min = crate::options::f64_from(options, "wn_min", wn_min)?;
+    let wn_max = crate::options::f64_from(options, "wn_max", wn_max)?;
+    let n_points = crate::options::usize_from(options, "n_points", n_points)?;
+    let step_size = crate::options::opt_f64_from(options, "step_size", step_size)?;
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -298,13 +342,13 @@ fn ir_spectrum(
     let positions = coords_to_positions(&coords);
     let analysis = if method.eq_ignore_ascii_case("uff") {
         let smiles = smiles.ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("UFF IR spectrum requires smiles=...")
+            crate::errors::value_error("UFF IR spectrum requires smiles=...")
         })?;
         sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
     } else {
         sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
     }
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    .map_err(crate::errors::engine_error)?;
     let spectrum = sci_form_core::compute_ir_spectrum(&analysis, gamma, wn_min, wn_max, n_points);
     Ok(IrSpectrumPy {
         wavenumbers: spectrum.wavenumbers,
@@ -323,7 +367,7 @@ fn ir_spectrum(
     })
 }
 
-#[pyclass]
+#[pyclass(name = "FunctionalGroupMatch")]
 #[derive(Clone)]
 pub(crate) struct FunctionalGroupMatchPy {
     #[pyo3(get)]
@@ -334,7 +378,7 @@ pub(crate) struct FunctionalGroupMatchPy {
     match_quality: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "PeakAssignment")]
 #[derive(Clone)]
 pub(crate) struct PeakAssignmentPy {
     #[pyo3(get)]
@@ -347,7 +391,7 @@ pub(crate) struct PeakAssignmentPy {
     confidence: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "AssignmentResult")]
 #[derive(Clone)]
 pub(crate) struct AssignmentResultPy {
     #[pyo3(get)]
@@ -367,7 +411,7 @@ impl AssignmentResultPy {
 }
 
 #[pyfunction]
-#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, broadening="lorentzian", step_size=None, smiles=None))]
+#[pyo3(signature = (elements, coords, method="eht", gamma=15.0, wn_min=400.0, wn_max=4000.0, n_points=1000, broadening="lorentzian", step_size=None, smiles=None, options=None))]
 fn compute_ir_spectrum_broadened(
     elements: Vec<u8>,
     coords: Vec<f64>,
@@ -379,9 +423,32 @@ fn compute_ir_spectrum_broadened(
     broadening: &str,
     step_size: Option<f64>,
     smiles: Option<&str>,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<IrSpectrumPy> {
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3).
+    const KEYS: &[&str] = &[
+        "method",
+        "gamma",
+        "wn_min",
+        "wn_max",
+        "n_points",
+        "broadening",
+        "step_size",
+        "smiles",
+    ];
+    crate::options::reject_unknown(options, KEYS)?;
+    let method = &crate::options::str_from(options, "method", method)?;
+    let method = method.as_str();
+    let gamma = crate::options::f64_from(options, "gamma", gamma)?;
+    let wn_min = crate::options::f64_from(options, "wn_min", wn_min)?;
+    let wn_max = crate::options::f64_from(options, "wn_max", wn_max)?;
+    let n_points = crate::options::usize_from(options, "n_points", n_points)?;
+    let broadening = &crate::options::str_from(options, "broadening", broadening)?;
+    let broadening = broadening.as_str();
+    let step_size = crate::options::opt_f64_from(options, "step_size", step_size)?;
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -390,13 +457,13 @@ fn compute_ir_spectrum_broadened(
     let positions = coords_to_positions(&coords);
     let analysis = if method.eq_ignore_ascii_case("uff") {
         let smiles = smiles.ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("UFF IR spectrum requires smiles=...")
+            crate::errors::value_error("UFF IR spectrum requires smiles=...")
         })?;
         sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
     } else {
         sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
     }
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    .map_err(crate::errors::engine_error)?;
     let spectrum = sci_form_core::compute_ir_spectrum_broadened(
         &analysis, gamma, wn_min, wn_max, n_points, broadening,
     );
@@ -477,10 +544,10 @@ fn assign_peaks(
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(stda_uvvis, m)?)?;
-    m.add_function(wrap_pyfunction!(fluorescence_spectrum, m)?)?;
-    m.add_function(wrap_pyfunction!(vibrational_analysis, m)?)?;
-    m.add_function(wrap_pyfunction!(ir_spectrum, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_stda_uvvis, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_fluorescence, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_vibrational_analysis, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_ir_spectrum, m)?)?;
     m.add_function(wrap_pyfunction!(compute_ir_spectrum_broadened, m)?)?;
     m.add_function(wrap_pyfunction!(assign_peaks, m)?)?;
     m.add_class::<StdaExcitationPy>()?;

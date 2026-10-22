@@ -70,6 +70,45 @@ if [[ -f "package-lock.json" ]]; then
   echo "  updated package-lock.json"
 fi
 
+# ── Documentation and examples ──────────────────────────────────────────────
+# The published version leaks into the docs in three shapes:
+#   1. the dependency snippets  — `sci-form = "0.15"` / `version = "0.15"`
+#   2. the version badge in the docs home page — `(v0.15.2)`
+#   3. the wheel filename in the Python example README — `sciforma-0.15.2-...`
+# Leaving them behind is how the docs ended up advertising 0.9 / 0.11 / 0.13
+# while the crate was at 0.15.
+NEW_MM="$(echo "$NEW_VERSION" | cut -d. -f1,2)"
+
+DOC_SNIPPET_FILES=(
+  README.md
+  docs/api/rust.md
+  docs/guide/rust.md
+  docs/experimental/overview.md
+  docs/experimental/alpha.md
+  docs/experimental/beta.md
+)
+for f in "${DOC_SNIPPET_FILES[@]}"; do
+  if [[ -f "$f" ]]; then
+    # `sci-form = "X.Y"` and `sci-form = { version = "X.Y", ... }`
+    sed -i -E \
+      "s|(sci-form = \{ version = \")[0-9]+\.[0-9]+(\.[0-9]+)?|\1${NEW_MM}|g; \
+       s|(sci-form = \")[0-9]+\.[0-9]+(\.[0-9]+)?|\1${NEW_MM}|g" "$f"
+    echo "  updated $f"
+  fi
+done
+
+# The docs home page carries the full version in the hero tagline.
+if [[ -f "docs/index.md" ]]; then
+  sed -i -E "s/\(v[0-9]+\.[0-9]+\.[0-9]+\)/(v${NEW_VERSION})/g" docs/index.md
+  echo "  updated docs/index.md"
+fi
+
+# The Python example README names the wheel it installs.
+if [[ -f "examples/python/README.md" ]]; then
+  sed -i -E "s/(sciforma-)[0-9]+\.[0-9]+\.[0-9]+/\1${NEW_VERSION}/g" examples/python/README.md
+  echo "  updated examples/python/README.md"
+fi
+
 # ── Git commit + tag + push ───────────────────────────────────────────────────
 git add \
   package.json \
@@ -82,6 +121,14 @@ git add \
   crates/wasm/pkg/package.json \
   pkg/package.json \
   pkg-node/package.json \
+  README.md \
+  docs/index.md \
+  docs/api/rust.md \
+  docs/guide/rust.md \
+  docs/experimental/overview.md \
+  docs/experimental/alpha.md \
+  docs/experimental/beta.md \
+  examples/python/README.md \
   Cargo.lock 2>/dev/null || true
 
 git commit -m "chore: bump version to $NEW_VERSION"

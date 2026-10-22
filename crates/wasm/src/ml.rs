@@ -3,11 +3,16 @@
 use wasm_bindgen::prelude::*;
 
 /// Predict molecular properties using ML proxy models.
+///
+/// Canonical name matching the Rust root (`sci_form::predict_ml_properties`).
+/// Returns JSON:
+/// `{"logp":…, "molar_refractivity":…, "log_solubility":…, "lipinski_violations":…,
+/// "lipinski_passes":…, "druglikeness":…}`
 #[wasm_bindgen]
-pub fn compute_ml_properties(smiles: &str) -> String {
+pub fn predict_ml_properties(smiles: &str) -> String {
     let mol = match sci_form::parse(smiles) {
         Ok(m) => m,
-        Err(e) => return crate::helpers::json_error(&e),
+        Err(e) => return crate::helpers::json_error(&crate::helpers::smiles_error(&e, smiles)),
     };
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
@@ -37,12 +42,24 @@ pub fn compute_ml_properties(smiles: &str) -> String {
     )
 }
 
-/// Compute molecular descriptors from SMILES.
+/// Predict molecular properties using ML proxy models.
+///
+/// **Deprecated alias** of [`predict_ml_properties`]; kept so existing JS
+/// callers keep working.  Use `predict_ml_properties`, the name of the Rust
+/// root function.
 #[wasm_bindgen]
-pub fn compute_molecular_descriptors(smiles: &str) -> String {
+pub fn compute_ml_properties(smiles: &str) -> String {
+    predict_ml_properties(smiles)
+}
+
+/// Compute molecular descriptors from SMILES.
+///
+/// Canonical name matching the Rust root (`sci_form::compute_ml_descriptors`).
+#[wasm_bindgen]
+pub fn compute_ml_descriptors(smiles: &str) -> String {
     let mol = match sci_form::parse(smiles) {
         Ok(m) => m,
-        Err(e) => return crate::helpers::json_error(&e),
+        Err(e) => return crate::helpers::json_error(&crate::helpers::smiles_error(&e, smiles)),
     };
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
@@ -65,6 +82,16 @@ pub fn compute_molecular_descriptors(smiles: &str) -> String {
         .collect();
     let desc = sci_form::compute_ml_descriptors(&elements, &bonds, &[], &[]);
     crate::helpers::serialize_or_error(&desc)
+}
+
+/// Compute molecular descriptors from SMILES.
+///
+/// **Deprecated alias** of [`compute_ml_descriptors`]; kept so existing JS
+/// callers keep working.  Use `compute_ml_descriptors`, the name of the Rust
+/// root function.
+#[wasm_bindgen]
+pub fn compute_molecular_descriptors(smiles: &str) -> String {
+    compute_ml_descriptors(smiles)
 }
 
 /// Compute WHIM 3D molecular descriptors.
@@ -119,7 +146,7 @@ pub fn compute_rdf(
     } else {
         match serde_json::from_str::<Vec<f64>>(charges_json) {
             Ok(v) => v,
-            Err(e) => return crate::helpers::json_error(&format!("bad charges: {e}")),
+            Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'charges'", charges_json, &e)),
         }
     };
     crate::helpers::serialize_or_error(&sci_form::ml::rdf_descriptors::compute_rdf(
@@ -148,7 +175,7 @@ pub fn compute_getaway(
     } else {
         match serde_json::from_str::<Vec<(usize, usize)>>(bonds_json) {
             Ok(v) => v,
-            Err(e) => return crate::helpers::json_error(&format!("bad bonds: {e}")),
+            Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'bonds'", bonds_json, &e)),
         }
     };
     crate::helpers::serialize_or_error(&sci_form::ml::getaway::compute_getaway(
@@ -186,11 +213,11 @@ pub fn train_random_forest(
 ) -> String {
     let features: Vec<Vec<f64>> = match serde_json::from_str(features_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&format!("bad features: {e}")),
+        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'features'", features_json, &e)),
     };
     let targets: Vec<f64> = match serde_json::from_str(targets_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&format!("bad targets: {e}")),
+        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'targets'", targets_json, &e)),
     };
     if features.len() != targets.len() {
         return crate::helpers::json_error(&format!(
@@ -237,11 +264,11 @@ pub fn train_gradient_boosting(
 ) -> String {
     let features: Vec<Vec<f64>> = match serde_json::from_str(features_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&format!("bad features: {e}")),
+        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'features'", features_json, &e)),
     };
     let targets: Vec<f64> = match serde_json::from_str(targets_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&format!("bad targets: {e}")),
+        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'targets'", targets_json, &e)),
     };
     if features.len() != targets.len() {
         return crate::helpers::json_error(&format!(

@@ -40,6 +40,14 @@ pub struct Pm3Result {
     pub scf_iterations: usize,
     /// Whether SCF converged.
     pub converged: bool,
+    /// Provenance notes: which solver produced this result and why a
+    /// fallback was taken.
+    ///
+    /// Before v1.0 the failure of the faithful (MOPAC-parity) solver was
+    /// swallowed and the legacy NDDO path was used silently, so the caller
+    /// could not tell which method produced the number (blocker A-H2).
+    #[serde(default)]
+    pub notes: Vec<String>,
 }
 
 pub(crate) const EV_TO_KCAL: f64 = 23.0605;
@@ -435,9 +443,15 @@ pub(crate) fn solve_pm3_with_state(
         gm
     };
 
+    // The GPU context is created once per process and shared (blocker D-M2).
     #[cfg(feature = "experimental-gpu")]
     let gpu_ctx = if n_basis >= 16 {
-        crate::gpu::context::GpuContext::try_create().ok()
+        let ctx = crate::gpu::context::GpuContext::shared();
+        if ctx.is_gpu_available() {
+            Some(ctx)
+        } else {
+            None
+        }
     } else {
         None
     };
@@ -745,6 +759,7 @@ pub(crate) fn solve_pm3_with_state(
             mulliken_charges,
             scf_iterations: scf_iter,
             converged,
+            notes: vec!["Produced by the legacy NDDO PM3 path.".to_string()],
         },
         state,
     ))
@@ -755,22 +770,39 @@ pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, S
     // Faithful MOPAC port for the sp elements (Z <= 17), validated against
     // MOPAC 23.2.5 (validation F42): exact SCF/H-matrix/core-core energies.
     if elements.iter().all(|&z| z <= 17) {
-        if let Ok(r) = crate::pm3::faithful::solve(elements, positions) {
-            return Ok(Pm3Result {
-                orbital_energies: r.orbital_energies,
-                electronic_energy: r.electronic_energy,
-                nuclear_repulsion: r.nuclear_repulsion,
-                total_energy: r.total_energy,
-                heat_of_formation: r.heat_of_formation,
-                n_basis: r.n_basis,
-                n_electrons: r.n_electrons,
-                homo_energy: r.homo_energy,
-                lumo_energy: r.lumo_energy,
-                gap: r.gap,
-                mulliken_charges: r.mulliken_charges,
-                scf_iterations: r.scf_iterations,
-                converged: r.converged,
-            });
+        // The failure reason is no longer swallowed: it is reported in the
+        // `notes` field of the result so the caller can see which solver
+        // produced the number and why the fallback was taken (blocker A-H2).
+        match crate::pm3::faithful::solve(elements, positions) {
+            Ok(r) => {
+                return Ok(Pm3Result {
+                    orbital_energies: r.orbital_energies,
+                    electronic_energy: r.electronic_energy,
+                    nuclear_repulsion: r.nuclear_repulsion,
+                    total_energy: r.total_energy,
+                    heat_of_formation: r.heat_of_formation,
+                    n_basis: r.n_basis,
+                    n_electrons: r.n_electrons,
+                    homo_energy: r.homo_energy,
+                    lumo_energy: r.lumo_energy,
+                    gap: r.gap,
+                    mulliken_charges: r.mulliken_charges,
+                    scf_iterations: r.scf_iterations,
+                    converged: r.converged,
+                    notes: vec!["Produced by the faithful MOPAC-parity PM3 solver.".to_string()],
+                });
+            }
+            Err(reason) => {
+                let mut result = solve_pm3_legacy(elements, positions)?;
+                result.notes = vec![
+                    format!(
+                        "The faithful MOPAC-parity PM3 solver failed ({reason}); \
+                         the legacy NDDO path was used instead."
+                    ),
+                    "Produced by the legacy NDDO PM3 path.".to_string(),
+                ];
+                return Ok(result);
+            }
         }
     }
     solve_pm3_legacy(elements, positions)
@@ -841,5 +873,55 @@ mod tests {
         let elements = [92u8, 17]; // U-Cl (uranium not supported)
         let positions = [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]];
         assert!(solve_pm3(&elements, &positions).is_err());
+    }
+
+    /// A-H2 regression test: the result must say which solver produced it.
+    ///
+    /// Before v1.0 the `Err` of the faithful (MOPAC-parity) solver was
+    /// swallowed and the legacy NDDO path was used silently.
+    #[test]
+    fn test_pm3_result_reports_the_solver_used() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let result = solve_pm3(&elements, &positions).unwrap();
+        assert!(
+            !result.notes.is_empty(),
+            "PM3 result must carry provenance notes"
+        );
+        assert!(
+            result
+                .notes
+                .iter()
+                .any(|note| note.contains("faithful MOPAC-parity")),
+            "closed-shell water must be produced by the faithful solver, got {:?}",
+            result.notes
+        );
+    }
+
+    /// A-H2 regression test: when the faithful solver fails, the reason must
+    /// be reported instead of being swallowed.
+    #[test]
+    fn test_pm3_result_reports_the_fallback_reason() {
+        // NO has 11 valence electrons → open shell → the faithful solver
+        // refuses it and the legacy NDDO path takes over.
+        let elements = [7u8, 8u8];
+        let positions = [[0.0, 0.0, 0.0], [1.2, 0.0, 0.0]];
+        let result = solve_pm3(&elements, &positions).unwrap();
+        assert!(
+            result
+                .notes
+                .iter()
+                .any(|note| note.contains("failed") && note.contains("legacy NDDO")),
+            "the fallback reason must be reported, got {:?}",
+            result.notes
+        );
+        assert!(
+            result
+                .notes
+                .iter()
+                .any(|note| note.contains("closed-shell") || note.contains("even electron")),
+            "the failure reason must be quoted, got {:?}",
+            result.notes
+        );
     }
 }
