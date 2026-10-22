@@ -21,6 +21,10 @@ include = [
 [[bin]]
 name = "sci-form"
 path = "src/main.rs"
+# The binary is named after the crate, so `cargo doc --workspace` would write
+# its documentation over the root library's. The library carries the
+# documentation.
+doc = false
 
 [features]
 default = ["parallel"]

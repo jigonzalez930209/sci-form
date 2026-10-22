@@ -18,7 +18,10 @@ Legend: `[x]` done, `[ ]` pending.
 - [x] `cargo test --doc --release` → 15 passed, 0 failed, 1 ignored.
 - [x] All 9 integration test targets pass (78 tests with every feature on;
       60 of them are compiled without the alpha/beta features).
-- [x] `cargo doc --no-deps --all-features` → 0 warnings.
+- [x] `cargo doc --no-deps --all-features` → 0 warnings, and
+      `cargo doc --workspace` works too (the Python library and the CLI binary
+      are marked `doc = false` so they do not overwrite the root crate's
+      document).
 - [x] `cargo clippy -- -W missing_docs` → 0 undocumented public items
       (was 1038 of 2121).
 - [x] No panicking site in the library code is reachable from user input.

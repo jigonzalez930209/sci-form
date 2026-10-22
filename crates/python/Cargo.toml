@@ -24,6 +24,10 @@ include = [
 [lib]
 name = "sci_form"
 crate-type = ["cdylib"]
+# The library shares its name with the root crate, so `cargo doc --workspace`
+# would write two documents to the same path. The root crate carries the
+# documentation; this one only ships the extension module.
+doc = false
 
 [features]
 default = ["parallel"]

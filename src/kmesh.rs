@@ -290,6 +290,11 @@ fn mesh_coordinate(index: usize, n: usize, centering: KMeshCentering) -> f64 {
     }
 }
 
+/// Estimate the band edges of a periodic density of states.
+///
+/// Only used by the alpha periodic-linear module, so it is dead code in a
+/// build without that feature.
+#[allow(dead_code)]
 pub(crate) fn estimate_band_edges_from_dos(
     energies: &[f64],
     dos: &[f64],
