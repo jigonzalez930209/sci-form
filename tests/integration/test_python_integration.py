@@ -499,12 +499,19 @@ def test_alpha_and_beta_submodules_are_attributes():
 
 
 def test_alpha_submodule_import():
-    from sci_form.alpha import alpha_boys_function
+    # The `alpha` tier is feature-gated: a wheel built without the
+    # `alpha-*` features ships the (empty) submodule but not its functions.
+    alpha = pytest.importorskip("sci_form.alpha")
+    if not hasattr(alpha, "alpha_boys_function"):
+        pytest.skip("the alpha tier is not built into this wheel")
 
-    assert finite(alpha_boys_function(0, 2.0))
+    assert finite(alpha.alpha_boys_function(0, 2.0))
 
 
 def test_beta_submodule_import():
-    from sci_form.beta import kpm_dos
+    # The `beta` tier is feature-gated in the same way.
+    beta = pytest.importorskip("sci_form.beta")
+    if not hasattr(beta, "kpm_dos"):
+        pytest.skip("the beta tier is not built into this wheel")
 
-    assert len(kpm_dos(E, C).energies) > 0
+    assert len(beta.kpm_dos(E, C).energies) > 0

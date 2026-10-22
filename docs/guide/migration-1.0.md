@@ -258,6 +258,9 @@ sci_form.cpm_charges(elements, coords)              # mu = -4.44 eV (correct)
 sci_form.beta_compute_cpm_charges(elements, coords)  # mu = 0.0 eV (the beta tier)
 ```
 
+Both live behind the CPM feature flag (`experimental-cpm`, or its modern
+equivalent `beta-cpm`), so they are absent from a default build.
+
 ### Zero-copy entry points
 
 Two functions write into a caller-owned `float64` buffer instead of copying

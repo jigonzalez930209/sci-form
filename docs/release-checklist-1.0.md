@@ -33,8 +33,9 @@ Legend: `[x]` done, `[ ]` pending.
       `maturin build --release`.
 - [x] Python: the pytest suite passes (`tests/integration/test_python_integration.py`).
 - [x] Python: `sci_form.__all__` matches the registered functions.
-- [x] Python: exactly one `cpm_charges` is registered and it is the μ =
-      −4.44 eV one.
+- [x] Python: exactly one `cpm_charges` is registered (behind the
+      `experimental-cpm` / `beta-cpm` feature flag) and it is the μ =
+      −4.44 eV one; the β copy is `beta_compute_cpm_charges`.
 - [x] WASM: `crates/wasm/build.sh` produces a working `pkg/` and `pkg-node/`
       with the `alpha`/`beta` subpaths and the `snippets/` directory.
 - [x] WASM: every error path emits valid JSON.
