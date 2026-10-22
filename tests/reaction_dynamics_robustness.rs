@@ -104,3 +104,71 @@ fn v1_interfragment_separation_guard_pushes_clashing_fragments_apart() {
     );
     assert_eq!(ok, vec![0.0, 0.0, 0.0, 5.0, 0.0, 0.0]);
 }
+
+/// A single product has no second fragment to separate, so the departure
+/// phase used to repeat the *same* geometry `n_departure_frames` times.
+#[test]
+fn v1_reaction_dynamics_does_not_repeat_the_departure_frame() {
+    let result = compute_reaction_dynamics_3d(&["CC=O", "O"], &["CC(O)O"], &hydration_config())
+        .expect("the hydration path must be computable");
+
+    let departure: Vec<_> = result
+        .frames
+        .iter()
+        .filter(|f| f.phase == "departure")
+        .collect();
+
+    assert_eq!(
+        departure.len(),
+        1,
+        "a single product cannot produce a departure series"
+    );
+    assert!(
+        result.notes.iter().any(|n| n.contains("Single product")),
+        "the note must explain why: {:?}",
+        result.notes
+    );
+}
+
+/// With more than one product the departure phase slides the fragments
+/// apart, so the frames must differ from each other.
+#[test]
+fn v1_reaction_dynamics_departure_frames_differ_when_there_are_two_products() {
+    let mut config = hydration_config();
+    config.method = "uff".to_string();
+    config.n_images = 5;
+    config.neb_max_iter = 5;
+
+    // The elimination of water: one reactant, two products.
+    let result = compute_reaction_dynamics_3d(&["CC(O)O"], &["CC=O", "O"], &config)
+        .expect("the elimination path must be computable");
+
+    let departure: Vec<_> = result
+        .frames
+        .iter()
+        .filter(|f| f.phase == "departure")
+        .collect();
+
+    assert!(
+        departure.len() > 1,
+        "two products must produce a departure series, got {}",
+        departure.len()
+    );
+
+    // Every departure frame must be a different geometry.
+    for (i, a) in departure.iter().enumerate() {
+        for b in departure.iter().skip(i + 1) {
+            let differs = a
+                .coords
+                .iter()
+                .zip(b.coords.iter())
+                .any(|(x, y)| (x - y).abs() > 1e-6);
+            assert!(
+                differs,
+                "the departure frames {} and {} are identical",
+                i,
+                i + 1
+            );
+        }
+    }
+}

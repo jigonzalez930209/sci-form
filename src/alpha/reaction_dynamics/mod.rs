@@ -586,8 +586,16 @@ pub fn compute_reaction_dynamics_3d(
     }
 
     // ── 11. Departure frames (with constrained geometry relaxation) ──
-    let nd = config.n_departure_frames;
     let single_product = p_confs.len() == 1;
+    // With a single product there is no second fragment to separate, so the
+    // departure phase cannot produce a series: every frame would be the
+    // same geometry. It contributes exactly one frame instead of repeating
+    // the same one `n_departure_frames` times.
+    let nd = if single_product {
+        1
+    } else {
+        config.n_departure_frames
+    };
     let p_mol_ranges: Vec<(usize, usize)> = if single_product {
         vec![(0, r_total)]
     } else {
@@ -811,6 +819,13 @@ pub fn compute_reaction_dynamics_3d(
         nd,
         frames.len(),
     ));
+    if single_product {
+        notes.push(
+            "Single product: the departure phase has no fragment to separate, so it contributes \
+             one frame."
+                .into(),
+        );
+    }
     notes.push("Approach/departure frames relaxed with constrained optimization.".into());
     if config.use_climbing_image {
         notes.push(format!(

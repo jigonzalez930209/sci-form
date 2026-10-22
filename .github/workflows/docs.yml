@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      # A change in the library can change what the API reference says, so
+      # the site must be rebuilt when the source changes too (blocker B-M1).
+      - 'src/**'
+      - 'crates/**'
       - 'package.json'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
