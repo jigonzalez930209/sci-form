@@ -50,8 +50,9 @@ Legend: `[x]` done, `[ ]` pending.
 - [x] `reports/validation/summary.json` is regenerated and committed.
 - [x] The 12 open findings of the first audit are documented in
       `reports/auditoria-resolucion.md` with the reason each one is still open.
-- [x] The 58 blockers of the second audit are dispositioned in
-      `reports/v1.0-blockers.md`.
+- [x] The 59 blockers of the second audit are dispositioned in
+      `reports/v1.0-blockers.md` (52 closed, 7 accepted with a written
+      justification).
 
 ## 4. The documentation
 

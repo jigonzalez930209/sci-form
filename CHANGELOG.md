@@ -13,7 +13,7 @@ _(nothing yet — the next release starts here)_
 ## v1.0.0 - 2026-10-22
 
 The first stable release. v1.0.0 closes **two exhaustive audits** (100 findings
-in `reports/auditoria-total.md`, 58 blockers in `reports/v1.0-blockers.md`) and
+in `reports/auditoria-total.md`, 59 blockers in `reports/v1.0-blockers.md`) and
 raises the floor on everything that matters for a chemistry library: the crate
 no longer panics on user input, its results are reproducible bit-for-bit
 regardless of the machine's core count, every public item is documented, and
