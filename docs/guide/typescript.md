@@ -10,6 +10,18 @@ npm install sci-form-wasm
 
 The package uses WebAssembly for high-performance computation in the browser or Node.js.
 
+It is a **dual package**: the same tarball carries two entry points and the
+`exports` map picks the right one for you.
+
+| Entry | Condition | Used by | Notes |
+|---|---|---|---|
+| `sci_form_wasm.js` (ESM) | `import` | browsers, Vite/webpack, bundlers | the WebGPU and rayon-threaded build; needs `await init()` in the browser |
+| `cjs/sci_form_wasm.js` (CommonJS) | `require` | Node.js | no WebGPU and no rayon threads (Node.js has neither) |
+
+Both halves expose **exactly the same API** — the two features that differ
+(`experimental-gpu`, `parallel`) change behaviour, not the export list. The
+subpaths `sci-form-wasm/alpha` and `sci-form-wasm/beta` work the same way.
+
 ## Conventions
 
 - Every entry point returns a **JSON string**, except the typed-array variants
@@ -37,6 +49,9 @@ const result = JSON.parse(sci.embed('CCO', 42));
 console.log(`Atoms: ${result.num_atoms}`);
 ```
 
+This works in plain Node.js: the `require` condition of the package resolves
+to the CommonJS half, which loads its own `.wasm` file from disk.
+
 ### ES modules / TypeScript
 
 ```typescript
@@ -47,6 +62,9 @@ await init();
 const result = JSON.parse(embed('CCO', 42));
 console.log(`Atoms: ${result.num_atoms}`);
 ```
+
+The ESM half is the browser build (it expects `init()` to fetch the `.wasm`
+file). In Node.js, use the CommonJS entry point above.
 
 ## Functions
 

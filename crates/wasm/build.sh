@@ -14,6 +14,13 @@
 #   pkg/      — ESM, "type": "module", for browsers (Vite, webpack, ...)
 #   pkg-node/ — CommonJS, for Node.js (require(...))
 #
+# The *published* package is `pkg/`, and it is dual: its `exports` map sends
+# `import` to the ESM half at the root and `require` to the CommonJS half in
+# `pkg/cjs/`.  Both halves expose the same API (the `parallel` and
+# `experimental-gpu` features change behaviour, not the export list); the
+# CommonJS half simply has no rayon threads and no WebGPU, because Node.js
+# has neither.
+#
 # Usage:
 #   ./build.sh                      # web (parallel) + nodejs targets
 #   ./build.sh --web-only           # skip the nodejs build
@@ -97,6 +104,7 @@ patch_package_json() {
   local dir="$1" module_kind="$2"
   node -e "
 const fs = require('fs');
+const path = require('path');
 const pkgPath = process.argv[1];
 const kind = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
@@ -111,22 +119,26 @@ pkg.readme = 'README.md';
 
 if (kind === 'esm') {
   pkg.type = 'module';
+  // The condition order matters: Node matches the first satisfied
+  // condition, and "default" always matches.  "default" therefore has to
+  // come last, otherwise it shadows "require" and every CommonJS consumer
+  // would load the ESM half.
+  //
+  // Dual package: when the CommonJS half was assembled into pkg/cjs/ the
+  // "require" condition points at it, so require('sci-form-wasm') and
+  // import ... from 'sci-form-wasm' both work from the same package.
+  const dual = fs.existsSync(path.join(path.dirname(pkgPath), 'cjs'));
+  if (dual && !pkg.files.includes('cjs')) pkg.files.push('cjs');
+  const entry = (esm, cjs) => ({
+    types: esm + '.d.ts',
+    import: esm + '.js',
+    ...(dual ? { require: cjs + '.js' } : {}),
+    default: esm + '.js'
+  });
   pkg.exports = {
-    '.': {
-      types: './sci_form_wasm.d.ts',
-      import: './sci_form_wasm.js',
-      default: './sci_form_wasm.js'
-    },
-    './alpha': {
-      types: './alpha/index.d.ts',
-      import: './alpha/index.js',
-      default: './alpha/index.js'
-    },
-    './beta': {
-      types: './beta/index.d.ts',
-      import: './beta/index.js',
-      default: './beta/index.js'
-    }
+    '.': entry('./sci_form_wasm', './cjs/sci_form_wasm'),
+    './alpha': entry('./alpha/index', './cjs/alpha/index'),
+    './beta': entry('./beta/index', './cjs/beta/index')
   };
 } else {
   // CommonJS: the nodejs target of wasm-pack emits a CommonJS glue file.
@@ -176,11 +188,7 @@ if [[ "$NODE_ONLY" == false ]]; then
   fi
   CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUSTFLAGS="$WEB_RUSTFLAGS" RUSTFLAGS="$WEB_RUSTFLAGS" wasm-pack build --target web "$PROFILE_FLAG" --features "$WEB_FEATURES"
 
-  # ── 2. Patch pkg/package.json ───────────────────────────────────────────
-  echo "→ Patching pkg/package.json..."
-  patch_package_json pkg esm
-
-  # ── 3. Copy the README and the alpha/beta ESM subpath shims ────────────
+  # ── 2. Copy the README and the alpha/beta ESM subpath shims ────────────
   echo "→ Copying README.md → pkg/README.md..."
   cp ../../README.md pkg/README.md
 
@@ -201,12 +209,8 @@ if [[ "$WEB_ONLY" == false ]]; then
     wasm-pack build --target nodejs "$PROFILE_FLAG" --out-dir pkg-node --no-default-features
   fi
 
-  echo "→ Patching pkg-node/package.json..."
-  patch_package_json pkg-node cjs
-
   echo "→ Copying README.md → pkg-node/README.md..."
   cp ../../README.md pkg-node/README.md
-
   # The nodejs target of wasm-pack emits a self-contained CommonJS glue file
   # and therefore no `snippets/` directory of its own.  The npm `files`
   # allowlist of pkg-node/package.json lists "snippets" (it is the entry
@@ -234,11 +238,61 @@ module.exports = require('../sci_form_wasm.js');
 EOF
   cp js/alpha/index.d.ts pkg-node/alpha/index.d.ts
   cp js/beta/index.d.ts pkg-node/beta/index.d.ts
+
+  # ── 5. Assemble the dual package: pkg/cjs/ (CommonJS) ───────────────────
+  # The published package is `pkg/`.  Its `exports` map sends `import` to the
+  # ESM half at the root and `require` to the CommonJS half in `pkg/cjs/`, so
+  # `require('sci-form-wasm')` works in Node.js — the path the TypeScript
+  # guide documents — and `import ... from 'sci-form-wasm'` keeps working in
+  # browsers and bundlers.
+  #
+  # The nested `pkg/cjs/package.json` marks that subtree as CommonJS; the
+  # root package is `"type": "module"`, so without it every `.js` file below
+  # `cjs/` would be parsed as ESM and `require()` would fail.
+  if [[ "$NODE_ONLY" == false ]]; then
+    echo "→ Assembling the dual package: pkg/cjs/ (CommonJS) ..."
+    rm -rf pkg/cjs
+    mkdir -p pkg/cjs
+    cp pkg-node/sci_form_wasm.js pkg/cjs/sci_form_wasm.js
+    cp pkg-node/sci_form_wasm_bg.wasm pkg/cjs/sci_form_wasm_bg.wasm
+    cp pkg-node/sci_form_wasm.d.ts pkg/cjs/sci_form_wasm.d.ts
+    cp pkg-node/sci_form_wasm_bg.wasm.d.ts pkg/cjs/sci_form_wasm_bg.wasm.d.ts
+    cp -r pkg-node/alpha pkg/cjs/alpha
+    cp -r pkg-node/beta pkg/cjs/beta
+    printf '{\n  "type": "commonjs"\n}\n' > pkg/cjs/package.json
+  fi
+fi
+
+# ── 6. Patch the package manifests ───────────────────────────────────────────
+# The patch runs last: the ESM manifest only grows the `require` conditions
+# when the CommonJS half is actually present.
+if [[ "$NODE_ONLY" == false ]]; then
+  echo "→ Patching pkg/package.json..."
+  patch_package_json pkg esm
+fi
+if [[ "$WEB_ONLY" == false ]]; then
+  echo "→ Patching pkg-node/package.json..."
+  patch_package_json pkg-node cjs
+fi
+
+# ── 7. Self-check: the CommonJS half must load ──────────────────────────────
+if [[ "$NODE_ONLY" == false && "$WEB_ONLY" == false ]]; then
+  echo "→ Checking that the CommonJS half of the dual package loads..."
+  node -e "
+const sci = require('./pkg/cjs/sci_form_wasm.js');
+const alpha = require('./pkg/cjs/alpha/index.js');
+const beta = require('./pkg/cjs/beta/index.js');
+const r = JSON.parse(sci.embed('CCO', 42));
+if (r.num_atoms !== 9) throw new Error('expected 9 atoms, got ' + r.num_atoms);
+if (typeof alpha.alpha_modules_info !== 'function') throw new Error('missing alpha subpath export');
+if (typeof beta.beta_modules_info !== 'function') throw new Error('missing beta subpath export');
+console.log('  ✓ pkg/cjs loads and embeds');
+"
 fi
 
 echo "✓ sci-form-wasm build complete."
 if [[ "$NODE_ONLY" == false ]]; then
-  echo "  Web pkg : $SCRIPT_DIR/pkg/"
+  echo "  Web pkg : $SCRIPT_DIR/pkg/ (ESM, + pkg/cjs/ CommonJS)"
 fi
 if [[ "$WEB_ONLY" == false ]]; then
   echo "  Node pkg: $SCRIPT_DIR/pkg-node/"

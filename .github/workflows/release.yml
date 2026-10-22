@@ -285,7 +285,16 @@ jobs:
           test -f crates/wasm/pkg-node/beta/index.js
           test -d crates/wasm/pkg/snippets
           test -d crates/wasm/pkg-node/snippets
-          node -e "const p=require('./crates/wasm/pkg/package.json'); if (p.type !== 'module') throw new Error('pkg must be ESM'); if (!p.files.includes('snippets')) throw new Error('pkg.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg is missing the ./alpha export');"
+          # The published package is dual: the ESM half at the root and the
+          # CommonJS half in pkg/cjs/.  Both must be wired into the exports
+          # map, or `require('sci-form-wasm')` — the path the TypeScript
+          # guide documents — does not resolve.
+          test -f crates/wasm/pkg/cjs/sci_form_wasm.js
+          test -f crates/wasm/pkg/cjs/sci_form_wasm_bg.wasm
+          test -f crates/wasm/pkg/cjs/alpha/index.js
+          test -f crates/wasm/pkg/cjs/beta/index.js
+          node -e "const p=require('./crates/wasm/pkg/package.json'); if (p.type !== 'module') throw new Error('pkg must be ESM'); if (!p.files.includes('snippets')) throw new Error('pkg.files is missing snippets'); if (!p.files.includes('cjs')) throw new Error('pkg.files is missing cjs'); if (!p.exports['./alpha']) throw new Error('pkg is missing the ./alpha export'); if (p.exports['.'].require !== './cjs/sci_form_wasm.js') throw new Error('pkg is missing the CommonJS entry point'); if (p.exports['./alpha'].require !== './cjs/alpha/index.js') throw new Error('pkg is missing the CommonJS ./alpha entry point');"
+          node -e "const p=require('./crates/wasm/pkg/cjs/package.json'); if (p.type !== 'commonjs') throw new Error('pkg/cjs must be CommonJS');"
           node -e "const p=require('./crates/wasm/pkg-node/package.json'); if (p.type !== 'commonjs') throw new Error('pkg-node must be CommonJS'); if (!p.files.includes('snippets')) throw new Error('pkg-node.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg-node is missing the ./alpha export');"
       - name: Verify Node.js install
         run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const alpha = require('./alpha'); const beta = require('./beta'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.assert(typeof sci.alpha_compute_dft === 'function', 'missing alpha root export'); console.assert(typeof sci.beta_compute_kpm_dos === 'function', 'missing beta root export'); console.assert(typeof alpha.alpha_modules_info === 'function', 'missing alpha subpath export'); console.assert(typeof beta.beta_modules_info === 'function', 'missing beta subpath export'); console.log('✓ Node.js WASM works with alpha/beta exports');"
@@ -367,16 +376,32 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+      # The artifact under test is the one that gets published: the tarball
+      # is packed from it and installed by name, so the `exports` map (and
+      # therefore `require('sci-form-wasm')`) is exercised exactly as a user
+      # would experience it.  Testing the raw build directory instead would
+      # not prove that the published package resolves.
       - uses: actions/download-artifact@v8
         with:
-          name: wasm-pkg-node
-          path: pkg-node/
-      - name: Smoke test — embed caffeine (Node.js CJS)
+          name: wasm-pkg
+          path: pkg/
+      - name: Pack the published package
         run: |
+          cd pkg
+          npm pack --pack-destination "$RUNNER_TEMP"
+          ls -1 "$RUNNER_TEMP"/*.tgz
+      - name: Install the tarball
+        run: |
+          cd "$RUNNER_TEMP"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund ./*.tgz
+      - name: Smoke test — embed caffeine through the CommonJS entry point
+        run: |
+          cd "$RUNNER_TEMP"
           node -e "
-          const sci = require('./pkg-node/sci_form_wasm.js');
-          const alpha = require('./pkg-node/alpha');
-          const beta = require('./pkg-node/beta');
+          const sci = require('sci-form-wasm');
+          const alpha = require('sci-form-wasm/alpha');
+          const beta = require('sci-form-wasm/beta');
           const result = JSON.parse(sci.embed('Cn1cnc2c1c(=O)n(c(=O)n2C)C', 42));
           if (result.error) throw new Error('embed failed: ' + result.error);
           if (result.num_atoms !== 24) throw new Error('expected 24 atoms, got ' + result.num_atoms);
@@ -384,7 +409,7 @@ jobs:
           if (typeof sci.beta_compute_kpm_dos !== 'function') throw new Error('missing beta root export');
           if (typeof alpha.alpha_modules_info !== 'function') throw new Error('missing alpha subpath export');
           if (typeof beta.beta_modules_info !== 'function') throw new Error('missing beta subpath export');
-          console.log('OK: ' + result.num_atoms + ' atoms embedded');
+          console.log('OK: require(sci-form-wasm) embedded ' + result.num_atoms + ' atoms');
           "
 
   # ─── Verify: CLI binary runs ───────────────────────────────────────────────

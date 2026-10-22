@@ -38,6 +38,10 @@ Legend: `[x]` done, `[ ]` pending.
       −4.44 eV one; the β copy is `beta_compute_cpm_charges`.
 - [x] WASM: `crates/wasm/build.sh` produces a working `pkg/` and `pkg-node/`
       with the `alpha`/`beta` subpaths and the `snippets/` directory.
+- [x] WASM: the published package is dual. `pkg/cjs/` holds the CommonJS
+      half, the root manifest points its `require` condition at it, and
+      `npm pack` + `npm install` + `require('sci-form-wasm')` is what the CI
+      and release gates exercise — not the raw build directory.
 - [x] WASM: every error path emits valid JSON.
 - [x] CLI: `sci-form --help` and every subcommand's `--help` render.
 - [x] CLI: an optional argument is absent, not a sentinel value.

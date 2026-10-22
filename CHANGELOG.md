@@ -65,6 +65,15 @@ capability is the Rust root name in all four surfaces.
 
 ### Fixed
 
+- **The npm package could not be used from Node.js.** Only the browser ESM
+  build was ever published: `require('sci-form-wasm')` — the path the
+  TypeScript guide documents — failed with `self is not defined`, and the
+  CommonJS build was compiled and smoke-tested in CI but never uploaded.
+  The published package is now **dual**: the `require` condition of the
+  `exports` map resolves to the CommonJS half (`pkg/cjs/`), the `import`
+  condition to the ESM half, and both expose the same API. CI and the
+  release pipeline now pack the tarball, install it and require it *by
+  name*, so the artefact that is published is the artefact that is tested.
 - **The Generalized Born solvation returned `NaN` for a zero dielectric
   constant and aborted the process on a short charge vector.**
   `compute_gb_solvation` divided by `ε` without checking it, so
