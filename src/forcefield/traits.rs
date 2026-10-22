@@ -267,6 +267,7 @@ mod tests {
             .map(|i| if i % 2 == 0 { -0.12 } else { 0.08 })
             .collect();
         crate::solvation::compute_gb_solvation(&elements, &positions, &charges, None, None, None)
+            .expect("the determinism fixture is a valid geometry")
             .electrostatic_energy_kcal_mol
     }
 

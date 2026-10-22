@@ -9,6 +9,11 @@
 //! The helpers below are intentionally small and dependency-free so that they
 //! can be used from every layer (SCF, xTB, PM3, EHT, DFT, spectroscopy, …).
 //!
+//! The same idea applies to the *parameters* that reach a kernel: a partial
+//! charge vector of the wrong length, or a dielectric constant of zero, used
+//! to abort the process or to produce a `NaN` energy. The charge, dielectric
+//! and probe-radius validators live here for the same reason.
+//!
 //! Error-message style (kept consistent across the crate):
 //!
 //! * what failed,
@@ -72,6 +77,69 @@ pub(crate) fn validate_flat_geometry(elements: &[u8], coords: &[f64]) -> Result<
                 atom, axis, v
             ));
         }
+    }
+    Ok(())
+}
+
+/// Validate a partial-charge vector against the atom count.
+///
+/// Checks, in order:
+///
+/// 1. one charge per atom,
+/// 2. every charge is finite (no `NaN`, no `±Inf`).
+///
+/// A short charge vector used to index past its end inside the GB and ALPB
+/// kernels and abort the process; a long one silently ignored the extra
+/// values.
+pub(crate) fn validate_charges(n_atoms: usize, charges: &[f64]) -> Result<(), String> {
+    if charges.len() != n_atoms {
+        return Err(format!(
+            "charges has {} values but {} atoms require {} (one partial charge per atom)",
+            charges.len(),
+            n_atoms,
+            n_atoms
+        ));
+    }
+    for (atom, &q) in charges.iter().enumerate() {
+        if !q.is_finite() {
+            return Err(format!(
+                "atom {} has a non-finite partial charge ({}) (NaN and Inf are not valid charges)",
+                atom, q
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Validate a dielectric constant.
+///
+/// The Generalized Born and ALPB prefactors contain `1/ε`. With `ε = 0` the
+/// kernel returned `NaN` energies instead of an error, and with `ε < 1` it
+/// returned a finite but sign-flipped number. The model is only defined for
+/// `ε >= 1` (1.0 = vacuum), which is the range of every solvent and of the
+/// solute-in-vacuum limit.
+pub(crate) fn validate_dielectric(name: &str, value: f64) -> Result<(), String> {
+    if !value.is_finite() {
+        return Err(format!(
+            "{name} must be a finite dielectric constant (got {value})"
+        ));
+    }
+    if value < 1.0 {
+        return Err(format!("{name} must be >= 1.0 (1.0 = vacuum); got {value}"));
+    }
+    Ok(())
+}
+
+/// Validate a solvent probe radius in Å.
+///
+/// A probe radius of 0 Å is legal — it yields the plain van der Waals
+/// surface — but negative or non-finite radii are not.
+pub(crate) fn validate_probe_radius(value: f64) -> Result<(), String> {
+    if !value.is_finite() {
+        return Err(format!("probe_radius must be finite (got {value})"));
+    }
+    if value < 0.0 {
+        return Err(format!("probe_radius must be >= 0.0 Å (got {value})"));
     }
     Ok(())
 }

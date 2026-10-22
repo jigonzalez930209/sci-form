@@ -3047,11 +3047,17 @@ pub fn analyze_stereo(smiles: &str, coords: &[f64]) -> Result<stereo::StereoAnal
 ///
 /// The returned energy is in kcal/mol and is a sum of `gamma_i * SASA_i` terms
 /// with atomic surface tensions `gamma_i` in kcal/(mol·Å²).
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid (mismatched lengths, empty
+/// system, non-finite coordinates) or when the probe radius is negative or
+/// non-finite.
 pub fn compute_nonpolar_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
     probe_radius: Option<f64>,
-) -> solvation::NonPolarSolvation {
+) -> Result<solvation::NonPolarSolvation, String> {
     solvation::compute_nonpolar_solvation(elements, positions, probe_radius)
 }
 
@@ -3060,6 +3066,13 @@ pub fn compute_nonpolar_solvation(
 /// The non-polar term is `surface_tension · SASA` with the shared
 /// Shrake-Rupley implementation ([`surface::sasa`]). For the ALPB-corrected
 /// variant (xTB-compatible) use [`compute_alpb_solvation`].
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, when the charge vector does
+/// not have one finite charge per atom, when a dielectric constant is
+/// non-finite or below 1.0, or when the probe radius is negative or
+/// non-finite.
 pub fn compute_gb_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -3067,7 +3080,7 @@ pub fn compute_gb_solvation(
     solvent_dielectric: Option<f64>,
     solute_dielectric: Option<f64>,
     probe_radius: Option<f64>,
-) -> solvation::GbSolvation {
+) -> Result<solvation::GbSolvation, String> {
     solvation::compute_gb_solvation(
         elements,
         positions,
@@ -3083,12 +3096,19 @@ pub fn compute_gb_solvation(
 /// ALPB extends the same Generalized Born electrostatics with the Klamt
 /// correction `(ε-1)/(ε + A·x)` and the shared SASA non-polar term. Use it
 /// instead of [`compute_gb_solvation`] when matching xTB/ALPB references.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, when the charge vector does
+/// not have one finite charge per atom, when the solvent dielectric constant
+/// is non-finite or below 1.0, when the probe radius is negative or
+/// non-finite, or when the surface tension is not finite.
 pub fn compute_alpb_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
     charges: &[f64],
     config: solvation_alpb::AlpbConfig,
-) -> solvation_alpb::AlpbResult {
+) -> Result<solvation_alpb::AlpbResult, String> {
     solvation_alpb::compute_alpb_solvation(elements, positions, charges, &config)
 }
 

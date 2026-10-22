@@ -12,7 +12,10 @@ pub fn compute_nonpolar_solvation(elements: &str, coords_flat: &str, probe_radiu
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let r = sci_form::compute_nonpolar_solvation(&elems, &positions, Some(probe_radius));
+    let r = match sci_form::compute_nonpolar_solvation(&elems, &positions, Some(probe_radius)) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
     serialize_or_error(&r)
 }
 
@@ -37,13 +40,16 @@ pub fn compute_gb_solvation(
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'charges'", charges, &e)),
     };
-    let r = sci_form::compute_gb_solvation(
+    let r = match sci_form::compute_gb_solvation(
         &elems,
         &positions,
         &q,
         Some(solvent_dielectric),
         Some(solute_dielectric),
         Some(probe_radius),
-    );
+    ) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
     serialize_or_error(&r)
 }

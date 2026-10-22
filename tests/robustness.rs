@@ -619,3 +619,167 @@ fn npa_rejects_an_out_of_range_basis_atom_map() {
         err
     );
 }
+
+// ─── Solvation input validation (C-H4 / C-M1) ───────────────────────────────
+//
+// `compute_gb_solvation` used to divide by a zero dielectric constant and
+// return a `NaN` energy, and to index past the end of a short charge vector
+// and abort the process. The same held for the ALPB sibling.
+
+/// Water geometry with TIP3P-style partial charges.
+fn water_with_charges() -> (Vec<u8>, Vec<[f64; 3]>, Vec<f64>) {
+    (
+        vec![8u8, 1, 1],
+        vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]],
+        vec![-0.834, 0.417, 0.417],
+    )
+}
+
+#[test]
+fn c_h4_gb_rejects_a_zero_dielectric_instead_of_returning_a_nan() {
+    let (elements, positions, charges) = water_with_charges();
+    let err =
+        sci_form::compute_gb_solvation(&elements, &positions, &charges, Some(0.0), None, None)
+            .expect_err("a zero dielectric constant must be rejected, not divided by");
+    assert!(
+        err.contains("solvent_dielectric"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_h4_gb_rejects_a_solute_dielectric_below_one() {
+    let (elements, positions, charges) = water_with_charges();
+    let err =
+        sci_form::compute_gb_solvation(&elements, &positions, &charges, None, Some(0.0), None)
+            .expect_err("a zero solute dielectric constant must be rejected");
+    assert!(
+        err.contains("solute_dielectric"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_h4_gb_rejects_a_non_finite_dielectric() {
+    let (elements, positions, charges) = water_with_charges();
+    let err =
+        sci_form::compute_gb_solvation(&elements, &positions, &charges, Some(f64::NAN), None, None)
+            .expect_err("a NaN dielectric constant must be rejected");
+    assert!(
+        err.contains("solvent_dielectric"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_h4_alpb_rejects_a_zero_dielectric_instead_of_returning_a_nan() {
+    let (elements, positions, charges) = water_with_charges();
+    let config = sci_form::solvation_alpb::AlpbConfig {
+        solvent_dielectric: 0.0,
+        ..Default::default()
+    };
+    let err =
+        sci_form::solvation_alpb::compute_alpb_solvation(&elements, &positions, &charges, &config)
+            .expect_err("a zero dielectric constant must be rejected, not divided by");
+    assert!(
+        err.contains("solvent_dielectric"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_m1_gb_rejects_a_short_charge_vector_instead_of_panicking() {
+    let (elements, positions, _charges) = water_with_charges();
+    let err = sci_form::compute_gb_solvation(&elements, &positions, &[0.5], None, None, None)
+        .expect_err("a short charge vector must be rejected, not indexed past its end");
+    assert!(
+        err.contains("charges has 1 values"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_m1_alpb_rejects_a_short_charge_vector_instead_of_panicking() {
+    let (elements, positions, _charges) = water_with_charges();
+    let err = sci_form::solvation_alpb::compute_alpb_solvation(
+        &elements,
+        &positions,
+        &[0.5],
+        &sci_form::solvation_alpb::AlpbConfig::default(),
+    )
+    .expect_err("a short charge vector must be rejected, not indexed past its end");
+    assert!(
+        err.contains("charges has 1 values"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_m1_gb_rejects_a_non_finite_charge() {
+    let (elements, positions, _charges) = water_with_charges();
+    let err = sci_form::compute_gb_solvation(
+        &elements,
+        &positions,
+        &[0.0, f64::INFINITY, 0.0],
+        None,
+        None,
+        None,
+    )
+    .expect_err("a non-finite charge must be rejected");
+    assert!(
+        err.contains("non-finite partial charge"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_m1_gb_rejects_a_position_length_mismatch() {
+    let (elements, positions, charges) = water_with_charges();
+    let err =
+        sci_form::compute_gb_solvation(&elements, &positions[..2], &charges, None, None, None)
+            .expect_err("a position list shorter than the atom list must be rejected");
+    assert!(
+        err.contains("positions has 2 entries"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_h4_gb_rejects_a_negative_probe_radius() {
+    let (elements, positions, charges) = water_with_charges();
+    let err =
+        sci_form::compute_gb_solvation(&elements, &positions, &charges, None, None, Some(-1.0))
+            .expect_err("a negative probe radius must be rejected");
+    assert!(err.contains("probe_radius"), "unexpected error: {}", err);
+}
+
+#[test]
+fn c_h4_nonpolar_solvation_rejects_a_geometry_mismatch() {
+    let (elements, positions, _charges) = water_with_charges();
+    let err = sci_form::compute_nonpolar_solvation(&elements, &positions[..1], None)
+        .expect_err("a position list shorter than the atom list must be rejected");
+    assert!(
+        err.contains("positions has 1 entries"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[test]
+fn c_h4_vacuum_dielectric_still_works() {
+    // ε = 1.0 is the vacuum limit and must keep working.
+    let (elements, positions, charges) = water_with_charges();
+    let r =
+        sci_form::compute_gb_solvation(&elements, &positions, &charges, Some(1.0), Some(1.0), None)
+            .expect("the vacuum limit must be accepted");
+    assert!(r.electrostatic_energy_kcal_mol.abs() < 1e-12);
+    assert!(r.total_energy_kcal_mol.is_finite());
+}

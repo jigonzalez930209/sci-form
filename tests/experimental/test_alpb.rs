@@ -16,7 +16,7 @@ mod alpb_tests {
     #[test]
     fn e6_1a_born_radii_physical() {
         let (elements, positions, _) = water_system();
-        let born = compute_born_radii(&elements, &positions, 1.4);
+        let born = compute_born_radii(&elements, &positions, 1.4).expect("valid input");
         for &r in &born.radii {
             assert!(r > 0.5 && r < 50.0, "Born radius = {}", r);
         }
@@ -53,7 +53,8 @@ mod alpb_tests {
     fn e6_2a_solvation_water() {
         let (elements, positions, charges) = water_system();
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(result.total_energy.is_finite());
         assert!(result.born_radii.len() == 3);
     }
@@ -70,7 +71,8 @@ mod alpb_tests {
                 solvent_dielectric: 4.8,
                 ..Default::default()
             },
-        );
+        )
+        .expect("valid input");
         let r_high = compute_alpb_solvation(
             &elements,
             &positions,
@@ -79,7 +81,8 @@ mod alpb_tests {
                 solvent_dielectric: 78.5,
                 ..Default::default()
             },
-        );
+        )
+        .expect("valid input");
         // Higher eps should give more solvation
         assert!(
             r_high.electrostatic_energy <= r_low.electrostatic_energy + 1e-6,
@@ -96,7 +99,8 @@ mod alpb_tests {
             solvent_dielectric: 1.0,
             ..Default::default()
         };
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(
             result.electrostatic_energy.abs() < 1e-8,
             "Vacuum electrostatic = {}",
@@ -110,7 +114,8 @@ mod alpb_tests {
     fn e6_3a_alpb_factor_range() {
         let (elements, positions, charges) = water_system();
         let result =
-            compute_alpb_solvation(&elements, &positions, &charges, &AlpbConfig::default());
+            compute_alpb_solvation(&elements, &positions, &charges, &AlpbConfig::default())
+                .expect("valid input");
         // ALPB factor should be between 0 and 1
         assert!(
             result.alpb_factor >= 0.0 && result.alpb_factor <= 2.0,
@@ -127,7 +132,8 @@ mod alpb_tests {
                 solvent_dielectric: eps,
                 ..Default::default()
             };
-            let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+            let result = compute_alpb_solvation(&elements, &positions, &charges, &config)
+                .expect("valid input");
             assert!(
                 result.total_energy.is_finite(),
                 "{}: energy = {}",

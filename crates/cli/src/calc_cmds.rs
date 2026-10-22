@@ -273,7 +273,8 @@ pub fn cmd_solvation(elements: &str, coords: &str, charges: Option<&str>, probe_
     // (blocker C-M5).
     match charges {
         None => {
-            let r = sci_form::compute_nonpolar_solvation(&elems, &positions, Some(probe_radius));
+            let r = sci_form::compute_nonpolar_solvation(&elems, &positions, Some(probe_radius))
+                .unwrap_or_else(|e| fail(format!("Solvation error: {e}")));
             println!("{}", serde_json::to_string_pretty(&r).unwrap());
         }
         Some(raw) => {
@@ -287,7 +288,8 @@ pub fn cmd_solvation(elements: &str, coords: &str, charges: Option<&str>, probe_
                 Some(78.5),
                 Some(1.0),
                 Some(probe_radius),
-            );
+            )
+            .unwrap_or_else(|e| fail(format!("Solvation error: {e}")));
             println!("{}", serde_json::to_string_pretty(&r).unwrap());
         }
     }

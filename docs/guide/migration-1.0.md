@@ -48,6 +48,20 @@ These used to panic on bad input. They now return `Result<_, String>`.
 | `sci_form::scf::uhf::run_rohf` | `UhfResult` | `Result<UhfResult, String>` |
 | `sci_form::materials::simulate_powder_xrd` | `Vec<f64>` | `Result<Vec<f64>, String>` |
 | `sci_form::ml::compute_3d_descriptors` | `Vec<f64>` | `Result<Vec<f64>, String>` |
+| `sci_form::compute_nonpolar_solvation` | `NonPolarSolvation` | `Result<NonPolarSolvation, String>` |
+| `sci_form::compute_gb_solvation` | `GbSolvation` | `Result<GbSolvation, String>` |
+| `sci_form::compute_alpb_solvation` | `AlpbResult` | `Result<AlpbResult, String>` |
+| `sci_form::solvation::compute_gb_solvation` | `GbSolvation` | `Result<GbSolvation, String>` |
+| `sci_form::solvation::compute_nonpolar_solvation` | `NonPolarSolvation` | `Result<NonPolarSolvation, String>` |
+| `sci_form::solvation::compute_born_radii` | `Vec<f64>` | `Result<Vec<f64>, String>` |
+| `sci_form::solvation_alpb::compute_alpb_solvation` | `AlpbResult` | `Result<AlpbResult, String>` |
+| `sci_form::solvation_alpb::compute_born_radii` | `AlpbBornRadii` | `Result<AlpbBornRadii, String>` |
+
+The solvation family is in this table because a zero dielectric constant used
+to divide by zero and return a `NaN` energy, and a charge vector shorter than
+the atom list used to index past its end and abort the process. Both are now
+errors. `ε = 1.0` (the vacuum limit) and a zero probe radius (the plain van
+der Waals surface) are still valid inputs.
 
 ```rust
 // 0.15

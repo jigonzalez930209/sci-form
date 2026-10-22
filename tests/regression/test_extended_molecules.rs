@@ -1214,7 +1214,8 @@ mod druglike_molecules {
             assert!(conf.error.is_none());
             let pos: Vec<[f64; 3]> = conf.coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
 
-            let solv = sci_form::compute_nonpolar_solvation(&conf.elements, &pos, None);
+            let solv = sci_form::compute_nonpolar_solvation(&conf.elements, &pos, None)
+                .expect("valid input");
             println!(
                 "{name}: non-polar solvation = {:.2} kcal/mol, SASA = {:.1} Å²",
                 solv.energy_kcal_mol, solv.total_sasa

@@ -990,6 +990,12 @@ interface NonPolarSolvation {
 function compute_gb_solvation(elements: string, coords_flat: string, charges: string, solvent_dielectric: number, solute_dielectric: number, probe_radius: number): string
 ```
 
+Returns a JSON string. On invalid input the result is
+`{"error": "<message>"}`: the coordinate array must hold `3 * atoms` values,
+the charge array must hold one value per atom, a dielectric constant must be
+finite and `>= 1.0` (`1.0` is the vacuum limit), and the probe radius must be
+finite and `>= 0`.
+
 ```typescript
 interface GbSolvation {
   electrostatic_energy_kcal_mol: number;  // kcal/mol

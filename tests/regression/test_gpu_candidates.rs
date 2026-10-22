@@ -1623,7 +1623,8 @@ mod gpu_candidate_alpb {
             let (elements, positions) = benzene_system();
 
             let t0 = Instant::now();
-            let radii = sci_form::solvation_alpb::compute_born_radii(&elements, &positions, 1.4);
+            let radii = sci_form::solvation_alpb::compute_born_radii(&elements, &positions, 1.4)
+                .expect("valid input");
             let t_cpu = t0.elapsed();
 
             let Some(ctx) = best_gpu_context("ALPB Born radii benzene") else {

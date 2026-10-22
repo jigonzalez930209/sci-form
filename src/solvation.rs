@@ -109,11 +109,21 @@ pub struct GbSolvation {
 /// Compute non-polar solvation energy from per-atom SASA and atomic solvation parameters.
 ///
 /// ΔG_np = Σ_i σ_i · A_i where σ_i is the ASP and A_i is the SASA of atom i.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid (mismatched lengths, empty
+/// system, non-finite coordinates) or when the probe radius is negative or
+/// non-finite.
 pub fn compute_nonpolar_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
     probe_radius: Option<f64>,
-) -> NonPolarSolvation {
+) -> Result<NonPolarSolvation, String> {
+    crate::validation::validate_geometry(elements, positions)?;
+    if let Some(r) = probe_radius {
+        crate::validation::validate_probe_radius(r)?;
+    }
     let sasa = crate::surface::sasa::compute_sasa(elements, positions, probe_radius, Some(960));
 
     let mut atom_contributions = Vec::with_capacity(elements.len());
@@ -126,18 +136,24 @@ pub fn compute_nonpolar_solvation(
 
     let energy_kcal_mol: f64 = atom_contributions.iter().sum();
 
-    NonPolarSolvation {
+    Ok(NonPolarSolvation {
         energy_kcal_mol,
         atom_contributions,
         atom_sasa: sasa.atom_sasa,
         total_sasa: sasa.total_sasa,
-    }
+    })
 }
 
 /// Compute effective Born radii using the Hawkins-Cramer-Truhlar (HCT) pairwise descreening model.
 ///
 /// R_i^eff = 1 / (1/ρ_i - I_i) where I_i is the descreening integral.
-pub fn compute_born_radii(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid (mismatched lengths, empty
+/// system, non-finite coordinates).
+pub fn compute_born_radii(elements: &[u8], positions: &[[f64; 3]]) -> Result<Vec<f64>, String> {
+    crate::validation::validate_geometry(elements, positions)?;
     let n = elements.len();
 
     let compute_one = |i: usize| -> f64 {
@@ -183,11 +199,13 @@ pub fn compute_born_radii(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
     #[cfg(feature = "parallel")]
     {
         use rayon::prelude::*;
-        (0..n).into_par_iter().map(compute_one).collect()
+        let radii: Vec<f64> = (0..n).into_par_iter().map(compute_one).collect();
+        Ok(radii)
     }
     #[cfg(not(feature = "parallel"))]
     {
-        (0..n).map(compute_one).collect()
+        let radii: Vec<f64> = (0..n).map(compute_one).collect();
+        Ok(radii)
     }
 }
 
@@ -196,6 +214,17 @@ pub fn compute_born_radii(elements: &[u8], positions: &[[f64; 3]]) -> Vec<f64> {
 /// ΔG_GB = -½(1/ε_in - 1/ε_out) Σ_{i,j} q_i·q_j / f_GB(r_ij, R_i, R_j)
 ///
 /// where f_GB = sqrt(r_ij² + R_i·R_j·exp(-r_ij²/(4·R_i·R_j)))
+///
+/// # Errors
+///
+/// Returns `Err` when:
+///
+/// * the geometry is invalid (mismatched lengths, empty system, non-finite
+///   coordinates),
+/// * the charge vector does not have one finite charge per atom,
+/// * a dielectric constant is non-finite or below 1.0 (`ε = 0` used to
+///   divide by zero and return a `NaN` energy),
+/// * the probe radius is negative or non-finite.
 pub fn compute_gb_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -203,12 +232,19 @@ pub fn compute_gb_solvation(
     solvent_dielectric: Option<f64>,
     solute_dielectric: Option<f64>,
     probe_radius: Option<f64>,
-) -> GbSolvation {
-    let n = elements.len();
+) -> Result<GbSolvation, String> {
+    crate::validation::validate_geometry(elements, positions)?;
+    crate::validation::validate_charges(elements.len(), charges)?;
     let eps_out = solvent_dielectric.unwrap_or(78.5); // water at 25°C
     let eps_in = solute_dielectric.unwrap_or(1.0);
+    crate::validation::validate_dielectric("solvent_dielectric", eps_out)?;
+    crate::validation::validate_dielectric("solute_dielectric", eps_in)?;
+    if let Some(r) = probe_radius {
+        crate::validation::validate_probe_radius(r)?;
+    }
 
-    let born_radii = compute_born_radii(elements, positions);
+    let n = elements.len();
+    let born_radii = compute_born_radii(elements, positions)?;
 
     // Electrostatic GB energy (parallelize over rows)
     let prefactor = -332.05 * 0.5 * (1.0 / eps_in - 1.0 / eps_out);
@@ -252,9 +288,9 @@ pub fn compute_gb_solvation(
     let elec_energy: f64 = (0..n).map(compute_row).sum();
 
     // Non-polar contribution
-    let nonpolar = compute_nonpolar_solvation(elements, positions, probe_radius);
+    let nonpolar = compute_nonpolar_solvation(elements, positions, probe_radius)?;
 
-    GbSolvation {
+    Ok(GbSolvation {
         electrostatic_energy_kcal_mol: elec_energy,
         nonpolar_energy_kcal_mol: nonpolar.energy_kcal_mol,
         total_energy_kcal_mol: elec_energy + nonpolar.energy_kcal_mol,
@@ -262,7 +298,7 @@ pub fn compute_gb_solvation(
         charges: charges.to_vec(),
         solvent_dielectric: eps_out,
         solute_dielectric: eps_in,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -274,7 +310,7 @@ mod tests {
         // Single carbon → positive ASP → positive solvation
         let elements = vec![6u8];
         let positions = vec![[0.0, 0.0, 0.0]];
-        let result = compute_nonpolar_solvation(&elements, &positions, None);
+        let result = compute_nonpolar_solvation(&elements, &positions, None).expect("valid input");
         assert!(
             result.energy_kcal_mol > 0.0,
             "Carbon ASP should be positive"
@@ -286,7 +322,7 @@ mod tests {
     fn test_born_radii_positive() {
         let elements = vec![8u8, 1, 1];
         let positions = vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
-        let radii = compute_born_radii(&elements, &positions);
+        let radii = compute_born_radii(&elements, &positions).expect("valid input");
         assert_eq!(radii.len(), 3);
         for r in &radii {
             assert!(*r > 0.0, "Born radius should be positive, got {}", r);
@@ -299,7 +335,8 @@ mod tests {
         let elements = vec![8u8, 1, 1];
         let positions = vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let charges = vec![-0.834, 0.417, 0.417]; // TIP3P charges
-        let result = compute_gb_solvation(&elements, &positions, &charges, None, None, None);
+        let result = compute_gb_solvation(&elements, &positions, &charges, None, None, None)
+            .expect("valid input");
         // Water should have negative electrostatic solvation (stabilizing)
         assert!(
             result.electrostatic_energy_kcal_mol < 0.0,
@@ -320,7 +357,8 @@ mod tests {
             [-0.36, -0.52, -0.89],
         ];
         let charges = vec![0.0, 0.0, 0.0, 0.0, 0.0];
-        let result = compute_gb_solvation(&elements, &positions, &charges, None, None, None);
+        let result = compute_gb_solvation(&elements, &positions, &charges, None, None, None)
+            .expect("valid input");
         assert!(
             result.electrostatic_energy_kcal_mol.abs() < 1e-6,
             "Zero-charge should give zero electrostatic solvation"
@@ -347,8 +385,10 @@ mod tests {
         ];
         let charges = vec![-0.15, 0.15, -0.06, 0.06, -0.06, 0.06, -0.06, 0.06];
 
-        let first = compute_gb_solvation(&elements, &positions, &charges, None, None, None);
-        let second = compute_gb_solvation(&elements, &positions, &charges, None, None, None);
+        let first = compute_gb_solvation(&elements, &positions, &charges, None, None, None)
+            .expect("valid input");
+        let second = compute_gb_solvation(&elements, &positions, &charges, None, None, None)
+            .expect("valid input");
 
         assert_eq!(
             first.electrostatic_energy_kcal_mol.to_bits(),
@@ -361,5 +401,102 @@ mod tests {
             "one Born radius per atom"
         );
         assert!(first.electrostatic_energy_kcal_mol.is_finite());
+    }
+
+    // ── C-H4 / C-M1 regression tests ────────────────────────────────────────
+    //
+    // Before the fix, `solvent_dielectric = 0.0` divided by zero inside the
+    // GB prefactor and returned a `NaN` energy, and a charge vector shorter
+    // than the atom list indexed past its end and aborted the process.
+
+    fn water() -> (Vec<u8>, Vec<[f64; 3]>, Vec<f64>) {
+        (
+            vec![8u8, 1, 1],
+            vec![[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]],
+            vec![-0.834, 0.417, 0.417],
+        )
+    }
+
+    #[test]
+    fn c_h4_zero_dielectric_is_an_error_not_a_nan() {
+        let (elements, positions, charges) = water();
+        for eps in [0.0, -1.0, 0.5] {
+            let err = compute_gb_solvation(&elements, &positions, &charges, Some(eps), None, None)
+                .expect_err("a dielectric constant below 1.0 must be rejected");
+            assert!(
+                err.contains("solvent_dielectric"),
+                "the error must name the offending parameter, got: {}",
+                err
+            );
+        }
+    }
+
+    #[test]
+    fn c_h4_non_finite_dielectric_is_an_error() {
+        let (elements, positions, charges) = water();
+        let err = compute_gb_solvation(&elements, &positions, &charges, Some(f64::NAN), None, None)
+            .expect_err("a NaN dielectric constant must be rejected");
+        assert!(err.contains("solvent_dielectric"), "{}", err);
+    }
+
+    #[test]
+    fn c_h4_vacuum_dielectric_is_still_allowed() {
+        // ε = 1.0 is the vacuum limit: the electrostatic term vanishes but
+        // the call must succeed.
+        let (elements, positions, charges) = water();
+        let r = compute_gb_solvation(&elements, &positions, &charges, Some(1.0), Some(1.0), None)
+            .expect("ε = 1.0 is the vacuum limit and must be accepted");
+        assert!(r.electrostatic_energy_kcal_mol.abs() < 1e-12);
+        assert!(r.total_energy_kcal_mol.is_finite());
+    }
+
+    #[test]
+    fn c_m1_short_charge_vector_is_an_error_not_a_panic() {
+        let (elements, positions, _charges) = water();
+        let err = compute_gb_solvation(&elements, &positions, &[0.5], None, None, None)
+            .expect_err("a short charge vector must be rejected");
+        assert!(err.contains("charges has 1 values"), "{}", err);
+        assert!(err.contains("3 atoms require 3"), "{}", err);
+    }
+
+    #[test]
+    fn c_m1_non_finite_charge_is_an_error() {
+        let (elements, positions, _charges) = water();
+        let err = compute_gb_solvation(
+            &elements,
+            &positions,
+            &[0.0, f64::NAN, 0.0],
+            None,
+            None,
+            None,
+        )
+        .expect_err("a NaN charge must be rejected");
+        assert!(err.contains("non-finite partial charge"), "{}", err);
+    }
+
+    #[test]
+    fn c_m1_geometry_length_mismatch_is_an_error() {
+        let (elements, positions, charges) = water();
+        let short = &positions[..2];
+        let err = compute_gb_solvation(&elements, short, &charges, None, None, None)
+            .expect_err("a short position list must be rejected");
+        assert!(err.contains("positions has 2 entries"), "{}", err);
+    }
+
+    #[test]
+    fn c_h4_negative_probe_radius_is_an_error() {
+        let (elements, positions, charges) = water();
+        let err = compute_gb_solvation(&elements, &positions, &charges, None, None, Some(-1.0))
+            .expect_err("a negative probe radius must be rejected");
+        assert!(err.contains("probe_radius"), "{}", err);
+    }
+
+    #[test]
+    fn c_h4_zero_probe_radius_is_allowed() {
+        // A zero probe radius is the plain van der Waals surface: legal.
+        let (elements, positions, charges) = water();
+        let r = compute_gb_solvation(&elements, &positions, &charges, None, None, Some(0.0))
+            .expect("a zero probe radius must be accepted");
+        assert!(r.total_energy_kcal_mol.is_finite());
     }
 }

@@ -134,7 +134,9 @@ mod alpb_py {
         probe_radius: f64,
         surface_tension: f64,
     ) -> PyResult<AlpbResultPy> {
-        let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+        crate::errors::check_coords_len(&coords, elements.len())?;
+        crate::errors::check_charges_len(&charges, elements.len())?;
+        let pos: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
         let config = sci_form_core::solvation_alpb::AlpbConfig {
             solvent_dielectric,
             probe_radius,
@@ -142,7 +144,8 @@ mod alpb_py {
         };
         let r = sci_form_core::solvation_alpb::compute_alpb_solvation(
             &elements, &pos, &charges, &config,
-        );
+        )
+        .map_err(crate::errors::value_error)?;
         Ok(AlpbResultPy {
             electrostatic_energy: r.electrostatic_energy,
             nonpolar_energy: r.nonpolar_energy,
@@ -160,8 +163,10 @@ mod alpb_py {
         coords: Vec<f64>,
         probe_radius: f64,
     ) -> PyResult<AlpbBornRadiiPy> {
-        let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let r = sci_form_core::solvation_alpb::compute_born_radii(&elements, &pos, probe_radius);
+        crate::errors::check_coords_len(&coords, elements.len())?;
+        let pos: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let r = sci_form_core::solvation_alpb::compute_born_radii(&elements, &pos, probe_radius)
+            .map_err(crate::errors::value_error)?;
         Ok(AlpbBornRadiiPy {
             radii: r.radii,
             intrinsic: r.intrinsic,
