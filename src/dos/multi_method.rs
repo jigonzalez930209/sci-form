@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 
 /// Method for obtaining orbital energies for DOS computation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum DosMethod {
     /// Extended Hückel Theory (fastest, qualitative).
     Eht,

@@ -3,7 +3,7 @@ members = [".", "crates/cli", "crates/python", "crates/wasm"]
 
 [package]
 name = "sci-form"
-version = "0.15.2"
+version = "1.0.0"
 edition = "2021"
 # MSRV. Two floors meet here:
 #   * the dependency graph: indexmap 2.13 requires 1.82;

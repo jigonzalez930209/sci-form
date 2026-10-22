@@ -33,11 +33,48 @@ If any future API change diverges from this document, the source files above win
 
 - `elements` are atomic numbers (`u8` in Rust, integer lists in Python and WASM JSON)
 
+### Naming
+
+- The **canonical name of a capability is the Rust root function name**, and it is identical on all four surfaces.
+- The old Python spellings (bare nouns such as `charges`, `sasa`, `population`, `dipole`, `dos`, `esp`, `rmsd`, `sssr`, `ecfp`, `tanimoto`, `orbital_mesh`, `unit_cell`, and the `*_calculate` forms such as `pm3_calculate`, `xtb_calculate`, `gfn1_calculate`, `gfn2_calculate`, `hf3c_calculate`, `ani_calculate`) are **deprecated aliases**: they still work but emit a `DeprecationWarning` and will be removed in sci-form 2.0.
+- The CLI keeps its own kebab-case command names (`charges`, `sasa`, `population`, `dipole`, `dos`, `esp`, `rmsd`, `sssr`, `ecfp`, `tanimoto`); the CLI naming was not part of the canonicalisation.
+
+### Units
+
+Units are **not** uniform across the library.
+
+| Quantity | Unit |
+|---|---|
+| Geometry (coordinates, bond lengths, cell parameters) | Å (cell angles in degrees) |
+| UFF / MMFF94 energies | kcal/mol |
+| UFF / MMFF94 gradients | kcal/mol/Å |
+| EHT, PM3, xTB orbital energies and HOMO–LUMO gaps | eV |
+| PM3 / xTB total, electronic, repulsive, dispersion energies | eV |
+| PM3 heat of formation | kcal/mol |
+| HF-3c energy, HF energy, nuclear repulsion, D3/gCP/SRB corrections | Hartree |
+| HF-3c orbital energies, HOMO/LUMO, gap | Hartree |
+| ANI energy and per-atom energies | Hartree (forces Hartree/Å) |
+| CISD excitation `energy`, `correlation_energy` | Hartree (`energy_ev` is eV) |
+| EHT gradients, `optimize_geometry_eht` energy | eV, eV/Å |
+| `optimize_framework` energy and forces | eV, eV/Å |
+| Vibrational frequencies, IR wavenumbers | cm⁻¹ |
+| NMR chemical shifts and shieldings | ppm |
+| NMR J-couplings | Hz |
+| Dipole moment | Debye |
+| Partial charges | elementary charge (e) |
+| Electrostatic potential | Hartree/e |
+| DOS / PDOS | 1/eV |
+| Surface area | Å² |
+| MD energies | kcal/mol; times in fs; temperatures in K |
+| Pressure | bar |
+
+Energies are always total system energies unless the field name says otherwise.
+
 ### Surface rules
 
 - Rust returns native structs and `Result<_, String>` where appropriate
-- Python returns PyO3 wrapper classes with attribute access
-- WASM uses JSON strings for structured inputs/outputs, with typed-array fast paths for selected operations
+- Python returns PyO3 wrapper classes with attribute access, and exposes `__all__` and `__version__`
+- WASM uses JSON strings for structured inputs/outputs, with typed-array fast paths for selected operations; a failure is always the JSON payload `{"error": "<message>"}`
 - CLI exposes a subset of stable workflows as commands
 
 ### Stability model
@@ -61,161 +98,182 @@ If any future API change diverges from this document, the source files above win
 
 ## Function Catalog by Domain
 
-The tables below are organized function-by-function by domain. A dash means the function is not directly exposed on that surface.
+The tables below are organized function-by-function by domain. A dash means the function is not
+directly exposed on that surface.
+
+The **canonical name of a capability is the Rust root function name**, and it is the same on all
+four surfaces. The *Deprecated Python alias* column lists the old Python spelling, which still
+works but emits a `DeprecationWarning` and will be removed in sci-form 2.0.
 
 ### 1. Geometry, Parsing, and Canonicalization
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `version` | `version` | `version` | `info` | Library/build version and platform info | Metadata only |
-| `embed` | `embed` | `embed` | `embed` | Single conformer generation from SMILES | ETKDGv2 distance geometry + refinement |
-| `embed_batch` | `embed_batch` | `embed_batch` | `batch` | Batch conformer generation | ETKDGv2 + rayon parallelization |
-| `embed_diverse` | `embed_diverse` | `embed_diverse` | `embed-diverse` | Multiple embeddings filtered by diversity | ETKDGv2 + Butina RMSD clustering |
-| `parse` | `parse` | `parse_smiles` | `parse` | Parse SMILES into graph/topology without 3D | SMILES parsing + graph construction |
-| `to_canonical_smiles` | `to_canonical_smiles` | `to_canonical_smiles` | `canonical-smiles` | Canonicalize a SMILES representation | Canonical graph traversal / ordering |
-| `compute_rmsd` | `rmsd` | `compute_rmsd` | `rmsd` | RMSD after optimal superposition | Kabsch alignment |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `version` | `version` | – | `version` | `info` | Library/build version and platform info | Metadata only |
+| `embed` | `embed` | – | `embed` / `embed_seed64` | `embed` | Single conformer generation from SMILES | ETKDGv2 distance geometry + refinement |
+| `embed_batch` | `embed_batch` | – | `embed_batch` / `embed_batch_seed64` | `batch` | Batch conformer generation | ETKDGv2 + rayon parallelization |
+| `embed_diverse` | `embed_diverse` | – | `embed_diverse` | `embed-diverse` | Multiple embeddings filtered by diversity | ETKDGv2 + Butina RMSD clustering |
+| – | `embed_coords_into` | – | `embed_coords` / `embed_coords_typed` (+ `_seed64`) | – | Coordinates without copying into a caller-owned buffer | Zero-copy transfer path |
+| `parse` | `parse` | – | `parse_smiles` | `parse` | Parse SMILES into graph/topology without 3D | SMILES parsing + graph construction |
+| `to_canonical_smiles` | `to_canonical_smiles` | – | `to_canonical_smiles` | `canonical-smiles` | Canonicalize a SMILES representation | Canonical graph traversal / ordering |
+| `compute_rmsd` | `compute_rmsd` | `rmsd` | `compute_rmsd` | `rmsd` | RMSD after optimal superposition | Kabsch alignment |
 
 Practical note:
 
 - `embed` always returns a result object in Rust/Python/WASM. Failure is expressed in the `error` field rather than by panicking.
+- The WASM seed-taking entry points come in pairs: the 32-bit form and a `*_seed64` form that takes a JavaScript `BigInt` for the full 64-bit range.
 
 ### 2. Support Planning and Method Routing
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `get_eht_support` | `eht_support` | `eht_support` | - | Check EHT applicability for a given element set | Element support table + confidence model |
-| `get_system_capabilities` | `system_capabilities` | `system_capabilities` | - | Report what core workflows are usable for an element set | Capability aggregation |
-| `get_system_method_plan` | `system_method_plan` | `system_method_plan` | - | Recommend method/fallback by property domain | Heuristic planner |
-| `compute_eht_or_uff_fallback` | `eht_or_uff_fallback` | `eht_or_uff_fallback` | - | Use EHT when supported, else UFF fallback | Support-aware workflow routing |
-| `compare_methods` | `compare_methods` | `compare_methods` | - | Compare method availability/results | Structured multi-method comparison |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `eht_support` | `eht_support` | – | `eht_support` / `get_eht_support` | – | Check EHT applicability for a given element set | Element support table + confidence model |
+| `system_capabilities` | `system_capabilities` | – | `system_capabilities` / `get_system_capabilities` | – | Report what core workflows are usable for an element set | Capability aggregation |
+| `system_method_plan` | `system_method_plan` | – | `system_method_plan` / `get_system_method_plan` | – | Recommend method/fallback by property domain | Heuristic planner |
+| `compute_eht_or_uff_fallback` | `compute_eht_or_uff_fallback` | `eht_or_uff_fallback` | `compute_eht_or_uff_fallback` / `eht_or_uff_fallback` | – | Use EHT when supported, else UFF fallback | Support-aware workflow routing |
+| `compare_methods` | `compare_methods` | – | `compare_methods` | – | Compare method availability/results | Structured multi-method comparison |
 
 ### 3. Charges, Surface, Population, Electrostatics, and DOS
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `compute_charges` | `charges` | `compute_charges` | `charges` | Gasteiger-Marsili partial charges | Electronegativity equalization |
-| `compute_charges_configured` | `compute_charges_configured` | `compute_charges_configured` | `charges-configured` | Tunable Gasteiger-Marsili calculation | Same model, configurable damping/iterations |
-| `compute_sasa` | `sasa` | `compute_sasa` | `sasa` | Solvent-accessible surface area | Shrake-Rupley + Fibonacci sphere |
-| `compute_population` | `population` | `compute_population` | `population` | Mulliken/Löwdin population analysis | EHT + overlap-based charge partitioning |
-| `compute_dipole` | `dipole` | `compute_dipole` | `dipole` | Molecular dipole moment | EHT-derived electronic distribution |
-| `compute_esp` | `esp` | `compute_esp` | `esp` | Electrostatic potential on a 3D grid | Coulomb grid from atomic charges |
-| `compute_esp_grid` | - | - | - | Convenience alias returning full ESP grid struct | Same as `compute_esp` |
-| `compute_dos` | `dos` | `compute_dos` | `dos` | Density of states curve | Gaussian broadening over orbital energies |
-| `compute_dos_multimethod` | `compute_dos_multimethod` | `compute_dos_multimethod` | `dos-multimethod` | DOS from the orbital energies of a chosen method | Gaussian broadening over method-specific orbital energies |
-| `compute_bond_orders` | `bond_orders` | `compute_bond_orders` | - | Wiberg-like and Mayer-like bond orders | EHT density/overlap analysis |
-| `compute_frontier_descriptors` | `frontier_descriptors` | `compute_frontier_descriptors` | - | Atom-resolved HOMO/LUMO descriptors | EHT MO contributions |
-| `compute_fukui_descriptors` | `fukui_descriptors` | `compute_fukui_descriptors` | - | Condensed Fukui descriptors | Frontier orbital-based reactivity workflow |
-| `compute_reactivity_ranking` | `reactivity_ranking` | `compute_reactivity_ranking` | - | Rank reactive sites | Fukui + Mulliken hybrid heuristic |
-| `compute_uv_vis_spectrum` | `uvvis_spectrum` | `compute_uv_vis_spectrum` | - | Low-cost exploratory UV-Vis-like spectrum | EHT transition approximation |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `compute_charges` | `compute_charges` | `charges` | `compute_charges` | `charges` | Gasteiger-Marsili partial charges | Electronegativity equalization |
+| `compute_charges_configured` | `compute_charges_configured` | – | `compute_charges_configured` | `charges-configured` | Tunable Gasteiger-Marsili calculation | Same model, configurable damping/iterations |
+| `compute_sasa` | `compute_sasa` | `sasa` | `compute_sasa` | `sasa` | Solvent-accessible surface area | Shrake-Rupley + Fibonacci sphere |
+| `compute_population` | `compute_population` | `population` | `compute_population` | `population` | Mulliken/Löwdin population analysis | EHT + overlap-based charge partitioning |
+| `compute_dipole` | `compute_dipole` | `dipole` | `compute_dipole` | `dipole` | Molecular dipole moment | EHT-derived electronic distribution |
+| `compute_esp` | `compute_esp` | `esp` | `compute_esp` | `esp` | Electrostatic potential on a 3D grid | Coulomb grid from atomic charges |
+| `compute_esp_grid` | – | – | – | – | Convenience alias returning full ESP grid struct | Same as `compute_esp` |
+| – | `compute_esp_grid_into` | – | `compute_esp_grid_typed` / `compute_esp_grid_info` | – | ESP grid without copying into a caller-owned buffer | Zero-copy transfer path |
+| `compute_dos` | `compute_dos` | `dos` | `compute_dos` | `dos` | Density of states curve | Gaussian broadening over orbital energies |
+| `compute_dos_multimethod` | `compute_dos_multimethod` | – | `compute_dos_multimethod` | `dos-multimethod` | DOS from the orbital energies of a chosen method | Gaussian broadening over method-specific orbital energies |
+| `compute_bond_orders` | `compute_bond_orders` | `bond_orders` | `compute_bond_orders` | – | Wiberg-like and Mayer-like bond orders | EHT density/overlap analysis |
+| `compute_frontier_descriptors` | `compute_frontier_descriptors` | `frontier_descriptors` | `compute_frontier_descriptors` | – | Atom-resolved HOMO/LUMO descriptors | EHT MO contributions |
+| `compute_fukui_descriptors` | `compute_fukui_descriptors` | `fukui_descriptors` | `compute_fukui_descriptors` | – | Condensed Fukui descriptors | Frontier orbital-based reactivity workflow |
+| `compute_reactivity_ranking` | `compute_reactivity_ranking` | `reactivity_ranking` | `compute_reactivity_ranking` | – | Rank reactive sites | Fukui + Mulliken hybrid heuristic |
+| `compute_uv_vis_spectrum` | `compute_uv_vis_spectrum` | `uvvis_spectrum` | `compute_uv_vis_spectrum` | – | Low-cost exploratory UV-Vis-like spectrum | EHT transition approximation |
 
 ### 4. Force Fields and Heuristic Energy Models
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `compute_uff_energy` | `uff_energy` | `compute_uff_energy` | `uff` | UFF energy evaluation | Universal Force Field |
-| `compute_uff_energy_with_aromatic_heuristics` | `uff_energy_with_aromatic_heuristics` | `compute_uff_energy_with_aromatic_heuristics` | - | UFF with aromaticity-informed correction | UFF + aromatic post-correction |
-| `compute_mmff94_energy` | `mmff94_energy` | `compute_mmff94_energy` | - | MMFF94 energy evaluation | Halgren MMFF94 |
-| `compute_empirical_pka` | `empirical_pka` | `compute_empirical_pka` | - | Estimate acidic/basic pKa sites | Graph environment + charge heuristics |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `compute_uff_energy` | `compute_uff_energy` | `uff_energy` | `compute_uff_energy` | `uff` | UFF energy evaluation | Universal Force Field |
+| `compute_uff_energy_with_aromatic_heuristics` | `compute_uff_energy_with_aromatic_heuristics` | `uff_energy_with_aromatic_heuristics` | `compute_uff_energy_with_aromatic_heuristics` | – | UFF with aromaticity-informed correction | UFF + aromatic post-correction |
+| `compute_mmff94_energy` | `compute_mmff94_energy` | `mmff94_energy` | `compute_mmff94_energy` | – | MMFF94 energy evaluation | Halgren MMFF94 |
+| `compute_empirical_pka` | `compute_empirical_pka` | `empirical_pka` | `compute_empirical_pka` | – | Estimate acidic/basic pKa sites | Graph environment + charge heuristics |
 
 ### 5. Semiempirical, Tight-Binding, Ab Initio, and Neural Potentials
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `compute_pm3` | `pm3_calculate` | `compute_pm3` | `pm3` | PM3 semiempirical SCF | NDDO PM3 |
-| `compute_pm3_gradient` | - | - | - | Analytical PM3 gradients | Hellmann-Feynman + Pulay corrections |
-| `compute_xtb` | `xtb_calculate` | `compute_xtb` | `xtb` | GFN0-xTB style tight-binding workflow | SCC tight-binding |
-| `xtb::solve_gfn1` | `gfn1_calculate` | `compute_gfn1` | `gfn1` | GFN1-xTB workflow with shell charges and D3-style dispersion | Shell-resolved SCC tight-binding |
-| `xtb::solve_gfn2` | `gfn2_calculate` | `compute_gfn2` | `gfn2` | GFN2-xTB workflow with multipoles, D4-style dispersion, and XB correction | Multipole SCC tight-binding |
-| `compute_xtb_gradient` | - | - | - | Analytical xTB gradients | SCC gradient formalism |
-| `compute_hf3c` | `hf3c_calculate` | `compute_hf3c` / `compute_hf3c_custom` | `hf3c` | HF-3c quantum workflow | HF + D3 + gCP + SRB |
-| `compute_ani` | `ani_calculate` | `compute_ani` | `ani` | ANI neural potential using available test/default models | Atomic environment vectors + feed-forward NN |
-| `compute_ani_with_models` | - | - | - | ANI with explicit models/config | Same ANI formalism with custom weights |
-| `compute_cisd` | `compute_cisd` | `compute_cisd` | `cisd` | CISD excited states from an internal STO-3G RHF | Configuration interaction with singles and doubles |
-| `compute_eht_gradient` | `compute_eht_gradient` | `compute_eht_gradient` | `eht-gradient` | EHT energy-surface gradients | Central finite differences on the EHT surface |
-| `optimize_geometry_eht` | `optimize_geometry_eht` | `optimize_geometry_eht` | `optimize-geometry-eht` | Geometry optimization on the EHT surface | Shared BFGS engine |
-| `compute_aevs_tm` | `compute_aevs_tm` | `compute_aevs_tm` | `aevs-tm` | ANI-TM atomic environment vectors (extended element set) | ANI-TM symmetry functions |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `compute_pm3` | `compute_pm3` | `pm3_calculate` | `compute_pm3` | `pm3` | PM3 semiempirical SCF | NDDO PM3 |
+| `compute_pm3_gradient` | – | – | – | – | Analytical PM3 gradients | Hellmann-Feynman + Pulay corrections |
+| `compute_xtb` | `compute_xtb` | `xtb_calculate` | `compute_xtb` | `xtb` | GFN0-xTB style tight-binding workflow | SCC tight-binding |
+| `compute_gfn1` | `compute_gfn1` | `gfn1_calculate` | `compute_gfn1` | `gfn1` | GFN1-xTB workflow with shell charges and D3-style dispersion | Shell-resolved SCC tight-binding |
+| `compute_gfn2` | `compute_gfn2` | `gfn2_calculate` | `compute_gfn2` | `gfn2` | GFN2-xTB workflow with multipoles, D4-style dispersion, and XB correction | Multipole SCC tight-binding |
+| `compute_xtb_gradient` | – | – | – | – | Analytical xTB gradients | SCC gradient formalism |
+| `compute_hf3c` | `compute_hf3c` | `hf3c_calculate` | `compute_hf3c` / `compute_hf3c_custom` | `hf3c` | HF-3c quantum workflow | HF + D3 + gCP + SRB |
+| `compute_ani` | `compute_ani` | `ani_calculate` | `compute_ani` | `ani` | ANI neural potential using available test/default models | Atomic environment vectors + feed-forward NN |
+| `compute_ani_with_models` | – | – | – | – | ANI with explicit models/config | Same ANI formalism with custom weights |
+| `hf::cisd::compute_cisd` | `compute_cisd` | – | `compute_cisd` | `cisd` | CISD excited states from an internal STO-3G RHF | Configuration interaction with singles and doubles |
+| `eht::compute_eht_gradient` | `compute_eht_gradient` | – | `compute_eht_gradient` | `eht-gradient` | EHT energy-surface gradients | Central finite differences on the EHT surface |
+| `eht::optimize_geometry_eht` | `optimize_geometry_eht` | – | `optimize_geometry_eht` | `optimize-geometry-eht` | Geometry optimization on the EHT surface | Shared BFGS engine |
+| `ani::compute_aevs_tm` | `compute_aevs_tm` | – | `compute_aevs_tm` | `aevs-tm` | ANI-TM atomic environment vectors (extended element set) | ANI-TM symmetry functions |
+| `eht::solve_eht` | `solve_eht` | `eht_calculate` | `solve_eht` / `eht_calculate` | `eht` | Extended-Hückel single point | Wolfsberg-Helmholtz Hamiltonian + Löwdin |
 
 ### 6. Spectroscopy and Orbital Visualization
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `compute_stda_uvvis` | `stda_uvvis` | `compute_stda_uvvis` | - | UV-Vis spectrum with oscillator strengths | sTDA-style transition workflow |
-| `compute_vibrational_analysis` | `vibrational_analysis` | `compute_vibrational_analysis` | - | Vibrational frequencies, modes, IR intensities | Numerical Hessian |
-| `compute_vibrational_analysis_uff` | - | `compute_vibrational_analysis_uff` | - | UFF-based vibrational workflow | Gradient-difference Hessian |
-| `compute_ir_spectrum` | `ir_spectrum` | `compute_ir_spectrum` | - | Broadened IR spectrum from vibrational analysis | Lorentzian broadening |
-| `compute_ir_spectrum_broadened` | `compute_ir_spectrum_broadened` | `compute_ir_spectrum_broadened` | `ir-spectrum-broadened` | IR with selectable broadening type | Gaussian or Lorentzian broadening |
-| `predict_nmr_shifts` | `nmr_shifts` | `predict_nmr_shifts` | - | Chemical shift prediction | HOSE/environment heuristics |
-| `predict_nmr_couplings` | `nmr_couplings` | `predict_nmr_couplings` | - | J-coupling prediction | Karplus + topological heuristics |
-| `compute_nmr_spectrum` | `nmr_spectrum` | `compute_nmr_spectrum` | - | Full synthetic NMR spectrum | Shift prediction + coupling model + line broadening |
-| `compute_hose_codes` | `hose_codes` | `compute_hose_codes` | - | Generate HOSE codes per atom | Sphere-of-environment graph encoding |
-| `compute_ensemble_j_couplings` | `compute_ensemble_j_couplings` | `compute_ensemble_j_couplings` | `ensemble-j-couplings` | Boltzmann-averaged J-couplings across conformers | Ensemble averaging |
-| `assign_peaks` | `assign_peaks` | `assign_peaks` | `assign-peaks` | Assign IR peaks to functional groups | Group-frequency tables |
-| `compute_orbital_mesh` | `orbital_mesh` | `compute_orbital_mesh` | - | Isosurface mesh for orbitals | Grid evaluation + marching cubes |
-| - | `eht_orbital_mesh` | `eht_orbital_mesh` | - | EHT-specific orbital isosurface | Same marching-cubes family |
-| - | - | `eht_orbital_grid_typed` | - | EHT orbital grid as typed array | 3D volumetric evaluation |
-| - | - | `eht_orbital_grid_from_coefficients_typed` | - | Orbital grid from supplied MO coefficients | 3D volumetric evaluation |
-| - | - | `eht_volumetric_grid_info` | - | Metadata for EHT volumetric grids | Grid bookkeeping |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `compute_stda_uvvis` | `compute_stda_uvvis` | `stda_uvvis` | `compute_stda_uvvis` | – | UV-Vis spectrum with oscillator strengths | sTDA-style transition workflow |
+| `compute_fluorescence` | `compute_fluorescence` | `fluorescence_spectrum` | `compute_fluorescence` | – | Fluorescence band, radiative rate and lifetime | Same sTDA singlets as absorption |
+| `compute_vibrational_analysis` | `compute_vibrational_analysis` | `vibrational_analysis` | `compute_vibrational_analysis` | – | Vibrational frequencies, modes, IR intensities | Numerical Hessian |
+| `compute_vibrational_analysis_uff` | – | – | `compute_vibrational_analysis_uff` | – | UFF-based vibrational workflow | Gradient-difference Hessian |
+| `compute_ir_spectrum` | `compute_ir_spectrum` | `ir_spectrum` | `compute_ir_spectrum` | – | Broadened IR spectrum from a vibrational analysis | Lorentzian broadening |
+| `compute_ir_spectrum_broadened` | `compute_ir_spectrum_broadened` | – | `compute_ir_spectrum_broadened` | `ir-spectrum-broadened` | IR with selectable broadening type | Gaussian or Lorentzian broadening |
+| `ir::assign_peaks` | `assign_peaks` | – | `assign_peaks` | `assign-peaks` | Assign IR peaks to functional groups | Group-frequency tables |
+| `predict_nmr_shifts` | `predict_nmr_shifts` | `nmr_shifts` | `predict_nmr_shifts` | – | Chemical shift prediction | HOSE/environment heuristics |
+| `predict_nmr_shifts_for_nucleus` | `predict_nmr_shifts_for_nucleus` | `nmr_shifts_for_nucleus` | `predict_nmr_shifts_for_nucleus` | – | Shifts for one requested nucleus | HOSE/environment heuristics |
+| `predict_nmr_couplings` | `predict_nmr_couplings` | `nmr_couplings` | `predict_nmr_couplings` | – | J-coupling prediction | Karplus + topological heuristics |
+| `compute_ensemble_j_couplings` | `compute_ensemble_j_couplings` | – | `compute_ensemble_j_couplings` | `ensemble-j-couplings` | Boltzmann-averaged J-couplings across conformers | Ensemble averaging |
+| `compute_nmr_spectrum` | `compute_nmr_spectrum` | `nmr_spectrum` | `compute_nmr_spectrum` / `compute_nmr_spectrum_with_coords` | – | Full synthetic NMR spectrum | Shift prediction + coupling model + line broadening |
+| `compute_giao_nmr` | `compute_giao_nmr` | `giao_nmr` | `compute_giao_nmr` | – | SCF-backed GIAO chemical shifts | RHF/GIAO on STO-3G |
+| `compute_hose_codes` | `compute_hose_codes` | `hose_codes` | `compute_hose_codes` | – | Generate HOSE codes per atom | Sphere-of-environment graph encoding |
+| `compute_orbital_mesh` | `compute_orbital_mesh` | `orbital_mesh` | `compute_orbital_mesh` | – | Isosurface mesh for orbitals | Grid evaluation + marching cubes |
+| `mesh::eht_orbital_mesh` | `eht_orbital_mesh` | – | `eht_orbital_mesh` | – | EHT-specific orbital isosurface | Same marching-cubes family |
+| – | – | – | `eht_orbital_grid_typed` | – | EHT orbital grid as typed array | 3D volumetric evaluation |
+| – | – | – | `eht_orbital_grid_from_coefficients_typed` | – | Orbital grid from supplied MO coefficients | 3D volumetric evaluation |
+| – | – | – | `eht_volumetric_grid_info` | – | Metadata for EHT volumetric grids | Grid bookkeeping |
 
 ### 7. Topology, Graph Analysis, and ML Properties
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `compute_topology` | `topology_analysis` | `compute_topology` | - | Coordination/topology analysis for structures | Geometric coordination heuristics |
-| `analyze_graph_features` | `graph_features` | `analyze_graph_features` | - | Aromaticity and stereotag graph analysis | Graph traversal and aromatic bond tagging |
-| `compute_ml_descriptors` | `ml_descriptors` | `compute_molecular_descriptors` | - | Molecular descriptor generation | Topological descriptor extraction |
-| `predict_ml_properties` | `ml_predict` | `compute_ml_properties` | - | Property prediction from descriptors | Proxy ML models |
-| `predict_ensemble` | - | - | - | Ensemble property prediction with confidence | Multi-model aggregation |
-| `compute_whim` | `compute_whim` | `compute_whim` | `whim` | WHIM 3D molecular descriptors | WHIM projection + weighting |
-| `compute_rdf` | `compute_rdf` | `compute_rdf` | `rdf` | Radial distribution function descriptors | Charge-weighted radial histograms |
-| `compute_getaway` | `compute_getaway` | `compute_getaway` | `getaway` | GETAWAY 3D molecular descriptors | Atom-distance autocorrelations |
-| `train_random_forest` | `train_random_forest` | `train_random_forest` | `train-random-forest` | Train a Random Forest regressor | Bootstrap bagging on decision trees |
-| `train_gradient_boosting` | `train_gradient_boosting` | `train_gradient_boosting` | `train-gradient-boosting` | Train a Gradient Boosting regressor | Additive boosting on shallow trees |
-| `compute_tpsa` | - | - | - | Topological polar surface area | Fragment-based TPSA heuristic |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `compute_topology` | `compute_topology` | `topology_analysis` | `compute_topology` | – | Coordination/topology analysis for structures | Geometric coordination heuristics |
+| `analyze_graph_features` | `analyze_graph_features` | `graph_features` | `analyze_graph_features` | – | Aromaticity and stereotag graph analysis | Graph traversal and aromatic bond tagging |
+| `compute_ml_descriptors` | `compute_ml_descriptors` | `ml_descriptors` | `compute_ml_descriptors` / `compute_molecular_descriptors` | – | Molecular descriptor generation | Topological descriptor extraction |
+| `predict_ml_properties` | `predict_ml_properties` | `ml_predict` | `predict_ml_properties` / `compute_ml_properties` | – | Property prediction from descriptors | Proxy ML models |
+| `predict_ensemble` | – | – | – | – | Ensemble property prediction with confidence | Multi-model aggregation |
+| `ml::compute_whim` | `compute_whim` | – | `compute_whim` | `whim` | WHIM 3D molecular descriptors | WHIM projection + weighting |
+| `ml::compute_rdf` | `compute_rdf` | – | `compute_rdf` | `rdf` | Radial distribution function descriptors | Charge-weighted radial histograms |
+| `ml::compute_getaway` | `compute_getaway` | – | `compute_getaway` | `getaway` | GETAWAY 3D molecular descriptors | Atom-distance autocorrelations |
+| `ml::train_random_forest` | `train_random_forest` | – | `train_random_forest` | `train-random-forest` | Train a Random Forest regressor | Bootstrap bagging on decision trees |
+| `ml::train_gradient_boosting` | `train_gradient_boosting` | – | `train_gradient_boosting` | `train-gradient-boosting` | Train a Gradient Boosting regressor | Additive boosting on shallow trees |
+| `compute_tpsa` | – | – | – | – | Topological polar surface area | Fragment-based TPSA heuristic |
 
 ### 8. Dynamics, Conformer Search, and Path Sampling
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `compute_md_trajectory` | `md_trajectory` | `compute_md_trajectory` | - | Short exploratory MD | Velocity Verlet |
-| `compute_md_trajectory_nvt` | `md_trajectory_nvt` | `compute_md_trajectory_nvt` | - | MD with thermostat | Velocity Verlet + Berendsen NVT |
-| `compute_simplified_neb_path` | `simplified_neb_path` | `compute_simplified_neb_path` | - | Approximate reaction path between geometries | Simplified NEB |
-| `search_conformers_with_uff` | `search_conformers` | `search_conformers_with_uff` | - | UFF-ranked conformer exploration | Multi-seed embedding + UFF scoring + clustering |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `compute_md_trajectory` | `compute_md_trajectory` | `md_trajectory` | `compute_md_trajectory` / `compute_md_trajectory_seed64` | – | Short exploratory MD | Velocity Verlet |
+| `compute_md_trajectory_nvt` | `compute_md_trajectory_nvt` | `md_trajectory_nvt` | `compute_md_trajectory_nvt` / `compute_md_trajectory_nvt_seed64` | – | MD with thermostat | Velocity Verlet + Berendsen NVT |
+| `compute_simplified_neb_path` | `compute_simplified_neb_path` | `simplified_neb_path` | `compute_simplified_neb_path` / `compute_neb_path_with_method` | `simplified-neb-path` | Approximate reaction path between geometries | Simplified NEB |
+| `neb_backend_energy_kcal` / `neb_backend_energy_and_gradient` | – | – | `neb_single_point_energy` / `neb_energy_and_gradient` | `neb-energy` / `neb-gradient` | Single-point energy and gradient for any NEB backend | Backend dispatch over UFF/PM3/xTB/HF-3c |
+| `search_conformers_with_uff` | `search_conformers_with_uff` | `search_conformers` | `search_conformers_with_uff` / `search_conformers_with_uff_seed64` | – | UFF-ranked conformer exploration | Multi-seed embedding + UFF scoring + clustering |
+| `compute_reaction_dynamics` | – | – | `compute_reaction_dynamics` | `reaction-dynamics3d` | Full 3D reaction-dynamics path | Fragment embedding + NEB + approach/departure frames |
 
 ### 9. Materials, Periodic Systems, and Framework Construction
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `create_unit_cell` | `unit_cell` | `create_unit_cell` | `cell` | Build a unit cell from lattice parameters | Crystallographic cell tensor construction |
-| `assemble_framework` | `assemble_framework` | `assemble_framework` | `assemble` | Assemble framework structures from topology/SBUs | Topology-guided framework assembly |
-| `materials::space_groups::space_group_by_number` | `space_group_by_number` | `space_group_by_number` | `space-group --number` | Look up a space group by ITC number | Crystallographic space-group table |
-| `materials::space_groups::space_group_by_symbol` | `space_group_by_symbol` | `space_group_by_symbol` | `space-group --symbol` | Look up a space group by Hermann-Mauguin symbol | Crystallographic space-group table |
-| `materials::space_group_table` | `all_space_groups` | `all_space_groups` | `all-space-groups` | List all 230 space groups | Crystallographic space-group table |
-| `periodic::build_periodic_molecule` | `build_periodic_molecule` | `build_periodic_molecule` | `periodic-molecule` | Build a periodic molecular graph | Fractional-coordinate periodic bonding |
-| `periodic::detect_hapticity` | `detect_hapticity` | `detect_hapticity` | `hapticity` | Detect haptic metal-ring interactions | Ring-membership eta counting |
-| `materials::geometry_opt::optimize_framework` | `optimize_framework` | `optimize_framework` | `optimize-framework` | Optimize a geometry with the shared BFGS engine | BFGS on the UFF surface |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `create_unit_cell` | `create_unit_cell` | `unit_cell` | `create_unit_cell` | `cell` | Build a unit cell from lattice parameters | Crystallographic cell tensor construction |
+| `assemble_framework` | `assemble_framework` | – | `assemble_framework` | `assemble` | Assemble framework structures from topology/SBUs | Topology-guided framework assembly |
+| `materials::space_groups::space_group_by_number` | `space_group_by_number` | – | `space_group_by_number` | `space-group --number` | Look up a space group by ITC number | Crystallographic space-group table |
+| `materials::space_groups::space_group_by_symbol` | `space_group_by_symbol` | – | `space_group_by_symbol` | `space-group --symbol` | Look up a space group by Hermann-Mauguin symbol | Crystallographic space-group table |
+| `materials::space_groups::all_space_groups` | `all_space_groups` | – | `all_space_groups` | `all-space-groups` | List all 230 space groups | Crystallographic space-group table |
+| `periodic::build_periodic_molecule` | `build_periodic_molecule` | – | `build_periodic_molecule` | `periodic-molecule` | Build a periodic molecular graph | Fractional-coordinate periodic bonding |
+| `periodic::detect_hapticity` | `detect_hapticity` | – | `detect_hapticity` | `hapticity` | Detect haptic metal-ring interactions | Ring-membership eta counting |
+| `materials::geometry_opt::optimize_framework` | `optimize_framework` | – | `optimize_framework` | `optimize-framework` | Optimize a geometry with the shared BFGS engine | BFGS on the UFF surface |
 
 ### 10. Stereochemistry, Solvation, Rings, Fingerprints, and Clustering
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `analyze_stereo` | `stereo_analysis` | `analyze_stereo` | `stereo` | R/S and E/Z assignment | CIP priority workflow + geometry checks |
-| `compute_nonpolar_solvation` | `nonpolar_solvation` | `compute_nonpolar_solvation` | `solvation` | Non-polar solvation energy | SASA + atomic solvation parameters |
-| `compute_gb_solvation` | `gb_solvation` | `compute_gb_solvation` | `solvation --charges ...` | Electrostatic + nonpolar solvation | HCT-style Generalized Born |
-| `compute_sssr` | `sssr` | `compute_sssr` | `sssr` | Smallest set of smallest rings | Horton-style ring perception |
-| `compute_ecfp` | `ecfp` | `compute_ecfp` | `ecfp` | Morgan/ECFP fingerprint | Circular neighborhood hashing |
-| `compute_ecfp_batch` | `compute_ecfp_batch` | `compute_ecfp_batch` | `ecfp-batch` | Batch ECFP generation | Same Morgan/ECFP workflow |
-| `compute_tanimoto` | `tanimoto` | `compute_tanimoto` | `tanimoto` | Similarity between fingerprints | Tanimoto coefficient |
-| `butina_cluster` | `butina_cluster` | `butina_cluster` | - | Conformer clustering | Taylor-Butina clustering |
-| `compute_rmsd_matrix` | `rmsd_matrix` | `compute_rmsd_matrix` | - | Pairwise RMSD matrix | Repeated alignment metric |
-| `clustering::filter_diverse_conformers` | `filter_diverse` | `filter_diverse` | `filter-diverse` | Keep only diverse conformers | Diversity filtering over Butina clusters |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `analyze_stereo` | `analyze_stereo` | `stereo_analysis` | `analyze_stereo` | `stereo` | R/S and E/Z assignment | CIP priority workflow + geometry checks |
+| `compute_nonpolar_solvation` | `compute_nonpolar_solvation` | `nonpolar_solvation` | `compute_nonpolar_solvation` | `solvation` | Non-polar solvation energy | SASA + atomic solvation parameters |
+| `compute_gb_solvation` | `compute_gb_solvation` | `gb_solvation` | `compute_gb_solvation` | `solvation --charges ...` | Electrostatic + nonpolar solvation | HCT-style Generalized Born |
+| `compute_sssr` | `compute_sssr` | `sssr` | `compute_sssr` | `sssr` | Smallest set of smallest rings | Horton-style ring perception |
+| `compute_ecfp` | `compute_ecfp` | `ecfp` | `compute_ecfp` | `ecfp` | Morgan/ECFP fingerprint | Circular neighborhood hashing |
+| `compute_ecfp_batch` | `compute_ecfp_batch` | – | `compute_ecfp_batch` | `ecfp-batch` | Batch ECFP generation | Same Morgan/ECFP workflow |
+| `compute_tanimoto` | `compute_tanimoto` | `tanimoto` | `compute_tanimoto` | `tanimoto` | Similarity between fingerprints | Tanimoto coefficient |
+| `butina_cluster` | `butina_cluster` | – | `butina_cluster` | – | Conformer clustering | Taylor-Butina clustering |
+| `compute_rmsd_matrix` | `compute_rmsd_matrix` | `rmsd_matrix` | `compute_rmsd_matrix` | – | Pairwise RMSD matrix | Repeated alignment metric |
+| `clustering::filter_diverse_conformers` | `filter_diverse` | – | `filter_diverse` | `filter-diverse` | Keep only diverse conformers | Diversity filtering over Butina clusters |
 
 ### 11. Transport and Batch-Oriented Helpers
 
-| Rust | Python | WASM | CLI | Purpose | Algorithmic basis |
-|------|--------|------|-----|---------|-------------------|
-| `transport` module helpers | `pack_conformers` | `pack_batch_arrow` | - | Columnar transport of conformer results | Arrow-like packing |
-| `transport` module helpers | `split_worker_tasks` | `split_worker_tasks` | - | Split work for worker pools | Chunked task partitioning |
-| `transport` module helpers | `estimate_workers` | `estimate_workers` | - | Estimate worker count for batch size | Heuristic load balancing |
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `transport::pack_conformers` | `pack_conformers` | – | `pack_conformers` / `pack_batch_arrow` | – | Columnar transport of conformer results | Arrow-like packing |
+| `transport::split_worker_tasks` | `split_worker_tasks` | – | `split_worker_tasks` / `split_worker_tasks_seed64` | – | Split work for worker pools | Chunked task partitioning |
+| `transport::estimate_workers` | `estimate_workers` | – | `estimate_workers` | – | Estimate worker count for batch size | Heuristic load balancing |
+
+### 12. SMIRKS
+
+| Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
+|------|--------|--------------------------|------|-----|---------|-------------------|
+| `smirks::parse_smirks` | `parse_smirks` | – | `parse_smirks` | – | Parse a SMIRKS reaction string | SMIRKS grammar |
+| `smirks::apply_smirks` | `apply_smirks` | – | `apply_smirks` | – | Apply a SMIRKS transform to a molecule | Substructure matching + transform |
 
 ---
 
@@ -269,7 +327,7 @@ Core idea:
 Main API entries:
 
 - Rust: `parse`, `to_canonical_smiles`, `analyze_graph_features`
-- Python: `parse`, `graph_features`
+- Python: `parse`, `analyze_graph_features`
 - WASM: `parse_smiles`, `analyze_graph_features`
 - CLI: `parse`
 
@@ -340,7 +398,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_charges`, `compute_charges_configured`
-- Python: `charges`
+- Python: `compute_charges`
 - WASM: `compute_charges`
 - CLI: `charges`
 
@@ -361,9 +419,9 @@ Core idea:
 
 Main API entries:
 
-- Rust: `get_eht_support`, `compute_population`, `compute_dipole`, `compute_frontier_descriptors`, `compute_fukui_descriptors`, `compute_reactivity_ranking`, `compute_uv_vis_spectrum`, `compute_bond_orders`, `compute_esp`, `compute_dos`
-- Python: `eht_calculate`, `eht_support`, `eht_or_uff_fallback`, `population`, `dipole`, `bond_orders`, `frontier_descriptors`
-- WASM: `eht_calculate`, `eht_support`, `eht_or_uff_fallback`, `compute_population`, `compute_dipole`, `compute_bond_orders`, `compute_dos`
+- Rust: `eht_support`, `compute_population`, `compute_dipole`, `compute_frontier_descriptors`, `compute_fukui_descriptors`, `compute_reactivity_ranking`, `compute_uv_vis_spectrum`, `compute_bond_orders`, `compute_esp`, `compute_dos`
+- Python: `solve_eht`, `eht_support`, `compute_eht_or_uff_fallback`, `compute_population`, `compute_dipole`, `compute_bond_orders`, `compute_frontier_descriptors`
+- WASM: `solve_eht`, `eht_support`, `compute_eht_or_uff_fallback`, `compute_population`, `compute_dipole`, `compute_bond_orders`, `compute_dos`
 - CLI: `eht`, `population`, `dipole`, `dos`, `esp`
 
 Why it matters in sci-form:
@@ -396,7 +454,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_orbital_mesh`
-- Python: `eht_orbital_mesh`, `orbital_mesh`
+- Python: `eht_orbital_mesh`, `compute_orbital_mesh`
 - WASM: `eht_orbital_mesh`, `eht_orbital_grid_typed`, `eht_orbital_grid_from_coefficients_typed`, `compute_orbital_mesh`
 
 Related theory docs:
@@ -417,7 +475,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_uff_energy`, `compute_uff_energy_with_aromatic_heuristics`, `compute_mmff94_energy`
-- Python: `uff_energy`, `uff_energy_with_aromatic_heuristics`, `mmff94_energy`
+- Python: `compute_uff_energy`, `compute_uff_energy_with_aromatic_heuristics`, `compute_mmff94_energy`
 - WASM: same names with `compute_...`
 - CLI: `uff`
 
@@ -442,7 +500,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_pm3`, `compute_pm3_gradient`, `compute_xtb`, `xtb::solve_gfn1`, `xtb::solve_gfn2`, `compute_xtb_gradient`
-- Python: `pm3_calculate`, `xtb_calculate`, `gfn1_calculate`, `gfn2_calculate`
+- Python: `compute_pm3`, `compute_xtb`, `compute_gfn1`, `compute_gfn2`
 - WASM: `compute_pm3`, `compute_xtb`, `compute_gfn1`, `compute_gfn2`
 - CLI: `pm3`, `xtb`, `gfn1`, `gfn2`, `hf3c`
 
@@ -463,7 +521,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_hf3c`
-- Python: `hf3c_calculate`
+- Python: `compute_hf3c`
 - WASM: `compute_hf3c`, `compute_hf3c_custom`
 - CLI: `hf3c`
 
@@ -484,7 +542,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_ani`, `compute_ani_with_models`
-- Python: `ani_calculate`
+- Python: `compute_ani`
 - WASM: `compute_ani`
 - CLI: `ani`
 
@@ -506,9 +564,9 @@ Core idea:
 
 Main API entries:
 
-- UV-Vis: `compute_uv_vis_spectrum`, `compute_stda_uvvis`, `uvvis_spectrum`, `stda_uvvis`, `compute_uv_vis_spectrum`, `compute_stda_uvvis`
-- IR: `compute_vibrational_analysis`, `compute_vibrational_analysis_uff`, `compute_ir_spectrum`, `compute_ir_spectrum_broadened`, `vibrational_analysis`, `ir_spectrum`, `compute_vibrational_analysis`, `compute_ir_spectrum`
-- NMR: `predict_nmr_shifts`, `predict_nmr_couplings`, `compute_nmr_spectrum`, `compute_hose_codes`, `compute_ensemble_j_couplings`, `nmr_shifts`, `nmr_couplings`, `nmr_spectrum`, `hose_codes`, `predict_nmr_shifts`, `predict_nmr_couplings`, `compute_nmr_spectrum`, `compute_hose_codes`
+- UV-Vis: `compute_uv_vis_spectrum`, `compute_stda_uvvis`, `compute_uv_vis_spectrum`, `compute_stda_uvvis`, `compute_uv_vis_spectrum`, `compute_stda_uvvis`
+- IR: `compute_vibrational_analysis`, `compute_vibrational_analysis_uff`, `compute_ir_spectrum`, `compute_ir_spectrum_broadened`, `compute_vibrational_analysis`, `compute_ir_spectrum`, `compute_vibrational_analysis`, `compute_ir_spectrum`
+- NMR: `predict_nmr_shifts`, `predict_nmr_couplings`, `compute_nmr_spectrum`, `compute_hose_codes`, `compute_ensemble_j_couplings`, `predict_nmr_shifts`, `predict_nmr_couplings`, `compute_nmr_spectrum`, `compute_hose_codes`, `predict_nmr_shifts`, `predict_nmr_couplings`, `compute_nmr_spectrum`, `compute_hose_codes`
 
 Related theory docs:
 
@@ -534,7 +592,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_frontier_descriptors`, `compute_fukui_descriptors`, `compute_reactivity_ranking`, `compute_empirical_pka`
-- Python: `frontier_descriptors`, `fukui_descriptors`, `reactivity_ranking`, `empirical_pka`
+- Python: `compute_frontier_descriptors`, `compute_fukui_descriptors`, `compute_reactivity_ranking`, `compute_empirical_pka`
 - WASM: same `compute_...` names
 
 Related theory docs:
@@ -556,7 +614,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_rmsd`, `butina_cluster`, `compute_rmsd_matrix`, `embed_diverse`
-- Python: `rmsd`, `butina_cluster`, `rmsd_matrix`, `filter_diverse`
+- Python: `compute_rmsd`, `butina_cluster`, `compute_rmsd_matrix`, `filter_diverse`
 - WASM: `compute_rmsd`, `butina_cluster`, `compute_rmsd_matrix`
 - CLI: `rmsd`
 
@@ -578,7 +636,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_nonpolar_solvation`, `compute_gb_solvation`
-- Python: `nonpolar_solvation`, `gb_solvation`
+- Python: `compute_nonpolar_solvation`, `compute_gb_solvation`
 - WASM: `compute_nonpolar_solvation`, `compute_gb_solvation`
 - CLI: `solvation`
 
@@ -599,7 +657,7 @@ Core idea:
 Main API entries:
 
 - Rust: `compute_sssr`, `compute_ecfp`, `compute_ecfp_batch`, `compute_tanimoto`
-- Python: `sssr`, `ecfp`, `tanimoto`
+- Python: `compute_sssr`, `compute_ecfp`, `compute_tanimoto`
 - WASM: `compute_sssr`, `compute_ecfp`, `compute_tanimoto`
 - CLI: `sssr`, `ecfp`, `tanimoto`
 
@@ -620,7 +678,7 @@ Core idea:
 Main API entries:
 
 - Rust: `create_unit_cell`, `assemble_framework`
-- Python: `unit_cell`, `assemble_framework`
+- Python: `create_unit_cell`, `assemble_framework`
 - WASM: `create_unit_cell`, `assemble_framework`
 - CLI: `cell`, `assemble`
 
@@ -663,10 +721,10 @@ These are supported only when the corresponding feature flags are enabled.
 
 | Capability | Rust feature | Python | WASM | CLI | SVG |
 |-----------|--------------|--------|------|-----|-----|
-| EEQ charges | `experimental-eeq` | `eeq_charges`, `eeq_energy` | `compute_eeq_charges`, `compute_eeq_energy` | `eeq` | `/svg/experimental-eeq.svg` |
-| ALPB solvation | `experimental-alpb` | `alpb_solvation`, `alpb_born_radii` | `compute_alpb_solvation`, `compute_alpb_born_radii` | `alpb` | `/svg/experimental-alpb.svg` |
-| D4 dispersion | `experimental-d4` | `d4_energy` | `compute_d4_energy` | `d4` | `/svg/experimental-d4.svg` |
-| CPM electrochemistry | `experimental-cpm` | `cpm_charges`, `cpm_surface` | `compute_cpm_charges`, `compute_cpm_surface` | `cpm` | `/svg/experimental-cpm.svg` |
+| EEQ charges | `experimental-eeq` | `compute_eeq_charges`, `compute_eeq_energy` (aliases `eeq_charges`, `eeq_energy`) | `compute_eeq_charges`, `compute_eeq_energy` | `eeq` | `/svg/experimental-eeq.svg` |
+| ALPB solvation | `experimental-alpb` | `compute_alpb_solvation`, `compute_alpb_born_radii` (aliases `alpb_solvation`, `alpb_born_radii`) | `compute_alpb_solvation`, `compute_alpb_born_radii` | `alpb` | `/svg/experimental-alpb.svg` |
+| D4 dispersion | `experimental-d4` | `compute_d4_energy` (alias `d4_energy`) | `compute_d4_energy` | `d4` | `/svg/experimental-d4.svg` |
+| CPM electrochemistry | `experimental-cpm` | `compute_cpm_charges`, `compute_cpm_surface` (aliases `cpm_charges`, `cpm_surface`) | `compute_cpm_charges`, `compute_cpm_surface` | `cpm` | `/svg/experimental-cpm.svg` |
 | CGA | `experimental-cga` | - | - | - | `/svg/experimental-cga.svg` |
 | RandNLA | `experimental-randnla` | - | - | - | `/svg/experimental-randnla.svg` |
 | Riemannian | `experimental-riemannian` | - | - | - | `/svg/experimental-riemannian.svg` |
@@ -816,10 +874,10 @@ This inventory is intended to support the “SVG by SVG” documentation pass. E
 | Generate 3D coordinates | `embed`, `embed_batch`, `embed_diverse` |
 | Get partial charges fast | `compute_charges` |
 | Obtain quantum-like orbital descriptors cheaply | `compute_population`, `compute_dipole`, `compute_dos`, `compute_esp` |
-| Estimate higher-fidelity electronic energies | `compute_pm3`, `compute_xtb`, `xtb::solve_gfn1`, `xtb::solve_gfn2`, `compute_hf3c` |
+| Estimate higher-fidelity electronic energies | `compute_pm3`, `compute_xtb`, `compute_gfn1`, `compute_gfn2`, `compute_hf3c` |
 | Visualize orbitals | `compute_orbital_mesh`, `eht_orbital_mesh`, `eht_orbital_grid_typed` |
 | Score conformers or geometry strain | `compute_uff_energy`, `compute_mmff94_energy` |
-| Analyze stereochemistry | `analyze_stereo` / `stereo_analysis` / `stereo` |
+| Analyze stereochemistry | `analyze_stereo` (Python) / `analyze_stereo` (WASM) / `stereo` (CLI) |
 | Compare molecular similarity | `compute_ecfp`, `compute_tanimoto` |
 | Cluster conformers | `butina_cluster`, `compute_rmsd_matrix`, `filter_diverse` |
 

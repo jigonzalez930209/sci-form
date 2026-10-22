@@ -21,6 +21,9 @@ use serde::{Deserialize, Serialize};
 /// the geometry alone and carries no energetic information.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum CoordinationGeometryGuess {
     /// Two-coordinate, 180° (a linear MCl₂ fragment).
     Linear,

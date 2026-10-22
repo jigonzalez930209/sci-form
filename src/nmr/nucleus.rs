@@ -49,6 +49,9 @@ use serde::{Deserialize, Serialize};
 /// assert_eq!(nucleus.canonical(), "13C");
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum NmrNucleus {
     /// Protium (¹H): spin ½, the dominant target of ¹H NMR.
     H1,

@@ -53,6 +53,9 @@ pub struct SmartsBond {
 /// the argument of that primitive (an atomic number, a count, a ring size,
 /// …).
 #[derive(Debug, Clone)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum AtomQuery {
     /// Matches any atom; the SMARTS `*` primitive.
     True,
@@ -128,6 +131,9 @@ pub enum AtomQuery {
 /// As with [`AtomQuery`], the combinator variants mirror the SMARTS logical
 /// operators applied to bond primitives.
 #[derive(Debug, Clone)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum BondQuery {
     /// Matches a single bond (SMARTS `-`).
     Single,

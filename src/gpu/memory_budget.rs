@@ -387,6 +387,9 @@ pub struct PairwiseMemoryEstimate {
 /// violated, so a caller can decide between tiling the work and falling back
 /// to the CPU path. [`MemoryError::hint`] returns actionable guidance.
 #[derive(Debug, Clone)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum MemoryError {
     /// A single buffer object would exceed `max_buffer_size` (default 256 MB).
     BufferTooLarge {

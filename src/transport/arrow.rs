@@ -96,6 +96,9 @@ pub struct ColumnSchema {
 /// deliberately kept in sync with [`RecordBatch::float_columns`],
 /// [`RecordBatch::int_columns`] and [`RecordBatch::uint8_columns`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum DataType {
     /// 64-bit IEEE-754 floating point column.
     Float64,

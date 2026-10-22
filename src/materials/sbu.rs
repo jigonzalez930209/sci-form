@@ -22,6 +22,9 @@ pub struct ConnectionPoint {
 /// The variant fixes the number of connection points of the node and the
 /// ideal directions in which the linkers attach.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum CoordinationGeometry {
     /// Two connection points 180° apart.
     Linear,

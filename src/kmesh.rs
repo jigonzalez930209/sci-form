@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 
 /// k-mesh centering convention.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum KMeshCentering {
     /// Standard Monkhorst-Pack half-shifted mesh.
     #[default]

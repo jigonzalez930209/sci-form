@@ -8,6 +8,9 @@ use std::collections::BTreeSet;
 
 /// Type of pharmacophoric feature.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum PharmFeatureType {
     /// Hydrogen bond donor (N-H, O-H).
     HBondDonor,

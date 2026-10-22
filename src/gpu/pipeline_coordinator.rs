@@ -32,6 +32,9 @@ pub struct PipelineStep {
 
 /// How to dispatch a compute shader.
 #[derive(Debug, Clone)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum DispatchShape {
     /// 1D dispatch over `n` elements (shader divides by workgroup size).
     Linear(u32),
@@ -62,6 +65,9 @@ impl DispatchShape {
 /// coordinator can reach: run on the GPU, prefer the CPU although the GPU
 /// could do it, or must use the CPU because a hard limit was hit.
 #[derive(Debug, Clone)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum StepDecision {
     /// GPU dispatch is feasible and recommended.
     GpuDispatch {

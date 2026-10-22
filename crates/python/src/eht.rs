@@ -279,13 +279,23 @@ fn compute_eht_or_uff_fallback(
             )?;
             dict.set_item("warnings", support.warnings)?;
         }
+        // `ElectronicWorkflowResult` is `#[non_exhaustive]`: a result kind added
+        // after this binding was written cannot be rendered, so fail loudly
+        // instead of returning a half-filled dictionary whose missing entries
+        // a caller would read as physical values.
+        other => {
+            return Err(crate::errors::runtime_error(format!(
+                "unsupported electronic workflow result '{other:?}'. \
+                 Supported: 'eht', 'uff_fallback'."
+            )));
+        }
     }
     Ok(dict.into())
 }
 
 #[pyfunction]
 fn eht_support(elements: Vec<u8>) -> EhtSupportPy {
-    sci_form_core::get_eht_support(&elements).into()
+    sci_form_core::eht_support(&elements).into()
 }
 
 #[pyfunction]

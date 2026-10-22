@@ -44,6 +44,9 @@ const REAXFF_CHON_ELEMENTS: [u8; 4] = [1, 6, 7, 8];
 /// a reaction path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum GsmEnergyBackend {
     /// UFF force field (kcal/mol).
     Uff,
@@ -127,6 +130,9 @@ impl FromStr for GsmEnergyBackend {
 /// Outcome of evaluating one GSM energy backend at one geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum GsmBackendStatus {
     /// The backend produced an energy at this geometry.
     Success,

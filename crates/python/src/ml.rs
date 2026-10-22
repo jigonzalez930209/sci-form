@@ -197,6 +197,10 @@ fn parse_mol_for_ml(smiles: &str) -> PyResult<MolElementsAndBonds> {
                 sci_form_core::graph::BondOrder::Triple => 3,
                 sci_form_core::graph::BondOrder::Aromatic => 4,
                 sci_form_core::graph::BondOrder::Unknown => 1,
+                // `BondOrder` is `#[non_exhaustive]`: a bond order added after
+                // this binding was written falls back to a single bond, the
+                // same conservative choice as `Unknown`.
+                _ => 1,
             };
             (a.index(), b.index(), order)
         })

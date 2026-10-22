@@ -20,6 +20,9 @@ fn ml_bonds(mol: &sci_form::graph::Molecule) -> Vec<(usize, usize, u8)> {
                 BondOrder::Triple => 3,
                 BondOrder::Aromatic => 4,
                 BondOrder::Unknown => 0,
+                // `BondOrder` is `#[non_exhaustive]`: a bond order added after
+                // this test was written maps to 0, the same as `Unknown`.
+                _ => 0,
             };
             (edge.source().index(), edge.target().index(), order)
         })

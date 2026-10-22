@@ -1087,6 +1087,9 @@ pub fn build_vibrational_analysis_from_hessian(
 
 /// Broadening function type for IR spectrum generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum BroadeningType {
     /// Lorentzian line shape (default).
     Lorentzian,

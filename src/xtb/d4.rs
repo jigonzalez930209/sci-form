@@ -48,6 +48,9 @@ impl Default for D4Damping {
 /// (`REFQ_GFN2`/`REFH`); the standalone D4 path uses the DFT tables
 /// (`REFQ_DFT`/`REFH_DFT`, dftd4 reference). Validation F46.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum D4RefSet {
     /// GFN2-xTB reference data (default; validated by F45).
     Gfn2,

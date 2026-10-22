@@ -18,6 +18,9 @@ pub struct OrbitalApproachInfo {
 
 /// Which frontier orbital interaction is dominant.
 #[derive(Debug, Clone, Copy)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum OrbitalInteraction {
     /// Nucleophile HOMO → Electrophile LUMO
     HomoLumo,

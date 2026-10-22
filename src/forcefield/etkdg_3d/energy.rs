@@ -417,26 +417,10 @@ pub fn etkdg_3d_energy(coords: &DMatrix<f32>, mol: &crate::graph::Molecule, ff: 
 
     // Pre-computed torsion contributions (flat ring + chain preferences)
     for tc in &ff.torsion_contribs {
-        let p1 = Vector3::new(
-            coords[(tc.i, 0)] as f32,
-            coords[(tc.i, 1)] as f32,
-            coords[(tc.i, 2)] as f32,
-        );
-        let p2 = Vector3::new(
-            coords[(tc.j, 0)] as f32,
-            coords[(tc.j, 1)] as f32,
-            coords[(tc.j, 2)] as f32,
-        );
-        let p3 = Vector3::new(
-            coords[(tc.k, 0)] as f32,
-            coords[(tc.k, 1)] as f32,
-            coords[(tc.k, 2)] as f32,
-        );
-        let p4 = Vector3::new(
-            coords[(tc.l, 0)] as f32,
-            coords[(tc.l, 1)] as f32,
-            coords[(tc.l, 2)] as f32,
-        );
+        let p1 = Vector3::new(coords[(tc.i, 0)], coords[(tc.i, 1)], coords[(tc.i, 2)]);
+        let p2 = Vector3::new(coords[(tc.j, 0)], coords[(tc.j, 1)], coords[(tc.j, 2)]);
+        let p3 = Vector3::new(coords[(tc.k, 0)], coords[(tc.k, 1)], coords[(tc.k, 2)]);
+        let p4 = Vector3::new(coords[(tc.l, 0)], coords[(tc.l, 1)], coords[(tc.l, 2)]);
         let m6 = crate::forcefield::etkdg_lite::M6Params {
             s: tc.signs.map(|x| x as f32),
             v: tc.v.map(|x| x as f32),
@@ -519,24 +503,24 @@ pub fn etkdg_3d_energy(coords: &DMatrix<f32>, mol: &crate::graph::Molecule, ff: 
             let nu = neighbors_u[0];
             let nv = neighbors_v[0];
             let p1 = Vector3::new(
-                coords[(nu.index(), 0)] as f32,
-                coords[(nu.index(), 1)] as f32,
-                coords[(nu.index(), 2)] as f32,
+                coords[(nu.index(), 0)],
+                coords[(nu.index(), 1)],
+                coords[(nu.index(), 2)],
             );
             let p2 = Vector3::new(
-                coords[(u.index(), 0)] as f32,
-                coords[(u.index(), 1)] as f32,
-                coords[(u.index(), 2)] as f32,
+                coords[(u.index(), 0)],
+                coords[(u.index(), 1)],
+                coords[(u.index(), 2)],
             );
             let p3 = Vector3::new(
-                coords[(v.index(), 0)] as f32,
-                coords[(v.index(), 1)] as f32,
-                coords[(v.index(), 2)] as f32,
+                coords[(v.index(), 0)],
+                coords[(v.index(), 1)],
+                coords[(v.index(), 2)],
             );
             let p4 = Vector3::new(
-                coords[(nv.index(), 0)] as f32,
-                coords[(nv.index(), 1)] as f32,
-                coords[(nv.index(), 2)] as f32,
+                coords[(nv.index(), 0)],
+                coords[(nv.index(), 1)],
+                coords[(nv.index(), 2)],
             );
             energy += crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6)
                 as f64;

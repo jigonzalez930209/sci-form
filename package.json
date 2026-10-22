@@ -1,6 +1,6 @@
 {
   "name": "sci-form",
-  "version": "0.15.2",
+  "version": "1.0.0",
   "description": "**High-performance 3D molecular conformer generation** using ETKDG distance geometry, written in Rust.",
   "main": "crates/wasm/pkg-node/sci_form_wasm.js",
   "directories": {

@@ -15,6 +15,9 @@ use serde::{Deserialize, Serialize};
 
 /// Optimization method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum OptMethod {
     /// Steepest descent (robust, slow convergence).
     SteepestDescent,

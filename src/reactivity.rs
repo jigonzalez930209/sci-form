@@ -387,6 +387,9 @@ fn lorentzian(x: f64, x0: f64, gamma: f64) -> f64 {
 
 /// Broadening line shape type for UV-Vis spectra.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum BroadeningType {
     /// Gaussian broadening (default, original behavior)
     Gaussian,

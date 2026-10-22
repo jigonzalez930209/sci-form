@@ -11,7 +11,15 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 [![npm](https://img.shields.io/npm/v/sci-form-wasm)](https://www.npmjs.com/package/sci-form-wasm)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-See also: [CHANGELOG.md](CHANGELOG.md) · [TESTING.md](TESTING.md) · [Roadmap: dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
+See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 1.0**](docs/guide/migration-1.0.md) · [Release checklist](docs/release-checklist-1.0.md) · [TESTING.md](TESTING.md) · [Roadmap: dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
+
+> **Status: 1.0.0 — the first stable release.**
+> The library no longer panics on malformed input, the force-field results are
+> bit-for-bit reproducible regardless of the machine's core count, and every
+> public item is documented. Read the [migration guide](docs/guide/migration-1.0.md)
+> before upgrading from 0.15.x: the functions that can fail now return a
+> `Result`, and the canonical name of every capability is the Rust root name
+> in all four surfaces.
 
 ## Features
 
@@ -468,11 +476,11 @@ cargo clippy --all-targets -- -D warnings
 Use the provided bump script. It updates all version strings, commits, tags, and pushes:
 
 ```bash
-# Auto-increment patch (0.1.7 → 0.1.8)
+# Auto-increment patch (1.0.0 → 1.0.1)
 ./scripts/bump_version.sh
 
 # Set a specific version
-./scripts/bump_version.sh 0.2.0
+./scripts/bump_version.sh 1.1.0
 ```
 
 This updates versions in:
@@ -485,6 +493,10 @@ This updates versions in:
 - `pkg/package.json` & `pkg-node/package.json`
 
 Then creates a `vX.Y.Z` git tag, which triggers the [release workflow](.github/workflows/release.yml) to publish to **crates.io**, **PyPI**, and **npm** automatically.
+
+The workflow refuses to publish a tag that does not match the manifest
+versions, so a mismatch fails fast instead of shipping mislabelled artefacts.
+Before tagging, walk through the [release checklist](docs/release-checklist-1.0.md).
 
 **Required repository secrets:**
 

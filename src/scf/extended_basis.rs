@@ -7,6 +7,9 @@ use super::basis::{BasisFunction, BasisSet, GaussianPrimitive};
 
 /// Available basis set choices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum BasisSetType {
     /// Minimal basis: 1 function per AO shell.
     Sto3g,

@@ -380,6 +380,9 @@ pub struct MethodCapability {
 /// [`system_method_plan`] for how a method is chosen for a given element set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum ScientificMethod {
     /// ETKDG distance-geometry embedding ([`conformer`]) — geometry only, no energy.
     Embed,
@@ -402,6 +405,9 @@ pub enum ScientificMethod {
 /// Property domain used when choosing a recommended computational method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum PropertyRequest {
     /// 3D molecular geometry generation.
     Geometry,
@@ -489,6 +495,9 @@ pub struct SystemCapabilities {
 /// `{"mode": "eht", "result": {...}}` or `{"mode": "uff_fallback", ...}`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum ElectronicWorkflowResult {
     /// EHT ran successfully and produced a full electronic-structure result.
     Eht {
@@ -509,6 +518,9 @@ pub enum ElectronicWorkflowResult {
 /// Execution status for one method inside a multi-method comparison run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum MethodComparisonStatus {
     /// The method ran and produced a payload.
     Success,
@@ -521,6 +533,9 @@ pub enum MethodComparisonStatus {
 /// Compact per-method payload for multi-method comparison.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum MethodComparisonPayload {
     /// Frontier-orbital observables from the EHT method.
     Eht {
@@ -3242,7 +3257,7 @@ mod tests {
             .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
             .collect();
 
-        let caps = get_system_capabilities(&elements);
+        let caps = system_capabilities(&elements);
         assert!(caps.eht.available);
         assert!(matches!(
             caps.eht.confidence,
@@ -3271,7 +3286,7 @@ mod tests {
 
     #[test]
     fn test_method_plan_prefers_supported_workflows_for_organic_systems() {
-        let plan = get_system_method_plan(&[6, 1, 1, 1, 1]);
+        let plan = system_method_plan(&[6, 1, 1, 1, 1]);
 
         assert_eq!(plan.geometry.recommended, Some(ScientificMethod::Embed));
         assert_eq!(
@@ -3286,7 +3301,7 @@ mod tests {
 
     #[test]
     fn test_method_plan_marks_metal_orbital_workflow_experimental() {
-        let plan = get_system_method_plan(&[78, 17, 17, 7, 7]);
+        let plan = system_method_plan(&[78, 17, 17, 7, 7]);
 
         assert_eq!(plan.orbitals.recommended, Some(ScientificMethod::Eht));
         assert_eq!(
@@ -3303,7 +3318,7 @@ mod tests {
 
     #[test]
     fn test_method_plan_reports_unavailable_workflows_for_unsupported_elements() {
-        let plan = get_system_method_plan(&[104]);
+        let plan = system_method_plan(&[104]);
 
         assert_eq!(plan.force_field_energy.recommended, None);
         assert_eq!(plan.orbitals.recommended, None);

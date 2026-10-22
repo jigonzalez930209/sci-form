@@ -22,6 +22,9 @@ const _FARADAY_C_PER_MOL: f64 = 96_485.332_12;
 
 /// Supported electrical double-layer models.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum EdlModel {
     /// Linear compact-layer model with no diffuse ion response.
     #[default]
@@ -36,6 +39,9 @@ pub enum EdlModel {
 
 /// Numerical backend used to generate an EDL result.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum EdlBackend {
     /// Deterministic CPU reference path.
     #[default]

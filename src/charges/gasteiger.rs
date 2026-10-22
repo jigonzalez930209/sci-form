@@ -179,6 +179,9 @@ pub fn get_gasteiger_params(z: u8) -> Option<GasteigerParams> {
 /// Mirrors the mode keys of the canonical Gasteiger parameter table
 /// (`sp`, `sp2`, `sp3`, sulfur `so`/`so2`, hydrogen `*`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum GasteigerMode {
     /// Unknown hybridization: use the element default.
     Default,

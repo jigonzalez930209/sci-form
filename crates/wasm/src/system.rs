@@ -20,7 +20,7 @@ pub fn system_capabilities(elements: &str) -> String {
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    serialize_or_error(&sci_form::get_system_capabilities(&elems))
+    serialize_or_error(&sci_form::system_capabilities(&elems))
 }
 
 /// Query operation capabilities from a JSON element array.
@@ -28,8 +28,13 @@ pub fn system_capabilities(elements: &str) -> String {
 /// **Alias** of [`system_capabilities`] matching the Rust root name
 /// `sci_form::get_system_capabilities`.
 #[wasm_bindgen]
+#[allow(deprecated)] // this alias exists to keep the old name working
 pub fn get_system_capabilities(elements: &str) -> String {
-    system_capabilities(elements)
+    let elems = match parse_elements(elements) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    serialize_or_error(&sci_form::get_system_capabilities(&elems))
 }
 
 /// Build a structured method plan from a JSON element array.
@@ -43,7 +48,7 @@ pub fn system_method_plan(elements: &str) -> String {
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    serialize_or_error(&sci_form::get_system_method_plan(&elems))
+    serialize_or_error(&sci_form::system_method_plan(&elems))
 }
 
 /// Build a structured method plan from a JSON element array.
@@ -51,8 +56,13 @@ pub fn system_method_plan(elements: &str) -> String {
 /// **Alias** of [`system_method_plan`] matching the Rust root name
 /// `sci_form::get_system_method_plan`.
 #[wasm_bindgen]
+#[allow(deprecated)] // this alias exists to keep the old name working
 pub fn get_system_method_plan(elements: &str) -> String {
-    system_method_plan(elements)
+    let elems = match parse_elements(elements) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    serialize_or_error(&sci_form::get_system_method_plan(&elems))
 }
 
 /// Compare available methods on the same system/geometry.

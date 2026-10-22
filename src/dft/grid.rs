@@ -31,6 +31,9 @@ pub struct MolecularGrid {
 
 /// Grid quality settings.
 #[derive(Debug, Clone, Copy)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum GridQuality {
     /// Coarse: ~50 radial × 6 angular.
     Coarse,

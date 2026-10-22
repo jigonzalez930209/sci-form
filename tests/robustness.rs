@@ -253,8 +253,7 @@ fn a_c2_scf_reports_a_nan_geometry_instead_of_panicking() {
         MolecularSystem::from_angstrom(&[1, 1], &[[0.0, 0.0, 0.0], [f64::NAN, 0.0, 0.0]], 0, 1);
 
     let err = try_run_scf(&system, &ScfConfig::default())
-        .err()
-        .expect("a NaN coordinate must be rejected by the SCF driver");
+        .expect_err("a NaN coordinate must be rejected by the SCF driver");
     assert!(err.contains("non-finite"), "unexpected error: {}", err);
 
     // The infallible driver must not panic either: it reports a

@@ -10,6 +10,9 @@ use serde::{Deserialize, Serialize};
 /// parameters for an element are, not the accuracy of the EHT method itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum SupportLevel {
     /// No EHT parameter set exists for the element.
     Unsupported,

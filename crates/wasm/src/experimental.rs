@@ -4,7 +4,7 @@
 //! All functions accept/return JSON strings.
 
 #[allow(unused_imports)]
-use crate::helpers::{invalid_value, json_error, parse_elements_and_positions};
+use crate::helpers::{bad_json, invalid_value, json_error, parse_elements_and_positions};
 #[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
@@ -1787,7 +1787,7 @@ pub fn compute_band_structure_chart(
     let positions = positions_from_flat(&coords);
     let n_electrons = match sci_form::eht::solve_eht(&elements, &positions, None) {
         Ok(result) => result.n_electrons,
-        Err(e) => return json_error(&bad_json("''", lattice_json, &e)),
+        Err(e) => return json_error(&e),
     };
     let config = BandStructureAdapterConfig {
         n_kpoints_per_segment,
@@ -2613,7 +2613,7 @@ pub fn analyze_gsm_mbh_htst_step_wasm(
     };
     let backend: GsmEnergyBackend = match method.parse() {
         Ok(backend) => backend,
-        Err(e) => {
+        Err(_) => {
             return json_error(&invalid_value(
                 "'method'",
                 method,

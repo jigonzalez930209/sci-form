@@ -29,6 +29,10 @@ pub fn predict_ml_properties(smiles: &str) -> String {
                 sci_form::graph::BondOrder::Triple => 3,
                 sci_form::graph::BondOrder::Aromatic => 4,
                 sci_form::graph::BondOrder::Unknown => 1,
+                // `BondOrder` is `#[non_exhaustive]`: a bond order added after
+                // this binding was written falls back to a single bond, the
+                // same conservative choice as `Unknown`.
+                _ => 1,
             };
             (a.index(), b.index(), order)
         })
@@ -76,6 +80,10 @@ pub fn compute_ml_descriptors(smiles: &str) -> String {
                 sci_form::graph::BondOrder::Triple => 3,
                 sci_form::graph::BondOrder::Aromatic => 4,
                 sci_form::graph::BondOrder::Unknown => 1,
+                // `BondOrder` is `#[non_exhaustive]`: a bond order added after
+                // this binding was written falls back to a single bond, the
+                // same conservative choice as `Unknown`.
+                _ => 1,
             };
             (a.index(), b.index(), order)
         })

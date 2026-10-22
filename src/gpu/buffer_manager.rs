@@ -27,6 +27,9 @@ use super::aligned_types::{GpuMatrixParams, GpuScfParams};
 
 /// Buffer role classification for slot tracking and reuse.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum BufferRole {
     /// Atom position + parameter data (read-only).
     Atoms,
