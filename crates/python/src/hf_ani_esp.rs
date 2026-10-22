@@ -3,7 +3,7 @@
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "Hf3cResult")]
 #[derive(Clone)]
 pub(crate) struct Hf3cResultPy {
     #[pyo3(get)]
@@ -38,7 +38,7 @@ pub(crate) struct Hf3cResultPy {
     mulliken_charges: Vec<f64>,
 }
 
-#[pyclass]
+#[pyclass(name = "AniResult")]
 #[derive(Clone)]
 pub(crate) struct AniResultPy {
     #[pyo3(get)]
@@ -51,7 +51,7 @@ pub(crate) struct AniResultPy {
     atomic_energies: Vec<f64>,
 }
 
-#[pyclass]
+#[pyclass(name = "EspGrid")]
 #[derive(Clone)]
 pub(crate) struct EspGridPy {
     #[pyo3(get)]
@@ -66,7 +66,7 @@ pub(crate) struct EspGridPy {
 
 #[pyfunction]
 #[pyo3(signature = (elements, coords, max_scf_iter=300, n_cis_states=5, corrections=true))]
-fn hf3c_calculate(
+fn compute_hf3c(
     elements: Vec<u8>,
     coords: Vec<f64>,
     max_scf_iter: usize,
@@ -74,7 +74,7 @@ fn hf3c_calculate(
     corrections: bool,
 ) -> PyResult<Hf3cResultPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -105,13 +105,13 @@ fn hf3c_calculate(
             gap: r.gap,
             mulliken_charges: r.mulliken_charges,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn ani_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniResultPy> {
+fn compute_ani(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniResultPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -125,14 +125,14 @@ fn ani_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniResultPy> {
             species: r.species,
             atomic_energies: r.atomic_energies,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
 #[pyo3(signature = (elements, coords, spacing=0.5, padding=3.0))]
-fn esp(elements: Vec<u8>, coords: Vec<f64>, spacing: f64, padding: f64) -> PyResult<EspGridPy> {
+fn compute_esp(elements: Vec<u8>, coords: Vec<f64>, spacing: f64, padding: f64) -> PyResult<EspGridPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -146,10 +146,10 @@ fn esp(elements: Vec<u8>, coords: Vec<f64>, spacing: f64, padding: f64) -> PyRes
             spacing: grid.spacing,
             dims: (grid.dims[0], grid.dims[1], grid.dims[2]),
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
-#[pyclass]
+#[pyclass(name = "AniTmAevs")]
 #[derive(Clone)]
 pub(crate) struct AniTmAevsPy {
     #[pyo3(get)]
@@ -177,7 +177,7 @@ impl AniTmAevsPy {
 #[pyfunction]
 fn compute_aevs_tm(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniTmAevsPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -195,10 +195,10 @@ fn compute_aevs_tm(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniTmAevsPy>
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(hf3c_calculate, m)?)?;
-    m.add_function(wrap_pyfunction!(ani_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_hf3c, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_ani, m)?)?;
     m.add_function(wrap_pyfunction!(compute_aevs_tm, m)?)?;
-    m.add_function(wrap_pyfunction!(esp, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_esp, m)?)?;
     m.add_class::<Hf3cResultPy>()?;
     m.add_class::<AniResultPy>()?;
     m.add_class::<AniTmAevsPy>()?;

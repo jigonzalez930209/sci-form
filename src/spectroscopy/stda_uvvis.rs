@@ -151,7 +151,45 @@ pub fn compute_stda(
     positions_bohr: &[[f64; 3]],
     config: &StdaConfig,
 ) -> SpectroscopyResult {
-    compute_stda_with_dipoles(scf, basis_to_atom, positions_bohr, config, None)
+    match try_compute_stda(scf, basis_to_atom, positions_bohr, config) {
+        Ok(result) => result,
+        Err(error) => failed_spectroscopy_result(error),
+    }
+}
+
+/// Compute sTDA excitation energies, reporting an invalid geometry as an
+/// error.
+pub fn try_compute_stda(
+    scf: &ScfInput,
+    basis_to_atom: &[usize],
+    positions_bohr: &[[f64; 3]],
+    config: &StdaConfig,
+) -> Result<SpectroscopyResult, String> {
+    validate_stda_geometry(positions_bohr)?;
+    Ok(compute_stda_with_dipoles(
+        scf,
+        basis_to_atom,
+        positions_bohr,
+        config,
+        None,
+    ))
+}
+
+/// Validate the atomic positions used by the sTDA monopole model.
+fn validate_stda_geometry(positions_bohr: &[[f64; 3]]) -> Result<(), String> {
+    if positions_bohr.is_empty() {
+        return Err("empty geometry: 0 atoms (at least one atom is required)".to_string());
+    }
+    crate::validation::validate_coords_finite(positions_bohr)
+}
+
+/// The "nothing was computed" result returned for an invalid system.
+fn failed_spectroscopy_result(error: String) -> SpectroscopyResult {
+    SpectroscopyResult {
+        transitions: Vec::new(),
+        method: "sTDA".to_string(),
+        error: Some(error),
+    }
 }
 
 /// sTDA with the Tamm-Dancoff exchange term `-2 ax (ij|ab)`.
@@ -302,6 +340,11 @@ fn compute_stda_inner(
     ao_dipoles: Option<&[DMatrix<f64>; 3]>,
     exchange: Option<&ActiveExchange>,
 ) -> SpectroscopyResult {
+    // Every sTDA entry point funnels through here: validate the geometry
+    // once so a NaN coordinate cannot silently poison the monopole model.
+    if let Err(error) = validate_stda_geometry(positions_bohr) {
+        return failed_spectroscopy_result(error);
+    }
     let active = select_active_space(scf, config);
     let n_active_occ = active.n_occ;
     let n_active_virt = active.n_virt;
@@ -311,6 +354,7 @@ fn compute_stda_inner(
         return SpectroscopyResult {
             transitions: Vec::new(),
             method: "sTDA".to_string(),
+            error: None,
         };
     }
 
@@ -457,7 +501,7 @@ fn compute_stda_inner(
     idx_sorted.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let n_roots = config.n_roots.min(n_singles);
@@ -499,6 +543,7 @@ fn compute_stda_inner(
     SpectroscopyResult {
         transitions,
         method: "sTDA".to_string(),
+        error: None,
     }
 }
 
@@ -781,7 +826,7 @@ mod tests {
             })
             .filter(|e| *e >= 0.0)
             .collect();
-        expected.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        expected.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         for (t, e) in screened.transitions.iter().zip(expected.iter()) {
             assert!(
                 (t.energy_ev - e).abs() < 1e-9,

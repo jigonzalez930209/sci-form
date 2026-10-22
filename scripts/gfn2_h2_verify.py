@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Verify H2 energy components to isolate 0.05 mHa discrepancy."""
-import math, json, subprocess, os
+"""Verify H2 energy components to isolate 0.05 mHa discrepancy.
 
-CLI = '/home/lestad/github/sci-form/target/release/sci-form'
+Environment: SCIFORM_CLI (default: <repo>/target/release/sci-form).
+"""
+import math, json, subprocess, os
+from pathlib import Path
+
+CLI = os.environ.get('SCIFORM_CLI',
+                    str(Path(__file__).resolve().parents[1] / 'target' / 'release' / 'sci-form'))
 ANGSTROM_TO_BOHR = 1.0 / 0.529177  # solver.rs
 
 # GFN2 H parameters

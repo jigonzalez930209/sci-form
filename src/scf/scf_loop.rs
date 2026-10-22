@@ -72,7 +72,48 @@ impl ScfConfig {
 }
 
 /// Run a complete Hartree-Fock SCF calculation.
+///
+/// The geometry is validated first: a system with a mismatched atom count or
+/// a non-finite coordinate produces a non-converged result carrying the
+/// reason in [`ScfResult::error`] instead of a panic or a `NaN` energy.
+/// Use [`try_run_scf`] to get the error as a `Result`.
 pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
+    match try_run_scf(system, config) {
+        Ok(result) => result,
+        Err(msg) => failed_scf_result(msg),
+    }
+}
+
+/// Run a complete Hartree-Fock SCF calculation, reporting invalid input.
+pub fn try_run_scf(system: &MolecularSystem, config: &ScfConfig) -> Result<ScfResult, String> {
+    system.validate_geometry()?;
+    Ok(run_scf_impl(system, config))
+}
+
+/// Build the "nothing was computed" result returned for an invalid system.
+fn failed_scf_result(error: String) -> ScfResult {
+    ScfResult {
+        orbital_energies: Vec::new(),
+        mo_coefficients: DMatrix::zeros(0, 0),
+        density_matrix: DMatrix::zeros(0, 0),
+        electronic_energy: f64::NAN,
+        nuclear_repulsion: f64::NAN,
+        total_energy: f64::NAN,
+        homo_energy: f64::NAN,
+        lumo_energy: None,
+        gap_ev: f64::NAN,
+        mulliken_charges: Vec::new(),
+        scf_iterations: 0,
+        converged: false,
+        n_basis: 0,
+        n_electrons: 0,
+        overlap_matrix: DMatrix::zeros(0, 0),
+        fock_matrix: DMatrix::zeros(0, 0),
+        error: Some(error),
+    }
+}
+
+fn run_scf_impl(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     let n_electrons = system.n_electrons();
     let n_occupied = n_electrons / 2;
 
@@ -114,7 +155,7 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let mut c_ortho = DMatrix::zeros(n_basis, n_basis);
@@ -166,7 +207,7 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
         indices.sort_by(|&a, &b| {
             eigen.eigenvalues[a]
                 .partial_cmp(&eigen.eigenvalues[b])
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         for (new_idx, &old_idx) in indices.iter().enumerate() {
@@ -235,6 +276,7 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
         n_electrons,
         overlap_matrix: s.clone(),
         fock_matrix: fock,
+        error: None,
     }
 }
 
@@ -244,6 +286,11 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
 /// over a window), the driver automatically enables level shifting and
 /// Fermi smearing (FON) to break the oscillation and re-converge.
 pub fn run_scf_hardened(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
+    // An invalid geometry must not reach the FON fallback either.
+    if let Err(error) = system.validate_geometry() {
+        return failed_scf_result(error);
+    }
+
     // First, try normal SCF
     let result = run_scf(system, config);
     if result.converged {
@@ -291,7 +338,7 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let mut c_ortho = DMatrix::zeros(n_basis, n_basis);
@@ -346,7 +393,7 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
         indices.sort_by(|&a, &b| {
             eigen.eigenvalues[a]
                 .partial_cmp(&eigen.eigenvalues[b])
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         for (new_idx, &old_idx) in indices.iter().enumerate() {
@@ -417,6 +464,7 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
         n_electrons,
         overlap_matrix: s.clone(),
         fock_matrix: fock,
+        error: None,
     }
 }
 

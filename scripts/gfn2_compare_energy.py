@@ -1,15 +1,31 @@
 #!/usr/bin/env python3
-"""Compare GFN2 energy breakdown: our Rust impl vs tblite reference."""
+"""Compare GFN2 energy breakdown: our Rust impl vs tblite reference.
+
+Environment: SCIFORM_CLI, SCIFORM_VENV, GFN2_LD_PRELOAD (see
+`scripts/gfn2_component_compare.py`).
+"""
 import subprocess, json, sys, os
+from pathlib import Path
 import numpy as np
 
-# Make sure tblite Python works
-sys.path.insert(0, '/home/lestad/github/sci-form/venv/lib/python3.13/site-packages')
-os.environ['LD_PRELOAD'] = '/usr/lib/x86_64-linux-gnu/libgfortran.so.5'
+# Make sure tblite Python works: the reference packages come from the active
+# interpreter or from the virtualenv pointed at by SCIFORM_VENV — never from
+# a hard-coded path that only exists on one machine.
+_VENV = os.environ.get('SCIFORM_VENV')
+if _VENV:
+    sys.path.insert(0, str(Path(_VENV) / 'lib' /
+                            f'python{sys.version_info.major}.{sys.version_info.minor}' /
+                            'site-packages'))
+# The tblite wheel links against libgfortran; only preload it when the
+# distribution actually ships it there.
+_PRELOAD = os.environ.get('GFN2_LD_PRELOAD', '/usr/lib/x86_64-linux-gnu/libgfortran.so.5')
+if Path(_PRELOAD).exists():
+    os.environ['LD_PRELOAD'] = _PRELOAD
 
 from tblite.interface import Calculator, Structure
 
-CLI = '/home/lestad/github/sci-form/target/release/sci-form'
+CLI = os.environ.get('SCIFORM_CLI',
+                    str(Path(__file__).resolve().parents[1] / 'target' / 'release' / 'sci-form'))
 AATOAU = 1.8897259886
 
 def embed(smiles, seed=42):

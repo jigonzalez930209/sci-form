@@ -11,12 +11,22 @@ The transition-metal entries (PM3(tm), Cundari et al.) are preserved from the
 existing `src/pm3/params.rs` table and merged in.
 """
 
+import argparse
+import os
 import re
 import sys
 from pathlib import Path
 
-MOPAC_SRC = Path("/tmp/opencode/mopac-full/src/models")
-OUT = Path(__file__).resolve().parents[2] / "src" / "pm3" / "params_table.rs"
+from refdata import skip
+
+# The MOPAC sources are not vendored in this repository.  Point
+# SCIFORM_REF_DATA at the directory that holds them (or pass --mopac-dir):
+#   export SCIFORM_REF_DATA=/path/to/mopac-full
+# The default is the repo-local cache directory, which is git-ignored.
+REF_DATA = Path(os.environ.get("SCIFORM_REF_DATA", Path(__file__).resolve().parents[2] / ".cache" / "refdata"))
+MOPAC_SRC = REF_DATA / "mopac-full" / "src" / "models"
+REPO = Path(__file__).resolve().parents[2]
+OUT = REPO / "src" / "pm3" / "params_table.rs"
 
 
 def parse_pm3(path: Path) -> dict:
@@ -74,12 +84,45 @@ def parse_eheat(path: Path) -> dict[int, float]:
     return out
 
 
-def main() -> None:
-    arrays = parse_pm3(MOPAC_SRC / "parameters_for_PM3_C.F90")
-    eheat = parse_eheat(MOPAC_SRC / "parameters_C.F90")
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--mopac-dir",
+        type=Path,
+        default=MOPAC_SRC,
+        help="MOPAC src/models directory (default: $SCIFORM_REF_DATA/mopac-full/src/models)",
+    )
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
+    args = ap.parse_args()
 
-    ios = parse_int_array(MOPAC_SRC / "parameters_C.F90", "ios")
-    iop = parse_int_array(MOPAC_SRC / "parameters_C.F90", "iop")
+    mopac_src = args.mopac_dir
+    missing = [
+        p
+        for p in (
+            mopac_src / "parameters_for_PM3_C.F90",
+            mopac_src / "parameters_C.F90",
+        )
+        if not p.exists()
+    ]
+    if missing:
+        msg = (
+            f"the MOPAC sources are not available ({', '.join(str(p) for p in missing)}); "
+            f"set SCIFORM_REF_DATA or pass --mopac-dir"
+        )
+        if args.check:
+            return skip(msg)
+        raise SystemExit(f"error: {msg}")
+
+    arrays = parse_pm3(mopac_src / "parameters_for_PM3_C.F90")
+    eheat = parse_eheat(mopac_src / "parameters_C.F90")
+
+    ios = parse_int_array(mopac_src / "parameters_C.F90", "ios")
+    iop = parse_int_array(mopac_src / "parameters_C.F90", "iop")
 
     def eisol(z: int) -> float:
         """MOPAC `calpar`: total energy of the isolated atom (eV)."""
@@ -198,9 +241,22 @@ def main() -> None:
         "/// corrections and atomic reference heats of formation.\n"
         "pub(crate) static PM3_MAIN_GROUP: &[Pm3Params] = &[\n"
     )
-    OUT.write_text(header + "".join(entries) + "];\n")
+    text = header + "".join(entries) + "];\n"
+    if args.check:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != text:
+            print(
+                f"{OUT.relative_to(REPO)} is out of date — "
+                f"run scripts/validation/gen_pm3_params.py"
+            )
+            return 1
+        print(f"{OUT.relative_to(REPO)} is up to date")
+        return 0
+
+    OUT.write_text(text)
     print(f"wrote {OUT} with {len(entries)} main-group entries")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

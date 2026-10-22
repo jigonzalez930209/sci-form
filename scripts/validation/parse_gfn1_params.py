@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import time
@@ -21,7 +22,17 @@ from pathlib import Path
 DEFAULT_URL = (
     "https://raw.githubusercontent.com/tblite/tblite/main/src/tblite/xtb/gfn1.f90"
 )
-LOCAL_FALLBACK = Path("/tmp/opencode/tblite_gfn1.f90")
+# Offline fallback for the upstream tblite source: $SCIFORM_REF_DATA
+# (default: <repo>/.cache/refdata).
+LOCAL_FALLBACK = Path(
+    os.environ.get(
+        "SCIFORM_TBLITE_GFN1",
+        str(
+            Path(os.environ.get("SCIFORM_REF_DATA", Path(__file__).resolve().parents[2] / ".cache" / "refdata"))
+            / "tblite_gfn1.f90"
+        ),
+    )
+)
 
 
 def load_source(arg: str | None) -> str:

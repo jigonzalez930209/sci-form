@@ -131,6 +131,8 @@ pub fn neb_energy_and_gradient(method: &str, smiles: &str, coords_json: &str) ->
 ///
 /// `backend`: `"uff"`, `"pm3"`, `"xtb"`.
 /// `target_temp_k`: if > 0, enables Berendsen thermostat with 100 fs coupling.
+/// `seed`: 32-bit random seed (use [`compute_md_trajectory_with_method_seed64`]
+/// for the full 64-bit range).
 ///
 /// Returns JSON `MdTrajectory`.
 #[wasm_bindgen]
@@ -141,6 +143,32 @@ pub fn compute_md_trajectory_with_method(
     n_steps: usize,
     dt_fs: f64,
     seed: u32,
+    target_temp_k: f64,
+    backend: &str,
+) -> String {
+    compute_md_trajectory_with_method_seed64(
+        smiles,
+        coords_json,
+        elements_json,
+        n_steps,
+        dt_fs,
+        seed as u64,
+        target_temp_k,
+        backend,
+    )
+}
+
+/// Run velocity-Verlet MD with a configurable energy backend, 64-bit seed.
+///
+/// `seed` is a JavaScript `BigInt` (e.g. `42n`).
+#[wasm_bindgen]
+pub fn compute_md_trajectory_with_method_seed64(
+    smiles: &str,
+    coords_json: &str,
+    elements_json: &str,
+    n_steps: usize,
+    dt_fs: f64,
+    seed: u64,
     target_temp_k: f64,
     backend: &str,
 ) -> String {
@@ -157,7 +185,13 @@ pub fn compute_md_trajectory_with_method(
         "uff" => sci_form::dynamics::MdBackend::Uff,
         "pm3" => sci_form::dynamics::MdBackend::Pm3,
         "xtb" => sci_form::dynamics::MdBackend::Xtb,
-        _ => return json_error(&format!("unsupported MD backend: {}", backend)),
+        _ => {
+            return json_error(&crate::helpers::invalid_value(
+                "'backend'",
+                backend,
+                &["uff", "pm3", "xtb"],
+            ))
+        }
     };
 
     let thermostat = if target_temp_k > 0.0 {
@@ -172,7 +206,7 @@ pub fn compute_md_trajectory_with_method(
         &elements,
         n_steps,
         dt_fs,
-        seed as u64,
+        seed,
         thermostat,
         md_backend,
     ) {
@@ -257,11 +291,11 @@ pub fn compute_reaction_dynamics(
 ) -> String {
     let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad reactant_smiles: {}", e)),
+        Err(e) => return json_error(&bad_json("'reactant smiles'", reactant_smiles_json, &e)),
     };
     let products: Vec<String> = match serde_json::from_str(product_smiles_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad product_smiles: {}", e)),
+        Err(e) => return json_error(&bad_json("'product smiles'", product_smiles_json, &e)),
     };
 
     let config: sci_form::dynamics::ReactionDynamicsConfig =
@@ -270,7 +304,7 @@ pub fn compute_reaction_dynamics(
         } else {
             match serde_json::from_str(config_json) {
                 Ok(c) => c,
-                Err(e) => return json_error(&format!("bad config: {}", e)),
+                Err(e) => return json_error(&bad_json("'config'", config_json, &e)),
             }
         };
 

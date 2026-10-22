@@ -9,6 +9,7 @@ Value source: tblite main src/tblite/xtb/gfn1.f90 (LGPL-3.0-or-later).
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -18,6 +19,14 @@ OUT = ROOT / "src" / "xtb" / "gfn1_params.rs"
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
+    args = ap.parse_args()
     d = json.loads(FIX.read_text())
     g = d["globals"]
     els = d["elements"]
@@ -139,7 +148,19 @@ def main() -> int:
     out.append("    Some(&GFN1_TABLE[(z - 1) as usize])")
     out.append("}")
     out.append("")
-    OUT.write_text("\n".join(out))
+    text = "\n".join(out)
+    if args.check:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != text:
+            print(
+                f"{OUT.relative_to(ROOT)} is out of date — "
+                f"run scripts/validation/gen_gfn1_params.py"
+            )
+            return 1
+        print(f"{OUT.relative_to(ROOT)} is up to date")
+        return 0
+
+    OUT.write_text(text)
     print(f"wrote {OUT} ({OUT.stat().st_size} bytes)")
     return 0
 

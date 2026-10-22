@@ -26,6 +26,7 @@ env:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Release pipeline:
+#   0. check-version     — the tag MUST match the version of every crate
 #   1. wait-for-ci        — block until CI passes for the same SHA
 #   2. build-cli          — cross-compile CLI grouped by OS (3 runners, 5 targets)
 #   3. build-python       — maturin wheels (3 platforms × 3.11)
@@ -40,9 +41,72 @@ env:
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
+  # ─── Gate 0: the tag must match the version of every published crate ──────
+  # Without this, `git tag v1.0.0` on a 0.15.2 tree publishes 0.15.2
+  # artefacts under a "v1.0.0" release, and the crates.io/PyPI/npm versions
+  # silently stay behind the tag.
+  check-version:
+    name: Check tag matches the crate versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Compare the release tag with every published version
+        run: |
+          set -uo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          echo "Release tag: ${GITHUB_REF_NAME} -> version ${tag}"
+          status=0
+
+          check_toml() {
+            manifest="$1"; expected="$2"
+            name=$(sed -n 's/^name = "\(.*\)"$/\1/p' "$manifest" | head -1)
+            version=$(sed -n 's/^version = "\(.*\)"$/\1/p' "$manifest" | head -1)
+            if [ "$name" != "$expected" ]; then
+              echo "::error file=${manifest}::expected package '${expected}', found '${name}'"
+              status=1
+              return
+            fi
+            if [ "$version" != "$tag" ]; then
+              echo "::error file=${manifest}::${name} is ${version} but the release tag is ${tag}"
+              status=1
+              return
+            fi
+            echo "OK  ${name} ${version}  (${manifest})"
+          }
+
+          # The four published Rust packages.
+          check_toml Cargo.toml sci-form
+          check_toml crates/cli/Cargo.toml sci-form-cli
+          check_toml crates/python/Cargo.toml sci-form-python
+          check_toml crates/wasm/Cargo.toml sci-form-wasm
+
+          # The Python distribution (PyPI) and the npm package carry their own
+          # version strings and must not drift from the tag either.
+          py_version=$(sed -n 's/^version = "\(.*\)"$/\1/p' crates/python/pyproject.toml | head -1)
+          if [ "$py_version" != "$tag" ]; then
+            echo "::error file=crates/python/pyproject.toml::sciforma is ${py_version} but the release tag is ${tag}"
+            status=1
+          else
+            echo "OK  sciforma ${py_version}  (crates/python/pyproject.toml)"
+          fi
+
+          npm_version=$(node -p "require('./package.json').version" 2>/dev/null || echo "")
+          if [ "$npm_version" != "$tag" ]; then
+            echo "::error file=package.json::the npm package is ${npm_version:-<unknown>} but the release tag is ${tag}"
+            status=1
+          else
+            echo "OK  npm ${npm_version}  (package.json)"
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            echo "::error::the release tag does not match the crate versions — bump the crates or retag"
+          fi
+          exit "$status"
+
   # ─── Gate 1: Wait for CI on the same SHA ───────────────────────────────────
   wait-for-ci:
     name: Wait for CI
+    needs: [check-version]
     runs-on: ubuntu-latest
     steps:
       - name: Wait for CI workflow to finish successfully
@@ -199,7 +263,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      # The WASM package needs nightly: `wasm-bindgen-rayon` (the `parallel`
+      # feature) refuses to compile on stable because the `atomics` target
+      # feature is not reported through `cfg(target_feature)` there.  The
+      # channel matches crates/wasm/rust-toolchain.toml.
+      - uses: dtolnay/rust-toolchain@nightly-2026-05-24
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
@@ -213,6 +281,12 @@ jobs:
           test -f crates/wasm/pkg/alpha/index.d.ts
           test -f crates/wasm/pkg/beta/index.js
           test -f crates/wasm/pkg/beta/index.d.ts
+          test -f crates/wasm/pkg-node/alpha/index.js
+          test -f crates/wasm/pkg-node/beta/index.js
+          test -d crates/wasm/pkg/snippets
+          test -d crates/wasm/pkg-node/snippets
+          node -e "const p=require('./crates/wasm/pkg/package.json'); if (p.type !== 'module') throw new Error('pkg must be ESM'); if (!p.files.includes('snippets')) throw new Error('pkg.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg is missing the ./alpha export');"
+          node -e "const p=require('./crates/wasm/pkg-node/package.json'); if (p.type !== 'commonjs') throw new Error('pkg-node must be CommonJS'); if (!p.files.includes('snippets')) throw new Error('pkg-node.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg-node is missing the ./alpha export');"
       - name: Verify Node.js install
         run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const alpha = require('./alpha'); const beta = require('./beta'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.assert(typeof sci.alpha_compute_dft === 'function', 'missing alpha root export'); console.assert(typeof sci.beta_compute_kpm_dos === 'function', 'missing beta root export'); console.assert(typeof alpha.alpha_modules_info === 'function', 'missing alpha subpath export'); console.assert(typeof beta.beta_modules_info === 'function', 'missing beta subpath export'); console.log('✓ Node.js WASM works with alpha/beta exports');"
       - uses: actions/upload-artifact@v6
@@ -436,7 +510,7 @@ jobs:
             ### Rust
             ```toml
             [dependencies]
-            sci-form = "0.1"
+            sci-form = "1.0"
             ```
 
             ### CLI

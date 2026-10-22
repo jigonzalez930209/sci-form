@@ -90,10 +90,12 @@ pub fn evaluate_orbital_with_report(
     orbital_index: usize,
     params: &GridParams,
 ) -> (OrbitalGrid, OrbitalGridReport) {
-    let ctx = GpuContext::best_available();
+    // The context is created once per process and shared (blocker D-M2).
+    let ctx = GpuContext::shared();
+    let mut gpu_failure_reason: Option<String> = None;
 
     if ctx.is_gpu_available() {
-        match evaluate_orbital_gpu(&ctx, basis, mo_coefficients, orbital_index, params) {
+        match evaluate_orbital_gpu(ctx, basis, mo_coefficients, orbital_index, params) {
             Ok(grid) => {
                 let report = OrbitalGridReport {
                     backend: ctx.capabilities.backend.clone(),
@@ -104,8 +106,9 @@ pub fn evaluate_orbital_with_report(
                 };
                 return (grid, report);
             }
-            Err(_err) => {
-                // Fall through to CPU
+            Err(reason) => {
+                // Fall through to CPU, but keep the reason (blocker A-H2).
+                gpu_failure_reason = Some(reason);
             }
         }
     }
@@ -116,10 +119,11 @@ pub fn evaluate_orbital_with_report(
         used_gpu: false,
         attempted_gpu: ctx.is_gpu_available(),
         n_points: params.n_points(),
-        note: if ctx.is_gpu_available() {
-            "GPU available but dispatch failed; CPU fallback used".to_string()
-        } else {
-            "CPU evaluation (GPU not available)".to_string()
+        note: match gpu_failure_reason {
+            Some(reason) => {
+                format!("GPU dispatch failed ({reason}); the CPU implementation was used.")
+            }
+            None => "CPU evaluation (GPU not available)".to_string(),
         },
     };
     (grid, report)

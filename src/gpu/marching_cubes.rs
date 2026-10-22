@@ -208,25 +208,44 @@ pub fn smooth_mesh_normals(mesh: &mut McOutput) {
 
 /// Marching cubes with automatic GPU/CPU backend selection.
 ///
-/// Uses GPU when available, falls back to CPU otherwise.
+/// Uses GPU when available, falls back to CPU otherwise.  When the GPU path
+/// fails, the failure reason is reported in the `note` field of the returned
+/// [`OrbitalGridReport`] instead of being dropped (blocker A-H2).
 pub fn marching_cubes_with_report(
     values: &[f64],
     params: &GridParams,
     isovalue: f64,
 ) -> (McOutput, OrbitalGridReport) {
-    let ctx = GpuContext::best_available();
+    let ctx = GpuContext::shared();
     if ctx.is_gpu_available() {
-        if let Ok(mesh) = marching_cubes_gpu(&ctx, values, params, isovalue) {
-            return (
-                mesh,
-                OrbitalGridReport {
-                    backend: ctx.capabilities.backend.clone(),
-                    used_gpu: true,
-                    attempted_gpu: true,
-                    n_points: params.n_points(),
-                    note: format!("GPU marching cubes on {}", ctx.capabilities.backend),
-                },
-            );
+        match marching_cubes_gpu(ctx, values, params, isovalue) {
+            Ok(mesh) => {
+                return (
+                    mesh,
+                    OrbitalGridReport {
+                        backend: ctx.capabilities.backend.clone(),
+                        used_gpu: true,
+                        attempted_gpu: true,
+                        n_points: params.n_points(),
+                        note: format!("GPU marching cubes on {}", ctx.capabilities.backend),
+                    },
+                );
+            }
+            Err(reason) => {
+                let mesh = marching_cubes_cpu(values, params, isovalue);
+                return (
+                    mesh,
+                    OrbitalGridReport {
+                        backend: "CPU".to_string(),
+                        used_gpu: false,
+                        attempted_gpu: true,
+                        n_points: params.n_points(),
+                        note: format!(
+                            "GPU marching cubes failed ({reason}); the CPU implementation was used."
+                        ),
+                    },
+                );
+            }
         }
     }
     let mesh = marching_cubes_cpu(values, params, isovalue);
@@ -235,9 +254,9 @@ pub fn marching_cubes_with_report(
         OrbitalGridReport {
             backend: "CPU".to_string(),
             used_gpu: false,
-            attempted_gpu: ctx.is_gpu_available(),
+            attempted_gpu: false,
             n_points: params.n_points(),
-            note: "CPU marching cubes".to_string(),
+            note: "CPU marching cubes (no GPU backend available)".to_string(),
         },
     )
 }

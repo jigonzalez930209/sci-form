@@ -7,12 +7,27 @@
 use std::borrow::Cow;
 
 #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
+use std::collections::HashMap;
+
+#[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
 use std::sync::mpsc;
+
+#[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
+use std::sync::Mutex;
+
+use std::sync::OnceLock;
 
 #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
 use wgpu::util::DeviceExt;
 
 use super::backend_report::{GpuActivationReport, GpuActivationState};
+
+/// Process-wide GPU context.
+///
+/// The adapter enumeration and the device creation are expensive (0.1–10 ms
+/// each) and used to be repeated on every dispatch (blocker D-M2).  The
+/// context is therefore created once and shared.
+static GLOBAL_CONTEXT: OnceLock<GpuContext> = OnceLock::new();
 
 /// Capabilities detected from the GPU adapter.
 #[derive(Debug, Clone)]
@@ -39,7 +54,7 @@ impl Default for ComputeCapabilities {
 }
 
 /// Buffer access mode for compute bindings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ComputeBindingKind {
     Uniform,
     StorageReadOnly,
@@ -85,6 +100,38 @@ struct NativeGpuRuntime {
     _adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
+    /// Cache of already compiled compute pipelines (blocker D-M2).
+    ///
+    /// Creating a shader module, a bind group layout and a compute pipeline
+    /// costs ~0.1–10 ms; the same kernels are dispatched over and over
+    /// (once per orbital, once per grid point batch, ...), so the compiled
+    /// pipeline is reused whenever the label, the shader source, the entry
+    /// point and the binding layout are unchanged.
+    pipelines: Mutex<HashMap<PipelineCacheKey, std::sync::Arc<CachedPipeline>>>,
+}
+
+/// Identity of a compiled compute pipeline.
+#[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct PipelineCacheKey {
+    label: String,
+    shader_source: String,
+    entry_point: String,
+    binding_kinds: Vec<ComputeBindingKind>,
+}
+
+/// A compiled compute pipeline and the layout it was built against.
+///
+/// `wgpu` 0.19 resource handles are not `Clone`, so the cache stores them
+/// behind an `Arc`.
+#[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
+struct CachedPipeline {
+    bind_group_layout: wgpu::BindGroupLayout,
+    /// Kept alive together with the pipeline: the pipeline was created
+    /// against this layout.
+    #[allow(dead_code)]
+    pipeline_layout: wgpu::PipelineLayout,
+    pipeline: wgpu::ComputePipeline,
 }
 
 impl std::fmt::Debug for GpuContext {
@@ -172,8 +219,20 @@ impl GpuContext {
                 _adapter: adapter,
                 device,
                 queue,
+                pipelines: Mutex::new(HashMap::new()),
             }),
         })
+    }
+
+    /// Process-wide shared GPU context.
+    ///
+    /// The context is created on first use and reused afterwards: adapter
+    /// enumeration and device creation used to be repeated on *every*
+    /// dispatch (blocker D-M2).  The returned context is a CPU-fallback
+    /// context when no GPU is available, so the "always works" contract of
+    /// [`GpuContext::best_available`] is preserved.
+    pub fn shared() -> &'static GpuContext {
+        GLOBAL_CONTEXT.get_or_init(Self::best_available)
     }
 
     /// Best available backend: GPU if possible, CPU fallback otherwise.
@@ -246,13 +305,6 @@ impl GpuContext {
         {
             let runtime = self.runtime()?;
 
-            let shader = runtime
-                .device
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some(&descriptor.label),
-                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(&descriptor.shader_source)),
-                });
-
             let mut layout_entries = Vec::with_capacity(descriptor.bindings.len());
             let mut buffers = Vec::with_capacity(descriptor.bindings.len());
             let mut readbacks = Vec::new();
@@ -313,35 +365,82 @@ impl GpuContext {
                 })
                 .collect();
 
-            let bind_group_layout =
-                runtime
-                    .device
-                    .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                        label: Some(&format!("{} layout", descriptor.label)),
-                        entries: &layout_entries,
-                    });
-            let pipeline_layout =
-                runtime
-                    .device
-                    .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                        label: Some(&format!("{} pipeline", descriptor.label)),
-                        bind_group_layouts: &[&bind_group_layout],
-                        push_constant_ranges: &[],
-                    });
-            let pipeline =
-                runtime
-                    .device
-                    .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                        label: Some(&descriptor.label),
-                        layout: Some(&pipeline_layout),
-                        module: &shader,
-                        entry_point: &descriptor.entry_point,
-                    });
+            // Reuse the compiled pipeline whenever the kernel is unchanged
+            // (blocker D-M2).  The cache key contains everything the pipeline
+            // depends on: the shader source, the entry point and the shape of
+            // the binding layout.
+            let cache_key = PipelineCacheKey {
+                label: descriptor.label.clone(),
+                shader_source: descriptor.shader_source.clone(),
+                entry_point: descriptor.entry_point.clone(),
+                binding_kinds: descriptor.bindings.iter().map(|b| b.kind).collect(),
+            };
+
+            let cached = {
+                let cache = runtime
+                    .pipelines
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                cache.get(&cache_key).cloned()
+            };
+
+            let compiled =
+                match cached {
+                    Some(cached) => cached,
+                    None => {
+                        let shader =
+                            runtime
+                                .device
+                                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                                    label: Some(&descriptor.label),
+                                    source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(
+                                        &descriptor.shader_source,
+                                    )),
+                                });
+
+                        let bind_group_layout = runtime.device.create_bind_group_layout(
+                            &wgpu::BindGroupLayoutDescriptor {
+                                label: Some(&format!("{} layout", descriptor.label)),
+                                entries: &layout_entries,
+                            },
+                        );
+                        let pipeline_layout = runtime.device.create_pipeline_layout(
+                            &wgpu::PipelineLayoutDescriptor {
+                                label: Some(&format!("{} pipeline", descriptor.label)),
+                                bind_group_layouts: &[&bind_group_layout],
+                                push_constant_ranges: &[],
+                            },
+                        );
+                        let pipeline = runtime.device.create_compute_pipeline(
+                            &wgpu::ComputePipelineDescriptor {
+                                label: Some(&descriptor.label),
+                                layout: Some(&pipeline_layout),
+                                module: &shader,
+                                entry_point: &descriptor.entry_point,
+                            },
+                        );
+
+                        let compiled = std::sync::Arc::new(CachedPipeline {
+                            bind_group_layout,
+                            pipeline_layout,
+                            pipeline,
+                        });
+
+                        let mut cache = runtime
+                            .pipelines
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner());
+                        cache.insert(cache_key, std::sync::Arc::clone(&compiled));
+
+                        compiled
+                    }
+                };
+
             let bind_group = runtime
                 .device
                 .create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some(&format!("{} bind group", descriptor.label)),
-                    layout: &bind_group_layout,
+                    layout: &compiled.bind_group_layout,
                     entries: &bind_group_entries,
                 });
 
@@ -356,7 +455,7 @@ impl GpuContext {
                     label: Some(&format!("{} pass", descriptor.label)),
                     timestamp_writes: None,
                 });
-                pass.set_pipeline(&pipeline);
+                pass.set_pipeline(&compiled.pipeline);
                 pass.set_bind_group(0, &bind_group, &[]);
                 pass.dispatch_workgroups(
                     descriptor.workgroup_count[0],

@@ -4,11 +4,11 @@
 //!
 //! ```python
 //! from sci_form.alpha import (
-//!     dft_calculate, reaxff_gradient, reaxff_energy,
-//!     eem_charges, compute_mlff, compute_aevs,
+//!     alpha_compute_dft, alpha_compute_reaxff_gradient, alpha_compute_reaxff_energy,
+//!     alpha_compute_eem_charges, compute_mlff, compute_aevs,
 //!     boys_function, eri_ssss,
-//!     rotate_dihedral_cga, refine_torsion_cga,
-//!     gsm_interpolate, gsm_backend_plan, gsm_compare_backends, gsm_find_ts,
+//!     alpha_rotate_dihedral_cga, alpha_refine_torsion_cga,
+//!     alpha_gsm_interpolate, alpha_gsm_backend_plan, alpha_gsm_compare_backends, alpha_gsm_find_ts,
 //!     sdr_embed,
 //! )
 //! ```
@@ -22,7 +22,7 @@ mod dft_py {
     use pyo3::prelude::*;
     use sci_form_core::dft::ks_fock::{solve_ks_dft, DftConfig, DftMethod};
 
-    #[pyclass]
+    #[pyclass(name = "DftResult")]
     #[derive(Clone)]
     pub struct DftResultPy {
         #[pyo3(get)]
@@ -60,7 +60,7 @@ mod dft_py {
     ///     DftResultPy
     #[pyfunction]
     #[pyo3(signature = (elements, coords, method = "pbe"))]
-    pub fn dft_calculate(
+    pub fn alpha_compute_dft(
         elements: Vec<u8>,
         coords: Vec<f64>,
         method: &str,
@@ -75,7 +75,7 @@ mod dft_py {
             ..Default::default()
         };
         let r = solve_ks_dft(&elements, &positions, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(DftResultPy {
             energy: r.total_energy_ev,
             homo_energy: r.homo_energy,
@@ -93,7 +93,7 @@ mod dft_py {
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<DftResultPy>()?;
-        m.add_function(wrap_pyfunction!(dft_calculate, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_compute_dft, m)?)?;
         Ok(())
     }
 }
@@ -142,7 +142,7 @@ mod reaxff_py {
             .collect()
     }
 
-    #[pyclass]
+    #[pyclass(name = "ReaxffGradientResult")]
     #[derive(Clone)]
     pub struct ReaxffGradientResultPy {
         #[pyo3(get)]
@@ -151,7 +151,7 @@ mod reaxff_py {
         pub gradient: Vec<f64>,
     }
 
-    #[pyclass]
+    #[pyclass(name = "ReaxffEnergyResult")]
     #[derive(Clone)]
     pub struct ReaxffEnergyResultPy {
         #[pyo3(get)]
@@ -164,7 +164,7 @@ mod reaxff_py {
         pub total: f64,
     }
 
-    #[pyclass]
+    #[pyclass(name = "EemChargesResult")]
     #[derive(Clone)]
     pub struct EemChargesResultPy {
         #[pyo3(get)]
@@ -182,13 +182,13 @@ mod reaxff_py {
     /// Returns:
     ///     ReaxffGradientResultPy: energy_kcal_mol, gradient
     #[pyfunction]
-    pub fn reaxff_gradient(
+    pub fn alpha_compute_reaxff_gradient(
         elements: Vec<u8>,
         coords: Vec<f64>,
     ) -> PyResult<ReaxffGradientResultPy> {
         let params = ReaxffParams::default_chon();
         let (energy, gradient) = compute_reaxff_gradient(&coords, &elements, &params)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(ReaxffGradientResultPy {
             energy_kcal_mol: energy,
             gradient,
@@ -200,7 +200,7 @@ mod reaxff_py {
     /// Returns:
     ///     ReaxffEnergyResultPy: bonded, coulomb, van_der_waals, total
     #[pyfunction]
-    pub fn reaxff_energy(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReaxffEnergyResultPy> {
+    pub fn alpha_compute_reaxff_energy(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReaxffEnergyResultPy> {
         let params = ReaxffParams::default_chon();
         let atom_params = build_atom_params(&elements, &params);
         let eem_params: Vec<_> = elements
@@ -208,7 +208,7 @@ mod reaxff_py {
             .map(|&z| sci_form_core::forcefield::reaxff::eem::default_eem_params(z))
             .collect();
         let charges = solve_eem(&coords, &eem_params, 0.0)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let bo = compute_bond_orders(&coords, &atom_params, params.cutoff);
         let bonded = compute_bonded_energy(&coords, &bo, &params);
         let (van_der_waals, coulomb) =
@@ -226,7 +226,7 @@ mod reaxff_py {
     /// Returns:
     ///     EemChargesResultPy: charges, total_charge
     #[pyfunction]
-    pub fn eem_charges(elements: Vec<u8>, coords: Vec<f64>) -> EemChargesResultPy {
+    pub fn alpha_compute_eem_charges(elements: Vec<u8>, coords: Vec<f64>) -> EemChargesResultPy {
         let eem_params: Vec<_> = elements
             .iter()
             .map(|&z| sci_form_core::forcefield::reaxff::eem::default_eem_params(z))
@@ -243,9 +243,9 @@ mod reaxff_py {
         m.add_class::<ReaxffGradientResultPy>()?;
         m.add_class::<ReaxffEnergyResultPy>()?;
         m.add_class::<EemChargesResultPy>()?;
-        m.add_function(wrap_pyfunction!(reaxff_gradient, m)?)?;
-        m.add_function(wrap_pyfunction!(reaxff_energy, m)?)?;
-        m.add_function(wrap_pyfunction!(eem_charges, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_compute_reaxff_gradient, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_compute_reaxff_energy, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_compute_eem_charges, m)?)?;
         Ok(())
     }
 }
@@ -257,7 +257,7 @@ mod mlff_py {
     use pyo3::prelude::*;
     use sci_form_core::mlff::{compute_aevs, compute_mlff, MlffConfig, SymmetryFunctionParams};
 
-    #[pyclass]
+    #[pyclass(name = "MlffResult")]
     #[derive(Clone)]
     pub struct MlffResultPy {
         #[pyo3(get)]
@@ -268,7 +268,7 @@ mod mlff_py {
         pub forces: Vec<f64>,
     }
 
-    #[pyclass]
+    #[pyclass(name = "AevResult")]
     #[derive(Clone)]
     pub struct AevResultPy {
         #[pyo3(get)]
@@ -295,15 +295,15 @@ mod mlff_py {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let json = py
             .import("json")
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+            .map_err(|e| crate::errors::engine_error(e.to_string()))?;
         let config_json: String = json
             .call_method1("dumps", (config_dict,))
             .and_then(|obj| obj.extract::<String>())
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("bad config: {}", e)))?;
+            .map_err(|e| crate::errors::value_error(format!("bad config: {}", e)))?;
         let config: MlffConfig = serde_json::from_str(&config_json)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("bad config: {}", e)))?;
+            .map_err(|e| crate::errors::value_error(format!("bad config: {}", e)))?;
         let r = compute_mlff(&elements, &positions, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         Ok(MlffResultPy {
             energy: r.energy,
             atomic_energies: r.atomic_energies,
@@ -495,7 +495,7 @@ mod cga_py {
     /// Returns:
     ///     list[float] — new flat coordinates
     #[pyfunction]
-    pub fn rotate_dihedral_cga(
+    pub fn alpha_rotate_dihedral_cga(
         coords: Vec<f64>,
         subtree_indices: Vec<usize>,
         axis_a: [f64; 3],
@@ -518,7 +518,7 @@ mod cga_py {
     /// Returns:
     ///     list[float] — new flat coordinates
     #[pyfunction]
-    pub fn refine_torsion_cga(
+    pub fn alpha_refine_torsion_cga(
         elements: Vec<u8>,
         coords: Vec<f64>,
         bonds: Vec<(usize, usize)>,
@@ -526,12 +526,12 @@ mod cga_py {
         target_angle_rad: f64,
     ) -> PyResult<Vec<f64>> {
         if torsion_indices.len() != 4 {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "torsion_indices must have exactly 4 elements",
             ));
         }
         if coords.len() != elements.len() * 3 {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "coords length must equal 3 × number of elements",
             ));
         }
@@ -565,8 +565,8 @@ mod cga_py {
     }
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(rotate_dihedral_cga, m)?)?;
-        m.add_function(wrap_pyfunction!(refine_torsion_cga, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_rotate_dihedral_cga, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_refine_torsion_cga, m)?)?;
         Ok(())
     }
 }
@@ -580,7 +580,7 @@ mod gsm_py {
         self, GsmBackendCapability, GsmBackendEvaluation, GsmConfig, GsmEnergyBackend,
     };
 
-    #[pyclass]
+    #[pyclass(name = "GsmBackendCapability")]
     #[derive(Clone)]
     pub struct GsmBackendCapabilityPy {
         #[pyo3(get)]
@@ -601,7 +601,7 @@ mod gsm_py {
         pub limitations: Vec<String>,
     }
 
-    #[pyclass]
+    #[pyclass(name = "GsmBackendEvaluation")]
     #[derive(Clone)]
     pub struct GsmBackendEvaluationPy {
         #[pyo3(get)]
@@ -628,7 +628,7 @@ mod gsm_py {
         pub error: Option<String>,
     }
 
-    #[pyclass]
+    #[pyclass(name = "GsmResult")]
     #[derive(Clone)]
     pub struct GsmResultPy {
         #[pyo3(get)]
@@ -656,27 +656,27 @@ mod gsm_py {
     /// Returns:
     ///     list[float] — flat coordinates
     #[pyfunction]
-    pub fn gsm_interpolate(reactant: Vec<f64>, product: Vec<f64>, t: f64) -> Vec<f64> {
+    pub fn alpha_gsm_interpolate(reactant: Vec<f64>, product: Vec<f64>, t: f64) -> Vec<f64> {
         gsm::interpolate_node(&reactant, &product, t)
     }
 
     #[pyfunction]
-    pub fn gsm_backend_plan(smiles: &str) -> PyResult<Vec<GsmBackendCapabilityPy>> {
+    pub fn alpha_gsm_backend_plan(smiles: &str) -> PyResult<Vec<GsmBackendCapabilityPy>> {
         let plan = gsm::plan_gsm_backends_for_smiles(smiles)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))?;
         Ok(plan.into_iter().map(capability_to_py).collect())
     }
 
     #[pyfunction]
     #[pyo3(signature = (smiles, coords, methods = None))]
-    pub fn gsm_compare_backends(
+    pub fn alpha_gsm_compare_backends(
         smiles: &str,
         coords: Vec<f64>,
         methods: Option<Vec<String>>,
     ) -> PyResult<Vec<GsmBackendEvaluationPy>> {
         let parsed_methods = parse_methods(methods)?;
         let result = gsm::compare_gsm_backends(smiles, &coords, &parsed_methods)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))?;
         Ok(result.into_iter().map(evaluation_to_py).collect())
     }
 
@@ -686,7 +686,7 @@ mod gsm_py {
     ///     GsmResultPy
     #[pyfunction]
     #[pyo3(signature = (smiles, reactant_coords, product_coords, n_nodes = 9, method = "uff"))]
-    pub fn gsm_find_ts(
+    pub fn alpha_gsm_find_ts(
         smiles: &str,
         reactant_coords: Vec<f64>,
         product_coords: Vec<f64>,
@@ -705,7 +705,7 @@ mod gsm_py {
             backend,
             &config,
         )
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))?;
         Ok(GsmResultPy {
             backend: backend.as_str().to_string(),
             ts_coords: r.ts_coords,
@@ -753,7 +753,7 @@ mod gsm_py {
     fn parse_backend(method: &str) -> PyResult<GsmEnergyBackend> {
         method
             .parse()
-            .map_err(pyo3::exceptions::PyValueError::new_err)
+            .map_err(crate::errors::value_error)
     }
 
     fn parse_methods(methods: Option<Vec<String>>) -> PyResult<Vec<GsmEnergyBackend>> {
@@ -768,10 +768,10 @@ mod gsm_py {
         m.add_class::<GsmBackendCapabilityPy>()?;
         m.add_class::<GsmBackendEvaluationPy>()?;
         m.add_class::<GsmResultPy>()?;
-        m.add_function(wrap_pyfunction!(gsm_interpolate, m)?)?;
-        m.add_function(wrap_pyfunction!(gsm_backend_plan, m)?)?;
-        m.add_function(wrap_pyfunction!(gsm_compare_backends, m)?)?;
-        m.add_function(wrap_pyfunction!(gsm_find_ts, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_gsm_interpolate, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_gsm_backend_plan, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_gsm_compare_backends, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_gsm_find_ts, m)?)?;
         Ok(())
     }
 }
@@ -783,7 +783,7 @@ mod sdr_py {
     use pyo3::prelude::*;
     use sci_form_core::alpha::sdr::{sdr_embed, SdrConfig};
 
-    #[pyclass]
+    #[pyclass(name = "SdrConvergence")]
     #[derive(Clone)]
     pub struct SdrConvergencePy {
         #[pyo3(get)]
@@ -796,7 +796,7 @@ mod sdr_py {
         pub neg_eigenvalues_removed: usize,
     }
 
-    #[pyclass]
+    #[pyclass(name = "SdrResult")]
     #[derive(Clone)]
     pub struct SdrResultPy {
         #[pyo3(get)]
@@ -823,7 +823,7 @@ mod sdr_py {
     ///     SdrResultPy
     #[pyfunction]
     #[pyo3(signature = (distance_pairs, n_atoms, max_iterations = 500, tolerance = 1e-6))]
-    pub fn sdr_embed_py(
+    pub fn alpha_sdr_embed(
         distance_pairs: Vec<(usize, usize, f64)>,
         n_atoms: usize,
         max_iterations: usize,
@@ -852,7 +852,7 @@ mod sdr_py {
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<SdrConvergencePy>()?;
         m.add_class::<SdrResultPy>()?;
-        m.add_function(wrap_pyfunction!(sdr_embed_py, m)?)?;
+        m.add_function(wrap_pyfunction!(alpha_sdr_embed, m)?)?;
         Ok(())
     }
 }
@@ -862,11 +862,9 @@ mod sdr_py {
 #[cfg(feature = "alpha-reaction-dynamics")]
 mod reaction_dynamics_py {
     use pyo3::prelude::*;
-    use sci_form_core::alpha::reaction_dynamics::{
-        compute_reaction_dynamics_3d, ReactionDynamics3DConfig,
-    };
+    use sci_form_core::alpha::reaction_dynamics::ReactionDynamics3DConfig;
 
-    #[pyclass]
+    #[pyclass(name = "ReactionFrame3D")]
     #[derive(Clone)]
     pub struct ReactionFrame3DPy {
         #[pyo3(get)]
@@ -879,7 +877,7 @@ mod reaction_dynamics_py {
         pub phase: String,
     }
 
-    #[pyclass]
+    #[pyclass(name = "ReactionDynamics3DResult")]
     #[derive(Clone)]
     pub struct ReactionDynamics3DResultPy {
         #[pyo3(get)]
@@ -926,7 +924,7 @@ mod reaction_dynamics_py {
         seed = 42,
     ))]
     #[allow(clippy::too_many_arguments)]
-    pub fn reaction_dynamics_3d(
+    pub fn compute_reaction_dynamics_3d(
         reactant_smiles: Vec<String>,
         product_smiles: Vec<String>,
         method: &str,
@@ -949,8 +947,10 @@ mod reaction_dynamics_py {
         let r_refs: Vec<&str> = reactant_smiles.iter().map(String::as_str).collect();
         let p_refs: Vec<&str> = product_smiles.iter().map(String::as_str).collect();
 
-        let result = compute_reaction_dynamics_3d(&r_refs, &p_refs, &config)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+        let result = sci_form_core::alpha::reaction_dynamics::compute_reaction_dynamics_3d(
+            &r_refs, &p_refs, &config,
+        )
+            .map_err(crate::errors::engine_error)?;
 
         Ok(ReactionDynamics3DResultPy {
             frames: result
@@ -976,7 +976,7 @@ mod reaction_dynamics_py {
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<ReactionFrame3DPy>()?;
         m.add_class::<ReactionDynamics3DResultPy>()?;
-        m.add_function(wrap_pyfunction!(reaction_dynamics_3d, m)?)?;
+        m.add_function(wrap_pyfunction!(compute_reaction_dynamics_3d, m)?)?;
         Ok(())
     }
 }

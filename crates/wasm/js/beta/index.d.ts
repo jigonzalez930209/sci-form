@@ -46,6 +46,8 @@ export declare function beta_compute_kpm_mulliken(
  * Reduces degrees of freedom by treating rigid groups as blocks,
  * giving speedup = n_dof_full / n_dof_reduced.
  *
+ * @param elements_json  JSON array of atomic numbers
+ * @param coords_flat_json  JSON flat coords [x0,y0,z0,...]
  * @param smiles  SMILES string for ring detection and UFF topology
  * @returns JSON:
  *   `{ frequencies: number[], n_blocks, n_flexible,

@@ -12,7 +12,7 @@
 |----|--------|-------------|-------------|
 | B1 | `beta::kpm` | `beta-kpm` | Kernel Polynomial Method — O(N) DOS |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian vibrational analysis |
-| B3 | `beta::randnla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) diagonalization |
+| B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) diagonalization |
 | B4 | `riemannian` (core, F94) | — | Riemannian geometry on the PSD cone |
 | B5 | `cpm` (core, F95) | — | Constant Potential Method charge equilibration |
 
@@ -128,7 +128,7 @@ print(f"ZPE: {result.zero_point_energy:.4f} Ha")
 
 ## B3 — Randomized Nyström EHT (`beta-randnla`)
 
-**Module:** `sci_form::beta::randnla` (gated; F93 validated 2026-10-14: valid regime 3.9e-3, production exact; 1e-3 gap)
+**Module:** `sci_form::beta::rand_nla` (gated; F93 validated 2026-10-14: valid regime 3.9e-3, production exact; 1e-3 gap)
 
 Approximates the EHT eigenvalue problem using a **randomized Nyström sketch**: projects the $N \times N$ Hamiltonian onto a $k$-dimensional random subspace before computing eigenvalues. Cost drops from $O(N^3)$ (full diag) to $O(N k^2)$ — enabling EHT for systems of thousands of atoms.
 
@@ -139,7 +139,7 @@ where $Ω \in \mathbb{R}^{N \times k}$ is a random Gaussian sketch matrix.
 ### Rust
 
 ```rust
-use sci_form::beta::randnla::{solve_eht_randnla, RandNlaConfig};
+use sci_form::beta::rand_nla::{solve_eht_randnla, RandNlaConfig};
 
 let config = RandNlaConfig {
     sketch_dim: 50,    // k — rank of approximation
@@ -270,15 +270,15 @@ print(f"total charge: {result.total_charge:.4f} e")
 
 ```toml
 [dependencies]
-sci-form = { version = "0.11", features = ["beta-kpm", "beta-mbh"] }
+sci-form = { version = "0.15", features = ["beta-kpm", "beta-mbh"] }
 
 # All beta modules:
-sci-form = { version = "0.11", features = [
+sci-form = { version = "0.15", features = [
     "beta-kpm", "beta-mbh", "beta-randnla", "beta-riemannian", "beta-cpm"
 ] }
 
 # Beta + parallelization:
-sci-form = { version = "0.11", features = [
+sci-form = { version = "0.15", features = [
     "beta-kpm", "beta-randnla", "parallel"
 ] }
 ```
@@ -315,8 +315,14 @@ result = beta.kpm_dos(elements, coords)
 ```bash
 pnpm wasm:build:all-beta
 # Equivalent to:
-wasm-pack build crates/wasm --features "beta-kpm,beta-mbh,beta-randnla,beta-riemannian,beta-cpm"
+bash crates/wasm/build.sh --web-only --web-features "beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm"
 ```
+
+> Always build through `crates/wasm/build.sh` (directly or through the
+> `pnpm wasm:build*` scripts).  Calling `wasm-pack` by hand regenerates
+> `pkg/package.json` from scratch and drops the `snippets` entry that
+> `wasm-bindgen-rayon` needs at runtime, as well as the `./alpha` and
+> `./beta` subpath exports.
 
 ---
 

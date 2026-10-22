@@ -290,8 +290,11 @@ pub fn optimize_torsions_greedy(
             let [a, b, c, d] = rb.dihedral;
             let current_angle = compute_dihedral(coords, a, b, c, d);
 
+            // f64 energy (blocker A-H3): the torsion scan compares energies of
+            // different rotamers, so the comparison must not be limited to the
+            // f32 resolution of the accumulator.
             let current_energy =
-                super::energy::calculate_total_energy(coords, mol, &params, bounds);
+                super::energy::calculate_total_energy_f64(coords, mol, &params, bounds);
             let mut best_energy = current_energy;
             let mut best_rotation = 0.0f32;
 
@@ -302,7 +305,7 @@ pub fn optimize_torsions_greedy(
 
                 rotate_atoms(coords, &rb.mobile_atoms, b, c, delta);
 
-                let e = super::energy::calculate_total_energy(coords, mol, &params, bounds);
+                let e = super::energy::calculate_total_energy_f64(coords, mol, &params, bounds);
                 if e < best_energy {
                     best_energy = e;
                     best_rotation = delta;
@@ -339,7 +342,8 @@ pub fn optimize_torsions_bounds(
             let [a, b, c, d] = rb.dihedral;
             let current_angle = compute_dihedral(coords, a, b, c, d);
 
-            let current_energy = super::bounds_ff::bounds_violation_energy(coords, bounds);
+            let current_energy =
+                super::bounds_ff::bounds_violation_energy_basin_f64(coords, bounds, 1000.0);
             let mut best_energy = current_energy;
             let mut best_rotation = 0.0f32;
 
@@ -350,7 +354,7 @@ pub fn optimize_torsions_bounds(
 
                 rotate_atoms(coords, &rb.mobile_atoms, b, c, delta);
 
-                let e = super::bounds_ff::bounds_violation_energy(coords, bounds);
+                let e = super::bounds_ff::bounds_violation_energy_basin_f64(coords, bounds, 1000.0);
                 if e < best_energy {
                     best_energy = e;
                     best_rotation = delta;
@@ -388,7 +392,8 @@ pub fn optimize_torsions_monte_carlo_bounds(
     let mut rng = StdRng::seed_from_u64(seed);
     let temp = temperature.max(1e-6);
     let two_pi = 2.0 * std::f32::consts::PI;
-    let mut current_energy = super::bounds_ff::bounds_violation_energy(coords, bounds);
+    let mut current_energy =
+        super::bounds_ff::bounds_violation_energy_basin_f64(coords, bounds, 1000.0);
 
     for _ in 0..n_steps {
         let rb = &rotatable[rng.gen_range(0..rotatable.len())];
@@ -399,13 +404,14 @@ pub fn optimize_torsions_monte_carlo_bounds(
         delta = (delta + std::f32::consts::PI).rem_euclid(two_pi) - std::f32::consts::PI;
 
         rotate_atoms(coords, &rb.mobile_atoms, b, c, delta);
-        let trial_energy = super::bounds_ff::bounds_violation_energy(coords, bounds);
+        let trial_energy =
+            super::bounds_ff::bounds_violation_energy_basin_f64(coords, bounds, 1000.0);
         let d_e = trial_energy - current_energy;
 
         let accept = if d_e <= 0.0 {
             true
         } else {
-            let p_accept = (-d_e / temp).exp();
+            let p_accept = (-d_e / temp as f64).exp() as f32;
             rng.gen::<f32>() < p_accept
         };
 
@@ -673,5 +679,31 @@ mod tests {
 
         assert!(rot >= 1);
         assert!(coords.iter().all(|v| v.is_finite()));
+    }
+
+    /// A-H3 regression test: the torsion scan must compare energies in `f64`.
+    ///
+    /// The bounds-violation energy of a medium molecule is an O(N²) sum; with
+    /// an `f32` accumulator two rotamers whose energies differ by less than
+    /// the accumulated rounding error are indistinguishable.  The scan now
+    /// uses the `f64` kernel.
+    #[test]
+    fn test_torsion_scan_uses_f64_energy_criterion() {
+        let smiles = "CCCC";
+        let mol = crate::graph::Molecule::from_smiles(smiles).unwrap();
+        let n = mol.graph.node_count();
+        let conf = crate::embed(smiles, 7);
+        let mut coords = flat_to_matrix(&conf.coords, n);
+        let bounds =
+            crate::distgeom::smooth_bounds_matrix(crate::distgeom::calculate_bounds_matrix(&mol));
+
+        let f64_energy =
+            super::super::bounds_ff::bounds_violation_energy_basin_f64(&coords, &bounds, 1000.0);
+        let f32_energy = super::super::bounds_ff::bounds_violation_energy(&coords, &bounds);
+
+        // The f32 shim is the correctly rounded f64 value ...
+        assert_eq!(f32_energy, f64_energy as f32);
+        // ... and the f64 kernel is at least as accurate as the f32 one.
+        assert!((f64_energy - f32_energy as f64).abs() <= 1e-6 * f64_energy.abs().max(1.0));
     }
 }

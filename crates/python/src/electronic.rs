@@ -3,7 +3,7 @@
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "Pm3Result")]
 #[derive(Clone)]
 pub(crate) struct Pm3ResultPy {
     #[pyo3(get)]
@@ -34,7 +34,7 @@ pub(crate) struct Pm3ResultPy {
     converged: bool,
 }
 
-#[pyclass]
+#[pyclass(name = "XtbResult")]
 #[derive(Clone)]
 pub(crate) struct XtbResultPy {
     #[pyo3(get)]
@@ -63,7 +63,7 @@ pub(crate) struct XtbResultPy {
     scf_iterations: usize,
 }
 
-#[pyclass]
+#[pyclass(name = "Gfn1Result")]
 #[derive(Clone)]
 pub(crate) struct Gfn1ResultPy {
     #[pyo3(get)]
@@ -96,7 +96,7 @@ pub(crate) struct Gfn1ResultPy {
     scc_iterations: usize,
 }
 
-#[pyclass]
+#[pyclass(name = "Gfn2Result")]
 #[derive(Clone)]
 pub(crate) struct Gfn2ResultPy {
     #[pyo3(get)]
@@ -133,7 +133,7 @@ pub(crate) struct Gfn2ResultPy {
     scc_iterations: usize,
 }
 
-#[pyclass]
+#[pyclass(name = "CisdExcitation")]
 #[derive(Clone)]
 pub(crate) struct CisdExcitationPy {
     #[pyo3(get)]
@@ -152,7 +152,7 @@ pub(crate) struct CisdExcitationPy {
     singles_weight: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "CisdResult")]
 #[derive(Clone)]
 pub(crate) struct CisdResultPy {
     #[pyo3(get)]
@@ -186,7 +186,7 @@ impl CisdResultPy {
 
 fn validate_coords(elements: &[u8], coords: &[f64]) -> PyResult<Vec<[f64; 3]>> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",
             coords.len(),
             elements.len() * 3
@@ -196,7 +196,7 @@ fn validate_coords(elements: &[u8], coords: &[f64]) -> PyResult<Vec<[f64; 3]>> {
 }
 
 #[pyfunction]
-fn pm3_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Pm3ResultPy> {
+fn compute_pm3(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Pm3ResultPy> {
     let positions = validate_coords(&elements, &coords)?;
     sci_form_core::compute_pm3(&elements, &positions)
         .map(|r| Pm3ResultPy {
@@ -214,11 +214,11 @@ fn pm3_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Pm3ResultPy> {
             scf_iterations: r.scf_iterations,
             converged: r.converged,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn xtb_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<XtbResultPy> {
+fn compute_xtb(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<XtbResultPy> {
     let positions = validate_coords(&elements, &coords)?;
     sci_form_core::compute_xtb(&elements, &positions)
         .map(|r| XtbResultPy {
@@ -235,11 +235,11 @@ fn xtb_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<XtbResultPy> {
             converged: r.converged,
             scf_iterations: r.scc_iterations,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn gfn1_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Gfn1ResultPy> {
+fn compute_gfn1(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Gfn1ResultPy> {
     let positions = validate_coords(&elements, &coords)?;
     sci_form_core::xtb::solve_gfn1(&elements, &positions)
         .map(|r| Gfn1ResultPy {
@@ -258,11 +258,11 @@ fn gfn1_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Gfn1ResultPy>
             converged: r.converged,
             scc_iterations: r.scc_iterations,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn gfn2_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Gfn2ResultPy> {
+fn compute_gfn2(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Gfn2ResultPy> {
     let positions = validate_coords(&elements, &coords)?;
     sci_form_core::xtb::solve_gfn2(&elements, &positions)
         .map(|r| Gfn2ResultPy {
@@ -287,7 +287,7 @@ fn gfn2_calculate(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Gfn2ResultPy>
             converged: r.converged,
             scc_iterations: r.scc_iterations,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 /// Compute CISD excited states from an internal STO-3G RHF calculation.
@@ -308,7 +308,7 @@ fn compute_cisd(elements: Vec<u8>, coords: Vec<f64>, n_states: usize) -> PyResul
     let scf_config = sci_form_core::scf::scf_loop::ScfConfig::default();
     let scf = sci_form_core::scf::scf_loop::run_scf(&system, &scf_config);
     if !scf.converged {
-        return Err(pyo3::exceptions::PyRuntimeError::new_err(
+        return Err(crate::errors::engine_error(
             "RHF/STO-3G SCF did not converge; CISD requires a converged reference",
         ));
     }
@@ -365,10 +365,10 @@ fn compute_cisd(elements: Vec<u8>, coords: Vec<f64>, n_states: usize) -> PyResul
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(pm3_calculate, m)?)?;
-    m.add_function(wrap_pyfunction!(xtb_calculate, m)?)?;
-    m.add_function(wrap_pyfunction!(gfn1_calculate, m)?)?;
-    m.add_function(wrap_pyfunction!(gfn2_calculate, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_pm3, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_xtb, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_gfn1, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_gfn2, m)?)?;
     m.add_function(wrap_pyfunction!(compute_cisd, m)?)?;
     m.add_class::<CisdExcitationPy>()?;
     m.add_class::<CisdResultPy>()?;

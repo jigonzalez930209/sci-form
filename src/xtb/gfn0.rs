@@ -64,14 +64,14 @@ pub struct Gfn0Result {
 /// E = Σ_{i≤j} Zeff_i·Zeff_j·exp(−α_ij·r^1.5)/r, skipped for r > 40 bohr.
 /// α_ij = √(α_i·α_j)·(1 + (0.01·ΔEN² + 0.01·ΔEN⁴)·renscale).
 /// Positions in bohr, energy in Hartree.
-pub fn gfn0_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
+pub fn gfn0_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Result<f64, String> {
     let g = &GFN0_GLOBALS;
     let n = elements.len();
     let mut erep = 0.0;
     for i in 0..n {
-        let pi = get_gfn0_params(elements[i]).expect("GFN0 params");
+        let pi = gfn0_params(elements[i])?;
         for j in 0..=i {
-            let pj = get_gfn0_params(elements[j]).expect("GFN0 params");
+            let pj = gfn0_params(elements[j])?;
             let dx = pos_bohr[i][0] - pos_bohr[j][0];
             let dy = pos_bohr[i][1] - pos_bohr[j][1];
             let dz = pos_bohr[i][2] - pos_bohr[j][2];
@@ -90,7 +90,13 @@ pub fn gfn0_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f64 {
             erep += repab * (-alpha * r15).exp() / r;
         }
     }
-    erep
+    Ok(erep)
+}
+
+/// Look up the GFN0 parameters of an element, reporting an unsupported
+/// atomic number instead of panicking.
+fn gfn0_params(z: u8) -> Result<&'static super::gfn0_params::Gfn0ElementParams, String> {
+    get_gfn0_params(z).ok_or_else(|| format!("GFN0 parameters not available for Z={z}"))
 }
 
 /// Error function (Abramowitz & Stegun 7.1.26, max error 1.5e-7 —
@@ -163,15 +169,25 @@ pub fn gfn0_eeq(
     pos_bohr: &[[f64; 3]],
     cn: &[f64],
     charge: f64,
-) -> (Vec<f64>, f64) {
+) -> Result<(Vec<f64>, f64), String> {
     use nalgebra::DMatrix;
     let n = elements.len();
+    if n == 0 {
+        return Err("GFN0 EEQ: empty molecule (at least one atom is required)".to_string());
+    }
+    if cn.len() != n {
+        return Err(format!(
+            "GFN0 EEQ: coordination numbers length {} != atom count {}",
+            cn.len(),
+            n
+        ));
+    }
     // J matrix with Lagrange row/column (n+1 dim).
     let mut jmat = DMatrix::zeros(n + 1, n + 1);
     for i in 0..n {
-        let pi = get_gfn0_params(elements[i]).expect("GFN0 params");
+        let pi = gfn0_params(elements[i])?;
         for j in 0..=i {
-            let pj = get_gfn0_params(elements[j]).expect("GFN0 params");
+            let pj = gfn0_params(elements[j])?;
             let val = if i == j {
                 // On-site: 2/√π·√(1/2)/w + GAM.
                 2.0 / std::f64::consts::PI.sqrt() * (0.5f64.sqrt() / pi.eeq_width) + pi.hubbard
@@ -197,7 +213,7 @@ pub fn gfn0_eeq(
     // RHS: x_i = −XI + KAPPA·√cn; x_n = total charge.
     let mut xvec = vec![0.0; n + 1];
     for i in 0..n {
-        let p = get_gfn0_params(elements[i]).expect("GFN0 params");
+        let p = gfn0_params(elements[i])?;
         xvec[i] = -p.eeq_chi + p.eeq_kcn * cn[i].max(0.0).sqrt();
     }
     xvec[n] = charge;
@@ -206,7 +222,9 @@ pub fn gfn0_eeq(
         .clone()
         .lu()
         .solve(&x)
-        .expect("EEQ solve")
+        .ok_or_else(|| {
+            "GFN0 EEQ: the charge-equilibration Jacobian is singular (the molecule has no resolvable EEQ solution)".to_string()
+        })?
         .column(0)
         .into_owned();
     let charges: Vec<f64> = q.rows(0, n).iter().copied().collect();
@@ -216,7 +234,7 @@ pub fn gfn0_eeq(
         .collect();
     let energy = 0.5 * q.iter().zip(jxq.iter()).map(|(a, b)| a * b).sum::<f64>()
         - q.iter().zip(xvec.iter()).map(|(a, b)| a * b).sum::<f64>();
-    (charges, energy)
+    Ok((charges, energy))
 }
 
 /// Atomic radii for the GFN0 shell polynomial (xtb `atomicRad`, bohr).
@@ -364,13 +382,13 @@ pub struct Gfn0BasisMap {
 /// Self-energy SE(ish, iat) in eV (xtb `getSelfEnergy`):
 /// lev − kCN·CN − kQShell·q − kQAtom·q², with kCN from KCNS/KCNP (×0.1,
 /// s/p only), kQShell from KQS/KQP (s/p only), kQAtom = KQAT2.
-fn gfn0_selfenergy(elements: &[u8], cn: &[f64], charges: &[f64]) -> Vec<Vec<f64>> {
+fn gfn0_selfenergy(elements: &[u8], cn: &[f64], charges: &[f64]) -> Result<Vec<Vec<f64>>, String> {
     elements
         .iter()
         .enumerate()
-        .map(|(i, &z)| {
-            let p = get_gfn0_params(z).expect("GFN0 params");
-            (0..p.nshell)
+        .map(|(i, &z)| -> Result<Vec<f64>, String> {
+            let p = gfn0_params(z)?;
+            Ok((0..p.nshell)
                 .map(|sh| {
                     let l = p.ang_shell[sh];
                     let kcn = match l {
@@ -390,9 +408,9 @@ fn gfn0_selfenergy(elements: &[u8], cn: &[f64], charges: &[f64]) -> Vec<Vec<f64>
                         - kqsh * charges[i]
                         - p.kq_atom * charges[i] * charges[i]
                 })
-                .collect()
+                .collect::<Vec<f64>>())
         })
-        .collect()
+        .collect::<Result<Vec<_>, String>>()
 }
 
 /// GFN0 overlap + H0 matrices (xtb `ccm_build_SH0`, molecules only).
@@ -410,11 +428,32 @@ pub fn gfn0_h0(
     pos_bohr: &[[f64; 3]],
     cn: &[f64],
     charges: &[f64],
-) -> (nalgebra::DMatrix<f64>, nalgebra::DMatrix<f64>, Gfn0BasisMap) {
+) -> Result<(nalgebra::DMatrix<f64>, nalgebra::DMatrix<f64>, Gfn0BasisMap), String> {
     use super::sto_overlap::cart_prim_overlap;
     use nalgebra::DMatrix;
     let g = &GFN0_GLOBALS;
-    let atom_shells: Vec<Vec<Gfn0Shell>> = elements.iter().map(|&z| gfn0_atom_shells(z)).collect();
+    let n_atoms = elements.len();
+    if n_atoms == 0 {
+        return Err("GFN0 H0: empty molecule (at least one atom is required)".to_string());
+    }
+    if cn.len() != n_atoms {
+        return Err(format!(
+            "GFN0 H0: coordination numbers length {} != atom count {}",
+            cn.len(),
+            n_atoms
+        ));
+    }
+    if charges.len() != n_atoms {
+        return Err(format!(
+            "GFN0 H0: charges length {} != atom count {}",
+            charges.len(),
+            n_atoms
+        ));
+    }
+    let atom_shells: Vec<Vec<Gfn0Shell>> = elements
+        .iter()
+        .map(|&z| gfn0_atom_shells(z))
+        .collect::<Result<Vec<_>, String>>()?;
     // funcs: (atom, shell, sao); shell_offset[atom][shell] = first index.
     let mut funcs: Vec<(usize, usize, usize)> = Vec::new();
     let mut shell_offset: Vec<Vec<usize>> = Vec::new();
@@ -439,7 +478,7 @@ pub fn gfn0_h0(
     let n = funcs.len();
     let mut s_mat = DMatrix::zeros(n, n);
     let mut h_mat = DMatrix::zeros(n, n);
-    let se = gfn0_selfenergy(elements, cn, charges);
+    let se = gfn0_selfenergy(elements, cn, charges)?;
     let kshell = [g.kshell[0], g.kshell[1], g.kshell[2], 0.0];
     let enshell = [g.enshell[0], g.enshell[1], g.enshell[2], -0.2];
 
@@ -453,10 +492,10 @@ pub fn gfn0_h0(
     }
     let shinfo: Vec<Vec<ShInfo>> = elements
         .iter()
-        .map(|&z| {
-            let p = get_gfn0_params(z).expect("GFN0 params");
+        .map(|&z| -> Result<Vec<ShInfo>, String> {
+            let p = gfn0_params(z)?;
             let val = gfn0_valence_shells(&p.ang_shell[..p.nshell]);
-            (0..p.nshell)
+            Ok((0..p.nshell)
                 .map(|sh| {
                     let l = p.ang_shell[sh];
                     ShInfo {
@@ -473,9 +512,9 @@ pub fn gfn0_h0(
                         km_valao_pol: !val[sh],
                     }
                 })
-                .collect()
+                .collect())
         })
-        .collect();
+        .collect::<Result<Vec<_>, String>>()?;
 
     for i in 0..n {
         s_mat[(i, i)] = 1.0;
@@ -602,7 +641,7 @@ pub fn gfn0_h0(
             }
         }
     }
-    (s_mat, h_mat, bmap)
+    Ok((s_mat, h_mat, bmap))
 }
 
 /// Angular momentum of a shell (stored implicitly via comps length).
@@ -673,7 +712,7 @@ pub fn gfn0_eht(
         .enumerate()
         .map(|(k, &e)| (e, k))
         .collect();
-    emo.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    emo.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     let mut orbital_energies = vec![0.0; n];
     for (k, (e, _)) in emo.iter().enumerate() {
         orbital_energies[k] = *e;
@@ -756,9 +795,9 @@ struct Gfn0Shell {
 /// s-polarization shells (non-first s) are Schmidt-orthogonalized against
 /// the atom's valence s and renormalized; d shells carry the trafo weights
 /// (dtrf2 applied later at the block level).
-fn gfn0_atom_shells(z: u8) -> Vec<Gfn0Shell> {
+fn gfn0_atom_shells(z: u8) -> Result<Vec<Gfn0Shell>, String> {
     use super::sto_overlap::sto_table_prims;
-    let p = get_gfn0_params(z).expect("GFN0 params");
+    let p = gfn0_params(z)?;
     let val_flags = gfn0_valence_shells(&p.ang_shell[..p.nshell]);
     // Valence-s contraction (for Schmidt), if any s shell is valence.
     let mut val_s_prims: Option<Vec<(f64, f64)>> = None;
@@ -824,7 +863,7 @@ fn gfn0_atom_shells(z: u8) -> Vec<Gfn0Shell> {
             comps: gfn0_cart_comps(l),
         });
     }
-    out
+    Ok(out)
 }
 
 /// Pauling electronegativities (xtb paulingEN, peeq scope for SRB `pre`).
@@ -918,9 +957,10 @@ pub fn solve_gfn0(
     charge: f64,
 ) -> Result<Gfn0Result, String> {
     use super::gfn0_params::GFN0_NVALENCE;
+    crate::validation::validate_geometry(elements, positions)?;
     let n = elements.len();
-    if n != positions.len() {
-        return Err("elements/positions length mismatch".to_string());
+    if n == 0 {
+        return Err("GFN0: empty molecule (at least one atom is required)".to_string());
     }
     for &z in elements {
         if get_gfn0_params(z).is_none() {
@@ -947,11 +987,11 @@ pub fn solve_gfn0(
     }
 
     let cn = gfn0_cn(elements, &pos_bohr);
-    let (charges, ees_ha) = gfn0_eeq(elements, &pos_bohr, &cn, charge);
-    let (s_mat, h_mat, bmap) = gfn0_h0(elements, &pos_bohr, &cn, &charges);
+    let (charges, ees_ha) = gfn0_eeq(elements, &pos_bohr, &cn, charge)?;
+    let (s_mat, h_mat, bmap) = gfn0_h0(elements, &pos_bohr, &cn, &charges)?;
     let (orbital_energies, eel_ev, homo_energy, lumo_energy) =
         gfn0_eht(&s_mat, &h_mat, n_electrons)?;
-    let e_rep_ha = gfn0_repulsion(elements, &pos_bohr);
+    let e_rep_ha = gfn0_repulsion(elements, &pos_bohr)?;
     let e_srb_ha = gfn0_srb(elements, &pos_bohr, &cn);
     // D4(BJ) with GFN0 parameters (s6=1, s8=2.85, a1=0.8, a2=4.6, no ATM).
     let d4 = crate::dispersion::compute_d4_energy(

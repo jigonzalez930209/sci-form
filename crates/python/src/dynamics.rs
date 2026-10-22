@@ -2,7 +2,7 @@
 
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "MdFrame")]
 #[derive(Clone)]
 pub(crate) struct MdFramePy {
     #[pyo3(get)]
@@ -19,7 +19,7 @@ pub(crate) struct MdFramePy {
     temperature_k: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "MdTrajectory")]
 #[derive(Clone)]
 pub(crate) struct MdTrajectoryPy {
     #[pyo3(get)]
@@ -30,7 +30,7 @@ pub(crate) struct MdTrajectoryPy {
     notes: Vec<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "NebImage")]
 #[derive(Clone)]
 pub(crate) struct NebImagePy {
     #[pyo3(get)]
@@ -41,7 +41,7 @@ pub(crate) struct NebImagePy {
     potential_energy_kcal_mol: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "NebPathResult")]
 #[derive(Clone)]
 pub(crate) struct NebPathResultPy {
     #[pyo3(get)]
@@ -50,7 +50,7 @@ pub(crate) struct NebPathResultPy {
     notes: Vec<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "ConformerEnsembleMember")]
 #[derive(Clone)]
 pub(crate) struct ConformerEnsembleMemberPy {
     #[pyo3(get)]
@@ -63,7 +63,7 @@ pub(crate) struct ConformerEnsembleMemberPy {
     energy_kcal_mol: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "ConformerClusterSummary")]
 #[derive(Clone)]
 pub(crate) struct ConformerClusterSummaryPy {
     #[pyo3(get)]
@@ -76,7 +76,7 @@ pub(crate) struct ConformerClusterSummaryPy {
     member_seeds: Vec<u64>,
 }
 
-#[pyclass]
+#[pyclass(name = "ConformerSearchResult")]
 #[derive(Clone)]
 pub(crate) struct ConformerSearchResultPy {
     #[pyo3(get)]
@@ -115,7 +115,7 @@ fn map_trajectory(r: sci_form_core::dynamics::MdTrajectory) -> MdTrajectoryPy {
 /// Run NVE molecular dynamics with Velocity Verlet + UFF.
 #[pyfunction]
 #[pyo3(signature = (smiles, coords, n_steps=100, dt_fs=1.0, seed=42))]
-fn md_trajectory(
+fn compute_md_trajectory(
     smiles: &str,
     coords: Vec<f64>,
     n_steps: usize,
@@ -124,13 +124,13 @@ fn md_trajectory(
 ) -> PyResult<MdTrajectoryPy> {
     sci_form_core::compute_md_trajectory(smiles, &coords, n_steps, dt_fs, seed)
         .map(map_trajectory)
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 /// Run NVT molecular dynamics with Velocity Verlet + Berendsen thermostat + UFF.
 #[pyfunction]
 #[pyo3(signature = (smiles, coords, n_steps=100, dt_fs=1.0, seed=42, target_temp_k=300.0, thermostat_tau_fs=100.0))]
-fn md_trajectory_nvt(
+fn compute_md_trajectory_nvt(
     smiles: &str,
     coords: Vec<f64>,
     n_steps: usize,
@@ -149,13 +149,13 @@ fn md_trajectory_nvt(
         thermostat_tau_fs,
     )
     .map(map_trajectory)
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 /// Compute simplified NEB path between two geometries.
 #[pyfunction]
 #[pyo3(signature = (smiles, start_coords, end_coords, n_images=8, n_iter=50, spring_k=0.1, step_size=0.01))]
-fn simplified_neb_path(
+fn compute_simplified_neb_path(
     smiles: &str,
     start_coords: Vec<f64>,
     end_coords: Vec<f64>,
@@ -185,13 +185,13 @@ fn simplified_neb_path(
             .collect(),
         notes: r.notes,
     })
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 /// Search conformers with UFF ranking and RMSD clustering.
 #[pyfunction]
 #[pyo3(signature = (smiles, n_samples=10, seed=42, rmsd_threshold=0.5))]
-fn search_conformers(
+fn search_conformers_with_uff(
     smiles: &str,
     n_samples: usize,
     seed: u64,
@@ -224,14 +224,14 @@ fn search_conformers(
                 .collect(),
             notes: r.notes,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(md_trajectory, m)?)?;
-    m.add_function(wrap_pyfunction!(md_trajectory_nvt, m)?)?;
-    m.add_function(wrap_pyfunction!(simplified_neb_path, m)?)?;
-    m.add_function(wrap_pyfunction!(search_conformers, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_md_trajectory, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_md_trajectory_nvt, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_simplified_neb_path, m)?)?;
+    m.add_function(wrap_pyfunction!(search_conformers_with_uff, m)?)?;
     m.add_class::<MdFramePy>()?;
     m.add_class::<MdTrajectoryPy>()?;
     m.add_class::<NebImagePy>()?;

@@ -559,6 +559,7 @@ pub(crate) fn compute_halogen_bond(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f6
 
 /// Solve GFN1-xTB for a molecular system (neutral, closed shell).
 pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result, String> {
+    crate::validation::validate_geometry(elements, positions)?;
     if elements.len() != positions.len() {
         return Err(format!(
             "elements ({}) and positions ({}) length mismatch",

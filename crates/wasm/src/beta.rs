@@ -11,7 +11,7 @@
 //! matching feature flag are available in a given build.
 
 #[allow(unused_imports)]
-use crate::helpers::{json_error, parse_elements_and_positions, parse_flat_coords};
+use crate::helpers::{bad_json, json_error, parse_elements_and_positions, parse_flat_coords};
 #[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
@@ -243,7 +243,7 @@ pub fn beta_solve_eht_randnla(
         } else {
             match serde_json::from_str(config_json) {
                 Ok(c) => c,
-                Err(e) => return json_error(&format!("bad config: {}", e)),
+                Err(e) => return json_error(&bad_json("'config'", config_json, &e)),
             }
         };
 
@@ -281,11 +281,11 @@ pub fn beta_solve_eht_randnla(
 pub fn beta_psd_distance(matrix_a_json: &str, matrix_b_json: &str, dim: usize) -> String {
     let flat_a: Vec<f64> = match serde_json::from_str(matrix_a_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad matrix_a: {}", e)),
+        Err(e) => return json_error(&bad_json("'matrix a'", matrix_a_json, &e)),
     };
     let flat_b: Vec<f64> = match serde_json::from_str(matrix_b_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad matrix_b: {}", e)),
+        Err(e) => return json_error(&bad_json("'matrix b'", matrix_b_json, &e)),
     };
     if flat_a.len() != dim * dim || flat_b.len() != dim * dim {
         return json_error("matrix flat length must equal dim*dim");
@@ -306,7 +306,7 @@ pub fn beta_psd_distance(matrix_a_json: &str, matrix_b_json: &str, dim: usize) -
 pub fn beta_psd_projection(matrix_json: &str, dim: usize) -> String {
     let flat: Vec<f64> = match serde_json::from_str(matrix_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad matrix: {}", e)),
+        Err(e) => return json_error(&bad_json("'matrix'", matrix_json, &e)),
     };
     if flat.len() != dim * dim {
         return json_error("matrix flat length must equal dim*dim");

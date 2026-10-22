@@ -46,7 +46,7 @@ Validated methods gated by `beta-*` feature flags. API is stable within minor ve
 |----|--------|-------------|-------------|
 | B1 | `beta::kpm` | `beta-kpm` | Kernel Polynomial Method — O(N) DOS |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian |
-| B3 | `beta::randnla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) |
+| B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) |
 | B4 | `riemannian` (core, F94) | — | Riemannian PSD cone geometry |
 | B5 | `cpm` (core, F95) | — | Constant Potential Method |
 
@@ -123,16 +123,16 @@ The older `experimental-*` feature flags remain available at their existing modu
 ```toml
 [dependencies]
 # Alpha modules
-sci-form = { version = "0.11", features = ["alpha-dft", "alpha-reaxff"] }
+sci-form = { version = "0.15", features = ["alpha-dft", "alpha-reaxff"] }
 
 # Beta modules
-sci-form = { version = "0.11", features = ["beta-kpm", "beta-randnla"] }
+sci-form = { version = "0.15", features = ["beta-kpm", "beta-randnla"] }
 
 # Legacy experimental
-sci-form = { version = "0.11", features = ["experimental-d4", "experimental-kpm"] }
+sci-form = { version = "0.15", features = ["experimental-d4", "experimental-kpm"] }
 
 # Everything + parallel
-sci-form = { version = "0.11", features = [
+sci-form = { version = "0.15", features = [
     "alpha-dft", "alpha-reaxff", "alpha-mlff",
     "beta-kpm", "beta-randnla",
     "experimental-d4",

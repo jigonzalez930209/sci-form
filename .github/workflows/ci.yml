@@ -57,9 +57,81 @@ jobs:
       - name: Experimental feature smoke
         if: matrix.suite == 'full'
         run: cargo test --lib --release --features "${RUST_EXPERIMENTAL_FEATURES}"
+      # Every target in the workspace, with no hand-maintained list: the
+      # previous matrix enumerated 34 of the 43 integration targets, so 9
+      # targets (77 tests) never ran in CI — and 12 of the "PASS" rows in
+      # reports/validation/summary.json came from one of them
+      # (eht_eeq_parity). `--all-targets` also covers the benches and the
+      # examples, and it picks up any target added later.
+      #
+      # `sci-form-python` is excluded because its Rust test harness cannot
+      # be linked: pyo3's `extension-module` feature leaves the CPython
+      # symbols unresolved on purpose (a wheel needs that, a test binary
+      # does not).  The binding is covered by the `python` job below
+      # (maturin build + pytest against the installed wheel).
+      - name: Full test suite (every target)
+        if: matrix.suite == 'full'
+        run: cargo test --release --workspace --all-targets --exclude sci-form-python
+      # Every parameter generator must reproduce the committed Rust table
+      # byte-for-byte.  Exit codes: 0 = up to date, 1 = OUT OF DATE (a
+      # failure), 2 = skipped because the upstream input is not available on
+      # this runner.  The six generators whose upstream trees are not
+      # vendored (dftd4, multicharge, mctc-lib, xtb, MOPAC, pormake) report
+      # "skipped" here; run them locally with $SCIFORM_REF_DATA set.
+      - name: Verify the generated tables are current
+        if: matrix.suite == 'full'
+        run: |
+          status=0
+          for gen in gen_d4_refs gen_eeq2019_params gen_eeqbc_params \
+                     gen_gfn0_params gen_gfn1_params gen_mmff94_params \
+                     gen_pm3_params gen_space_group_table gen_topologies; do
+            code=0
+            python3 "scripts/validation/${gen}.py" --check || code=$?
+            case "$code" in
+              0) echo "OK       scripts/validation/${gen}.py" ;;
+              2) echo "::notice::scripts/validation/${gen}.py --check skipped (upstream input not vendored)" ;;
+              *) echo "::error::scripts/validation/${gen}.py --check failed (exit ${code})"
+                 status=1 ;;
+            esac
+          done
+          exit "$status"
       - name: Smoke battery
         run: cargo test --release --test ci -- --nocapture
 
+  gpu:
+    name: Native GPU path
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # The native x86_64 GPU code (src/gpu/, 24 files, ~90 unit tests) was
+      # only ever compiled for wasm32 (through WASM_WEB_FEATURES), so it was
+      # never linted, built or tested on the host target.
+      - name: Build the native GPU path
+        run: cargo build --release --features experimental-gpu
+      - name: Test the native GPU path
+        run: cargo test --release --features experimental-gpu --lib
+      # NOTE: `experimental-gpu` is deliberately NOT part of RUST_EXPERIMENTAL_FEATURES:
+      # enabling it in the lint job would turn the pre-existing
+      # `dead_code` warning in src/kmesh.rs into a clippy error.
+
+  audit:
+    name: Dependency audit (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+      - name: Check advisories, bans and licenses
+        run: cargo deny check advisories bans licenses
+
+  # Per-gate view of the validation suites.  The exhaustive list of targets
+  # lives in the `test` job (`cargo test --release --workspace --all-targets`):
+  # this matrix used to enumerate 34 of the 43 integration targets by hand,
+  # which meant 9 targets (77 tests) never ran.
   validation:
     name: Validation gates (${{ matrix.gate }})
     runs-on: ubuntu-latest
@@ -89,8 +161,6 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinim/rust-cache@v2
-      - name: Verify the generated tables are current
-        run: python3 scripts/validation/gen_space_group_table.py --check
       - name: Run ${{ matrix.gate }} gates
         run: |
           case "${{ matrix.test }}" in
@@ -123,7 +193,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      # The WASM package needs nightly: `wasm-bindgen-rayon` (the `parallel`
+      # feature) refuses to compile on stable because the `atomics` target
+      # feature is not reported through `cfg(target_feature)` there.  The
+      # channel matches crates/wasm/rust-toolchain.toml.
+      - uses: dtolnay/rust-toolchain@nightly-2026-05-24
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
@@ -137,6 +211,17 @@ jobs:
           test -f crates/wasm/pkg/alpha/index.d.ts
           test -f crates/wasm/pkg/beta/index.js
           test -f crates/wasm/pkg/beta/index.d.ts
+          test -f crates/wasm/pkg-node/alpha/index.js
+          test -f crates/wasm/pkg-node/alpha/index.d.ts
+          test -f crates/wasm/pkg-node/beta/index.js
+          test -f crates/wasm/pkg-node/beta/index.d.ts
+          # wasm-bindgen-rayon imports the worker glue from ./snippets at
+          # runtime: without it the npm tarball is broken.
+          test -d crates/wasm/pkg/snippets
+          test -d crates/wasm/pkg-node/snippets
+          # The ESM package must be ESM and the Node package must be CommonJS.
+          node -e "const p=require('./crates/wasm/pkg/package.json'); if (p.type !== 'module') throw new Error('pkg must be ESM, got ' + p.type); if (!p.files.includes('snippets')) throw new Error('pkg.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg is missing the ./alpha export');"
+          node -e "const p=require('./crates/wasm/pkg-node/package.json'); if (p.type !== 'commonjs') throw new Error('pkg-node must be CommonJS, got ' + p.type); if (!p.files.includes('snippets')) throw new Error('pkg-node.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg-node is missing the ./alpha export');"
       - name: Verify Node.js install
         run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const alpha = require('./alpha'); const beta = require('./beta'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.assert(typeof sci.alpha_compute_dft === 'function', 'missing alpha root export'); console.assert(typeof sci.beta_compute_kpm_dos === 'function', 'missing beta root export'); console.assert(typeof alpha.alpha_modules_info === 'function', 'missing alpha subpath export'); console.assert(typeof beta.beta_modules_info === 'function', 'missing beta subpath export'); console.log('✓ Node.js WASM works with alpha/beta exports');"
       - uses: actions/upload-artifact@v6

@@ -3,7 +3,7 @@
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "UvVisPeak")]
 #[derive(Clone)]
 pub(crate) struct UvVisPeakPy {
     #[pyo3(get)]
@@ -18,7 +18,7 @@ pub(crate) struct UvVisPeakPy {
     to_mo: usize,
 }
 
-#[pyclass]
+#[pyclass(name = "UvVisSpectrum")]
 #[derive(Clone)]
 pub(crate) struct UvVisSpectrumPy {
     #[pyo3(get)]
@@ -43,7 +43,7 @@ impl UvVisSpectrumPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "GraphFeatureAnalysis")]
 #[derive(Clone)]
 pub(crate) struct GraphFeatureAnalysisPy {
     #[pyo3(get)]
@@ -67,7 +67,7 @@ impl GraphFeatureAnalysisPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MetalCoordinationCenter")]
 #[derive(Clone)]
 pub(crate) struct MetalCoordinationCenterPy {
     #[pyo3(get)]
@@ -84,7 +84,7 @@ pub(crate) struct MetalCoordinationCenterPy {
     geometry_score: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "TopologyAnalysisResult")]
 #[derive(Clone)]
 pub(crate) struct TopologyAnalysisResultPy {
     #[pyo3(get)]
@@ -95,7 +95,7 @@ pub(crate) struct TopologyAnalysisResultPy {
 
 #[pyfunction]
 #[pyo3(signature = (elements, coords, sigma=0.25, e_min=0.5, e_max=8.0, n_points=600))]
-fn uvvis_spectrum(
+fn compute_uv_vis_spectrum(
     elements: Vec<u8>,
     coords: Vec<f64>,
     sigma: f64,
@@ -122,11 +122,11 @@ fn uvvis_spectrum(
             sigma: r.sigma,
             notes: r.notes,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(crate::errors::engine_error)
 }
 
 #[pyfunction]
-fn graph_features(smiles: &str) -> PyResult<GraphFeatureAnalysisPy> {
+fn analyze_graph_features(smiles: &str) -> PyResult<GraphFeatureAnalysisPy> {
     sci_form_core::analyze_graph_features(smiles)
         .map(|r| GraphFeatureAnalysisPy {
             aromatic_atoms: r.aromaticity.aromatic_atoms,
@@ -134,13 +134,13 @@ fn graph_features(smiles: &str) -> PyResult<GraphFeatureAnalysisPy> {
             tagged_tetrahedral_centers: r.stereocenters.tagged_tetrahedral_centers,
             inferred_tetrahedral_centers: r.stereocenters.inferred_tetrahedral_centers,
         })
-        .map_err(pyo3::exceptions::PyValueError::new_err)
+        .map_err(crate::errors::value_error)
 }
 
 #[pyfunction]
-fn topology_analysis(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<TopologyAnalysisResultPy> {
+fn compute_topology(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<TopologyAnalysisResultPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != 3 * elements {} = {}",
             coords.len(),
             elements.len(),
@@ -167,9 +167,9 @@ fn topology_analysis(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<TopologyAn
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(uvvis_spectrum, m)?)?;
-    m.add_function(wrap_pyfunction!(graph_features, m)?)?;
-    m.add_function(wrap_pyfunction!(topology_analysis, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_uv_vis_spectrum, m)?)?;
+    m.add_function(wrap_pyfunction!(analyze_graph_features, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_topology, m)?)?;
     m.add_class::<UvVisPeakPy>()?;
     m.add_class::<UvVisSpectrumPy>()?;
     m.add_class::<GraphFeatureAnalysisPy>()?;

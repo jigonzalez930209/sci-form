@@ -227,7 +227,7 @@ fn test_3d_descriptors_ethanol() {
     let conf = sci_form::embed("CCO", 42);
     assert!(conf.error.is_none());
 
-    let desc = sci_form::ml::compute_3d_descriptors(&conf.elements, &conf.coords);
+    let desc = sci_form::ml::compute_3d_descriptors(&conf.elements, &conf.coords).unwrap();
 
     assert!(desc.radius_of_gyration > 0.0, "Rg should be positive");
     assert!(desc.span > 0.0, "Span should be positive");
@@ -265,8 +265,8 @@ fn test_3d_descriptors_benzene_vs_ethane() {
     assert!(benzene.error.is_none());
     assert!(ethane.error.is_none());
 
-    let desc_benz = sci_form::ml::compute_3d_descriptors(&benzene.elements, &benzene.coords);
-    let desc_eth = sci_form::ml::compute_3d_descriptors(&ethane.elements, &ethane.coords);
+    let desc_benz = sci_form::ml::compute_3d_descriptors(&benzene.elements, &benzene.coords).unwrap();
+    let desc_eth = sci_form::ml::compute_3d_descriptors(&ethane.elements, &ethane.coords).unwrap();
 
     // Benzene has larger Rg than ethane
     assert!(
@@ -287,7 +287,7 @@ fn test_3d_descriptors_benzene_vs_ethane() {
 
 #[test]
 fn test_3d_descriptors_empty_molecule() {
-    let desc = sci_form::ml::compute_3d_descriptors(&[], &[]);
+    let desc = sci_form::ml::compute_3d_descriptors(&[], &[]).unwrap();
     assert_eq!(desc.radius_of_gyration, 0.0);
     assert_eq!(desc.span, 0.0);
 }
@@ -381,7 +381,7 @@ fn test_powder_xrd_cubic_nacl() {
     let elements = [11u8, 17]; // Na, Cl
     let frac_coords = [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]];
 
-    let xrd = simulate_powder_xrd(&cell, &elements, &frac_coords, 90.0);
+    let xrd = simulate_powder_xrd(&cell, &elements, &frac_coords, 90.0).unwrap();
 
     assert!(!xrd.two_theta.is_empty(), "Should produce reflections");
     assert_eq!(xrd.two_theta.len(), xrd.intensities.len());
@@ -409,7 +409,7 @@ fn test_powder_xrd_narrow_range() {
     let elements = [26u8]; // Fe
     let frac_coords = [[0.0, 0.0, 0.0]];
 
-    let xrd = simulate_powder_xrd(&cell, &elements, &frac_coords, 30.0);
+    let xrd = simulate_powder_xrd(&cell, &elements, &frac_coords, 30.0).unwrap();
     // All reflections should be within the specified range
     assert!(xrd.two_theta.iter().all(|&t| t <= 30.0));
 }
@@ -829,7 +829,7 @@ fn test_full_pipeline_with_new_features() {
     assert!(conf.error.is_none());
 
     // 3D descriptors
-    let desc_3d = sci_form::ml::compute_3d_descriptors(&conf.elements, &conf.coords);
+    let desc_3d = sci_form::ml::compute_3d_descriptors(&conf.elements, &conf.coords).unwrap();
     assert!(desc_3d.radius_of_gyration > 0.0);
 
     // Stereo analysis with new fields
@@ -867,7 +867,7 @@ fn test_materials_pipeline_xrd_and_symmetry() {
     assert_eq!(full_frac.len(), full_elements.len());
 
     // Simulate XRD
-    let xrd = simulate_powder_xrd(&cell, &full_elements, &full_frac, 60.0);
+    let xrd = simulate_powder_xrd(&cell, &full_elements, &full_frac, 60.0).unwrap();
     assert!(!xrd.two_theta.is_empty());
 
     // Compute porosity

@@ -1,15 +1,37 @@
 #!/usr/bin/env python3
-"""Extract tblite energy components via numerical comparison."""
+"""Extract tblite energy components via numerical comparison.
+
+Environment:
+    SCIFORM_CLI    path to the sci-form binary
+                   (default: <repo>/target/release/sci-form)
+    SCIFORM_VENV   virtualenv holding the reference python packages
+                   (default: the active interpreter)
+    GFN2_LD_PRELOAD  libgfortran to preload for the tblite wheel
+                   (default: /usr/lib/x86_64-linux-gnu/libgfortran.so.5)
+"""
 import os, sys, json, subprocess
+from pathlib import Path
 import numpy as np
 
-sys.path.insert(0, '/home/lestad/github/sci-form/venv/lib/python3.12/site-packages')
-os.environ['LD_PRELOAD'] = '/usr/lib/x86_64-linux-gnu/libgfortran.so.5'
+# The reference python packages (tblite) come from the active interpreter or
+# from the virtualenv pointed at by SCIFORM_VENV — never from a hard-coded
+# path that only exists on one machine.
+_VENV = os.environ.get('SCIFORM_VENV')
+if _VENV:
+    sys.path.insert(0, str(Path(_VENV) / 'lib' /
+                            f'python{sys.version_info.major}.{sys.version_info.minor}' /
+                            'site-packages'))
+# The tblite wheel links against libgfortran; only preload it when the
+# distribution actually ships it there.
+_PRELOAD = os.environ.get('GFN2_LD_PRELOAD', '/usr/lib/x86_64-linux-gnu/libgfortran.so.5')
+if Path(_PRELOAD).exists():
+    os.environ['LD_PRELOAD'] = _PRELOAD
 
 from tblite.interface import Calculator, Result
 
 AATOAU = 1.8897259886
-CLI = '/home/lestad/github/sci-form/target/release/sci-form'
+CLI = os.environ.get('SCIFORM_CLI',
+                    str(Path(__file__).resolve().parents[1] / 'target' / 'release' / 'sci-form'))
 EV2HA = 1.0 / 27.21138505
 
 def our_gfn2(elements, coords_flat):

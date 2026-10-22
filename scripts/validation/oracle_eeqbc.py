@@ -5,9 +5,11 @@ Runs the multicharge CLI (`--model eeqbc`, the 2025 bond-capacitor model of
 Froitzheim et al., J. Chem. Phys. 162, 214109) on a set of small molecules and
 records the resulting partial charges and coordination numbers.
 
-The multicharge CLI is expected at
-`/tmp/opencode/multicharge-src/build/app/multicharge` (meson/ninja build of
-grimme-lab/multicharge; see the EEQ-BC port notes).
+The multicharge CLI is a meson/ninja build of grimme-lab/multicharge (see
+the EEQ-BC port notes).  It is not vendored in this repository: point
+SCIFORM_REF_DATA at the checkout and the binary is looked up at
+`$SCIFORM_REF_DATA/multicharge-src/build/app/multicharge`, or pass
+`--binary PATH`.
 
 Usage:
     python scripts/validation/oracle_eeqbc.py [--binary PATH] [--out FILE]
@@ -17,13 +19,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO / "tests/fixtures/validation/eeqbc_charges.json"
-DEFAULT_BIN = Path("/tmp/opencode/multicharge-src/build/app/multicharge")
+DEFAULT_BIN = (
+    Path(os.environ.get("SCIFORM_REF_DATA", REPO / ".cache" / "refdata"))
+    / "multicharge-src"
+    / "build"
+    / "app"
+    / "multicharge"
+)
 
 # Atomic numbers for the element symbols used below (mctc/multicharge range).
 Z_OF_SYMBOL = {

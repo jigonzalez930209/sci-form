@@ -2,7 +2,7 @@
 
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "UffHeuristicEnergy")]
 #[derive(Clone)]
 pub(crate) struct UffHeuristicEnergyPy {
     #[pyo3(get)]
@@ -17,7 +17,7 @@ pub(crate) struct UffHeuristicEnergyPy {
     notes: Vec<String>,
 }
 
-#[pyclass]
+#[pyclass(name = "EmpiricalPkaSite")]
 #[derive(Clone)]
 pub(crate) struct EmpiricalPkaSitePy {
     #[pyo3(get)]
@@ -32,7 +32,7 @@ pub(crate) struct EmpiricalPkaSitePy {
     confidence: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "EmpiricalPkaResult")]
 #[derive(Clone)]
 pub(crate) struct EmpiricalPkaResultPy {
     #[pyo3(get)]
@@ -44,13 +44,13 @@ pub(crate) struct EmpiricalPkaResultPy {
 }
 
 #[pyfunction]
-fn uff_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
+fn compute_uff_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
     sci_form_core::compute_uff_energy(smiles, &coords)
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 #[pyfunction]
-fn uff_energy_with_aromatic_heuristics(
+fn compute_uff_energy_with_aromatic_heuristics(
     smiles: &str,
     coords: Vec<f64>,
 ) -> PyResult<UffHeuristicEnergyPy> {
@@ -62,11 +62,11 @@ fn uff_energy_with_aromatic_heuristics(
             aromatic_bond_count: r.aromatic_bond_count,
             notes: r.notes,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 #[pyfunction]
-fn empirical_pka(smiles: &str) -> PyResult<EmpiricalPkaResultPy> {
+fn compute_empirical_pka(smiles: &str) -> PyResult<EmpiricalPkaResultPy> {
     sci_form_core::compute_empirical_pka(smiles)
         .map(|r| {
             let map_site = |s: sci_form_core::reactivity::EmpiricalPkaSite| EmpiricalPkaSitePy {
@@ -82,20 +82,20 @@ fn empirical_pka(smiles: &str) -> PyResult<EmpiricalPkaResultPy> {
                 notes: r.notes,
             }
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 #[pyfunction]
-fn mmff94_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
+fn compute_mmff94_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
     sci_form_core::compute_mmff94_energy(smiles, &coords)
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(uff_energy, m)?)?;
-    m.add_function(wrap_pyfunction!(uff_energy_with_aromatic_heuristics, m)?)?;
-    m.add_function(wrap_pyfunction!(empirical_pka, m)?)?;
-    m.add_function(wrap_pyfunction!(mmff94_energy, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_uff_energy, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_uff_energy_with_aromatic_heuristics, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_empirical_pka, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_mmff94_energy, m)?)?;
     m.add_class::<UffHeuristicEnergyPy>()?;
     m.add_class::<EmpiricalPkaSitePy>()?;
     m.add_class::<EmpiricalPkaResultPy>()?;

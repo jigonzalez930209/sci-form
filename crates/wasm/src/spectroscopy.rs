@@ -124,7 +124,7 @@ pub fn compute_ir_spectrum(
 ) -> String {
     let analysis: sci_form::ir::VibrationalAnalysis = match serde_json::from_str(analysis_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad analysis JSON: {}", e)),
+        Err(e) => return json_error(&bad_json("'analysis'", analysis_json, &e)),
     };
     let result = sci_form::compute_ir_spectrum(&analysis, gamma, wn_min, wn_max, n_points);
     serialize_or_error(&result)
@@ -192,22 +192,22 @@ pub fn assign_peaks(
 ) -> String {
     let frequencies: Vec<f64> = match serde_json::from_str(frequencies_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad frequencies: {e}")),
+        Err(e) => return json_error(&bad_json("'frequencies'", frequencies_json, &e)),
     };
     let intensities: Vec<f64> = match serde_json::from_str(intensities_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad intensities: {e}")),
+        Err(e) => return json_error(&bad_json("'intensities'", intensities_json, &e)),
     };
     let elements: Vec<u8> = match serde_json::from_str(elements_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad elements: {e}")),
+        Err(e) => return json_error(&bad_json("'elements'", elements_json, &e)),
     };
     let displacements: Option<Vec<Vec<[f64; 3]>>> = if mode_displacements_json.is_empty() {
         None
     } else {
         match serde_json::from_str::<Vec<Vec<[f64; 3]>>>(mode_displacements_json) {
             Ok(v) => Some(v),
-            Err(e) => return json_error(&format!("bad mode displacements: {e}")),
+            Err(e) => return json_error(&bad_json("'mode displacements'", elements_json, &e)),
         }
     };
     let result = sci_form::ir::peak_assignment::assign_peaks(
@@ -232,11 +232,11 @@ pub fn compute_ensemble_j_couplings(
 ) -> String {
     let conformers: Vec<Vec<f64>> = match serde_json::from_str(conformer_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad conformer coords: {e}")),
+        Err(e) => return json_error(&bad_json("'conformer coords'", conformer_coords_json, &e)),
     };
     let energies: Vec<f64> = match serde_json::from_str(energies_kcal_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad conformer energies: {e}")),
+        Err(e) => return json_error(&bad_json("'conformer energies'", energies_kcal_json, &e)),
     };
     match sci_form::compute_ensemble_j_couplings(smiles, &conformers, &energies, temperature_k) {
         Ok(result) => serialize_or_error(&result),
@@ -299,7 +299,7 @@ pub fn compute_giao_nmr(
 pub fn predict_nmr_couplings(smiles: &str, coords_flat_json: &str) -> String {
     let flat: Vec<f64> = match serde_json::from_str(coords_flat_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad coords: {}", e)),
+        Err(e) => return json_error(&bad_json("'coords'", coords_flat_json, &e)),
     };
     let positions: Vec<[f64; 3]> = flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::predict_nmr_couplings(smiles, &positions) {
@@ -339,7 +339,7 @@ pub fn compute_nmr_spectrum_with_coords(
 ) -> String {
     let flat: Vec<f64> = match serde_json::from_str(coords_flat_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad coords: {}", e)),
+        Err(e) => return json_error(&bad_json("'coords'", coords_flat_json, &e)),
     };
     let positions: Vec<[f64; 3]> = flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     match sci_form::compute_nmr_spectrum_with_coords(

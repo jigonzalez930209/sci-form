@@ -124,6 +124,7 @@ pub fn solve_ks_dft(
     positions: &[[f64; 3]],
     config: &DftConfig,
 ) -> Result<DftResult, String> {
+    crate::validation::validate_geometry(elements, positions)?;
     let system = MolecularSystem::from_angstrom(
         elements,
         positions,
@@ -189,7 +190,7 @@ pub fn solve_ks_dft(
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
 
     let mut c_ortho = DMatrix::zeros(n_basis, n_basis);
@@ -264,7 +265,7 @@ pub fn solve_ks_dft(
         indices.sort_by(|&a, &b| {
             eigen.eigenvalues[a]
                 .partial_cmp(&eigen.eigenvalues[b])
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         for (new_idx, &old_idx) in indices.iter().enumerate() {
@@ -398,7 +399,7 @@ fn solve_uks(
     indices.sort_by(|&a, &b| {
         eigen.eigenvalues[a]
             .partial_cmp(&eigen.eigenvalues[b])
-            .unwrap()
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
     let mut c_ortho = DMatrix::zeros(n_basis, n_basis);
     for (new_idx, &old_idx) in indices.iter().enumerate() {
@@ -451,7 +452,7 @@ fn solve_uks(
             indices.sort_by(|&a, &b| {
                 eigen.eigenvalues[a]
                     .partial_cmp(&eigen.eigenvalues[b])
-                    .unwrap()
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
             let mut c_o = DMatrix::zeros(n_basis, n_basis);
             for (new_idx, &old_idx) in indices.iter().enumerate() {

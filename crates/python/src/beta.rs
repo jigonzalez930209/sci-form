@@ -4,11 +4,11 @@
 //!
 //! ```python
 //! from sci_form.beta import (
-//!     kpm_dos, kpm_mulliken,
-//!     mbh_frequencies,
-//!     eht_randnla,
+//!     beta_compute_kpm_dos, beta_compute_kpm_mulliken,
+//!     beta_compute_mbh_frequencies,
+//!     beta_solve_eht_randnla,
 //!     psd_distance, psd_projection,
-//!     cpm_charges,
+//!     beta_compute_cpm_charges,
 //! )
 //! ```
 
@@ -36,7 +36,7 @@ mod kpm_py {
         (basis, hamiltonian, overlap)
     }
 
-    #[pyclass]
+    #[pyclass(name = "KpmDosResult")]
     #[derive(Clone)]
     pub struct KpmDosResultPy {
         #[pyo3(get)]
@@ -51,7 +51,7 @@ mod kpm_py {
         pub order: usize,
     }
 
-    #[pyclass]
+    #[pyclass(name = "KpmMullikenResult")]
     #[derive(Clone)]
     pub struct KpmMullikenResultPy {
         #[pyo3(get)]
@@ -72,7 +72,7 @@ mod kpm_py {
     ///     KpmDosResultPy
     #[pyfunction]
     #[pyo3(signature = (elements, coords, order = 100, temperature = 0.0))]
-    pub fn kpm_dos(
+    pub fn beta_compute_kpm_dos(
         elements: Vec<u8>,
         coords: Vec<f64>,
         order: usize,
@@ -101,11 +101,11 @@ mod kpm_py {
     /// Returns:
     ///     KpmMullikenResultPy
     #[pyfunction]
-    pub fn kpm_mulliken(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<KpmMullikenResultPy> {
+    pub fn beta_compute_kpm_mulliken(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<KpmMullikenResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let (basis, hamiltonian, overlap) = build_eht_matrices(&elements, &positions);
         let eht = sci_form_core::eht::solve_eht(&elements, &positions, None)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+            .map_err(crate::errors::engine_error)?;
         let config = KpmConfig::default();
         let nuclear_charges: Vec<f64> = basis
             .iter()
@@ -135,8 +135,8 @@ mod kpm_py {
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<KpmDosResultPy>()?;
         m.add_class::<KpmMullikenResultPy>()?;
-        m.add_function(wrap_pyfunction!(kpm_dos, m)?)?;
-        m.add_function(wrap_pyfunction!(kpm_mulliken, m)?)?;
+        m.add_function(wrap_pyfunction!(beta_compute_kpm_dos, m)?)?;
+        m.add_function(wrap_pyfunction!(beta_compute_kpm_mulliken, m)?)?;
         Ok(())
     }
 }
@@ -148,7 +148,7 @@ mod mbh_py {
     use pyo3::prelude::*;
     use sci_form_core::beta::mbh::hessian::{compute_mbh_frequencies, MbhConfig};
 
-    #[pyclass]
+    #[pyclass(name = "MbhResult")]
     #[derive(Clone)]
     pub struct MbhResultPy {
         #[pyo3(get)]
@@ -177,7 +177,7 @@ mod mbh_py {
     ///     MbhResultPy
     #[pyfunction]
     #[pyo3(signature = (elements, coords, smiles, fd_step = 0.005))]
-    pub fn mbh_frequencies(
+    pub fn beta_compute_mbh_frequencies(
         elements: Vec<u8>,
         coords: Vec<f64>,
         smiles: &str,
@@ -210,7 +210,7 @@ mod mbh_py {
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<MbhResultPy>()?;
-        m.add_function(wrap_pyfunction!(mbh_frequencies, m)?)?;
+        m.add_function(wrap_pyfunction!(beta_compute_mbh_frequencies, m)?)?;
         Ok(())
     }
 }
@@ -236,7 +236,7 @@ mod randnla_py {
         (hamiltonian, overlap, n_electrons)
     }
 
-    #[pyclass]
+    #[pyclass(name = "RandNlaResult")]
     #[derive(Clone)]
     pub struct RandNlaResultPy {
         #[pyo3(get)]
@@ -271,7 +271,7 @@ mod randnla_py {
     ///     RandNlaResultPy
     #[pyfunction]
     #[pyo3(signature = (elements, coords, sketch_size = None, max_error = 0.001))]
-    pub fn eht_randnla(
+    pub fn beta_solve_eht_randnla(
         elements: Vec<u8>,
         coords: Vec<f64>,
         sketch_size: Option<usize>,
@@ -306,7 +306,7 @@ mod randnla_py {
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<RandNlaResultPy>()?;
-        m.add_function(wrap_pyfunction!(eht_randnla, m)?)?;
+        m.add_function(wrap_pyfunction!(beta_solve_eht_randnla, m)?)?;
         Ok(())
     }
 }
@@ -331,7 +331,7 @@ mod riemannian_py {
     #[pyfunction]
     pub fn beta_psd_distance(matrix_a: Vec<f64>, matrix_b: Vec<f64>, dim: usize) -> PyResult<f64> {
         if matrix_a.len() != dim * dim || matrix_b.len() != dim * dim {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "matrix flat length must equal dim*dim",
             ));
         }
@@ -351,7 +351,7 @@ mod riemannian_py {
     #[pyfunction]
     pub fn beta_psd_projection(matrix: Vec<f64>, dim: usize) -> PyResult<Vec<f64>> {
         if matrix.len() != dim * dim {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(crate::errors::value_error(
                 "matrix flat length must equal dim*dim",
             ));
         }
@@ -374,7 +374,7 @@ mod cpm_py {
     use pyo3::prelude::*;
     use sci_form_core::beta::cpm::grand_potential::{compute_cpm_charges, CpmConfig};
 
-    #[pyclass]
+    #[pyclass(name = "CpmResult")]
     #[derive(Clone)]
     pub struct CpmResultPy {
         #[pyo3(get)]
@@ -387,16 +387,21 @@ mod cpm_py {
 
     /// Compute constant-potential CPM charges.
     ///
+    /// This is the **beta** variant: it evaluates the charges at a fixed
+    /// electrode potential with the default solvent dielectric.  The
+    /// canonical, dielectric-aware entry point is
+    /// `sci_form.compute_cpm_charges`.
+    ///
     /// Args:
     ///     elements (list[int]): Atomic numbers.
     ///     coords (list[float]): Flat coordinates in Å.
     ///     potential (float): Electrode potential in eV.
     ///
     /// Returns:
-    ///     CpmResultPy
+    ///     CpmResult
     #[pyfunction]
     #[pyo3(signature = (elements, coords, potential = 0.0))]
-    pub fn cpm_charges(
+    pub fn beta_compute_cpm_charges(
         elements: Vec<u8>,
         coords: Vec<f64>,
         potential: f64,
@@ -417,7 +422,7 @@ mod cpm_py {
 
     pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<CpmResultPy>()?;
-        m.add_function(wrap_pyfunction!(cpm_charges, m)?)?;
+        m.add_function(wrap_pyfunction!(beta_compute_cpm_charges, m)?)?;
         Ok(())
     }
 }
@@ -444,6 +449,15 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     riemannian_py::register(&m)?;
     #[cfg(feature = "beta-cpm")]
     cpm_py::register(&m)?;
+
+    // The WASM surface is flat, so the beta entry points are also exported
+    // from the package root under the same names.  The canonical
+    // `sci_form.compute_cpm_charges` (with the `dielectric` parameter) lives
+    // in the root module and is registered by `experimental::register`; the
+    // beta variant keeps its own name so that there is exactly one
+    // `cpm_charges` (blocker C-C3).
+    #[cfg(feature = "beta-cpm")]
+    parent.add_function(wrap_pyfunction!(cpm_py::beta_compute_cpm_charges, parent)?)?;
 
     parent.add_submodule(&m)?;
     let sys = parent.py().import("sys")?;

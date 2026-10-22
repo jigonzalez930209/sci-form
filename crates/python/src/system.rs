@@ -76,7 +76,7 @@ fn property_request_name(property: sci_form_core::PropertyRequest) -> String {
     .to_string()
 }
 
-#[pyclass]
+#[pyclass(name = "MethodCapability")]
 #[derive(Clone)]
 pub(crate) struct MethodCapabilityPy {
     #[pyo3(get)]
@@ -100,7 +100,7 @@ impl From<sci_form_core::MethodCapability> for MethodCapabilityPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "SystemCapabilities")]
 #[derive(Clone)]
 pub(crate) struct SystemCapabilitiesPy {
     #[pyo3(get)]
@@ -115,7 +115,7 @@ pub(crate) struct SystemCapabilitiesPy {
     orbital_grid: MethodCapabilityPy,
 }
 
-#[pyclass]
+#[pyclass(name = "MethodMetadata")]
 #[derive(Clone)]
 pub(crate) struct MethodMetadataPy {
     #[pyo3(get)]
@@ -145,7 +145,7 @@ impl From<sci_form_core::MethodMetadata> for MethodMetadataPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "PropertyMethodPlan")]
 #[derive(Clone)]
 pub(crate) struct PropertyMethodPlanPy {
     #[pyo3(get)]
@@ -172,7 +172,7 @@ impl From<sci_form_core::PropertyMethodPlan> for PropertyMethodPlanPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "SystemMethodPlan")]
 #[derive(Clone)]
 pub(crate) struct SystemMethodPlanPy {
     #[pyo3(get)]

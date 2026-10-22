@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
-"""Benchmark GFN2-xTB: our Rust implementation vs tblite for 100+ organic molecules."""
+"""Benchmark GFN2-xTB: our Rust implementation vs tblite for 100+ organic molecules.
+
+Environment: SCIFORM_CLI (default: <repo>/target/release/sci-form).
+"""
 import subprocess, json, sys, os, numpy as np
+from pathlib import Path
+
+# The repository root: the CLI is invoked from here so that it finds its
+# own data files.  Never hard-code an absolute path.
+REPO = Path(__file__).resolve().parents[1]
 
 # 100+ diverse organic molecules with SMILES, elements, and coordinates
 # We generate 3D coords using sci-form embed, then compare GFN2 energies
@@ -93,7 +101,7 @@ for i, smi in enumerate(molecules_smiles):
     try:
         r_embed = subprocess.run(
             ["./target/release/sci-form", "embed", smi, "-s", "42"],
-            capture_output=True, text=True, timeout=30, env=env, cwd="/home/lestad/github/sci-form"
+            capture_output=True, text=True, timeout=30, env=env, cwd=str(REPO)
         )
         embed_data = json.loads(r_embed.stdout)
         if embed_data.get("error"):
@@ -113,7 +121,7 @@ for i, smi in enumerate(molecules_smiles):
     try:
         r_gfn2 = subprocess.run(
             ["./target/release/sci-form", "gfn2", elems_str, coords_str],
-            capture_output=True, text=True, timeout=120, env=env, cwd="/home/lestad/github/sci-form"
+            capture_output=True, text=True, timeout=120, env=env, cwd=str(REPO)
         )
         data = json.loads(r_gfn2.stdout)
         our_eV = data["total_energy"]

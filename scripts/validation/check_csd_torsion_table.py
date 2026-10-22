@@ -202,7 +202,12 @@ def main() -> int:
     parser.add_argument(
         "--cache-dir",
         type=Path,
-        default=Path("/tmp/opencode/rdkit-torsion-cache"),
+        default=Path(
+            os.environ.get(
+                "SCIFORM_REF_DATA", Path(__file__).resolve().parents[2] / ".cache" / "refdata"
+            )
+        )
+        / "rdkit-torsion-cache",
         help="cache directory for downloaded upstream files",
     )
     args = parser.parse_args()

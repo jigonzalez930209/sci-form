@@ -1783,7 +1783,7 @@ fn benchmark_embed_batch_100() {
         seed: 42,
         num_threads: 0,
     };
-    let results = sci_form::embed_batch(&smiles_refs, &config);
+    let results = sci_form::embed_batch(&smiles_refs, &config).expect("embed_batch must succeed");
     assert_eq!(results.len(), 100);
 
     let success = results.iter().filter(|r| r.error.is_none()).count();

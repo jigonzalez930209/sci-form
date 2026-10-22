@@ -6,6 +6,11 @@
 #[derive(Debug, Clone)]
 pub struct AlignmentResult {
     /// RMSD after optimal alignment (Å).
+    ///
+    /// `f64::NAN` is never produced.  When the alignment could not be
+    /// performed (mismatched input lengths) the RMSD is the sentinel
+    /// [`AlignmentResult::INVALID_RMSD`] and [`AlignmentResult::error`] holds
+    /// the reason (blocker A-H6).
     pub rmsd: f64,
     /// 3×3 rotation matrix (row-major).
     pub rotation: [[f64; 3]; 3],
@@ -13,6 +18,23 @@ pub struct AlignmentResult {
     pub translation: [f64; 3],
     /// Aligned coordinates: flat [x0,y0,z0, x1,...].
     pub aligned_coords: Vec<f64>,
+    /// Reason why the alignment failed, if any.
+    ///
+    /// `None` means the alignment succeeded.
+    pub error: Option<String>,
+}
+
+impl AlignmentResult {
+    /// Sentinel RMSD used when the alignment could not be performed.
+    ///
+    /// A negative RMSD is impossible for a real alignment, so it can never
+    /// be confused with "the structures do not overlap" (RMSD = 0).
+    pub const INVALID_RMSD: f64 = -1.0;
+
+    /// Whether the alignment failed.
+    pub fn is_valid(&self) -> bool {
+        self.error.is_none()
+    }
 }
 
 /// Compute RMSD between two conformers after Kabsch alignment.
@@ -20,22 +42,61 @@ pub struct AlignmentResult {
 /// `coords`: flat [x0,y0,z0, x1,y1,z1,...] mobile structure.
 /// `reference`: flat [x0,y0,z0,...] reference structure.
 /// Both must have the same number of atoms.
+///
+/// A length mismatch yields [`AlignmentResult::INVALID_RMSD`]; use
+/// [`try_compute_rmsd`] to get an explicit error instead.
 pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
     align_coordinates(coords, reference).rmsd
+}
+
+/// Fallible variant of [`compute_rmsd`]: returns an explicit error when the
+/// two structures cannot be compared (mismatched lengths).
+pub fn try_compute_rmsd(coords: &[f64], reference: &[f64]) -> Result<f64, String> {
+    try_align_coordinates(coords, reference).map(|result| result.rmsd)
 }
 
 /// Kabsch alignment: find optimal rotation mapping `coords` onto `reference`.
 ///
 /// `coords`, `reference`: flat [x0,y0,z0, x1,y1,z1,...] in Å.
+///
+/// When the two structures have a different length the alignment cannot be
+/// performed.  The result then carries [`AlignmentResult::INVALID_RMSD`] and
+/// an [`AlignmentResult::error`] message; use [`try_align_coordinates`] to
+/// obtain a `Result` instead (blocker A-H6: the previous implementation
+/// returned `f64::NAN`, which the WASM/CLI bindings serialised as invalid
+/// JSON).
 pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
-    if coords.len() != reference.len() || !coords.len().is_multiple_of(3) {
-        return AlignmentResult {
-            rmsd: f64::NAN,
+    match try_align_coordinates(coords, reference) {
+        Ok(result) => result,
+        Err(reason) => AlignmentResult {
+            rmsd: AlignmentResult::INVALID_RMSD,
             rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
             translation: [0.0; 3],
             aligned_coords: coords.to_vec(),
-        };
+            error: Some(reason),
+        },
     }
+}
+
+/// Fallible variant of [`align_coordinates`].
+pub fn try_align_coordinates(coords: &[f64], reference: &[f64]) -> Result<AlignmentResult, String> {
+    if coords.len() != reference.len() {
+        return Err(format!(
+            "cannot align coordinate sets of different length: {} vs {} values",
+            coords.len(),
+            reference.len()
+        ));
+    }
+    if !coords.len().is_multiple_of(3) {
+        return Err(format!(
+            "coordinate length {} is not a multiple of 3 (x, y, z triplets)",
+            coords.len()
+        ));
+    }
+    Ok(align_coordinates_impl(coords, reference))
+}
+
+fn align_coordinates_impl(coords: &[f64], reference: &[f64]) -> AlignmentResult {
     let n = coords.len() / 3;
 
     if n == 0 {
@@ -44,6 +105,7 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
             rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
             translation: [0.0; 3],
             aligned_coords: Vec::new(),
+            error: None,
         };
     }
 
@@ -100,6 +162,7 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
                 rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
                 translation: [0.0; 3],
                 aligned_coords: coords.to_vec(),
+                error: None,
             };
         }
     };
@@ -149,6 +212,7 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
         rotation,
         translation,
         aligned_coords: aligned,
+        error: None,
     }
 }
 
@@ -157,15 +221,42 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
 /// Uses the quaternion eigenvector method which is numerically more stable
 /// than SVD for near-degenerate cases.  Produces the same result as Kabsch
 /// but avoids explicit SVD decomposition.
+///
+/// A length mismatch yields [`AlignmentResult::INVALID_RMSD`] plus an
+/// [`AlignmentResult::error`] message; use [`try_align_quaternion`] for a
+/// `Result` (blocker A-H6).
 pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
-    if coords.len() != reference.len() || !coords.len().is_multiple_of(3) {
-        return AlignmentResult {
-            rmsd: f64::NAN,
+    match try_align_quaternion(coords, reference) {
+        Ok(result) => result,
+        Err(reason) => AlignmentResult {
+            rmsd: AlignmentResult::INVALID_RMSD,
             rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
             translation: [0.0; 3],
             aligned_coords: coords.to_vec(),
-        };
+            error: Some(reason),
+        },
     }
+}
+
+/// Fallible variant of [`align_quaternion`].
+pub fn try_align_quaternion(coords: &[f64], reference: &[f64]) -> Result<AlignmentResult, String> {
+    if coords.len() != reference.len() {
+        return Err(format!(
+            "cannot align coordinate sets of different length: {} vs {} values",
+            coords.len(),
+            reference.len()
+        ));
+    }
+    if !coords.len().is_multiple_of(3) {
+        return Err(format!(
+            "coordinate length {} is not a multiple of 3 (x, y, z triplets)",
+            coords.len()
+        ));
+    }
+    Ok(align_quaternion_impl(coords, reference))
+}
+
+fn align_quaternion_impl(coords: &[f64], reference: &[f64]) -> AlignmentResult {
     let n = coords.len() / 3;
 
     if n == 0 {
@@ -174,6 +265,7 @@ pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
             rotation: [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
             translation: [0.0; 3],
             aligned_coords: Vec::new(),
+            error: None,
         };
     }
 
@@ -307,6 +399,7 @@ pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
         rotation,
         translation,
         aligned_coords: aligned,
+        error: None,
     }
 }
 
@@ -396,6 +489,51 @@ mod tests {
         let rotated = vec![0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0];
         let result = align_quaternion(&rotated, &reference);
         assert!(result.rmsd < 1e-10, "got rmsd = {}", result.rmsd);
+    }
+
+    /// A-H6 regression test: a length mismatch must never be reported as a
+    /// `NaN` RMSD (which the WASM/CLI bindings serialised as invalid JSON).
+    #[test]
+    fn test_length_mismatch_is_an_error_not_a_nan() {
+        let coords = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+        let reference = vec![0.0, 0.0, 0.0];
+
+        let result = align_coordinates(&coords, &reference);
+        assert!(
+            result.rmsd.is_finite(),
+            "a length mismatch must not produce NaN or infinity"
+        );
+        assert_eq!(result.rmsd, AlignmentResult::INVALID_RMSD);
+        assert!(!result.is_valid());
+        let error = result.error.expect("the reason must be reported");
+        assert!(
+            error.contains("different length"),
+            "the error must explain the mismatch, got: {error}"
+        );
+
+        // The fallible API reports the error directly.
+        assert!(try_align_coordinates(&coords, &reference).is_err());
+        assert!(try_compute_rmsd(&coords, &reference).is_err());
+
+        // A length that is not a multiple of 3 is an error as well.
+        let odd = vec![0.0, 0.0, 0.0, 1.0];
+        let error = try_align_coordinates(&odd, &odd)
+            .expect_err("a partial coordinate triplet must be rejected");
+        assert!(
+            error.contains("multiple of 3"),
+            "the error must explain the mismatch, got: {error}"
+        );
+
+        // The quaternion variant behaves the same way.
+        let result = align_quaternion(&coords, &reference);
+        assert!(result.rmsd.is_finite());
+        assert_eq!(result.rmsd, AlignmentResult::INVALID_RMSD);
+        assert!(result.error.is_some());
+
+        // A valid alignment carries no error.
+        let valid = align_coordinates(&coords, &coords);
+        assert!(valid.error.is_none());
+        assert!(valid.is_valid());
     }
 
     #[test]

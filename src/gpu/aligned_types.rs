@@ -130,6 +130,12 @@ impl GpuDenseMatrix {
     pub fn as_bytes(&self) -> &[u8] {
         let ptr = self.data.as_ptr() as *const u8;
         let len = self.data.len() * std::mem::size_of::<f32>();
+        // SAFETY: `self.data` is a `Vec<f32>` that owns `self.data.len()`
+        // contiguous, initialised `f32` values.  The pointer is therefore
+        // valid for reads of `len` bytes, and `len` is exactly the number of
+        // bytes those values occupy (`size_of::<f32>()` per element, no
+        // padding).  The returned slice borrows from `self`, so the buffer
+        // cannot be freed or reallocated while the slice is alive.
         unsafe { std::slice::from_raw_parts(ptr, len) }
     }
 }

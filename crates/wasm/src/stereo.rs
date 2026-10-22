@@ -1,6 +1,6 @@
 //! WASM bindings for stereochemistry analysis.
 
-use crate::helpers::serialize_or_error;
+use crate::helpers::{bad_json, serialize_or_error};
 use wasm_bindgen::prelude::*;
 
 /// Analyze stereochemistry: detect R/S stereocenters and E/Z double bonds.
@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 pub fn analyze_stereo(smiles: &str, coords_flat: &str) -> String {
     let coords: Vec<f64> = match serde_json::from_str(coords_flat) {
         Ok(c) => c,
-        Err(e) => return crate::helpers::json_error(&format!("bad coords: {e}")),
+        Err(e) => return crate::helpers::json_error(&bad_json("'coords'", coords_flat, &e)),
     };
     match sci_form::analyze_stereo(smiles, &coords) {
         Ok(r) => serialize_or_error(&r),

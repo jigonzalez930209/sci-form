@@ -435,6 +435,7 @@ pub fn gasteiger_marsili_charges_full(
     modes: Option<&[GasteigerMode]>,
     config: &GasteigerConfig,
 ) -> Result<ChargeResult, String> {
+    config.validate()?;
     let n = elements.len();
     if formal_charges.len() != n {
         return Err(format!(
@@ -579,6 +580,34 @@ impl Default for GasteigerConfig {
             initial_damping: 0.5,
             convergence_threshold: 1e-10,
         }
+    }
+}
+
+impl GasteigerConfig {
+    /// Validate the configuration.
+    ///
+    /// A degenerate configuration used to produce a *silently wrong* result:
+    /// `max_iter = 0` skipped the iteration loop entirely and returned a
+    /// vector of zeros with `converged = true`, and `initial_damping = 0.0`
+    /// froze the charges at their formal values while still claiming
+    /// convergence.  Both are rejected instead.
+    pub fn validate(&self) -> Result<(), String> {
+        if self.max_iter == 0 {
+            return Err(format!("max_iter must be >= 1 (got {})", self.max_iter));
+        }
+        if !(self.initial_damping > 0.0 && self.initial_damping <= 1.0) {
+            return Err(format!(
+                "initial_damping must be in (0, 1] (got {})",
+                self.initial_damping
+            ));
+        }
+        if !self.convergence_threshold.is_finite() || self.convergence_threshold < 0.0 {
+            return Err(format!(
+                "convergence_threshold must be a finite, non-negative number (got {})",
+                self.convergence_threshold
+            ));
+        }
+        Ok(())
     }
 }
 

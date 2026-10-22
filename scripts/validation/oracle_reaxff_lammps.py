@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import tempfile
@@ -28,8 +29,11 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_OUT = REPO / "tests/fixtures/validation/reaxff_lammps.json"
-DEFAULT_FFIELD = Path("/tmp/opencode/lammps-src/potentials/ffield.reax.cho")
-DEFAULT_LMP = Path("/tmp/opencode/lammps-src/build/lmp")
+# The source-built LAMMPS and its REAXFF force field are not vendored:
+# point SCIFORM_REF_DATA at the checkout, or pass --ffield / --lmp.
+_REF_DATA = Path(os.environ.get("SCIFORM_REF_DATA", REPO / ".cache" / "refdata"))
+DEFAULT_FFIELD = _REF_DATA / "lammps-src" / "potentials" / "ffield.reax.cho"
+DEFAULT_LMP = _REF_DATA / "lammps-src" / "build" / "lmp"
 
 INPUT_TEMPLATE = """units real
 atom_style charge

@@ -237,11 +237,12 @@ pub fn uff_inversion_energy_only(
     coords: &DMatrix<f32>,
     inversion_contribs: &[UFFInversionContrib],
 ) -> f32 {
-    let mut energy = 0.0f32;
+    // f64 accumulator (blocker A-H3).
+    let mut energy = 0.0f64;
     for ic in inversion_contribs {
-        energy += uff_inversion_energy(coords, ic);
+        energy += uff_inversion_energy(coords, ic) as f64;
     }
-    energy
+    energy as f32
 }
 
 /// Compute planarity check energy matching RDKit's construct3DImproperForceField.
@@ -249,9 +250,10 @@ pub fn uff_inversion_energy_only(
 /// then returns the total energy. RDKit uses oobForceScalingFactor=10.0 for angle
 /// constraints in the planarity check FF (vs 1.0 in the main FF).
 pub fn planarity_check_energy(coords: &DMatrix<f32>, ff: &Etkdg3DFF) -> f32 {
-    let mut e = 0.0f32;
+    // f64 accumulator (blocker A-H3).
+    let mut e = 0.0f64;
     for ic in &ff.inversion_contribs {
-        e += uff_inversion_energy(coords, ic);
+        e += uff_inversion_energy(coords, ic) as f64;
     }
     // SP angle constraints with force_k=10.0 (matching RDKit's planarity check FF)
     for ac in &ff.angle_constraints {
@@ -259,9 +261,9 @@ pub fn planarity_check_energy(coords: &DMatrix<f32>, ff: &Etkdg3DFF) -> f32 {
             force_k: 10.0,
             ..*ac
         };
-        e += angle_constraint_energy(coords, &scaled);
+        e += angle_constraint_energy(coords, &scaled) as f64;
     }
-    e
+    e as f32
 }
 
 /// f64-precision planarity check energy matching RDKit's construct3DImproperForceField.
@@ -339,9 +341,13 @@ pub fn planarity_check_energy_f64(coords_flat: &[f64], _n: usize, ff: &Etkdg3DFF
 }
 
 /// Calculate total energy using the 3D ETKDG force field
+///
+/// The accumulation is done in `f64` (blocker A-H3); the individual term
+/// kernels keep their `f32` implementation (their inputs are `f32`
+/// coordinates) and are widened before they enter the sum.
 pub fn etkdg_3d_energy(coords: &DMatrix<f32>, mol: &crate::graph::Molecule, ff: &Etkdg3DFF) -> f32 {
     let n = mol.graph.node_count();
-    let mut energy = 0.0f32;
+    let mut energy = 0.0f64;
 
     // Distance constraints (flat-bottom)
     for c in ff
@@ -350,20 +356,24 @@ pub fn etkdg_3d_energy(coords: &DMatrix<f32>, mol: &crate::graph::Molecule, ff: 
         .chain(ff.dist_13.iter())
         .chain(ff.dist_long.iter())
     {
-        let p1 = Vector3::new(coords[(c.i, 0)], coords[(c.i, 1)], coords[(c.i, 2)]);
-        let p2 = Vector3::new(coords[(c.j, 0)], coords[(c.j, 1)], coords[(c.j, 2)]);
+        let p1 = Vector3::new(
+            coords[(c.i, 0)] as f64,
+            coords[(c.i, 1)] as f64,
+            coords[(c.i, 2)] as f64,
+        );
+        let p2 = Vector3::new(
+            coords[(c.j, 0)] as f64,
+            coords[(c.j, 1)] as f64,
+            coords[(c.j, 2)] as f64,
+        );
         energy += crate::forcefield::energy::distance_constraint_energy(
-            &p1,
-            &p2,
-            c.min_len as f32,
-            c.max_len as f32,
-            c.k as f32,
+            &p1, &p2, c.min_len, c.max_len, c.k,
         );
     }
 
     // Angle constraints (flat-bottom on angle in degrees)
     for ac in &ff.angle_constraints {
-        energy += angle_constraint_energy(coords, ac);
+        energy += angle_constraint_energy(coords, ac) as f64;
     }
 
     // OOP for SP2 with 3 neighbors (simple vol² formulation)
@@ -377,41 +387,62 @@ pub fn etkdg_3d_energy(coords: &DMatrix<f32>, mol: &crate::graph::Molecule, ff: 
             if nbs.len() != 3 {
                 continue;
             }
-            let pc = Vector3::new(coords[(i, 0)], coords[(i, 1)], coords[(i, 2)]);
+            let pc = Vector3::new(
+                coords[(i, 0)] as f64,
+                coords[(i, 1)] as f64,
+                coords[(i, 2)] as f64,
+            );
             let p1 = Vector3::new(
-                coords[(nbs[0].index(), 0)],
-                coords[(nbs[0].index(), 1)],
-                coords[(nbs[0].index(), 2)],
+                coords[(nbs[0].index(), 0)] as f64,
+                coords[(nbs[0].index(), 1)] as f64,
+                coords[(nbs[0].index(), 2)] as f64,
             );
             let p2 = Vector3::new(
-                coords[(nbs[1].index(), 0)],
-                coords[(nbs[1].index(), 1)],
-                coords[(nbs[1].index(), 2)],
+                coords[(nbs[1].index(), 0)] as f64,
+                coords[(nbs[1].index(), 1)] as f64,
+                coords[(nbs[1].index(), 2)] as f64,
             );
             let p3 = Vector3::new(
-                coords[(nbs[2].index(), 0)],
-                coords[(nbs[2].index(), 1)],
-                coords[(nbs[2].index(), 2)],
+                coords[(nbs[2].index(), 0)] as f64,
+                coords[(nbs[2].index(), 1)] as f64,
+                coords[(nbs[2].index(), 2)] as f64,
             );
             let v1 = p1 - pc;
             let v2 = p2 - pc;
             let v3 = p3 - pc;
             let vol = v1.dot(&v2.cross(&v3));
-            energy += ff.oop_k as f32 * vol * vol;
+            energy += ff.oop_k * vol * vol;
         }
     }
 
     // Pre-computed torsion contributions (flat ring + chain preferences)
     for tc in &ff.torsion_contribs {
-        let p1 = Vector3::new(coords[(tc.i, 0)], coords[(tc.i, 1)], coords[(tc.i, 2)]);
-        let p2 = Vector3::new(coords[(tc.j, 0)], coords[(tc.j, 1)], coords[(tc.j, 2)]);
-        let p3 = Vector3::new(coords[(tc.k, 0)], coords[(tc.k, 1)], coords[(tc.k, 2)]);
-        let p4 = Vector3::new(coords[(tc.l, 0)], coords[(tc.l, 1)], coords[(tc.l, 2)]);
+        let p1 = Vector3::new(
+            coords[(tc.i, 0)] as f32,
+            coords[(tc.i, 1)] as f32,
+            coords[(tc.i, 2)] as f32,
+        );
+        let p2 = Vector3::new(
+            coords[(tc.j, 0)] as f32,
+            coords[(tc.j, 1)] as f32,
+            coords[(tc.j, 2)] as f32,
+        );
+        let p3 = Vector3::new(
+            coords[(tc.k, 0)] as f32,
+            coords[(tc.k, 1)] as f32,
+            coords[(tc.k, 2)] as f32,
+        );
+        let p4 = Vector3::new(
+            coords[(tc.l, 0)] as f32,
+            coords[(tc.l, 1)] as f32,
+            coords[(tc.l, 2)] as f32,
+        );
         let m6 = crate::forcefield::etkdg_lite::M6Params {
             s: tc.signs.map(|x| x as f32),
             v: tc.v.map(|x| x as f32),
         };
-        energy += crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6);
+        energy +=
+            crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6) as f64;
     }
 
     // UFF-style torsions
@@ -426,36 +457,39 @@ pub fn etkdg_3d_energy(coords: &DMatrix<f32>, mol: &crate::graph::Molecule, ff: 
                 continue;
             }
             let (n_fold, gamma, weight) = crate::forcefield::energy::torsion_params(hyb_u, hyb_v);
+            let n_fold = n_fold as f64;
+            let gamma = gamma as f64;
+            let weight = weight as f64;
             let neighbors_u: Vec<_> = mol.graph.neighbors(u).filter(|&x| x != v).collect();
             let neighbors_v: Vec<_> = mol.graph.neighbors(v).filter(|&x| x != u).collect();
             for &nu in &neighbors_u {
                 for &nv in &neighbors_v {
                     let p1 = Vector3::new(
-                        coords[(nu.index(), 0)],
-                        coords[(nu.index(), 1)],
-                        coords[(nu.index(), 2)],
+                        coords[(nu.index(), 0)] as f64,
+                        coords[(nu.index(), 1)] as f64,
+                        coords[(nu.index(), 2)] as f64,
                     );
                     let p2 = Vector3::new(
-                        coords[(u.index(), 0)],
-                        coords[(u.index(), 1)],
-                        coords[(u.index(), 2)],
+                        coords[(u.index(), 0)] as f64,
+                        coords[(u.index(), 1)] as f64,
+                        coords[(u.index(), 2)] as f64,
                     );
                     let p3 = Vector3::new(
-                        coords[(v.index(), 0)],
-                        coords[(v.index(), 1)],
-                        coords[(v.index(), 2)],
+                        coords[(v.index(), 0)] as f64,
+                        coords[(v.index(), 1)] as f64,
+                        coords[(v.index(), 2)] as f64,
                     );
                     let p4 = Vector3::new(
-                        coords[(nv.index(), 0)],
-                        coords[(nv.index(), 1)],
-                        coords[(nv.index(), 2)],
+                        coords[(nv.index(), 0)] as f64,
+                        coords[(nv.index(), 1)] as f64,
+                        coords[(nv.index(), 2)] as f64,
                     );
                     energy += crate::forcefield::energy::torsional_energy(
                         &p1,
                         &p2,
                         &p3,
                         &p4,
-                        ff.torsion_k_omega as f32 * weight,
+                        ff.torsion_k_omega * weight,
                         n_fold,
                         gamma,
                     );
@@ -485,31 +519,31 @@ pub fn etkdg_3d_energy(coords: &DMatrix<f32>, mol: &crate::graph::Molecule, ff: 
             let nu = neighbors_u[0];
             let nv = neighbors_v[0];
             let p1 = Vector3::new(
-                coords[(nu.index(), 0)],
-                coords[(nu.index(), 1)],
-                coords[(nu.index(), 2)],
+                coords[(nu.index(), 0)] as f32,
+                coords[(nu.index(), 1)] as f32,
+                coords[(nu.index(), 2)] as f32,
             );
             let p2 = Vector3::new(
-                coords[(u.index(), 0)],
-                coords[(u.index(), 1)],
-                coords[(u.index(), 2)],
+                coords[(u.index(), 0)] as f32,
+                coords[(u.index(), 1)] as f32,
+                coords[(u.index(), 2)] as f32,
             );
             let p3 = Vector3::new(
-                coords[(v.index(), 0)],
-                coords[(v.index(), 1)],
-                coords[(v.index(), 2)],
+                coords[(v.index(), 0)] as f32,
+                coords[(v.index(), 1)] as f32,
+                coords[(v.index(), 2)] as f32,
             );
             let p4 = Vector3::new(
-                coords[(nv.index(), 0)],
-                coords[(nv.index(), 1)],
-                coords[(nv.index(), 2)],
+                coords[(nv.index(), 0)] as f32,
+                coords[(nv.index(), 1)] as f32,
+                coords[(nv.index(), 2)] as f32,
             );
-            energy +=
-                crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6);
+            energy += crate::forcefield::etkdg_lite::calc_torsion_energy_m6(&p1, &p2, &p3, &p4, &m6)
+                as f64;
         }
     }
 
-    energy
+    energy as f32
 }
 
 /// f64-precision version of etkdg_3d_energy.

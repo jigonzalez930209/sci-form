@@ -249,7 +249,8 @@ fn phase2_orbital_grid_supports_d_orbitals() {
         &positions,
         0.4,
         3.0,
-    );
+    )
+    .unwrap();
     let mesh = sci_form::eht::marching_cubes(&grid, 0.02);
     assert!(
         !mesh.vertices.is_empty(),

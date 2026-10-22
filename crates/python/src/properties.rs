@@ -1,9 +1,10 @@
 //! Property bindings: charges, SASA, dipole, DOS, RMSD.
 
+use crate::errors::{engine_error, invalid_value, value_error};
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(name = "ChargeResult")]
 #[derive(Clone)]
 pub(crate) struct ChargeResultPy {
     #[pyo3(get)]
@@ -28,7 +29,7 @@ impl ChargeResultPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "SasaResult")]
 #[derive(Clone)]
 pub(crate) struct SasaResultPy {
     #[pyo3(get)]
@@ -52,7 +53,7 @@ impl SasaResultPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "DipoleResult")]
 #[derive(Clone)]
 pub(crate) struct DipoleResultPy {
     #[pyo3(get)]
@@ -78,7 +79,7 @@ impl DipoleResultPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "DosResult")]
 #[derive(Clone)]
 pub(crate) struct DosResultPy {
     #[pyo3(get)]
@@ -99,13 +100,21 @@ impl DosResultPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "AlignmentResult")]
 #[derive(Clone)]
 pub(crate) struct AlignmentResultPy {
+    /// RMSD after the optimal Kabsch alignment, in Å.
     #[pyo3(get)]
     rmsd: f64,
+    /// The aligned coordinates.
     #[pyo3(get)]
     aligned_coords: Vec<f64>,
+    /// The optimal rotation matrix (row-major).
+    #[pyo3(get)]
+    rotation: [[f64; 3]; 3],
+    /// The translation applied to the input centroid.
+    #[pyo3(get)]
+    translation: [f64; 3],
 }
 #[pymethods]
 impl AlignmentResultPy {
@@ -114,7 +123,7 @@ impl AlignmentResultPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "MultiMethodDosResult")]
 #[derive(Clone)]
 pub(crate) struct MultiMethodDosResultPy {
     #[pyo3(get)]
@@ -146,8 +155,12 @@ impl MultiMethodDosResultPy {
     }
 }
 
+/// Compute Gasteiger-Marsili partial charges from a SMILES string.
+///
+/// Raises `ValueError` for a malformed SMILES and `RuntimeError` when the
+/// charge solver fails.
 #[pyfunction]
-fn charges(smiles: &str) -> PyResult<ChargeResultPy> {
+fn compute_charges(smiles: &str) -> PyResult<ChargeResultPy> {
     sci_form_core::compute_charges(smiles)
         .map(|r| ChargeResultPy {
             charges: r.charges,
@@ -155,7 +168,13 @@ fn charges(smiles: &str) -> PyResult<ChargeResultPy> {
             total_charge: r.total_charge,
             converged: r.converged,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| {
+            if e.contains("SMILES") || e.contains("parse") {
+                value_error(crate::errors::smiles_error(&e, smiles))
+            } else {
+                engine_error(e)
+            }
+        })
 }
 
 /// Compute Gasteiger-Marsili charges with configurable iteration parameters.
@@ -183,12 +202,24 @@ fn compute_charges_configured(
             total_charge: r.total_charge,
             converged: r.converged,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(|e| {
+            if e.contains("SMILES") || e.contains("parse") {
+                value_error(crate::errors::smiles_error(&e, smiles))
+            } else {
+                engine_error(e)
+            }
+        })
 }
 
+/// Compute the solvent-accessible surface area.
 #[pyfunction]
 #[pyo3(signature = (elements, coords, probe_radius=1.4))]
-fn sasa(elements: Vec<u8>, coords: Vec<f64>, probe_radius: f64) -> PyResult<SasaResultPy> {
+fn compute_sasa(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    probe_radius: f64,
+) -> PyResult<SasaResultPy> {
+    crate::errors::check_coords_len(&coords, elements.len())?;
     let pr = if (probe_radius - 1.4).abs() < 1e-10 {
         None
     } else {
@@ -201,11 +232,12 @@ fn sasa(elements: Vec<u8>, coords: Vec<f64>, probe_radius: f64) -> PyResult<Sasa
             probe_radius: r.probe_radius,
             num_points: r.num_points,
         })
-        .map_err(pyo3::exceptions::PyValueError::new_err)
+        .map_err(value_error)
 }
 
+/// Compute the molecular dipole moment.
 #[pyfunction]
-fn dipole(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<DipoleResultPy> {
+fn compute_dipole(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<DipoleResultPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_dipole(&elements, &positions)
         .map(|r| DipoleResultPy {
@@ -215,12 +247,13 @@ fn dipole(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<DipoleResultPy> {
             nuclear_dipole: r.nuclear_dipole,
             electronic_dipole: r.electronic_dipole,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(engine_error)
 }
 
+/// Compute the density of states from the EHT orbital energies.
 #[pyfunction]
 #[pyo3(signature = (elements, coords, sigma=0.3, e_min=-30.0, e_max=5.0, n_points=500))]
-fn dos(
+fn compute_dos(
     elements: Vec<u8>,
     coords: Vec<f64>,
     sigma: f64,
@@ -235,15 +268,23 @@ fn dos(
             total_dos: r.total_dos,
             sigma: r.sigma,
         })
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+        .map_err(engine_error)
 }
 
+/// Compute the RMSD between two coordinate sets after a Kabsch alignment.
+///
+/// Raises `ValueError` when the two structures cannot be compared (different
+/// lengths, or a length that is not a multiple of 3).  A `NaN` RMSD is
+/// never returned (blocker C-C4).
 #[pyfunction]
-fn rmsd(coords: Vec<f64>, reference: Vec<f64>) -> PyResult<AlignmentResultPy> {
-    let result = sci_form_core::alignment::align_coordinates(&coords, &reference);
+fn compute_rmsd(coords: Vec<f64>, reference: Vec<f64>) -> PyResult<AlignmentResultPy> {
+    let result = sci_form_core::alignment::try_align_coordinates(&coords, &reference)
+        .map_err(value_error)?;
     Ok(AlignmentResultPy {
         rmsd: result.rmsd,
         aligned_coords: result.aligned_coords,
+        rotation: result.rotation,
+        translation: result.translation,
     })
 }
 
@@ -270,9 +311,10 @@ fn compute_dos_multimethod(
         "gfn2" => sci_form_core::dos::multi_method::DosMethod::Gfn2,
         "hf3c" | "hf-3c" => sci_form_core::dos::multi_method::DosMethod::Hf3c,
         other => {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "unknown DOS method '{}' (expected eht, pm3, xtb, gfn1, gfn2 or hf3c)",
-                other
+            return Err(value_error(invalid_value(
+                "'method'",
+                other,
+                &["eht", "pm3", "xtb", "gfn1", "gfn2", "hf3c"],
             )))
         }
     };
@@ -289,17 +331,17 @@ fn compute_dos_multimethod(
         orbital_energies: r.orbital_energies,
         sigma: r.sigma,
     })
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    .map_err(engine_error)
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(charges, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_charges, m)?)?;
     m.add_function(wrap_pyfunction!(compute_charges_configured, m)?)?;
-    m.add_function(wrap_pyfunction!(sasa, m)?)?;
-    m.add_function(wrap_pyfunction!(dipole, m)?)?;
-    m.add_function(wrap_pyfunction!(dos, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_sasa, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_dipole, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_dos, m)?)?;
     m.add_function(wrap_pyfunction!(compute_dos_multimethod, m)?)?;
-    m.add_function(wrap_pyfunction!(rmsd, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_rmsd, m)?)?;
     m.add_class::<ChargeResultPy>()?;
     m.add_class::<SasaResultPy>()?;
     m.add_class::<DipoleResultPy>()?;

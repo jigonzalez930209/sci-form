@@ -28,6 +28,16 @@ pub fn compute_eeq_energy(
     let q = &charge_result.charges;
     let n = elements.len();
 
+    if q.len() != n || positions.len() != n {
+        // The charge equilibration could not be run (length mismatch);
+        // report a zero energy instead of indexing out of bounds.
+        return EeqEnergyResult {
+            electrostatic_energy: 0.0,
+            charges: q.clone(),
+            coordination_numbers: charge_result.coordination_numbers,
+        };
+    }
+
     let mut e_elec = 0.0;
 
     for i in 0..n {
@@ -75,6 +85,10 @@ pub fn compute_eeq_gradient(
     let n = elements.len();
     let h = 1e-4;
     let mut gradient = vec![[0.0; 3]; n];
+    if positions.len() < n {
+        // A length mismatch used to index out of bounds below.
+        return gradient;
+    }
 
     for i in 0..n {
         for d in 0..3 {

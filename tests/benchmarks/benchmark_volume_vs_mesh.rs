@@ -49,8 +49,8 @@ fn volume_vs_mesh_comparison() {
 
         for &spacing in &spacings {
             let t0 = Instant::now();
-            let grid =
-                evaluate_orbital_on_grid(&basis, &result.coefficients, 0, positions, spacing, 3.0);
+            let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, positions, spacing, 3.0)
+                .expect("the orbital grid must be built");
             let vol_time = t0.elapsed();
             let vol_points = grid.num_points();
             let vol_bytes = grid.values.len() * std::mem::size_of::<f32>();

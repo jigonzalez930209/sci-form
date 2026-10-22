@@ -42,29 +42,110 @@ impl VolumetricGrid {
 
 /// Build a bounding box around the molecular geometry with padding.
 ///
-/// Returns (origin, dims) for the given spacing.
+/// Returns `Err` when the grid cannot be built:
+///
+/// * `spacing` is not a finite positive number (a `0` spacing used to wrap
+///   the grid dimensions around to `0` and silently produce an empty grid),
+/// * `padding` is not finite,
+/// * a coordinate is not finite,
+/// * the grid dimension overflows `usize`.
 pub fn compute_grid_extents(
     positions: &[[f64; 3]],
     padding: f64,
     spacing: f64,
-) -> ([f64; 3], [usize; 3]) {
+) -> Result<([f64; 3], [usize; 3]), String> {
+    if !spacing.is_finite() || spacing <= 0.0 {
+        return Err(format!(
+            "spacing must be a finite positive number (got {})",
+            spacing
+        ));
+    }
+    if !padding.is_finite() {
+        return Err(format!("padding must be a finite number (got {})", padding));
+    }
+    if positions.is_empty() {
+        return Err("empty geometry: 0 atoms (at least one atom is required)".to_string());
+    }
+
     let mut min = [f64::MAX; 3];
     let mut max = [f64::MIN; 3];
-    for pos in positions {
+    for (atom, pos) in positions.iter().enumerate() {
         for d in 0..3 {
+            if !pos[d].is_finite() {
+                let axis_name = ["x", "y", "z"][d];
+                return Err(format!(
+                    "atom {} has a non-finite {}-coordinate ({}) (NaN and Inf are not valid Cartesian coordinates)",
+                    atom, axis_name, pos[d]
+                ));
+            }
             min[d] = min[d].min(pos[d]);
             max[d] = max[d].max(pos[d]);
         }
     }
 
     let origin = [min[0] - padding, min[1] - padding, min[2] - padding];
-    let dims = [
-        ((max[0] - min[0] + 2.0 * padding) / spacing).ceil() as usize + 1,
-        ((max[1] - min[1] + 2.0 * padding) / spacing).ceil() as usize + 1,
-        ((max[2] - min[2] + 2.0 * padding) / spacing).ceil() as usize + 1,
-    ];
+    let mut dims = [0usize; 3];
+    for d in 0..3 {
+        let extent = (max[d] - min[d] + 2.0 * padding) / spacing;
+        if !extent.is_finite() || extent < 0.0 {
+            return Err(format!(
+                "grid extent along axis {} is not a finite non-negative number (got {}); increase `spacing` or reduce `padding`",
+                d, extent
+            ));
+        }
+        let n = extent.ceil() as usize;
+        dims[d] = n.checked_add(1).ok_or_else(|| {
+            format!(
+                "grid dimension along axis {} overflows usize (spacing {} is too small for this geometry)",
+                d, spacing
+            )
+        })?;
+    }
 
-    (origin, dims)
+    Ok((origin, dims))
+}
+
+/// Number of MO columns available in a coefficient matrix.
+fn n_mo_columns(coefficients: &[Vec<f64>]) -> Result<usize, String> {
+    let first = coefficients
+        .first()
+        .ok_or_else(|| "no molecular-orbital coefficients were provided".to_string())?;
+    Ok(first.len())
+}
+
+/// Validate that `mo_index` addresses an existing molecular orbital.
+fn validate_mo_index(coefficients: &[Vec<f64>], mo_index: usize) -> Result<usize, String> {
+    let n_mo = n_mo_columns(coefficients)?;
+    if mo_index >= n_mo {
+        return Err(format!(
+            "mo_index {} is out of range (the calculation produced {} molecular orbitals, valid indices are 0..{})",
+            mo_index, n_mo, n_mo
+        ));
+    }
+    for (row, coeffs) in coefficients.iter().enumerate() {
+        if coeffs.len() < n_mo {
+            return Err(format!(
+                "MO coefficient row {} has {} entries but row 0 has {} (inconsistent coefficient matrix)",
+                row,
+                coeffs.len(),
+                n_mo
+            ));
+        }
+    }
+    Ok(n_mo)
+}
+
+/// Total number of grid points, checked against overflow.
+fn checked_grid_size(dims: &[usize; 3]) -> Result<usize, String> {
+    dims[0]
+        .checked_mul(dims[1])
+        .and_then(|v| v.checked_mul(dims[2]))
+        .ok_or_else(|| {
+            format!(
+                "grid size {}x{}x{} overflows usize (use a coarser `spacing`)",
+                dims[0], dims[1], dims[2]
+            )
+        })
 }
 
 /// Evaluate a single atomic orbital φ_μ at a point in space.
@@ -98,6 +179,10 @@ fn evaluate_ao_at_point(orb: &AtomicOrbital, point_ang: &[f64; 3]) -> f64 {
 /// - `positions`: atom positions in Ångström
 /// - `spacing`: grid spacing in Ångström
 /// - `padding`: padding around the bounding box in Ångström
+///
+/// Returns `Err` when `spacing` is not a finite positive number, when
+/// `mo_index` does not address an existing molecular orbital, or when the
+/// resulting grid would be empty/overflowing.
 pub fn evaluate_orbital_on_grid(
     basis: &[AtomicOrbital],
     coefficients: &[Vec<f64>],
@@ -105,9 +190,10 @@ pub fn evaluate_orbital_on_grid(
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
-) -> VolumetricGrid {
-    let (origin, dims) = compute_grid_extents(positions, padding, spacing);
-    let total = dims[0] * dims[1] * dims[2];
+) -> Result<VolumetricGrid, String> {
+    validate_mo_index(coefficients, mo_index)?;
+    let (origin, dims) = compute_grid_extents(positions, padding, spacing)?;
+    let total = checked_grid_size(&dims)?;
     let mut values = vec![0.0f32; total];
 
     // Pre-extract MO coefficients for this orbital
@@ -136,12 +222,12 @@ pub fn evaluate_orbital_on_grid(
         }
     }
 
-    VolumetricGrid {
+    Ok(VolumetricGrid {
         origin,
         spacing,
         dims,
         values,
-    }
+    })
 }
 
 /// Evaluate molecular orbital on a 3D grid using parallel iteration (rayon).
@@ -153,11 +239,12 @@ pub fn evaluate_orbital_on_grid_parallel(
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
-) -> VolumetricGrid {
+) -> Result<VolumetricGrid, String> {
     use rayon::prelude::*;
 
-    let (origin, dims) = compute_grid_extents(positions, padding, spacing);
-    let total = dims[0] * dims[1] * dims[2];
+    validate_mo_index(coefficients, mo_index)?;
+    let (origin, dims) = compute_grid_extents(positions, padding, spacing)?;
+    let total = checked_grid_size(&dims)?;
     let c_mu: Vec<f64> = (0..basis.len())
         .map(|mu| coefficients[mu][mo_index])
         .collect();
@@ -187,12 +274,12 @@ pub fn evaluate_orbital_on_grid_parallel(
         })
         .collect();
 
-    VolumetricGrid {
+    Ok(VolumetricGrid {
         origin,
         spacing,
         dims,
         values,
-    }
+    })
 }
 
 /// A single z-slab of volumetric data, produced by chunked evaluation.
@@ -217,8 +304,10 @@ pub fn evaluate_orbital_on_grid_chunked(
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
-) -> (VolumetricGrid, Vec<VolumeSlab>) {
-    let (origin, dims) = compute_grid_extents(positions, padding, spacing);
+) -> Result<(VolumetricGrid, Vec<VolumeSlab>), String> {
+    validate_mo_index(coefficients, mo_index)?;
+    let (origin, dims) = compute_grid_extents(positions, padding, spacing)?;
+    checked_grid_size(&dims)?;
     let c_mu: Vec<f64> = (0..basis.len())
         .map(|mu| coefficients[mu][mo_index])
         .collect();
@@ -262,7 +351,7 @@ pub fn evaluate_orbital_on_grid_chunked(
         values: all_values,
     };
 
-    (grid, slabs)
+    Ok((grid, slabs))
 }
 
 /// Evaluate the electron density |Ψ_i|² on a grid.
@@ -273,13 +362,13 @@ pub fn evaluate_density_on_grid(
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
-) -> VolumetricGrid {
+) -> Result<VolumetricGrid, String> {
     let mut grid =
-        evaluate_orbital_on_grid(basis, coefficients, mo_index, positions, spacing, padding);
+        evaluate_orbital_on_grid(basis, coefficients, mo_index, positions, spacing, padding)?;
     for v in &mut grid.values {
         *v = (*v) * (*v);
     }
-    grid
+    Ok(grid)
 }
 
 #[cfg(test)]
@@ -291,7 +380,7 @@ mod tests {
     #[test]
     fn test_grid_extents_h2() {
         let positions = [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]];
-        let (origin, dims) = compute_grid_extents(&positions, 4.0, 0.5);
+        let (origin, dims) = compute_grid_extents(&positions, 4.0, 0.5).unwrap();
         assert!(origin[0] < -3.9);
         assert!(dims[0] > 10);
         assert!(dims[1] > 10);
@@ -313,7 +402,8 @@ mod tests {
             &positions,
             0.5, // 0.5 Å spacing
             3.0, // 3 Å padding
-        );
+        )
+        .unwrap();
 
         assert!(grid.num_points() > 0);
         // Bonding orbital should have nonzero values
@@ -333,7 +423,8 @@ mod tests {
         let basis = build_basis(&elements, &positions);
 
         // Antibonding MO 1
-        let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 1, &positions, 0.5, 3.0);
+        let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 1, &positions, 0.5, 3.0)
+            .unwrap();
 
         let max_val = grid.values.iter().map(|v| v.abs()).fold(0.0f32, f32::max);
         assert!(
@@ -357,7 +448,8 @@ mod tests {
         let result = solve_eht(&elements, &positions, None).unwrap();
         let basis = build_basis(&elements, &positions);
 
-        let grid = evaluate_density_on_grid(&basis, &result.coefficients, 0, &positions, 0.5, 3.0);
+        let grid = evaluate_density_on_grid(&basis, &result.coefficients, 0, &positions, 0.5, 3.0)
+            .unwrap();
 
         for v in &grid.values {
             assert!(*v >= 0.0, "Density should never be negative: {}", v);
@@ -367,7 +459,7 @@ mod tests {
     #[test]
     fn test_grid_dimensions_consistent() {
         let positions = [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]];
-        let (_, dims) = compute_grid_extents(&positions, 2.0, 0.25);
+        let (_, dims) = compute_grid_extents(&positions, 2.0, 0.25).unwrap();
         // With 1Å range + 4Å padding (2 each side) = 5Å → 5/0.25 + 1 = 21
         assert!(dims[0] == 21, "dims[0] = {}", dims[0]);
     }
@@ -380,9 +472,11 @@ mod tests {
         let basis = build_basis(&elements, &positions);
 
         let full_grid =
-            evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &positions, 0.5, 3.0);
+            evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &positions, 0.5, 3.0)
+                .unwrap();
         let (chunked_grid, slabs) =
-            evaluate_orbital_on_grid_chunked(&basis, &result.coefficients, 0, &positions, 0.5, 3.0);
+            evaluate_orbital_on_grid_chunked(&basis, &result.coefficients, 0, &positions, 0.5, 3.0)
+                .unwrap();
 
         // Grid metadata must match
         assert_eq!(full_grid.dims, chunked_grid.dims);
@@ -408,7 +502,8 @@ mod tests {
         let positions = [[0.0, 0.0, 0.0], [2.2, 0.0, 0.0], [-2.2, 0.0, 0.0]];
         let result = solve_eht(&elements, &positions, None).unwrap();
         let basis = build_basis(&elements, &positions);
-        let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &positions, 0.7, 2.5);
+        let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, 0, &positions, 0.7, 2.5)
+            .unwrap();
 
         assert!(grid.num_points() > 0);
         assert!(grid.values.iter().all(|v| v.is_finite()));

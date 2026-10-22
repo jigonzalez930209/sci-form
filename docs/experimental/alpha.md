@@ -660,10 +660,10 @@ console.log(`Packed chart: ${packed.n_columns} columns, ${packed.column_names.jo
 
 ```toml
 [dependencies]
-sci-form = { version = "0.11", features = ["alpha-dft", "alpha-reaxff", "alpha-mlff"] }
+sci-form = { version = "0.15", features = ["alpha-dft", "alpha-reaxff", "alpha-mlff"] }
 
 # All alpha modules:
-sci-form = { version = "0.11", features = [
+sci-form = { version = "0.15", features = [
     "alpha-dft", "alpha-reaxff", "alpha-mlff",
     "alpha-obara-saika", "alpha-cga", "alpha-gsm",
     "alpha-sdr", "alpha-dynamics-live", "alpha-imd",
@@ -672,7 +672,7 @@ sci-form = { version = "0.11", features = [
 ] }
 
 # Alpha + parallelization:
-sci-form = { version = "0.11", features = [
+sci-form = { version = "0.15", features = [
     "alpha-mlff", "alpha-reaxff", "parallel"
 ] }
 ```
@@ -709,9 +709,15 @@ result = alpha.dft_calculate(elements, coords)
 ```bash
 pnpm wasm:build:all-alpha
 # Equivalent to:
-wasm-pack build crates/wasm --features "alpha-dft,alpha-reaxff,alpha-mlff,alpha-obara-saika,alpha-cga,alpha-gsm,alpha-sdr,alpha-dynamics-live,alpha-imd"
-wasm-pack build crates/wasm --features "alpha-dft,alpha-reaxff,alpha-mlff,alpha-obara-saika,alpha-cga,alpha-gsm,alpha-sdr,alpha-dynamics-live,alpha-imd,alpha-edl,alpha-periodic-linear,alpha-kinetics,alpha-render-bridge"
+bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr alpha-dynamics-live alpha-imd"
+bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics alpha-render-bridge"
 ```
+
+> Always build through `crates/wasm/build.sh` (directly or through the
+> `pnpm wasm:build*` scripts).  Calling `wasm-pack` by hand regenerates
+> `pkg/package.json` from scratch and drops the `snippets` entry that
+> `wasm-bindgen-rayon` needs at runtime, as well as the `./alpha` and
+> `./beta` subpath exports.
 
 ---
 

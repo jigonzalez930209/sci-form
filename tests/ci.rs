@@ -72,7 +72,8 @@ fn smoke_conformer_and_clustering() {
             seed: 42,
             num_threads: 2,
         };
-        let batch = sci_form::embed_batch(&["CCO", "c1ccccc1", "CC(=O)O"], &config);
+        let batch = sci_form::embed_batch(&["CCO", "c1ccccc1", "CC(=O)O"], &config)
+            .expect("embed_batch must succeed");
         assert_eq!(batch.len(), 3);
         assert!(batch.iter().all(|result| result.error.is_none()));
     }

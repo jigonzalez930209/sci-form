@@ -18,28 +18,44 @@ pub fn bounds_violation_energy(coords: &DMatrix<f32>, bounds: &DMatrix<f64>) -> 
 /// Bounds violation energy with basin threshold filtering.
 /// Only pairs with (ub - lb) <= basin_thresh are included.
 /// RDKit uses basin_thresh=5.0 during embedding minimization.
+///
+/// The accumulation happens in `f64` (blocker A-H3): the pair loop is O(N²)
+/// and the bound matrix is already `f64`, so downcasting it to `f32` before
+/// the comparison lost precision for no benefit.
 pub fn bounds_violation_energy_basin(
     coords: &DMatrix<f32>,
     bounds: &DMatrix<f64>,
     basin_thresh: f32,
 ) -> f32 {
+    bounds_violation_energy_basin_f64(coords, bounds, basin_thresh as f64) as f32
+}
+
+/// `f64` variant of [`bounds_violation_energy_basin`] (kcal/mol).
+///
+/// This is the canonical implementation: the bounds matrix is used in its
+/// native `f64` precision and the O(N²) sum is accumulated in `f64`.
+pub fn bounds_violation_energy_basin_f64(
+    coords: &DMatrix<f32>,
+    bounds: &DMatrix<f64>,
+    basin_thresh: f64,
+) -> f64 {
     let n = coords.nrows();
     let dim = coords.ncols();
-    let mut energy = 0.0f32;
+    let mut energy = 0.0f64;
 
     for i in 1..n {
         for j in 0..i {
-            let ub = bounds[(j, i)] as f32; // upper triangle = upper bound
-            let lb = bounds[(i, j)] as f32; // lower triangle = lower bound
+            let ub = bounds[(j, i)]; // upper triangle = upper bound
+            let lb = bounds[(i, j)]; // lower triangle = lower bound
 
             // Basin threshold: skip wide-bounded pairs
             if ub - lb > basin_thresh {
                 continue;
             }
 
-            let mut d2 = 0.0f32;
+            let mut d2 = 0.0f64;
             for d in 0..dim {
-                let diff = coords[(i, d)] - coords[(j, d)];
+                let diff = coords[(i, d)] as f64 - coords[(j, d)] as f64;
                 d2 += diff * diff;
             }
 
@@ -141,7 +157,8 @@ pub fn bounds_violation_gradient_basin(
 /// basin_thresh: skip pairs with (ub - lb) > basin_thresh (RDKit uses 5.0)
 /// weight_4d: penalty weight for 4th dimension (RDKit uses 0.1 for stage1, 1.0 for stage2)
 pub fn chiral_violation_energy(coords: &DMatrix<f32>, chiral_sets: &[ChiralSet]) -> f32 {
-    let mut energy = 0.0f32;
+    // f64 accumulator (blocker A-H3).
+    let mut energy = 0.0f64;
     for c in chiral_sets {
         let vol = crate::distgeom::calc_chiral_volume(
             c.neighbors[0],
@@ -149,16 +166,16 @@ pub fn chiral_violation_energy(coords: &DMatrix<f32>, chiral_sets: &[ChiralSet])
             c.neighbors[2],
             c.neighbors[3],
             coords,
-        );
-        if vol < c.lower_vol {
-            let diff = vol - c.lower_vol;
+        ) as f64;
+        if vol < c.lower_vol as f64 {
+            let diff = vol - c.lower_vol as f64;
             energy += diff * diff;
-        } else if vol > c.upper_vol {
-            let diff = vol - c.upper_vol;
+        } else if vol > c.upper_vol as f64 {
+            let diff = vol - c.upper_vol as f64;
             energy += diff * diff;
         }
     }
-    energy
+    energy as f32
 }
 
 /// Chiral violation energy in f64, matching RDKit's f64 (Point3D) precision.
@@ -414,18 +431,41 @@ pub fn collect_embed_torsions(mol: &crate::graph::Molecule) -> Vec<EmbedTorsion>
 }
 
 pub(crate) fn torsion_energy_4d(coords: &DMatrix<f32>, terms: &[EmbedTorsion]) -> f32 {
-    let mut energy = 0.0f32;
+    // f64 accumulator (blocker A-H3).
+    let mut energy = 0.0f64;
     for t in terms {
         let [i1, i2, i3, i4] = t.idx;
-        let p1 = Vector3::new(coords[(i1, 0)], coords[(i1, 1)], coords[(i1, 2)]);
-        let p2 = Vector3::new(coords[(i2, 0)], coords[(i2, 1)], coords[(i2, 2)]);
-        let p3 = Vector3::new(coords[(i3, 0)], coords[(i3, 1)], coords[(i3, 2)]);
-        let p4 = Vector3::new(coords[(i4, 0)], coords[(i4, 1)], coords[(i4, 2)]);
+        let p1 = Vector3::new(
+            coords[(i1, 0)] as f64,
+            coords[(i1, 1)] as f64,
+            coords[(i1, 2)] as f64,
+        );
+        let p2 = Vector3::new(
+            coords[(i2, 0)] as f64,
+            coords[(i2, 1)] as f64,
+            coords[(i2, 2)] as f64,
+        );
+        let p3 = Vector3::new(
+            coords[(i3, 0)] as f64,
+            coords[(i3, 1)] as f64,
+            coords[(i3, 2)] as f64,
+        );
+        let p4 = Vector3::new(
+            coords[(i4, 0)] as f64,
+            coords[(i4, 1)] as f64,
+            coords[(i4, 2)] as f64,
+        );
         energy += crate::forcefield::energy::torsional_energy(
-            &p1, &p2, &p3, &p4, t.weight, t.n_fold, t.gamma,
+            &p1,
+            &p2,
+            &p3,
+            &p4,
+            t.weight as f64,
+            t.n_fold as f64,
+            t.gamma as f64,
         );
     }
-    energy
+    energy as f32
 }
 
 pub(crate) fn torsion_gradient_4d(
@@ -449,5 +489,79 @@ pub(crate) fn torsion_gradient_4d(
         for d in 0..3 {
             grad[(i, d)] += grad3[(i, d)];
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A-H3 regression test: the O(N²) bounds-violation sum must be
+    /// accumulated in `f64`.
+    ///
+    /// The bounds matrix is used in its native `f64` precision (it used to
+    /// be downcast to `f32`) and the sum is accumulated in `f64`; the test
+    /// recomputes the same sum independently in `f64` and requires the
+    /// implementation to agree to ~1e-12 relative.
+    #[test]
+    fn bounds_violation_energy_accumulates_in_f64() {
+        let n = 40;
+        let mut coords = DMatrix::<f32>::zeros(n, 3);
+        for i in 0..n {
+            coords[(i, 0)] = (i as f32) * 0.7;
+            coords[(i, 1)] = if i % 2 == 0 { 0.3 } else { -0.3 };
+            coords[(i, 2)] = if i % 3 == 0 { 0.2 } else { -0.2 };
+        }
+
+        let mut bounds = DMatrix::<f64>::zeros(n, n);
+        for i in 0..n {
+            for j in (i + 1)..n {
+                bounds[(i, j)] = 0.5; // upper bound
+                bounds[(j, i)] = 0.4; // lower bound
+            }
+        }
+
+        let energy = bounds_violation_energy_basin_f64(&coords, &bounds, 1000.0);
+
+        // Independent f64 reference.
+        let mut reference = 0.0f64;
+        for i in 1..n {
+            for j in 0..i {
+                let ub = bounds[(j, i)];
+                let lb = bounds[(i, j)];
+                if ub - lb > 1000.0 {
+                    continue;
+                }
+                let mut d2 = 0.0f64;
+                for d in 0..3 {
+                    let diff = coords[(i, d)] as f64 - coords[(j, d)] as f64;
+                    d2 += diff * diff;
+                }
+                let ub2 = ub * ub;
+                let lb2 = lb * lb;
+                let val = if d2 > ub2 {
+                    (d2 / ub2) - 1.0
+                } else if d2 < lb2 {
+                    (2.0 * lb2 / (lb2 + d2)) - 1.0
+                } else {
+                    0.0
+                };
+                if val > 0.0 {
+                    reference += val * val;
+                }
+            }
+        }
+
+        assert!(energy.is_finite());
+        assert!(
+            (energy - reference).abs() <= 1e-12 * reference.abs().max(1.0),
+            "f64 bounds sum {energy} != f64 reference {reference}"
+        );
+
+        // The `f32` shim is the correctly rounded `f64` value.
+        assert_eq!(
+            bounds_violation_energy_basin(&coords, &bounds, 1000.0),
+            energy as f32
+        );
     }
 }

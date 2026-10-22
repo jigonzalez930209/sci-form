@@ -42,15 +42,81 @@ impl MolecularSystem {
         }
     }
 
-    /// Create from flat Angstrom coordinates [x0,y0,z0,x1,y1,z1,...].
-    pub fn from_flat_angstrom(
+    /// Create from atomic numbers and Angstrom coordinates, validating the
+    /// result.
+    ///
+    /// Rejects a length mismatch between `elements` and `positions_ang`, a
+    /// non-finite coordinate, an empty system, a `charge` that would make
+    /// the electron count negative, and a `multiplicity` that is
+    /// incompatible with the resulting number of electrons.
+    pub fn try_from_angstrom(
+        elements: &[u8],
+        positions_ang: &[[f64; 3]],
+        charge: i32,
+        multiplicity: u32,
+    ) -> Result<Self, String> {
+        let system = Self::from_angstrom(elements, positions_ang, charge, multiplicity);
+        system.validate()?;
+        Ok(system)
+    }
+
+    /// Create from flat Angstrom coordinates [x0,y0,z0,x1,y1,z1,...],
+    /// validating the result.
+    pub fn try_from_flat_angstrom(
         elements: &[u8],
         coords_flat: &[f64],
         charge: i32,
         multiplicity: u32,
-    ) -> Self {
-        let positions: Vec<[f64; 3]> = coords_flat.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        Self::from_angstrom(elements, &positions, charge, multiplicity)
+    ) -> Result<Self, String> {
+        crate::validation::validate_flat_geometry(elements, coords_flat)?;
+        let positions: Vec<[f64; 3]> = coords_flat
+            .chunks_exact(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .collect();
+        Self::try_from_angstrom(elements, &positions, charge, multiplicity)
+    }
+
+    /// Validate the geometry, the total charge and the spin multiplicity.
+    ///
+    /// The charge/multiplicity messages follow the wording already used by
+    /// the xTB unrestricted solver (`src/xtb/uks.rs`).
+    pub fn validate(&self) -> Result<(), String> {
+        self.validate_geometry()?;
+
+        let z_total: i32 = self.atomic_numbers.iter().map(|&z| z as i32).sum();
+        let n_el = z_total - self.charge;
+        if n_el < 0 {
+            return Err(format!(
+                "charge={} is incompatible with {} nuclear charges (the electron count would be {}; charge must be between {} and {})",
+                self.charge,
+                z_total,
+                n_el,
+                -z_total,
+                z_total
+            ));
+        }
+        let n_electrons = n_el as usize;
+
+        if self.multiplicity == 0 {
+            return Err("multiplicity must be >= 1 (got 0)".to_string());
+        }
+        let n_unpaired = (self.multiplicity as usize).saturating_sub(1);
+        if n_unpaired > n_electrons || (n_electrons + n_unpaired) % 2 != 0 {
+            return Err(format!(
+                "multiplicity={} is incompatible with {} electrons (need N±(M-1) even, 0 <= M-1 <= N)",
+                self.multiplicity, n_electrons
+            ));
+        }
+        Ok(())
+    }
+
+    /// Validate only the geometry (atom count, non-empty system, finite
+    /// coordinates).
+    ///
+    /// The RHF driver uses this because a closed-shell calculation does not
+    /// care about the requested spin multiplicity.
+    pub fn validate_geometry(&self) -> Result<(), String> {
+        crate::validation::validate_geometry(&self.atomic_numbers, &self.positions_bohr)
     }
 
     /// Number of atoms.
@@ -59,9 +125,12 @@ impl MolecularSystem {
     }
 
     /// Total number of electrons (sum of Z minus charge).
+    ///
+    /// A negative electron count (a `charge` larger than the total nuclear
+    /// charge) yields `0` instead of wrapping around to a huge `usize`.
     pub fn n_electrons(&self) -> usize {
         let z_total: i32 = self.atomic_numbers.iter().map(|&z| z as i32).sum();
-        (z_total - self.charge) as usize
+        usize::try_from(z_total - self.charge).unwrap_or(0)
     }
 
     /// Number of occupied orbitals (RHF, closed-shell).
@@ -115,6 +184,9 @@ pub struct ScfResult {
     pub overlap_matrix: DMatrix<f64>,
     /// Fock matrix F at convergence.
     pub fock_matrix: DMatrix<f64>,
+    /// Error message when the calculation could not be run at all
+    /// (invalid geometry). `None` for a completed calculation.
+    pub error: Option<String>,
 }
 
 /// Result of an IR spectroscopy calculation.
@@ -126,4 +198,7 @@ pub struct IrResult {
     pub intensities: Vec<f64>,
     /// Number of vibrational modes.
     pub n_modes: usize,
+    /// Error message when the calculation could not be run at all
+    /// (invalid geometry). `None` for a completed calculation.
+    pub error: Option<String>,
 }

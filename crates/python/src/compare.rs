@@ -12,7 +12,7 @@ fn comparison_status_name(status: sci_form_core::MethodComparisonStatus) -> Stri
     .to_string()
 }
 
-#[pyclass]
+#[pyclass(name = "MethodComparisonEntry")]
 #[derive(Clone)]
 pub(crate) struct MethodComparisonEntryPy {
     #[pyo3(get)]
@@ -43,7 +43,7 @@ pub(crate) struct MethodComparisonEntryPy {
     energy_kcal_mol: Option<f64>,
 }
 
-#[pyclass]
+#[pyclass(name = "MethodComparisonResult")]
 #[derive(Clone)]
 pub(crate) struct MethodComparisonResultPy {
     #[pyo3(get)]
@@ -61,7 +61,7 @@ fn compare_methods(
     allow_experimental_eht: bool,
 ) -> PyResult<MethodComparisonResultPy> {
     if coords.len() != elements.len() * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(
+        return Err(crate::errors::value_error(
             "coords length must be 3 * len(elements)",
         ));
     }

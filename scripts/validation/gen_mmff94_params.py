@@ -17,9 +17,13 @@ carries is Copyright (c) Merck and Co., Inc., 1994, 1995, 1996 and is the
 published MMFF94 set of Halgren, T., *J. Comput. Chem.* **1996**, *17*,
 490-519 (plus the MMFF94s static variant of Halgren's MMFF94s paper).
 
-The file is downloaded once into ``.cache/mmff94/Params.cpp`` (override with
-``--params-cpp PATH``) and the SHA-256 of the parsed input is recorded in the
-generated Rust header so the provenance of every number is traceable.
+The file is vendored in the repository at
+``scripts/validation/upstream/mmff94/Params.cpp`` so that the table can be
+regenerated and verified offline; the local cache
+(``.cache/mmff94/Params.cpp``) and a network download are used as fallbacks
+(override with ``--params-cpp PATH``).  The SHA-256 of the parsed input is
+recorded in the generated Rust header so the provenance of every number is
+traceable.
 
 What is emitted
 ---------------
@@ -50,6 +54,11 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 CACHE_DIR = ROOT / ".cache" / "mmff94"
 OUT = ROOT / "src" / "forcefield" / "mmff94_params.rs"
 
+# The upstream input is vendored in the repository (see
+# `scripts/validation/upstream/README.md`) so that the table can be
+# regenerated *and verified* offline — the CI `--check` gate depends on it.
+VENDORED_PARAMS = ROOT / "scripts" / "validation" / "upstream" / "mmff94" / "Params.cpp"
+
 PARAMS_URL = (
     "https://raw.githubusercontent.com/rdkit/rdkit/master/Code/ForceField/MMFF/Params.cpp"
 )
@@ -62,9 +71,19 @@ MAX_TYPE = 99
 
 
 def fetch_params_cpp(cache_dir: Path, params_cpp: Path | None) -> tuple[str, str]:
-    """Return (source text, sha256 hex) of the RDKit Params.cpp."""
+    """Return (source text, sha256 hex) of the RDKit Params.cpp.
+
+    Resolution order:
+      1. ``--params-cpp PATH`` (explicit override),
+      2. the vendored copy in ``scripts/validation/upstream/mmff94/``,
+      3. the local cache (``.cache/mmff94/Params.cpp``), downloading it once
+         if it is not there yet.
+    """
     if params_cpp is not None:
         text = params_cpp.read_text()
+        return text, hashlib.sha256(text.encode()).hexdigest()
+    if VENDORED_PARAMS.exists():
+        text = VENDORED_PARAMS.read_text()
         return text, hashlib.sha256(text.encode()).hexdigest()
     cache_dir.mkdir(parents=True, exist_ok=True)
     target = cache_dir / "Params.cpp"
@@ -328,6 +347,12 @@ def main() -> int:
     ap.add_argument("--params-cpp", type=Path, default=None,
                     help="local copy of RDKit Code/ForceField/MMFF/Params.cpp")
     ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
     args = ap.parse_args()
 
     src, sha = fetch_params_cpp(CACHE_DIR, args.params_cpp)
@@ -362,6 +387,10 @@ def main() -> int:
     out.append("//! `theta0` in degrees; torsion `V1/V2/V3` in kcal/mol; van der Waals")
     out.append("//! `alpha_i` in A^3, `N_i` dimensionless, `A_i` in A^4, `G_i` in")
     out.append("//! kcal.A^4/mol.")
+    out.append("// The tables below transcribe published parameter values verbatim; the")
+    out.append("// decimal literals are kept as published rather than replaced by symbolic")
+    out.append("// constants, so `clippy::approx_constant` does not apply here.")
+    out.append("#![allow(clippy::approx_constant)]")
     out.append("")
 
     # ── atom type equivalence levels ──
@@ -628,7 +657,19 @@ def main() -> int:
     ))
     out.append("")
 
-    args.out.write_text("\n".join(out))
+    text = "\n".join(out)
+    if args.check:
+        current = args.out.read_text() if args.out.exists() else ""
+        if current != text:
+            print(
+                f"{args.out} is out of date — "
+                f"run scripts/validation/gen_mmff94_params.py"
+            )
+            return 1
+        print(f"{args.out} is up to date")
+        return 0
+
+    args.out.write_text(text)
     print(
         "wrote %s (%d bytes): defs=%d props=%d arom=%d bonds=%d angles=%d "
         "tor=%d tor_s=%d vdw=%d bndk=%d hl=%d covrad=%d"

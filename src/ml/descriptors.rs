@@ -345,11 +345,15 @@ pub fn compute_descriptors(
         }
     }
 
-    // Rotatable bonds: single bonds between two heavy atoms with ≥2 neighbors each
+    // Rotatable bonds: single bonds between two heavy atoms with ≥2 neighbors each.
+    // Bonds referencing an atom outside `0..n` are ignored (the adjacency
+    // matrix above already skips them) instead of panicking on `elements[i]`.
     let n_rot = bonds
         .iter()
         .filter(|&&(i, j, ord)| {
-            ord == 1
+            i < n
+                && j < n
+                && ord == 1
                 && elements[i] != 1
                 && elements[j] != 1
                 && adj[i].len() >= 2
@@ -478,10 +482,14 @@ pub fn compute_descriptors(
 ///
 /// `elements`: atomic numbers (used for mass weighting).
 /// `positions`: 3D coordinates as flat [x0,y0,z0,x1,y1,z1,...].
-pub fn compute_3d_descriptors(elements: &[u8], positions: &[f64]) -> Descriptors3D {
+///
+/// Returns `Err` when the coordinate array does not match the atom count or
+/// contains a non-finite value: a silent all-zero descriptor is a wrong
+/// number, not an error report.
+pub fn compute_3d_descriptors(elements: &[u8], positions: &[f64]) -> Result<Descriptors3D, String> {
     let n = elements.len();
-    if n == 0 || positions.len() < n * 3 {
-        return Descriptors3D {
+    if n == 0 && positions.is_empty() {
+        return Ok(Descriptors3D {
             radius_of_gyration: 0.0,
             asphericity: 0.0,
             eccentricity: 0.0,
@@ -489,8 +497,9 @@ pub fn compute_3d_descriptors(elements: &[u8], positions: &[f64]) -> Descriptors
             npr2: 0.0,
             sphericity: 0.0,
             span: 0.0,
-        };
+        });
     }
+    crate::validation::validate_flat_geometry(elements, positions)?;
 
     let masses: Vec<f64> = elements.iter().map(|&z| atomic_weight(z)).collect();
     let total_mass: f64 = masses.iter().sum();
@@ -542,7 +551,7 @@ pub fn compute_3d_descriptors(elements: &[u8], positions: &[f64]) -> Descriptors
     // Eigenvalues of 3x3 symmetric matrix (analytical Cardano's method)
     let evals = eigenvalues_3x3_symmetric(&gt);
     let mut sorted = evals;
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let (l1, l2, l3) = (sorted[0].max(0.0), sorted[1].max(0.0), sorted[2].max(0.0));
     let sum_l = l1 + l2 + l3;
 
@@ -584,7 +593,7 @@ pub fn compute_3d_descriptors(elements: &[u8], positions: &[f64]) -> Descriptors
         }
     }
 
-    Descriptors3D {
+    Ok(Descriptors3D {
         radius_of_gyration: rg,
         asphericity,
         eccentricity,
@@ -592,7 +601,7 @@ pub fn compute_3d_descriptors(elements: &[u8], positions: &[f64]) -> Descriptors
         npr2,
         sphericity,
         span,
-    }
+    })
 }
 
 /// Eigenvalues of a 3x3 symmetric matrix using Cardano's formula.

@@ -1216,9 +1216,18 @@ fn pair_index(o1: usize, o2: usize) -> usize {
 /// directly (`eigenvectors_LAPACK`) and the density uses `P = 2 c cᵀ`.
 fn solve_generalized(fock: &DMatrix<f64>, _overlap: &DMatrix<f64>) -> (Vec<f64>, DMatrix<f64>) {
     let n = fock.nrows();
+    // `symmetric_eigen` panics on a 0x0 matrix — an empty molecule must
+    // never reach this point (the public `solve` rejects it up front).
+    if n == 0 {
+        return (Vec::new(), DMatrix::zeros(0, 0));
+    }
     let eig = fock.clone().symmetric_eigen();
     let mut order: Vec<usize> = (0..n).collect();
-    order.sort_by(|&a, &b| eig.eigenvalues[a].partial_cmp(&eig.eigenvalues[b]).unwrap());
+    order.sort_by(|&a, &b| {
+        eig.eigenvalues[a]
+            .partial_cmp(&eig.eigenvalues[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let mut energies = vec![0.0; n];
     let mut coefficients = DMatrix::zeros(n, n);
     for (col, &idx) in order.iter().enumerate() {
@@ -1359,6 +1368,7 @@ fn build_g_matrix(
 
 /// Run the faithful PM3 SCF (sp elements, Z <= 17).
 pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, String> {
+    crate::validation::validate_geometry(elements, positions)?;
     let n_atoms = elements.len();
     let params: Vec<&Pm3Params> = elements
         .iter()

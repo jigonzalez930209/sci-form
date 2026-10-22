@@ -11,9 +11,13 @@ at use time (documented on the accessor).
 
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import re
 from pathlib import Path
+
+from refdata import ref_data_dir, skip
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 FIX = ROOT / "tests" / "fixtures" / "validation" / "gfn0_params.json"
@@ -44,13 +48,18 @@ def parse_ao(ao: str):
 
 # SRB tables from xtb approxrab.f90 (en/r0/cnfak + p matrix).
 # Parsed once below; embedded for Z = 1..86.
-SRB_TABLE_SRC = "/tmp/opencode/xtb_approxrab_full.f90"
+# The SRB tables come from xtb's approxrab.f90.  The file is not vendored:
+# point SCIFORM_REF_DATA at the directory that holds it (or pass --srb-src).
+SRB_TABLE_SRC = os.environ.get(
+    "SCIFORM_SRB_TABLE",
+    str(ref_data_dir() / "xtb_approxrab_full.f90"),
+)
 
 
-def srb_tables():
+def srb_tables(src_path: str | None = None):
     import re
 
-    src = Path(SRB_TABLE_SRC).read_text()
+    src = Path(src_path or SRB_TABLE_SRC).read_text()
 
     def get(name):
         m = re.search(r"data " + name + r" /&(.*?)/", src, re.S)
@@ -96,6 +105,20 @@ def fmt_list(xs, per_line=4, fmt="{:.7}"):
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--check",
+        action="store_true",
+        help="regenerate into a temporary file, compare byte-for-byte with the "
+             "committed table and exit non-zero on a difference",
+    )
+    ap.add_argument(
+        "--srb-src",
+        type=Path,
+        default=Path(SRB_TABLE_SRC),
+        help="xtb approxrab.f90 (default: $SCIFORM_REF_DATA/xtb_approxrab_full.f90)",
+    )
+    args = ap.parse_args()
     d = json.loads(FIX.read_text())
     g = d["globals"]
     els = d["elements"]
@@ -235,8 +258,21 @@ def main() -> int:
     out.append("    " + ", ".join(str(v) for v in GFN0_NVALENCE_STATIC) + ",")
     out.append("];")
     out.append("")
+    srb_path = Path(args.srb_src)
+    if not srb_path.exists():
+        msg = (
+            f"the xtb SRB table is not available ({srb_path}); "
+            f"set SCIFORM_REF_DATA or pass --srb-src"
+        )
+        if args.check:
+            return skip(msg)
+        raise SystemExit(
+            f"error: {msg}\n"
+            f"       the committed table contains the SRB block — regenerating "
+            f"without it would silently drop it."
+        )
     try:
-        srb = srb_tables()
+        srb = srb_tables(str(srb_path))
         out.append("/// SRB reference lengths/factors (xtb approxrab, bohr/eV-free).")
         out.append("pub struct Gfn0SrbTables {")
         out.append("    pub en: [f64; 86],")
@@ -263,7 +299,19 @@ def main() -> int:
     out.append("    Some(&GFN0_TABLE[(z - 1) as usize])")
     out.append("}")
     out.append("")
-    OUT.write_text("\n".join(out))
+    text = "\n".join(out)
+    if args.check:
+        current = OUT.read_text() if OUT.exists() else ""
+        if current != text:
+            print(
+                f"{OUT.relative_to(ROOT)} is out of date — "
+                f"run scripts/validation/gen_gfn0_params.py"
+            )
+            return 1
+        print(f"{OUT.relative_to(ROOT)} is up to date")
+        return 0
+
+    OUT.write_text(text)
     print(f"wrote {OUT} ({OUT.stat().st_size} bytes)")
     return 0
 

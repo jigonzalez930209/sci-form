@@ -290,7 +290,7 @@ def test_nmr_shifts():
 
 
 def test_nmr_couplings():
-    assert len(sci_form.nmr_couplings("CCO", C)) > 0
+    assert len(sci_form.nmr_couplings("CCO", CCO)) > 0
 
 
 def test_ensemble_j_couplings():

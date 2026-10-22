@@ -185,7 +185,11 @@ impl SpinSystem {
         // Fold negative frequencies (they mirror the positive branch for
         // Hermitian single-quantum transitions) and merge near-degenerate lines.
         lines.retain(|l| l.frequency_hz > 0.0);
-        lines.sort_by(|a, b| a.frequency_hz.partial_cmp(&b.frequency_hz).unwrap());
+        lines.sort_by(|a, b| {
+            a.frequency_hz
+                .partial_cmp(&b.frequency_hz)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         let mut merged: Vec<ExactLine> = Vec::new();
         for line in lines {
             if let Some(last) = merged.last_mut() {
@@ -248,7 +252,11 @@ pub fn ab_reference(nu_a_hz: f64, nu_b_hz: f64, j_hz: f64) -> Vec<ExactLine> {
             intensity: outer,
         },
     ];
-    lines.sort_by(|a, b| a.frequency_hz.partial_cmp(&b.frequency_hz).unwrap());
+    lines.sort_by(|a, b| {
+        a.frequency_hz
+            .partial_cmp(&b.frequency_hz)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     let max_i = lines.iter().map(|l| l.intensity).fold(0.0f64, f64::max);
     for line in lines.iter_mut() {
         line.intensity /= max_i;

@@ -124,6 +124,11 @@ pub mod mlff {
     pub use crate::ml::symmetry_functions::*;
 }
 
+// ─── Internal helpers (not part of the public API) ───────────────────────────
+
+/// Shared input validation (geometry, finiteness, parameter ranges).
+pub(crate) mod validation;
+
 use serde::{Deserialize, Serialize};
 
 // ─── Public API Types ────────────────────────────────────────────────────────
@@ -435,7 +440,7 @@ pub fn version() -> String {
 }
 
 /// Report EHT capability metadata for a given element list.
-pub fn get_eht_support(elements: &[u8]) -> eht::EhtSupport {
+pub fn eht_support(elements: &[u8]) -> eht::EhtSupport {
     eht::analyze_eht_support(elements)
 }
 
@@ -484,7 +489,7 @@ fn unique_sorted_unsupported(elements: &[u8], pred: impl Fn(u8) -> bool) -> Vec<
 }
 
 /// Report operation capability metadata for a given element list.
-pub fn get_system_capabilities(elements: &[u8]) -> SystemCapabilities {
+pub fn system_capabilities(elements: &[u8]) -> SystemCapabilities {
     let eht_support = get_eht_support(elements);
     let uff_unsupported = unique_sorted_unsupported(elements, is_uff_element_supported);
 
@@ -628,7 +633,7 @@ fn build_property_plan(
 }
 
 /// Build a structured method plan with recommendations, fallback paths, and confidence scores.
-pub fn get_system_method_plan(elements: &[u8]) -> SystemMethodPlan {
+pub fn system_method_plan(elements: &[u8]) -> SystemMethodPlan {
     let capabilities = get_system_capabilities(elements);
 
     let geometry_method = build_method_metadata(
@@ -711,6 +716,24 @@ pub fn get_system_method_plan(elements: &[u8]) -> SystemMethodPlan {
         population,
         orbital_grid,
     }
+}
+
+/// Deprecated alias for [`eht_support`].
+#[deprecated(since = "0.16.0", note = "renamed to `eht_support`; the `get_` prefix is not idiomatic in Rust")]
+pub fn get_eht_support(elements: &[u8]) -> eht::EhtSupport {
+    eht_support(elements)
+}
+
+/// Deprecated alias for [`system_capabilities`].
+#[deprecated(since = "0.16.0", note = "renamed to `system_capabilities`; the `get_` prefix is not idiomatic in Rust")]
+pub fn get_system_capabilities(elements: &[u8]) -> SystemCapabilities {
+    system_capabilities(elements)
+}
+
+/// Deprecated alias for [`system_method_plan`].
+#[deprecated(since = "0.16.0", note = "renamed to `system_method_plan`; the `get_` prefix is not idiomatic in Rust")]
+pub fn get_system_method_plan(elements: &[u8]) -> SystemMethodPlan {
+    system_method_plan(elements)
 }
 
 /// Generate a 3D conformer from a SMILES string.
@@ -806,36 +829,57 @@ pub fn embed(smiles: &str, seed: u64) -> ConformerResult {
 ///
 /// Uses rayon thread pool for parallel processing.
 /// `config.num_threads = 0` means auto-detect CPU count.
+///
+/// The requested thread count is clamped to the number of available logical
+/// CPUs: asking for more threads than the machine has (e.g. `1 << 20`) used
+/// to make the pool creation hang or exhaust the process address space.
+/// A pool that still cannot be created is reported as an error instead of
+/// panicking.
 #[cfg(feature = "parallel")]
-pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Vec<ConformerResult> {
+pub fn embed_batch(
+    smiles_list: &[&str],
+    config: &ConformerConfig,
+) -> Result<Vec<ConformerResult>, String> {
     use rayon::prelude::*;
 
     if config.num_threads > 0 {
+        let available = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+        let threads = config.num_threads.min(available);
         let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(config.num_threads)
+            .num_threads(threads)
             .build()
-            .unwrap();
-        pool.install(|| {
+            .map_err(|e| {
+                format!(
+                    "failed to create a rayon thread pool with {} threads: {}",
+                    threads, e
+                )
+            })?;
+        Ok(pool.install(|| {
             smiles_list
                 .par_iter()
                 .map(|smi| embed(smi, config.seed))
                 .collect()
-        })
+        }))
     } else {
-        smiles_list
+        Ok(smiles_list
             .par_iter()
             .map(|smi| embed(smi, config.seed))
-            .collect()
+            .collect())
     }
 }
 
 /// Batch-embed multiple SMILES sequentially (no rayon dependency).
 #[cfg(not(feature = "parallel"))]
-pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Vec<ConformerResult> {
-    smiles_list
+pub fn embed_batch(
+    smiles_list: &[&str],
+    config: &ConformerConfig,
+) -> Result<Vec<ConformerResult>, String> {
+    Ok(smiles_list
         .iter()
         .map(|smi| embed(smi, config.seed))
-        .collect()
+        .collect())
 }
 
 /// Generate multiple conformers for a SMILES and filter by Butina RMSD clustering.
@@ -944,13 +988,7 @@ pub fn compute_sasa(
     coords_flat: &[f64],
     probe_radius: Option<f64>,
 ) -> Result<surface::sasa::SasaResult, String> {
-    if coords_flat.len() != elements.len() * 3 {
-        return Err(format!(
-            "coords length {} != 3 * elements {}",
-            coords_flat.len(),
-            elements.len()
-        ));
-    }
+    validation::validate_flat_geometry(elements, coords_flat)?;
     let positions: Vec<[f64; 3]> = coords_flat
         .chunks_exact(3)
         .map(|c| [c[0], c[1], c[2]])
@@ -985,6 +1023,7 @@ pub fn compute_population(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<population::PopulationResult, String> {
+    validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(population::compute_population_with_orbitals(
         elements,
@@ -1000,6 +1039,7 @@ pub fn compute_dipole(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<dipole::DipoleResult, String> {
+    validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(dipole::compute_dipole_from_eht(
         elements,
@@ -1014,6 +1054,7 @@ pub fn compute_frontier_descriptors(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<reactivity::FrontierDescriptors, String> {
+    validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(reactivity::compute_frontier_descriptors(
         elements,
@@ -1027,6 +1068,7 @@ pub fn compute_fukui_descriptors(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<reactivity::FukuiDescriptors, String> {
+    validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(reactivity::compute_fukui_descriptors(
         elements,
@@ -1040,6 +1082,7 @@ pub fn compute_reactivity_ranking(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<reactivity::ReactivityRanking, String> {
+    validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     let fukui = reactivity::compute_fukui_descriptors(elements, positions, &eht_result);
     let pop = population::compute_population(
@@ -1063,6 +1106,7 @@ pub fn compute_uv_vis_spectrum(
     e_max: f64,
     n_points: usize,
 ) -> Result<reactivity::UvVisSpectrum, String> {
+    validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(reactivity::compute_uv_vis_like_spectrum(
         &eht_result,
@@ -1078,6 +1122,7 @@ pub fn compute_bond_orders(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<population::BondOrderResult, String> {
+    validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(population::compute_bond_orders(
         elements,
@@ -1377,7 +1422,7 @@ pub fn compute_dos(
 
     #[cfg(feature = "parallel")]
     {
-        Ok(dos::compute_pdos_parallel(
+        dos::compute_pdos_parallel(
             elements,
             &flat,
             &eht_result.energies,
@@ -1387,12 +1432,12 @@ pub fn compute_dos(
             e_min,
             e_max,
             n_points,
-        ))
+        )
     }
 
     #[cfg(not(feature = "parallel"))]
     {
-        Ok(dos::compute_pdos(
+        dos::compute_pdos(
             elements,
             &flat,
             &eht_result.energies,
@@ -1402,7 +1447,7 @@ pub fn compute_dos(
             e_min,
             e_max,
             n_points,
-        ))
+        )
     }
 }
 
@@ -1506,6 +1551,7 @@ pub fn compute_mmff94_energy_breakdown(
 /// PM3(tm) set ([`pm3::pm3_method`] reports which one applies to an element).
 /// MOPAC parity is a documented gap (validation F42).
 pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Result, String> {
+    validation::validate_geometry(elements, positions)?;
     pm3::solve_pm3(elements, positions)
 }
 
@@ -1517,6 +1563,7 @@ pub fn compute_pm3_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<pm3::Pm3GradientResult, String> {
+    validation::validate_geometry(elements, positions)?;
     pm3::compute_pm3_gradient(elements, positions)
 }
 
@@ -1527,7 +1574,24 @@ pub fn compute_pm3_gradient(
 ///
 /// Returns orbital energies, total energy, gap, and Mulliken charges.
 /// Uses GFN2-xTB internally for reliable SCC convergence and accurate energetics.
+/// Compute a GFN1-xTB single point (electrical structure + total energy).
+///
+/// This is the root-level entry point for the GFN1-xTB method; the
+/// implementation lives in [`xtb::gfn1`].
+pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1Result, String> {
+    xtb::gfn1::solve_gfn1(elements, positions)
+}
+
+/// Compute a GFN2-xTB single point (electrical structure + total energy).
+///
+/// This is the root-level entry point for the GFN2-xTB method; the
+/// implementation lives in [`xtb::gfn2`].
+pub fn compute_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn2Result, String> {
+    xtb::gfn2::solve_gfn2(elements, positions)
+}
+
 pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
+    validation::validate_geometry(elements, positions)?;
     let gfn2 = xtb::gfn2::solve_gfn2(elements, positions)?;
     Ok(xtb::XtbResult {
         orbital_energies: gfn2.orbital_energies,
@@ -1542,6 +1606,7 @@ pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbRe
         mulliken_charges: gfn2.mulliken_charges,
         scc_iterations: gfn2.scc_iterations,
         converged: gfn2.converged,
+        notes: Vec::new(),
     })
 }
 
@@ -1553,6 +1618,7 @@ pub fn compute_xtb_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],
 ) -> Result<xtb::XtbGradientResult, String> {
+    validation::validate_geometry(elements, positions)?;
     xtb::compute_xtb_gradient(elements, positions)
 }
 
@@ -1571,6 +1637,7 @@ pub fn compute_stda_uvvis(
     n_points: usize,
     broadening: reactivity::BroadeningType,
 ) -> Result<reactivity::StdaUvVisSpectrum, String> {
+    validation::validate_geometry(elements, positions)?;
     reactivity::compute_stda_uvvis_spectrum(
         elements, positions, sigma, e_min, e_max, n_points, broadening,
     )
@@ -1586,6 +1653,7 @@ pub fn compute_fluorescence(
     positions: &[[f64; 3]],
     config: spectroscopy::FluorescenceConfig,
 ) -> Result<spectroscopy::FluorescenceSpectrum, String> {
+    validation::validate_geometry(elements, positions)?;
     spectroscopy::compute_fluorescence_spectrum(elements, positions, &config)
 }
 
@@ -1601,6 +1669,7 @@ pub fn compute_vibrational_analysis(
     method: &str,
     step_size: Option<f64>,
 ) -> Result<ir::VibrationalAnalysis, String> {
+    validation::validate_geometry(elements, positions)?;
     let hessian_method =
         match method {
             "eht" => ir::HessianMethod::Eht,
@@ -1625,6 +1694,7 @@ pub fn compute_vibrational_analysis_uff(
     positions: &[[f64; 3]],
     step_size: Option<f64>,
 ) -> Result<ir::VibrationalAnalysis, String> {
+    validation::validate_geometry(elements, positions)?;
     ir::vibrations::compute_vibrational_analysis_uff(smiles, elements, positions, step_size)
 }
 
@@ -1668,6 +1738,12 @@ pub fn predict_nmr_couplings(
     positions: &[[f64; 3]],
 ) -> Result<Vec<nmr::JCoupling>, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
+    if !positions.is_empty() {
+        let elements: Vec<u8> = (0..mol.graph.node_count())
+            .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+            .collect();
+        validation::validate_geometry(&elements, positions)?;
+    }
     Ok(nmr::predict_j_couplings(&mol, positions))
 }
 
@@ -1715,13 +1791,7 @@ fn preflight_giao_nmr(
     if elements.is_empty() {
         return Err("GIAO NMR requires at least one atom.".to_string());
     }
-    if elements.len() != positions.len() {
-        return Err(format!(
-            "GIAO NMR requires one 3D coordinate per atom; got {} elements and {} positions.",
-            elements.len(),
-            positions.len()
-        ));
-    }
+    validation::validate_geometry(elements, positions)?;
     if config.max_scf_iterations == 0 {
         return Err("GIAO NMR requires max_scf_iterations > 0.".to_string());
     }
@@ -1926,6 +1996,12 @@ pub fn compute_nmr_spectrum_with_coords(
     n_points: usize,
 ) -> Result<nmr::NmrSpectrum, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
+    if !positions.is_empty() {
+        let elements: Vec<u8> = (0..mol.graph.node_count())
+            .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
+            .collect();
+        validation::validate_geometry(&elements, positions)?;
+    }
     let couplings = nmr::predict_j_couplings(&mol, positions);
     let nuc = parse_nmr_nucleus(nucleus)?;
     let shifts = nmr::predict_chemical_shifts_for_nucleus(&mol, nuc);
@@ -2351,8 +2427,8 @@ pub fn compute_uhf(
     multiplicity: u32,
 ) -> Result<scf::uhf::UhfResult, String> {
     let system =
-        scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
-    Ok(scf::uhf::run_uhf_parallel(&system))
+        scf::types::MolecularSystem::try_from_angstrom(elements, positions, charge, multiplicity)?;
+    scf::uhf::run_uhf_parallel(&system)
 }
 
 /// Run a Restricted Open-shell Hartree-Fock (ROHF) calculation.
@@ -2371,8 +2447,8 @@ pub fn compute_rohf(
     multiplicity: u32,
 ) -> Result<scf::uhf::UhfResult, String> {
     let system =
-        scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
-    Ok(scf::uhf::run_rohf(&system))
+        scf::types::MolecularSystem::try_from_angstrom(elements, positions, charge, multiplicity)?;
+    scf::uhf::run_rohf(&system)
 }
 
 /// Run UHF/ROHF with full configuration control.
@@ -2384,8 +2460,8 @@ pub fn compute_uhf_configured(
     config: &scf::uhf::UhfConfig,
 ) -> Result<scf::uhf::UhfResult, String> {
     let system =
-        scf::types::MolecularSystem::from_angstrom(elements, positions, charge, multiplicity);
-    Ok(scf::uhf::run_uhf(&system, config))
+        scf::types::MolecularSystem::try_from_angstrom(elements, positions, charge, multiplicity)?;
+    scf::uhf::run_uhf(&system, config)
 }
 
 /// Run a complete HF-3c calculation (Hartree-Fock with D3, gCP, SRB corrections).
@@ -2400,6 +2476,7 @@ pub fn compute_hf3c(
     positions: &[[f64; 3]],
     config: &hf::HfConfig,
 ) -> Result<hf::Hf3cResult, String> {
+    validation::validate_geometry(elements, positions)?;
     hf::solve_hf3c(elements, positions, config)
 }
 
@@ -2411,6 +2488,7 @@ pub fn compute_hf3c(
 /// `elements`: atomic numbers (supported: H, C, N, O, F, S, Cl).
 /// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
 pub fn compute_ani(elements: &[u8], positions: &[[f64; 3]]) -> Result<ani::AniResult, String> {
+    validation::validate_geometry(elements, positions)?;
     ani::api::compute_ani_test(elements, positions)
 }
 
@@ -2426,6 +2504,7 @@ pub fn compute_ani_with_models(
     config: &ani::AniConfig,
     models: &std::collections::HashMap<u8, ani::nn::FeedForwardNet>,
 ) -> Result<ani::AniResult, String> {
+    validation::validate_geometry(elements, positions)?;
     ani::compute_ani(elements, positions, config, models)
 }
 

@@ -1,8 +1,9 @@
 //! Unit cell and framework assembly bindings.
 
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
-#[pyclass]
+#[pyclass(name = "UnitCell")]
 #[derive(Clone)]
 pub(crate) struct UnitCellPy {
     #[pyo3(get)]
@@ -23,7 +24,7 @@ pub(crate) struct UnitCellPy {
     lattice: Vec<Vec<f64>>,
 }
 
-#[pyclass]
+#[pyclass(name = "CrystalStructure")]
 #[derive(Clone)]
 pub(crate) struct CrystalStructurePy {
     #[pyo3(get)]
@@ -40,7 +41,7 @@ pub(crate) struct CrystalStructurePy {
     lattice: Vec<Vec<f64>>,
 }
 
-#[pyclass]
+#[pyclass(name = "SymmetryOp")]
 #[derive(Clone)]
 pub(crate) struct SymmetryOpPy {
     #[pyo3(get)]
@@ -49,7 +50,7 @@ pub(crate) struct SymmetryOpPy {
     translation: [f64; 3],
 }
 
-#[pyclass]
+#[pyclass(name = "SpaceGroup")]
 #[derive(Clone)]
 pub(crate) struct SpaceGroupPy {
     #[pyo3(get)]
@@ -77,7 +78,7 @@ impl SpaceGroupPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "PeriodicBond")]
 #[derive(Clone)]
 pub(crate) struct PeriodicBondPy {
     #[pyo3(get)]
@@ -92,7 +93,7 @@ pub(crate) struct PeriodicBondPy {
     distance: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "PeriodicMolecule")]
 #[derive(Clone)]
 pub(crate) struct PeriodicMoleculePy {
     #[pyo3(get)]
@@ -119,7 +120,7 @@ impl PeriodicMoleculePy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "HapticInteraction")]
 #[derive(Clone)]
 pub(crate) struct HapticInteractionPy {
     #[pyo3(get)]
@@ -136,7 +137,7 @@ pub(crate) struct HapticInteractionPy {
     metal_centroid_distance: f64,
 }
 
-#[pyclass]
+#[pyclass(name = "HapticityAnalysis")]
 #[derive(Clone)]
 pub(crate) struct HapticityAnalysisPy {
     #[pyo3(get)]
@@ -156,7 +157,7 @@ impl HapticityAnalysisPy {
     }
 }
 
-#[pyclass]
+#[pyclass(name = "FrameworkOptResult")]
 #[derive(Clone)]
 pub(crate) struct FrameworkOptResultPy {
     #[pyo3(get)]
@@ -192,7 +193,7 @@ fn parse_bond_pairs(bonds: &[Vec<usize>]) -> PyResult<Vec<(usize, usize)>> {
     let mut out = Vec::with_capacity(bonds.len());
     for (k, b) in bonds.iter().enumerate() {
         if b.len() != 2 {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            return Err(crate::errors::value_error(format!(
                 "bonds[{}] must have exactly 2 atom indices, got {}",
                 k,
                 b.len()
@@ -223,7 +224,7 @@ fn map_space_group(sg: sci_form_core::materials::space_groups::SpaceGroup) -> Sp
 
 #[pyfunction]
 #[pyo3(signature = (a, b, c, alpha=90.0, beta=90.0, gamma=90.0))]
-fn unit_cell(a: f64, b: f64, c: f64, alpha: f64, beta: f64, gamma: f64) -> UnitCellPy {
+fn create_unit_cell(a: f64, b: f64, c: f64, alpha: f64, beta: f64, gamma: f64) -> UnitCellPy {
     let cell = sci_form_core::create_unit_cell(a, b, c, alpha, beta, gamma);
     let p = cell.parameters();
     let vol = cell.volume();
@@ -255,8 +256,8 @@ fn assemble_framework(
         "square_planar" => sci_form_core::materials::CoordinationGeometry::SquarePlanar,
         "octahedral" => sci_form_core::materials::CoordinationGeometry::Octahedral,
         _ => {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "Unknown geometry: {}",
+            return Err(crate::errors::value_error(format!(
+                "Invalid 'geometry' '{}'. Supported: 'linear', 'trigonal', 'tetrahedral', 'square_planar', 'octahedral'.",
                 geometry
             )))
         }
@@ -266,8 +267,8 @@ fn assemble_framework(
         "dia" => sci_form_core::materials::Topology::dia(),
         "sql" => sci_form_core::materials::Topology::sql(),
         _ => {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "Unknown topology: {}",
+            return Err(crate::errors::value_error(format!(
+                "Invalid 'topology' '{}'. Supported: 'pcu', 'dia', 'sql'.",
                 topology
             )))
         }
@@ -306,7 +307,7 @@ fn space_group_by_symbol(symbol: &str) -> Option<SpaceGroupPy> {
     sci_form_core::materials::space_groups::space_group_by_symbol(symbol).map(map_space_group)
 }
 
-#[pyclass]
+#[pyclass(name = "SpaceGroupEntry")]
 #[derive(Clone)]
 pub(crate) struct SpaceGroupEntryPy {
     #[pyo3(get)]
@@ -339,10 +340,10 @@ fn all_space_groups() -> Vec<SpaceGroupEntryPy> {
 /// Build a periodic molecular graph from fractional coordinates and a unit cell.
 ///
 /// `frac_coords` is a list of `[x, y, z]` fractional triples; the cell uses
-/// the same `(a, b, c, alpha, beta, gamma)` parameters as [`unit_cell`].
+/// the same `(a, b, c, alpha, beta, gamma)` parameters as [`create_unit_cell`].
 /// `bond_tolerance` is the extra bonding tolerance in Å (default 0.3).
 #[pyfunction]
-#[pyo3(signature = (elements, frac_coords, a, b, c, alpha=90.0, beta=90.0, gamma=90.0, bond_tolerance=None))]
+#[pyo3(signature = (elements, frac_coords, a, b, c, alpha=90.0, beta=90.0, gamma=90.0, bond_tolerance=None, options=None))]
 fn build_periodic_molecule(
     elements: Vec<u8>,
     frac_coords: Vec<Vec<f64>>,
@@ -353,11 +354,23 @@ fn build_periodic_molecule(
     beta: f64,
     gamma: f64,
     bond_tolerance: Option<f64>,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<PeriodicMoleculePy> {
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3).
+    const KEYS: &[&str] = &["a", "b", "c", "alpha", "beta", "gamma", "bond_tolerance"];
+    crate::options::reject_unknown(options, KEYS)?;
+    let a = crate::options::f64_from(options, "a", a)?;
+    let b = crate::options::f64_from(options, "b", b)?;
+    let c = crate::options::f64_from(options, "c", c)?;
+    let alpha = crate::options::f64_from(options, "alpha", alpha)?;
+    let beta = crate::options::f64_from(options, "beta", beta)?;
+    let gamma = crate::options::f64_from(options, "gamma", gamma)?;
+    let bond_tolerance = crate::options::opt_f64_from(options, "bond_tolerance", bond_tolerance)?;
     let mut frac: Vec<[f64; 3]> = Vec::with_capacity(frac_coords.len());
     for (i, f) in frac_coords.iter().enumerate() {
         if f.len() != 3 {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            return Err(crate::errors::value_error(format!(
                 "frac_coords[{}] must have 3 components, got {}",
                 i,
                 f.len()
@@ -441,7 +454,7 @@ fn detect_hapticity(
 /// enables periodic (minimum-image) optimization using the given
 /// `(a, b, c, alpha, beta, gamma)` unit cell.
 #[pyfunction]
-#[pyo3(signature = (smiles, coords, method="bfgs", max_iter=200, force_tol=0.05, energy_tol=1e-6, max_step=0.2, fixed_atoms=None, cell_a=None, cell_b=None, cell_c=None, cell_alpha=90.0, cell_beta=90.0, cell_gamma=90.0))]
+#[pyo3(signature = (smiles, coords, method="bfgs", max_iter=200, force_tol=0.05, energy_tol=1e-6, max_step=0.2, fixed_atoms=None, cell_a=None, cell_b=None, cell_c=None, cell_alpha=90.0, cell_beta=90.0, cell_gamma=90.0, options=None))]
 fn optimize_framework(
     smiles: &str,
     coords: Vec<f64>,
@@ -457,11 +470,43 @@ fn optimize_framework(
     cell_alpha: f64,
     cell_beta: f64,
     cell_gamma: f64,
+    options: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<FrameworkOptResultPy> {
-    let mol = sci_form_core::parse(smiles).map_err(pyo3::exceptions::PyValueError::new_err)?;
+    // The optional `options` mapping overrides the positional arguments
+    // (blocker C-M3); the positional form keeps working unchanged.
+    const KEYS: &[&str] = &[
+        "method",
+        "max_iter",
+        "force_tol",
+        "energy_tol",
+        "max_step",
+        "fixed_atoms",
+        "cell_a",
+        "cell_b",
+        "cell_c",
+        "cell_alpha",
+        "cell_beta",
+        "cell_gamma",
+    ];
+    crate::options::reject_unknown(options, KEYS)?;
+    let method = &crate::options::str_from(options, "method", method)?;
+    let method = method.as_str();
+    let max_iter = crate::options::usize_from(options, "max_iter", max_iter)?;
+    let force_tol = crate::options::f64_from(options, "force_tol", force_tol)?;
+    let energy_tol = crate::options::f64_from(options, "energy_tol", energy_tol)?;
+    let max_step = crate::options::f64_from(options, "max_step", max_step)?;
+    let fixed_atoms = crate::options::usize_list_from(options, "fixed_atoms", fixed_atoms)?;
+    let cell_a = crate::options::opt_f64_from(options, "cell_a", cell_a)?;
+    let cell_b = crate::options::opt_f64_from(options, "cell_b", cell_b)?;
+    let cell_c = crate::options::opt_f64_from(options, "cell_c", cell_c)?;
+    let cell_alpha = crate::options::f64_from(options, "cell_alpha", cell_alpha)?;
+    let cell_beta = crate::options::f64_from(options, "cell_beta", cell_beta)?;
+    let cell_gamma = crate::options::f64_from(options, "cell_gamma", cell_gamma)?;
+    let mol = sci_form_core::parse(smiles)
+        .map_err(|e| crate::errors::value_error(crate::errors::smiles_error(&e, smiles)))?;
     let n = mol.graph.node_count();
     if coords.len() != n * 3 {
-        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+        return Err(crate::errors::value_error(format!(
             "coords length {} != 3 * atoms {}",
             coords.len(),
             n
@@ -478,8 +523,8 @@ fn optimize_framework(
             sci_form_core::materials::geometry_opt::OptMethod::SteepestDescent
         }
         other => {
-            return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "unknown optimization method '{}' (expected bfgs or steepest_descent)",
+            return Err(crate::errors::value_error(format!(
+                "Invalid 'method' '{}'. Supported: 'bfgs', 'steepest_descent', 'sd'.",
                 other
             )))
         }
@@ -524,7 +569,7 @@ fn optimize_framework(
         &energy_force,
         &config,
     )
-    .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))?;
 
     Ok(FrameworkOptResultPy {
         positions: result.positions.clone(),
@@ -538,7 +583,7 @@ fn optimize_framework(
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(unit_cell, m)?)?;
+    m.add_function(wrap_pyfunction!(create_unit_cell, m)?)?;
     m.add_function(wrap_pyfunction!(assemble_framework, m)?)?;
     m.add_function(wrap_pyfunction!(space_group_by_number, m)?)?;
     m.add_function(wrap_pyfunction!(space_group_by_symbol, m)?)?;

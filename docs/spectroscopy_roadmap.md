@@ -65,7 +65,7 @@ Implementation of vibrational analysis through numerical differentiation of the 
 
 ## Phase D3: NMR Spectroscopy (ML & Empirical Route)
 
-Pure quantum-mechanical NMR (via GIAO) is theoretically dense and computationally expensive. We implement a pragmatic, ultra-fast ML/Topological approach. For a deep dive into the 4-phase NMR strategy, see the [Detailed NMR Implementation Roadmap](file:///home/lestad/github/sci-form/docs/nmr_detailed_roadmap.md).
+Pure quantum-mechanical NMR (via GIAO) is theoretically dense and computationally expensive. We implement a pragmatic, ultra-fast ML/Topological approach. For a deep dive into the 4-phase NMR strategy, see the [Detailed NMR Implementation Roadmap](nmr_detailed_roadmap.md).
 
 ### 3.1 NMR Shift Prediction (1H & 13C)
 - **Strategy:** Integrated Graph Neural Network (GNN) model or a topological HOSE-code (Hierarchically Ordered Spherical description of Environment) lookup.

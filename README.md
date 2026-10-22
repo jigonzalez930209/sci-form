@@ -11,7 +11,7 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 [![npm](https://img.shields.io/npm/v/sci-form-wasm)](https://www.npmjs.com/package/sci-form-wasm)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-See also: [CHANGELOG.md](CHANGELOG.md) · [TESTING.md](TESTING.md) · [ROADMAP_REACTION_DYNAMICS_3D.md](ROADMAP_REACTION_DYNAMICS_3D.md)
+See also: [CHANGELOG.md](CHANGELOG.md) · [TESTING.md](TESTING.md) · [Roadmap: dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
 
 ## Features
 
@@ -100,9 +100,9 @@ See also: [CHANGELOG.md](CHANGELOG.md) · [TESTING.md](TESTING.md) · [ROADMAP_R
 
 ```toml
 [dependencies]
-sci-form = "0.13"
+sci-form = "0.15"
 # For parallel batch + ESP:
-sci-form = { version = "0.13", features = ["parallel"] }
+sci-form = { version = "0.15", features = ["parallel"] }
 ```
 
 ```rust
@@ -165,6 +165,24 @@ print(f"HOMO: {pop['homo_energy']:.3f} eV")
 dos = sci_form.compute_dos(elements, positions, sigma=0.2, e_min=-20.0, e_max=5.0, n_points=200)
 print(f"Gap: {dos['homo_lumo_gap']:.3f} eV")
 ```
+
+#### Zero-copy arrays
+
+`embed_coords_into` and `compute_esp_grid_into` write their result straight
+into a caller-owned `float64` buffer, so a full volumetric grid or a long MD
+trajectory never crosses the Python boundary twice:
+
+```python
+import array
+import sci_form
+
+n_atoms = sci_form.parse("CCO").num_atoms
+buf = array.array("d", [0.0] * (3 * n_atoms))
+sci_form.embed_coords_into("CCO", buf, seed=42)   # buf now holds the coords
+```
+
+Both functions raise `ValueError` when the buffer has the wrong length, and
+they refuse a read-only or non-`float64` buffer.
 
 → [Full Python API reference](https://jigonzalez930209.github.io/sci-form/api/python) · [Guide](https://jigonzalez930209.github.io/sci-form/guide/python)
 
@@ -303,7 +321,7 @@ Current verified results on this repository state:
 | `cargo test --test regression test_experimental_comparison` | **54 passed, 0 failed** |
 | `cargo test --test regression test_extended_molecules` | **14 passed, 0 failed, 7 ignored** |
 
-More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader project plan remains in [ROADMAP.md](ROADMAP.md).
+More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader project plan lives in the [documentation site](docs/index.md).
 
 ---
 

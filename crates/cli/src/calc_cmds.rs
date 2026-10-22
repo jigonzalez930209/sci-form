@@ -1,21 +1,29 @@
 //! EHT, SASA, population, dipole, ESP, DOS, cell, assemble, ANI, PM3, xTB, GFN, HF-3c command handlers.
 
 use crate::format::{
+    fail,
     gasteiger_charges_from_geometry, parse_bond_list, parse_elems_coords, perceive_bonds,
 };
 
-pub fn cmd_eht(elements: &str, coords: &str, k: f64) {
+pub fn cmd_eht(elements: &str, coords: &str, k: Option<f64>) {
     let (elems, flat, _) = parse_elems_coords(elements, coords);
     if flat.len() != elems.len() * 3 {
-        eprintln!(
-            "coords length {} != 3 * elements {}",
+        fail(format!(
+            "Invalid 'coords' length {}. Expected {} values (3 per atom).",
             flat.len(),
-            elems.len()
-        );
-        std::process::exit(1);
+            elems.len() * 3
+        ));
     }
     let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
-    let k_opt = if k <= 0.0 { None } else { Some(k) };
+    // `--k` omitted means "engine default"; an explicit value must be
+    // positive (blocker C-M5: no magic-number sentinel).
+    let k_opt = match k {
+        None => None,
+        Some(v) if v > 0.0 => Some(v),
+        Some(v) => fail(format!(
+            "Invalid 'k' value '{v}'. Expected a positive number (omit --k for the default 1.75)."
+        )),
+    };
     match sci_form::eht::solve_eht(&elems, &positions, k_opt) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
         Err(e) => {
@@ -117,8 +125,11 @@ pub fn cmd_assemble(topology: &str, a: f64, metal: u8, geometry: &str, supercell
         "square_planar" => sci_form::materials::CoordinationGeometry::SquarePlanar,
         "octahedral" => sci_form::materials::CoordinationGeometry::Octahedral,
         _ => {
-            eprintln!("Unknown geometry: {}", geometry);
-            std::process::exit(1);
+            fail(crate::format::invalid_value(
+                "'geometry'",
+                geometry,
+                &["linear", "trigonal", "tetrahedral", "square_planar", "octahedral"],
+            ));
         }
     };
     let topo = match topology {
@@ -126,8 +137,11 @@ pub fn cmd_assemble(topology: &str, a: f64, metal: u8, geometry: &str, supercell
         "dia" => sci_form::materials::Topology::dia(),
         "sql" => sci_form::materials::Topology::sql(),
         _ => {
-            eprintln!("Unknown topology: {}", topology);
-            std::process::exit(1);
+            fail(crate::format::invalid_value(
+                "'topology'",
+                topology,
+                &["pcu", "dia", "sql"],
+            ));
         }
     };
     let node = sci_form::materials::Sbu::metal_node(metal, 0.0, geom);
@@ -231,14 +245,13 @@ pub fn cmd_hf3c(elements: &str, coords: &str) {
     }
 }
 
-pub fn cmd_stereo(smiles: &str, coords: &str) {
-    let flat: Vec<f64> = if coords == "[]" || coords.is_empty() {
-        vec![]
-    } else {
-        serde_json::from_str(coords).unwrap_or_else(|e| {
-            eprintln!("bad coords: {}", e);
-            std::process::exit(1);
-        })
+pub fn cmd_stereo(smiles: &str, coords: Option<&str>) {
+    // `--coords` omitted means "topology only" (blocker C-M5).
+    let flat: Vec<f64> = match coords {
+        None => vec![],
+        Some(raw) => serde_json::from_str(raw).unwrap_or_else(|e| {
+            fail(crate::format::bad_json("'coords'", raw, &e));
+        }),
     };
     match sci_form::analyze_stereo(smiles, &flat) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
@@ -249,26 +262,29 @@ pub fn cmd_stereo(smiles: &str, coords: &str) {
     }
 }
 
-pub fn cmd_solvation(elements: &str, coords: &str, charges: &str, probe_radius: f64) {
+pub fn cmd_solvation(elements: &str, coords: &str, charges: Option<&str>, probe_radius: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    if charges.is_empty() || charges == "[]" {
-        // Non-polar only
-        let r = sci_form::compute_nonpolar_solvation(&elems, &positions, Some(probe_radius));
-        println!("{}", serde_json::to_string_pretty(&r).unwrap());
-    } else {
-        let q: Vec<f64> = serde_json::from_str(charges).unwrap_or_else(|e| {
-            eprintln!("bad charges: {}", e);
-            std::process::exit(1);
-        });
-        let r = sci_form::compute_gb_solvation(
-            &elems,
-            &positions,
-            &q,
-            Some(78.5),
-            Some(1.0),
-            Some(probe_radius),
-        );
-        println!("{}", serde_json::to_string_pretty(&r).unwrap());
+    // `--charges` omitted means "non-polar contribution only"
+    // (blocker C-M5).
+    match charges {
+        None => {
+            let r = sci_form::compute_nonpolar_solvation(&elems, &positions, Some(probe_radius));
+            println!("{}", serde_json::to_string_pretty(&r).unwrap());
+        }
+        Some(raw) => {
+            let q: Vec<f64> = serde_json::from_str(raw).unwrap_or_else(|e| {
+                fail(crate::format::bad_json("'charges'", raw, &e));
+            });
+            let r = sci_form::compute_gb_solvation(
+                &elems,
+                &positions,
+                &q,
+                Some(78.5),
+                Some(1.0),
+                Some(probe_radius),
+            );
+            println!("{}", serde_json::to_string_pretty(&r).unwrap());
+        }
     }
 }
 
@@ -315,8 +331,7 @@ pub fn cmd_tanimoto(smiles1: &str, smiles2: &str, radius: usize, n_bits: usize) 
 
 pub fn cmd_ecfp_batch(smiles_list: &str, radius: usize, n_bits: usize) {
     let smiles: Vec<String> = serde_json::from_str(smiles_list).unwrap_or_else(|e| {
-        eprintln!("Bad smiles list JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'smiles list'", smiles_list, &e));
     });
     let refs: Vec<&str> = smiles.iter().map(|s| s.as_str()).collect();
     match sci_form::compute_ecfp_batch(&refs, radius, n_bits) {
@@ -355,12 +370,10 @@ pub fn cmd_ensemble_j_couplings(
     temperature_k: f64,
 ) {
     let conformers: Vec<Vec<f64>> = serde_json::from_str(conformer_coords).unwrap_or_else(|e| {
-        eprintln!("Bad conformer coords JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'conformer coords'", conformer_coords, &e));
     });
     let energies: Vec<f64> = serde_json::from_str(energies_kcal).unwrap_or_else(|e| {
-        eprintln!("Bad conformer energies JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'conformer energies'", energies_kcal, &e));
     });
     match sci_form::compute_ensemble_j_couplings(smiles, &conformers, &energies, temperature_k) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
@@ -381,20 +394,17 @@ pub fn cmd_ir_spectrum_broadened(
     wn_max: f64,
     n_points: usize,
     broadening: &str,
-    step_size: f64,
-    smiles: &str,
+    step_size: Option<f64>,
+    smiles: Option<&str>,
 ) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let step = if step_size > 0.0 {
-        Some(step_size)
-    } else {
-        None
-    };
+    // `--step-size` omitted means "engine default" (blocker C-M5).
+    let step = step_size;
     let analysis = if method.eq_ignore_ascii_case("uff") {
-        if smiles.is_empty() {
-            eprintln!("UFF IR spectrum requires --smiles");
-            std::process::exit(1);
-        }
+        let smiles = match smiles {
+            Some(s) => s,
+            None => fail("Missing '--smiles': it is required for method=uff."),
+        };
         sci_form::compute_vibrational_analysis_uff(smiles, &elems, &positions, step)
     } else {
         sci_form::compute_vibrational_analysis(&elems, &positions, method, step)
@@ -468,7 +478,7 @@ pub fn cmd_dos_multimethod(
         "hf3c" | "hf-3c" => sci_form::dos::multi_method::DosMethod::Hf3c,
         other => {
             eprintln!(
-                "Unknown DOS method '{}' (expected eht, pm3, xtb, gfn1, gfn2 or hf3c)",
+                "Invalid 'method' '{}'. Supported: 'eht', 'pm3', 'xtb', 'gfn1', 'gfn2', 'hf3c'.",
                 other
             );
             std::process::exit(1);
@@ -543,8 +553,8 @@ pub fn cmd_whim(elements: &str, coords: &str, weighting: &str) {
         "polarizability" => sci_form::ml::whim::WhimWeighting::Polarizability,
         other => {
             eprintln!(
-                "Unknown WHIM weighting '{}' (expected unit, mass, volume, \
-                 electronegativity or polarizability)",
+                "Invalid 'weighting' '{}'. Supported: 'unit', 'unweighted', 'mass', \
+                 'volume', 'vdw', 'electronegativity', 'en', 'polarizability'.",
                 other
             );
             std::process::exit(1);
@@ -557,32 +567,30 @@ pub fn cmd_whim(elements: &str, coords: &str, weighting: &str) {
 pub fn cmd_rdf(
     elements: &str,
     coords: &str,
-    charges: &str,
+    charges: Option<&str>,
     beta: f64,
     r_max: f64,
     n_points: usize,
 ) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let q = if charges.is_empty() || charges == "[]" {
-        match gasteiger_charges_from_geometry(&elems, &positions) {
+    // `--charges` omitted means "derive them with Gasteiger" (blocker C-M5).
+    let q = match charges {
+        None => match gasteiger_charges_from_geometry(&elems, &positions) {
             Ok(q) => q,
             Err(e) => {
-                eprintln!("Gasteiger charge error: {}", e);
-                std::process::exit(1);
+                fail(format!("Gasteiger charge error: {e}"));
             }
-        }
-    } else {
-        serde_json::from_str(charges).unwrap_or_else(|e| {
-            eprintln!("Bad charges JSON: {}", e);
-            std::process::exit(1);
-        })
+        },
+        Some(raw) => serde_json::from_str(raw).unwrap_or_else(|e| {
+            fail(crate::format::bad_json("'charges'", raw, &e));
+        }),
     };
     let result =
         sci_form::ml::rdf_descriptors::compute_rdf(&elems, &positions, &q, beta, r_max, n_points);
     println!("{}", serde_json::to_string_pretty(&result).unwrap());
 }
 
-pub fn cmd_getaway(elements: &str, coords: &str, bonds: &str, max_lag: usize) {
+pub fn cmd_getaway(elements: &str, coords: &str, bonds: Option<&str>, max_lag: usize) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let bond_list = match parse_bond_list(bonds) {
         Some(b) => b,
@@ -606,12 +614,10 @@ fn rmse(predictions: &[f64], targets: &[f64]) -> f64 {
 
 fn parse_training_data(features: &str, targets: &str) -> (Vec<Vec<f64>>, Vec<f64>) {
     let feats: Vec<Vec<f64>> = serde_json::from_str(features).unwrap_or_else(|e| {
-        eprintln!("Bad features JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'features'", features, &e));
     });
     let tgts: Vec<f64> = serde_json::from_str(targets).unwrap_or_else(|e| {
-        eprintln!("Bad targets JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'targets'", targets, &e));
     });
     if feats.len() != tgts.len() {
         eprintln!(
@@ -700,31 +706,24 @@ pub fn cmd_assign_peaks(
     frequencies: &str,
     intensities: &str,
     elements: &str,
-    mode_displacements: &str,
+    mode_displacements: Option<&str>,
 ) {
     let freqs: Vec<f64> = serde_json::from_str(frequencies).unwrap_or_else(|e| {
-        eprintln!("Bad frequencies JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'frequencies'", frequencies, &e));
     });
     let ints: Vec<f64> = serde_json::from_str(intensities).unwrap_or_else(|e| {
-        eprintln!("Bad intensities JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'intensities'", intensities, &e));
     });
     let elems: Vec<u8> = serde_json::from_str(elements).unwrap_or_else(|e| {
-        eprintln!("Bad elements JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'elements'", elements, &e));
     });
-    let displacements: Option<Vec<Vec<[f64; 3]>>> =
-        if mode_displacements.is_empty() || mode_displacements == "[]" {
-            None
-        } else {
-            Some(
-                serde_json::from_str(mode_displacements).unwrap_or_else(|e| {
-                    eprintln!("Bad mode displacements JSON: {}", e);
-                    std::process::exit(1);
-                }),
-            )
-        };
+    // `--mode-displacements` omitted means "the modes are unknown"
+    // (blocker C-M5).
+    let displacements: Option<Vec<Vec<[f64; 3]>>> = mode_displacements.map(|raw| {
+        serde_json::from_str(raw).unwrap_or_else(|e| {
+            fail(crate::format::bad_json("'mode displacements'", raw, &e));
+        })
+    });
     let result = sci_form::ir::peak_assignment::assign_peaks(
         &freqs,
         &ints,
@@ -739,15 +738,22 @@ pub fn cmd_space_group(number: Option<u16>, symbol: Option<&str>) {
         (Some(n), _) => sci_form::materials::space_groups::space_group_by_number(n),
         (None, Some(s)) => sci_form::materials::space_groups::space_group_by_symbol(s),
         (None, None) => {
-            eprintln!("Provide --number or --symbol");
-            std::process::exit(1);
+            fail("Missing '--number' or '--symbol'. Supported: '--number' (1-230) or '--symbol'.");
         }
     };
     match group {
         Some(sg) => println!("{}", serde_json::to_string_pretty(&sg).unwrap()),
         None => {
-            eprintln!("Space group not found");
-            std::process::exit(1);
+            let message = match number {
+                Some(n) => format!(
+                    "Invalid 'number' '{n}'. Supported: an ITC number in 1-230."
+                ),
+                None => format!(
+                    "Invalid 'symbol' '{}'. Supported: a Hermann-Mauguin symbol, e.g. 'P 21/c'.",
+                    symbol.unwrap_or_default()
+                ),
+            };
+            fail(message);
         }
     }
 }
@@ -770,27 +776,22 @@ pub fn cmd_periodic_molecule(
     alpha: f64,
     beta: f64,
     gamma: f64,
-    bond_tolerance: f64,
+    bond_tolerance: Option<f64>,
 ) {
     let elems: Vec<u8> = serde_json::from_str(elements).unwrap_or_else(|e| {
-        eprintln!("Bad elements JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'elements'", elements, &e));
     });
     let frac: Vec<[f64; 3]> = serde_json::from_str(frac_coords).unwrap_or_else(|e| {
-        eprintln!("Bad fractional coords JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'fractional coords'", frac_coords, &e));
     });
     let cell = sci_form::create_unit_cell(a, b, c, alpha, beta, gamma);
-    let tolerance = if bond_tolerance > 0.0 {
-        Some(bond_tolerance)
-    } else {
-        None
-    };
+    // `--bond-tolerance` omitted means "engine default" (blocker C-M5).
+    let tolerance = bond_tolerance;
     let pm = sci_form::periodic::build_periodic_molecule(&elems, &frac, &cell, tolerance);
     println!("{}", serde_json::to_string_pretty(&pm).unwrap());
 }
 
-pub fn cmd_hapticity(elements: &str, coords: &str, bonds: &str) {
+pub fn cmd_hapticity(elements: &str, coords: &str, bonds: Option<&str>) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let bond_list = match parse_bond_list(bonds) {
         Some(b) => b,
@@ -809,7 +810,7 @@ pub fn cmd_optimize_framework(
     force_tol: f64,
     energy_tol: f64,
     max_step: f64,
-    fixed_atoms: &str,
+    fixed_atoms: Option<&str>,
     cell: Option<[f64; 6]>,
 ) {
     let mol = match sci_form::parse(smiles) {
@@ -821,8 +822,7 @@ pub fn cmd_optimize_framework(
     };
     let n = mol.graph.node_count();
     let flat: Vec<f64> = serde_json::from_str(coords).unwrap_or_else(|e| {
-        eprintln!("Bad coords JSON: {}", e);
-        std::process::exit(1);
+        fail(crate::format::bad_json("'coords'", coords, &e));
     });
     if flat.len() != n * 3 {
         eprintln!("coords length {} != 3 * atoms {}", flat.len(), n);
@@ -838,21 +838,16 @@ pub fn cmd_optimize_framework(
         "bfgs" => sci_form::materials::geometry_opt::OptMethod::Bfgs,
         "steepest_descent" | "sd" => sci_form::materials::geometry_opt::OptMethod::SteepestDescent,
         other => {
-            eprintln!(
-                "Unknown optimization method '{}' (expected bfgs or steepest_descent)",
-                other
-            );
-            std::process::exit(1);
+            fail(crate::format::invalid_value(
+                "'method'",
+                other,
+                &["bfgs", "steepest_descent", "sd"],
+            ));
         }
     };
-    let fixed: Vec<usize> = if fixed_atoms.is_empty() || fixed_atoms == "[]" {
-        Vec::new()
-    } else {
-        serde_json::from_str(fixed_atoms).unwrap_or_else(|e| {
-            eprintln!("Bad fixed atoms JSON: {}", e);
-            std::process::exit(1);
-        })
-    };
+    // `--fixed-atoms` omitted means "fix no atom" (blocker C-M5).
+    let fixed: Vec<usize> = crate::format::parse_usize_list(fixed_atoms, "'fixed atoms'")
+        .unwrap_or_default();
     let lattice =
         cell.map(|c| sci_form::create_unit_cell(c[0], c[1], c[2], c[3], c[4], c[5]).lattice);
 

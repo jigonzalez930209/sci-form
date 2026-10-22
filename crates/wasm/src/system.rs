@@ -10,6 +10,10 @@ pub fn version() -> String {
 }
 
 /// Query operation capabilities from a JSON element array.
+///
+/// The Rust root calls this `get_system_capabilities`; the `get_` prefix is
+/// not idiomatic and is dropped here (blocker C-M7).  The Rust name is kept
+/// as an alias below.
 #[wasm_bindgen]
 pub fn system_capabilities(elements: &str) -> String {
     let elems = match parse_elements(elements) {
@@ -19,7 +23,20 @@ pub fn system_capabilities(elements: &str) -> String {
     serialize_or_error(&sci_form::get_system_capabilities(&elems))
 }
 
+/// Query operation capabilities from a JSON element array.
+///
+/// **Alias** of [`system_capabilities`] matching the Rust root name
+/// `sci_form::get_system_capabilities`.
+#[wasm_bindgen]
+pub fn get_system_capabilities(elements: &str) -> String {
+    system_capabilities(elements)
+}
+
 /// Build a structured method plan from a JSON element array.
+///
+/// The Rust root calls this `get_system_method_plan`; the `get_` prefix is
+/// not idiomatic and is dropped here (blocker C-M7).  The Rust name is kept
+/// as an alias below.
 #[wasm_bindgen]
 pub fn system_method_plan(elements: &str) -> String {
     let elems = match parse_elements(elements) {
@@ -27,6 +44,15 @@ pub fn system_method_plan(elements: &str) -> String {
         Err(e) => return json_error(&e),
     };
     serialize_or_error(&sci_form::get_system_method_plan(&elems))
+}
+
+/// Build a structured method plan from a JSON element array.
+///
+/// **Alias** of [`system_method_plan`] matching the Rust root name
+/// `sci_form::get_system_method_plan`.
+#[wasm_bindgen]
+pub fn get_system_method_plan(elements: &str) -> String {
+    system_method_plan(elements)
 }
 
 /// Compare available methods on the same system/geometry.

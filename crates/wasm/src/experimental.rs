@@ -4,7 +4,7 @@
 //! All functions accept/return JSON strings.
 
 #[allow(unused_imports)]
-use crate::helpers::{json_error, parse_elements_and_positions};
+use crate::helpers::{invalid_value, json_error, parse_elements_and_positions};
 #[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
@@ -78,7 +78,7 @@ pub fn compute_alpb_solvation(
     };
     let q: Vec<f64> = match serde_json::from_str(charges) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("bad charges: {e}")),
+        Err(e) => return json_error(&bad_json("'charges'", charges, &e)),
     };
     let config = sci_form::solvation_alpb::AlpbConfig {
         solvent_dielectric,
@@ -849,7 +849,13 @@ pub fn compute_edl_profile(
         "helmholtz" => EdlModel::Helmholtz,
         "gouy-chapman" => EdlModel::GouyChapman,
         "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => return json_error(&format!("Unknown EDL model: {}", model)),
+        _ => {
+            return json_error(&invalid_value(
+                "'model'",
+                model,
+                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
+            ))
+        }
     };
     let config = EdlConfig {
         model: edl_model,
@@ -903,7 +909,13 @@ pub fn compute_edl_capacitance_scan(
         "helmholtz" => EdlModel::Helmholtz,
         "gouy-chapman" => EdlModel::GouyChapman,
         "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => return json_error(&format!("Unknown EDL model: {}", model)),
+        _ => {
+            return json_error(&invalid_value(
+                "'model'",
+                model,
+                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
+            ))
+        }
     };
     let config = EdlConfig {
         model: edl_model,
@@ -965,7 +977,7 @@ pub fn compute_htst_sweep(
     use sci_form::alpha::kinetics::*;
     let temperatures: Vec<f64> = match serde_json::from_str(temperatures_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid temperatures JSON: {}", e)),
+        Err(e) => return json_error(&bad_json("'temperatures'", temperatures_json, &e)),
     };
     let step = ElementaryStep {
         step_id: "wasm".into(),
@@ -1003,12 +1015,18 @@ pub fn compute_kmesh(grid_json: &str, centering: &str) -> String {
     use sci_form::alpha::periodic_linear::*;
     let grid: [usize; 3] = match serde_json::from_str(grid_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid grid JSON: {}", e)),
+        Err(e) => return json_error(&bad_json("'grid'", grid_json, &e)),
     };
     let c = match centering {
         "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
         "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
-        _ => return json_error(&format!("Unknown centering: {}", centering)),
+        _ => {
+            return json_error(&invalid_value(
+                "'centering'",
+                centering,
+                &["monkhorst-pack", "mp", "gamma", "gamma-centered"],
+            ))
+        }
     };
     match monkhorst_pack_mesh(&KMeshConfig { grid, centering: c }) {
         Ok(mesh) => {
@@ -1111,8 +1129,10 @@ fn parse_centering(centering: &str) -> Result<sci_form::kmesh::KMeshCentering, S
     match centering {
         "monkhorst-pack" | "mp" => Ok(KMeshCentering::MonkhorstPack),
         "gamma" | "gamma-centered" => Ok(KMeshCentering::GammaCentered),
-        _ => Err(format!(
-            "Unknown centering: {centering}. Use monkhorst-pack or gamma"
+        _ => Err(invalid_value(
+            "'centering'",
+            centering,
+            &["monkhorst-pack", "mp", "gamma", "gamma-centered"],
         )),
     }
 }
@@ -1386,6 +1406,19 @@ pub fn pack_chart_payload_wasm(chart_json: &str) -> String {
     .to_string()
 }
 
+/// Alias of [`pack_chart_payload`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-render-bridge")]
+#[wasm_bindgen]
+pub fn pack_chart_payload(chart_json: &str) -> String {
+    pack_chart_payload_wasm(chart_json)
+}
+
+
+
+
 /// Compute Helmholtz-only profile.
 ///
 /// Returns JSON EDL profile result.
@@ -1518,7 +1551,13 @@ pub fn compute_capacitance_chart(
         "helmholtz" => EdlModel::Helmholtz,
         "gouy-chapman" => EdlModel::GouyChapman,
         "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => return json_error(&format!("Unknown EDL model: {}", model)),
+        _ => {
+            return json_error(&invalid_value(
+                "'model'",
+                model,
+                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
+            ))
+        }
     };
     let config = EdlConfig {
         model: edl_model,
@@ -1630,7 +1669,7 @@ pub fn compute_thermal_prop_chart(
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let temperatures: Vec<f64> = match serde_json::from_str(temperatures_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid temperatures JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'temperatures'", temperatures_json, &e)),
     };
     let step = ElementaryStep {
         step_id: "thermal".to_string(),
@@ -1734,15 +1773,15 @@ pub fn compute_band_structure_chart(
     use sci_form::alpha::render_bridge::band_structure_chart;
     let elements: Vec<u8> = match serde_json::from_str(elements_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid elements JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'elements'", elements_json, &e)),
     };
     let coords: Vec<f64> = match serde_json::from_str(coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'coords'", coords_json, &e)),
     };
     let lattice_values: Vec<f64> = match serde_json::from_str(lattice_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid lattice JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'lattice'", lattice_json, &e)),
     };
     let lattice = match parse_lattice(&lattice_values) {
         Ok(lattice) => lattice,
@@ -1751,7 +1790,7 @@ pub fn compute_band_structure_chart(
     let positions = positions_from_flat(&coords);
     let n_electrons = match sci_form::eht::solve_eht(&elements, &positions, None) {
         Ok(result) => result.n_electrons,
-        Err(e) => return json_error(&format!("EHT failed: {e}")),
+        Err(e) => return json_error(&bad_json("''", lattice_json, &e)),
     };
     let config = BandStructureAdapterConfig {
         n_kpoints_per_segment,
@@ -1879,11 +1918,11 @@ pub fn compute_trajectory_chart(
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let reactant: Vec<f64> = match serde_json::from_str(reactant_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid reactant coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'reactant coords'", reactant_coords_json, &e)),
     };
     let product: Vec<f64> = match serde_json::from_str(product_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid product coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'product coords'", product_coords_json, &e)),
     };
     let result = match gsm_path(smiles, &reactant, &product, method) {
         Ok(result) => result,
@@ -1941,11 +1980,11 @@ pub fn compute_reaction_coordinate_chart(
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let reactant: Vec<f64> = match serde_json::from_str(reactant_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid reactant coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'reactant coords'", reactant_coords_json, &e)),
     };
     let product: Vec<f64> = match serde_json::from_str(product_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid product coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'product coords'", product_coords_json, &e)),
     };
     let result = match gsm_path(smiles, &reactant, &product, method) {
         Ok(result) => result,
@@ -2027,7 +2066,7 @@ pub fn compute_periodic_dos_wasm(
     };
     let grid: [usize; 3] = match serde_json::from_str(grid_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid grid JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'grid'", grid_json, &e)),
     };
     let centering = match parse_centering(centering) {
         Ok(v) => v,
@@ -2067,6 +2106,24 @@ pub fn compute_periodic_dos_wasm(
     }
 }
 
+/// Alias of [`compute_periodic_dos`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
+pub fn compute_periodic_dos(blocks_json: &str,
+    grid_json: &str,
+    centering: &str,
+    order: usize,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+    fermi_energy_ev: Option<f64>,) -> String {
+    compute_periodic_dos_wasm(blocks_json, grid_json, centering, order, e_min, e_max, n_points, fermi_energy_ev)
+}
+
 /// Solve the periodic generalized eigenproblem with the core RandNLA solver.
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
@@ -2089,7 +2146,7 @@ pub fn solve_periodic_randnla_wasm(
     };
     let grid: [usize; 3] = match serde_json::from_str(grid_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid grid JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'grid'", grid_json, &e)),
     };
     let centering = match parse_centering(centering) {
         Ok(v) => v,
@@ -2132,6 +2189,24 @@ pub fn solve_periodic_randnla_wasm(
     }
 }
 
+/// Alias of [`solve_periodic_randnla`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn solve_periodic_randnla(hamiltonian_blocks_json: &str,
+    overlap_blocks_json: &str,
+    n_electrons: usize,
+    grid_json: &str,
+    centering: &str,
+    sketch_size: Option<usize>,) -> String {
+    solve_periodic_randnla_wasm(hamiltonian_blocks_json, overlap_blocks_json, n_electrons, grid_json, centering, sketch_size)
+}
+
+
+
+
 /// Compute the Bloch phase factor for a lattice translation.
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
@@ -2143,6 +2218,19 @@ pub fn bloch_phase_wasm(k_x: f64, k_y: f64, k_z: f64, t_x: i32, t_y: i32, t_z: i
     })
     .to_string()
 }
+
+/// Alias of [`bloch_phase`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn bloch_phase(k_x: f64, k_y: f64, k_z: f64, t_x: i32, t_y: i32, t_z: i32) -> String {
+    bloch_phase_wasm(k_x, k_y, k_z, t_x, t_y, t_z)
+}
+
+
+
 
 /// Build the Bloch Hamiltonian `H(k)` from real-space operator blocks.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2164,6 +2252,19 @@ pub fn build_bloch_hamiltonian_wasm(blocks_json: &str, k_x: f64, k_y: f64, k_z: 
     })
     .to_string()
 }
+
+/// Alias of [`build_bloch_hamiltonian`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn build_bloch_hamiltonian(blocks_json: &str, k_x: f64, k_y: f64, k_z: f64) -> String {
+    build_bloch_hamiltonian_wasm(blocks_json, k_x, k_y, k_z)
+}
+
+
+
 
 /// Assemble periodic Hamiltonians and overlaps for every k-point of a mesh.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2189,7 +2290,7 @@ pub fn assemble_periodic_operators_wasm(
     };
     let grid: [usize; 3] = match serde_json::from_str(grid_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid grid JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'grid'", grid_json, &e)),
     };
     let centering = match parse_centering(centering) {
         Ok(v) => v,
@@ -2219,17 +2320,33 @@ pub fn assemble_periodic_operators_wasm(
     .to_string()
 }
 
+/// Alias of [`assemble_periodic_operators`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn assemble_periodic_operators(hamiltonian_blocks_json: &str,
+    overlap_blocks_json: &str,
+    grid_json: &str,
+    centering: &str,) -> String {
+    assemble_periodic_operators_wasm(hamiltonian_blocks_json, overlap_blocks_json, grid_json, centering)
+}
+
+
+
+
 /// Integrate a scalar observable over the Brillouin zone.
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
 pub fn bz_integrate_scalar_wasm(values_json: &str, weights_json: &str) -> String {
     let values: Vec<f64> = match serde_json::from_str(values_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid values JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'values'", values_json, &e)),
     };
     let weights: Vec<f64> = match serde_json::from_str(weights_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid weights JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'weights'", weights_json, &e)),
     };
     if values.len() != weights.len() {
         return json_error("values and weights must have the same length");
@@ -2238,17 +2355,30 @@ pub fn bz_integrate_scalar_wasm(values_json: &str, weights_json: &str) -> String
     serde_json::json!({"result": result}).to_string()
 }
 
+/// Alias of [`bz_integrate_scalar`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn bz_integrate_scalar(values_json: &str, weights_json: &str) -> String {
+    bz_integrate_scalar_wasm(values_json, weights_json)
+}
+
+
+
+
 /// Integrate a vector observable over the Brillouin zone.
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
 pub fn bz_integrate_vector_wasm(vectors_json: &str, weights_json: &str) -> String {
     let vectors: Vec<Vec<f64>> = match serde_json::from_str(vectors_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid vectors JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'vectors'", vectors_json, &e)),
     };
     let weights: Vec<f64> = match serde_json::from_str(weights_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid weights JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'weights'", weights_json, &e)),
     };
     if vectors.len() != weights.len() {
         return json_error("vectors and weights must have the same length");
@@ -2256,6 +2386,19 @@ pub fn bz_integrate_vector_wasm(vectors_json: &str, weights_json: &str) -> Strin
     let result = sci_form::kmesh::bz_integrate_vector(&vectors, &weights);
     serde_json::json!({"result": result}).to_string()
 }
+
+/// Alias of [`bz_integrate_vector`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn bz_integrate_vector(vectors_json: &str, weights_json: &str) -> String {
+    bz_integrate_vector_wasm(vectors_json, weights_json)
+}
+
+
+
 
 /// Check that the electron count fits into the available band/k-point states.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2271,6 +2414,21 @@ pub fn validate_electron_count_wasm(
     .to_string()
 }
 
+/// Alias of [`validate_electron_count`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn validate_electron_count(n_electrons: usize,
+    n_bands: usize,
+    n_kpoints: usize,) -> String {
+    validate_electron_count_wasm(n_electrons, n_bands, n_kpoints)
+}
+
+
+
+
 /// Verify that k-mesh weights sum to 1 within a tolerance.
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
@@ -2278,7 +2436,7 @@ pub fn validate_kmesh_weights_wasm(weights_json: &str, tolerance: f64) -> String
     use sci_form::kmesh::{KMesh, KMeshCentering, KPoint};
     let weights: Vec<f64> = match serde_json::from_str(weights_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid weights JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'weights'", weights_json, &e)),
     };
     let points: Vec<KPoint> = weights
         .iter()
@@ -2300,6 +2458,19 @@ pub fn validate_kmesh_weights_wasm(weights_json: &str, tolerance: f64) -> String
     })
     .to_string()
 }
+
+/// Alias of [`validate_kmesh_weights`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+pub fn validate_kmesh_weights(weights_json: &str, tolerance: f64) -> String {
+    validate_kmesh_weights_wasm(weights_json, tolerance)
+}
+
+
+
 
 // ─── KINETICS EXPORTS ──────────────────────────────────────────
 
@@ -2330,6 +2501,19 @@ pub fn extract_kinetics_diagnostics_wasm(network_json: &str, n_steps: usize) -> 
     .to_string()
 }
 
+/// Alias of [`extract_kinetics_diagnostics`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-kinetics")]
+#[wasm_bindgen]
+pub fn extract_kinetics_diagnostics(network_json: &str, n_steps: usize) -> String {
+    extract_kinetics_diagnostics_wasm(network_json, n_steps)
+}
+
+
+
+
 /// Solve a microkinetic network and report the resulting trace.
 #[cfg(feature = "alpha-kinetics")]
 #[wasm_bindgen]
@@ -2357,6 +2541,19 @@ pub fn solve_microkinetic_network_wasm(network_json: &str, n_steps: usize) -> St
     })
     .to_string()
 }
+
+/// Alias of [`solve_microkinetic_network`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-kinetics")]
+#[wasm_bindgen]
+pub fn solve_microkinetic_network(network_json: &str, n_steps: usize) -> String {
+    solve_microkinetic_network_wasm(network_json, n_steps)
+}
+
+
+
 
 /// Solve a microkinetic network and propagate it to steady state.
 #[cfg(feature = "alpha-kinetics")]
@@ -2391,6 +2588,21 @@ pub fn solve_microkinetic_steady_state_wasm(
     .to_string()
 }
 
+/// Alias of [`solve_microkinetic_steady_state`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-kinetics")]
+#[wasm_bindgen]
+pub fn solve_microkinetic_steady_state(network_json: &str,
+    n_steps: usize,
+    tol: f64,) -> String {
+    solve_microkinetic_steady_state_wasm(network_json, n_steps, tol)
+}
+
+
+
+
 /// Analyze one GSM + MBH + HTST coupled elementary step.
 #[cfg(feature = "alpha-kinetics")]
 #[wasm_bindgen]
@@ -2406,15 +2618,21 @@ pub fn analyze_gsm_mbh_htst_step_wasm(
     use sci_form::alpha::kinetics::*;
     let reactant: Vec<f64> = match serde_json::from_str(reactant_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid reactant coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'reactant coords'", reactant_coords_json, &e)),
     };
     let product: Vec<f64> = match serde_json::from_str(product_coords_json) {
         Ok(v) => v,
-        Err(e) => return json_error(&format!("Invalid product coords JSON: {e}")),
+        Err(e) => return json_error(&bad_json("'product coords'", product_coords_json, &e)),
     };
     let backend: GsmEnergyBackend = match method.parse() {
         Ok(backend) => backend,
-        Err(e) => return json_error(&format!("unknown GSM backend '{method}': {e}")),
+        Err(e) => {
+            return json_error(&invalid_value(
+                "'method'",
+                method,
+                &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
+            ))
+        }
     };
     let config = HtstAdapterConfig {
         step_id: "elementary-step".to_string(),
@@ -2446,6 +2664,24 @@ pub fn analyze_gsm_mbh_htst_step_wasm(
     }
 }
 
+/// Alias of [`analyze_gsm_mbh_htst_step`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-kinetics")]
+#[wasm_bindgen]
+pub fn analyze_gsm_mbh_htst_step(smiles: &str,
+    reactant_coords_json: &str,
+    product_coords_json: &str,
+    method: &str,
+    temperature_k: f64,
+    pressure_bar: f64,) -> String {
+    analyze_gsm_mbh_htst_step_wasm(smiles, reactant_coords_json, product_coords_json, method, temperature_k, pressure_bar)
+}
+
+
+
+
 // ──── RENDER BRIDGE: chart utilities ──────────────────────────────────────
 
 /// Serialize a chart payload to the canonical wrapper JSON.
@@ -2464,6 +2700,19 @@ pub fn chart_to_json_wasm(chart_json: &str) -> String {
     .to_string()
 }
 
+/// Alias of [`chart_to_json`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-render-bridge")]
+#[wasm_bindgen]
+pub fn chart_to_json(chart_json: &str) -> String {
+    chart_to_json_wasm(chart_json)
+}
+
+
+
+
 /// Deserialize a chart payload (wrapper or bare chart) to chart JSON.
 #[cfg(feature = "alpha-render-bridge")]
 #[wasm_bindgen]
@@ -2475,9 +2724,35 @@ pub fn chart_from_json_wasm(json_str: &str) -> String {
     }
 }
 
+/// Alias of [`chart_from_json`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-render-bridge")]
+#[wasm_bindgen]
+pub fn chart_from_json(json_str: &str) -> String {
+    chart_from_json_wasm(json_str)
+}
+
+
+
+
 /// Validate the structure of a chart payload (wrapper or bare chart).
 #[cfg(feature = "alpha-render-bridge")]
 #[wasm_bindgen]
 pub fn validate_chart_schema_wasm(json_str: &str) -> bool {
     parse_chart(json_str).is_ok()
 }
+
+/// Alias of [`validate_chart_schema`], the name of the Rust root function.
+///
+/// The `_wasm` suffix existed only to avoid a name clash inside the flat
+/// WASM namespace; the canonical name is exported as well (blocker C-H1).
+#[cfg(feature = "alpha-render-bridge")]
+#[wasm_bindgen]
+pub fn validate_chart_schema(json_str: &str) -> bool {
+    validate_chart_schema_wasm(json_str)
+}
+
+
+

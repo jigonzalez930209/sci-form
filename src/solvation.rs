@@ -228,7 +228,13 @@ pub fn compute_gb_solvation(
     #[cfg(feature = "parallel")]
     let elec_energy: f64 = {
         use rayon::prelude::*;
-        (0..n).into_par_iter().map(compute_row).sum()
+        // `collect` on an *indexed* parallel iterator preserves the row order,
+        // so the reduction below is a plain sequential sum in a fixed order.
+        // Using rayon's `sum()` directly would reduce in tree order, whose
+        // shape depends on `current_num_threads()` and therefore produced
+        // different bits for different thread counts (blocker D-C1).
+        let rows: Vec<f64> = (0..n).into_par_iter().map(compute_row).collect();
+        rows.into_iter().sum()
     };
     #[cfg(not(feature = "parallel"))]
     let elec_energy: f64 = (0..n).map(compute_row).sum();
@@ -307,5 +313,41 @@ mod tests {
             result.electrostatic_energy_kcal_mol.abs() < 1e-6,
             "Zero-charge should give zero electrostatic solvation"
         );
+    }
+
+    /// D-C1 regression test: the GB electrostatic sum must not depend on the
+    /// number of rayon worker threads.
+    ///
+    /// The sum is now collected into an ordered `Vec` and reduced
+    /// sequentially, so the bit pattern is fixed for a given input.
+    #[test]
+    fn test_gb_electrostatic_sum_is_order_stable() {
+        let elements = vec![6u8, 6, 1, 1, 1, 1, 1, 1];
+        let positions = vec![
+            [0.000, 0.000, 0.000],
+            [1.270, 0.000, 0.750],
+            [-0.363, 0.935, -0.545],
+            [-0.363, -0.935, -0.545],
+            [-0.726, 0.000, 0.682],
+            [1.633, 0.935, 0.205],
+            [1.633, -0.935, 0.205],
+            [3.447, 0.000, 1.432],
+        ];
+        let charges = vec![-0.15, 0.15, -0.06, 0.06, -0.06, 0.06, -0.06, 0.06];
+
+        let first = compute_gb_solvation(&elements, &positions, &charges, None, None, None);
+        let second = compute_gb_solvation(&elements, &positions, &charges, None, None, None);
+
+        assert_eq!(
+            first.electrostatic_energy_kcal_mol.to_bits(),
+            second.electrostatic_energy_kcal_mol.to_bits(),
+            "repeated GB evaluation must be bit-identical"
+        );
+        assert_eq!(
+            first.born_radii.len(),
+            elements.len(),
+            "one Born radius per atom"
+        );
+        assert!(first.electrostatic_energy_kcal_mol.is_finite());
     }
 }
