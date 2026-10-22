@@ -6,6 +6,10 @@ The npm package is published as **`sci-form-wasm`**.
 npm install sci-form-wasm
 ```
 
+It is a dual package: `import` resolves to the ESM (browser/bundler) build and
+`require` resolves to the CommonJS (Node.js) build. Both halves expose the
+same API.
+
 Every entry point returns a **JSON string**, except the typed-array variants
 (`embed_coords_typed`, `embed_coords_typed_seed64`, `compute_esp_grid_typed`,
 `eht_orbital_grid_typed`, `eht_orbital_grid_from_coefficients_typed`), which return a typed
@@ -27,6 +31,10 @@ Node.js (CommonJS) needs no async initialisation:
 ```javascript
 const sci = require('sci-form-wasm');
 ```
+
+Both entry points come from the same tarball: the `require` condition of the
+package points at the CommonJS half in `cjs/`, which loads its own `.wasm`
+file from disk.
 
 The `alpha` and `beta` research modules are published under the `sci-form-wasm/alpha` and
 `sci-form-wasm/beta` sub-paths.

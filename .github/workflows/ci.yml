@@ -222,8 +222,29 @@ jobs:
           # The ESM package must be ESM and the Node package must be CommonJS.
           node -e "const p=require('./crates/wasm/pkg/package.json'); if (p.type !== 'module') throw new Error('pkg must be ESM, got ' + p.type); if (!p.files.includes('snippets')) throw new Error('pkg.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg is missing the ./alpha export');"
           node -e "const p=require('./crates/wasm/pkg-node/package.json'); if (p.type !== 'commonjs') throw new Error('pkg-node must be CommonJS, got ' + p.type); if (!p.files.includes('snippets')) throw new Error('pkg-node.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg-node is missing the ./alpha export');"
+          # The published package is dual: pkg/cjs/ is the CommonJS half and
+          # the root manifest must point its "require" condition at it.
+          test -f crates/wasm/pkg/cjs/sci_form_wasm.js
+          test -f crates/wasm/pkg/cjs/sci_form_wasm_bg.wasm
+          test -f crates/wasm/pkg/cjs/alpha/index.js
+          test -f crates/wasm/pkg/cjs/beta/index.js
+          node -e "const p=require('./crates/wasm/pkg/package.json'); if (!p.files.includes('cjs')) throw new Error('pkg.files is missing cjs'); if (p.exports['.'].require !== './cjs/sci_form_wasm.js') throw new Error('pkg is missing the CommonJS entry point'); if (p.exports['./alpha'].require !== './cjs/alpha/index.js') throw new Error('pkg is missing the CommonJS ./alpha entry point'); if (p.exports['./beta'].require !== './cjs/beta/index.js') throw new Error('pkg is missing the CommonJS ./beta entry point');"
+          node -e "const p=require('./crates/wasm/pkg/cjs/package.json'); if (p.type !== 'commonjs') throw new Error('pkg/cjs must be CommonJS, got ' + p.type);"
       - name: Verify Node.js install
         run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const alpha = require('./alpha'); const beta = require('./beta'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.assert(typeof sci.alpha_compute_dft === 'function', 'missing alpha root export'); console.assert(typeof sci.beta_compute_kpm_dos === 'function', 'missing beta root export'); console.assert(typeof alpha.alpha_modules_info === 'function', 'missing alpha subpath export'); console.assert(typeof beta.beta_modules_info === 'function', 'missing beta subpath export'); console.log('✓ Node.js WASM works with alpha/beta exports');"
+      # The published package is the dual one in crates/wasm/pkg/.  Packing
+      # it, installing the tarball and requiring it *by name* is the only
+      # check that proves the `exports` map resolves for a real consumer:
+      # `require('sci-form-wasm')` used to be documented but impossible,
+      # because only the browser ESM build was ever published.
+      - name: Verify the published package (pack, install, require by name)
+        run: |
+          cd crates/wasm/pkg
+          npm pack --pack-destination "$RUNNER_TEMP"
+          cd "$RUNNER_TEMP"
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund ./*.tgz
+          node -e "const sci = require('sci-form-wasm'); const alpha = require('sci-form-wasm/alpha'); const beta = require('sci-form-wasm/beta'); const r = JSON.parse(sci.embed('CCO', 42)); if (r.num_atoms !== 9) throw new Error('Expected 9 atoms, got ' + r.num_atoms); if (typeof alpha.alpha_modules_info !== 'function') throw new Error('missing alpha subpath export'); if (typeof beta.beta_modules_info !== 'function') throw new Error('missing beta subpath export'); console.log('✓ the published package resolves through require(sci-form-wasm)');"
       - uses: actions/upload-artifact@v6
         with:
           name: wasm-pkg
