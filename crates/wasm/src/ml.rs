@@ -112,18 +112,9 @@ pub fn compute_whim(elements_json: &str, coords_flat_json: &str, weighting: &str
             Ok(v) => v,
             Err(e) => return crate::helpers::json_error(&e),
         };
-    let w = match weighting.to_ascii_lowercase().as_str() {
-        "unit" | "unweighted" => sci_form::ml::whim::WhimWeighting::Unit,
-        "mass" => sci_form::ml::whim::WhimWeighting::Mass,
-        "volume" | "vdw" => sci_form::ml::whim::WhimWeighting::Volume,
-        "electronegativity" | "en" => sci_form::ml::whim::WhimWeighting::Electronegativity,
-        "polarizability" => sci_form::ml::whim::WhimWeighting::Polarizability,
-        other => {
-            return crate::helpers::json_error(&format!(
-                "unknown WHIM weighting '{other}' (expected unit, mass, volume, \
-                 electronegativity or polarizability)"
-            ))
-        }
+    let w: sci_form::ml::whim::WhimWeighting = match weighting.parse() {
+        Ok(w) => w,
+        Err(e) => return crate::helpers::json_error(&e),
     };
     crate::helpers::serialize_or_error(&sci_form::ml::whim::compute_whim(&elements, &positions, w))
 }

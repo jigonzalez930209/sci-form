@@ -783,3 +783,50 @@ fn c_h4_vacuum_dielectric_still_works() {
     assert!(r.electrostatic_energy_kcal_mol.abs() < 1e-12);
     assert!(r.total_energy_kcal_mol.is_finite());
 }
+
+// ─── Method names are parsed in the core (C-H3) ─────────────────────────────
+//
+// The bindings used to parse the method name with their own `match`, and the
+// copies drifted apart: the orbital mesh accepted nine aliases but its error
+// message listed four, the DOS multimethod had the same `match` three times,
+// and the IR broadening fell back to the Lorentzian shape for anything that
+// was not "gaussian" — so the typo `gauassian` silently changed the line
+// shape.
+
+#[test]
+fn c_h3_a_misspelled_line_shape_is_an_error_not_a_lorentzian_fallback() {
+    let (elements, positions) = water();
+    let analysis = sci_form::compute_vibrational_analysis(&elements, &positions, "pm3", None)
+        .expect("the PM3 vibrational analysis must run");
+    let err =
+        sci_form::compute_ir_spectrum_broadened(&analysis, 10.0, 400.0, 4000.0, 100, "gauassian")
+            .expect_err("a misspelled line shape must be rejected");
+    assert!(err.contains("'gaussian'"), "unexpected error: {}", err);
+    assert!(err.contains("'lorentzian'"), "unexpected error: {}", err);
+}
+
+#[test]
+fn c_h3_an_unknown_orbital_mesh_method_lists_every_supported_method() {
+    let (elements, positions) = water();
+    let err = sci_form::compute_orbital_mesh(&elements, &positions, "dft", 0, 0.4, 3.0, 0.02)
+        .expect_err("an unknown method must be rejected");
+    for method in ["eht", "pm3", "xtb", "hf3c"] {
+        assert!(
+            err.contains(method),
+            "the error must list '{method}': {err}"
+        );
+    }
+}
+
+#[test]
+fn c_h3_an_unknown_vibrational_method_lists_every_supported_method() {
+    let (elements, positions) = water();
+    let err = sci_form::compute_vibrational_analysis(&elements, &positions, "ccsd", None)
+        .expect_err("an unknown method must be rejected");
+    for method in ["eht", "pm3", "xtb", "uff"] {
+        assert!(
+            err.contains(method),
+            "the error must list '{method}': {err}"
+        );
+    }
+}

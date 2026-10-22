@@ -134,9 +134,9 @@ pub fn alpha_compute_dft(elements_json: &str, coords_flat_json: &str, method: &s
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let dft_method = match method.to_lowercase().as_str() {
-        "svwn" | "lda" => sci_form::dft::ks_fock::DftMethod::Svwn,
-        _ => sci_form::dft::ks_fock::DftMethod::Pbe,
+    let dft_method: sci_form::dft::ks_fock::DftMethod = match method.parse() {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
     };
     let config = sci_form::dft::ks_fock::DftConfig {
         method: dft_method,

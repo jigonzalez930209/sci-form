@@ -66,10 +66,7 @@ mod dft_py {
         method: &str,
     ) -> PyResult<DftResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-        let dft_method = match method.to_lowercase().as_str() {
-            "svwn" | "lda" => DftMethod::Svwn,
-            _ => DftMethod::Pbe,
-        };
+        let dft_method: DftMethod = method.parse().map_err(crate::errors::value_error)?;
         let config = DftConfig {
             method: dft_method,
             ..Default::default()

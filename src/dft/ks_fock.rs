@@ -34,6 +34,35 @@ pub enum DftMethod {
     Pbe,
 }
 
+impl DftMethod {
+    /// The canonical names of the supported functionals.
+    pub const SUPPORTED: &'static [&'static str] = &["svwn", "pbe"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("svwn", "svwn"),
+        ("lda", "svwn"),
+        ("pbe", "pbe"),
+        ("gga", "pbe"),
+    ];
+}
+
+impl std::str::FromStr for DftMethod {
+    type Err = String;
+
+    /// Parse a functional name.
+    ///
+    /// An unknown name is an error that lists every canonical functional.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "svwn" => Self::Svwn,
+            "pbe" => Self::Pbe,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Configuration for KS-DFT calculation.
 #[derive(Debug, Clone)]
 pub struct DftConfig {

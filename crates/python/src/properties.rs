@@ -1,6 +1,6 @@
 //! Property bindings: charges, SASA, dipole, DOS, RMSD.
 
-use crate::errors::{engine_error, invalid_value, value_error};
+use crate::errors::{engine_error, value_error};
 use crate::system::coords_to_positions;
 use pyo3::prelude::*;
 
@@ -299,21 +299,8 @@ fn compute_dos_multimethod(
     n_points: usize,
 ) -> PyResult<MultiMethodDosResultPy> {
     let positions = coords_to_positions(&coords);
-    let dos_method = match method.to_ascii_lowercase().as_str() {
-        "eht" => sci_form_core::dos::multi_method::DosMethod::Eht,
-        "pm3" => sci_form_core::dos::multi_method::DosMethod::Pm3,
-        "xtb" | "gfn0" => sci_form_core::dos::multi_method::DosMethod::Xtb,
-        "gfn1" => sci_form_core::dos::multi_method::DosMethod::Gfn1,
-        "gfn2" => sci_form_core::dos::multi_method::DosMethod::Gfn2,
-        "hf3c" | "hf-3c" => sci_form_core::dos::multi_method::DosMethod::Hf3c,
-        other => {
-            return Err(value_error(invalid_value(
-                "'method'",
-                other,
-                &["eht", "pm3", "xtb", "gfn1", "gfn2", "hf3c"],
-            )))
-        }
-    };
+    let dos_method: sci_form_core::dos::multi_method::DosMethod =
+        method.parse().map_err(crate::errors::value_error)?;
     sci_form_core::dos::multi_method::compute_dos_multimethod(
         &elements, &positions, dos_method, sigma, e_min, e_max, n_points,
     )

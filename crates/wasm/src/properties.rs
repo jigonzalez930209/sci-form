@@ -152,20 +152,9 @@ pub fn compute_dos_multimethod(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let dos_method = match method.to_ascii_lowercase().as_str() {
-        "eht" => sci_form::dos::multi_method::DosMethod::Eht,
-        "pm3" => sci_form::dos::multi_method::DosMethod::Pm3,
-        "xtb" | "gfn0" => sci_form::dos::multi_method::DosMethod::Xtb,
-        "gfn1" => sci_form::dos::multi_method::DosMethod::Gfn1,
-        "gfn2" => sci_form::dos::multi_method::DosMethod::Gfn2,
-        "hf3c" | "hf-3c" => sci_form::dos::multi_method::DosMethod::Hf3c,
-        other => {
-            return json_error(&invalid_value(
-                "'method'",
-                other,
-                &["eht", "pm3", "xtb", "gfn1", "gfn2", "hf3c"],
-            ))
-        }
+    let dos_method: sci_form::dos::multi_method::DosMethod = match method.parse() {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
     };
     match sci_form::dos::multi_method::compute_dos_multimethod(
         &elems, &positions, dos_method, sigma, e_min, e_max, n_points,

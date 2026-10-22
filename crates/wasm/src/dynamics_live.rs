@@ -27,10 +27,9 @@ impl LiveSimulation {
     pub fn new(smiles: &str, coords_flat: &str, backend: &str) -> Result<LiveSimulation, JsValue> {
         let flat: Vec<f64> = parse_flat_coords(coords_flat).map_err(|e| JsValue::from_str(&e))?;
 
-        let md_backend = match backend {
-            "pm3" => sci_form::dynamics::MdBackend::Pm3,
-            "xtb" => sci_form::dynamics::MdBackend::Xtb,
-            _ => sci_form::dynamics::MdBackend::Uff,
+        let md_backend: sci_form::dynamics::MdBackend = match backend.parse() {
+            Ok(b) => b,
+            Err(e) => return Err(JsValue::from_str(&e)),
         };
 
         let conf = sci_form::embed(smiles, 42);

@@ -51,6 +51,48 @@ pub enum WhimWeighting {
     Polarizability,
 }
 
+impl WhimWeighting {
+    /// The canonical names of the supported weightings.
+    pub const SUPPORTED: &'static [&'static str] = &[
+        "unit",
+        "mass",
+        "volume",
+        "electronegativity",
+        "polarizability",
+    ];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("unit", "unit"),
+        ("unweighted", "unit"),
+        ("mass", "mass"),
+        ("volume", "volume"),
+        ("vdw", "volume"),
+        ("electronegativity", "electronegativity"),
+        ("en", "electronegativity"),
+        ("polarizability", "polarizability"),
+    ];
+}
+
+impl std::str::FromStr for WhimWeighting {
+    type Err = String;
+
+    /// Parse a weighting name.
+    ///
+    /// An unknown name is an error that lists every canonical weighting.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "unit" => Self::Unit,
+            "mass" => Self::Mass,
+            "volume" => Self::Volume,
+            "electronegativity" => Self::Electronegativity,
+            "polarizability" => Self::Polarizability,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Compute WHIM descriptors from 3D coordinates with specified weighting.
 pub fn compute_whim(
     elements: &[u8],

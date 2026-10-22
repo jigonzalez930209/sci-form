@@ -1109,6 +1109,9 @@ def compute_ir_spectrum_broadened(
 ) -> IrSpectrum
 ```
 
+An unknown `broadening` raises `ValueError`: the value used to fall back to
+the Lorentzian shape, so the typo `gauassian` silently changed the spectrum.
+
 Same as `compute_ir_spectrum` but with a selectable broadening type (`gaussian` or
 `lorentzian`). `step_size` is the finite-difference step in **Å** (`None` uses the engine
 default) and `smiles` is required when `method="uff"`.

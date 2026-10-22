@@ -26,6 +26,45 @@ pub enum DosMethod {
     Hf3c,
 }
 
+impl DosMethod {
+    /// The canonical names of the supported methods.
+    pub const SUPPORTED: &'static [&'static str] = &["eht", "pm3", "xtb", "gfn1", "gfn2", "hf3c"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("eht", "eht"),
+        ("huckel", "eht"),
+        ("pm3", "pm3"),
+        ("xtb", "xtb"),
+        ("gfn0", "xtb"),
+        ("gfn-xtb", "xtb"),
+        ("gfn1", "gfn1"),
+        ("gfn2", "gfn2"),
+        ("hf3c", "hf3c"),
+        ("hf-3c", "hf3c"),
+    ];
+}
+
+impl std::str::FromStr for DosMethod {
+    type Err = String;
+
+    /// Parse a method name.
+    ///
+    /// An unknown name is an error that lists every canonical method.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "eht" => Self::Eht,
+            "pm3" => Self::Pm3,
+            "xtb" => Self::Xtb,
+            "gfn1" => Self::Gfn1,
+            "gfn2" => Self::Gfn2,
+            "hf3c" => Self::Hf3c,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Multi-method DOS result extending base DosResult.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MultiMethodDosResult {

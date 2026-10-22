@@ -344,20 +344,8 @@ fn compute_whim(
     weighting: &str,
 ) -> PyResult<WhimDescriptorsPy> {
     let positions = crate::system::coords_to_positions(&coords);
-    let w = match weighting.to_ascii_lowercase().as_str() {
-        "unit" | "unweighted" => sci_form_core::ml::whim::WhimWeighting::Unit,
-        "mass" => sci_form_core::ml::whim::WhimWeighting::Mass,
-        "volume" | "vdw" => sci_form_core::ml::whim::WhimWeighting::Volume,
-        "electronegativity" | "en" => sci_form_core::ml::whim::WhimWeighting::Electronegativity,
-        "polarizability" => sci_form_core::ml::whim::WhimWeighting::Polarizability,
-        other => {
-            return Err(crate::errors::value_error(format!(
-                "Invalid 'weighting' '{}'. Supported: 'unit', 'unweighted', 'mass', \
-                 'volume', 'vdw', 'electronegativity', 'en', 'polarizability'.",
-                other
-            )))
-        }
-    };
+    let w: sci_form_core::ml::whim::WhimWeighting =
+        weighting.parse().map_err(crate::errors::value_error)?;
     let d = sci_form_core::ml::whim::compute_whim(&elements, &positions, w);
     Ok(WhimDescriptorsPy {
         eigenvalues: d.eigenvalues,

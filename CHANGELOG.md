@@ -65,6 +65,17 @@ capability is the Rust root name in all four surfaces.
 
 ### Fixed
 
+- **A misspelled method name silently changed the result.** The method names
+  were parsed by every binding with its own `match`, and the copies had
+  drifted apart: the orbital mesh accepted nine aliases but its error
+  message listed four, the DOS multimethod had the same `match` three
+  times, and the IR broadening fell back to the **Lorentzian** shape for
+  anything that was not `"gaussian"` — so the typo `gauassian` changed the
+  line shape without a word. The parsing now lives in the core, next to the
+  enum it produces, and every surface reports the same error:
+  `Invalid method 'gauassian'. Supported: 'gaussian', 'lorentzian'.`
+  `compute_ir_spectrum_broadened` now returns a `Result` instead of
+  silently choosing a shape.
 - **The published wheel and npm package shipped fewer capabilities than CI
   tested.** The release workflow carried its own copy of the feature lists
   and that copy had fallen behind: the published Python wheel and npm

@@ -137,18 +137,8 @@ pub fn cmd_assemble(topology: &str, a: f64, metal: u8, geometry: &str, supercell
             ));
         }
     };
-    let topo = match topology {
-        "pcu" => sci_form::materials::Topology::pcu(),
-        "dia" => sci_form::materials::Topology::dia(),
-        "sql" => sci_form::materials::Topology::sql(),
-        _ => {
-            fail(crate::format::invalid_value(
-                "'topology'",
-                topology,
-                &["pcu", "dia", "sql"],
-            ));
-        }
-    };
+    let topo = sci_form::materials::Topology::from_name(topology)
+        .unwrap_or_else(|e| fail(format!("Topology error: {e}")));
     let node = sci_form::materials::Sbu::metal_node(metal, 0.0, geom);
     let linker = sci_form::materials::Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
     let cell = sci_form::materials::UnitCell::cubic(a);
@@ -434,6 +424,13 @@ pub fn cmd_ir_spectrum_broadened(
     let spectrum = sci_form::compute_ir_spectrum_broadened(
         &analysis, gamma, wn_min, wn_max, n_points, broadening,
     );
+    let spectrum = match spectrum {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("IR spectrum error: {}", e);
+            std::process::exit(1);
+        }
+    };
     println!("{}", serde_json::to_string_pretty(&spectrum).unwrap());
 }
 
@@ -484,21 +481,9 @@ pub fn cmd_dos_multimethod(
     n_points: usize,
 ) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let dos_method = match method.to_ascii_lowercase().as_str() {
-        "eht" => sci_form::dos::multi_method::DosMethod::Eht,
-        "pm3" => sci_form::dos::multi_method::DosMethod::Pm3,
-        "xtb" | "gfn0" => sci_form::dos::multi_method::DosMethod::Xtb,
-        "gfn1" => sci_form::dos::multi_method::DosMethod::Gfn1,
-        "gfn2" => sci_form::dos::multi_method::DosMethod::Gfn2,
-        "hf3c" | "hf-3c" => sci_form::dos::multi_method::DosMethod::Hf3c,
-        other => {
-            eprintln!(
-                "Invalid 'method' '{}'. Supported: 'eht', 'pm3', 'xtb', 'gfn1', 'gfn2', 'hf3c'.",
-                other
-            );
-            std::process::exit(1);
-        }
-    };
+    let dos_method: sci_form::dos::multi_method::DosMethod = method
+        .parse()
+        .unwrap_or_else(|e| fail(format!("DOS method error: {e}")));
     match sci_form::dos::multi_method::compute_dos_multimethod(
         &elems, &positions, dos_method, sigma, e_min, e_max, n_points,
     ) {
@@ -560,21 +545,9 @@ pub fn cmd_aevs_tm(elements: &str, coords: &str) {
 
 pub fn cmd_whim(elements: &str, coords: &str, weighting: &str) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
-    let w = match weighting.to_ascii_lowercase().as_str() {
-        "unit" | "unweighted" => sci_form::ml::whim::WhimWeighting::Unit,
-        "mass" => sci_form::ml::whim::WhimWeighting::Mass,
-        "volume" | "vdw" => sci_form::ml::whim::WhimWeighting::Volume,
-        "electronegativity" | "en" => sci_form::ml::whim::WhimWeighting::Electronegativity,
-        "polarizability" => sci_form::ml::whim::WhimWeighting::Polarizability,
-        other => {
-            eprintln!(
-                "Invalid 'weighting' '{}'. Supported: 'unit', 'unweighted', 'mass', \
-                 'volume', 'vdw', 'electronegativity', 'en', 'polarizability'.",
-                other
-            );
-            std::process::exit(1);
-        }
-    };
+    let w: sci_form::ml::whim::WhimWeighting = weighting
+        .parse()
+        .unwrap_or_else(|e| fail(format!("WHIM weighting error: {e}")));
     let result = sci_form::ml::whim::compute_whim(&elems, &positions, w);
     println!("{}", serde_json::to_string_pretty(&result).unwrap());
 }
@@ -851,17 +824,9 @@ pub fn cmd_optimize_framework(
     let initial_positions: Vec<[f64; 3]> =
         flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
 
-    let opt_method = match method.to_ascii_lowercase().as_str() {
-        "bfgs" => sci_form::materials::geometry_opt::OptMethod::Bfgs,
-        "steepest_descent" | "sd" => sci_form::materials::geometry_opt::OptMethod::SteepestDescent,
-        other => {
-            fail(crate::format::invalid_value(
-                "'method'",
-                other,
-                &["bfgs", "steepest_descent", "sd"],
-            ));
-        }
-    };
+    let opt_method: sci_form::materials::geometry_opt::OptMethod = method
+        .parse()
+        .unwrap_or_else(|e| fail(format!("Optimiser error: {e}")));
     // `--fixed-atoms` omitted means "fix no atom" (blocker C-M5).
     let fixed: Vec<usize> =
         crate::format::parse_usize_list(fixed_atoms, "'fixed atoms'").unwrap_or_default();

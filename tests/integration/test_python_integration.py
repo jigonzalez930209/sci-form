@@ -502,6 +502,46 @@ def test_parse_cif_rejects_garbage():
         sci_form.parse_cif("not a cif file")
 
 
+# ─── Method names (C-H3) ────────────────────────────────────────────────────
+
+
+def test_ir_spectrum_rejects_a_misspelled_line_shape():
+    """The broadening used to fall back to Lorentzian for anything that was
+    not "gaussian", so the typo silently changed the spectrum."""
+    with pytest.raises(ValueError) as excinfo:
+        sci_form.compute_ir_spectrum_broadened(
+            E, C, method="pm3", gamma=10.0, wn_min=400.0, wn_max=4000.0,
+            n_points=100, broadening="gauassian",
+        )
+    message = str(excinfo.value)
+    assert "gaussian" in message
+    assert "lorentzian" in message
+
+
+def test_dos_multimethod_rejects_an_unknown_method():
+    with pytest.raises(ValueError) as excinfo:
+        sci_form.compute_dos_multimethod(E, C, "ccsd")
+    message = str(excinfo.value)
+    for method in ("eht", "pm3", "xtb", "gfn1", "gfn2", "hf3c"):
+        assert method in message
+
+
+def test_orbital_mesh_rejects_an_unknown_method():
+    with pytest.raises(ValueError) as excinfo:
+        sci_form.compute_orbital_mesh(E, C, "dft", 0, 0.4, 3.0, 0.02)
+    message = str(excinfo.value)
+    for method in ("eht", "pm3", "xtb", "hf3c"):
+        assert method in message
+
+
+def test_whim_rejects_an_unknown_weighting():
+    with pytest.raises(ValueError) as excinfo:
+        sci_form.compute_whim(E, C, "gravitational")
+    message = str(excinfo.value)
+    assert "mass" in message
+    assert "volume" in message
+
+
 # ─── Rings, fingerprints, clustering ─────────────────────────────────────────
 
 

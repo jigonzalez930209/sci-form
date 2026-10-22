@@ -142,18 +142,9 @@ pub fn cmd_edl_profile(
     extent_angstrom: f64,
 ) {
     use sci_form::alpha::edl::*;
-    let edl_model = match model {
-        "helmholtz" => EdlModel::Helmholtz,
-        "gouy-chapman" => EdlModel::GouyChapman,
-        "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => {
-            crate::format::fail(crate::format::invalid_value(
-                "'model'",
-                model,
-                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
-            ));
-        }
-    };
+    let edl_model: EdlModel = model
+        .parse()
+        .unwrap_or_else(|e| crate::format::fail(format!("EDL model error: {e}")));
     let config = EdlConfig {
         model: edl_model,
         temperature_k,
@@ -198,18 +189,9 @@ pub fn cmd_edl_capacitance_scan(
     model: &str,
 ) {
     use sci_form::alpha::edl::*;
-    let edl_model = match model {
-        "helmholtz" => EdlModel::Helmholtz,
-        "gouy-chapman" => EdlModel::GouyChapman,
-        "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => {
-            crate::format::fail(crate::format::invalid_value(
-                "'model'",
-                model,
-                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
-            ));
-        }
-    };
+    let edl_model: EdlModel = model
+        .parse()
+        .unwrap_or_else(|e| crate::format::fail(format!("EDL model error: {e}")));
     let config = EdlConfig {
         model: edl_model,
         ionic_strength_m,
@@ -567,18 +549,9 @@ pub fn cmd_capacitance_chart(
 ) {
     use sci_form::alpha::edl::*;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
-    let edl_model = match model {
-        "helmholtz" => EdlModel::Helmholtz,
-        "gouy-chapman" => EdlModel::GouyChapman,
-        "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => {
-            crate::format::fail(crate::format::invalid_value(
-                "'model'",
-                model,
-                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
-            ));
-        }
-    };
+    let edl_model: EdlModel = model
+        .parse()
+        .unwrap_or_else(|e| crate::format::fail(format!("EDL model error: {e}")));
     let config = EdlConfig {
         model: edl_model,
         ionic_strength_m,

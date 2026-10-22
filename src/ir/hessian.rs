@@ -21,6 +21,40 @@ pub enum HessianMethod {
     Uff,
 }
 
+impl HessianMethod {
+    /// The canonical names of the supported methods.
+    pub const SUPPORTED: &'static [&'static str] = &["eht", "pm3", "xtb", "uff"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("eht", "eht"),
+        ("huckel", "eht"),
+        ("pm3", "pm3"),
+        ("xtb", "xtb"),
+        ("gfn2", "xtb"),
+        ("gfn-xtb", "xtb"),
+        ("uff", "uff"),
+    ];
+}
+
+impl std::str::FromStr for HessianMethod {
+    type Err = String;
+
+    /// Parse a method name.
+    ///
+    /// An unknown name is an error that lists every canonical method.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "eht" => Self::Eht,
+            "pm3" => Self::Pm3,
+            "xtb" => Self::Xtb,
+            "uff" => Self::Uff,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Evaluate total energy for a given method and geometry.
 fn evaluate_energy(
     method: HessianMethod,

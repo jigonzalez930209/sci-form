@@ -51,17 +51,9 @@ pub fn assemble_framework(
             ))
         }
     };
-    let topo = match topology {
-        "pcu" => sci_form::materials::Topology::pcu(),
-        "dia" => sci_form::materials::Topology::dia(),
-        "sql" => sci_form::materials::Topology::sql(),
-        _ => {
-            return crate::helpers::json_error(&crate::helpers::invalid_value(
-                "'topology'",
-                topology,
-                &["pcu", "dia", "sql"],
-            ))
-        }
+    let topo = match sci_form::materials::Topology::from_name(topology) {
+        Ok(t) => t,
+        Err(e) => return crate::helpers::json_error(&e),
     };
     let node = sci_form::materials::Sbu::metal_node(metal, 0.0, geom);
     let linker = sci_form::materials::Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
@@ -203,16 +195,9 @@ pub fn optimize_framework(
     let initial_positions: Vec<[f64; 3]> =
         flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
 
-    let opt_method = match method.to_ascii_lowercase().as_str() {
-        "bfgs" => sci_form::materials::geometry_opt::OptMethod::Bfgs,
-        "steepest_descent" | "sd" => sci_form::materials::geometry_opt::OptMethod::SteepestDescent,
-        other => {
-            return json_error(&crate::helpers::invalid_value(
-                "'method'",
-                other,
-                &["bfgs", "steepest_descent", "sd"],
-            ))
-        }
+    let opt_method: sci_form::materials::geometry_opt::OptMethod = match method.parse() {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
     };
 
     let fixed_atoms: Vec<usize> = if fixed_atoms_json.is_empty() {

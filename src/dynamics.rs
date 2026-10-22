@@ -47,6 +47,37 @@ pub enum MdBackend {
     Xtb,
 }
 
+impl MdBackend {
+    /// The canonical names of the supported backends.
+    pub const SUPPORTED: &'static [&'static str] = &["uff", "pm3", "xtb"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("uff", "uff"),
+        ("pm3", "pm3"),
+        ("xtb", "xtb"),
+        ("gfn0", "xtb"),
+        ("gfn-xtb", "xtb"),
+    ];
+}
+
+impl std::str::FromStr for MdBackend {
+    type Err = String;
+
+    /// Parse a backend name.
+    ///
+    /// An unknown name is an error that lists every canonical backend.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "uff" => Self::Uff,
+            "pm3" => Self::Pm3,
+            "xtb" => Self::Xtb,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Energy backend for NEB path calculations.
 ///
 /// Supports all methods that can provide energy and gradients (analytical

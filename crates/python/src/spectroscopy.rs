@@ -115,10 +115,8 @@ fn compute_stda_uvvis(
         )));
     }
     let positions = coords_to_positions(&coords);
-    let bt = match broadening {
-        "lorentzian" | "Lorentzian" => sci_form_core::reactivity::BroadeningType::Lorentzian,
-        _ => sci_form_core::reactivity::BroadeningType::Gaussian,
-    };
+    let bt: sci_form_core::reactivity::BroadeningType =
+        broadening.parse().map_err(crate::errors::value_error)?;
     sci_form_core::compute_stda_uvvis(&elements, &positions, sigma, e_min, e_max, n_points, bt)
         .map(|r| StdaUvVisSpectrumPy {
             energies_ev: r.energies_ev,
@@ -219,10 +217,8 @@ fn compute_fluorescence(
         )));
     }
     let positions = coords_to_positions(&coords);
-    let bt = match broadening {
-        "lorentzian" | "Lorentzian" => sci_form_core::reactivity::BroadeningType::Lorentzian,
-        _ => sci_form_core::reactivity::BroadeningType::Gaussian,
-    };
+    let bt: sci_form_core::reactivity::BroadeningType =
+        broadening.parse().map_err(crate::errors::value_error)?;
     let config = sci_form_core::spectroscopy::FluorescenceConfig {
         sigma,
         e_min,
@@ -269,6 +265,13 @@ fn compute_vibrational_analysis(
         )));
     }
     let positions = coords_to_positions(&coords);
+    // The method name is the caller's input: a wrong one is a ValueError,
+    // not an engine failure.
+    if !method.eq_ignore_ascii_case("uff") {
+        method
+            .parse::<sci_form_core::ir::HessianMethod>()
+            .map_err(crate::errors::value_error)?;
+    }
 
     let analysis = if method.eq_ignore_ascii_case("uff") {
         let smiles = smiles.ok_or_else(|| {
@@ -464,7 +467,8 @@ fn compute_ir_spectrum_broadened(
     .map_err(crate::errors::engine_error)?;
     let spectrum = sci_form_core::compute_ir_spectrum_broadened(
         &analysis, gamma, wn_min, wn_max, n_points, broadening,
-    );
+    )
+    .map_err(crate::errors::value_error)?;
     Ok(IrSpectrumPy {
         wavenumbers: spectrum.wavenumbers,
         intensities: spectrum.intensities,
