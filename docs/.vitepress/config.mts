@@ -82,6 +82,12 @@ export default defineConfig({
             { text: 'Portabilidad del backend GPU', link: '/guide/gpu-portabilidad' },
           ],
         },
+        {
+          text: 'Upgrading',
+          items: [
+            { text: 'Migrating to 1.0', link: '/guide/migration-1.0' },
+          ],
+        },
       ],
       '/algorithm/': [
         {
@@ -204,6 +210,12 @@ export default defineConfig({
             { text: 'Dynamics & Reactivity', link: '/dynamics_reactivity_roadmap' },
             { text: 'NMR — Detailed Plan', link: '/nmr_detailed_roadmap' },
             { text: 'Spectroscopy (Track D)', link: '/spectroscopy_roadmap' },
+          ],
+        },
+        {
+          text: 'Releasing',
+          items: [
+            { text: 'v1.0.0 Release Checklist', link: '/release-checklist-1.0' },
           ],
         },
       ],

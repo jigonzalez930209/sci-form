@@ -51,6 +51,17 @@ pub struct CiNebConfig {
     pub relax_max_steps: usize,
 }
 
+/// Maximum Cartesian displacement of any single atom in one NEB iteration,
+/// in Å.
+///
+/// A CI-NEB image can end up very close to a singular geometry (two atoms
+/// almost on top of each other), where the energy gradient is enormous and
+/// points in a nearly random direction. Without a cap, one iteration can
+/// throw an atom across the molecule, into a *more* singular geometry, and
+/// the path diverges into `NaN`. 0.5 Å is generous for a well-behaved
+/// geometry and small enough to keep the FIRE damping in control.
+const MAX_ATOMIC_DISPLACEMENT: f64 = 0.5;
+
 fn default_true() -> bool {
     true
 }
@@ -237,22 +248,41 @@ pub fn compute_ci_neb_path(
             })
             .collect();
         for (i, r) in par_energies.into_iter().enumerate() {
-            energies[i] = r?;
+            let e = r?;
+            if !e.is_finite() {
+                return Err(format!(
+                    "CI-NEB image {i} has a non-finite energy ({e}): the starting \
+                     geometry is singular (two atoms are effectively on top of \
+                     each other)"
+                ));
+            }
+            energies[i] = e;
         }
     }
     #[cfg(not(feature = "parallel"))]
     {
         for i in 0..n_images {
             let mut grad = vec![0.0; n_xyz];
-            energies[i] = crate::dynamics::neb_energy_and_gradient(
+            let e = crate::dynamics::neb_energy_and_gradient(
                 backend, smiles, elements, &mol, &images[i], &mut grad,
             )?;
+            if !e.is_finite() {
+                return Err(format!(
+                    "CI-NEB image {i} has a non-finite energy ({e}): the starting \
+                     geometry is singular (two atoms are effectively on top of \
+                     each other)"
+                ));
+            }
+            energies[i] = e;
         }
     }
 
     let mut converged = false;
     let mut max_force = f64::INFINITY;
     let mut actual_iter = 0;
+    // Number of optimisation steps that were rolled back because the
+    // geometry was singular (a non-finite energy or gradient).
+    let mut rejected_steps = 0usize;
 
     // ── 3. FIRE optimizer state (per image) ──
     let n_interior = n_images - 2;
@@ -289,10 +319,41 @@ pub fn compute_ci_neb_path(
         for i in 1..(n_images - 1) {
             let img_i = i - 1; // index into velocities/dt/alpha arrays
 
+            // Remember the geometry so a rejected step can be rolled back.
+            let previous_image = images[i].clone();
+
             let mut grad = vec![0.0; n_xyz];
-            let energy = crate::dynamics::neb_energy_and_gradient(
+            let energy = match crate::dynamics::neb_energy_and_gradient(
                 backend, smiles, elements, &mol, &images[i], &mut grad,
-            )?;
+            ) {
+                Ok(e) => e,
+                Err(_) => {
+                    // The backend failed on this geometry (a failed SCF, a
+                    // singular contact). Roll the image back instead of
+                    // aborting the whole path.
+                    images[i] = previous_image;
+                    velocities[img_i] = vec![0.0; n_xyz];
+                    dt[img_i] = (dt[img_i] * fire_f_dec).max(config.step_size * 0.01);
+                    alpha_fire[img_i] = fire_alpha_start;
+                    n_positive[img_i] = 0;
+                    rejected_steps += 1;
+                    continue;
+                }
+            };
+
+            // A non-finite energy or gradient means the geometry has fallen
+            // into a singularity (two atoms effectively on top of each other,
+            // so the 1/r terms overflow). Rolling the step back here is what
+            // keeps a `NaN` from propagating into every remaining image.
+            if !energy.is_finite() || grad.iter().any(|g| !g.is_finite()) {
+                images[i] = previous_image;
+                velocities[img_i] = vec![0.0; n_xyz];
+                dt[img_i] = (dt[img_i] * fire_f_dec).max(config.step_size * 0.01);
+                alpha_fire[img_i] = fire_alpha_start;
+                n_positive[img_i] = 0;
+                rejected_steps += 1;
+                continue;
+            }
             energies[i] = energy;
 
             // Real force = -gradient
@@ -356,7 +417,20 @@ pub fn compute_ci_neb_path(
             // Velocity Verlet-like step
             for k in 0..n_xyz {
                 velocities[img_i][k] += dt[img_i] * neb_force[k];
-                images[i][k] += dt[img_i] * velocities[img_i][k];
+            }
+
+            // Cap the displacement: a single atom must not be able to jump
+            // across the molecule in one iteration (see
+            // `MAX_ATOMIC_DISPLACEMENT`).
+            let displacement: Vec<f64> = velocities[img_i].iter().map(|v| dt[img_i] * v).collect();
+            let displacement_norm = displacement.iter().map(|d| d * d).sum::<f64>().sqrt();
+            let scale = if displacement_norm > MAX_ATOMIC_DISPLACEMENT {
+                MAX_ATOMIC_DISPLACEMENT / displacement_norm
+            } else {
+                1.0
+            };
+            for k in 0..n_xyz {
+                images[i][k] += scale * displacement[k];
             }
         }
 
@@ -448,6 +522,13 @@ pub fn compute_ci_neb_path(
     }
     if config.relax_images {
         notes.push("Post-NEB perpendicular image relaxation applied.".into());
+    }
+    if rejected_steps > 0 {
+        notes.push(format!(
+            "{rejected_steps} optimisation step(s) were rejected because the image \
+             reached a singular geometry (a non-finite energy or gradient); the \
+             previous geometry was restored and the time step was reduced."
+        ));
     }
 
     Ok(CiNebResult {

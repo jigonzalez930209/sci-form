@@ -49,6 +49,7 @@ struct OracleMolecule {
 /// Phase 1: Test SMILES parsing for all 10k molecules.
 /// Reports parse failures and atom count mismatches vs RDKit.
 #[test]
+#[ignore = "benchmark: 10k molecules, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_smiles_parsing_10k() {
     let smiles_data =
         fs::read_to_string("scripts/10k_smiles.smi").expect("Should read 10k_smiles.smi");
@@ -165,6 +166,7 @@ fn test_smiles_parsing_10k() {
 
 /// Phase 2: Full end-to-end test — SMILES → conformer → RMSD comparison for all 10k.
 #[test]
+#[ignore = "benchmark: 10k molecules, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_conformer_10k() {
     let smiles_data =
         fs::read_to_string("scripts/10k_smiles.smi").expect("Should read 10k_smiles.smi");

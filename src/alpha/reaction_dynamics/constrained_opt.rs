@@ -67,6 +67,16 @@ pub struct ConstrainedOptResult {
     pub grad_norm: f64,
 }
 
+/// Maximum Cartesian displacement of any single atom in one constrained
+/// optimisation step, in Å.
+///
+/// The relaxed approach frames bring two fragments to within a couple of
+/// ångström, where the analytic GFN0-xTB gradient is both enormous and only
+/// approximately correct (see the `F80` gate in `tests/gradient_parity.rs`).
+/// Without a cap the L-BFGS direction can throw an atom straight through the
+/// other fragment, and the geometry diverges.
+const MAX_ATOMIC_DISPLACEMENT: f64 = 0.3;
+
 /// Optimize a molecular geometry with distance constraints.
 ///
 /// Uses projected gradient descent: compute the full gradient, then
@@ -123,6 +133,16 @@ pub fn optimize_with_constraints(
             backend, smiles, elements, &mol, &x, &mut grad,
         )?;
 
+        // A non-finite energy or gradient means the geometry has collapsed
+        // into a singularity. Stopping here is better than propagating the
+        // `NaN` into the next L-BFGS history entry.
+        if !energy.is_finite() || grad.iter().any(|g| !g.is_finite()) {
+            return Err(format!(
+                "constrained optimisation reached a non-finite energy at step {step} \
+                 (the geometry became singular)"
+            ));
+        }
+
         // Project gradient to remove constrained components
         project_gradient_onto_constraints(&mut grad, &x, constraints);
 
@@ -165,7 +185,19 @@ pub fn optimize_with_constraints(
 
         // Line search with backtracking
         let mut alpha = config.step_size;
-        let g_dot_d: f64 = grad.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+        let mut direction = direction;
+        let mut g_dot_d: f64 = grad.iter().zip(direction.iter()).map(|(g, d)| g * d).sum();
+
+        // The L-BFGS direction is only guaranteed to be a descent direction
+        // when the curvature information is consistent. With the analytic
+        // GFN0-xTB gradient (which deviates from the numerical gradient by
+        // 20-30 %) the two-loop recursion can return a direction that points
+        // *uphill*, and accepting it makes the optimiser diverge. Fall back
+        // to steepest descent in that case.
+        if !g_dot_d.is_finite() || g_dot_d >= 0.0 {
+            direction = grad.iter().map(|g| -g).collect();
+            g_dot_d = grad.iter().map(|g| -g * g).sum::<f64>();
+        }
 
         for _ in 0..10 {
             let mut x_trial: Vec<f64> = x
@@ -173,6 +205,23 @@ pub fn optimize_with_constraints(
                 .zip(direction.iter())
                 .map(|(&xi, &di)| xi + alpha * di)
                 .collect();
+
+            // Cap the displacement of a single atom (see
+            // `MAX_ATOMIC_DISPLACEMENT`).
+            let displacement: Vec<f64> = x_trial
+                .iter()
+                .zip(x.iter())
+                .map(|(t, &xi)| t - xi)
+                .collect();
+            let displacement_norm = displacement.iter().map(|d| d * d).sum::<f64>().sqrt();
+            if displacement_norm > MAX_ATOMIC_DISPLACEMENT {
+                let scale = MAX_ATOMIC_DISPLACEMENT / displacement_norm;
+                x_trial = x
+                    .iter()
+                    .zip(displacement.iter())
+                    .map(|(&xi, d)| xi + scale * d)
+                    .collect();
+            }
 
             // Enforce constraints after each step
             enforce_distance_constraints(&mut x_trial, constraints, config.constraint_tolerance);
@@ -187,8 +236,9 @@ pub fn optimize_with_constraints(
                 &mut grad_trial,
             )?;
 
-            // Sufficient decrease (Armijo)
-            if e_trial <= energy + 1e-4 * alpha * g_dot_d || alpha < 1e-6 {
+            // Sufficient decrease (Armijo). A non-finite trial energy is
+            // never accepted: it means the trial geometry is singular.
+            if e_trial.is_finite() && (e_trial <= energy + 1e-4 * alpha * g_dot_d || alpha < 1e-6) {
                 x = x_trial;
                 energy = e_trial;
                 break;
@@ -417,6 +467,103 @@ pub fn optimize_frame_sequence(
             })
             .collect()
     }
+}
+
+/// Minimum allowed distance between an atom of one fragment and an atom of
+/// another fragment, in Å.
+///
+/// Two atoms belonging to different molecules cannot be closer than this
+/// without the geometry being physically meaningless: the 1/r repulsion
+/// terms diverge, the energy explodes to 10⁶ kcal/mol and the analytic
+/// gradients overflow to `NaN`. 1.5 Å is a generous lower bound for a
+/// non-bonded inter-molecular contact (the shortest realistic one, an H···H
+/// hydrogen bond, is ~1.8 Å).
+pub const MIN_INTERFRAGMENT_DISTANCE: f64 = 1.5;
+
+/// Maximum number of separation rounds used by
+/// [`enforce_min_interfragment_distance`].
+const MAX_SEPARATION_ROUNDS: usize = 64;
+
+/// Separate the fragments until no inter-fragment atom pair is closer than
+/// `min_dist`.
+///
+/// The product-guided reactant complex places each fragment at the position
+/// it occupies in the product. When the atom mapping is only approximate
+/// (the mapping is greedy and geometric) two atoms of different fragments can
+/// end up almost on top of each other — the hydration of acetaldehyde put a
+/// water oxygen 0.14 Å away from the carbonyl carbon. The result is a
+/// singular geometry whose energy diverges.
+///
+/// This function pushes the offending fragment away, along the line that
+/// connects the two clashing atoms, until the minimum separation is met. It
+/// changes the geometry only when it is necessary, and it returns `true` when
+/// it did.
+///
+/// # Arguments
+///
+/// * `coords` — flat `3N` array of Cartesian coordinates in Å, modified in place.
+/// * `mol_ranges` — the `(start, end)` atom range of each fragment.
+/// * `min_dist` — the minimum inter-fragment separation to enforce, in Å.
+pub fn enforce_min_interfragment_distance(
+    coords: &mut [f64],
+    mol_ranges: &[(usize, usize)],
+    min_dist: f64,
+) -> bool {
+    if mol_ranges.len() < 2 {
+        return false;
+    }
+    let mut changed = false;
+
+    for _ in 0..MAX_SEPARATION_ROUNDS {
+        // Find the closest inter-fragment pair over every fragment pair.
+        let mut worst: Option<(f64, usize, usize, usize)> = None;
+        for fi in 0..mol_ranges.len() {
+            let (sa, ea) = mol_ranges[fi];
+            for fj in (fi + 1)..mol_ranges.len() {
+                let (sb, eb) = mol_ranges[fj];
+                for i in sa..ea {
+                    for j in sb..eb {
+                        let dx = coords[j * 3] - coords[i * 3];
+                        let dy = coords[j * 3 + 1] - coords[i * 3 + 1];
+                        let dz = coords[j * 3 + 2] - coords[i * 3 + 2];
+                        let d2 = dx * dx + dy * dy + dz * dz;
+                        if worst.is_none_or(|w| d2 < w.0) {
+                            worst = Some((d2, i, j, fj));
+                        }
+                    }
+                }
+            }
+        }
+
+        let Some((d2, i, j, fj)) = worst else { break };
+        let d = d2.sqrt();
+        if d >= min_dist {
+            break;
+        }
+
+        // Direction from atom `i` to atom `j`. When the two atoms coincide
+        // exactly the direction is undefined, so use an arbitrary axis.
+        let (ux, uy, uz) = if d > 1e-6 {
+            (
+                (coords[j * 3] - coords[i * 3]) / d,
+                (coords[j * 3 + 1] - coords[i * 3 + 1]) / d,
+                (coords[j * 3 + 2] - coords[i * 3 + 2]) / d,
+            )
+        } else {
+            (1.0, 0.0, 0.0)
+        };
+        let shift = min_dist - d;
+
+        let (sb, eb) = mol_ranges[fj];
+        for a in sb..eb {
+            coords[a * 3] += ux * shift;
+            coords[a * 3 + 1] += uy * shift;
+            coords[a * 3 + 2] += uz * shift;
+        }
+        changed = true;
+    }
+
+    changed
 }
 
 /// Find the reactive atom pair (closest inter-fragment pair) and create constraints.

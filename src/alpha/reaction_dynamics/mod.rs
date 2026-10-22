@@ -290,6 +290,34 @@ pub fn compute_reaction_dynamics_3d(
     // ── 3. Build 3D reactant complex (product-guided, NO X-axis forcing)
     let mut r_coords = complex::build_product_guided_complex_3d(&r_confs, &p_reordered);
 
+    // The atom range of every reactant fragment. Needed by the approach and
+    // departure sliding, and by the inter-fragment separation guard below.
+    let r_mol_ranges: Vec<(usize, usize)> = {
+        let mut ranges = Vec::new();
+        let mut off = 0usize;
+        for c in &r_confs {
+            ranges.push((off, off + c.num_atoms));
+            off += c.num_atoms;
+        }
+        ranges
+    };
+
+    // The product-guided placement is only as good as the (greedy, geometric)
+    // atom mapping, so two atoms of different fragments can end up almost on
+    // top of each other. A singular geometry makes the energy diverge and the
+    // gradients overflow, so push the clashing fragment away before anything
+    // else touches the coordinates.
+    {
+        let mut separated = r_coords.clone();
+        if constrained_opt::enforce_min_interfragment_distance(
+            &mut separated,
+            &r_mol_ranges,
+            constrained_opt::MIN_INTERFRAGMENT_DISTANCE,
+        ) {
+            r_coords = separated;
+        }
+    }
+
     // ── 4. Approach direction: reactive sites > orbital > electrostatic
     let mut approach_dir: Option<[f64; 3]> = None;
 
@@ -421,17 +449,6 @@ pub fn compute_reaction_dynamics_3d(
         }
     };
 
-    // ── 8. Build molecule ranges for approach/departure sliding ────
-    let r_mol_ranges: Vec<(usize, usize)> = {
-        let mut ranges = Vec::new();
-        let mut off = 0usize;
-        for c in &r_confs {
-            ranges.push((off, off + c.num_atoms));
-            off += c.num_atoms;
-        }
-        ranges
-    };
-
     let n_xyz = r_total * 3;
     let mol = crate::graph::Molecule::from_smiles(&combined_smiles)?;
 
@@ -453,8 +470,16 @@ pub fn compute_reaction_dynamics_3d(
         } else {
             1.0
         };
-        let coords =
+        let mut coords =
             crate::dynamics::slide_molecules(&r_coords, &r_mol_ranges, alpha, config.far_distance);
+        // `slide_molecules` interpolates back towards the product positions,
+        // so the last frames can bring two fragments into contact. Keep the
+        // minimum inter-fragment separation at every step of the slide.
+        constrained_opt::enforce_min_interfragment_distance(
+            &mut coords,
+            &r_mol_ranges,
+            constrained_opt::MIN_INTERFRAGMENT_DISTANCE,
+        );
         approach_raw.push(coords);
     }
 
@@ -478,6 +503,21 @@ pub fn compute_reaction_dynamics_3d(
             })
             .collect()
     });
+
+    // The relaxation can pull a fragment back into a contact it started
+    // with, so the minimum separation is enforced once more on the relaxed
+    // frames.
+    let approach_optimised: Vec<constrained_opt::ConstrainedOptResult> = approach_optimised
+        .into_iter()
+        .map(|mut opt| {
+            constrained_opt::enforce_min_interfragment_distance(
+                &mut opt.coords,
+                &r_mol_ranges,
+                constrained_opt::MIN_INTERFRAGMENT_DISTANCE,
+            );
+            opt
+        })
+        .collect();
 
     // Evaluate approach frame energies (parallelized)
     #[cfg(feature = "parallel")]
