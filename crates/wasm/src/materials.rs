@@ -272,3 +272,30 @@ pub fn optimize_framework(
         Err(e) => json_error(&e),
     }
 }
+
+/// Parse a CIF-format string into a crystal structure.
+///
+/// Returns the structure as JSON: `data_block`, `cell`, `cell_params`,
+/// `space_group_hm`, `space_group_number` and `atom_sites`. The cell
+/// lengths are in Å and the cell angles in degrees.
+#[wasm_bindgen]
+pub fn parse_cif(cif_text: &str) -> String {
+    match sci_form::parse_cif(cif_text) {
+        Ok(structure) => crate::helpers::serialize_or_error(&structure),
+        Err(e) => crate::helpers::json_error(&e),
+    }
+}
+
+/// Write a crystal structure as a CIF-format string.
+///
+/// The structure is the JSON produced by `parse_cif`.
+#[wasm_bindgen]
+pub fn write_cif(cif_json: &str) -> String {
+    let structure: sci_form::materials::CifStructure = match serde_json::from_str(cif_json) {
+        Ok(v) => v,
+        Err(e) => {
+            return crate::helpers::json_error(&crate::helpers::bad_json("'cif'", cif_json, &e))
+        }
+    };
+    sci_form::write_cif(&structure)
+}

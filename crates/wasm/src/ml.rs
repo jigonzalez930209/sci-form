@@ -342,3 +342,28 @@ pub fn train_gradient_boosting(
         "predictions": predictions,
     }))
 }
+
+/// Compute the Topological Polar Surface Area (TPSA) in Å².
+///
+/// The Ertl fragment-contribution TPSA is a topological property: it does
+/// not depend on a 3D geometry.
+#[wasm_bindgen]
+pub fn compute_tpsa(smiles: &str) -> String {
+    match sci_form::compute_tpsa_from_smiles(smiles) {
+        Ok(tpsa) => format!("{{\"tpsa\":{tpsa:.6},\"unit\":\"Å²\"}}"),
+        Err(e) => crate::helpers::json_error(&crate::helpers::smiles_error(&e, smiles)),
+    }
+}
+
+/// Predict molecular properties with the ensemble of ML models.
+///
+/// Returns the consensus LogP with its uncertainty, the solubility, the
+/// TPSA, the pKa estimates, the Veber rules, the BBB permeability and an
+/// overall confidence score.
+#[wasm_bindgen]
+pub fn predict_ensemble(smiles: &str) -> String {
+    match sci_form::predict_ensemble_from_smiles(smiles) {
+        Ok(result) => crate::helpers::serialize_or_error(&result),
+        Err(e) => crate::helpers::json_error(&crate::helpers::smiles_error(&e, smiles)),
+    }
+}

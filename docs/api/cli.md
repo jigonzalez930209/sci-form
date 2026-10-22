@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `sci-form` binary exposes **90 subcommands**: 56 are always built and 34 are behind Cargo
+The `sci-form` binary exposes **100 subcommands**: 66 are always built and 34 are behind Cargo
 feature flags. This page is the exhaustive reference; the [CLI guide](../guide/cli.md) is the
 task-oriented walkthrough.
 
@@ -140,7 +140,7 @@ The examples below use `$EL` and `$COORDS` for those two arguments.
 
 ## Command list
 
-### Always built (56)
+### Always built (66)
 
 `embed`, `batch`, `parse`, `info`, `eht`, `eht-gradient`, `optimize-geometry-eht`, `charges`,
 `charges-configured`, `sasa`, `solvation`, `eeq`, `population`, `dipole`, `esp`, `dos`,
@@ -150,7 +150,9 @@ The examples below use `$EL` and `$COORDS` for those two arguments.
 `ensemble-j-couplings`, `whim`, `rdf`, `getaway`, `train-random-forest`,
 `train-gradient-boosting`, `cell`, `assemble`, `space-group`, `all-space-groups`,
 `periodic-molecule`, `hapticity`, `simplified-neb-path`, `neb-energy`, `neb-gradient`,
-`chart-to-json`, `chart-from-json`, `validate-chart-schema`.
+`chart-to-json`, `chart-from-json`, `validate-chart-schema`, `uhf`, `rohf`,
+`pm3-gradient`, `xtb-gradient`, `uff-breakdown`, `mmff94-breakdown`, `tpsa`,
+`ensemble`, `parse-cif`, `write-cif`.
 
 ### Feature-gated (34)
 
@@ -1112,6 +1114,62 @@ $ sci-form optimize-framework "CCO" "$COORDS"
 ```
 
 ---
+
+### `uhf`, `rohf`
+
+Open-shell Hartree-Fock. The energies are in **Hartree**, the gap in **eV**.
+
+```
+sci-form uhf  <ELEMENTS_JSON> <COORDS_JSON> --charge 0 --multiplicity 2
+sci-form rohf <ELEMENTS_JSON> <COORDS_JSON> --charge 0 --multiplicity 2
+```
+
+### `pm3-gradient`, `xtb-gradient`
+
+Analytical energy gradients, in **eV/Å** per atom.
+
+```
+sci-form pm3-gradient <ELEMENTS_JSON> <COORDS_JSON>
+sci-form xtb-gradient <ELEMENTS_JSON> <COORDS_JSON>
+```
+
+### `uff-breakdown`, `mmff94-breakdown`
+
+The force-field energy split by term type, in **kcal/mol**. The values sum to
+the corresponding total energy.
+
+```
+sci-form uff-breakdown    <SMILES> <COORDS_JSON>
+sci-form mmff94-breakdown <SMILES> <COORDS_JSON>
+```
+
+### `tpsa`
+
+Topological polar surface area, in **Å²**.
+
+```
+sci-form tpsa <SMILES>
+```
+
+### `ensemble`
+
+Ensemble property prediction: the consensus LogP with its uncertainty, the
+solubility, the TPSA, the pKa estimates, the Veber rules, the BBB permeability
+and an overall confidence score.
+
+```
+sci-form ensemble <SMILES>
+```
+
+### `parse-cif`, `write-cif`
+
+Read a CIF file into a JSON crystal structure and write it back. The path `-`
+reads standard input.
+
+```
+sci-form parse-cif structure.cif      # CIF  -> JSON
+sci-form write-cif structure.json     # JSON -> CIF
+```
 
 ## Spectroscopy
 

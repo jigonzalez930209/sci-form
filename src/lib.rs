@@ -2528,6 +2528,61 @@ pub fn compute_tpsa(elements: &[u8], bonds: &[(usize, usize, u8)]) -> f64 {
     ml::compute_tpsa(elements, bonds)
 }
 
+/// Compute the Topological Polar Surface Area (TPSA) in Å², from a SMILES.
+///
+/// The bond list is derived from the molecular graph, so no 3D geometry is
+/// needed.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed.
+pub fn compute_tpsa_from_smiles(smiles: &str) -> Result<f64, String> {
+    let (elements, bonds) = elements_and_bonds(smiles)?;
+    Ok(ml::compute_tpsa(&elements, &bonds))
+}
+
+/// The elements and the bond list of a molecule, derived from its graph.
+///
+/// The bond order is encoded as 1 = single, 2 = double, 3 = triple and
+/// 4 = aromatic.
+type ElementsAndBonds = (Vec<u8>, Vec<(usize, usize, u8)>);
+
+fn elements_and_bonds(smiles: &str) -> Result<ElementsAndBonds, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    let n = mol.graph.node_count();
+    let elements: Vec<u8> = (0..n)
+        .map(|i| mol.graph[graph::NodeIndex::new(i)].element)
+        .collect();
+    let bonds: Vec<(usize, usize, u8)> = mol
+        .graph
+        .edge_indices()
+        .map(|e| {
+            let (a, b) = mol.graph.edge_endpoints(e).expect("edge endpoints exist");
+            let order = match mol.graph[e].order {
+                graph::BondOrder::Single => 1u8,
+                graph::BondOrder::Double => 2,
+                graph::BondOrder::Triple => 3,
+                graph::BondOrder::Aromatic => 4,
+                graph::BondOrder::Unknown => 1,
+            };
+            (a.index(), b.index(), order)
+        })
+        .collect();
+    Ok((elements, bonds))
+}
+
+/// Predict molecular properties using ensemble ML models, from a SMILES.
+///
+/// The bond list is derived from the molecular graph.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed.
+pub fn predict_ensemble_from_smiles(smiles: &str) -> Result<ml::EnsembleResult, String> {
+    let (elements, bonds) = elements_and_bonds(smiles)?;
+    Ok(predict_ensemble(&elements, &bonds, &[], &[]))
+}
+
 /// Run short exploratory molecular dynamics with Velocity Verlet (NVE-like).
 ///
 /// `coords` is a flat `[x0,y0,z0, x1,y1,z1, ...]` array in Å, `n_steps` is

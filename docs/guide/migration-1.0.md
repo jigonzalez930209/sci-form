@@ -181,6 +181,7 @@ every action is a `compute_*` / `analyze_*` / `predict_*` verb. The
 | `sasa` | `compute_sasa` |
 | `population` | `compute_population` |
 | `dipole` | `compute_dipole` |
+| `compute_esp` | `compute_esp_grid` |
 | `dos` | `compute_dos` |
 | `bond_orders` | `compute_bond_orders` |
 | `frontier_descriptors` | `compute_frontier_descriptors` |
@@ -209,7 +210,7 @@ every action is a `compute_*` / `analyze_*` / `predict_*` verb. The
 | `ani_calculate` | `compute_ani` |
 | `eht_calculate` | `compute_eht` |
 
-The full table of 68 aliases is in `crates/python/src/naming.rs` and the
+The full table of 94 aliases is in `crates/python/src/naming.rs` and the
 canonical list, grouped by capability, is `sci_form.__all__`.
 
 ### Class names lost the `Py` suffix

@@ -188,6 +188,65 @@ test('GB solvation rejects a charge vector of the wrong length', () => {
   console.log(`    charge length error: "${r.error}"`);
 });
 
+// C-H2: the capabilities that used to be Rust-only.
+test('TPSA and the ensemble prediction', () => {
+  const tpsa = JSON.parse(wasm.compute_tpsa('CCO'));
+  assert(Math.abs(tpsa.tpsa - 20.23) < 0.01, `TPSA = ${tpsa.tpsa}`);
+  const ensemble = JSON.parse(wasm.predict_ensemble('CCO'));
+  assert(typeof ensemble.logp === 'number', 'missing logp');
+  assert(ensemble.confidence >= 0 && ensemble.confidence <= 1, 'confidence out of range');
+  console.log(`    TPSA = ${tpsa.tpsa} Å², logP = ${ensemble.logp.toFixed(3)}`);
+});
+
+test('Open-shell SCF and the analytical gradients', () => {
+  const ch3 = JSON.stringify([6, 1, 1, 1]);
+  const ch3Coords = JSON.stringify([
+    0, 0, 0,
+    1.09, 0, 0,
+    -0.36, 1.03, 0,
+    -0.36, -0.52, 0.89,
+  ]);
+  const uhf = JSON.parse(wasm.compute_uhf(ch3, ch3Coords, 0, 2));
+  assert(!uhf.error, `UHF failed: ${uhf.error}`);
+  assert(uhf.converged === true, 'the UHF SCF did not converge');
+  assert(uhf.total_energy < 0, `UHF energy = ${uhf.total_energy}`);
+  const rohf = JSON.parse(wasm.compute_rohf(ch3, ch3Coords, 0, 2));
+  assert(!rohf.error, `ROHF failed: ${rohf.error}`);
+  const water = JSON.stringify([8, 1, 1]);
+  const waterCoords = JSON.stringify([0, 0, 0.1173, 0, 0.7572, -0.4692, 0, -0.7572, -0.4692]);
+  const grad = JSON.parse(wasm.compute_pm3_gradient(water, waterCoords));
+  assert(!grad.error, `PM3 gradient failed: ${grad.error}`);
+  assert(grad.gradients.length === 3, 'one gradient per atom');
+  console.log(`    UHF E = ${uhf.total_energy.toFixed(4)} Ha, ROHF E = ${rohf.total_energy.toFixed(4)} Ha`);
+});
+
+test('CIF import and export', () => {
+  const cif = [
+    'data_test',
+    '_cell_length_a 5.0',
+    '_cell_length_b 5.0',
+    '_cell_length_c 5.0',
+    '_cell_angle_alpha 90.0',
+    '_cell_angle_beta 90.0',
+    '_cell_angle_gamma 90.0',
+    'loop_',
+    '_atom_site_label',
+    '_atom_site_type_symbol',
+    '_atom_site_fract_x',
+    '_atom_site_fract_y',
+    '_atom_site_fract_z',
+    '_atom_site_occupancy',
+    'Na1 Na 0.0 0.0 0.0 1.0',
+  ].join('\n');
+  const structure = JSON.parse(wasm.parse_cif(cif));
+  assert(!structure.error, `parse_cif failed: ${structure.error}`);
+  assert(structure.data_block === 'test', `data block = ${structure.data_block}`);
+  assert(structure.atom_sites.length === 1, 'one atom site');
+  const back = wasm.write_cif(JSON.stringify(structure));
+  assert(back.includes('data_test'), 'the written CIF must carry the data block');
+  console.log(`    CIF roundtrip: ${structure.atom_sites[0].label}`);
+});
+
 console.log('='.repeat(60));
 console.log(`Results: ${passed} passed, ${failed} failed`);
 console.log('='.repeat(60));

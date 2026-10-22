@@ -50,3 +50,49 @@ pub fn compute_empirical_pka(smiles: &str) -> String {
         Err(e) => json_error(&e),
     }
 }
+
+/// Per-term-type UFF energy breakdown (kcal/mol).
+///
+/// The terms are `bond`, `angle`, `torsion`, `inversion` and `vdw` (plus any
+/// diagnostic term), in first-seen order; the values sum to
+/// `compute_uff_energy`.
+#[wasm_bindgen]
+pub fn compute_uff_energy_breakdown(smiles: &str, coords: &str) -> String {
+    let flat = match parse_flat_coords(coords) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::compute_uff_energy_breakdown(smiles, &flat) {
+        Ok(terms) => serde_json::json!({
+            "terms": terms
+                .iter()
+                .map(|(kind, energy)| serde_json::json!({ "term": kind, "energy": energy }))
+                .collect::<Vec<_>>(),
+            "unit": "kcal/mol"
+        })
+        .to_string(),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Per-term-type MMFF94 energy breakdown (kcal/mol).
+///
+/// The values sum to `compute_mmff94_energy`.
+#[wasm_bindgen]
+pub fn compute_mmff94_energy_breakdown(smiles: &str, coords: &str) -> String {
+    let flat = match parse_flat_coords(coords) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::compute_mmff94_energy_breakdown(smiles, &flat) {
+        Ok(terms) => serde_json::json!({
+            "terms": terms
+                .iter()
+                .map(|(kind, energy)| serde_json::json!({ "term": kind, "energy": energy }))
+                .collect::<Vec<_>>(),
+            "unit": "kcal/mol"
+        })
+        .to_string(),
+        Err(e) => json_error(&e),
+    }
+}

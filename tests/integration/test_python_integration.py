@@ -363,6 +363,145 @@ def test_gb_solvation_keeps_the_vacuum_limit_working():
     assert finite(result.total_energy_kcal_mol)
 
 
+# ─── Open-shell SCF, gradients, ML and CIF (C-H2) ───────────────────────────
+
+
+def test_uhf_open_shell_scf():
+    """A methyl radical (doublet) must converge and report its orbitals."""
+    CH3 = [6, 1, 1, 1]
+    CH3_COORDS = [
+        0.0, 0.0, 0.0,
+        1.09, 0.0, 0.0,
+        -0.36, 1.03, 0.0,
+        -0.36, -0.52, 0.89,
+    ]
+    result = sci_form.compute_uhf(CH3, CH3_COORDS, 0, 2)
+    assert result.converged
+    assert result.total_energy < 0.0
+    assert len(result.alpha_orbital_energies) == result.n_basis
+    assert len(result.beta_orbital_energies) == result.n_basis
+    assert len(result.mulliken_charges) == len(CH3)
+    assert finite(result.total_energy, result.s2_expectation)
+    # The dense coefficients are exposed row by row.
+    assert len(result.alpha_coefficients) == result.n_basis
+    assert len(result.alpha_coefficients[0]) == result.n_basis
+
+
+def test_rohf_open_shell_scf():
+    CH3 = [6, 1, 1, 1]
+    CH3_COORDS = [
+        0.0, 0.0, 0.0,
+        1.09, 0.0, 0.0,
+        -0.36, 1.03, 0.0,
+        -0.36, -0.52, 0.89,
+    ]
+    result = sci_form.compute_rohf(CH3, CH3_COORDS, 0, 2)
+    assert result.converged
+    assert finite(result.total_energy)
+
+
+def test_uhf_rejects_an_impossible_multiplicity():
+    # A methyl radical has 9 electrons: a singlet (multiplicity 1) is
+    # impossible, and a multiplicity of 0 does not exist.
+    CH3 = [6, 1, 1, 1]
+    CH3_COORDS = [
+        0.0, 0.0, 0.0,
+        1.09, 0.0, 0.0,
+        -0.36, 1.03, 0.0,
+        -0.36, -0.52, 0.89,
+    ]
+    with pytest.raises((ValueError, RuntimeError)):
+        sci_form.compute_uhf(CH3, CH3_COORDS, 0, 1)
+    with pytest.raises((ValueError, RuntimeError)):
+        sci_form.compute_uhf(CH3, CH3_COORDS, 0, 0)
+
+
+def test_pm3_gradient():
+    result = sci_form.compute_pm3_gradient(E, C)
+    assert len(result.gradients) == len(E)
+    assert finite(result.energy, result.heat_of_formation)
+    assert all(finite(*g) for g in result.gradients)
+
+
+def test_xtb_gradient():
+    result = sci_form.compute_xtb_gradient(E, C)
+    assert len(result.gradients) == len(E)
+    assert finite(result.energy)
+    assert all(finite(*g) for g in result.gradients)
+
+
+def test_uff_energy_breakdown():
+    terms = sci_form.compute_uff_energy_breakdown("CCO", CCO)
+    assert terms
+    assert all(isinstance(kind, str) for kind, _ in terms)
+    total = sum(value for _, value in terms)
+    assert abs(total - sci_form.compute_uff_energy("CCO", CCO)) < 1e-6
+
+
+def test_mmff94_energy_breakdown():
+    terms = sci_form.compute_mmff94_energy_breakdown("CCO", CCO)
+    assert terms
+    total = sum(value for _, value in terms)
+    assert abs(total - sci_form.compute_mmff94_energy("CCO", CCO)) < 1e-6
+
+
+def test_tpsa():
+    # Ethanol: one hydroxyl (20.23 Å² for the OH fragment set).
+    assert sci_form.compute_tpsa("CCO") == pytest.approx(20.23, abs=0.01)
+    assert sci_form.compute_tpsa("CCCC") == pytest.approx(0.0, abs=0.01)
+
+
+def test_predict_ensemble():
+    result = sci_form.predict_ensemble("CCO")
+    assert finite(result.logp, result.logp_std, result.tpsa, result.confidence)
+    assert 0.0 <= result.confidence <= 1.0
+    assert result.veber.passes in (True, False)
+    assert result.pka_acidic is None or finite(result.pka_acidic)
+
+
+CIF_TEXT = """data_test
+_cell_length_a 5.0
+_cell_length_b 5.0
+_cell_length_c 5.0
+_cell_angle_alpha 90.0
+_cell_angle_beta 90.0
+_cell_angle_gamma 90.0
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Na1 Na 0.0 0.0 0.0 1.0
+"""
+
+
+def test_parse_cif():
+    structure = sci_form.parse_cif(CIF_TEXT)
+    assert structure.data_block == "test"
+    assert structure.a == pytest.approx(5.0)
+    assert len(structure.atom_sites) == 1
+    assert structure.atom_sites[0].label == "Na1"
+    assert structure.atom_sites[0].atomic_number == 11
+    assert structure.atom_sites[0].occupancy == pytest.approx(1.0)
+
+
+def test_write_cif_roundtrip():
+    structure = sci_form.parse_cif(CIF_TEXT)
+    text = sci_form.write_cif(structure)
+    assert "data_test" in text
+    again = sci_form.parse_cif(text)
+    assert again.data_block == structure.data_block
+    assert len(again.atom_sites) == len(structure.atom_sites)
+    assert again.atom_sites[0].label == structure.atom_sites[0].label
+
+
+def test_parse_cif_rejects_garbage():
+    with pytest.raises(ValueError):
+        sci_form.parse_cif("not a cif file")
+
+
 # ─── Rings, fingerprints, clustering ─────────────────────────────────────────
 
 

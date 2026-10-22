@@ -348,20 +348,14 @@ interface DipoleResult {
 }
 ```
 
-### `compute_esp`
+### `compute_esp_grid`
 
 ```typescript
-function compute_esp(elements: string, coords_flat: string, spacing: number, padding: number): string
+function compute_esp_grid(elements: string, coords_flat: string, spacing: number, padding: number): string
 ```
 
-```typescript
-interface EspGrid {
-  origin: [number, number, number];  // Å
-  spacing: number;                   // Å
-  dims: [number, number, number];
-  values: number[];                  // Hartree/e
-}
-```
+Electrostatic potential on a 3D grid, in **Hartree/e**. `compute_esp` is the
+historical alias of this function.
 
 ### `compute_esp_grid_info`
 
@@ -668,6 +662,27 @@ function compute_aevs_tm(elements_json: string, coords_flat_json: string): strin
 
 ---
 
+### `compute_uhf` / `compute_rohf`
+
+```typescript
+function compute_uhf(elements: string, coords_flat: string, charge: number, multiplicity: number): string
+function compute_rohf(elements: string, coords_flat: string, charge: number, multiplicity: number): string
+```
+
+Unrestricted and restricted open-shell Hartree-Fock. The energies are in
+**Hartree**, the gap in **eV**. The dense matrices of the result are not part
+of the payload; the scalar results, the orbital energies and the Mulliken
+charges are.
+
+### `compute_pm3_gradient` / `compute_xtb_gradient`
+
+```typescript
+function compute_pm3_gradient(elements: string, coords_flat: string): string
+function compute_xtb_gradient(elements: string, coords_flat: string): string
+```
+
+Analytical energy gradients in **eV/Å** per atom.
+
 ## Force fields
 
 ### `compute_uff_energy`
@@ -704,6 +719,20 @@ function compute_empirical_pka(smiles: string): string
 publication-grade predictions.
 
 ---
+
+### `compute_uff_energy_breakdown` / `compute_mmff94_energy_breakdown`
+
+```typescript
+function compute_uff_energy_breakdown(smiles: string, coords_flat: string): string
+function compute_mmff94_energy_breakdown(smiles: string, coords_flat: string): string
+```
+
+The force-field energy split by term type, in **kcal/mol**:
+
+```json
+{ "terms": [{ "term": "bond", "energy": -12.3 }, { "term": "vdw", "energy": 4.1 }],
+  "unit": "kcal/mol" }
+```
 
 ## Spectroscopy
 
@@ -1135,6 +1164,25 @@ function predict_ml_properties(smiles: string): string
 
 > **Deprecated alias:** `compute_ml_properties` → `predict_ml_properties`.
 
+### `compute_tpsa`
+
+```typescript
+function compute_tpsa(smiles: string): string
+```
+
+Topological polar surface area in **Å²** (Ertl fragment contributions). It is a
+topological property: no 3D geometry is needed.
+
+### `predict_ensemble`
+
+```typescript
+function predict_ensemble(smiles: string): string
+```
+
+Ensemble property prediction: the consensus LogP with its uncertainty, the
+solubility, the TPSA, the pKa estimates, the Veber rules, the BBB permeability
+and an overall confidence score (0–1).
+
 ### `compute_whim`
 
 ```typescript
@@ -1337,6 +1385,17 @@ function eht_volumetric_grid_info(elements: string, coords_flat: string, spacing
 ---
 
 ## Materials and periodic systems
+
+### `parse_cif` / `write_cif`
+
+```typescript
+function parse_cif(cif_text: string): string
+function write_cif(cif_json: string): string
+```
+
+Read a CIF file into a crystal structure (as JSON) and write it back. The cell
+lengths are in **Å**, the cell angles in **degrees** and the atom-site
+coordinates are fractional.
 
 ### `create_unit_cell`
 

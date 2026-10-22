@@ -356,21 +356,21 @@ print(d.unit)        # "Debye"
 
 > **Deprecated alias:** `dipole` → `compute_dipole`.
 
-### `compute_esp`
+### `compute_esp_grid`
 
 ```python
-def compute_esp(elements: list[int], coords: list[float], spacing: float = 0.5, padding: float = 3.0) -> EspGrid
+def compute_esp_grid(elements: list[int], coords: list[float], spacing: float = 0.5, padding: float = 3.0) -> EspGrid
 ```
 
 Electrostatic potential on a 3D grid, in **Hartree/e**. `spacing` and `padding` are in Å.
 
 ```python
-esp = sci_form.compute_esp(conf.elements, conf.coords, spacing=1.0, padding=2.0)
+esp = sci_form.compute_esp_grid(conf.elements, conf.coords, spacing=1.0, padding=2.0)
 print(esp.dims, esp.spacing, esp.origin)
 print(len(esp.values))
 ```
 
-> **Deprecated alias:** `esp` → `compute_esp`.
+> **Deprecated aliases:** `compute_esp` and `esp` → `compute_esp_grid`.
 
 ### `compute_esp_grid_into` — zero copy
 
@@ -715,6 +715,48 @@ for ex in cisd.excitations:
     print(ex.energy_ev, ex.wavelength_nm, ex.oscillator_strength)
 ```
 
+### `compute_uhf`
+
+```python
+def compute_uhf(elements: list[int], coords: list[float], charge: int = 0, multiplicity: int = 1) -> UhfResult
+```
+
+Unrestricted Hartree-Fock for open-shell systems. The energies are in **Hartree**, the
+HOMO-LUMO gap in **eV** and the Mulliken charges in **e**. `charge` is the total
+molecular charge and `multiplicity` the spin multiplicity (1 = singlet, 2 = doublet,
+3 = triplet); a multiplicity that does not match the electron count is an error.
+
+```python
+uhf = sci_form.compute_uhf([6, 1, 1, 1], coords, 0, 2)   # a methyl radical
+print(uhf.converged, uhf.total_energy, uhf.s2_expectation)
+```
+
+### `compute_rohf`
+
+```python
+def compute_rohf(elements: list[int], coords: list[float], charge: int = 0, multiplicity: int = 1) -> UhfResult
+```
+
+Restricted open-shell Hartree-Fock: the same spatial orbitals for both spins, so the
+spin contamination is zero by construction.
+
+### `compute_pm3_gradient`
+
+```python
+def compute_pm3_gradient(elements: list[int], coords: list[float]) -> Pm3GradientResult
+```
+
+Analytical PM3 energy gradient. The gradient is in **eV/Å** (one `[x, y, z]` per
+atom), the energy in **eV** and the heat of formation in **kcal/mol**.
+
+### `compute_xtb_gradient`
+
+```python
+def compute_xtb_gradient(elements: list[int], coords: list[float]) -> XtbGradientResult
+```
+
+Analytical xTB energy gradient, in **eV/Å** per atom; the energy is in **eV**.
+
 ### `compute_aevs_tm`
 
 ```python
@@ -728,6 +770,9 @@ ANI-TM atomic environment vectors over the extended element set (24 elements). D
 | Class | Attributes (unit) |
 |---|---|
 | `EhtResult` | `energies` (eV), `n_electrons`, `homo_index`, `lumo_index`, `homo_energy` (eV), `lumo_energy` (eV), `gap` (eV), `support_level`, `has_transition_metals`, `supported_elements`, `provisional_elements`, `unsupported_elements`, `warnings` |
+| `UhfResult` | `alpha_orbital_energies`, `beta_orbital_energies` (Hartree), `electronic_energy`, `nuclear_repulsion`, `total_energy` (Hartree), `homo_energy` (Hartree), `lumo_energy` (Hartree), `gap_ev` (eV), `mulliken_charges` (e), `scf_iterations`, `converged`, `n_basis`, `n_alpha`, `n_beta`, `s2_expectation`, `spin_contamination`, `alpha_coefficients`, `beta_coefficients` |
+| `Pm3GradientResult` | `gradients` (eV/Å), `energy` (eV), `heat_of_formation` (kcal/mol) |
+| `XtbGradientResult` | `gradients` (eV/Å), `energy` (eV) |
 | `EhtSupport` | `level`, `has_transition_metals`, `supported_elements`, `provisional_elements`, `unsupported_elements`, `warnings` |
 | `EhtGradient` | `gradients` (eV/Å), `rms_gradient` (eV/Å), `max_gradient` (eV/Å), `energy` (eV) |
 | `EhtOptResult` | `positions` (Å), `energy` (eV), `n_steps`, `converged`, `rms_gradient` (eV/Å), `energies` (eV) |
@@ -780,6 +825,23 @@ MMFF94 force-field energy in **kcal/mol**.
 
 > **Deprecated alias:** `mmff94_energy` → `compute_mmff94_energy`.
 
+### `compute_uff_energy_breakdown`
+
+```python
+def compute_uff_energy_breakdown(smiles: str, coords: list[float]) -> list[tuple[str, float]]
+```
+
+The UFF energy split by term type (`bond`, `angle`, `torsion`, `inversion`, `vdw`).
+The values are in **kcal/mol** and sum to `compute_uff_energy`.
+
+### `compute_mmff94_energy_breakdown`
+
+```python
+def compute_mmff94_energy_breakdown(smiles: str, coords: list[float]) -> list[tuple[str, float]]
+```
+
+The same split for MMFF94; the values sum to `compute_mmff94_energy`.
+
 ### `compute_empirical_pka`
 
 ```python
@@ -822,6 +884,25 @@ def predict_ml_properties(smiles: str) -> MlPropertyResult
 Lipinski / ADME proxy prediction.
 
 > **Deprecated alias:** `ml_predict` → `predict_ml_properties`.
+
+### `compute_tpsa`
+
+```python
+def compute_tpsa(smiles: str) -> float
+```
+
+Topological polar surface area in **Å²** (Ertl fragment contributions). It is a
+topological property: no 3D geometry is needed.
+
+### `predict_ensemble`
+
+```python
+def predict_ensemble(smiles: str) -> EnsembleResult
+```
+
+Ensemble property prediction: the consensus LogP with its uncertainty, the
+solubility, the TPSA, the pKa estimates, the Veber rules, the BBB permeability
+and an overall confidence score (0–1).
 
 ### `compute_whim`
 
@@ -909,6 +990,8 @@ Train a Gradient Boosting regressor and return its training-set predictions.
 | `RdfDescriptors` | `radii` (Å), `rdf_unweighted`, `rdf_mass`, `rdf_electronegativity`, `rdf_charge`, `beta` (Å⁻²), `n_pairs` |
 | `GetawayDescriptors` | `leverages`, `hat_autocorrelation`, `r_autocorrelation`, `hat_total`, `r_total`, `h_information`, `h_max`, `h_mean`, `max_lag` |
 | `RegressionModel` | `predictions`, `train_rmse`, `model_type`, `n_estimators`, `n_samples` |
+| `EnsembleResult` | `logp`, `logp_std`, `log_solubility`, `tpsa` (Å²), `pka_acidic`, `pka_basic`, `veber`, `bbb_permeable`, `bbb_score` (0–1), `confidence` (0–1) |
+| `VeberResult` | `tpsa_ok`, `rotb_ok`, `passes` |
 
 ---
 
@@ -1569,11 +1652,40 @@ Optimise a geometry with the shared BFGS engine (UFF backend). `energy` is repor
 and `forces` in **eV/Å**; `cell_a`/`cell_b`/`cell_c` enable periodic (minimum-image)
 optimisation. `method` is `bfgs` or `steepest_descent`.
 
+### `parse_cif` and `write_cif`
+
+```python
+def parse_cif(cif_text: str) -> CifStructure
+def write_cif(structure: CifStructure) -> str
+```
+
+Read a CIF file into a crystal structure and write it back. The cell lengths are
+in **Å**, the cell angles in **degrees** and the atom-site coordinates are
+fractional (dimensionless).
+
+```python
+structure = sci_form.parse_cif(open("NaCl.cif").read())
+print(structure.data_block, structure.a, len(structure.atom_sites))
+text = sci_form.write_cif(structure)
+```
+
+A `CifStructure` can also be built directly:
+
+```python
+structure = sci_form.CifStructure(
+    data_block="test",
+    lattice=[[5.0, 0.0, 0.0], [0.0, 5.0, 0.0], [0.0, 0.0, 5.0]],
+    a=5.0, b=5.0, c=5.0, alpha=90.0, beta=90.0, gamma=90.0,
+)
+```
+
 ### Return types
 
 | Class | Attributes (unit) |
 |---|---|
 | `UnitCell` | `a`, `b`, `c` (Å), `alpha`, `beta`, `gamma` (degrees), `volume` (Å³), `lattice` |
+| `CifStructure` | `data_block`, `lattice` (Å), `a`, `b`, `c` (Å), `alpha`, `beta`, `gamma` (degrees), `space_group_hm`, `space_group_number`, `atom_sites` |
+| `CifAtomSite` | `label`, `type_symbol`, `atomic_number`, `frac_x`, `frac_y`, `frac_z`, `occupancy` |
 | `CrystalStructure` | `elements`, `cart_coords` (Å), `frac_coords`, `labels`, `lattice`, `num_atoms` |
 | `SpaceGroup` | `number`, `symbol`, `crystal_system`, `lattice_type`, `point_group`, `operations` |
 | `SymmetryOp` | `rotation`, `translation` |

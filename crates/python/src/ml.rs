@@ -51,6 +51,57 @@ pub(crate) struct MlPropertyResultPy {
     druglikeness: f64,
 }
 
+/// Veber's rules for oral bioavailability.
+#[pyclass(name = "VeberResult")]
+#[derive(Clone)]
+pub(crate) struct VeberResultPy {
+    /// TPSA ≤ 140 Å².
+    #[pyo3(get)]
+    tpsa_ok: bool,
+    /// Number of rotatable bonds ≤ 10.
+    #[pyo3(get)]
+    rotb_ok: bool,
+    /// Passes Veber rules (both criteria met).
+    #[pyo3(get)]
+    passes: bool,
+}
+
+/// Ensemble property prediction with uncertainty.
+#[pyclass(name = "EnsembleResult")]
+#[derive(Clone)]
+pub(crate) struct EnsembleResultPy {
+    /// Consensus LogP.
+    #[pyo3(get)]
+    logp: f64,
+    /// Standard deviation across the LogP models (uncertainty).
+    #[pyo3(get)]
+    logp_std: f64,
+    /// Predicted aqueous solubility (log S, mol/L).
+    #[pyo3(get)]
+    log_solubility: f64,
+    /// Predicted TPSA in Å².
+    #[pyo3(get)]
+    tpsa: f64,
+    /// Predicted pKa of the most acidic group.
+    #[pyo3(get)]
+    pka_acidic: Option<f64>,
+    /// Predicted pKa of the most basic group.
+    #[pyo3(get)]
+    pka_basic: Option<f64>,
+    /// Veber oral bioavailability rules.
+    #[pyo3(get)]
+    veber: VeberResultPy,
+    /// BBB permeability prediction.
+    #[pyo3(get)]
+    bbb_permeable: bool,
+    /// BBB permeability score (0–1).
+    #[pyo3(get)]
+    bbb_score: f64,
+    /// Overall prediction confidence (0–1).
+    #[pyo3(get)]
+    confidence: f64,
+}
+
 /// Elements and (i, j, order) bonds extracted from a SMILES string.
 type MolElementsAndBonds = (Vec<u8>, Vec<(usize, usize, u8)>);
 
@@ -241,6 +292,43 @@ fn predict_ml_properties(smiles: &str) -> PyResult<MlPropertyResultPy> {
         lipinski_violations: result.lipinski.violations,
         lipinski_passes: result.lipinski.passes,
         druglikeness: result.druglikeness,
+    })
+}
+
+/// Compute the Topological Polar Surface Area (TPSA) in Å².
+///
+/// The Ertl fragment-contribution TPSA is a topological property: it does
+/// not depend on a 3D geometry.
+#[pyfunction]
+fn compute_tpsa(smiles: &str) -> PyResult<f64> {
+    let (elements, bonds) = parse_mol_for_ml(smiles)?;
+    Ok(sci_form_core::compute_tpsa(&elements, &bonds))
+}
+
+/// Predict molecular properties with the ensemble of ML models.
+///
+/// Returns the consensus LogP with its uncertainty, the solubility, the
+/// TPSA, the pKa estimates, the Veber rules, the BBB permeability and an
+/// overall confidence score.
+#[pyfunction]
+fn predict_ensemble(smiles: &str) -> PyResult<EnsembleResultPy> {
+    let (elements, bonds) = parse_mol_for_ml(smiles)?;
+    let result = sci_form_core::predict_ensemble(&elements, &bonds, &[], &[]);
+    Ok(EnsembleResultPy {
+        logp: result.logp,
+        logp_std: result.logp_std,
+        log_solubility: result.log_solubility,
+        tpsa: result.tpsa,
+        pka_acidic: result.pka_acidic,
+        pka_basic: result.pka_basic,
+        veber: VeberResultPy {
+            tpsa_ok: result.veber.tpsa_ok,
+            rotb_ok: result.veber.rotb_ok,
+            passes: result.veber.passes,
+        },
+        bbb_permeable: result.bbb_permeable,
+        bbb_score: result.bbb_score,
+        confidence: result.confidence,
     })
 }
 
@@ -507,6 +595,8 @@ fn train_gradient_boosting(
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute_ml_descriptors, m)?)?;
     m.add_function(wrap_pyfunction!(predict_ml_properties, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_tpsa, m)?)?;
+    m.add_function(wrap_pyfunction!(predict_ensemble, m)?)?;
     m.add_function(wrap_pyfunction!(compute_whim, m)?)?;
     m.add_function(wrap_pyfunction!(compute_rdf, m)?)?;
     m.add_function(wrap_pyfunction!(compute_getaway, m)?)?;
@@ -514,6 +604,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(train_gradient_boosting, m)?)?;
     m.add_class::<MolecularDescriptorsPy>()?;
     m.add_class::<MlPropertyResultPy>()?;
+    m.add_class::<EnsembleResultPy>()?;
+    m.add_class::<VeberResultPy>()?;
     m.add_class::<WhimDescriptorsPy>()?;
     m.add_class::<RdfDescriptorsPy>()?;
     m.add_class::<GetawayDescriptorsPy>()?;

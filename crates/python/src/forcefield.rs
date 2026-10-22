@@ -49,6 +49,26 @@ fn compute_uff_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
         .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
 }
 
+/// Per-term-type UFF energy breakdown (kcal/mol).
+///
+/// The terms are `bond`, `angle`, `torsion`, `inversion` and `vdw` (plus any
+/// diagnostic term), in first-seen order; the values sum to
+/// `compute_uff_energy`.
+#[pyfunction]
+fn compute_uff_energy_breakdown(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<(String, f64)>> {
+    sci_form_core::compute_uff_energy_breakdown(smiles, &coords)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
+}
+
+/// Per-term-type MMFF94 energy breakdown (kcal/mol).
+///
+/// The values sum to `compute_mmff94_energy`.
+#[pyfunction]
+fn compute_mmff94_energy_breakdown(smiles: &str, coords: Vec<f64>) -> PyResult<Vec<(String, f64)>> {
+    sci_form_core::compute_mmff94_energy_breakdown(smiles, &coords)
+        .map_err(|e| crate::errors::smiles_or_engine_error(e, smiles))
+}
+
 #[pyfunction]
 fn compute_uff_energy_with_aromatic_heuristics(
     smiles: &str,
@@ -93,6 +113,8 @@ fn compute_mmff94_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute_uff_energy, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_uff_energy_breakdown, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_mmff94_energy_breakdown, m)?)?;
     m.add_function(wrap_pyfunction!(
         compute_uff_energy_with_aromatic_heuristics,
         m
