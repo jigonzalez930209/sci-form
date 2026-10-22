@@ -105,7 +105,7 @@ println!("Atoms: {}, Bonds: {}", mol.graph.node_count(), mol.graph.edge_count())
 ### `version() → String`
 
 ```rust
-println!("{}", sci_form::version()); // "sci-form 0.15.2"
+println!("{}", sci_form::version()); // "sci-form 1.0.0"
 ```
 
 ## Working with Coordinates

@@ -13,14 +13,14 @@ fn phase1_detect_transition_metals_automatically() {
     let elements_organic = [6u8, 1, 1, 1, 1]; // CH4
     let elements_metal = [26u8, 17, 17, 17, 17, 17, 17]; // FeCl6
 
-    let support_organic = sci_form::get_eht_support(&elements_organic);
+    let support_organic = sci_form::eht_support(&elements_organic);
     assert!(!support_organic.has_transition_metals);
     assert_eq!(
         support_organic.level,
         sci_form::eht::SupportLevel::Supported
     );
 
-    let support_metal = sci_form::get_eht_support(&elements_metal);
+    let support_metal = sci_form::eht_support(&elements_metal);
     assert!(support_metal.has_transition_metals);
     assert_eq!(
         support_metal.level,
@@ -67,7 +67,7 @@ fn phase1_uff_fallback_for_unsupported_eht() {
 #[test]
 fn phase1_capability_query_per_element() {
     let elements = [6u8, 1, 1, 1, 1];
-    let caps = sci_form::get_system_capabilities(&elements);
+    let caps = sci_form::system_capabilities(&elements);
     assert!(caps.embed.available);
     assert!(caps.uff.available);
     assert!(caps.eht.available);
@@ -78,7 +78,7 @@ fn phase1_capability_query_per_element() {
 #[test]
 fn phase1_low_confidence_mode_for_metals() {
     let elements = [78u8, 17, 17];
-    let caps = sci_form::get_system_capabilities(&elements);
+    let caps = sci_form::system_capabilities(&elements);
     assert_eq!(
         caps.eht.confidence,
         sci_form::eht::SupportLevel::Experimental
@@ -824,7 +824,7 @@ fn phase6_rmsd_available() {
 #[test]
 fn phase7_method_selection_organic() {
     let elements = [6u8, 1, 1, 1, 1];
-    let plan = sci_form::get_system_method_plan(&elements);
+    let plan = sci_form::system_method_plan(&elements);
     // For organic: EHT should be recommended for orbitals with "supported" confidence
     assert_eq!(
         plan.orbitals.recommended,
@@ -843,7 +843,7 @@ fn phase7_method_selection_organic() {
 #[test]
 fn phase7_method_selection_metal() {
     let elements = [26u8, 17, 17];
-    let plan = sci_form::get_system_method_plan(&elements);
+    let plan = sci_form::system_method_plan(&elements);
     // For metals: EHT should still be available but experimental
     let eht_meta = plan
         .orbitals
@@ -863,8 +863,8 @@ fn phase7_confidence_scoring() {
     let organic = [6u8, 1, 1, 1, 1];
     let metal = [26u8, 17, 17];
 
-    let plan_organic = sci_form::get_system_method_plan(&organic);
-    let plan_metal = sci_form::get_system_method_plan(&metal);
+    let plan_organic = sci_form::system_method_plan(&organic);
+    let plan_metal = sci_form::system_method_plan(&metal);
 
     // Organic confidence should be higher than metal
     let organic_eht = plan_organic
@@ -908,7 +908,7 @@ fn phase7_compare_methods_workflow() {
 #[test]
 fn phase7_method_limitations_exposed() {
     let elements = [26u8, 17, 17];
-    let plan = sci_form::get_system_method_plan(&elements);
+    let plan = sci_form::system_method_plan(&elements);
     let eht_meta = plan
         .orbitals
         .methods

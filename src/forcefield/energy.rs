@@ -453,24 +453,24 @@ pub fn calculate_total_energy_f64(
             let nv = neighbors_v[0];
             let (p1, p2, p3, p4) = (
                 Vector3::new(
-                    coords[(nu.index(), 0)] as f32,
-                    coords[(nu.index(), 1)] as f32,
-                    coords[(nu.index(), 2)] as f32,
+                    coords[(nu.index(), 0)],
+                    coords[(nu.index(), 1)],
+                    coords[(nu.index(), 2)],
                 ),
                 Vector3::new(
-                    coords[(u.index(), 0)] as f32,
-                    coords[(u.index(), 1)] as f32,
-                    coords[(u.index(), 2)] as f32,
+                    coords[(u.index(), 0)],
+                    coords[(u.index(), 1)],
+                    coords[(u.index(), 2)],
                 ),
                 Vector3::new(
-                    coords[(v.index(), 0)] as f32,
-                    coords[(v.index(), 1)] as f32,
-                    coords[(v.index(), 2)] as f32,
+                    coords[(v.index(), 0)],
+                    coords[(v.index(), 1)],
+                    coords[(v.index(), 2)],
                 ),
                 Vector3::new(
-                    coords[(nv.index(), 0)] as f32,
-                    coords[(nv.index(), 1)] as f32,
-                    coords[(nv.index(), 2)] as f32,
+                    coords[(nv.index(), 0)],
+                    coords[(nv.index(), 1)],
+                    coords[(nv.index(), 2)],
                 ),
             );
             // The M6 torsion term keeps its f32 kernel (the parameters are

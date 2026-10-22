@@ -54,6 +54,9 @@ fn topology(smiles: &str) -> (Vec<u8>, Vec<(usize, usize, String)>) {
                 sci_form::graph::BondOrder::Triple => "TRIPLE",
                 sci_form::graph::BondOrder::Aromatic => "AROMATIC",
                 sci_form::graph::BondOrder::Unknown => "UNKNOWN",
+                // `BondOrder` is `#[non_exhaustive]`: a bond order added after
+                // this test was written reports itself as unknown.
+                _ => "UNKNOWN",
             };
             (a.index(), b.index(), order.to_string())
         })

@@ -707,7 +707,7 @@ mod tests {
         let mol = crate::graph::Molecule::from_smiles(smiles).unwrap();
         let n = mol.graph.node_count();
         let conf = crate::embed(smiles, 7);
-        let mut coords = flat_to_matrix(&conf.coords, n);
+        let coords = flat_to_matrix(&conf.coords, n);
         let bounds =
             crate::distgeom::smooth_bounds_matrix(crate::distgeom::calculate_bounds_matrix(&mol));
 

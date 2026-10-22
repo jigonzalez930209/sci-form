@@ -35,6 +35,9 @@ pub struct ReactiveSite {
 
 /// How the reactive site was identified.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum SiteSource {
     /// Explicit SMIRKS atom mapping (highest confidence).
     SmirksMapping,
@@ -48,6 +51,9 @@ pub enum SiteSource {
 
 /// Role of the reactive site.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum SiteRole {
     /// Nucleophilic site (electron donor, high f⁻).
     Nucleophile,

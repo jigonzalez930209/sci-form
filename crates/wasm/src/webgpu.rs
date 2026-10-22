@@ -129,6 +129,11 @@ pub(crate) async fn run_compute_async(
                     | wgpu::BufferUsages::COPY_DST
                     | wgpu::BufferUsages::COPY_SRC
             }
+            // `ComputeBindingKind` is `#[non_exhaustive]`: a binding kind added
+            // after this binding was written is treated as a read-only storage
+            // buffer, the most permissive generic compute binding that cannot
+            // write back into a buffer the caller did not mark as writable.
+            _ => wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         };
 
         let buffer = runtime
@@ -151,6 +156,10 @@ pub(crate) async fn run_compute_async(
                     ComputeBindingKind::StorageReadWrite => {
                         wgpu::BufferBindingType::Storage { read_only: false }
                     }
+                    // `ComputeBindingKind` is `#[non_exhaustive]`: see the
+                    // matching arm above — unknown kinds bind as read-only
+                    // storage.
+                    _ => wgpu::BufferBindingType::Storage { read_only: true },
                 },
                 has_dynamic_offset: false,
                 min_binding_size: None,

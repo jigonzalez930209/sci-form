@@ -13,6 +13,60 @@ sci-form = { version = "0.15", features = ["experimental-gpu"] }
 
 ---
 
+## Units
+
+Units are **not** uniform across the crate, so check the doc of the specific function:
+
+| Quantity | Unit |
+|---|---|
+| Geometry (coordinates, bond lengths, cell parameters) | Å (cell angles in degrees) |
+| UFF / MMFF94 energies | kcal/mol |
+| UFF / MMFF94 gradients | kcal/mol/Å |
+| EHT, PM3, xTB orbital energies and HOMO–LUMO gaps | eV |
+| PM3 / xTB total, electronic, repulsive, dispersion energies | eV |
+| PM3 heat of formation | kcal/mol |
+| HF-3c energy, HF energy, nuclear repulsion, D3/gCP/SRB corrections | Hartree |
+| HF-3c orbital energies, HOMO/LUMO, gap | Hartree |
+| ANI energy and per-atom energies | Hartree (forces Hartree/Å) |
+| CISD excitation `energy`, `correlation_energy` | Hartree (`energy_ev` is eV) |
+| EHT gradients, `optimize_geometry_eht` energy | eV, eV/Å |
+| `optimize_framework` energy and forces | eV, eV/Å |
+| Vibrational frequencies, IR wavenumbers | cm⁻¹ |
+| NMR chemical shifts and shieldings | ppm |
+| NMR J-couplings | Hz |
+| Dipole moment | Debye |
+| Partial charges | elementary charge (e) |
+| Electrostatic potential | Hartree/e |
+| DOS / PDOS | 1/eV |
+| Surface area | Å² |
+| MD energies | kcal/mol; times in fs; temperatures in K |
+| Pressure | bar |
+
+Energies are always **total system energies**, not per-atom normalised, unless the field name says
+otherwise. Gradients are `dE/dR` with `R` in Å, so they carry the sign convention
+"force = −gradient".
+
+---
+
+## Naming
+
+The canonical name of a capability is the name of the Rust root function, and it is the same on
+all four surfaces (Rust, Python, WASM/TypeScript, CLI).
+
+Three crate-root helpers keep a deprecated `get_` prefix and are scheduled for removal in
+sci-form 2.0 — use the idiomatic spelling instead:
+
+| Deprecated | Use instead |
+|---|---|
+| `sci_form::get_eht_support` | `sci_form::eht_support` |
+| `sci_form::get_system_capabilities` | `sci_form::system_capabilities` |
+| `sci_form::get_system_method_plan` | `sci_form::system_method_plan` |
+
+The Rust core does **not** grow aliases: the old bare-noun Python names are handled in the
+Python bindings only.
+
+---
+
 ## Top-Level Types
 
 ### `ConformerResult`
@@ -74,7 +128,7 @@ println!("{} atoms at ({:.2}, {:.2}, {:.2})",
 ### `embed_batch`
 
 ```rust
-pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Vec<ConformerResult>
+pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Result<Vec<ConformerResult>, String>
 ```
 
 Batch-generate conformers. With `parallel` feature uses rayon; `config.num_threads = 0` auto-detects CPU count.
@@ -86,7 +140,7 @@ use sci_form::{embed_batch, ConformerConfig};
 
 let smiles = vec!["CCO", "c1ccccc1", "CC(=O)O"];
 let cfg = ConformerConfig { seed: 42, num_threads: 0 };
-let results = embed_batch(&smiles, &cfg);
+let results = embed_batch(&smiles, &cfg)?;
 for r in &results {
     println!("{}: {} atoms", r.smiles, r.num_atoms);
 }
@@ -177,14 +231,18 @@ pub fn compute_sasa(
 ) -> Result<surface::sasa::SasaResult, String>
 ```
 
-Shrake-Rupley SASA computation using a Fibonacci sphere (default 100 points), Bondi radii, and optional probe radius (default 1.4 Å for water).
+Shrake-Rupley SASA computation using a Fibonacci sphere (`DEFAULT_NUM_POINTS = 960` points per
+atom sphere), Bondi radii, and an optional probe radius (`None` selects the default 1.4 Å for
+water).
 
 **Returns:**
 
 ```rust
 pub struct SasaResult {
     pub total_sasa: f64,      // Å²
-    pub per_atom: Vec<f64>,   // per-atom SASA in Å²
+    pub atom_sasa: Vec<f64>,  // per-atom SASA in Å²
+    pub probe_radius: f64,    // Å
+    pub num_points: usize,    // test points per atom sphere
 }
 ```
 
@@ -215,11 +273,17 @@ Runs EHT then computes Mulliken and Löwdin population analysis.
 
 ```rust
 pub struct PopulationResult {
-    pub mulliken_charges: Vec<f64>,  // per-atom Mulliken charge
-    pub lowdin_charges: Vec<f64>,    // per-atom Löwdin charge
-    pub homo_energy: f64,            // eV
-    pub lumo_energy: f64,            // eV
-    pub homo_lumo_gap: f64,          // eV
+    pub mulliken_charges: Vec<f64>,      // per-atom Mulliken charge (e)
+    pub lowdin_charges: Vec<f64>,        // per-atom Löwdin charge (e)
+    pub mulliken_populations: Vec<f64>,  // gross orbital populations
+    pub num_atoms: usize,
+    pub total_charge_mulliken: f64,      // e
+    pub total_charge_lowdin: f64,        // e
+    pub charge_conservation_error: f64,  // |Σq - q_expected|
+    pub homo_energy: Option<f64>,        // eV
+    pub lumo_energy: Option<f64>,        // eV
+    pub gap: Option<f64>,                // eV
+    pub warnings: Vec<String>,
 }
 ```
 
@@ -231,7 +295,7 @@ let pos: Vec<[f64; 3]> = conf.coords.chunks(3)
     .map(|c| [c[0], c[1], c[2]])
     .collect();
 let pop = sci_form::compute_population(&conf.elements, &pos).unwrap();
-println!("HOMO: {:.3} eV, Gap: {:.3} eV", pop.homo_energy, pop.homo_lumo_gap);
+println!("HOMO: {:?} eV, Gap: {:?} eV", pop.homo_energy, pop.gap);
 ```
 
 ### `compute_dipole`
@@ -275,10 +339,10 @@ Compute an ESP grid using Mulliken charges from EHT. Grid extends `padding` Å b
 
 ```rust
 pub struct EspGrid {
-    pub values: Vec<f64>,       // grid values, row-major (z-innermost)
     pub origin: [f64; 3],       // Å
     pub spacing: f64,           // Å
-    pub nx: usize, pub ny: usize, pub nz: usize,
+    pub dims: [usize; 3],       // [nx, ny, nz]
+    pub values: Vec<f64>,       // Hartree/e, row-major (z-innermost)
 }
 ```
 
@@ -324,11 +388,10 @@ Runs EHT to get orbital energies, then computes DOS and per-atom PDOS with Gauss
 
 ```rust
 pub struct DosResult {
-    pub energies: Vec<f64>,          // eV, n_points values from e_min to e_max
-    pub dos: Vec<f64>,               // total DOS
-    pub pdos: Vec<Vec<f64>>,         // pdos[atom][energy_idx]
-    pub orbital_energies: Vec<f64>,  // raw EHT orbital energies (eV)
-    pub homo_lumo_gap: Option<f64>,  // eV
+    pub energies: Vec<f64>,   // eV, n_points values from e_min to e_max
+    pub total_dos: Vec<f64>,  // states/eV
+    pub pdos: Vec<Vec<f64>>,  // per-atom PDOS: pdos[atom_idx][grid_idx]
+    pub sigma: f64,           // eV
 }
 ```
 
@@ -483,32 +546,38 @@ println!("Gap: {:.2} eV, {} transitions", spec.gap, spec.n_transitions);
 pub fn compute_vibrational_analysis(
     elements: &[u8],
     positions: &[[f64; 3]],
-    method: ir::ScientificMethod,
+    method: &str,
+    step_size: Option<f64>,
 ) -> Result<ir::VibrationalAnalysis, String>
 ```
 
 Compute a numerical Hessian ($6N$ energy evaluations with mass-aware step size) and diagonalize to obtain vibrational frequencies, normal modes, IR intensities, ZPVE, and thermochemistry. Translation/rotation modes are projected out automatically.
 
-**`ScientificMethod` enum:** `ScientificMethod::Eht`, `ScientificMethod::Pm3`, `ScientificMethod::Xtb`
+**`method`** is `"eht"`, `"pm3"` or `"xtb"`; `step_size` is the finite-difference step in Å (`None` selects the engine default).
 
-**Returns** `VibrationalAnalysis { n_atoms, modes, n_real_modes, zpve_ev, method, notes, thermochemistry }`.
+**Returns** `VibrationalAnalysis { n_atoms, elements, modes, n_real_modes, n_imaginary_modes, zpve_ev, thermochemistry, method, notes }`.
 
-Each `VibrationalMode` has `frequency_cm1`, `ir_intensity` (km/mol), `displacement` (3N), `is_real`, `label` (functional group annotation).
+Each `VibrationalMode` has `frequency_cm1`, `ir_intensity` (km/mol), `displacement` (3N) and `is_real`.
 
-`Thermochemistry` (RRHO, 298.15 K): `zpve_kcal`, `thermal_energy_kcal`, `entropy_vib_cal`, `gibbs_correction_kcal`.
+`Thermochemistry` (RRHO, 298.15 K): `temperature_k`, `zpve_kcal`, `thermal_energy_kcal`, `enthalpy_correction_kcal`, `entropy_vib_cal` (cal/mol/K), `gibbs_correction_kcal` — all energies in kcal/mol.
+
+::: warning
+The EHT Hessian is a one-electron model with no electron-electron repulsion, so the potential-energy
+surface has no minimum and its second derivative does not define force constants: imaginary
+(negative) frequencies are expected. Use `pm3` or `xtb`.
+:::
 
 ```rust
-use sci_form::ir::ScientificMethod;
-
-let vib = sci_form::compute_vibrational_analysis(&conf.elements, &pos, ScientificMethod::Xtb).unwrap();
+let vib = sci_form::compute_vibrational_analysis(&conf.elements, &pos, "xtb", None).unwrap();
 println!("ZPVE: {:.4} eV", vib.zpve_ev);
-println!("Gibbs correction: {:.3} kcal/mol", vib.thermochemistry.gibbs_correction_kcal);
+if let Some(t) = &vib.thermochemistry {
+    println!("Gibbs correction: {:.3} kcal/mol", t.gibbs_correction_kcal);
+}
 let strongest = vib.modes.iter().filter(|m| m.is_real)
     .max_by(|a,b| a.ir_intensity.partial_cmp(&b.ir_intensity).unwrap());
-println!("Strongest: {:.1} cm⁻¹  ({:.1} km/mol)  [{}]",
+println!("Strongest: {:.1} cm⁻¹  ({:.1} km/mol)",
     strongest.map(|m| m.frequency_cm1).unwrap_or(0.0),
-    strongest.map(|m| m.ir_intensity).unwrap_or(0.0),
-    strongest.and_then(|m| m.label.as_deref()).unwrap_or("?"));
+    strongest.map(|m| m.ir_intensity).unwrap_or(0.0));
 ```
 
 ---
@@ -517,20 +586,22 @@ println!("Strongest: {:.1} cm⁻¹  ({:.1} km/mol)  [{}]",
 
 ```rust
 pub fn compute_ir_spectrum(
-    elements: &[u8],
-    positions: &[[f64; 3]],
-    method: ir::ScientificMethod,
-) -> Result<ir::IrSpectrum, String>
+    analysis: &ir::VibrationalAnalysis,
+    gamma: f64,
+    wn_min: f64,
+    wn_max: f64,
+    n_points: usize,
+) -> ir::IrSpectrum
 ```
 
-Convenience wrapper: runs `compute_vibrational_analysis` and applies default Lorentzian broadening (γ = 15 cm⁻¹, 600–4000 cm⁻¹, 1000 points).
+Applies default Lorentzian broadening to an existing `VibrationalAnalysis`.
 
-**Returns** `IrSpectrum { wavenumbers, intensities, transmittance, peaks, gamma, notes }`.
+**Returns** `IrSpectrum { wavenumbers, intensities, peaks, gamma, notes }` — wavenumbers in cm⁻¹ and
+intensities in km/mol.
 
 ```rust
-use sci_form::ir::ScientificMethod;
-
-let spec = sci_form::compute_ir_spectrum(&conf.elements, &pos, ScientificMethod::Xtb).unwrap();
+let vib = sci_form::compute_vibrational_analysis(&conf.elements, &pos, "xtb", None).unwrap();
+let spec = sci_form::compute_ir_spectrum(&vib, 15.0, 400.0, 4000.0, 1000);
 let max_i = spec.intensities.iter().cloned().fold(0.0_f64, f64::max);
 let idx   = spec.intensities.iter().position(|&v| v == max_i).unwrap();
 println!("Dominant band: {:.1} cm⁻¹", spec.wavenumbers[idx]);
@@ -558,7 +629,8 @@ Generate a broadened IR spectrum from an existing `VibrationalAnalysis` with ful
 | `gamma` | Half-width (Lorentzian) or σ (Gaussian) in cm⁻¹ |
 | `broadening` | `"lorentzian"` (default) or `"gaussian"` |
 
-**Returns** `IrSpectrum` with both `intensities` (absorbance) and `transmittance` axes.
+**Returns** `IrSpectrum { wavenumbers, intensities, peaks, gamma, notes }` — wavenumbers in cm⁻¹ and
+intensities in km/mol.
 
 ```rust
 // Gaussian broadening for publication-quality spectra
@@ -1009,7 +1081,182 @@ println!("{} clusters from {} conformers", clusters.n_clusters, results.len());
 
 ---
 
+## Capabilities added in this release
+
+These functions are new in the v1.0 surface. Most of them were Rust-only before and are now
+mirrored on the Python, WASM and CLI surfaces.
+
+### `compute_cisd`
+
+```rust
+// sci_form::hf::cisd::compute_cisd
+pub fn compute_cisd(
+    orbital_energies: &[f64],
+    coefficients: &nalgebra::DMatrix<f64>,
+    eris: &[f64],
+    n_basis: usize,
+    n_occupied: usize,
+    n_states: usize,
+) -> CisdResult
+```
+
+CISD excited states. `correlation_energy` is in **Hartree**; each excitation carries `energy`
+(Hartree) and `energy_ev` (eV). The high-level entry point `compute_cisd` on the Python and
+WASM surfaces runs the internal STO-3G RHF plus the ERIs for you.
+
+### `compute_dos_multimethod`
+
+```rust
+// sci_form::dos::multi_method::compute_dos_multimethod
+pub fn compute_dos_multimethod(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    method: DosMethod,
+    sigma: f64,
+    e_min: f64,
+    e_max: f64,
+    n_points: usize,
+) -> Result<MultiMethodDosResult, String>
+```
+
+DOS built from the orbital energies of a chosen method (`DosMethod::Eht`, `Pm3`, `Xtb`, `Gfn1`,
+`Gfn2`, `Hf3c`). Energies in **eV**, DOS in **1/eV**.
+
+### `compute_eht_gradient` and `optimize_geometry_eht`
+
+```rust
+// sci_form::eht::gradients
+pub fn compute_eht_gradient(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<EhtGradient, String>
+
+pub fn optimize_geometry_eht(
+    elements: &[u8],
+    initial_positions: &[[f64; 3]],
+    config: Option<EhtOptConfig>,
+) -> Result<EhtOptResult, String>
+```
+
+Central-finite-difference gradients on the EHT surface (**eV/Å**) and a BFGS optimisation on
+that surface (energy in **eV**).
+
+### `compute_aevs_tm`
+
+```rust
+// sci_form::ani::ani_tm::compute_aevs_tm
+pub fn compute_aevs_tm(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    params: &AevParams,
+) -> Vec<Vec<f64>>
+```
+
+ANI-TM atomic environment vectors over the extended 24-element set.
+
+### `compute_whim`, `compute_rdf`, `compute_getaway`
+
+```rust
+// sci_form::ml::whim
+pub fn compute_whim(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    weighting: WhimWeighting,
+) -> WhimDescriptors
+
+// sci_form::ml::rdf_descriptors
+pub fn compute_rdf(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    charges: &[f64],
+    beta: f64,
+    r_max: f64,
+    n_points: usize,
+) -> RdfDescriptors
+
+// sci_form::ml::getaway
+pub fn compute_getaway(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    bonds: &[(usize, usize)],
+    max_lag: usize,
+) -> GetawayDescriptors
+```
+
+3D descriptor families. `rdf` radii are in **Å** and `beta` in **Å⁻²**.
+
+### `train_random_forest` and `train_gradient_boosting`
+
+```rust
+// sci_form::ml::advanced_models
+pub fn train_random_forest(
+    features: &[Vec<f64>],
+    targets: &[f64],
+    config: &RandomForestConfig,
+) -> RandomForest
+
+pub fn train_gradient_boosting(
+    features: &[Vec<f64>],
+    targets: &[f64],
+    config: &GradientBoostingConfig,
+) -> GradientBoosting
+```
+
+Regressors for descriptor-based property models.
+
+### `assign_peaks`
+
+```rust
+// sci_form::ir::peak_assignment::assign_peaks
+pub fn assign_peaks(
+    frequencies: &[f64],
+    intensities: &[f64],
+    elements: &[u8],
+    mode_displacements: Option<&[Vec<[f64; 3]>]>,
+) -> AssignmentResult
+```
+
+Assign IR peaks (**cm⁻¹**) to functional groups using the standard group-frequency tables.
+
+### Space groups, periodic molecules and framework optimisation
+
+```rust
+// sci_form::materials::space_groups
+pub fn space_group_by_number(number: u16) -> Option<SpaceGroup>
+pub fn space_group_by_symbol(symbol: &str) -> Option<SpaceGroup>
+pub fn all_space_groups() -> Vec<(u16, &'static str)>
+
+// sci_form::periodic
+pub fn build_periodic_molecule(
+    elements: &[u8],
+    frac_coords: &[[f64; 3]],
+    cell: &UnitCell,
+    bond_tolerance: Option<f64>,
+) -> PeriodicMolecule
+
+pub fn detect_hapticity(
+    elements: &[u8],
+    coords: &[[f64; 3]],
+    bonds: &[(usize, usize)],
+) -> HapticityAnalysis
+
+// sci_form::materials::geometry_opt
+pub fn optimize_framework<F>(
+    elements: &[u8],
+    initial_positions: &[[f64; 3]],
+    energy_force_fn: &F,
+    config: &FrameworkOptConfig,
+) -> Result<FrameworkOptResult, String>
+where
+    F: Fn(&[u8], &[[f64; 3]]) -> Result<(f64, Vec<[f64; 3]>), String>,
+```
+
+`optimize_framework` reports its energy in **eV** and its forces in **eV/Å**.
+
+---
+
 ## Internal Module Reference
+
 
 | Module | Key Types / Functions |
 |--------|-----------------------|
@@ -1044,7 +1291,7 @@ println!("{} clusters from {} conformers", clusters.n_clusters, results.len());
 | `sci_form::ani` | `compute_ani()`, `AniConfig`, `AniResult`, `FeedForwardNet` |
 | `sci_form::ani::ani_tm` | `compute_aevs_tm()`, `species_index_tm()` (24 elements incl. transition metals) |
 | `sci_form::materials` | `UnitCell`, `Sbu`, `Topology`, `CrystalStructure`, `assemble_framework()` |
-| `sci_form::materials::space_groups` | `space_group_by_number()`, `space_group_by_symbol()`, `SpaceGroup` (230 ITC groups) |
+| `sci_form::materials::space_groups` | `space_group_by_number()`, `space_group_by_symbol()`, `all_space_groups()`, `crystal_system_for_number()`, `SpaceGroup` (230 ITC groups) |
 | `sci_form::materials::geometry_opt` | `optimize_framework()`, `FrameworkOptConfig`, `FrameworkOptResult`, `OptMethod` |
 | `sci_form::transport` | `pack_batch_arrow()`, `ChunkedIterator`, `WorkerTask`, `split_worker_tasks()` |
 | `sci_form::reactivity` | `StdaUvVisSpectrum`, `StdaExcitation`, `BroadeningType`, `compute_stda_uvvis_spectrum()` |

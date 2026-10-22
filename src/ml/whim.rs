@@ -35,6 +35,9 @@ pub struct WhimDescriptors {
 
 /// Atomic weighting scheme for WHIM descriptors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum WhimWeighting {
     /// Unit weights (unweighted).
     Unit,

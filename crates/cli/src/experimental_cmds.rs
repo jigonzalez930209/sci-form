@@ -16,16 +16,16 @@ fn parse_flat_coords_json(coords: &str) -> Vec<f64> {
 /// `None` means "not given": every available backend is used (blocker C-M5).
 #[cfg(feature = "alpha-gsm")]
 fn parse_gsm_methods_json(methods: Option<&str>) -> Vec<sci_form::alpha::gsm::GsmEnergyBackend> {
-    let raw_methods: Vec<String> = match crate::format::parse_string_list(methods, "'methods'") {
-        Some(m) => m,
-        None => Vec::new(),
-    };
+    let raw_methods: Vec<String> =
+        crate::format::parse_string_list(methods, "'methods'").unwrap_or_default();
     raw_methods
         .into_iter()
         .map(|method| {
-            method.parse().unwrap_or_else(|e| {
-                crate::format::fail(format!("{e}"));
-            })
+            method
+                .parse::<sci_form::alpha::gsm::GsmEnergyBackend>()
+                .unwrap_or_else(|e| {
+                    crate::format::fail(&e);
+                })
         })
         .collect()
 }
@@ -151,7 +151,6 @@ pub fn cmd_edl_profile(
                 model,
                 &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
             ));
-            std::process::exit(1);
         }
     };
     let config = EdlConfig {
@@ -208,7 +207,6 @@ pub fn cmd_edl_capacitance_scan(
                 model,
                 &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
             ));
-            std::process::exit(1);
         }
     };
     let config = EdlConfig {
@@ -372,7 +370,6 @@ pub fn cmd_kmesh(grid: [usize; 3], centering: &str) {
                 centering,
                 &["monkhorst-pack", "mp", "gamma", "gamma-centered"],
             ));
-            std::process::exit(1);
         }
     };
     match monkhorst_pack_mesh(&KMeshConfig { grid, centering: c }) {
@@ -579,7 +576,6 @@ pub fn cmd_capacitance_chart(
                 model,
                 &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
             ));
-            std::process::exit(1);
         }
     };
     let config = EdlConfig {
@@ -775,7 +771,6 @@ pub fn cmd_band_structure_chart(
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let lattice_values: Vec<f64> = serde_json::from_str(lattice).unwrap_or_else(|e| {
         crate::format::fail(crate::format::bad_json("'lattice'", lattice, &e));
-        std::process::exit(1);
     });
     if lattice_values.len() != 9 {
         eprintln!("Lattice needs exactly nine components");
@@ -944,7 +939,6 @@ fn parse_centering(centering: &str) -> sci_form::kmesh::KMeshCentering {
                 centering,
                 &["monkhorst-pack", "mp", "gamma", "gamma-centered"],
             ));
-            std::process::exit(1);
         }
     }
 }
@@ -1177,7 +1171,7 @@ fn gsm_path(
     use sci_form::alpha::gsm::{find_transition_state_with_backend, GsmConfig, GsmEnergyBackend};
     let backend: GsmEnergyBackend = match method.parse() {
         Ok(backend) => backend,
-        Err(e) => {
+        Err(_) => {
             crate::format::fail(crate::format::invalid_value(
                 "'method'",
                 method,
@@ -1185,7 +1179,6 @@ fn gsm_path(
                     "uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff",
                 ],
             ));
-            std::process::exit(1);
         }
     };
     match find_transition_state_with_backend(

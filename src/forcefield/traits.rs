@@ -177,7 +177,6 @@ impl MolecularForceField {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     /// Environment marker used to run this test binary as a *child* process
     /// with a different `RAYON_NUM_THREADS` value.

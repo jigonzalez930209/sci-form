@@ -8,6 +8,10 @@ fn comparison_status_name(status: sci_form_core::MethodComparisonStatus) -> Stri
         sci_form_core::MethodComparisonStatus::Success => "success",
         sci_form_core::MethodComparisonStatus::Unavailable => "unavailable",
         sci_form_core::MethodComparisonStatus::Error => "error",
+        // `MethodComparisonStatus` is `#[non_exhaustive]`: a status added after
+        // this binding was written reports itself as unknown rather than being
+        // mislabelled as one of the known statuses.
+        _ => "unknown",
     }
     .to_string()
 }
@@ -96,6 +100,11 @@ fn compare_methods(
                         sci_form_core::MethodComparisonPayload::Uff { energy_kcal_mol: e } => {
                             energy_kcal_mol = Some(e);
                         }
+                        // `MethodComparisonPayload` is `#[non_exhaustive]`: a
+                        // payload added after this binding was written leaves
+                        // every observable unset instead of reporting a value
+                        // that was never computed.
+                        _ => {}
                     }
                 }
                 MethodComparisonEntryPy {

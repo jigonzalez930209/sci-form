@@ -76,6 +76,10 @@ impl LiveSimulation {
                                 sci_form::graph::BondOrder::Triple => "TRIPLE",
                                 sci_form::graph::BondOrder::Aromatic => "AROMATIC",
                                 sci_form::graph::BondOrder::Unknown => "UNKNOWN",
+                                // `BondOrder` is `#[non_exhaustive]`: a bond order
+                                // added after this binding was written reports
+                                // itself as unknown rather than guessing.
+                                _ => "UNKNOWN",
                             };
                             (a.index(), b.index(), order.to_string())
                         })

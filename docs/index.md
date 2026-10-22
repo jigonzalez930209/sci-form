@@ -4,7 +4,7 @@ layout: home
 hero:
   name: sci-form
   text: Computational Chemistry in Rust
-  tagline: Conformer generation, EHT, PM3, GFN-xTB, UV-Vis sTDA, IR, NMR, ML properties, force fields — Rust, Python, TypeScript, CLI (v0.15.2)
+  tagline: Conformer generation, EHT, PM3, GFN-xTB, UV-Vis sTDA, IR, NMR, ML properties, force fields — Rust, Python, TypeScript, CLI (v1.0.0)
   image:
     src: /logo.svg
     alt: sci-form

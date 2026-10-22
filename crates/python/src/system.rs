@@ -61,6 +61,10 @@ pub(crate) fn scientific_method_name(method: sci_form_core::ScientificMethod) ->
         sci_form_core::ScientificMethod::Mmff94 => "mmff94",
         sci_form_core::ScientificMethod::Ani => "ani",
         sci_form_core::ScientificMethod::Hf3c => "hf3c",
+        // `ScientificMethod` is `#[non_exhaustive]`: a method added after this
+        // binding was written reports itself as unknown rather than being
+        // mislabelled as one of the known methods.
+        _ => "unknown",
     }
     .to_string()
 }
@@ -72,6 +76,10 @@ fn property_request_name(property: sci_form_core::PropertyRequest) -> String {
         sci_form_core::PropertyRequest::Orbitals => "orbitals",
         sci_form_core::PropertyRequest::Population => "population",
         sci_form_core::PropertyRequest::OrbitalGrid => "orbital_grid",
+        // `PropertyRequest` is `#[non_exhaustive]`: a property added after this
+        // binding was written reports itself as unknown rather than being
+        // mislabelled as one of the known properties.
+        _ => "unknown",
     }
     .to_string()
 }
@@ -212,12 +220,12 @@ pub(crate) fn plan_to_py(plan: sci_form_core::SystemMethodPlan) -> SystemMethodP
 
 #[pyfunction]
 fn system_capabilities(elements: Vec<u8>) -> SystemCapabilitiesPy {
-    caps_to_py(sci_form_core::get_system_capabilities(&elements))
+    caps_to_py(sci_form_core::system_capabilities(&elements))
 }
 
 #[pyfunction]
 fn system_method_plan(elements: Vec<u8>) -> SystemMethodPlanPy {
-    plan_to_py(sci_form_core::get_system_method_plan(&elements))
+    plan_to_py(sci_form_core::system_method_plan(&elements))
 }
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {

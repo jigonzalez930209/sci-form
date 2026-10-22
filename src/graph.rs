@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 /// Hybridization state of an atom, used to compute bond angles and geometry.
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum Hybridization {
     /// sp hybridised: two σ-bonds, linear geometry (180°).
     SP,
@@ -29,6 +32,9 @@ pub enum Hybridization {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 /// Tetrahedral chirality type derived from the SMILES `@`/`@@` specification.
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum ChiralType {
     /// No tetrahedral stereochemistry assigned.
     Unspecified,
@@ -43,6 +49,9 @@ pub enum ChiralType {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 /// E/Z (cis/trans) stereochemistry of a double bond.
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum BondStereo {
     /// No double-bond stereochemistry specified.
     None,
@@ -57,6 +66,9 @@ pub enum BondStereo {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 /// Bond order: single, double, triple, aromatic, or unknown.
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum BondOrder {
     /// Single bond (σ only).
     Single,

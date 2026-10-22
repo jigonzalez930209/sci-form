@@ -35,6 +35,9 @@ const HARTREE_TO_KCAL_MOL: f64 = 627.509_474_063_1;
 
 /// Force backend for molecular dynamics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum MdBackend {
     /// UFF force field (fast, approximate).
     Uff,
@@ -50,6 +53,9 @@ pub enum MdBackend {
 /// or numerical) for NEB image relaxation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum NebBackend {
     /// UFF force field — fast exploratory paths.
     Uff,

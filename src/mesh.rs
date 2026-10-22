@@ -13,6 +13,9 @@ use crate::eht;
 
 /// Which electronic-structure method to use for orbital mesh generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum MeshMethod {
     /// Extended Hückel Theory.
     Eht,

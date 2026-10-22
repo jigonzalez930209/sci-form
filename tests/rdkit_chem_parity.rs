@@ -98,6 +98,9 @@ fn bond_order_code(order: sci_form::graph::BondOrder) -> u8 {
         Triple => 3,
         Aromatic => 4,
         Unknown => 1,
+        // `BondOrder` is `#[non_exhaustive]`: a bond order added after this
+        // test was written maps to 1, the same as `Unknown`.
+        _ => 1,
     }
 }
 
@@ -675,6 +678,10 @@ mod f83_canonical {
                     sci_form::graph::BondOrder::Triple => 3,
                     sci_form::graph::BondOrder::Aromatic => 4,
                     sci_form::graph::BondOrder::Unknown => 1,
+                    // `BondOrder` is `#[non_exhaustive]`: a bond order added
+                    // after this test was written maps to 1, the same as
+                    // `Unknown`.
+                    _ => 1,
                 };
                 Some((ea.min(eb), ea.max(eb), order))
             })

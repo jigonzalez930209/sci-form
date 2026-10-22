@@ -6,6 +6,9 @@
 
 /// Coarse activation state for the GPU runtime.
 #[derive(Debug, Clone, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum GpuActivationState {
     /// GPU feature is not enabled at compile time.
     FeatureDisabled,

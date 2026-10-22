@@ -9,6 +9,9 @@ use super::memory_budget::GpuMemoryBudget;
 ///
 /// Higher tiers benefit more from GPU acceleration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum GpuTier {
     /// Massive speedup: O(N⁴) two-electron integrals, O(grid × N_basis) orbital grids.
     Tier1,

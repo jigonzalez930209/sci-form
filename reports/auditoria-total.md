@@ -9,6 +9,13 @@
 > sigue abierto— está en **`reports/auditoria-resolucion.md`**.
 > Los 10 P0 están cerrados; de los 30 P1 quedan 4 abiertos y de los 60 P2
 > quedan 13 (todos con justificación documentada).
+>
+> **Auditoría de segunda ronda (2026-10-22), anterior a v1.0.0:**
+> cuatro auditorías profundas adicionales (robustez y numérico, diseño de API
+> y accesibilidad, áreas no auditadas del repositorio, rendimiento y
+> concurrencia) levantaron 58 bloqueadores v1.0 registrados en
+> **`reports/v1.0-blockers.md`**, de los que 51 se cerraron antes de publicar
+> 1.0.0. Ver la tabla de estado al principio de ese documento.
 
 
 ## 0. RESUMEN EJECUTIVO

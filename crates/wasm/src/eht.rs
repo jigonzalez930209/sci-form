@@ -77,14 +77,15 @@ fn orbital_grid_from_coefficients(
 
     #[cfg(feature = "parallel")]
     {
-        Ok(sci_form::eht::evaluate_orbital_on_grid_parallel(
+        sci_form::eht::evaluate_orbital_on_grid_parallel(
             &basis,
             &coefficients,
             mo_index,
             &positions,
             spacing,
             3.0,
-        ))
+        )
+        .map_err(|e| json_error(&e))
     }
 
     #[cfg(not(feature = "parallel"))]
@@ -239,7 +240,7 @@ pub fn eht_support(elements: &str) -> String {
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    serialize_or_error(&sci_form::get_eht_support(&elems))
+    serialize_or_error(&sci_form::eht_support(&elems))
 }
 
 /// Query EHT support metadata.
@@ -247,8 +248,13 @@ pub fn eht_support(elements: &str) -> String {
 /// **Alias** of [`eht_support`] matching the Rust root name
 /// `sci_form::get_eht_support`.
 #[wasm_bindgen]
+#[allow(deprecated)] // this alias exists to keep the old name working
 pub fn get_eht_support(elements: &str) -> String {
-    eht_support(elements)
+    let elems: Vec<u8> = match parse_elements(elements) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    serialize_or_error(&sci_form::get_eht_support(&elems))
 }
 
 /// Compute orbital grid as Float32Array (typed-array transfer).
@@ -490,7 +496,7 @@ pub(crate) async fn compute_eht_orbital_grid_wasm_accelerated(
             positions,
             spacing,
             padding,
-        );
+        )?;
         return Ok((
             grid,
             "CPU".to_string(),
@@ -511,7 +517,7 @@ pub(crate) async fn compute_eht_orbital_grid_wasm_accelerated(
             positions,
             spacing,
             padding,
-        );
+        )?;
         return Ok((
             grid,
             "CPU".to_string(),
@@ -524,7 +530,7 @@ pub(crate) async fn compute_eht_orbital_grid_wasm_accelerated(
         &sci_form::eht::basis::build_basis(elements, positions),
         &eht_result.coefficients,
     );
-    let (origin, dims) = sci_form::eht::volume::compute_grid_extents(positions, padding, spacing);
+    let (origin, dims) = sci_form::eht::volume::compute_grid_extents(positions, padding, spacing)?;
 
     if mode == WasmExecutionMode::Hybrid && dims[0] >= 2 {
         let gpu_x = ((dims[0] * 2) / 3).max(1).min(dims[0] - 1);
@@ -581,7 +587,7 @@ pub(crate) async fn compute_eht_density_grid_wasm_accelerated(
         &expanded.coefficients,
         eht_result.n_electrons / 2,
     );
-    let (origin, dims) = sci_form::eht::volume::compute_grid_extents(positions, padding, spacing);
+    let (origin, dims) = sci_form::eht::volume::compute_grid_extents(positions, padding, spacing)?;
 
     if mode == WasmExecutionMode::Cpu {
         let values = compute_eht_density_grid_cpu_slice(&expanded, &density, origin, spacing, dims);

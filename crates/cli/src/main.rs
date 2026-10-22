@@ -624,7 +624,7 @@ fn main() {
             centering,
         } => experimental_cmds::cmd_assemble_periodic_operators(
             &hamiltonian_blocks,
-            &overlap_blocks,
+            overlap_blocks.as_deref(),
             [nx, ny, nz],
             &centering,
         ),

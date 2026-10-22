@@ -73,6 +73,9 @@ pub fn get_pm3_params(z: u8) -> Option<&'static Pm3Params> {
 
 /// Which PM3 parameterization an element uses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum Pm3Method {
     /// Stewart's PM3 parameterization (main-group elements).
     Pm3,

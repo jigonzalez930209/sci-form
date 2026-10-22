@@ -24,6 +24,9 @@ use crate::scf::types::MolecularSystem;
 
 /// DFT functional method.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum DftMethod {
     /// SVWN (LDA): Slater exchange + VWN-5 correlation.
     Svwn,

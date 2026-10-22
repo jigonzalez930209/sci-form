@@ -27,6 +27,9 @@ const P_VAL: [(f64, f64); 3] = [
 
 /// Choice of valence basis set for the Kohn-Sham calculation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum DftBasisKind {
     /// Minimal all-electron basis: the tabulated Hehre–Stewart–Pople
     /// STO-3G shells where available, Slater-rule exponents with the

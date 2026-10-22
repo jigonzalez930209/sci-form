@@ -23,6 +23,9 @@ pub struct DataChunk {
 
 /// Type of data in a chunk.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum ChunkKind {
     /// 3D coordinates (flat xyz triples).
     Coordinates,

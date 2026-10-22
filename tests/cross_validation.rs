@@ -313,6 +313,10 @@ mod f01_parse {
                         sci_form::graph::BondOrder::Triple => 3,
                         sci_form::graph::BondOrder::Aromatic => 4,
                         sci_form::graph::BondOrder::Unknown => 1,
+                        // `BondOrder` is `#[non_exhaustive]`: a bond order added
+                        // after this test was written maps to 1, the same as
+                        // `Unknown`.
+                        _ => 1,
                     };
                     Some((ai, bi, order))
                 })
@@ -387,6 +391,9 @@ mod f01_parse {
             SP3D => "SP3D",
             SP3D2 => "SP3D2",
             Unknown => "Unknown",
+            // `Hybridization` is `#[non_exhaustive]`: a hybridisation added
+            // after this test was written reports itself as unknown.
+            _ => "Unknown",
         }
     }
 }

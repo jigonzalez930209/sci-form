@@ -1971,6 +1971,9 @@ pub struct Mmff94Builder;
 /// optimized for static structures (crystal geometries), while MMFF94
 /// is optimized for molecular dynamics simulations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum Mmff94Variant {
     /// Original MMFF94 (Halgren 1996) — optimized for dynamics.
     Mmff94,

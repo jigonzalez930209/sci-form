@@ -101,7 +101,7 @@ impl MolecularSystem {
             return Err("multiplicity must be >= 1 (got 0)".to_string());
         }
         let n_unpaired = (self.multiplicity as usize).saturating_sub(1);
-        if n_unpaired > n_electrons || (n_electrons + n_unpaired) % 2 != 0 {
+        if n_unpaired > n_electrons || !(n_electrons + n_unpaired).is_multiple_of(2) {
             return Err(format!(
                 "multiplicity={} is incompatible with {} electrons (need N±(M-1) even, 0 <= M-1 <= N)",
                 self.multiplicity, n_electrons

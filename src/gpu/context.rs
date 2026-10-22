@@ -87,6 +87,9 @@ impl Default for ComputeCapabilities {
 /// The mode determines the `wgpu` buffer usage flags and the bind-group
 /// layout entry, and therefore whether the kernel may write to the buffer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum ComputeBindingKind {
     /// Uniform buffer: read-only, fast-path, limited to 64 KB by default.
     Uniform,
@@ -737,6 +740,9 @@ pub fn bytes_to_f32_vec(bytes: &[u8]) -> Vec<f32> {
 
 /// A single 32-bit word of a uniform buffer.
 #[derive(Debug, Clone, Copy)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum UniformValue {
     /// Raw 32-bit unsigned integer word.
     U32(u32),

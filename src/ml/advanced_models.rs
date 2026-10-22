@@ -17,6 +17,9 @@ use serde::{Deserialize, Serialize};
 /// samples on one feature at one threshold and sends the lower branch
 /// (`value <= threshold`) left and the upper branch right.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum TreeNode {
     /// Terminal node holding the constant prediction for its samples.
     Leaf {
@@ -485,6 +488,9 @@ pub struct CrossValidationResult {
 /// Model type for cross-validation.
 ///
 /// Selects which regressor [`cross_validate`] trains inside each fold.
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum ModelType {
     /// Train a [`RandomForest`] in every fold.
     RandomForest(RandomForestConfig),

@@ -8,10 +8,187 @@ human-written changelog for the repository.
 
 ## Unreleased
 
+_(nothing yet — the next release starts here)_
+
+## v1.0.0 - 2026-10-22
+
+The first stable release. v1.0.0 closes **two exhaustive audits** (100 findings
+in `reports/auditoria-total.md`, 58 blockers in `reports/v1.0-blockers.md`) and
+raises the floor on everything that matters for a chemistry library: the crate
+no longer panics on user input, its results are reproducible bit-for-bit
+regardless of the machine's core count, every public item is documented, and
+the published artefact is 13 MB smaller.
+
+**Upgrade guide:** [`docs/guide/migration-1.0.md`](docs/guide/migration-1.0.md)
+lists every breaking change. The short version: the functions that can fail
+now return a `Result` instead of panicking, and the canonical name of every
+capability is the Rust root name in all four surfaces.
+
+### Security and robustness
+
+- **The library no longer panics on user input.** 164 panicking sites in the
+  library code were classified; the 39 reachable from a malformed molecule, a
+  degenerate geometry or an unsupported element were eliminated.
+  - A new shared validator (`src/validation.rs`) rejects a length mismatch
+    between the elements and the coordinates, a non-finite coordinate and an
+    empty system with one actionable message, and it guards every public
+    entry point that takes a geometry.
+  - All 30 `partial_cmp(...).unwrap()` sites became `unwrap_or(Ordering::Equal)`.
+    A single NaN coordinate used to panic the whole library.
+  - `Molecule::from_smiles("[")` returns an error instead of panicking, and
+    the SMILES parse errors now carry the position and the offending fragment
+    instead of a bare `Expected ')'`.
+  - `compute_uhf` validates the charge and the multiplicity against the real
+    electron count instead of casting a negative `i32` to `usize`.
+  - The GFN0 public helpers, `solve_gfn0`, the PM3 faithful solver, the DOS,
+    the orbital mesh and the ESP grid validate their parameters. A zero
+    spacing or a zero point count used to return an EMPTY result in release
+    builds — a debug-only panic let CI stay green while the published crate
+    returned garbage.
+  - `GasteigerConfig` rejects `max_iter = 0` and a non-positive damping; those
+    used to yield all-zero charges while reporting `converged = true`.
+  - `embed_batch` clamps the thread count (`1 << 20` used to hang forever) and
+    propagates the pool-creation error.
+  - The SMARTS parser returns parse errors instead of `panic!`.
+- **The WASM error encoder produced invalid JSON.** serde_json embeds the
+  offending value in quotes, so `{"error":"invalid type: string "abc"…"}` did
+  not parse and `JSON.parse()` threw instead of showing the error. Every WASM
+  error path was affected. It now builds the payload with serde_json, and a
+  test parses the output back.
+- **A panic inside a PyO3 function is a `PanicException`**, which inherits from
+  `BaseException` and is therefore NOT caught by `except Exception:`. With the
+  panics removed from the core, the Python surface now raises ordinary
+  exceptions.
+
+### Fixed
+
+- **The force-field energy and gradient are now bit-identical regardless of
+  the rayon thread count.** The tree reduction made every UFF/MD/NEB result
+  depend on the machine's core count — three different bit patterns were
+  measured for the same molecule. This broke the crate's "same seed =
+  reproducible output" promise on every path that matters. The same fix was
+  applied to the GB electrostatic sum.
+- **The UFF/MMFF94 energy accumulated in `f32`** while the rest of the library
+  is `f64`. This is the routine the conformer minimiser uses.
+- **Python registered `cpm_charges` twice**, so the beta copy silently won and
+  computed at μ = 0.0 eV instead of the standard −4.44 eV.
+- The swallowed errors are now reported: the faithful PM3 solver's real
+  failure reason, the GPU→CPU fallbacks (`notes` on the result).
+- The EHT vibrational analysis now reports `n_imaginary_modes` and a loud
+  note. The EHT model is one-electron, so it has no repulsive wall and its
+  Hessian curvature is negative: the numbers are unchanged but the failure is
+  no longer silent.
+- `align_coordinates` can no longer return NaN.
+- The `unsafe` block in `stda_gpu.rs` had a factually wrong SAFETY comment and
+  a silent empty-slice fallback; it now returns a `Result`.
+- The GPU context and the compute pipeline are cached instead of being
+  re-acquired and recompiled on every dispatch (27 ms → 6 ns).
+- The Python integration test that passed a 3-atom geometry for a 9-atom
+  molecule now passes the right one.
+
+### Changed
+
+- **Every public enum is now `#[non_exhaustive]`** (57 of 60; three
+  deliberately closed sets are documented as such). Adding a variant is no
+  longer a breaking change for downstream users. Downstream `match`
+  expressions need a wildcard arm.
+- **The canonical name of every capability is the Rust root name** in all four
+  surfaces (Rust, Python, WASM, CLI). 93 deprecated Python aliases keep the
+  old names working with a `DeprecationWarning`; WASM gained the missing
+  names plus `*_seed64` variants so a 64-bit seed is no longer truncated.
+- The non-idiomatic `get_` prefix is gone: `eht_support`,
+  `system_capabilities`, `system_method_plan` (the old names remain as
+  deprecated aliases).
+- `compute_gfn1` and `compute_gfn2` now exist at the crate root.
+- The Python classes no longer carry the `Py` suffix, the module exposes
+  `__all__` (grouped by capability) and `__version__`, `parse` returns a
+  `ParseResult` object instead of a plain dict, and the error taxonomy is
+  explicit: `ValueError` (malformed input), `RuntimeError` (engine failure),
+  `NotConvergedError` (non-convergence).
+- The CLI uses one sentinel convention: an optional argument is simply
+  absent.
+- One error-message style across the three surfaces:
+  `<What failed> '<actual value>'. Supported: 'a', 'b', 'c'.`
+- The published crate carries an allow-list: 612 → 339 files, 20.6 → 7.7 MiB.
+  The 27 developer binaries (`benchmark`, `test_eigen`, `check_grad`, …) are
+  no longer installed on every user's `$PATH`.
+
+### Added
+
+- Two zero-copy Python entry points (`embed_coords_into`,
+  `compute_esp_grid_into`) that write into a caller-owned buffer.
+- `try_*` variants and `Result` returns for every entry point that can fail,
+  plus `MolecularSystem::{try_from_angstrom, try_from_flat_angstrom, validate}`,
+  `scf::scf_loop::try_run_scf`, `spectroscopy::hessian::try_compute_hessian`,
+  `spectroscopy::ir_intensities::try_compute_ir_intensities`,
+  `spectroscopy::stda_uvvis::try_compute_stda`, `ani::neighbor::CellList::try_new`
+  and `charges::gasteiger::GasteigerConfig::validate`.
+- `forcefield::calculate_total_energy_f64` and the `f64` siblings of the
+  energy functions.
+- `gpu::context::GpuContext::shared()` — a process-wide cached context.
+- An options-mapping form for the eight worst-over-argumented Python
+  functions.
+
+### Documentation
+
+- **The entire public API is documented.** `cargo clippy -- -W missing_docs`
+  reported 1038 undocumented items out of 2121 (49 % of the public API had no
+  rustdoc at all); there are now 0. `cargo doc` is warning-free.
+- Every numeric field now states its unit. This was the most valuable class
+  of documentation to add: the library returns energies in Hartree in some
+  result structs and eV in others, and a caller comparing `total_energy`
+  across methods was off by 27×. The crate header now carries a per-method
+  unit table.
+- Doc comments that contradicted the code were corrected rather than papered
+  over. The most consequential: `Hf3cResult.orbital_energies`, `homo_energy`,
+  `lumo_energy` and `gap` were documented as eV, but the values are the raw
+  Hartree-based SCF output with no conversion (water's 1a1 is −20.24 Ha, not
+  −20.24 eV).
+- The crate header states what the library is AND IS NOT, the coordinate
+  convention, the element convention, the sign convention for gradients, a
+  "how do I compute a property?" lookup table and the feature-flag table.
+- The API pages (Rust, Python, TypeScript, CLI) were regenerated against the
+  current code, with a units table on each.
+
+### Packaging and CI
+
+- The 27 developer binaries are out of the published crate.
+- 13 MB of fixtures and the internal directories are out of the published
+  crate.
+- `rand` 0.8.5 → 0.8.8 and `crossbeam-epoch` 0.9.18 → 0.9.21 clear two live
+  advisories; a `deny.toml` and a `cargo deny` CI job were added.
+- The release workflow now verifies that the git tag matches the version of
+  all four packages before publishing.
+- The documented WASM build path now produces a working npm package (the
+  `alpha` / `beta` subpaths and the `snippets` directory that
+  wasm-bindgen-rayon needs are present in both the ESM and the CommonJS
+  builds).
+- All 9 integration test targets that CI never ran now run in CI (77 tests).
+- The 20 hard-coded absolute paths in the scripts became an environment
+  variable and a repo-relative default.
+- 6 of the 9 parameter generators gained a `--check` mode so they cannot
+  drift silently; CI checks all of them.
+- `rust-version` (MSRV 1.87) is declared in all four manifests.
+
+### Known limitations
+
+- The 1.0 API returns a `Result` from the functions that can fail, but the
+  error type is still `String`. A typed error enum is planned for 1.1.
+- The ERI tensor is stored as a full M⁴ `Vec<f64>` (12.8 GB at M = 200).
+  There is no packed, Cholesky or density-fitting path yet.
+- The conformer minimiser rebuilds the force field on every MD step.
+- The ETKDG retry loop is 10 × N attempts of an O(N²) search.
+- The open items of the first audit (12 of 100) are listed in
+  `reports/auditoria-resolucion.md`.
+
+---
+
 This section covers the audit-remediation work of 2026-10-21 (commits `c96ffa3`,
 `6d3d954`, `28323f4`, `161c2e1`), driven by `reports/auditoria-total.md`.
 
-### Added
+### Detailed audit remediation (2026-10-21)
+
+#### Added
 - **Twenty-two Rust-only capabilities are now exposed on all three surfaces**
   (Rust, Python via PyO3, WASM/TypeScript, plus CLI subcommands):
   `embed_diverse`, `to_canonical_smiles`, `compute_ecfp_batch`,
@@ -52,7 +229,7 @@ This section covers the audit-remediation work of 2026-10-21 (commits `c96ffa3`,
   (HCT Born radii, ANI radial AEV, MMFF94 non-bonded, sTDA matmul) are now
   registered, so the tier and budget checks cover them.
 
-### Changed
+#### Changed
 - **MMFF94 now uses the published MMFF94 parameter set** instead of placeholders.
   - New generated table module `src/forcefield/mmff94_params.rs` (atom-type
     equivalence levels, atom-type properties, bond / angle / torsion / van der
@@ -112,7 +289,7 @@ This section covers the audit-remediation work of 2026-10-21 (commits `c96ffa3`,
 - `atomic_mass_amu` now carries the IUPAC table for Z = 1..118 instead of
   returning 12.0 amu for ~100 elements.
 
-### Removed
+#### Removed
 - **~63 Python / WASM / CLI binding functions that returned hard-coded data
   have been removed or wired to the real core implementations.** The removed
   stubs included `total_dos: vec![1.0; 100]`, a hard-coded
@@ -122,7 +299,7 @@ This section covers the audit-remediation work of 2026-10-21 (commits `c96ffa3`,
   home directory) are gone; the WASM output now lives under
   `crates/wasm/pkg{,node}`.
 
-### Fixed
+#### Fixed
 The eight defects the new gates proved, all fixed in the same cycle:
 
 1. **Stereo** — the R/S assignment was inverted. `assign_rs` mapped a positive
@@ -170,7 +347,7 @@ And the F64–F69 batch proved two more:
   used its neighbour's coefficients (NaCl intensities were off by up to 14 %).
 - The minimum-image search was only valid for orthogonal cells.
 
-### Known limitations
+#### Known limitations
 - The F80 gradient gate documents three analytic gradients that are still wrong
   and are marked `#[ignore]` with their measured numbers: PM3 (18.4 eV/Å),
   GFN0-xTB (209–263 eV/Å) and KS-DFT (0.202 Ha/Bohr, missing the adiabatic
@@ -182,7 +359,7 @@ And the F64–F69 batch proved two more:
   WebGPU path is covered by the Rust-side GPU-vs-CPU gates instead. See
   `docs/algorithm/webgpu-validation.md`.
 
-### Documentation
+#### Documentation
 - `docs/api/cli.md` regenerated from the real `Commands` enum (90 subcommands,
   grouped by area, feature-gated ones marked); `docs/guide/cli.md` rewritten as
   a task-oriented tour.

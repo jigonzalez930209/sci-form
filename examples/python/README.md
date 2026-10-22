@@ -11,7 +11,7 @@ Install the all-features wheel (Python 3.14 uses the ABI3 forward-compatible pat
 cd crates/python
 PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 maturin build --release --all-features
 pip install --user --break-system-packages --force-reinstall \\
-  target/wheels/sciforma-0.15.2-cp314-cp314-linux_x86_64.whl
+  target/wheels/sciforma-1.0.0-cp314-cp314-linux_x86_64.whl
 ```
 
 ## Run

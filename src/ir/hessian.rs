@@ -7,6 +7,9 @@ use nalgebra::DMatrix;
 
 /// Which semiempirical method to use for energy evaluations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// The variant set may grow in a future release; downstream crates must
+// match with a wildcard arm.
+#[non_exhaustive]
 pub enum HessianMethod {
     /// Extended Hückel Theory (fastest, qualitative)
     Eht,
