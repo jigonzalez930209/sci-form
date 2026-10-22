@@ -381,3 +381,13 @@ fn cpu_grid_note(prefix: &str) -> String {
         prefix.to_string()
     }
 }
+
+/// Compute the ESP grid and return the full result (values, origin,
+/// spacing and dimensions).
+///
+/// This is the canonical name of the Rust root function; `compute_esp` is
+/// the historical alias.
+#[wasm_bindgen]
+pub fn compute_esp_grid(elements: &str, coords_flat: &str, spacing: f64, padding: f64) -> String {
+    compute_esp(elements, coords_flat, spacing, padding)
+}

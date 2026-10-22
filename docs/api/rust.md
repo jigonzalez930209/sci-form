@@ -322,16 +322,18 @@ pub struct DipoleResult {
 
 ## Electrostatic Potential
 
-### `compute_esp`
+### `compute_esp_grid`
 
 ```rust
-pub fn compute_esp(
+pub fn compute_esp_grid(
     elements: &[u8],
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
 ) -> Result<esp::EspGrid, String>
 ```
+
+`compute_esp` is the historical alias of this function.
 
 Compute an ESP grid using Mulliken charges from EHT. Grid extends `padding` Å beyond the molecular bounding box.
 
@@ -1264,6 +1266,36 @@ where
 ```
 
 `optimize_framework` reports its energy in **eV** and its forces in **eV/Å**.
+
+---
+
+## Capabilities that used to be Rust-only
+
+These capabilities are now available in every surface (Python, WASM and CLI).
+
+```rust
+// Open-shell SCF.
+let uhf = sci_form::compute_uhf(&elements, &positions, 0, 2)?;   // doublet
+let rohf = sci_form::compute_rohf(&elements, &positions, 0, 2)?;
+
+// Analytical gradients (eV/Å per atom).
+let pm3_grad = sci_form::compute_pm3_gradient(&elements, &positions)?;
+let xtb_grad = sci_form::compute_xtb_gradient(&elements, &positions)?;
+
+// Force-field energy split by term type (kcal/mol).
+let terms = sci_form::compute_uff_energy_breakdown("CCO", &coords)?;
+
+// Topological properties straight from a SMILES.
+let tpsa = sci_form::compute_tpsa_from_smiles("CCO")?;
+let ensemble = sci_form::predict_ensemble_from_smiles("CCO")?;
+
+// CIF import and export.
+let structure = sci_form::parse_cif(&cif_text)?;
+let cif_text = sci_form::write_cif(&structure);
+```
+
+`UhfResult` carries the dense matrices; `UhfResult::summary()` returns the
+scalar part of the result (the same payload the JSON bindings return).
 
 ---
 

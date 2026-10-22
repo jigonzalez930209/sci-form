@@ -10,6 +10,7 @@
 //! where P^T = P^α + P^β is the total density.
 
 use nalgebra::DMatrix;
+use serde::{Deserialize, Serialize};
 
 use super::basis::BasisSet;
 use super::constants::{
@@ -73,6 +74,76 @@ pub struct UhfResult {
     pub alpha_fock: DMatrix<f64>,
     /// Beta Fock matrix at convergence, in Hartree.
     pub beta_fock: DMatrix<f64>,
+}
+
+/// The scalar results of an open-shell SCF calculation.
+///
+/// The dense matrices of [`UhfResult`] are not part of it: they are
+/// `n_basis × n_basis` and would dominate any serialised payload. The
+/// bindings that return JSON use this summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UhfSummary {
+    /// Alpha orbital energies (Hartree, ascending).
+    pub alpha_orbital_energies: Vec<f64>,
+    /// Beta orbital energies (Hartree, ascending).
+    pub beta_orbital_energies: Vec<f64>,
+    /// Electronic energy (Hartree).
+    pub electronic_energy: f64,
+    /// Nuclear repulsion energy (Hartree).
+    pub nuclear_repulsion: f64,
+    /// Total energy (Hartree).
+    pub total_energy: f64,
+    /// HOMO energy (Hartree).
+    pub homo_energy: f64,
+    /// LUMO energy (Hartree), if the basis has an empty virtual space.
+    pub lumo_energy: Option<f64>,
+    /// HOMO-LUMO gap (eV).
+    pub gap_ev: f64,
+    /// Mulliken charges per atom, in units of `e`.
+    pub mulliken_charges: Vec<f64>,
+    /// Number of SCF iterations.
+    pub scf_iterations: usize,
+    /// Whether the SCF converged.
+    pub converged: bool,
+    /// Number of basis functions.
+    pub n_basis: usize,
+    /// Number of alpha electrons.
+    pub n_alpha: usize,
+    /// Number of beta electrons.
+    pub n_beta: usize,
+    /// Expectation value <S²>, in units of ħ².
+    pub s2_expectation: f64,
+    /// Spin contamination <S²> - S(S+1), in units of ħ².
+    pub spin_contamination: f64,
+    /// Unit of the energies in this summary.
+    pub unit: String,
+}
+
+impl UhfResult {
+    /// The scalar summary of the calculation.
+    ///
+    /// See [`UhfSummary`]: the dense matrices are deliberately left out.
+    pub fn summary(&self) -> UhfSummary {
+        UhfSummary {
+            alpha_orbital_energies: self.alpha_orbital_energies.clone(),
+            beta_orbital_energies: self.beta_orbital_energies.clone(),
+            electronic_energy: self.electronic_energy,
+            nuclear_repulsion: self.nuclear_repulsion,
+            total_energy: self.total_energy,
+            homo_energy: self.homo_energy,
+            lumo_energy: self.lumo_energy,
+            gap_ev: self.gap_ev,
+            mulliken_charges: self.mulliken_charges.clone(),
+            scf_iterations: self.scf_iterations,
+            converged: self.converged,
+            n_basis: self.n_basis,
+            n_alpha: self.n_alpha,
+            n_beta: self.n_beta,
+            s2_expectation: self.s2_expectation,
+            spin_contamination: self.spin_contamination,
+            unit: "Hartree".to_string(),
+        }
+    }
 }
 
 /// Configuration for UHF/ROHF calculations.

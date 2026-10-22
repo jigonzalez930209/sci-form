@@ -51,7 +51,8 @@ pub(crate) const ALIASES: &[(Scope, &str, &str)] = &[
         "reactivity_ranking",
     ),
     (Scope::Root, "compute_rmsd", "rmsd"),
-    (Scope::Root, "compute_esp", "esp"),
+    (Scope::Root, "compute_esp_grid", "compute_esp"),
+    (Scope::Root, "compute_esp_grid", "esp"),
     // ── Force fields ───────────────────────────────────────────────────────
     (Scope::Root, "compute_uff_energy", "uff_energy"),
     (

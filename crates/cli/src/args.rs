@@ -1130,4 +1130,78 @@ pub enum Commands {
         #[arg(long, default_value_t = 42)]
         seed: u64,
     },
+    /// Run an unrestricted Hartree-Fock (UHF) open-shell SCF
+    Uhf {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Total molecular charge
+        #[arg(long, default_value_t = 0)]
+        charge: i32,
+        /// Spin multiplicity (1 = singlet, 2 = doublet, 3 = triplet)
+        #[arg(long, default_value_t = 1)]
+        multiplicity: u32,
+    },
+    /// Run a restricted open-shell Hartree-Fock (ROHF) SCF
+    Rohf {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Total molecular charge
+        #[arg(long, default_value_t = 0)]
+        charge: i32,
+        /// Spin multiplicity (1 = singlet, 2 = doublet, 3 = triplet)
+        #[arg(long, default_value_t = 1)]
+        multiplicity: u32,
+    },
+    /// PM3 analytical energy gradient (eV/Å per atom)
+    Pm3Gradient {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// xTB analytical energy gradient (eV/Å per atom)
+    XtbGradient {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// UFF energy breakdown by term type (kcal/mol)
+    UffBreakdown {
+        /// SMILES string
+        smiles: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// MMFF94 energy breakdown by term type (kcal/mol)
+    Mmff94Breakdown {
+        /// SMILES string
+        smiles: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// Topological polar surface area (Å²)
+    Tpsa {
+        /// SMILES string
+        smiles: String,
+    },
+    /// Ensemble ML property prediction with uncertainty
+    Ensemble {
+        /// SMILES string
+        smiles: String,
+    },
+    /// Parse a CIF file into a JSON crystal structure
+    ParseCif {
+        /// Path to the CIF file ("-" reads standard input)
+        path: String,
+    },
+    /// Write a JSON crystal structure as a CIF file
+    WriteCif {
+        /// Path to the JSON structure file ("-" reads standard input)
+        path: String,
+    },
 }

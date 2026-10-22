@@ -5,10 +5,12 @@
 //! - Space group (`_symmetry_space_group_name_H-M`, `_symmetry_Int_Tables_number`)
 //! - Atom sites (`_atom_site_label`, `_atom_site_fract_x/y/z`, `_atom_site_type_symbol`)
 
+use serde::{Deserialize, Serialize};
+
 use super::cell::{CellParameters, UnitCell};
 
 /// A parsed CIF crystal structure.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CifStructure {
     /// Data block name (from `data_` line).
     pub data_block: String,
@@ -25,7 +27,7 @@ pub struct CifStructure {
 }
 
 /// A single atom site from a CIF file.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CifAtomSite {
     /// Atom label (e.g., "Na1", "Cl2").
     pub label: String,

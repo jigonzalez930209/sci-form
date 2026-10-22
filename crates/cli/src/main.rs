@@ -741,5 +741,31 @@ fn main() {
                 }
             }
         }
+        Commands::Uhf {
+            elements,
+            coords,
+            charge,
+            multiplicity,
+        } => calc_cmds::cmd_uhf(&elements, &coords, charge, multiplicity),
+        Commands::Rohf {
+            elements,
+            coords,
+            charge,
+            multiplicity,
+        } => calc_cmds::cmd_rohf(&elements, &coords, charge, multiplicity),
+        Commands::Pm3Gradient { elements, coords } => {
+            calc_cmds::cmd_pm3_gradient(&elements, &coords)
+        }
+        Commands::XtbGradient { elements, coords } => {
+            calc_cmds::cmd_xtb_gradient(&elements, &coords)
+        }
+        Commands::UffBreakdown { smiles, coords } => calc_cmds::cmd_uff_breakdown(&smiles, &coords),
+        Commands::Mmff94Breakdown { smiles, coords } => {
+            calc_cmds::cmd_mmff94_breakdown(&smiles, &coords)
+        }
+        Commands::Tpsa { smiles } => calc_cmds::cmd_tpsa(&smiles),
+        Commands::Ensemble { smiles } => calc_cmds::cmd_ensemble(&smiles),
+        Commands::ParseCif { path } => calc_cmds::cmd_parse_cif(&path),
+        Commands::WriteCif { path } => calc_cmds::cmd_write_cif(&path),
     }
 }

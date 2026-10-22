@@ -50,6 +50,205 @@ pub(crate) struct SymmetryOpPy {
     translation: [f64; 3],
 }
 
+/// A single atom site of a CIF structure.
+#[pyclass(name = "CifAtomSite")]
+#[derive(Clone)]
+pub(crate) struct CifAtomSitePy {
+    /// Atom label (e.g. "Na1").
+    #[pyo3(get)]
+    label: String,
+    /// Element symbol (e.g. "Na").
+    #[pyo3(get)]
+    type_symbol: String,
+    /// Atomic number.
+    #[pyo3(get)]
+    atomic_number: u8,
+    /// Fractional x coordinate.
+    #[pyo3(get)]
+    frac_x: f64,
+    /// Fractional y coordinate.
+    #[pyo3(get)]
+    frac_y: f64,
+    /// Fractional z coordinate.
+    #[pyo3(get)]
+    frac_z: f64,
+    /// Site occupancy (0–1).
+    #[pyo3(get)]
+    occupancy: f64,
+}
+
+/// A crystal structure read from (or written to) a CIF file.
+#[pyclass(name = "CifStructure")]
+#[derive(Clone)]
+pub(crate) struct CifStructurePy {
+    /// Data block name (the part after `data_`).
+    #[pyo3(get)]
+    data_block: String,
+    /// Lattice vectors, one row per vector (Å).
+    #[pyo3(get)]
+    lattice: Vec<Vec<f64>>,
+    /// Lattice length **a** in Å.
+    #[pyo3(get)]
+    a: f64,
+    /// Lattice length **b** in Å.
+    #[pyo3(get)]
+    b: f64,
+    /// Lattice length **c** in Å.
+    #[pyo3(get)]
+    c: f64,
+    /// Lattice angle **α** in degrees.
+    #[pyo3(get)]
+    alpha: f64,
+    /// Lattice angle **β** in degrees.
+    #[pyo3(get)]
+    beta: f64,
+    /// Lattice angle **γ** in degrees.
+    #[pyo3(get)]
+    gamma: f64,
+    /// Hermann-Mauguin space-group symbol, if the file carried one.
+    #[pyo3(get)]
+    space_group_hm: Option<String>,
+    /// International Tables space-group number, if the file carried one.
+    #[pyo3(get)]
+    space_group_number: Option<u16>,
+    /// Atom sites with their fractional coordinates.
+    #[pyo3(get)]
+    atom_sites: Vec<CifAtomSitePy>,
+}
+
+#[pymethods]
+impl CifStructurePy {
+    /// Build a CIF structure from its parts.
+    #[new]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (
+        data_block,
+        lattice,
+        a, b, c, alpha, beta, gamma,
+        space_group_hm=None,
+        space_group_number=None,
+        atom_sites=None,
+    ))]
+    fn new(
+        data_block: String,
+        lattice: Vec<Vec<f64>>,
+        a: f64,
+        b: f64,
+        c: f64,
+        alpha: f64,
+        beta: f64,
+        gamma: f64,
+        space_group_hm: Option<String>,
+        space_group_number: Option<u16>,
+        atom_sites: Option<Vec<CifAtomSitePy>>,
+    ) -> PyResult<Self> {
+        if lattice.len() != 3 || lattice.iter().any(|row| row.len() != 3) {
+            return Err(crate::errors::value_error(
+                "Invalid 'lattice' shape. Expected 3 rows of 3 values.",
+            ));
+        }
+        Ok(Self {
+            data_block,
+            lattice,
+            a,
+            b,
+            c,
+            alpha,
+            beta,
+            gamma,
+            space_group_hm,
+            space_group_number,
+            atom_sites: atom_sites.unwrap_or_default(),
+        })
+    }
+}
+
+impl CifAtomSitePy {
+    fn from_core(site: &sci_form_core::materials::CifAtomSite) -> Self {
+        Self {
+            label: site.label.clone(),
+            type_symbol: site.type_symbol.clone(),
+            atomic_number: site.atomic_number,
+            frac_x: site.frac_x,
+            frac_y: site.frac_y,
+            frac_z: site.frac_z,
+            occupancy: site.occupancy,
+        }
+    }
+
+    fn to_core(&self) -> sci_form_core::materials::CifAtomSite {
+        sci_form_core::materials::CifAtomSite {
+            label: self.label.clone(),
+            type_symbol: self.type_symbol.clone(),
+            atomic_number: self.atomic_number,
+            frac_x: self.frac_x,
+            frac_y: self.frac_y,
+            frac_z: self.frac_z,
+            occupancy: self.occupancy,
+        }
+    }
+}
+
+impl CifStructurePy {
+    fn from_core(s: &sci_form_core::materials::CifStructure) -> Self {
+        let p = &s.cell_params;
+        Self {
+            data_block: s.data_block.clone(),
+            lattice: s.cell.lattice.iter().map(|row| row.to_vec()).collect(),
+            a: p.a,
+            b: p.b,
+            c: p.c,
+            alpha: p.alpha,
+            beta: p.beta,
+            gamma: p.gamma,
+            space_group_hm: s.space_group_hm.clone(),
+            space_group_number: s.space_group_number,
+            atom_sites: s.atom_sites.iter().map(CifAtomSitePy::from_core).collect(),
+        }
+    }
+
+    fn to_core(&self) -> sci_form_core::materials::CifStructure {
+        let mut lattice = [[0.0f64; 3]; 3];
+        for (i, row) in self.lattice.iter().enumerate().take(3) {
+            for (j, v) in row.iter().enumerate().take(3) {
+                lattice[i][j] = *v;
+            }
+        }
+        sci_form_core::materials::CifStructure {
+            data_block: self.data_block.clone(),
+            cell: sci_form_core::materials::UnitCell::new(lattice),
+            cell_params: sci_form_core::materials::CellParameters {
+                a: self.a,
+                b: self.b,
+                c: self.c,
+                alpha: self.alpha,
+                beta: self.beta,
+                gamma: self.gamma,
+            },
+            space_group_hm: self.space_group_hm.clone(),
+            space_group_number: self.space_group_number,
+            atom_sites: self.atom_sites.iter().map(CifAtomSitePy::to_core).collect(),
+        }
+    }
+}
+
+/// Parse a CIF-format string into a crystal structure.
+///
+/// The cell lengths are in Å and the cell angles in degrees; the atom sites
+/// carry fractional (dimensionless) coordinates.
+#[pyfunction]
+fn parse_cif(cif_text: &str) -> PyResult<CifStructurePy> {
+    sci_form_core::parse_cif(cif_text)
+        .map(|s| CifStructurePy::from_core(&s))
+        .map_err(crate::errors::value_error)
+}
+
+/// Write a crystal structure as a CIF-format string.
+#[pyfunction]
+fn write_cif(structure: &CifStructurePy) -> String {
+    sci_form_core::write_cif(&structure.to_core())
+}
+
 #[pyclass(name = "SpaceGroup")]
 #[derive(Clone)]
 pub(crate) struct SpaceGroupPy {
@@ -591,8 +790,12 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_periodic_molecule, m)?)?;
     m.add_function(wrap_pyfunction!(detect_hapticity, m)?)?;
     m.add_function(wrap_pyfunction!(optimize_framework, m)?)?;
+    m.add_function(wrap_pyfunction!(parse_cif, m)?)?;
+    m.add_function(wrap_pyfunction!(write_cif, m)?)?;
     m.add_class::<UnitCellPy>()?;
     m.add_class::<CrystalStructurePy>()?;
+    m.add_class::<CifStructurePy>()?;
+    m.add_class::<CifAtomSitePy>()?;
     m.add_class::<SymmetryOpPy>()?;
     m.add_class::<SpaceGroupPy>()?;
     m.add_class::<SpaceGroupEntryPy>()?;

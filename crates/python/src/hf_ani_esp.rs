@@ -128,9 +128,12 @@ fn compute_ani(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniResultPy> {
         .map_err(crate::errors::engine_error)
 }
 
+/// Compute the ESP grid and return the full result.
+///
+/// `compute_esp` is the deprecated alias of this function.
 #[pyfunction]
 #[pyo3(signature = (elements, coords, spacing=0.5, padding=3.0))]
-fn compute_esp(
+fn compute_esp_grid(
     elements: Vec<u8>,
     coords: Vec<f64>,
     spacing: f64,
@@ -203,7 +206,7 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute_hf3c, m)?)?;
     m.add_function(wrap_pyfunction!(compute_ani, m)?)?;
     m.add_function(wrap_pyfunction!(compute_aevs_tm, m)?)?;
-    m.add_function(wrap_pyfunction!(compute_esp, m)?)?;
+    m.add_function(wrap_pyfunction!(compute_esp_grid, m)?)?;
     m.add_class::<Hf3cResultPy>()?;
     m.add_class::<AniResultPy>()?;
     m.add_class::<AniTmAevsPy>()?;

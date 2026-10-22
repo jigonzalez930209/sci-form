@@ -137,6 +137,14 @@ capability is the Rust root name in all four surfaces.
 
 ### Changed
 
+- **The capabilities that were Rust-only are now available in Python, WASM
+  and the CLI**: the open-shell SCF (`compute_uhf`, `compute_rohf`), the
+  analytical PM3 and xTB gradients, the UFF and MMFF94 energy breakdowns, the
+  topological polar surface area, the ensemble property prediction and the
+  CIF import/export. The Python `__all__` grows from 247 to 264 names and the
+  CLI from 90 to 100 subcommands.
+- `compute_esp` is now a deprecated alias of `compute_esp_grid`, the name of
+  the Rust root function that returns the full grid.
 - **Every public enum is now `#[non_exhaustive]`** (57 of 60; three
   deliberately closed sets are documented as such). Adding a variant is no
   longer a breaking change for downstream users. Downstream `match`
@@ -252,7 +260,7 @@ This section covers the audit-remediation work of 2026-10-21 (commits `c96ffa3`,
   `train_gradient_boosting`, `assign_peaks`, `space_group_by_number` /
   `space_group_by_symbol`, `all_space_groups`, `build_periodic_molecule`,
   `detect_hapticity`, `optimize_framework` and `filter_diverse`.
-  The CLI grew from 56 to 90 subcommands (34 of them feature-gated); see the
+  The CLI grew from 56 to 100 subcommands (34 of them feature-gated); see the
   regenerated `docs/api/cli.md`.
 - **New validation gates.** Two batches, each with a committed fixture and a
   deterministic oracle script, so CI stays hermetic (no RDKit / PySCF / ASE /

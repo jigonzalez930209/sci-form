@@ -907,3 +907,87 @@ pub fn cmd_optimize_framework(
         }
     }
 }
+
+// ─── Capabilities that used to be Rust-only (blocker C-H2) ─────────────────
+
+pub fn cmd_uhf(elements: &str, coords: &str, charge: i32, multiplicity: u32) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let r = sci_form::compute_uhf(&elems, &positions, charge, multiplicity)
+        .unwrap_or_else(|e| fail(format!("UHF error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&r.summary()).unwrap());
+}
+
+pub fn cmd_rohf(elements: &str, coords: &str, charge: i32, multiplicity: u32) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let r = sci_form::compute_rohf(&elems, &positions, charge, multiplicity)
+        .unwrap_or_else(|e| fail(format!("ROHF error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&r.summary()).unwrap());
+}
+
+pub fn cmd_pm3_gradient(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let r = sci_form::compute_pm3_gradient(&elems, &positions)
+        .unwrap_or_else(|e| fail(format!("PM3 gradient error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&r).unwrap());
+}
+
+pub fn cmd_xtb_gradient(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let r = sci_form::compute_xtb_gradient(&elems, &positions)
+        .unwrap_or_else(|e| fail(format!("xTB gradient error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&r).unwrap());
+}
+
+pub fn cmd_uff_breakdown(smiles: &str, coords: &str) {
+    let flat: Vec<f64> = serde_json::from_str(coords)
+        .unwrap_or_else(|e| fail(crate::format::bad_json("'coords'", coords, &e)));
+    let terms = sci_form::compute_uff_energy_breakdown(smiles, &flat)
+        .unwrap_or_else(|e| fail(format!("UFF breakdown error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&terms).unwrap());
+}
+
+pub fn cmd_mmff94_breakdown(smiles: &str, coords: &str) {
+    let flat: Vec<f64> = serde_json::from_str(coords)
+        .unwrap_or_else(|e| fail(crate::format::bad_json("'coords'", coords, &e)));
+    let terms = sci_form::compute_mmff94_energy_breakdown(smiles, &flat)
+        .unwrap_or_else(|e| fail(format!("MMFF94 breakdown error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&terms).unwrap());
+}
+
+pub fn cmd_tpsa(smiles: &str) {
+    let tpsa = sci_form::compute_tpsa_from_smiles(smiles)
+        .unwrap_or_else(|e| fail(format!("TPSA error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&tpsa).unwrap());
+}
+
+pub fn cmd_ensemble(smiles: &str) {
+    let r = sci_form::predict_ensemble_from_smiles(smiles)
+        .unwrap_or_else(|e| fail(format!("Ensemble error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&r).unwrap());
+}
+
+pub fn cmd_parse_cif(path: &str) {
+    let text = read_input(path);
+    let structure = sci_form::parse_cif(&text).unwrap_or_else(|e| fail(format!("CIF error: {e}")));
+    println!("{}", serde_json::to_string_pretty(&structure).unwrap());
+}
+
+pub fn cmd_write_cif(path: &str) {
+    let text = read_input(path);
+    let structure: sci_form::materials::CifStructure = serde_json::from_str(&text)
+        .unwrap_or_else(|e| fail(crate::format::bad_json("'structure'", &text, &e)));
+    print!("{}", sci_form::write_cif(&structure));
+}
+
+/// Read a file, or standard input when the path is "-".
+fn read_input(path: &str) -> String {
+    use std::io::Read;
+    if path == "-" {
+        let mut buffer = String::new();
+        std::io::stdin()
+            .read_to_string(&mut buffer)
+            .unwrap_or_else(|e| fail(format!("cannot read standard input: {e}")));
+        return buffer;
+    }
+    std::fs::read_to_string(path).unwrap_or_else(|e| fail(format!("cannot read {path}: {e}")))
+}

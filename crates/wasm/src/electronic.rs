@@ -202,3 +202,79 @@ pub fn compute_dft(elements_json: &str, coords_flat_json: &str, method: &str) ->
         Err(e) => json_error(&e),
     }
 }
+
+/// Run an Unrestricted Hartree-Fock (UHF) calculation for open-shell systems.
+///
+/// `charge` is the total molecular charge and `multiplicity` the spin
+/// multiplicity (1 = singlet, 2 = doublet, 3 = triplet).
+///
+/// The dense matrices of the result are not part of the payload: they are
+/// `n_basis × n_basis` and would dominate the JSON. The scalar results,
+/// the orbital energies and the Mulliken charges are.
+#[wasm_bindgen]
+pub fn compute_uhf(
+    elements_json: &str,
+    coords_flat_json: &str,
+    charge: i32,
+    multiplicity: u32,
+) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::compute_uhf(&elements, &positions, charge, multiplicity) {
+        Ok(r) => serialize_or_error(&r.summary()),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Run a Restricted Open-shell Hartree-Fock (ROHF) calculation.
+///
+/// Same arguments as `compute_uhf`; ROHF uses the canonical projection, so
+/// the spin contamination is zero by construction.
+#[wasm_bindgen]
+pub fn compute_rohf(
+    elements_json: &str,
+    coords_flat_json: &str,
+    charge: i32,
+    multiplicity: u32,
+) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::compute_rohf(&elements, &positions, charge, multiplicity) {
+        Ok(r) => serialize_or_error(&r.summary()),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Compute the PM3 analytical energy gradient (eV/Å per atom).
+#[wasm_bindgen]
+pub fn compute_pm3_gradient(elements_json: &str, coords_flat_json: &str) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::compute_pm3_gradient(&elements, &positions) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}
+
+/// Compute the xTB analytical energy gradient (eV/Å per atom).
+#[wasm_bindgen]
+pub fn compute_xtb_gradient(elements_json: &str, coords_flat_json: &str) -> String {
+    let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
+    {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
+    match sci_form::compute_xtb_gradient(&elements, &positions) {
+        Ok(result) => serialize_or_error(&result),
+        Err(e) => json_error(&e),
+    }
+}

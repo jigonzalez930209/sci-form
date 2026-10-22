@@ -10,7 +10,7 @@ Download prebuilt binaries from [GitHub Releases](https://github.com/jigonzalez9
 cargo install sci-form-cli
 ```
 
-The binary exposes 90 subcommands. 56 are always available; the other 34 are compiled in only when the corresponding Cargo feature is enabled:
+The binary exposes 100 subcommands. 66 are always available; the other 34 are compiled in only when the corresponding Cargo feature is enabled:
 
 ```bash
 cargo install sci-form-cli --features alpha-gsm,alpha-edl,alpha-kinetics,alpha-periodic-linear

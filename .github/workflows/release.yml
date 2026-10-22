@@ -446,6 +446,23 @@ jobs:
         run: |
           ./sci-form-linux-x86_64 parse "CCO" \
             | grep -iE 'Atoms:' || (echo "CLI parse failed"; exit 1)
+      # The capabilities that used to be Rust-only (blocker C-H2).
+      - name: Smoke test — TPSA, ensemble, UHF and the gradients
+        run: |
+          ./sci-form-linux-x86_64 tpsa "CCO" | grep -q '20.23' || (echo "CLI tpsa failed"; exit 1)
+          ./sci-form-linux-x86_64 ensemble "CCO" | grep -q '"logp"' || (echo "CLI ensemble failed"; exit 1)
+          ./sci-form-linux-x86_64 uhf '[6,1,1,1]' \
+            '[0,0,0,1.09,0,0,-0.36,1.03,0,-0.36,-0.52,0.89]' --multiplicity 2 \
+            | grep -q '"total_energy"' || (echo "CLI uhf failed"; exit 1)
+          ./sci-form-linux-x86_64 pm3-gradient '[8,1,1]' \
+            '[0,0,0.1173,0,0.7572,-0.4692,0,-0.7572,-0.4692]' \
+            | grep -q '"gradients"' || (echo "CLI pm3-gradient failed"; exit 1)
+      - name: Smoke test — CIF round trip
+        run: |
+          printf 'data_test\n_cell_length_a 5.0\n_cell_length_b 5.0\n_cell_length_c 5.0\n_cell_angle_alpha 90.0\n_cell_angle_beta 90.0\n_cell_angle_gamma 90.0\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_occupancy\nNa1 Na 0.0 0.0 0.0 1.0\n' > "$RUNNER_TEMP/test.cif"
+          ./sci-form-linux-x86_64 parse-cif "$RUNNER_TEMP/test.cif" > "$RUNNER_TEMP/test.json"
+          grep -q '"data_block": "test"' "$RUNNER_TEMP/test.json" || (echo "CLI parse-cif failed"; exit 1)
+          ./sci-form-linux-x86_64 write-cif "$RUNNER_TEMP/test.json" | grep -q 'data_test' || (echo "CLI write-cif failed"; exit 1)
 
   # ─── Publish: crates.io ────────────────────────────────────────────────────
   publish-crate:

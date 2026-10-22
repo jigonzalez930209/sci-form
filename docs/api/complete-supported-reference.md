@@ -142,8 +142,7 @@ Practical note:
 | `compute_sasa` | `compute_sasa` | `sasa` | `compute_sasa` | `sasa` | Solvent-accessible surface area | Shrake-Rupley + Fibonacci sphere |
 | `compute_population` | `compute_population` | `population` | `compute_population` | `population` | Mulliken/Löwdin population analysis | EHT + overlap-based charge partitioning |
 | `compute_dipole` | `compute_dipole` | `dipole` | `compute_dipole` | `dipole` | Molecular dipole moment | EHT-derived electronic distribution |
-| `compute_esp` | `compute_esp` | `esp` | `compute_esp` | `esp` | Electrostatic potential on a 3D grid | Coulomb grid from atomic charges |
-| `compute_esp_grid` | – | – | – | – | Convenience alias returning full ESP grid struct | Same as `compute_esp` |
+| `compute_esp_grid` | `compute_esp_grid` | `compute_esp` / `esp` | `compute_esp_grid` | `esp` | Electrostatic potential on a 3D grid | Coulomb grid from atomic charges |
 | – | `compute_esp_grid_into` | – | `compute_esp_grid_typed` / `compute_esp_grid_info` | – | ESP grid without copying into a caller-owned buffer | Zero-copy transfer path |
 | `compute_dos` | `compute_dos` | `dos` | `compute_dos` | `dos` | Density of states curve | Gaussian broadening over orbital energies |
 | `compute_dos_multimethod` | `compute_dos_multimethod` | – | `compute_dos_multimethod` | `dos-multimethod` | DOS from the orbital energies of a chosen method | Gaussian broadening over method-specific orbital energies |
@@ -161,21 +160,25 @@ Practical note:
 | `compute_uff_energy_with_aromatic_heuristics` | `compute_uff_energy_with_aromatic_heuristics` | `uff_energy_with_aromatic_heuristics` | `compute_uff_energy_with_aromatic_heuristics` | – | UFF with aromaticity-informed correction | UFF + aromatic post-correction |
 | `compute_mmff94_energy` | `compute_mmff94_energy` | `mmff94_energy` | `compute_mmff94_energy` | – | MMFF94 energy evaluation | Halgren MMFF94 |
 | `compute_empirical_pka` | `compute_empirical_pka` | `empirical_pka` | `compute_empirical_pka` | – | Estimate acidic/basic pKa sites | Graph environment + charge heuristics |
+| `compute_uff_energy_breakdown` | `compute_uff_energy_breakdown` | – | `compute_uff_energy_breakdown` | `uff-breakdown` | UFF energy split by term type | Bond/angle/torsion/vdw decomposition |
+| `compute_mmff94_energy_breakdown` | `compute_mmff94_energy_breakdown` | – | `compute_mmff94_energy_breakdown` | `mmff94-breakdown` | MMFF94 energy split by term type | Bond/angle/torsion/vdw decomposition |
 
 ### 5. Semiempirical, Tight-Binding, Ab Initio, and Neural Potentials
 
 | Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
 |------|--------|--------------------------|------|-----|---------|-------------------|
 | `compute_pm3` | `compute_pm3` | `pm3_calculate` | `compute_pm3` | `pm3` | PM3 semiempirical SCF | NDDO PM3 |
-| `compute_pm3_gradient` | – | – | – | – | Analytical PM3 gradients | Hellmann-Feynman + Pulay corrections |
+| `compute_pm3_gradient` | `compute_pm3_gradient` | – | `compute_pm3_gradient` | `pm3-gradient` | Analytical PM3 gradients | Hellmann-Feynman + Pulay corrections |
 | `compute_xtb` | `compute_xtb` | `xtb_calculate` | `compute_xtb` | `xtb` | GFN0-xTB style tight-binding workflow | SCC tight-binding |
 | `compute_gfn1` | `compute_gfn1` | `gfn1_calculate` | `compute_gfn1` | `gfn1` | GFN1-xTB workflow with shell charges and D3-style dispersion | Shell-resolved SCC tight-binding |
 | `compute_gfn2` | `compute_gfn2` | `gfn2_calculate` | `compute_gfn2` | `gfn2` | GFN2-xTB workflow with multipoles, D4-style dispersion, and XB correction | Multipole SCC tight-binding |
-| `compute_xtb_gradient` | – | – | – | – | Analytical xTB gradients | SCC gradient formalism |
+| `compute_xtb_gradient` | `compute_xtb_gradient` | – | `compute_xtb_gradient` | `xtb-gradient` | Analytical xTB gradients | SCC gradient formalism |
 | `compute_hf3c` | `compute_hf3c` | `hf3c_calculate` | `compute_hf3c` / `compute_hf3c_custom` | `hf3c` | HF-3c quantum workflow | HF + D3 + gCP + SRB |
 | `compute_ani` | `compute_ani` | `ani_calculate` | `compute_ani` | `ani` | ANI neural potential using available test/default models | Atomic environment vectors + feed-forward NN |
-| `compute_ani_with_models` | – | – | – | – | ANI with explicit models/config | Same ANI formalism with custom weights |
+| `compute_ani_with_models` | – | – | – | – | ANI with explicit models/config (Rust only: the ANI networks are Rust objects) | Same ANI formalism with custom weights |
 | `hf::cisd::compute_cisd` | `compute_cisd` | – | `compute_cisd` | `cisd` | CISD excited states from an internal STO-3G RHF | Configuration interaction with singles and doubles |
+| `compute_uhf` | `compute_uhf` | – | `compute_uhf` | `uhf` | Unrestricted Hartree-Fock for open-shell systems | UHF SCF with alpha/beta orbitals |
+| `compute_rohf` | `compute_rohf` | – | `compute_rohf` | `rohf` | Restricted open-shell Hartree-Fock | ROHF SCF with canonical projection |
 | `eht::compute_eht_gradient` | `compute_eht_gradient` | – | `compute_eht_gradient` | `eht-gradient` | EHT energy-surface gradients | Central finite differences on the EHT surface |
 | `eht::optimize_geometry_eht` | `optimize_geometry_eht` | – | `optimize_geometry_eht` | `optimize-geometry-eht` | Geometry optimization on the EHT surface | Shared BFGS engine |
 | `ani::compute_aevs_tm` | `compute_aevs_tm` | – | `compute_aevs_tm` | `aevs-tm` | ANI-TM atomic environment vectors (extended element set) | ANI-TM symmetry functions |
@@ -213,13 +216,13 @@ Practical note:
 | `analyze_graph_features` | `analyze_graph_features` | `graph_features` | `analyze_graph_features` | – | Aromaticity and stereotag graph analysis | Graph traversal and aromatic bond tagging |
 | `compute_ml_descriptors` | `compute_ml_descriptors` | `ml_descriptors` | `compute_ml_descriptors` / `compute_molecular_descriptors` | – | Molecular descriptor generation | Topological descriptor extraction |
 | `predict_ml_properties` | `predict_ml_properties` | `ml_predict` | `predict_ml_properties` / `compute_ml_properties` | – | Property prediction from descriptors | Proxy ML models |
-| `predict_ensemble` | – | – | – | – | Ensemble property prediction with confidence | Multi-model aggregation |
+| `predict_ensemble` | `predict_ensemble` | – | `predict_ensemble` | `ensemble` | Ensemble property prediction with confidence | Multi-model aggregation |
 | `ml::compute_whim` | `compute_whim` | – | `compute_whim` | `whim` | WHIM 3D molecular descriptors | WHIM projection + weighting |
 | `ml::compute_rdf` | `compute_rdf` | – | `compute_rdf` | `rdf` | Radial distribution function descriptors | Charge-weighted radial histograms |
 | `ml::compute_getaway` | `compute_getaway` | – | `compute_getaway` | `getaway` | GETAWAY 3D molecular descriptors | Atom-distance autocorrelations |
 | `ml::train_random_forest` | `train_random_forest` | – | `train_random_forest` | `train-random-forest` | Train a Random Forest regressor | Bootstrap bagging on decision trees |
 | `ml::train_gradient_boosting` | `train_gradient_boosting` | – | `train_gradient_boosting` | `train-gradient-boosting` | Train a Gradient Boosting regressor | Additive boosting on shallow trees |
-| `compute_tpsa` | – | – | – | – | Topological polar surface area | Fragment-based TPSA heuristic |
+| `compute_tpsa` | `compute_tpsa` | – | `compute_tpsa` | `tpsa` | Topological polar surface area | Fragment-based TPSA heuristic |
 
 ### 8. Dynamics, Conformer Search, and Path Sampling
 
@@ -246,6 +249,8 @@ Practical note:
 | `periodic::build_periodic_molecule` | `build_periodic_molecule` | – | `build_periodic_molecule` | `periodic-molecule` | Build a periodic molecular graph | Fractional-coordinate periodic bonding |
 | `periodic::detect_hapticity` | `detect_hapticity` | – | `detect_hapticity` | `hapticity` | Detect haptic metal-ring interactions | Ring-membership eta counting |
 | `materials::geometry_opt::optimize_framework` | `optimize_framework` | – | `optimize_framework` | `optimize-framework` | Optimize a geometry with the shared BFGS engine | BFGS on the UFF surface |
+| `parse_cif` | `parse_cif` | – | `parse_cif` | `parse-cif` | Read a CIF file into a crystal structure | CIF 1.1 tag parser |
+| `write_cif` | `write_cif` | – | `write_cif` | `write-cif` | Write a crystal structure as a CIF file | CIF 1.1 writer |
 
 ### 10. Stereochemistry, Solvation, Rings, Fingerprints, and Clustering
 
@@ -285,7 +290,7 @@ The CLI is a curated subset intended for common user workflows rather than total
 
 ### Stable CLI commands
 
-The CLI exposes **90 subcommands** in total; 56 are always built and 34 are
+The CLI exposes **100 subcommands** in total; 66 are always built and 34 are
 feature-gated. The exhaustive reference is [`docs/api/cli.md`](./cli.md).
 
 - `embed`, `batch`, `parse`, `info`
@@ -301,6 +306,9 @@ feature-gated. The exhaustive reference is [`docs/api/cli.md`](./cli.md).
 - `cell`, `assemble`, `space-group`, `all-space-groups`, `periodic-molecule`, `hapticity`
 - `simplified-neb-path`, `neb-energy`, `neb-gradient`
 - `chart-to-json`, `chart-from-json`, `validate-chart-schema`
+- `uhf`, `rohf`, `pm3-gradient`, `xtb-gradient`
+- `uff-breakdown`, `mmff94-breakdown`, `tpsa`, `ensemble`
+- `parse-cif`, `write-cif`
 
 ### Feature-gated CLI commands
 
