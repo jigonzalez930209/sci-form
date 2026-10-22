@@ -247,6 +247,30 @@ test('CIF import and export', () => {
   console.log(`    CIF roundtrip: ${structure.atom_sites[0].label}`);
 });
 
+// C-H3: the method names are parsed in the core, so every surface reports
+// the same error and a typo is never a silent fallback.
+test('An unknown method is an error that lists the supported ones', () => {
+  const elements = JSON.stringify([8, 1, 1]);
+  const coords = JSON.stringify([0, 0, 0.1173, 0, 0.7572, -0.4692, 0, -0.7572, -0.4692]);
+  const mesh = JSON.parse(wasm.compute_orbital_mesh(elements, coords, 'dft', 0, 0.4, 3.0, 0.02));
+  assert(mesh.error !== undefined, 'an unknown method must be an error');
+  for (const method of ['eht', 'pm3', 'xtb', 'hf3c']) {
+    assert(mesh.error.includes(method), `the error must list '${method}': ${mesh.error}`);
+  }
+});
+
+test('A misspelled line shape is an error, not a silent Lorentzian', () => {
+  const elements = JSON.stringify([8, 1, 1]);
+  const coords = JSON.stringify([0, 0, 0.1173, 0, 0.7572, -0.4692, 0, -0.7572, -0.4692]);
+  const r = JSON.parse(
+    wasm.compute_ir_spectrum_broadened(
+      elements, coords, 'pm3', 10.0, 400.0, 4000.0, 100, 'gauassian', 0.0, '',
+    ),
+  );
+  assert(r.error !== undefined, 'the typo must be an error');
+  assert(r.error.includes('gaussian'), `the error must name the line shapes: ${r.error}`);
+});
+
 console.log('='.repeat(60));
 console.log(`Results: ${passed} passed, ${failed} failed`);
 console.log('='.repeat(60));

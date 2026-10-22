@@ -621,7 +621,7 @@ pub fn compute_ir_spectrum_broadened(
     wn_max: f64,
     n_points: usize,
     broadening: &str,
-) -> ir::IrSpectrum
+) -> Result<ir::IrSpectrum, String>
 ```
 
 Generate a broadened IR spectrum from an existing `VibrationalAnalysis` with full control over parameters.
@@ -630,6 +630,9 @@ Generate a broadened IR spectrum from an existing `VibrationalAnalysis` with ful
 |-----------|-------------|
 | `gamma` | Half-width (Lorentzian) or σ (Gaussian) in cm⁻¹ |
 | `broadening` | `"lorentzian"` (default) or `"gaussian"` |
+
+**Errors:** an unknown line shape is an error. It used to fall back to the
+Lorentzian shape, so the typo `gauassian` silently changed the spectrum.
 
 **Returns** `IrSpectrum { wavenumbers, intensities, peaks, gamma, notes }` — wavenumbers in cm⁻¹ and
 intensities in km/mol.

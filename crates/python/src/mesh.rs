@@ -54,6 +54,11 @@ fn compute_orbital_mesh(
         )));
     }
     let positions = coords_to_positions(&coords);
+    // The method name is the caller's input: a wrong one is a ValueError,
+    // not an engine failure.
+    method
+        .parse::<sci_form_core::mesh::MeshMethod>()
+        .map_err(crate::errors::value_error)?;
     sci_form_core::compute_orbital_mesh(
         &elements, &positions, method, mo_index, spacing, padding, isovalue,
     )

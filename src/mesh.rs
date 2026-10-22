@@ -27,6 +27,44 @@ pub enum MeshMethod {
     Hf3c,
 }
 
+impl MeshMethod {
+    /// The canonical names of the supported methods.
+    pub const SUPPORTED: &'static [&'static str] = &["eht", "pm3", "xtb", "hf3c"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("eht", "eht"),
+        ("huckel", "eht"),
+        ("pm3", "pm3"),
+        ("xtb", "xtb"),
+        ("gfn0", "xtb"),
+        ("gfn-xtb", "xtb"),
+        ("hf3c", "hf3c"),
+        ("hf-3c", "hf3c"),
+        ("hf", "hf3c"),
+    ];
+}
+
+impl std::str::FromStr for MeshMethod {
+    type Err = String;
+
+    /// Parse a method name.
+    ///
+    /// The comparison is case-insensitive and the usual aliases (`huckel`,
+    /// `gfn0`, `hf-3c`, …) are accepted. An unknown name is an error that
+    /// lists every canonical method.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "eht" => Self::Eht,
+            "pm3" => Self::Pm3,
+            "xtb" => Self::Xtb,
+            "hf3c" => Self::Hf3c,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Result of orbital mesh generation including method context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrbitalMeshResult {

@@ -207,6 +207,7 @@ pub mod ir;
 pub mod kmesh;
 pub mod materials;
 pub mod mesh;
+pub mod method;
 pub mod ml;
 pub mod nmr;
 pub mod optimization;
@@ -2084,16 +2085,13 @@ pub fn compute_vibrational_analysis(
     step_size: Option<f64>,
 ) -> Result<ir::VibrationalAnalysis, String> {
     validation::validate_geometry(elements, positions)?;
-    let hessian_method =
-        match method {
-            "eht" => ir::HessianMethod::Eht,
-            "pm3" => ir::HessianMethod::Pm3,
-            "xtb" => ir::HessianMethod::Xtb,
+    let hessian_method: ir::HessianMethod =
+        match method.to_ascii_lowercase().as_str() {
             "uff" => return Err(
                 "UFF vibrational analysis requires SMILES; use compute_vibrational_analysis_uff"
                     .to_string(),
             ),
-            _ => return Err(format!("Unknown method '{}', use eht/pm3/xtb/uff", method)),
+            other => other.parse()?,
         };
     ir::compute_vibrational_analysis(elements, positions, hessian_method, step_size)
 }
@@ -2467,18 +2465,7 @@ pub fn compute_orbital_mesh(
     padding: f64,
     isovalue: f32,
 ) -> Result<mesh::OrbitalMeshResult, String> {
-    let m = match method.to_lowercase().as_str() {
-        "eht" | "huckel" => mesh::MeshMethod::Eht,
-        "pm3" => mesh::MeshMethod::Pm3,
-        "xtb" | "gfn0" | "gfn-xtb" => mesh::MeshMethod::Xtb,
-        "hf3c" | "hf-3c" | "hf" => mesh::MeshMethod::Hf3c,
-        _ => {
-            return Err(format!(
-                "Unknown method '{}'. Supported: eht, pm3, xtb, hf3c",
-                method
-            ))
-        }
-    };
+    let m: mesh::MeshMethod = method.parse()?;
     mesh::compute_orbital_mesh(elements, positions, m, mo_index, spacing, padding, isovalue)
 }
 
@@ -3303,6 +3290,12 @@ pub fn compute_ensemble_j_couplings(
 // ─── IR Enhanced API ─────────────────────────────────────────────────────────
 
 /// Compute IR spectrum with configurable broadening type.
+///
+/// # Errors
+///
+/// Returns `Err` when the line shape is not one of `gaussian` or
+/// `lorentzian`. It used to fall back to the Lorentzian shape, so a typo
+/// such as `gauassian` silently changed the spectrum.
 pub fn compute_ir_spectrum_broadened(
     analysis: &ir::VibrationalAnalysis,
     gamma: f64,
@@ -3310,14 +3303,11 @@ pub fn compute_ir_spectrum_broadened(
     wn_max: f64,
     n_points: usize,
     broadening: &str,
-) -> ir::IrSpectrum {
-    let bt = match broadening {
-        "gaussian" | "Gaussian" => ir::BroadeningType::Gaussian,
-        _ => ir::BroadeningType::Lorentzian,
-    };
-    ir::vibrations::compute_ir_spectrum_with_broadening(
+) -> Result<ir::IrSpectrum, String> {
+    let bt: ir::BroadeningType = broadening.parse()?;
+    Ok(ir::vibrations::compute_ir_spectrum_with_broadening(
         analysis, gamma, wn_min, wn_max, n_points, bt,
-    )
+    ))
 }
 
 #[cfg(test)]

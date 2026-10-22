@@ -851,17 +851,9 @@ pub fn compute_edl_profile(
     extent_angstrom: f64,
 ) -> String {
     use sci_form::alpha::edl::*;
-    let edl_model = match model {
-        "helmholtz" => EdlModel::Helmholtz,
-        "gouy-chapman" => EdlModel::GouyChapman,
-        "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => {
-            return json_error(&invalid_value(
-                "'model'",
-                model,
-                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
-            ))
-        }
+    let edl_model: EdlModel = match model.parse() {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
     };
     let config = EdlConfig {
         model: edl_model,
@@ -911,17 +903,9 @@ pub fn compute_edl_capacitance_scan(
     model: &str,
 ) -> String {
     use sci_form::alpha::edl::*;
-    let edl_model = match model {
-        "helmholtz" => EdlModel::Helmholtz,
-        "gouy-chapman" => EdlModel::GouyChapman,
-        "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => {
-            return json_error(&invalid_value(
-                "'model'",
-                model,
-                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
-            ))
-        }
+    let edl_model: EdlModel = match model.parse() {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
     };
     let config = EdlConfig {
         model: edl_model,
@@ -1023,16 +1007,9 @@ pub fn compute_kmesh(grid_json: &str, centering: &str) -> String {
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'grid'", grid_json, &e)),
     };
-    let c = match centering {
-        "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
-        "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
-        _ => {
-            return json_error(&invalid_value(
-                "'centering'",
-                centering,
-                &["monkhorst-pack", "mp", "gamma", "gamma-centered"],
-            ))
-        }
+    let c: KMeshCentering = match centering.parse() {
+        Ok(c) => c,
+        Err(e) => return json_error(&e),
     };
     match monkhorst_pack_mesh(&KMeshConfig { grid, centering: c }) {
         Ok(mesh) => {
@@ -1550,17 +1527,9 @@ pub fn compute_capacitance_chart(
 ) -> String {
     use sci_form::alpha::edl::*;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
-    let edl_model = match model {
-        "helmholtz" => EdlModel::Helmholtz,
-        "gouy-chapman" => EdlModel::GouyChapman,
-        "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-        _ => {
-            return json_error(&invalid_value(
-                "'model'",
-                model,
-                &["helmholtz", "gouy-chapman", "gouy-chapman-stern", "gcs"],
-            ))
-        }
+    let edl_model: EdlModel = match model.parse() {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
     };
     let config = EdlConfig {
         model: edl_model,

@@ -1097,6 +1097,32 @@ pub enum BroadeningType {
     Gaussian,
 }
 
+impl BroadeningType {
+    /// The canonical names of the supported line shapes.
+    pub const SUPPORTED: &'static [&'static str] = &["gaussian", "lorentzian"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] =
+        &[("gaussian", "gaussian"), ("lorentzian", "lorentzian")];
+}
+
+impl std::str::FromStr for BroadeningType {
+    type Err = String;
+
+    /// Parse a line-shape name.
+    ///
+    /// An unknown name is an error: it used to fall back to the Lorentzian
+    /// shape, so a typo such as `gauassian` silently changed the spectrum.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "gaussian" => Self::Gaussian,
+            "lorentzian" => Self::Lorentzian,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Generate a broadened IR spectrum from vibrational analysis.
 ///
 /// `gamma`: broadening width in cm⁻¹ (typically 10–30).

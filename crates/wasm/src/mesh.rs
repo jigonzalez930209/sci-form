@@ -124,8 +124,9 @@ fn mesh_method_metadata(
     positions: &[[f64; 3]],
     method: &str,
 ) -> Result<(sci_form::mesh::MeshMethod, usize, Vec<f64>, f64), String> {
-    match method.trim().to_ascii_lowercase().as_str() {
-        "eht" => {
+    let mesh_method: sci_form::mesh::MeshMethod = method.trim().parse()?;
+    match mesh_method {
+        sci_form::mesh::MeshMethod::Eht => {
             let result = sci_form::eht::solve_eht(elements, positions, None)?;
             Ok((
                 sci_form::mesh::MeshMethod::Eht,
@@ -134,7 +135,7 @@ fn mesh_method_metadata(
                 result.gap,
             ))
         }
-        "pm3" => {
+        sci_form::mesh::MeshMethod::Pm3 => {
             let result = sci_form::compute_pm3(elements, positions)?;
             let homo_index = if result.n_electrons > 0 {
                 result.n_electrons / 2 - 1
@@ -148,7 +149,7 @@ fn mesh_method_metadata(
                 result.gap,
             ))
         }
-        "xtb" => {
+        sci_form::mesh::MeshMethod::Xtb => {
             let result = sci_form::compute_xtb(elements, positions)?;
             let homo_index = if result.n_electrons > 0 {
                 result.n_electrons / 2 - 1
@@ -162,7 +163,7 @@ fn mesh_method_metadata(
                 result.gap,
             ))
         }
-        "hf3c" => {
+        sci_form::mesh::MeshMethod::Hf3c => {
             let config = sci_form::hf::HfConfig::default();
             let result = sci_form::hf::solve_hf3c(elements, positions, &config)?;
             let n_electrons: usize = elements.iter().map(|&z| z as usize).sum();
@@ -183,6 +184,12 @@ fn mesh_method_metadata(
                 gap,
             ))
         }
-        other => Err(format!("unsupported mesh method: {other}")),
+        // `MeshMethod` is `#[non_exhaustive]`: a method added after this
+        // binding was written has no GPU path yet.
+        _ => Err(sci_form::method::unknown_method(
+            "'method'",
+            method,
+            sci_form::mesh::MeshMethod::SUPPORTED,
+        )),
     }
 }

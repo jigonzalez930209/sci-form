@@ -44,6 +44,20 @@ pub struct Topology {
 }
 
 impl Topology {
+    /// The canonical names of the supported topologies.
+    pub const SUPPORTED: &'static [&'static str] = &[
+        "pcu",
+        "dia",
+        "sql",
+        "bcu",
+        "fcu",
+        "nbo",
+        "pts",
+        "kgm",
+        "hxl",
+        "pillared_sql",
+    ];
+
     /// Primitive cubic (pcu) topology: single node at origin with 6 edges.
     /// Common for MOF-5 type structures.
     pub fn pcu() -> Self {
@@ -214,19 +228,29 @@ impl Topology {
     }
 
     /// Look up a topology by name string.
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "pcu" => Some(Self::pcu()),
-            "dia" => Some(Self::dia()),
-            "sql" => Some(Self::sql()),
-            "bcu" => Some(Self::bcu()),
-            "fcu" => Some(Self::fcu()),
-            "nbo" => Some(Self::nbo()),
-            "pts" => Some(Self::pts()),
-            "kgm" => Some(Self::kgm()),
-            "hxl" => Some(Self::hxl()),
-            "pillared_sql" => Some(Self::pillared_sql()),
-            _ => None,
+    ///
+    /// The comparison is case-insensitive.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` when the name is not one of [`Topology::SUPPORTED`].
+    pub fn from_name(name: &str) -> Result<Self, String> {
+        match name.to_ascii_lowercase().as_str() {
+            "pcu" => Ok(Self::pcu()),
+            "dia" => Ok(Self::dia()),
+            "sql" => Ok(Self::sql()),
+            "bcu" => Ok(Self::bcu()),
+            "fcu" => Ok(Self::fcu()),
+            "nbo" => Ok(Self::nbo()),
+            "pts" => Ok(Self::pts()),
+            "kgm" => Ok(Self::kgm()),
+            "hxl" => Ok(Self::hxl()),
+            "pillared_sql" => Ok(Self::pillared_sql()),
+            _ => Err(crate::method::unknown_method(
+                "'topology'",
+                name,
+                Self::SUPPORTED,
+            )),
         }
     }
 }
@@ -605,16 +629,16 @@ mod tests {
 
     #[test]
     fn test_topology_from_name() {
-        assert!(Topology::from_name("pcu").is_some());
-        assert!(Topology::from_name("dia").is_some());
-        assert!(Topology::from_name("fcu").is_some());
-        assert!(Topology::from_name("bcu").is_some());
-        assert!(Topology::from_name("nbo").is_some());
-        assert!(Topology::from_name("pts").is_some());
-        assert!(Topology::from_name("kgm").is_some());
-        assert!(Topology::from_name("hxl").is_some());
-        assert!(Topology::from_name("pillared_sql").is_some());
-        assert!(Topology::from_name("unknown").is_none());
+        assert!(Topology::from_name("pcu").is_ok());
+        assert!(Topology::from_name("dia").is_ok());
+        assert!(Topology::from_name("fcu").is_ok());
+        assert!(Topology::from_name("bcu").is_ok());
+        assert!(Topology::from_name("nbo").is_ok());
+        assert!(Topology::from_name("pts").is_ok());
+        assert!(Topology::from_name("kgm").is_ok());
+        assert!(Topology::from_name("hxl").is_ok());
+        assert!(Topology::from_name("pillared_sql").is_ok());
+        assert!(Topology::from_name("unknown").is_err());
     }
 
     #[test]

@@ -22,6 +22,35 @@ pub enum KMeshCentering {
     GammaCentered,
 }
 
+impl KMeshCentering {
+    /// The canonical names of the supported centring schemes.
+    pub const SUPPORTED: &'static [&'static str] = &["monkhorst-pack", "gamma"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("monkhorst-pack", "monkhorst-pack"),
+        ("mp", "monkhorst-pack"),
+        ("gamma", "gamma"),
+        ("gamma-centered", "gamma"),
+    ];
+}
+
+impl std::str::FromStr for KMeshCentering {
+    type Err = String;
+
+    /// Parse a centring name.
+    ///
+    /// An unknown name is an error that lists every canonical scheme.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "monkhorst-pack" => Self::MonkhorstPack,
+            "gamma" => Self::GammaCentered,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Configuration for a uniform Brillouin-zone mesh.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct KMeshConfig {

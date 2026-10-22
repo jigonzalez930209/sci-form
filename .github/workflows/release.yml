@@ -463,6 +463,19 @@ jobs:
           ./sci-form-linux-x86_64 parse-cif "$RUNNER_TEMP/test.cif" > "$RUNNER_TEMP/test.json"
           grep -q '"data_block": "test"' "$RUNNER_TEMP/test.json" || (echo "CLI parse-cif failed"; exit 1)
           ./sci-form-linux-x86_64 write-cif "$RUNNER_TEMP/test.json" | grep -q 'data_test' || (echo "CLI write-cif failed"; exit 1)
+      # A misspelled method name must be an error, not a silent fallback.
+      - name: Smoke test — an unknown method is rejected
+        run: |
+          if ./sci-form-linux-x86_64 ir-spectrum-broadened '[8,1,1]' \
+               '[0,0,0.1173,0,0.7572,-0.4692,0,-0.7572,-0.4692]' \
+               --method ccsd >/dev/null 2>&1; then
+            echo "an unknown method must be rejected"; exit 1
+          fi
+          if ./sci-form-linux-x86_64 ir-spectrum-broadened '[8,1,1]' \
+               '[0,0,0.1173,0,0.7572,-0.4692,0,-0.7572,-0.4692]' \
+               --method pm3 --broadening gauassian >/dev/null 2>&1; then
+            echo "a misspelled line shape must be rejected"; exit 1
+          fi
 
   # ─── Publish: crates.io ────────────────────────────────────────────────────
   publish-crate:

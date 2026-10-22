@@ -48,6 +48,8 @@ These used to panic on bad input. They now return `Result<_, String>`.
 | `sci_form::scf::uhf::run_rohf` | `UhfResult` | `Result<UhfResult, String>` |
 | `sci_form::materials::simulate_powder_xrd` | `Vec<f64>` | `Result<Vec<f64>, String>` |
 | `sci_form::ml::compute_3d_descriptors` | `Vec<f64>` | `Result<Vec<f64>, String>` |
+| `sci_form::compute_ir_spectrum_broadened` | `IrSpectrum` | `Result<IrSpectrum, String>` |
+| `sci_form::materials::Topology::from_name` | `Option<Topology>` | `Result<Topology, String>` |
 | `sci_form::compute_nonpolar_solvation` | `NonPolarSolvation` | `Result<NonPolarSolvation, String>` |
 | `sci_form::compute_gb_solvation` | `GbSolvation` | `Result<GbSolvation, String>` |
 | `sci_form::compute_alpb_solvation` | `AlpbResult` | `Result<AlpbResult, String>` |

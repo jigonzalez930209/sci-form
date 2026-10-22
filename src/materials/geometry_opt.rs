@@ -25,6 +25,35 @@ pub enum OptMethod {
     Bfgs,
 }
 
+impl OptMethod {
+    /// The canonical names of the supported optimisers.
+    pub const SUPPORTED: &'static [&'static str] = &["bfgs", "steepest_descent"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("bfgs", "bfgs"),
+        ("steepest_descent", "steepest_descent"),
+        ("steepest-descent", "steepest_descent"),
+        ("sd", "steepest_descent"),
+    ];
+}
+
+impl std::str::FromStr for OptMethod {
+    type Err = String;
+
+    /// Parse an optimiser name.
+    ///
+    /// An unknown name is an error that lists every canonical optimiser.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "bfgs" => Self::Bfgs,
+            "steepest_descent" => Self::SteepestDescent,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// One accepted steepest-descent step: positions, energy, forces, step length.
 type AcceptedStep = (Vec<[f64; 3]>, f64, Vec<[f64; 3]>, f64);
 

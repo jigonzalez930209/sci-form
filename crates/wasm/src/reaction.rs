@@ -181,17 +181,9 @@ pub fn compute_md_trajectory_with_method_seed64(
         Err(e) => return json_error(&e),
     };
 
-    let md_backend = match backend.to_lowercase().as_str() {
-        "uff" => sci_form::dynamics::MdBackend::Uff,
-        "pm3" => sci_form::dynamics::MdBackend::Pm3,
-        "xtb" => sci_form::dynamics::MdBackend::Xtb,
-        _ => {
-            return json_error(&crate::helpers::invalid_value(
-                "'backend'",
-                backend,
-                &["uff", "pm3", "xtb"],
-            ))
-        }
+    let md_backend: sci_form::dynamics::MdBackend = match backend.parse() {
+        Ok(b) => b,
+        Err(e) => return json_error(&e),
     };
 
     let thermostat = if target_temp_k > 0.0 {

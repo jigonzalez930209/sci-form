@@ -18,9 +18,9 @@ pub fn compute_stda_uvvis(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let bt = match broadening {
-        "lorentzian" | "Lorentzian" => sci_form::reactivity::BroadeningType::Lorentzian,
-        _ => sci_form::reactivity::BroadeningType::Gaussian,
+    let bt: sci_form::reactivity::BroadeningType = match broadening.parse() {
+        Ok(bt) => bt,
+        Err(e) => return json_error(&e),
     };
     match sci_form::compute_stda_uvvis(&elems, &positions, sigma, e_min, e_max, n_points, bt) {
         Ok(result) => serialize_or_error(&result),
@@ -47,9 +47,9 @@ pub fn compute_fluorescence(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let bt = match broadening {
-        "lorentzian" | "Lorentzian" => sci_form::reactivity::BroadeningType::Lorentzian,
-        _ => sci_form::reactivity::BroadeningType::Gaussian,
+    let bt: sci_form::reactivity::BroadeningType = match broadening.parse() {
+        Ok(bt) => bt,
+        Err(e) => return json_error(&e),
     };
     let config = sci_form::spectroscopy::FluorescenceConfig {
         sigma,
@@ -167,12 +167,12 @@ pub fn compute_ir_spectrum_broadened(
         sci_form::compute_vibrational_analysis(&elems, &positions, method, step)
     };
     match analysis {
-        Ok(a) => {
-            let spectrum = sci_form::compute_ir_spectrum_broadened(
-                &a, gamma, wn_min, wn_max, n_points, broadening,
-            );
-            serialize_or_error(&spectrum)
-        }
+        Ok(a) => match sci_form::compute_ir_spectrum_broadened(
+            &a, gamma, wn_min, wn_max, n_points, broadening,
+        ) {
+            Ok(spectrum) => serialize_or_error(&spectrum),
+            Err(e) => json_error(&e),
+        },
         Err(e) => json_error(&e),
     }
 }

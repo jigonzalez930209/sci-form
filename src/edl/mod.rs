@@ -37,6 +37,38 @@ pub enum EdlModel {
     CompactDiffuseHybrid,
 }
 
+impl EdlModel {
+    /// The canonical names of the supported models.
+    pub const SUPPORTED: &'static [&'static str] =
+        &["helmholtz", "gouy-chapman", "gouy-chapman-stern"];
+
+    /// The accepted spellings, alias → canonical name.
+    const ALIASES: &'static [(&'static str, &'static str)] = &[
+        ("helmholtz", "helmholtz"),
+        ("gouy-chapman", "gouy-chapman"),
+        ("gcm", "gouy-chapman"),
+        ("gouy-chapman-stern", "gouy-chapman-stern"),
+        ("gcs", "gouy-chapman-stern"),
+    ];
+}
+
+impl std::str::FromStr for EdlModel {
+    type Err = String;
+
+    /// Parse a model name.
+    ///
+    /// An unknown name is an error that lists every canonical model.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let canonical = crate::method::match_method(s, Self::ALIASES, Self::SUPPORTED)?;
+        Ok(match canonical {
+            "helmholtz" => Self::Helmholtz,
+            "gouy-chapman" => Self::GouyChapman,
+            "gouy-chapman-stern" => Self::GouyChapmanStern,
+            _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
+        })
+    }
+}
+
 /// Numerical backend used to generate an EDL result.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 // The variant set may grow in a future release; downstream crates must

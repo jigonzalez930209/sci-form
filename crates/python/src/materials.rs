@@ -461,17 +461,8 @@ fn assemble_framework(
             )))
         }
     };
-    let topo = match topology {
-        "pcu" => sci_form_core::materials::Topology::pcu(),
-        "dia" => sci_form_core::materials::Topology::dia(),
-        "sql" => sci_form_core::materials::Topology::sql(),
-        _ => {
-            return Err(crate::errors::value_error(format!(
-                "Invalid 'topology' '{}'. Supported: 'pcu', 'dia', 'sql'.",
-                topology
-            )))
-        }
-    };
+    let topo = sci_form_core::materials::Topology::from_name(topology)
+        .map_err(crate::errors::value_error)?;
     let node = sci_form_core::materials::Sbu::metal_node(metal, 0.0, geom);
     let linker = sci_form_core::materials::Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
     let cell = sci_form_core::materials::UnitCell::cubic(lattice_a);
@@ -716,18 +707,8 @@ fn optimize_framework(
         .collect();
     let initial_positions = crate::system::coords_to_positions(&coords);
 
-    let opt_method = match method.to_ascii_lowercase().as_str() {
-        "bfgs" => sci_form_core::materials::geometry_opt::OptMethod::Bfgs,
-        "steepest_descent" | "sd" => {
-            sci_form_core::materials::geometry_opt::OptMethod::SteepestDescent
-        }
-        other => {
-            return Err(crate::errors::value_error(format!(
-                "Invalid 'method' '{}'. Supported: 'bfgs', 'steepest_descent', 'sd'.",
-                other
-            )))
-        }
-    };
+    let opt_method: sci_form_core::materials::geometry_opt::OptMethod =
+        method.parse().map_err(crate::errors::value_error)?;
 
     let lattice = match (cell_a, cell_b, cell_c) {
         (Some(a), Some(b), Some(c)) => Some(

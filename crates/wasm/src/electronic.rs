@@ -189,9 +189,9 @@ pub fn compute_dft(elements_json: &str, coords_flat_json: &str, method: &str) ->
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let dft_method = match method {
-        "pbe" => sci_form::dft::DftMethod::Pbe,
-        _ => sci_form::dft::DftMethod::Svwn,
+    let dft_method: sci_form::dft::DftMethod = match method.parse() {
+        Ok(m) => m,
+        Err(e) => return json_error(&e),
     };
     let config = sci_form::dft::ks_fock::DftConfig {
         method: dft_method,

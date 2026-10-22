@@ -455,17 +455,7 @@ mod alpha_edl_py {
         extent_angstrom: f64,
     ) -> PyResult<EdlProfileResultPy> {
         use sci_form_core::alpha::edl::*;
-        let edl_model = match model {
-            "helmholtz" => EdlModel::Helmholtz,
-            "gouy-chapman" => EdlModel::GouyChapman,
-            "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-            _ => {
-                return Err(crate::errors::value_error(format!(
-                    "Invalid 'model' '{}'. Supported: 'helmholtz', 'gouy-chapman', 'gouy-chapman-stern', 'gcs'.",
-                    model
-                )))
-            }
-        };
+        let edl_model: EdlModel = model.parse().map_err(crate::errors::value_error)?;
         let config = EdlConfig {
             model: edl_model,
             temperature_k,
@@ -506,17 +496,7 @@ mod alpha_edl_py {
         model: &str,
     ) -> PyResult<Vec<(f64, f64)>> {
         use sci_form_core::alpha::edl::*;
-        let edl_model = match model {
-            "helmholtz" => EdlModel::Helmholtz,
-            "gouy-chapman" => EdlModel::GouyChapman,
-            "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-            _ => {
-                return Err(crate::errors::value_error(format!(
-                    "Invalid 'model' '{}'. Supported: 'helmholtz', 'gouy-chapman', 'gouy-chapman-stern', 'gcs'.",
-                    model
-                )))
-            }
-        };
+        let edl_model: EdlModel = model.parse().map_err(crate::errors::value_error)?;
         let config = EdlConfig {
             model: edl_model,
             ionic_strength_m,
@@ -743,16 +723,7 @@ mod alpha_periodic_py {
     #[pyo3(signature = (grid, centering = "monkhorst-pack"))]
     pub fn compute_kmesh(grid: [usize; 3], centering: &str) -> PyResult<KMeshResultPy> {
         use sci_form_core::alpha::periodic_linear::*;
-        let c = match centering {
-            "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
-            "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
-            _ => {
-                return Err(crate::errors::value_error(format!(
-                    "Invalid 'centering' '{}'. Supported: 'monkhorst-pack', 'mp', 'gamma', 'gamma-centered'.",
-                    centering
-                )))
-            }
-        };
+        let c: KMeshCentering = centering.parse().map_err(crate::errors::value_error)?;
         let mesh = monkhorst_pack_mesh(&KMeshConfig { grid, centering: c })
             .map_err(crate::errors::engine_error)?;
         Ok(KMeshResultPy {
@@ -1539,17 +1510,7 @@ mod alpha_edl_chart_py {
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::edl::*;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
-        let edl_model = match model {
-            "helmholtz" => EdlModel::Helmholtz,
-            "gouy-chapman" => EdlModel::GouyChapman,
-            "gouy-chapman-stern" | "gcs" => EdlModel::GouyChapmanStern,
-            _ => {
-                return Err(crate::errors::value_error(format!(
-                    "Invalid 'model' '{}'. Supported: 'helmholtz', 'gouy-chapman', 'gouy-chapman-stern', 'gcs'.",
-                    model
-                )))
-            }
-        };
+        let edl_model: EdlModel = model.parse().map_err(crate::errors::value_error)?;
         let config = EdlConfig {
             model: edl_model,
             ionic_strength_m,
