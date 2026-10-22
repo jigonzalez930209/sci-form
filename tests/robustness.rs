@@ -249,12 +249,8 @@ fn a_c2_scf_reports_a_nan_geometry_instead_of_panicking() {
     use sci_form::scf::scf_loop::{run_scf, try_run_scf, ScfConfig};
     use sci_form::scf::types::MolecularSystem;
 
-    let system = MolecularSystem::from_angstrom(
-        &[1, 1],
-        &[[0.0, 0.0, 0.0], [f64::NAN, 0.0, 0.0]],
-        0,
-        1,
-    );
+    let system =
+        MolecularSystem::from_angstrom(&[1, 1], &[[0.0, 0.0, 0.0], [f64::NAN, 0.0, 0.0]], 0, 1);
 
     let err = try_run_scf(&system, &ScfConfig::default())
         .err()

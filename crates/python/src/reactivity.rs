@@ -102,7 +102,10 @@ fn compute_fukui_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Fu
 }
 
 #[pyfunction]
-fn compute_reactivity_ranking(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReactivityRankingPy> {
+fn compute_reactivity_ranking(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+) -> PyResult<ReactivityRankingPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_reactivity_ranking(&elements, &positions)
         .map(|r| {

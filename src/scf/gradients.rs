@@ -14,17 +14,25 @@ use super::types::MolecularSystem;
 /// Gradient result for all atoms.
 #[derive(Debug, Clone)]
 pub struct GradientResult {
-    /// Nuclear gradients dE/dR in Hartree/Bohr, shape [n_atoms][3].
+    /// Nuclear gradients dE/dR in Hartree/Bohr, shape `[n_atoms][3]`.
     pub gradients: Vec<[f64; 3]>,
-    /// RMS gradient magnitude.
+    /// RMS gradient magnitude in Hartree/Bohr.
+    ///
+    /// The root-mean-square over all `3 * n_atoms` Cartesian components.
     pub rms_gradient: f64,
-    /// Maximum gradient component.
+    /// Maximum gradient component in Hartree/Bohr.
+    ///
+    /// The largest absolute value of any Cartesian component.
     pub max_gradient: f64,
-    /// Total energy at the evaluated geometry.
+    /// Total energy at the evaluated geometry, in Hartree.
     pub energy: f64,
 }
 
 impl GradientResult {
+    /// Root-mean-square gradient magnitude in Hartree/Bohr.
+    ///
+    /// Identical to [`GradientResult::rms_gradient`]; provided as the
+    /// conventional name for a convergence-criterion check.
     pub fn norm(&self) -> f64 {
         self.rms_gradient
     }
@@ -33,6 +41,10 @@ impl GradientResult {
 /// Compute nuclear gradients using central finite differences.
 ///
 /// Cost: 6N SCF calculations for N atoms.
+///
+/// `step_size` is the Cartesian displacement in Bohr. The returned
+/// gradients are `dE/dR` in Hartree/Bohr (the *gradient*, not the force:
+/// the force is its negative).
 pub fn numerical_gradient(
     system: &MolecularSystem,
     config: &ScfConfig,
@@ -107,6 +119,9 @@ pub fn energy_weighted_density(
 /// towards a partner *increases* the repulsion, so the derivative of
 /// `Z_A Z_B / |R_A - R_B|` with respect to `R_A` carries the minus sign.
 /// (The negative of this quantity is the corresponding force.)
+///
+/// `positions` must be in Bohr; the returned components are in
+/// Hartree/Bohr.
 pub fn nuclear_repulsion_gradient(
     atomic_numbers: &[u8],
     positions: &[[f64; 3]],

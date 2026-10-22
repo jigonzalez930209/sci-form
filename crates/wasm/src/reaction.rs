@@ -201,14 +201,7 @@ pub fn compute_md_trajectory_with_method_seed64(
     };
 
     match sci_form::dynamics::simulate_velocity_verlet(
-        smiles,
-        &flat,
-        &elements,
-        n_steps,
-        dt_fs,
-        seed,
-        thermostat,
-        md_backend,
+        smiles, &flat, &elements, n_steps, dt_fs, seed, thermostat, md_backend,
     ) {
         Ok(result) => serialize_or_error(&result),
         Err(e) => json_error(&e),

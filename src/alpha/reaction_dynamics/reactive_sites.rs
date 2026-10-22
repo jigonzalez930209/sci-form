@@ -22,7 +22,8 @@ use serde::{Deserialize, Serialize};
 pub struct ReactiveSite {
     /// Atom index within the fragment.
     pub atom_index: usize,
-    /// Confidence score [0, 1] — how certain we are this is the reactive atom.
+    /// Confidence score [0, 1] (dimensionless) — how certain we are this is
+    /// the reactive atom.
     pub confidence: f64,
     /// Source of identification.
     pub source: SiteSource,
@@ -100,6 +101,12 @@ pub struct BondChangeInfo {
 /// 3. Fall back to proximity/charge heuristics
 ///
 /// The result includes approach directions derived from the identified sites.
+///
+/// # Errors
+///
+/// - `"No fragments provided"` when `fragment_elements` is empty.
+/// - `"SMIRKS pattern did not match"` when a SMIRKS pattern was supplied but
+///   does not match any of the fragments.
 pub fn identify_reactive_sites(
     fragment_elements: &[&[u8]],
     fragment_coords: &[&[f64]],

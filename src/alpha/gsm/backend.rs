@@ -1,3 +1,25 @@
+//! Energy backends for the Growing String Method.
+//!
+//! Each backend provides a total-energy surface (and its numerical
+//! gradient) for the string search of [`super::saddle::find_transition_state`].
+//! The backends differ in cost and in the unit of the energy they return,
+//! so this module normalises everything to **kcal/mol** before handing it to
+//! the GSM driver.
+//!
+//! # Stability tier
+//!
+//! **Alpha** — early research tier. Gated behind the `alpha-gsm` feature
+//! flag; see [`crate::experimental_status`] for the promotion criteria and
+//! the validation gate that covers this subsystem (`tests/alpha_gsm_validation.rs`,
+//! F82).
+//!
+//! # Units
+//!
+//! Coordinates are flat `3N` arrays in **Å**. Energies are reported in the
+//! unit named by `GsmBackendCapability::energy_unit` ("kcal/mol", "eV" or
+//! "hartree") and normalised to **kcal/mol** in
+//! `GsmBackendEvaluation::energy_kcal_mol`.
+
 use super::saddle::{find_transition_state, GsmResult};
 use super::string::GsmConfig;
 use crate::eht::{analyze_eht_support, SupportLevel};
@@ -13,21 +35,40 @@ const EV_TO_KCAL: f64 = EV_TO_HARTREE * HARTREE_TO_KCAL;
 const HF_EXPLICIT_BASIS_ELEMENTS: [u8; 8] = [1, 6, 7, 8, 9, 15, 16, 17];
 const REAXFF_CHON_ELEMENTS: [u8; 4] = [1, 6, 7, 8];
 
+/// Energy backend usable to drive the Growing String Method.
+///
+/// Each variant names a *method* that can supply a total energy (and a
+/// numerical gradient) for a geometry. The variants differ sharply in cost
+/// and in physical content; use [`GsmBackendCapability`] to find out whether
+/// a backend is available for a given composition and whether it is fit for
+/// a reaction path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GsmEnergyBackend {
+    /// UFF force field (kcal/mol).
     Uff,
+    /// MMFF94 force field (kcal/mol).
     Mmff94,
+    /// Extended Hückel theory (eV) — orbital trends only, not a
+    /// barrier-ready total-energy surface.
     Eht,
+    /// PM3 semi-empirical SCF (eV).
     Pm3,
+    /// GFN0-xTB tight binding (eV).
     Xtb,
+    /// GFN1-xTB tight binding with shell-resolved SCC (eV).
     Gfn1,
+    /// GFN2-xTB tight binding with multipole SCC (eV).
     Gfn2,
+    /// HF-3c composite ab-initio method (hartree).
     Hf3c,
+    /// ReaxFF reactive force field (kcal/mol); requires the `alpha-reaxff`
+    /// feature flag and the default CHON parameter set.
     Reaxff,
 }
 
 impl GsmEnergyBackend {
+    /// Every backend, in the order used by [`plan_gsm_backends`].
     pub const ALL: [Self; 9] = [
         Self::Uff,
         Self::Mmff94,
@@ -40,6 +81,12 @@ impl GsmEnergyBackend {
         Self::Reaxff,
     ];
 
+    /// Returns the canonical lower-case name of the backend.
+    ///
+    /// The name is the one accepted by [`GsmEnergyBackend::from_str`] and the
+    /// one used in error messages and in the `serde` representation
+    /// (`"uff"`, `"mmff94"`, `"eht"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`,
+    /// `"hf3c"`, `"reaxff"`).
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Uff => "uff",
@@ -77,41 +124,90 @@ impl FromStr for GsmEnergyBackend {
     }
 }
 
+/// Outcome of evaluating one GSM energy backend at one geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GsmBackendStatus {
+    /// The backend produced an energy at this geometry.
     Success,
+    /// The backend cannot handle this composition (or the build lacks the
+    /// feature flag it needs), so no energy was computed.
     Unavailable,
+    /// The backend was applicable but the single-point calculation failed
+    /// (for example a non-converged SCF).
     Error,
 }
 
+/// What a GSM energy backend can and cannot do for a given composition.
+///
+/// The capability is a *static* property of the backend and the element list;
+/// it does not depend on a particular geometry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GsmBackendCapability {
+    /// The backend this capability describes.
     pub backend: GsmEnergyBackend,
+    /// `true` when the backend can compute an energy for this composition.
     pub available: bool,
+    /// `true` when the backend is fit for a reaction-path search (i.e. it
+    /// provides a barrier-ready total-energy surface, not just orbital
+    /// trends).
     pub suitable_for_reaction_path: bool,
+    /// Method family of the backend: `"force_field"`, `"orbital_method"`,
+    /// `"semiempirical_scf"`, `"tight_binding"`, `"ab_initio_composite"` or
+    /// `"reactive_force_field"`.
     pub model_family: String,
+    /// Unit of the energies the backend reports: `"kcal/mol"`, `"eV"` or
+    /// `"hartree"`.
     pub energy_unit: String,
+    /// Element-support level, when the backend defines one (only EHT does).
     pub support_level: Option<SupportLevel>,
+    /// Caveats the caller should know about, e.g. typing restrictions.
     pub warnings: Vec<String>,
+    /// Hard limitations of the backend for this composition, e.g. unsupported
+    /// elements.
     pub limitations: Vec<String>,
 }
 
+/// Result of evaluating one GSM energy backend at one geometry.
+///
+/// The energies are reported twice: once in the backend's native unit
+/// (`raw_energy` + `raw_energy_unit`) and once normalised to **kcal/mol**
+/// (`energy_kcal_mol`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GsmBackendEvaluation {
+    /// The backend that was evaluated.
     pub backend: GsmEnergyBackend,
+    /// Whether the evaluation produced an energy, was skipped or failed.
     pub status: GsmBackendStatus,
+    /// `true` when the backend can handle this composition at all.
     pub available: bool,
+    /// `true` when the backend is fit for a reaction-path search.
     pub suitable_for_reaction_path: bool,
+    /// Total energy converted to **kcal/mol**; `None` when no energy was
+    /// computed.
     pub energy_kcal_mol: Option<f64>,
+    /// Total energy in the backend's native unit; `None` when no energy was
+    /// computed.
     pub raw_energy: Option<f64>,
+    /// Unit of `raw_energy` ("kcal/mol", "eV" or "hartree"); `None` when no
+    /// energy was computed.
     pub raw_energy_unit: Option<String>,
+    /// Whether the backend's own SCF converged; `None` for backends without
+    /// an SCF (force fields) or when no energy was computed.
     pub converged: Option<bool>,
+    /// Caveats inherited from the backend capability.
     pub warnings: Vec<String>,
+    /// Limitations inherited from the backend capability.
     pub limitations: Vec<String>,
+    /// Error message when `status` is [`GsmBackendStatus::Unavailable`] or
+    /// [`GsmBackendStatus::Error`]; `None` on success.
     pub error: Option<String>,
 }
 
+/// Reports which GSM backends can be used for a given element list.
+///
+/// The result holds one [`GsmBackendCapability`] per entry of
+/// [`GsmEnergyBackend::ALL`], in that order.
 pub fn plan_gsm_backends(elements: &[u8]) -> Vec<GsmBackendCapability> {
     GsmEnergyBackend::ALL
         .into_iter()
@@ -119,11 +215,29 @@ pub fn plan_gsm_backends(elements: &[u8]) -> Vec<GsmBackendCapability> {
         .collect()
 }
 
+/// Reports which GSM backends can be used for a molecule given as SMILES.
+///
+/// # Errors
+///
+/// Returns the SMILES parser's error message when `smiles` cannot be parsed
+/// (e.g. an unknown element or an unclosed ring).
 pub fn plan_gsm_backends_for_smiles(smiles: &str) -> Result<Vec<GsmBackendCapability>, String> {
     let elements = elements_from_smiles(smiles)?;
     Ok(plan_gsm_backends(&elements))
 }
 
+/// Evaluates one GSM backend at one geometry.
+///
+/// `coords` is the flat `3N` array of Cartesian coordinates in **Å**.
+/// The returned [`GsmBackendEvaluation`] carries the total energy in
+/// **kcal/mol** (and in the backend's native unit) or the reason why no
+/// energy is available.
+///
+/// # Errors
+///
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"coords length {n} must equal 3 * atom count {m}"` when `coords` does
+///   not hold exactly three coordinates per atom.
 pub fn evaluate_gsm_backend(
     smiles: &str,
     coords: &[f64],
@@ -133,6 +247,18 @@ pub fn evaluate_gsm_backend(
     evaluate_gsm_backend_with_elements(smiles, &elements, coords, backend)
 }
 
+/// Evaluates several GSM backends at one geometry.
+///
+/// `coords` is the flat `3N` array of Cartesian coordinates in **Å**. An
+/// empty `backends` slice evaluates every backend in
+/// [`GsmEnergyBackend::ALL`]. The evaluations are returned in the order of
+/// the requested backends.
+///
+/// # Errors
+///
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"coords length {n} must equal 3 * atom count {m}"` when `coords` does
+///   not hold exactly three coordinates per atom.
 pub fn compare_gsm_backends(
     smiles: &str,
     coords: &[f64],
@@ -175,6 +301,24 @@ pub(crate) fn elements_for_smiles(smiles: &str) -> Result<Vec<u8>, String> {
     elements_from_smiles(smiles)
 }
 
+/// Finds the transition state between two geometries using a named backend.
+///
+/// `reactant` and `product` are flat `3N` arrays of Cartesian coordinates in
+/// **Å**; the returned [`GsmResult`] holds the path energies in **kcal/mol**.
+///
+/// # Errors
+///
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"coords length {n} must equal 3 * atom count {m}"` when a coordinate
+///   array does not hold exactly three coordinates per atom.
+/// - `"reactant/product coordinate lengths must match"` when the two arrays
+///   have different lengths.
+/// - The first limitation or warning of the backend capability when the
+///   backend is unavailable or not fit for reaction paths.
+/// - The backend's own error (e.g. `"PM3 did not converge at this geometry"`)
+///   when a single point along the path fails.
+/// - `"GSM backend '{name}' produced a non-finite reaction path"` when the
+///   path contains non-finite energies.
 pub fn find_transition_state_with_backend(
     smiles: &str,
     reactant: &[f64],

@@ -36,7 +36,7 @@ pub struct ConstrainedOptConfig {
     pub step_size: f64,
     /// NEB method backend for energy/gradient evaluation.
     pub method: String,
-    /// SHAKE-like constraint tolerance for distance enforcement.
+    /// SHAKE-like constraint tolerance for distance enforcement, in **Å**.
     pub constraint_tolerance: f64,
 }
 
@@ -55,7 +55,7 @@ impl Default for ConstrainedOptConfig {
 /// Result of constrained optimization.
 #[derive(Debug, Clone)]
 pub struct ConstrainedOptResult {
-    /// Optimized coordinates (flat).
+    /// Optimized coordinates (flat `3N` array in **Å**).
     pub coords: Vec<f64>,
     /// Final energy (kcal/mol).
     pub energy: f64,
@@ -76,6 +76,16 @@ pub struct ConstrainedOptResult {
 /// This is physically equivalent to a "relaxed scan" — at each fixed
 /// value of the reaction coordinate, the system sits at a local minimum
 /// on the constrained PES.
+///
+/// The returned energy is in **kcal/mol** and the gradient norm in
+/// **kcal/(mol·Å)**.
+///
+/// # Errors
+///
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when
+///   `config.method` names an unknown energy backend.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - Any error raised by the energy/gradient backend.
 pub fn optimize_with_constraints(
     smiles: &str,
     elements: &[u8],
@@ -352,6 +362,12 @@ fn project_gradient_onto_constraints(
 ///
 /// This is the core "relaxed scan" that makes approach/departure frames
 /// chemically realistic.
+///
+/// # Errors
+///
+/// Propagates the errors of [`optimize_with_constraints`] for every frame:
+/// an unknown energy backend, an unparsable SMILES, or a failure of the
+/// energy/gradient backend.
 pub fn optimize_frame_sequence(
     smiles: &str,
     elements: &[u8],
@@ -450,6 +466,16 @@ fn find_reactive_constraints(
 ///
 /// This ensures each image represents a true constrained minimum perpendicular
 /// to the reaction path, not just an artifact of the elastic band forces.
+///
+/// The returned vector holds the relaxed image coordinates, one flat `3N`
+/// array per image, in **Å**.
+///
+/// # Errors
+///
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when
+///   `config.method` names an unknown energy backend.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - Any error raised by the energy/gradient backend.
 pub fn relax_neb_images(
     smiles: &str,
     elements: &[u8],

@@ -1,3 +1,8 @@
+//! Analytical Cartesian gradients for the simplified UFF-style energy model.
+//!
+//! Each helper writes its contribution into a shared `n × 3` gradient matrix
+//! whose entries are `dE/dR` in kcal/mol/Å. The mechanical force is the
+//! negative of the returned gradient.
 use super::energy::FFParams;
 use nalgebra::{DMatrix, Vector3};
 use petgraph::visit::EdgeRef;
@@ -233,6 +238,12 @@ pub fn analytical_grad_distance_constraint(
     grad[(idx2, 2)] -= pre * diff[2];
 }
 
+/// Analytical Cartesian gradient of the simplified UFF-style energy model.
+///
+/// `coords` is an `n × 3` matrix of Cartesian positions in Å and
+/// `bounds_matrix` the `n × n` lower/upper distance-bounds matrix in Å. The
+/// returned matrix is `dE/dR` in kcal/mol/Å with the same `n × 3` layout as
+/// `coords`; the mechanical force is its negative.
 pub fn compute_analytical_gradient(
     coords: &DMatrix<f32>,
     mol: &crate::graph::Molecule,

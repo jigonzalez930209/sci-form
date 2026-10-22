@@ -3,6 +3,13 @@
 use super::*;
 use nalgebra::{DMatrix, Vector3};
 
+/// Minimise the ETKDG 3D force field with L-BFGS.
+///
+/// `initial_coords` is an `n × 3` matrix of Cartesian positions in Å and
+/// `bounds_matrix` the `n × n` lower/upper distance-bounds matrix in Å. The
+/// minimiser runs at most `max_iter` iterations and stops early when the
+/// gradient norm (in kcal/mol/Å) falls below `tol`. The relaxed coordinates
+/// in Å are returned; the input is not modified.
 pub fn minimize_etkdg_3d(
     mol: &crate::graph::Molecule,
     initial_coords: &DMatrix<f32>,

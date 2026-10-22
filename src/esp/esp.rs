@@ -402,15 +402,33 @@ pub fn esp_grid_to_colors(grid: &EspGrid, range: f64) -> Vec<u8> {
 }
 
 /// Gaussian .cube file (for I/O).
+///
+/// The geometry of a cube file is expressed in **bohr**, which is what
+/// [`read_cube`] produces and what the Gaussian convention requires. The
+/// volume data are the electrostatic potential in **Hartree/e** for the grids
+/// this crate writes (see [`export_cube`]).
 #[derive(Debug, Clone)]
 pub struct CubeFile {
+    /// First comment line of the cube file.
     pub comment1: String,
+    /// Second comment line of the cube file.
     pub comment2: String,
+    /// Atomic numbers (Z) of the atoms stored in the file.
     pub elements: Vec<u8>,
+    /// Cartesian coordinates of the atoms, in **bohr**.
     pub positions: Vec<[f64; 3]>,
+    /// Origin of the grid, in **bohr**.
     pub origin: [f64; 3],
+    /// Number of grid points along the three axes, `[nx, ny, nz]`.
     pub dims: [usize; 3],
+    /// The three grid axis vectors, in **bohr**.
     pub axes: [[f64; 3]; 3],
+    /// The volume data on the grid, ordered with x varying slowest and z
+    /// fastest.
+    ///
+    /// For a grid produced by this crate the values are the electrostatic
+    /// potential in **Hartree/e**; a cube file written by another program
+    /// normally carries an electron density instead.
     pub values: Vec<f64>,
 }
 

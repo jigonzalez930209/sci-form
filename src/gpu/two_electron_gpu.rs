@@ -101,6 +101,18 @@ fn enumerate_unique_quartets(n: usize) -> (usize, Vec<u8>) {
 /// Returns `TwoElectronIntegrals` with the full symmetrized tensor,
 /// or an error if GPU dispatch fails. Falls back to CPU if the
 /// basis is too small to benefit from GPU.
+///
+/// The returned integrals are in **Hartree** (atomic units).
+///
+/// # Errors
+///
+/// - `"Basis too small for GPU dispatch"` when the basis has fewer than the
+///   minimum number of functions for a GPU dispatch.
+/// - `"No output from ERI kernel"` when the dispatch returned no read-back
+///   payload.
+/// - `"ERI tile output size mismatch: expected {n}, got {m}"` when a tile
+///   produced the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_eris_gpu(
     ctx: &GpuContext,
     basis: &BasisSet,
@@ -154,7 +166,17 @@ fn unpack_quartet(
 ///
 /// The unique-quartet space is processed in tiles whose packed output fits
 /// `limits`, so basis sets whose full tensor exceeds a single buffer can still
-/// be handled. Returns the full symmetrized tensor.
+/// be handled. Returns the full symmetrized tensor, in **Hartree**.
+///
+/// # Errors
+///
+/// - `"Basis too small for GPU dispatch"` when the basis has fewer than the
+///   minimum number of functions for a GPU dispatch.
+/// - `"No output from ERI kernel"` when the dispatch returned no read-back
+///   payload.
+/// - `"ERI tile output size mismatch: expected {n}, got {m}"` when a tile
+///   produced the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_eris_gpu_tiled(
     ctx: &GpuContext,
     basis: &BasisSet,

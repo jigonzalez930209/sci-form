@@ -1,93 +1,231 @@
+//! NMR-active nuclides and the reference data attached to them.
+//!
+//! This module defines [`NmrNucleus`], the crate-wide handle on "which atom
+//! is being observed", together with the tabulated reference data that the
+//! rest of the `nmr` module needs:
+//!
+//! * the Larmor frequency of each nuclide ([`NmrNucleus::default_frequency_mhz`],
+//!   in MHz),
+//! * the natural (unbroadened) resonance line width
+//!   ([`NmrNucleus::default_fwhm_hz`], in Hz),
+//! * the empirical chemical-shift window and centre of each nuclide
+//!   ([`NmrNucleus::empirical_range`], [`NmrNucleus::empirical_center`], in ppm),
+//! * a reference shielding constant ([`NmrNucleus::reference_shielding`], in ppm)
+//!   and the free-atom diamagnetic contribution it is built from
+//!   ([`NmrNucleus::free_atom_diamagnetic`], in ppm).
+//!
+//! The frequencies and line widths are the conventional values quoted for a
+//! standard high-field spectrometer; they are used to convert between Hz and
+//! ppm when a spectrum is simulated (see `nmr::spectrum`), not to predict the
+//! field-dependent shift of a resonance.
+//!
+//! The nuclide set covers the isotopes that are actually observed in routine
+//! structure determination, plus a catalogue of NMR-active metal isotopes
+//! that are not worth a dedicated enum variant.
+
 use serde::{Deserialize, Serialize};
 
+/// An NMR-active nuclide.
+///
+/// Each variant identifies one isotope with a non-zero nuclear spin. The
+/// variant itself carries no payload: the physical reference data (Larmor
+/// frequency in MHz, natural line width in Hz, chemical-shift window and
+/// centre in ppm, reference shielding in ppm) is exposed through the
+/// associated methods rather than stored per instance.
+///
+/// The ordering of the variants is the declaration order, so the derived
+/// `Ord` implementation sorts by that order. It is *not* the periodic-table
+/// order: ⁵⁵Mn is declared last, whereas [`NmrNucleus::ALL`] lists the same
+/// nuclides in element order.
+///
+/// # Example
+///
+/// ```
+/// use sci_form::nmr::nucleus::NmrNucleus;
+///
+/// let nucleus = NmrNucleus::parse("13C").unwrap();
+/// assert_eq!(nucleus.atomic_number(), 6);
+/// assert_eq!(nucleus.mass_number(), 13);
+/// assert_eq!(nucleus.canonical(), "13C");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum NmrNucleus {
+    /// Protium (¹H): spin ½, the dominant target of ¹H NMR.
     H1,
+    /// Deuterium (²H): spin 1 and therefore quadrupolar; the standard ¹H lock solvent.
     H2,
+    /// Tritium (³H): spin ½, a radioactive hydrogen label.
     H3,
+    /// Helium-3 (³He): spin ½, used for low-temperature polarised targets.
     He3,
+    /// Lithium-6 (⁶Li): spin 1 and quadrupolar.
     Li6,
+    /// Lithium-7 (⁷Li): spin 3/2 and quadrupolar.
     Li7,
+    /// Beryllium-9 (⁹Be): spin 3/2 and quadrupolar.
     Be9,
+    /// Boron-10 (¹⁰B): spin 3 and strongly quadrupolar.
     B10,
+    /// Boron-11 (¹¹B): spin 3/2 and quadrupolar; the usual boron nucleus.
     B11,
+    /// Carbon-13 (¹³C): spin ½, the standard carbon nucleus.
     C13,
+    /// Nitrogen-14 (¹⁴N): spin 1 and quadrupolar; the abundant nitrogen isotope.
     N14,
+    /// Nitrogen-15 (¹⁵N): spin ½, the enrichment-friendly nitrogen nucleus.
     N15,
+    /// Oxygen-17 (¹⁷O): spin 5/2 and quadrupolar.
     O17,
+    /// Fluorine-19 (¹⁹F): spin ½ and 100 % naturally abundant.
     F19,
+    /// Sodium-23 (²³Na): spin 3/2 and quadrupolar.
     Na23,
+    /// Magnesium-25 (²⁵Mg): spin 5/2 and quadrupolar.
     Mg25,
+    /// Aluminium-27 (²⁷Al): spin 5/2 and quadrupolar.
     Al27,
+    /// Silicon-29 (²⁹Si): spin ½.
     Si29,
+    /// Phosphorus-31 (³¹P): spin ½ and 100 % naturally abundant.
     P31,
+    /// Sulfur-33 (³³S): spin 3/2 and quadrupolar.
     S33,
+    /// Chlorine-35 (³⁵Cl): spin 3/2 and quadrupolar.
     Cl35,
+    /// Chlorine-37 (³⁷Cl): spin 3/2 and quadrupolar.
     Cl37,
+    /// Potassium-39 (³⁹K): spin 3/2 and quadrupolar.
     K39,
+    /// Potassium-40 (⁴⁰K): spin 4 and strongly quadrupolar; the long-lived radioactive isotope.
     K40,
+    /// Potassium-41 (⁴¹K): spin 3/2 and quadrupolar.
     K41,
+    /// Calcium-43 (⁴³Ca): spin 7/2 and quadrupolar.
     Ca43,
+    /// Scandium-45 (⁴⁵Sc): spin 7/2 and quadrupolar.
     Sc45,
+    /// Titanium-47 (⁴⁷Ti): spin 5/2 and quadrupolar.
     Ti47,
+    /// Titanium-49 (⁴⁹Ti): spin 7/2 and quadrupolar.
     Ti49,
+    /// Vanadium-50 (⁵⁰V): spin 6 and strongly quadrupolar.
     V50,
+    /// Vanadium-51 (⁵¹V): spin 7/2 and quadrupolar.
     V51,
+    /// Chromium-53 (⁵³Cr): spin 3/2 and quadrupolar.
     Cr53,
+    /// Iron-57 (⁵⁷Fe): spin ½.
     Fe57,
+    /// Cobalt-59 (⁵⁹Co): spin 7/2 and quadrupolar.
     Co59,
+    /// Nickel-61 (⁶¹Ni): spin 3/2 and quadrupolar.
     Ni61,
+    /// Copper-63 (⁶³Cu): spin 3/2 and quadrupolar.
     Cu63,
+    /// Copper-65 (⁶⁵Cu): spin 3/2 and quadrupolar.
     Cu65,
+    /// Zinc-67 (⁶⁷Zn): spin 5/2 and quadrupolar.
     Zn67,
+    /// Gallium-69 (⁶⁹Ga): spin 3/2 and quadrupolar.
     Ga69,
+    /// Gallium-71 (⁷¹Ga): spin 3/2 and quadrupolar.
     Ga71,
+    /// Germanium-73 (⁷³Ge): spin 9/2 and quadrupolar.
     Ge73,
+    /// Arsenic-75 (⁷⁵As): spin 3/2 and quadrupolar.
     As75,
+    /// Selenium-77 (⁷⁷Se): spin ½.
     Se77,
+    /// Bromine-79 (⁷⁹Br): spin 3/2 and quadrupolar.
     Br79,
+    /// Bromine-81 (⁸¹Br): spin 3/2 and quadrupolar.
     Br81,
+    /// Rubidium-85 (⁸⁵Rb): spin 5/2 and quadrupolar.
     Rb85,
+    /// Rubidium-87 (⁸⁷Rb): spin 3/2 and quadrupolar.
     Rb87,
+    /// Strontium-87 (⁸⁷Sr): spin 9/2 and quadrupolar.
     Sr87,
+    /// Zirconium-91 (⁹¹Zr): spin 5/2 and quadrupolar.
     Zr91,
+    /// Niobium-93 (⁹³Nb): spin 9/2 and quadrupolar.
     Nb93,
+    /// Molybdenum-95 (⁹⁵Mo): spin 5/2 and quadrupolar.
     Mo95,
+    /// Molybdenum-97 (⁹⁷Mo): spin 5/2 and quadrupolar.
     Mo97,
+    /// Ruthenium-99 (⁹⁹Ru): spin 5/2 and quadrupolar.
     Ru99,
+    /// Ruthenium-101 (¹⁰¹Ru): spin 5/2 and quadrupolar.
     Ru101,
+    /// Rhodium-103 (¹⁰³Rh): spin ½.
     Rh103,
+    /// Palladium-105 (¹⁰⁵Pd): spin 5/2 and quadrupolar.
     Pd105,
+    /// Silver-107 (¹⁰⁷Ag): spin ½.
     Ag107,
+    /// Silver-109 (¹⁰⁹Ag): spin ½.
     Ag109,
+    /// Cadmium-111 (¹¹¹Cd): spin ½.
     Cd111,
+    /// Cadmium-113 (¹¹³Cd): spin ½.
     Cd113,
+    /// Indium-113 (¹¹³In): spin 9/2 and quadrupolar.
     In113,
+    /// Indium-115 (¹¹⁵In): spin 9/2 and quadrupolar.
     In115,
+    /// Tin-115 (¹¹⁵Sn): spin ½.
     Sn115,
+    /// Tin-117 (¹¹⁷Sn): spin ½.
     Sn117,
+    /// Tin-119 (¹¹⁹Sn): spin ½.
     Sn119,
+    /// Antimony-121 (¹²¹Sb): spin 5/2 and quadrupolar.
     Sb121,
+    /// Antimony-123 (¹²³Sb): spin 7/2 and quadrupolar.
     Sb123,
+    /// Tellurium-123 (¹²³Te): spin ½.
     Te123,
+    /// Tellurium-125 (¹²⁵Te): spin ½.
     Te125,
+    /// Iodine-127 (¹²⁷I): spin 5/2 and quadrupolar.
     I127,
+    /// Xenon-129 (¹²⁹Xe): spin ½.
     Xe129,
+    /// Xenon-131 (¹³¹Xe): spin 3/2 and quadrupolar.
     Xe131,
+    /// Cesium-133 (¹³³Cs): spin 7/2 and quadrupolar.
     Cs133,
+    /// Barium-135 (¹³⁵Ba): spin 3/2 and quadrupolar.
     Ba135,
+    /// Barium-137 (¹³⁷Ba): spin 3/2 and quadrupolar.
     Ba137,
+    /// Tungsten-183 (¹⁸³W): spin ½.
     W183,
+    /// Platinum-195 (¹⁹⁵Pt): spin ½.
     Pt195,
+    /// Gold-197 (¹⁹⁷Au): spin 3/2 and quadrupolar.
     Au197,
+    /// Mercury-199 (¹⁹⁹Hg): spin ½.
     Hg199,
+    /// Mercury-201 (²⁰¹Hg): spin 3/2 and quadrupolar.
     Hg201,
+    /// Thallium-203 (²⁰³Tl): spin ½.
     Tl203,
+    /// Thallium-205 (²⁰⁵Tl): spin ½.
     Tl205,
+    /// Lead-207 (²⁰⁷Pb): spin ½.
     Pb207,
+    /// Bismuth-209 (²⁰⁹Bi): spin 9/2 and quadrupolar.
     Bi209,
+    /// Manganese-55 (⁵⁵Mn): spin 5/2 and quadrupolar.
     Mn55,
     /// NMR-active metal isotope stored in `METAL_CATALOG`.
+    ///
+    /// The payload is the zero-based index into the built-in metal catalogue
+    /// (the `METAL_CATALOG` table), not an atomic number. Use
+    /// [`NmrNucleus::atomic_number`] and [`NmrNucleus::mass_number`] to
+    /// recover the element and isotope.
     Catalog(u8),
 }
 
@@ -475,6 +613,13 @@ fn catalog_entry(index: u8) -> &'static MetalCatalogEntry {
 }
 
 impl NmrNucleus {
+    /// Every nuclide that has a dedicated enum variant.
+    ///
+    /// The array holds the 85 non-catalogue nuclides in periodic-table order
+    /// (element by element, ascending atomic number); the catalogue metals
+    /// are not included because they are addressed through
+    /// [`NmrNucleus::Catalog`]. Use [`NmrNucleus::supported_labels`] for the
+    /// full list of human-readable labels including the catalogue entries.
     pub const ALL: [NmrNucleus; 85] = [
         NmrNucleus::H1,
         NmrNucleus::H2,
@@ -563,6 +708,32 @@ impl NmrNucleus {
         NmrNucleus::Bi209,
     ];
 
+    /// Parse a nuclide from a textual alias.
+    ///
+    /// The alias is normalised by dropping every non-ASCII-alphanumeric
+    /// character and lower-casing what remains, so `"13C"`, `"C13"` and
+    /// `"carbon"` all resolve. Accepted spellings are the mass number in
+    /// either order, the element name for the common isotopes, and the
+    /// catalogue metal labels (both `"89Y"` and `"Y89"`).
+    ///
+    /// Note that the normalisation is ASCII-only: a Unicode label such as
+    /// `"¹³C"` has its superscript mass number stripped and is *not*
+    /// accepted. Use [`NmrNucleus::unicode_label`] to *print* a Unicode
+    /// label, not to parse one.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` with a human-readable message listing the supported
+    /// labels when the alias does not resolve to a known nuclide.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use sci_form::nmr::nucleus::NmrNucleus;
+    ///
+    /// assert_eq!(NmrNucleus::parse("proton").unwrap(), NmrNucleus::H1);
+    /// assert!(NmrNucleus::parse("not-an-isotope").is_err());
+    /// ```
     pub fn parse(alias: &str) -> Result<Self, String> {
         let normalized: String = alias
             .chars()
@@ -679,6 +850,11 @@ impl NmrNucleus {
         Ok(nucleus)
     }
 
+    /// All accepted label spellings, one per supported nuclide.
+    ///
+    /// The list contains the canonical labels of the 85 dedicated variants
+    /// followed by the catalogue metal labels. It is the same list that the
+    /// error message of [`NmrNucleus::parse`] quotes.
     pub fn supported_labels() -> Vec<&'static str> {
         let mut labels: Vec<&'static str> = Self::ALL
             .iter()
@@ -688,6 +864,11 @@ impl NmrNucleus {
         labels
     }
 
+    /// Proton number (Z) of the element carrying this nuclide.
+    ///
+    /// Dimensionless. For catalogue metals the value is read from the
+    /// catalogue entry, so it is always the atomic number and not the mass
+    /// number.
     pub fn atomic_number(self) -> u8 {
         match self {
             Self::H1 | Self::H2 | Self::H3 => 1,
@@ -752,6 +933,10 @@ impl NmrNucleus {
         }
     }
 
+    /// Mass number (A) of this nuclide.
+    ///
+    /// Dimensionless: the integer nucleon count, e.g. 13 for ¹³C. It is the
+    /// nominal mass, not the exact isotopic mass in Da.
     pub fn mass_number(self) -> u16 {
         match self {
             Self::H1 => 1,
@@ -843,6 +1028,11 @@ impl NmrNucleus {
         }
     }
 
+    /// Canonical ASCII label of the nuclide, e.g. `"13C"` or `"89Y"`.
+    ///
+    /// The mass number precedes the element symbol. This is the label used
+    /// in the SMILES/SMARTS-style atom map notations and in the error message
+    /// of [`NmrNucleus::parse`].
     pub fn canonical(self) -> &'static str {
         match self {
             Self::H1 => "1H",
@@ -934,6 +1124,11 @@ impl NmrNucleus {
         }
     }
 
+    /// Unicode superscript label of the nuclide, e.g. `"¹³C"`.
+    ///
+    /// Cosmetically identical to [`NmrNucleus::canonical`] but safe to print
+    /// directly into a spectrum axis label or a report. The element symbol is
+    /// kept in plain ASCII; only the mass number is superscripted.
     pub fn unicode_label(self) -> &'static str {
         match self {
             Self::H1 => "¹H",
@@ -1025,6 +1220,10 @@ impl NmrNucleus {
         }
     }
 
+    /// Element symbol of the nuclide, e.g. `"C"` for ¹³C.
+    ///
+    /// The symbol carries no mass number. An element outside the supported
+    /// range yields the placeholder `"X"`.
     pub fn element_symbol(self) -> &'static str {
         if let Self::Catalog(index) = self {
             return catalog_entry(index).symbol;
@@ -1092,10 +1291,30 @@ impl NmrNucleus {
         }
     }
 
+    /// Whether this is one of the two nuclei the shift predictor is tuned for.
+    ///
+    /// True for ¹H and ¹³C only. Those two carry dedicated additivity rules
+    /// and receive a higher prediction confidence; every other nucleus falls
+    /// back to the generic relative model.
     pub fn is_primary_target(self) -> bool {
         matches!(self, Self::H1 | Self::C13)
     }
 
+    /// Whether the nucleus is treated as quadrupolar by the shift predictor.
+    ///
+    /// Quadrupolar nuclei (nuclear spin `I > 1/2`) have no sharp resonance:
+    /// the quadrupolar interaction broadens them, so the predictor only
+    /// returns a rough relative estimate for them and flags the lower
+    /// confidence accordingly.
+    ///
+    /// For catalogue metals the answer follows the tabulated nuclear spin
+    /// (`I > 1/2`). For the dedicated variants it follows a hard-coded
+    /// whitelist of nuclides that are treated as non-quadrupolar; every
+    /// other variant is reported as quadrupolar.
+    ///
+    /// Caveat: ⁷³Ge has `I = 9/2` and is physically quadrupolar, but the
+    /// whitelist classifies it as non-quadrupolar. The catalogue metals have
+    /// no such exception.
     pub fn is_quadrupolar(self) -> bool {
         if let Self::Catalog(index) = self {
             return catalog_entry(index).spin_i > 0.5;
@@ -1131,6 +1350,22 @@ impl NmrNucleus {
         )
     }
 
+    /// The nuclide that is normally observed for a given element.
+    ///
+    /// The mapping picks the most sensitive NMR-active isotope of the
+    /// element (e.g. ¹³C for carbon, ¹⁵N for nitrogen, ⁷Li for lithium).
+    /// Elements without any NMR-active isotope — and elements outside the
+    /// supported range — yield `None`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use sci_form::nmr::nucleus::NmrNucleus;
+    ///
+    /// assert_eq!(NmrNucleus::default_for_element(6), Some(NmrNucleus::C13));
+    /// assert_eq!(NmrNucleus::default_for_element(2), Some(NmrNucleus::He3));
+    /// assert_eq!(NmrNucleus::default_for_element(58), None); // Ce: all isotopes I = 0
+    /// ```
     pub fn default_for_element(atomic_number: u8) -> Option<Self> {
         let nucleus = match atomic_number {
             1 => Self::H1,
@@ -1202,6 +1437,13 @@ impl NmrNucleus {
         Some(nucleus)
     }
 
+    /// Reference Larmor frequency of the nuclide, in MHz.
+    ///
+    /// The value is the frequency the nuclide resonates at on a standard
+    /// high-field spectrometer (400 MHz for ¹H, 100.6 MHz for ¹³C, …). It is
+    /// used to convert between Hz and ppm: a line width of `w` Hz corresponds
+    /// to `w / frequency_mhz` ppm. For catalogue metals the tabulated
+    /// frequency of the entry is returned.
     pub fn default_frequency_mhz(self) -> f64 {
         match self {
             Self::H1 => 400.0,
@@ -1293,6 +1535,14 @@ impl NmrNucleus {
         }
     }
 
+    /// Natural full width at half maximum of the resonance line, in Hz.
+    ///
+    /// This is the unbroadened line width of the nuclide: it is a tabulated
+    /// estimate that is typically one to a few Hz for spin-½ nuclei and one
+    /// to two orders of magnitude larger for quadrupolar ones (which are
+    /// broadened by the quadrupolar interaction). The value is used as the
+    /// default Lorentzian broadening when a spectrum is simulated without an
+    /// explicit line width.
     pub fn default_fwhm_hz(self) -> f64 {
         match self {
             Self::H1 => 1.0,
@@ -1327,6 +1577,13 @@ impl NmrNucleus {
         }
     }
 
+    /// Empirical chemical-shift window of the nuclide, in ppm.
+    ///
+    /// The returned pair is `(low, high)` and brackets the chemical shifts
+    /// that are physically plausible for the nuclide, referenced to the usual
+    /// reference compound (TMS for ¹H/¹³C, CFCl₃ for ¹⁹F, H₃PO₄ for ³¹P,
+    /// liquid NH₃ for ¹⁴N/¹⁵N, …). The generic shift model clamps its
+    /// predictions to this window.
     pub fn empirical_range(self) -> (f64, f64) {
         match self {
             Self::H1 | Self::H2 | Self::H3 => (-2.0, 14.0),
@@ -1372,6 +1629,12 @@ impl NmrNucleus {
         }
     }
 
+    /// Empirical centre of the chemical-shift window, in ppm.
+    ///
+    /// This is the chemical shift that a featureless environment would be
+    /// assigned for the nuclide; the generic relative shift model starts
+    /// from this value and adds the environment-dependent corrections. It
+    /// uses the same reference compounds as [`NmrNucleus::empirical_range`].
     pub fn empirical_center(self) -> f64 {
         match self {
             Self::H1 | Self::H2 | Self::H3 => 2.5,
@@ -1427,6 +1690,13 @@ impl NmrNucleus {
         }
     }
 
+    /// Reference shielding constant of the nuclide, in ppm.
+    ///
+    /// The shielding constant `σ` is the reference value for the nuclide
+    /// (31.7 ppm for ¹H, 188.0 ppm for ¹³C, …). Nuclides without a tabulated
+    /// value fall back to 85 % of the free-atom diamagnetic contribution
+    /// ([`NmrNucleus::free_atom_diamagnetic`]). Larger values mean stronger
+    /// shielding and, for a fixed reference compound, an upfield shift.
     pub fn reference_shielding(self) -> f64 {
         match self {
             Self::H1 | Self::H2 | Self::H3 => 31.7,
@@ -1443,6 +1713,13 @@ impl NmrNucleus {
         }
     }
 
+    /// Free-atom diamagnetic shielding contribution, in ppm.
+    ///
+    /// The tabulated diamagnetic shielding of the isolated neutral atom of
+    /// the element (17.75 ppm for H, 260.7 ppm for C, 325.5 ppm for N, …).
+    /// It is the ingredient from which the parametric reference shielding of
+    /// the heavier elements is built. Elements outside the table fall back to
+    /// `17.0 × Z` ppm.
     pub fn free_atom_diamagnetic(self) -> f64 {
         match self.atomic_number() {
             1 => 17.75,

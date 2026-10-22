@@ -399,7 +399,8 @@ fn train_random_forest(
     let max_depth = crate::options::usize_from(options, "max_depth", max_depth)?;
     let min_samples_split =
         crate::options::usize_from(options, "min_samples_split", min_samples_split)?;
-    let min_samples_leaf = crate::options::usize_from(options, "min_samples_leaf", min_samples_leaf)?;
+    let min_samples_leaf =
+        crate::options::usize_from(options, "min_samples_leaf", min_samples_leaf)?;
     let sample_fraction = crate::options::f64_from(options, "sample_fraction", sample_fraction)?;
     let seed = crate::options::usize_from(options, "seed", seed as usize)? as u64;
     if features.len() != targets.len() {
@@ -464,7 +465,8 @@ fn train_gradient_boosting(
     let max_depth = crate::options::usize_from(options, "max_depth", max_depth)?;
     let min_samples_split =
         crate::options::usize_from(options, "min_samples_split", min_samples_split)?;
-    let min_samples_leaf = crate::options::usize_from(options, "min_samples_leaf", min_samples_leaf)?;
+    let min_samples_leaf =
+        crate::options::usize_from(options, "min_samples_leaf", min_samples_leaf)?;
     let subsample = crate::options::f64_from(options, "subsample", subsample)?;
     let seed = crate::options::usize_from(options, "seed", seed as usize)? as u64;
     if features.len() != targets.len() {

@@ -1,3 +1,29 @@
+//! Molecular dynamics, thermostats and nudged-elastic-band path search.
+//!
+//! Core module (no feature flag required) that provides:
+//!
+//! - **Integrators** — Velocity Verlet (NVE and Berendsen-NVT) and a
+//!   Nosé–Hoover chain thermostat for canonical sampling.
+//! - **Force backends** — UFF (analytical gradients), PM3 and the xTB family
+//!   (GFN0/GFN1/GFN2) and HF-3c (numerical central differences).
+//! - **Reaction paths** — a simplified, spring-coupled NEB for low-cost
+//!   pathway exploration, plus the shared energy/gradient helpers that the
+//!   alpha [`crate::alpha::reaction_dynamics`] module builds its climbing-image
+//!   NEB on.
+//! - **Utilities** — atomic masses, centre-of-mass handling and XYZ export.
+//!
+//! # Units
+//!
+//! Coordinates are flat `3N` arrays in **Å**; masses are in **amu**;
+//! velocities are in **Å/fs**; forces and gradients in **kcal/(mol·Å)**;
+//! energies in **kcal/mol**; time steps in **fs**; temperatures in **K**;
+//! pressures in **bar**.
+//!
+//! # Stability
+//!
+//! Core (promoted). The CPU implementations are always available; there is
+//! no GPU path in this module.
+
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
@@ -43,6 +69,11 @@ pub enum NebBackend {
 
 impl NebBackend {
     /// Parse a method string into a `NebBackend`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `"Unknown NEB backend '{s}'. Expected one of: uff, mmff94, pm3,
+    /// xtb, gfn1, gfn2, hf3c"` for any other string.
     pub fn from_method(s: &str) -> Result<Self, String> {
         match s.trim().to_ascii_lowercase().as_str() {
             "uff" => Ok(Self::Uff),
@@ -171,6 +202,21 @@ fn kinetic_energy_and_temperature(
 }
 
 /// Run short exploratory molecular dynamics using Velocity Verlet and optional Berendsen NVT.
+///
+/// `coords` is a flat `3N` array in **Å**, `dt_fs` the time step in **fs**
+/// and `target_temp_and_tau` an optional `(temperature_k, tau_fs)` pair that
+/// switches on the Berendsen thermostat. The returned frames carry the
+/// potential and kinetic energies in **kcal/mol** and the temperature in **K**.
+///
+/// # Errors
+///
+/// - `"n_steps must be > 0"` when no integration step is requested.
+/// - `"dt_fs must be > 0"` when the time step is not positive.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"coords length {n} != 3 * atoms {m}"` when the coordinate array does not
+///   hold exactly three coordinates per atom.
+/// - `"MD diverged at step {n} (non-finite coordinates/energy)"` when the
+///   integration produced non-finite values.
 pub fn simulate_velocity_verlet_uff(
     smiles: &str,
     coords: &[f64],
@@ -325,6 +371,19 @@ pub fn simulate_velocity_verlet_uff(
 }
 
 /// Build a simplified NEB-like path using linear interpolation and spring-coupled relaxation.
+///
+/// `spring_k` is in **kcal/(mol·Å²)**, `step_size` in **Å** and the returned
+/// image energies in **kcal/mol**.
+///
+/// # Errors
+///
+/// - `"n_images must be >= 2"` when fewer than two images are requested.
+/// - `"n_iter must be > 0"` when no relaxation iteration is requested.
+/// - `"step_size must be > 0"` when the step size is not positive.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"start/end coords must each have length {n} (3 * n_atoms)"` when a
+///   coordinate array does not hold exactly three coordinates per atom.
+/// - Any error raised by the UFF energy backend.
 pub fn compute_simplified_neb_path(
     smiles: &str,
     start_coords: &[f64],
@@ -516,6 +575,14 @@ fn neb_numerical_gradient(
 
 /// Compute energy (kcal/mol) and gradients (kcal/mol/Å) for a NEB image
 /// using the specified backend.
+///
+/// The gradient is written into `grad`, which must have one entry per
+/// Cartesian coordinate.
+///
+/// # Errors
+///
+/// Propagates the error of the selected backend, e.g. a non-converged SCF for
+/// PM3/xTB or an unsupported element.
 pub fn neb_energy_and_gradient(
     backend: NebBackend,
     _smiles: &str,
@@ -589,6 +656,20 @@ fn clamp_neb_displacement(dx: &mut [f64]) {
 /// This is the multi-method version of [`compute_simplified_neb_path`].
 /// Supply `method` as one of: `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`,
 /// `"gfn1"`, `"gfn2"`, `"hf3c"`.
+///
+/// The returned image energies are in **kcal/mol**.
+///
+/// # Errors
+///
+/// - The error of [`NebBackend::from_method`] when `method` names an unknown
+///   energy backend.
+/// - `"n_images must be >= 2"` when fewer than two images are requested.
+/// - `"n_iter must be > 0"` when no relaxation iteration is requested.
+/// - `"step_size must be > 0"` when the step size is not positive.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"start/end coords must each have length {n} (3 * n_atoms)"` when a
+///   coordinate array does not hold exactly three coordinates per atom.
+/// - Any error raised by the selected energy backend.
 pub fn compute_simplified_neb_path_configurable(
     smiles: &str,
     start_coords: &[f64],
@@ -688,6 +769,15 @@ pub fn compute_simplified_neb_path_configurable(
 /// Compute energy-only for any NEB backend (used for single-point comparisons).
 ///
 /// Returns energy in kcal/mol.
+///
+/// # Errors
+///
+/// - The error of [`NebBackend::from_method`] when `method` names an unknown
+///   energy backend.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"coords length {n} != 3 * atoms {m}"` when the coordinate array does not
+///   hold exactly three coordinates per atom.
+/// - Any error raised by the selected energy backend.
 pub fn neb_backend_energy_kcal(method: &str, smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let backend = NebBackend::from_method(method)?;
     let mol = crate::graph::Molecule::from_smiles(smiles)?;
@@ -708,6 +798,15 @@ pub fn neb_backend_energy_kcal(method: &str, smiles: &str, coords: &[f64]) -> Re
 }
 
 /// Compute energy and return both energy (kcal/mol) and flat gradient (kcal/mol/Å).
+///
+/// # Errors
+///
+/// - The error of [`NebBackend::from_method`] when `method` names an unknown
+///   energy backend.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"coords length {n} != 3 * atoms {m}"` when the coordinate array does not
+///   hold exactly three coordinates per atom.
+/// - Any error raised by the selected energy backend.
 pub fn neb_backend_energy_and_gradient(
     method: &str,
     smiles: &str,
@@ -734,7 +833,15 @@ pub fn neb_backend_energy_and_gradient(
 
 /// Compute energy and gradients using the specified backend.
 ///
-/// Returns (energy_kcal_mol, gradients) or an error.
+/// Returns (energy_kcal_mol, gradients) or an error. The energy is in
+/// **kcal/mol** and the flat gradient in **kcal/(mol·Å)**.
+///
+/// # Errors
+///
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"coords length {n} != 3 * atoms {m}"` when the coordinate array does not
+///   hold exactly three coordinates per atom.
+/// - Any error raised by the selected backend, e.g. a non-converged SCF.
 pub fn compute_backend_energy_and_gradients(
     backend: MdBackend,
     smiles: &str,
@@ -779,6 +886,18 @@ pub fn compute_backend_energy_and_gradients(
 ///
 /// Supports UFF, PM3, and xTB backends. Note that PM3/xTB use numerical gradients
 /// and are significantly slower than UFF.
+///
+/// `dt_fs` is the time step in **fs**; the returned frames carry the energies
+/// in **kcal/mol** and the temperature in **K**.
+///
+/// # Errors
+///
+/// - `"n_steps must be > 0"` when no integration step is requested.
+/// - `"coords length {n} != 3 * atoms {m}"` when the coordinate array does not
+///   hold exactly three coordinates per atom.
+/// - `"MD diverged at step {n} (non-finite coordinates/energy)"` when the
+///   integration produced non-finite values.
+/// - Any error raised by the selected force backend.
 pub fn simulate_velocity_verlet(
     smiles: &str,
     coords: &[f64],
@@ -913,6 +1032,19 @@ pub fn simulate_velocity_verlet(
 ///
 /// Implements a chain of `chain_length` thermostats coupled to velocities.
 /// Produces canonical (NVT) ensemble with correct fluctuations.
+///
+/// `dt_fs` is the time step in **fs** and `target_temp_k` the target
+/// temperature in **K**; the returned frames carry the energies in
+/// **kcal/mol**.
+///
+/// # Errors
+///
+/// - `"n_steps must be > 0"` when no integration step is requested.
+/// - `"coords length mismatch"` when the coordinate array does not hold
+///   exactly three coordinates per atom.
+/// - `"NH-MD diverged at step {n}"` when the integration produced non-finite
+///   values.
+/// - Any error raised by the selected force backend.
 pub fn simulate_nose_hoover(
     smiles: &str,
     coords: &[f64],
@@ -1439,6 +1571,16 @@ fn build_reaction_complex(
 /// Returns `mapping[i]` = index in the product complex that corresponds
 /// to reactant atom `i`. Matches atoms of the same element, choosing the
 /// closest unmatched pair greedily.
+///
+/// # Errors
+///
+/// - `"Atom count mismatch: {n} reactant atoms vs {m} product atoms"` when the
+///   two complexes have different numbers of atoms.
+/// - `"Element Z={z} present in reactants but not products"` when an element
+///   occurs on one side only.
+/// - `"Element Z={z}: {n} in reactants vs {m} in products"` when an element
+///   occurs a different number of times on the two sides.
+/// - Any error raised while matching the atom pairs.
 pub fn map_atoms_greedy(
     r_elements: &[u8],
     r_coords: &[f64],
@@ -1651,6 +1793,18 @@ fn build_product_guided_reactant_complex(
 /// * `config`          — [`ReactionDynamicsConfig`] with NEB/path parameters.
 ///
 /// Returns [`ReactionDynamicsResult`] with all frames, energies, and TS info.
+///
+/// # Errors
+///
+/// - `"At least one reactant SMILES is required"` when `reactant_smiles` is
+///   empty.
+/// - `"At least one product SMILES is required"` when `product_smiles` is
+///   empty.
+/// - The error of [`NebBackend::from_method`] when `method` names an unknown
+///   energy backend.
+/// - `"Failed to embed reactant '{smiles}': {err}"` / `"Failed to embed
+///   product '{smiles}': {err}"` when a fragment could not be embedded.
+/// - Any error raised by the complex assembly, NEB or atom-mapping stages.
 pub fn compute_reaction_dynamics(
     reactant_smiles: &[&str],
     product_smiles: &[&str],

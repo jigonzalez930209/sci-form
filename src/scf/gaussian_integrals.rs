@@ -24,12 +24,17 @@
 use std::f64::consts::PI;
 
 /// Gaussian product center P = (α·A + β·B) / (α + β).
+///
+/// `alpha` and `beta` are the primitive exponents (Bohr⁻²) and `a`, `b` the
+/// corresponding centre coordinates (Bohr). The returned centre is in Bohr.
 #[inline]
 pub fn gaussian_product_center(alpha: f64, a: f64, beta: f64, b: f64) -> f64 {
     (alpha * a + beta * b) / (alpha + beta)
 }
 
 /// Distance squared between two 3D points.
+///
+/// The two points are Cartesian centres in Bohr; the result is in Bohr².
 #[inline]
 pub fn distance_squared(a: &[f64; 3], b: &[f64; 3]) -> f64 {
     let dx = a[0] - b[0];
@@ -41,6 +46,9 @@ pub fn distance_squared(a: &[f64; 3], b: &[f64; 3]) -> f64 {
 /// Overlap integral between two s-type (l=0) Gaussian primitives.
 ///
 /// S_00 = (π / p)^{3/2} · exp(-μ · |AB|²)
+///
+/// The exponents are in Bohr⁻², the centres in Bohr, and the overlap is
+/// dimensionless.
 pub fn overlap_ss(alpha: f64, center_a: &[f64; 3], beta: f64, center_b: &[f64; 3]) -> f64 {
     let p = alpha + beta;
     let mu = alpha * beta / p;
@@ -51,6 +59,11 @@ pub fn overlap_ss(alpha: f64, center_a: &[f64; 3], beta: f64, center_b: &[f64; 3
 /// 1D overlap integral using Obara-Saika recursion.
 ///
 /// Returns S(la, lb)_x = ∫ (x-Ax)^la (x-Bx)^lb exp(-α(x-Ax)² - β(x-Bx)²) dx
+///
+/// `pa_x`/`pb_x` are the x-coordinates (Bohr) of the product centre and of
+/// the two primitive centres, `p` is the combined exponent (Bohr⁻²) and
+/// `prefactor` the 1D overlap prefactor √(π/p)·exp(−μ·Δx²). The result is
+/// in Bohr^(la+lb+1/2).
 pub fn overlap_1d(la: u32, lb: u32, pa_x: f64, pb_x: f64, p: f64, prefactor: f64) -> f64 {
     let max_a = (la + 1) as usize;
     let max_b = (lb + 1) as usize;
@@ -81,6 +94,9 @@ pub fn overlap_1d(la: u32, lb: u32, pa_x: f64, pb_x: f64, p: f64, prefactor: f64
 }
 
 /// Full 3D overlap integral between two Cartesian Gaussian primitives.
+///
+/// The exponents are in Bohr⁻², the centres in Bohr, and the overlap is
+/// dimensionless.
 pub fn overlap_primitive(
     alpha: f64,
     center_a: &[f64; 3],
@@ -112,6 +128,10 @@ pub fn overlap_primitive(
 }
 
 /// Direct 1D overlap (standalone, includes all prefactors).
+///
+/// `alpha`/`beta` are the exponents (Bohr⁻²) and `ax`/`bx` the centre
+/// coordinates (Bohr) along the axis of integration. The result is in
+/// Bohr^(la+lb+1/2).
 pub fn overlap_1d_direct(la: u32, lb: u32, alpha: f64, ax: f64, beta: f64, bx: f64) -> f64 {
     let p = alpha + beta;
     let mu = alpha * beta / p;
@@ -127,6 +147,10 @@ pub fn overlap_1d_direct(la: u32, lb: u32, alpha: f64, ax: f64, beta: f64, bx: f
 /// Boys function F_n(x) for nuclear attraction integrals.
 ///
 /// F_n(x) = ∫₀¹ t^{2n} exp(-x·t²) dt
+///
+/// The function is dimensionless; `x` is the dimensionless Boys argument
+/// (the product of the Gaussian exponents and the squared internuclear
+/// distance, both in atomic units).
 pub fn boys_function(n: u32, x: f64) -> f64 {
     if x < 1.0e-10 {
         return 1.0 / (2.0 * n as f64 + 1.0);

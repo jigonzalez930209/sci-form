@@ -13,7 +13,12 @@ use super::neighbor::NeighborPair;
 
 /// Compute AEVs for all atoms in the system.
 ///
-/// Returns a `Vec` of length `n_atoms`, each entry is an AEV vector.
+/// `positions` are Cartesian coordinates in Ångström and `neighbors` the
+/// cutoff neighbour list (see [`super::neighbor::CellList`]).
+///
+/// Returns a `Vec` of length `n_atoms`, each entry is an AEV vector. The
+/// AEV components are dimensionless (they are sums of Gaussians of the
+/// interatomic distance, normalised by the parameter set).
 pub fn compute_aevs(
     elements: &[u8],
     positions: &[[f64; 3]],

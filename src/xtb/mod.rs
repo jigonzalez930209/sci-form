@@ -1,12 +1,29 @@
-//! GFN0-xTB-inspired tight-binding method.
+//! GFN-xTB tight-binding methods (GFN0, GFN1 and GFN2).
 //!
-//! A simplified self-consistent tight-binding approach inspired by
-//! Grimme's GFN family, covering H–Rn with valence-shell parameters.
+//! Self-consistent-charge tight-binding methods of Grimme's GFN family,
+//! covering H–Rn with valence-shell parameters:
 //!
-//! Reference: Grimme, S.; Bannwarth, C.; Shushkov, P. "A Robust and Accurate
-//! Tight-Binding Quantum Chemical Method for Structures, Vibrational
-//! Frequencies, and Noncovalent Interactions of Large Molecular Systems
-//! Parametrized for All spd-Block Elements (Z = 1–86)." *JCTC* 13 (2017): 1989.
+//! - [`gfn0`] — GFN0-xTB: the simplest member of the family, used for
+//!   large systems and for qualitative orbital pictures.
+//! - [`gfn1`] — GFN1-xTB: adds shell-resolved electrostatics and a
+//!   classical halogen-bond correction.
+//! - [`gfn2`] — GFN2-xTB: adds multipole electrostatics (dipole and
+//!   quadrupole shells) and the charge-dependent D4 dispersion correction.
+//!
+//! Energies are reported in eV throughout this module.
+//!
+//! References:
+//! - Grimme, S.; Bannwarth, C.; Shushkov, P. "A Robust and Accurate
+//!   Tight-Binding Quantum Chemical Method for Structures, Vibrational
+//!   Frequencies, and Noncovalent Interactions of Large Molecular Systems
+//!   Parametrized for All spd-Block Elements (Z = 1–86)." *JCTC* 13 (2017): 1989.
+//!   (GFN0-xTB.)
+//! - Grimme, S.; Bannwarth, C.; Shushkov, P. "GFN1-xTB: A Self-Consistent
+//!   Tight-Binding Method Using the Generalised Koopmans Approximations for
+//!   Large-Scale Molecular Systems." *JCTC* 15 (2019): 1652. (GFN1-xTB.)
+//! - Bannwarth, C.; Ehlert, S.; Grimme, S. "GFN2-xTB: A Robust and Accurate
+//!   Self-Consistent Tight-Binding Quantum Chemical Method for Large
+//!   Molecular Systems." *JCTC* 15 (2019): 1652. (GFN2-xTB.)
 
 pub mod broyden;
 pub mod d4;

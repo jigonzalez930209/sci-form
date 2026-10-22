@@ -87,7 +87,9 @@ const D4_DISP2_CUTOFF: f64 = 50.0;
 /// coordination numbers. At each SCC iteration, call `weight_references`
 /// with current charges, then `get_potential` and `get_energy`.
 pub struct D4Model {
+    /// Number of atoms in the molecule.
     pub nat: usize,
+    /// Atomic number of each atom, in molecule order.
     pub elements: Vec<u8>,
     /// D4 coordination numbers (electronegativity-weighted, DFT-D3 type).
     pub cn: Vec<f64>,
@@ -117,9 +119,10 @@ pub struct D4Model {
 
 /// Result of weight_references: Gaussian-weighted reference coefficients.
 pub struct D4Weights {
-    /// gwvec[iat][iref] — weighted reference coefficient.
+    /// `gwvec[iat][iref]` — weighted reference coefficient (dimensionless).
     pub gwvec: Vec<Vec<f64>>,
-    /// dgwdq[iat][iref] — derivative w.r.t. charge.
+    /// `dgwdq[iat][iref]` — derivative with respect to the atomic charge
+    /// (per unit charge).
     pub dgwdq: Vec<Vec<f64>>,
 }
 
@@ -355,8 +358,9 @@ impl D4Model {
 
     /// Compute the D4 atom-resolved potential for the Fock matrix.
     ///
-    /// Returns vat[iat] to be added to pot%vat (atom-resolved charge potential).
-    /// Formula: vat[iat] = Σ_iref Σ_jat Σ_jref dispmat[iref,iat,jref,jat] * dgwdq[iat][iref] * gwvec[jat][jref]
+    /// Returns `vat[iat]` to be added to `pot%vat` (atom-resolved charge
+    /// potential), in Hartree per unit charge.
+    /// Formula: `vat[iat] = Σ_iref Σ_jat Σ_jref dispmat[iref,iat,jref,jat] * dgwdq[iat][iref] * gwvec[jat][jref]`
     ///
     /// This is the ncoup=1 (atom-wise weighting) path from tblite.
     pub fn get_potential(&self, weights: &D4Weights) -> Vec<f64> {
@@ -388,7 +392,9 @@ impl D4Model {
 
     /// Compute the self-consistent D4 pairwise dispersion energy.
     ///
-    /// E_disp = 0.5 * Σ_iat Σ_iref Σ_jat Σ_jref gwvec[iat][iref] * dispmat * gwvec[jat][jref]
+    /// `E_disp = 0.5 * Σ_iat Σ_iref Σ_jat Σ_jref gwvec[iat][iref] * dispmat * gwvec[jat][jref]`
+    ///
+    /// The returned energy is in Hartree (negative for a bound system).
     pub fn get_energy(&self, weights: &D4Weights) -> f64 {
         let nat = self.nat;
         let mref = self.mref;

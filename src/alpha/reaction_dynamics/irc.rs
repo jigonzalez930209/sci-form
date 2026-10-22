@@ -6,11 +6,13 @@
 /// IRC result for one direction (forward or reverse).
 #[derive(Debug, Clone)]
 pub struct IrcPathSegment {
-    /// Sequence of coordinate frames along the IRC.
+    /// Sequence of coordinate frames along the IRC (each a flat `3N` array in
+    /// **Å**).
     pub frames: Vec<Vec<f64>>,
-    /// Energies at each frame (eV or kcal/mol depending on backend).
+    /// Energies at each frame, always in **kcal/mol** (every NEB backend of
+    /// this crate normalises its energy to kcal/mol).
     pub energies: Vec<f64>,
-    /// Arc-length along the path (mass-weighted).
+    /// Arc-length along the path (mass-weighted, in **amu^(1/2)·Å**).
     pub arc_lengths: Vec<f64>,
     /// Whether the path converged to a minimum.
     pub converged: bool,
@@ -31,7 +33,7 @@ pub struct IrcConfig {
     pub step_size: f64,
     /// Maximum number of steps per direction.
     pub max_steps: usize,
-    /// Convergence threshold on gradient norm.
+    /// Convergence threshold on gradient norm, in **kcal/(mol·Å)**.
     pub grad_threshold: f64,
     /// NEB backend for energy/gradient evaluation.
     pub method: String,
@@ -52,6 +54,14 @@ impl Default for IrcConfig {
 ///
 /// Uses the numerical Hessian at the TS to determine the imaginary-frequency
 /// mode, then follows steepest descent in mass-weighted coordinates.
+///
+/// # Errors
+///
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when
+///   `config.method` names an unknown energy backend.
+/// - Any error raised by the energy/gradient backend while the Hessian or the
+///   descent steps are evaluated.
 pub fn compute_irc(
     smiles: &str,
     elements: &[u8],

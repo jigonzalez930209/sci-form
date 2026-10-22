@@ -2,6 +2,17 @@
 //!
 //! Replaces the exact O(N³) Löwdin orthogonalization with randomized
 //! Nyström-based S^{-1/2} and eigendecomposition.
+//!
+//! # Stability tier
+//!
+//! **Beta** — gated behind the `beta-randnla` feature flag; the validation
+//! gate is `tests/beta_randnla_validation.rs` (F93).
+//!
+//! # Units
+//!
+//! The Hamiltonian and overlap matrices are in **eV** (the EHT convention of
+//! this crate); the orbital energies and the HOMO–LUMO gap are reported in
+//! **eV** and the Mulliken charges in **e**.
 
 use nalgebra::{DMatrix, DVector, SymmetricEigen};
 use rand::rngs::StdRng;
@@ -17,7 +28,8 @@ pub struct RandNlaConfig {
     pub sketch_size: Option<usize>,
     /// RNG seed for reproducibility.
     pub seed: u64,
-    /// Maximum relative error before fallback to exact solver.
+    /// Maximum relative error (dimensionless fraction) before fallback to
+    /// exact solver.
     pub max_error: f64,
     /// Whether to fall back to exact diag on high error.
     pub fallback_enabled: bool,
@@ -39,7 +51,8 @@ impl Default for RandNlaConfig {
 pub struct RandNlaInfo {
     /// Sketch dimension k used.
     pub k: usize,
-    /// A posteriori residual: ||H C - S C E||_F / ||S C E||_F.
+    /// A posteriori residual (dimensionless fraction):
+    /// ||H C - S C E||_F / ||S C E||_F.
     pub residual_error: f64,
     /// Whether the result fell back to exact diagonalization.
     pub used_fallback: bool,

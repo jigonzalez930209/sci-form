@@ -130,7 +130,12 @@ fn compute_ani(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<AniResultPy> {
 
 #[pyfunction]
 #[pyo3(signature = (elements, coords, spacing=0.5, padding=3.0))]
-fn compute_esp(elements: Vec<u8>, coords: Vec<f64>, spacing: f64, padding: f64) -> PyResult<EspGridPy> {
+fn compute_esp(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+    spacing: f64,
+    padding: f64,
+) -> PyResult<EspGridPy> {
     if coords.len() != elements.len() * 3 {
         return Err(crate::errors::value_error(format!(
             "coords length {} != elements.len() * 3 = {}",

@@ -43,6 +43,14 @@ const GPU_DISPATCH_THRESHOLD: usize = 50;
 /// Packs atom coordinates, charges, VdW parameters, and 1-4 exclusion
 /// data into GPU buffers. A single WGSL kernel evaluates all N(N-1)/2
 /// pair interactions in parallel.
+///
+/// The returned energies are in **kcal/mol** and the coordinates are in **Å**.
+///
+/// # Errors
+///
+/// - `"Insufficient output from MMFF94 kernel"` when the dispatch returned
+///   fewer read-back payloads than the kernel produces.
+/// - Any error from [`GpuContext::run_compute`].
 #[cfg(feature = "experimental-gpu")]
 pub fn compute_mmff94_nonbonded_gpu(
     ctx: &GpuContext,

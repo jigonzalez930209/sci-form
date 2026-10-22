@@ -22,11 +22,11 @@ pub struct XtbParams {
     pub h_p: f64,
     /// d-orbital level energy (eV), 0.0 if not applicable.
     pub h_d: f64,
-    /// Slater exponent for s shell.
+    /// Slater exponent for s shell (bohr⁻¹).
     pub zeta_s: f64,
-    /// Slater exponent for p shell (0.0 if not applicable).
+    /// Slater exponent for p shell (bohr⁻¹; 0.0 if not applicable).
     pub zeta_p: f64,
-    /// Slater exponent for d shell (0.0 if not applicable).
+    /// Slater exponent for d shell (bohr⁻¹; 0.0 if not applicable).
     pub zeta_d: f64,
     /// Chemical hardness (eV) — used in charge self-consistency.
     pub eta: f64,
@@ -34,7 +34,8 @@ pub struct XtbParams {
     pub en: f64,
     /// Covalent radius (Å) — for repulsive potential.
     pub r_cov: f64,
-    /// Coordination number reference — for CN-dependent corrections.
+    /// Coordination number reference (dimensionless) — for CN-dependent
+    /// corrections.
     pub cn_ref: f64,
 }
 

@@ -5,10 +5,21 @@
 //! O(N) scaling for uniformly distributed systems.
 
 /// A neighbor pair: (atom_i, atom_j, squared_distance).
+///
+/// Produced by [`CellList::find_neighbors`]. The pair is stored in canonical
+/// order (`i < j`) so that a pair is reported exactly once.
 #[derive(Debug, Clone, Copy)]
 pub struct NeighborPair {
+    /// Index of the first atom of the pair in the coordinate array (the lower
+    /// of the two indices).
     pub i: usize,
+    /// Index of the second atom of the pair in the coordinate array (the
+    /// higher of the two indices).
     pub j: usize,
+    /// Squared interatomic distance `|r_i - r_j|^2` in Å².
+    ///
+    /// The square is stored (rather than the distance in Å) so that cutoff
+    /// comparisons avoid a square root.
     pub dist_sq: f64,
 }
 

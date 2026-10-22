@@ -37,7 +37,7 @@ pub struct SlaterOrbital {
     pub l: u8,
     /// Magnetic quantum number m.
     pub m: i8,
-    /// Slater exponent ζ.
+    /// Slater exponent ζ (bohr⁻¹).
     pub zeta: f64,
 }
 
@@ -56,7 +56,7 @@ pub struct AtomicOrbital {
     pub m: i8,
     /// VSIP value (eV) for diagonal H_ii.
     pub vsip: f64,
-    /// Slater exponent.
+    /// Slater exponent (bohr⁻¹).
     pub zeta: f64,
     /// Label, e.g. "C_2s", "O_2px".
     pub label: String,

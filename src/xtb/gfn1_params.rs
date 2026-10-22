@@ -9,22 +9,45 @@
 //! Units: Hartree/bohr throughout (selfenergy/kcn pre-scaled).
 
 /// GFN1 global parameters.
+///
+/// The values are those of the tblite `src/tblite/xtb/gfn1.f90` global
+/// block, in the units used by the tblite source: Hartree and Bohr
+/// throughout.
 pub struct Gfn1Globals {
+    /// D4 `s6` scaling of the C6 dispersion term; dimensionless.
     pub s6: f64,
+    /// D4 `s8` scaling of the C8 dispersion term; dimensionless.
     pub s8: f64,
+    /// Becke-Johnson damping `a1`; dimensionless.
     pub a1: f64,
+    /// Becke-Johnson damping `a2`, in Bohr.
     pub a2: f64,
+    /// D4 `s9` scaling of the ATM (three-body) term; dimensionless.
     pub s9: f64,
+    /// Exponent of the screened electrostatics kernel
+    /// `γ_ij = (R_ij^gexp + γ^-gexp)^(-1/gexp)`; dimensionless.
     pub gexp: f64,
+    /// Electronegativity-difference scaling of the Hamiltonian polynomial;
+    /// dimensionless.
     pub enscale: f64,
+    /// Hamiltonian prefactor used for pairs of unlike shells; dimensionless.
     pub kdiff: f64,
+    /// Shell-resolved prefactors of the diagonal Hamiltonian element
+    /// (indexed by angular momentum s, p, d, f); dimensionless.
     pub kdiag: [f64; 5],
+    /// Scaling of the atomic radii used by the classical halogen-bond term;
+    /// dimensionless.
     pub halogen_radscale: f64,
+    /// Damping factor of the classical halogen-bond term; dimensionless.
     pub halogen_damping: f64,
+    /// Exponent `k` of the repulsion radial function `exp(-α r^k)`;
+    /// dimensionless.
     pub rep_kexp: f64,
+    /// Exponent `p` of the `1/r^p` prefactor of the repulsion; dimensionless.
     pub rep_rexp: f64,
 }
 
+/// The GFN1 global parameters (tblite `gfn1.f90`).
 pub const GFN1_GLOBALS: Gfn1Globals = Gfn1Globals {
     s6: 1.0,
     s8: 2.4,
@@ -42,22 +65,45 @@ pub const GFN1_GLOBALS: Gfn1Globals = Gfn1Globals {
 };
 
 /// Per-element GFN1 parameters (Z = 1..86).
+///
+/// The values are those of the tblite `src/tblite/xtb/gfn1.f90` per-element
+/// blocks, in the units used by the tblite source: energies in Hartree,
+/// lengths in Bohr, exponents in Bohr⁻¹.
 pub struct Gfn1ElementParams {
+    /// Atomic number.
     pub z: u8,
+    /// Number of valence shells of this element.
     pub nshell: usize,
+    /// Angular momentum of each valence shell (0 = s, 1 = p, 2 = d).
     pub ang_shell: [u8; 3],
+    /// Principal quantum number of each valence shell.
     pub pqn: [u8; 3],
+    /// Number of Gaussians in the STO-nG expansion of each valence shell.
     pub ngauss: [u8; 3],
+    /// Slater exponents of the valence shells in Bohr⁻¹.
     pub slater: [f64; 3],
+    /// On-site shell energies `H_ii` in Hartree (one entry per valence shell).
     pub selfenergy: [f64; 3],
+    /// Coordination-number shift of the shell self-energy, in Hartree per
+    /// unit coordination number.
     pub kcn: [f64; 3],
+    /// Shell polynomial prefactor of the Hamiltonian element; dimensionless.
     pub shpoly: [f64; 3],
+    /// Reference occupation number of each valence shell, in electrons.
     pub refocc: [f64; 3],
+    /// Shell-resolved multiplier of the atom's Hubbard parameter;
+    /// dimensionless.
     pub shell_hubbard: [f64; 3],
+    /// Repulsion exponent `α` of this element in Bohr^(−3/2).
     pub rep_alpha: f64,
+    /// Effective nuclear charge used in the repulsion, in units of `e`.
     pub rep_zeff: f64,
+    /// Atomic Hubbard parameter (shell hardness) in Hartree.
     pub hubbard: f64,
+    /// Atom-resolved third-order electrostatics derivative factor;
+    /// dimensionless.
     pub hubbard_derivs: f64,
+    /// Classical halogen-bond strength coefficient, in Hartree.
     pub halogen_bond: f64,
 }
 

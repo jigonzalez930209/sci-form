@@ -21,6 +21,17 @@
 //! ## Reference
 //!
 //! Ehlert, Stahn, Spicher, Grimme, J. Chem. Theory Comput. 17, 4250 (2021).
+//!
+//! # Units
+//!
+//! Positions and Born radii in **Å**, charges in **e** (elementary charge),
+//! energies in **kcal/mol**, the surface tension in **kcal/(mol·Å²)** and the
+//! Coulomb constant in **kcal·Å/e²**.
+//!
+//! # Stability tier
+//!
+//! Core (promoted to core: the ALPB module shares the SASA implementation
+//! with the core `solvation` module and the test suite covers it).
 
 mod born;
 mod solvation;

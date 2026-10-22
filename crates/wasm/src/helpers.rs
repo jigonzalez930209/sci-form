@@ -42,9 +42,7 @@ pub(crate) fn bad_json(what: &str, value: &str, err: &serde_json::Error) -> Stri
 /// Same as [`bad_json`] but states the expected shape.
 pub(crate) fn bad_json_array(what: &str, value: &str, err: &serde_json::Error) -> String {
     let fragment = truncate(value, 80);
-    format!(
-        "Invalid {what} JSON '{fragment}'. Expected a JSON array of numbers. ({err})"
-    )
+    format!("Invalid {what} JSON '{fragment}'. Expected a JSON array of numbers. ({err})")
 }
 
 /// Truncate a long string for inclusion in an error message.
@@ -99,8 +97,8 @@ pub(crate) fn parse_elements_and_positions(
 ) -> Result<(Vec<u8>, Vec<[f64; 3]>), String> {
     let elems: Vec<u8> =
         serde_json::from_str(elements).map_err(|e| bad_json_array("'elements'", elements, &e))?;
-    let flat: Vec<f64> =
-        serde_json::from_str(coords_flat).map_err(|e| bad_json_array("'coords'", coords_flat, &e))?;
+    let flat: Vec<f64> = serde_json::from_str(coords_flat)
+        .map_err(|e| bad_json_array("'coords'", coords_flat, &e))?;
 
     if flat.len() != elems.len() * 3 {
         return Err(format!(
@@ -209,10 +207,9 @@ mod tests {
         ];
         for msg in messages {
             let payload = json_error(msg);
-            let parsed: serde_json::Value =
-                serde_json::from_str(&payload).unwrap_or_else(|e| {
-                    panic!("json_error produced invalid JSON for {msg:?}: {e}\n{payload}")
-                });
+            let parsed: serde_json::Value = serde_json::from_str(&payload).unwrap_or_else(|e| {
+                panic!("json_error produced invalid JSON for {msg:?}: {e}\n{payload}")
+            });
             assert_eq!(
                 parsed.get("error").and_then(|v| v.as_str()),
                 Some(msg),
@@ -227,7 +224,10 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&payload).expect("valid JSON");
         let arr = parsed.as_array().expect("the payload must stay an array");
         assert_eq!(arr.len(), 1);
-        assert_eq!(arr[0].get("error").and_then(|v| v.as_str()), Some("bad coords: \"oops\""));
+        assert_eq!(
+            arr[0].get("error").and_then(|v| v.as_str()),
+            Some("bad coords: \"oops\"")
+        );
     }
 
     /// The parser errors that the WASM helpers produce are the ones that used
@@ -239,6 +239,9 @@ mod tests {
         let payload = json_error(&err);
         let parsed: serde_json::Value =
             serde_json::from_str(&payload).expect("the serde message must not break the JSON");
-        assert_eq!(parsed.get("error").and_then(|v| v.as_str()), Some(err.as_str()));
+        assert_eq!(
+            parsed.get("error").and_then(|v| v.as_str()),
+            Some(err.as_str())
+        );
     }
 }

@@ -14,6 +14,17 @@
 //!
 //! Based on the charge equilibration scheme used in GFN-FF
 //! (Grimme group, Spicher & Grimme, Angew. Chem. Int. Ed. 2020).
+//!
+//! # Units
+//!
+//! Positions and the EEQ charge radii in **Å**, the electronegativity χ and
+//! the chemical hardness η in **eV**, and the partial charges in **e**
+//! (elementary charge).
+//!
+//! # Stability tier
+//!
+//! Core (promoted to core: topology-free partial charges, O(N²); the EEQ2019
+//! port was validated against dftd4, F46).
 
 mod charges;
 mod eeq2019;

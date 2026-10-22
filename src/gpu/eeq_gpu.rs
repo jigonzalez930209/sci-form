@@ -1,4 +1,20 @@
 //! GPU-assisted EEQ charges: GPU damped Coulomb matrix + CPU linear solve.
+//!
+//! Builds the EEQ damped Coulomb interaction matrix on the GPU and solves
+//! the electronegativity-equilibration linear system on the CPU.
+//!
+//! # Contract with callers
+//!
+//! The CPU implementation in [`crate::charges_eeq::compute_eeq_charges`]
+//! always works; this module is the optional accelerator. Only the O(N²)
+//! matrix construction is offloaded.
+//!
+//! # Units
+//!
+//! `positions` and the EEQ charge radii `r_eeq` are in **Å**, the matrix
+//! entries `erf(√2·r/σ)/r` are in **Å⁻¹**, the electronegativity χ and
+//! hardness η are in **eV** and the resulting partial charges are in **e**
+//! (elementary charge).
 
 use nalgebra::{DMatrix, DVector};
 
@@ -11,6 +27,24 @@ use crate::charges_eeq::{fractional_coordination, get_eeq_params, EeqChargeResul
 
 const GPU_DISPATCH_THRESHOLD: usize = 2;
 
+/// Computes EEQ partial charges using a GPU damped-Coulomb matrix.
+///
+/// `elements` holds the atomic numbers, `positions` the Cartesian coordinates
+/// in **Å**. The returned [`EeqChargeResult`] holds the partial charges
+/// (**e**), the fractional coordination numbers (dimensionless) and the total
+/// charge (**e**).
+///
+/// # Errors
+///
+/// - `"elements/position length mismatch"` when the two slices differ in
+///   length.
+/// - `"System too small for GPU dispatch"` when fewer than two atoms are
+///   supplied.
+/// - `"No output from EEQ Coulomb kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"EEQ Coulomb output size mismatch: expected {n}, got {m}"` when the
+///   kernel produced the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_eeq_charges_gpu(
     ctx: &GpuContext,
     elements: &[u8],
@@ -69,6 +103,23 @@ pub fn compute_eeq_charges_gpu(
     })
 }
 
+/// Builds the EEQ damped Coulomb interaction matrix on the GPU.
+///
+/// `radii` holds the per-atom EEQ charge radii `r_eeq` in **Å** and
+/// `positions` the Cartesian coordinates in **Å**. The returned matrix
+/// **Γ** has the entries `erf(√2·r_ij/σ_ij)/r_ij` (in **Å⁻¹**, with
+/// `σ_ij = √(r_i² + r_j²)`) off the diagonal and zero on it.
+///
+/// # Errors
+///
+/// - `"radii/position length mismatch"` when the two slices differ in length.
+/// - `"Matrix too small for GPU dispatch"` when fewer than two atoms are
+///   supplied.
+/// - `"No output from EEQ Coulomb kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"EEQ Coulomb output size mismatch: expected {n}, got {m}"` when the
+///   kernel produced the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn build_eeq_coulomb_gpu(
     ctx: &GpuContext,
     radii: &[f64],
@@ -135,6 +186,14 @@ pub fn build_eeq_coulomb_gpu(
     ))
 }
 
+/// WGSL source of the EEQ damped-Coulomb matrix kernel.
+///
+/// One invocation per matrix element (`@workgroup_size(16, 16, 1)`); the
+/// kernel writes `erf(√2·r/σ)/r` (in **Å⁻¹**, with `σ = √(r_i² + r_j²)` and
+/// `r` in **Å**) for `i ≠ j` and zero on the diagonal. The error function is
+/// evaluated with the Abramowitz–Stegun 7.1.26 rational approximation
+/// (|ε| ≈ 1.5 × 10⁻⁷). The uniform block carries `n_atoms` and three padding
+/// words.
 pub const EEQ_COULOMB_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

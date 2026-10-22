@@ -10,7 +10,7 @@ use super::grand_potential::{compute_cpm_charges, CpmConfig};
 pub struct CpmSurface {
     /// Applied potentials (eV).
     pub mu_values: Vec<f64>,
-    /// Total charge at each μ.
+    /// Total charge at each μ, in units of elementary charge (e).
     pub total_charge: Vec<f64>,
     /// Grand potential at each μ (eV).
     pub free_energy: Vec<f64>,

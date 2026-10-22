@@ -15,9 +15,7 @@ fn parse_flat_coords_json(coords: &str) -> Vec<f64> {
 ///
 /// `None` means "not given": every available backend is used (blocker C-M5).
 #[cfg(feature = "alpha-gsm")]
-fn parse_gsm_methods_json(
-    methods: Option<&str>,
-) -> Vec<sci_form::alpha::gsm::GsmEnergyBackend> {
+fn parse_gsm_methods_json(methods: Option<&str>) -> Vec<sci_form::alpha::gsm::GsmEnergyBackend> {
     let raw_methods: Vec<String> = match crate::format::parse_string_list(methods, "'methods'") {
         Some(m) => m,
         None => Vec::new(),
@@ -1183,7 +1181,9 @@ fn gsm_path(
             crate::format::fail(crate::format::invalid_value(
                 "'method'",
                 method,
-                &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
+                &[
+                    "uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff",
+                ],
             ));
             std::process::exit(1);
         }

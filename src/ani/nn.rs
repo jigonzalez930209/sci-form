@@ -28,8 +28,13 @@ pub enum Activation {
 }
 
 /// Feed-forward neural network with multiple dense layers.
+///
+/// The layers are applied in order: each computes `x -> W * x + b` and then
+/// applies its own activation function.
 #[derive(Debug, Clone)]
 pub struct FeedForwardNet {
+    /// Dense layers in application order; the last layer produces the
+    /// network's scalar output (the atomic energy, in Hartree).
     pub layers: Vec<DenseLayer>,
 }
 

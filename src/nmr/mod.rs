@@ -8,6 +8,11 @@
 
 pub mod coupling;
 pub mod hose;
+/// NMR-active nuclides and their tabulated reference data.
+///
+/// See [`nucleus::NmrNucleus`] for the nuclide enumeration, the Larmor
+/// frequencies (MHz), the natural line widths (Hz), the empirical chemical
+/// shift windows (ppm) and the reference shielding constants (ppm).
 pub mod nucleus;
 pub mod second_order;
 pub mod shifts;

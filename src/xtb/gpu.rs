@@ -30,6 +30,11 @@ enum XtbGammaKernelKind {
 }
 
 /// Build the GFN0-xTB damped Coulomb gamma matrix on GPU.
+///
+/// # Errors
+///
+/// Returns `Err` if the system has fewer than 8 atoms (below the GPU
+/// dispatch threshold) or if the GPU dispatch itself fails.
 #[cfg(feature = "experimental-gpu")]
 pub fn build_xtb_gamma_gpu(
     ctx: &GpuContext,
@@ -40,6 +45,10 @@ pub fn build_xtb_gamma_gpu(
 }
 
 /// Build the GFN1 shell-SCC gamma matrix on GPU.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`build_xtb_gamma_gpu`].
 #[cfg(feature = "experimental-gpu")]
 pub fn build_gfn1_gamma_gpu(
     ctx: &GpuContext,
@@ -50,6 +59,10 @@ pub fn build_gfn1_gamma_gpu(
 }
 
 /// Build the GFN2 multipole-SCC gamma matrix on GPU.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`build_xtb_gamma_gpu`].
 #[cfg(feature = "experimental-gpu")]
 pub fn build_gfn2_gamma_gpu(
     ctx: &GpuContext,

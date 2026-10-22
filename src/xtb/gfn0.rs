@@ -64,6 +64,10 @@ pub struct Gfn0Result {
 /// E = Σ_{i≤j} Zeff_i·Zeff_j·exp(−α_ij·r^1.5)/r, skipped for r > 40 bohr.
 /// α_ij = √(α_i·α_j)·(1 + (0.01·ΔEN² + 0.01·ΔEN⁴)·renscale).
 /// Positions in bohr, energy in Hartree.
+///
+/// # Errors
+///
+/// Returns `Err` if an element has no GFN0 parameter set.
 pub fn gfn0_repulsion(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Result<f64, String> {
     let g = &GFN0_GLOBALS;
     let n = elements.len();
@@ -164,6 +168,12 @@ pub fn gfn0_cn(elements: &[u8], pos_bohr: &[[f64; 3]]) -> Vec<f64> {
 /// J_ij = erf(g_ij·r)/r, g_ij = 1/√(w_i² + w_j²), w = ALPG widths;
 /// J_ii += GAM (hardness); x_i = −XI + KAPPA·√cn_i; solve with Σq = charge.
 /// Returns (charges, e_es_hartree). Positions in bohr.
+///
+/// # Errors
+///
+/// Returns `Err` if the molecule is empty, if the coordination-number
+/// slice does not have one entry per atom, if an element has no GFN0
+/// parameter set, or if the electrostatics matrix cannot be solved.
 pub fn gfn0_eeq(
     elements: &[u8],
     pos_bohr: &[[f64; 3]],
@@ -423,6 +433,12 @@ fn gfn0_selfenergy(elements: &[u8], cn: &[f64], charges: &[f64]) -> Result<Vec<V
 /// weights) and transformed with the exact `dtrf2` matrix for d-involving
 /// pairs (contaminant row/col dropped). Same-atom pairs skipped
 /// (onsite = identity/diagonal, matching xtb). H in eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the molecule is empty, if the coordination-number or
+/// charge slices do not match the atom count, or if an element has no
+/// GFN0 parameter set.
 pub fn gfn0_h0(
     elements: &[u8],
     pos_bohr: &[[f64; 3]],
@@ -679,6 +695,12 @@ pub const GFN0_ET_K: f64 = 300.0;
 /// at 300 K, electronic energy (xtb `eel = Σf·ε + ga + gb`).
 ///
 /// Returns (orbital energies eV ascending, eel eV, homo eV, lumo eV).
+///
+/// # Errors
+///
+/// Returns `Err` if the electron count is odd (open shells are not
+/// supported by this closed-shell GFN0 implementation) or if the overlap
+/// matrix is not positive definite.
 pub fn gfn0_eht(
     s_mat: &nalgebra::DMatrix<f64>,
     h_mat: &nalgebra::DMatrix<f64>,
@@ -951,6 +973,12 @@ pub fn gfn0_srb(elements: &[u8], pos_bohr: &[[f64; 3]], cn: &[f64]) -> f64 {
 ///
 /// `elements`: atomic numbers; `positions`: angstrom; `charge`: total charge.
 /// Energies in the result are eV. Only closed shells supported.
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if the molecule is empty, if
+/// an element has no GFN0 parameter set, or if the electron count is odd
+/// (open shells are not supported).
 pub fn solve_gfn0(
     elements: &[u8],
     positions: &[[f64; 3]],

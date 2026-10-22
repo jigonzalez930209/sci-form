@@ -49,6 +49,11 @@ impl VolumetricGrid {
 /// * `padding` is not finite,
 /// * a coordinate is not finite,
 /// * the grid dimension overflows `usize`.
+///
+/// # Errors
+///
+/// Returns `Err` with a message describing which of the conditions above
+/// was violated.
 pub fn compute_grid_extents(
     positions: &[[f64; 3]],
     padding: f64,
@@ -183,6 +188,12 @@ fn evaluate_ao_at_point(orb: &AtomicOrbital, point_ang: &[f64; 3]) -> f64 {
 /// Returns `Err` when `spacing` is not a finite positive number, when
 /// `mo_index` does not address an existing molecular orbital, or when the
 /// resulting grid would be empty/overflowing.
+///
+/// # Errors
+///
+/// Returns `Err` if `mo_index` is out of range for `coefficients`, if the
+/// grid parameters are invalid (see [`compute_grid_extents`]), or if the
+/// total number of grid points overflows `usize`.
 pub fn evaluate_orbital_on_grid(
     basis: &[AtomicOrbital],
     coefficients: &[Vec<f64>],
@@ -231,6 +242,10 @@ pub fn evaluate_orbital_on_grid(
 }
 
 /// Evaluate molecular orbital on a 3D grid using parallel iteration (rayon).
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`evaluate_orbital_on_grid`].
 #[cfg(feature = "parallel")]
 pub fn evaluate_orbital_on_grid_parallel(
     basis: &[AtomicOrbital],
@@ -297,6 +312,10 @@ pub struct VolumeSlab {
 /// returns an iterator that yields one x-slab at a time.  Each slab has
 /// `dims[1] * dims[2]` values, so the peak memory is proportional to a
 /// single slice instead of the full volume.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`evaluate_orbital_on_grid`].
 pub fn evaluate_orbital_on_grid_chunked(
     basis: &[AtomicOrbital],
     coefficients: &[Vec<f64>],
@@ -355,6 +374,14 @@ pub fn evaluate_orbital_on_grid_chunked(
 }
 
 /// Evaluate the electron density |Ψ_i|² on a grid.
+///
+/// The grid values are the square of the orbital amplitude that
+/// [`evaluate_orbital_on_grid`] produces, i.e. they carry the units of the
+/// orbital grid squared.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`evaluate_orbital_on_grid`].
 pub fn evaluate_density_on_grid(
     basis: &[AtomicOrbital],
     coefficients: &[Vec<f64>],

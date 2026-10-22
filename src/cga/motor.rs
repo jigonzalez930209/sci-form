@@ -11,6 +11,8 @@ use super::multivector::Multivector;
 /// Internally stored as a general multivector restricted to even-grade blades.
 #[derive(Debug, Clone, Copy)]
 pub struct Motor {
+    /// The motor's multivector, in the canonical G(4,1) blade order
+    /// (rotor part first, then the translation part).
     pub mv: Multivector,
 }
 

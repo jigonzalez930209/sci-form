@@ -317,7 +317,7 @@ impl Default for BandStructureAdapterConfig {
 /// Result of the band-structure adapter that wraps EHT band-structure into the alpha schema.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BandStructureAdapterResult {
-    /// Band energies: bands[k_index][band_index] in eV.
+    /// Band energies: `bands[k_index][band_index]` in eV.
     pub bands: Vec<Vec<f64>>,
     /// Number of bands per k-point.
     pub n_bands: usize,

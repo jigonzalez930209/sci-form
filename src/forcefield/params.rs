@@ -1,19 +1,43 @@
+//! UFF parameter tables and the rules that turn them into force constants.
+//!
+//! The tabulated values are the canonical UFF numbers (RDKit `Params.cpp`,
+//! which reproduce Rappé et al., *J. Am. Chem. Soc.* **1992**, 114, 10024).
+//! The lookup helpers implement the paper's formulas for equilibrium bond
+//! lengths (eq. 2–4), bond force constants (eq. 6), angle force constants
+//! (eq. 13), torsion barriers (eq. 16/17) and inversion coefficients.
+//!
+//! Lengths are in Å, angles in degrees in the tables (converted to radians by
+//! the builder), and energies in kcal/mol.
+
 /// UFF atom type parameters.
 /// Source: Rappé, A. K. et al. "UFF, a full periodic table force field for molecular mechanics
 /// and molecular dynamics simulations." J. Am. Chem. Soc. 114 (1992): 10024–10035. Table 1.
+///
+/// One instance describes one UFF atom type (e.g. `C_3`, `N_2`, `Pt4+2`).
 #[derive(Debug, Clone)]
 pub struct UffAtomParams {
+    /// UFF atom-type label, e.g. `"C_3"` or `"H_"`.
     pub label: &'static str,
-    pub element: u8, // Atomic number
-    pub r1: f64,     // Bond radius (Angstroms) — used in bond length formula
-    pub theta0: f64, // Equilibrium valence angle (degrees, convert to radians in builder)
-    pub x1: f64,     // VDW distance parameter (Angstroms)
-    pub d1: f64,     // VDW well depth (kcal/mol)
-    pub zeta: f64,   // GMP electronegativity scale factor
-    pub z_star: f64, // Effective nuclear charge for bond force constant
-    pub chi: f64,    // GMP electronegativity (for bond length correction)
-    pub v_tors: f64, // Torsion barrier Vi (kcal/mol), used in eq. 16
-    pub u1: f64,     // Torsion contribution Uj for sp2-sp3 bonds (UFF eq. 17)
+    /// Atomic number of the element this type belongs to.
+    pub element: u8,
+    /// Bond radius `r_1` in Å — used in the equilibrium bond-length formula.
+    pub r1: f64,
+    /// Equilibrium valence angle `θ_0` in **degrees** (convert to radians before use).
+    pub theta0: f64,
+    /// van der Waals distance parameter `x_1` in Å.
+    pub x1: f64,
+    /// van der Waals well depth `D_1` in kcal/mol.
+    pub d1: f64,
+    /// Geometric-mean electronegativity scale factor `ζ` (dimensionless).
+    pub zeta: f64,
+    /// Effective nuclear charge `Z*` used in the bond force-constant formula (dimensionless).
+    pub z_star: f64,
+    /// Geometric-mean electronegativity `χ` used in the bond-length correction (dimensionless).
+    pub chi: f64,
+    /// Torsion barrier `V_i` in kcal/mol (UFF eq. 16).
+    pub v_tors: f64,
+    /// Torsion contribution `U_j` in kcal/mol for sp²–sp³ bonds (UFF eq. 17).
+    pub u1: f64,
 }
 
 /// Retrieve UFF parameters by atom type label.
@@ -174,6 +198,8 @@ pub fn get_uff_params(label: &str) -> Option<UffAtomParams> {
 /// r_ij = r_i + r_j + r_BO - r_EN
 /// r_BO = -λ · (r_i + r_j) · ln(BO)          [λ = 0.1332]
 /// r_EN = r_i · r_j · (√χ_i - √χ_j)² / (χ_i·r_i + χ_j·r_j)
+///
+/// The returned length is in **Å** and is clamped to a minimum of 0.5 Å.
 pub fn get_uff_bond_length(
     pi: &UffAtomParams,
     pj: &UffAtomParams,
@@ -208,6 +234,9 @@ pub fn get_uff_bond_length(
 /// UFF bond stretching force constant K_ij (Rappé eq. 6).
 /// E_bond = ½ K_ij (r - r₀)²    →   K_ij = 664.12 · Z*_i · Z*_j / r₀³
 /// 664.12 = 2 × 332.06 where 332.06 ≈ e²Nₐ/(4πε₀) in kcal·Å/e² (Coulomb constant)
+///
+/// `r0` is the equilibrium bond length in Å; the returned force constant is in
+/// **kcal/mol/Å²**.
 pub fn get_uff_bond_force_constant(pi: &UffAtomParams, pj: &UffAtomParams, r0: f64) -> f64 {
     664.12 * pi.z_star * pj.z_star / r0.powi(3)
 }
@@ -216,6 +245,9 @@ pub fn get_uff_bond_force_constant(pi: &UffAtomParams, pj: &UffAtomParams, r0: f
 /// K_ijk = 332.06 · Z*_i · Z*_k / (r_ij · r_jk · r_ik²)
 /// 332.06 ≈ e²Nₐ/(4πε₀) in kcal·Å/e² (Coulomb constant for UFF energy units)
 /// where r_ik² = r_ij² + r_jk² - 2·r_ij·r_jk·cos(θ₀)
+///
+/// `r_ij` and `r_jk` are bond lengths in Å and `theta0_rad` the equilibrium
+/// angle in radians; the returned force constant is in **kcal/mol/rad²**.
 pub fn get_uff_angle_force_constant(
     pi: &UffAtomParams,
     pk: &UffAtomParams,
@@ -245,11 +277,18 @@ pub fn get_uff_angle_force_constant(
 }
 
 /// True for the UFF "group 6" elements used by the torsion special cases.
+///
+/// Group 6 in the UFF paper is O, S, Se, Te and Po; the special case applies
+/// to single bonds between two of them.
 pub fn is_uff_group6(z: u8) -> bool {
     matches!(z, 8 | 16 | 34 | 52 | 84)
 }
 
 /// UFF equation 17: sp2-sp2 torsion barrier.
+///
+/// `bond_order` is the numeric bond order of the central bond and `uj`/`uk`
+/// the `U_j` torsion parameters of the two atom types (kcal/mol). The
+/// returned barrier is in **kcal/mol**.
 pub fn uff_equation17(bond_order: f64, uj: f64, uk: f64) -> f64 {
     5.0 * (uj * uk).sqrt() * (1.0 + 4.18 * bond_order.ln())
 }
@@ -263,6 +302,10 @@ pub fn uff_equation17(bond_order: f64, uj: f64, uk: f64) -> f64 {
 /// `bond_order` is the numeric order of the j-k bond (1, 2, 3 or 1.5 for
 /// aromatic); `end_atom_is_sp2` is true when either terminal atom of the
 /// four-atom torsion is sp2.
+///
+/// Returns `(V, periodicity_n, cos_term)` where `V` is the barrier in
+/// kcal/mol, `n` the (dimensionless) periodicity and `cos_term` the
+/// (dimensionless) phase factor `cos(φ₀)`.
 pub fn get_uff_torsion_params(
     hyb_j: &crate::graph::Hybridization,
     hyb_k: &crate::graph::Hybridization,
@@ -321,6 +364,10 @@ pub fn get_uff_torsion_params(
 /// Returns `(K_per_contrib, C0, C1, C2)` with `K` already divided by three,
 /// matching `Utils::calcInversionCoefficientsAndForceConstant` used by the
 /// three inversion contributions per sp2 centre.
+///
+/// `K_per_contrib` is in kcal/mol/rad²; `C0`, `C1` and `C2` are dimensionless.
+/// `(0.0, 0.0, 0.0, 0.0)` is returned for elements without a UFF inversion
+/// parameterisation.
 pub fn get_uff_inversion_params(at2_atomic_num: u8, is_c_bound_to_o: bool) -> (f64, f64, f64, f64) {
     use std::f64::consts::PI;
     if matches!(at2_atomic_num, 6..=8) {

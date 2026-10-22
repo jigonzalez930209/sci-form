@@ -3,6 +3,14 @@
 use super::*;
 use nalgebra::DMatrix;
 
+/// Minimise the bounds force field with L-BFGS, using the default basin
+/// threshold (1000 Å) and 4D weight (0.1).
+///
+/// `coords` (an `n × 3` matrix of positions in Å) is updated in place with the
+/// relaxed geometry. `bounds` is the `n × n` lower/upper distance-bounds
+/// matrix in Å and `chiral_sets` the stereocentre constraints. The loop stops
+/// when the gradient norm falls below `force_tol` (kcal/mol/Å) or after
+/// `max_iters` iterations.
 pub fn minimize_bounds_lbfgs(
     coords: &mut DMatrix<f32>,
     bounds: &DMatrix<f64>,
@@ -21,7 +29,14 @@ pub fn minimize_bounds_lbfgs(
     );
 }
 
-/// Returns true if converged (gradient norm < force_tol), false if max_iters reached
+/// Minimise the bounds force field with L-BFGS, with explicit basin and 4D
+/// weights.
+///
+/// Returns true if converged (gradient norm < force_tol), false if max_iters reached.
+///
+/// `basin_thresh` is the maximum allowed bound width (in Å) for a pair to be
+/// included in the penalty, and `weight_4d` is the penalty weight applied to
+/// the fourth (out-of-plane) embedding dimension.
 pub fn minimize_bounds_lbfgs_ex(
     coords: &mut DMatrix<f32>,
     bounds: &DMatrix<f64>,
@@ -405,6 +420,15 @@ pub fn minimize_bounds_with_torsions(
     converged
 }
 
+/// Minimise the embedding force field (bounds + chirality + torsion terms)
+/// with L-BFGS.
+///
+/// `coords` (an `n × 3` or `n × 4` matrix of positions in Å) is updated in
+/// place. `torsion_terms` carries the 4D embedding torsion restraints and
+/// `torsion_weight` scales them. `basin_thresh` is the maximum allowed bound
+/// width in Å and `weight_4d` the penalty weight of the fourth dimension.
+/// The loop stops when the gradient norm falls below `force_tol`
+/// (kcal/mol/Å) or after `max_iters` iterations.
 pub fn minimize_embedding_lbfgs(
     coords: &mut DMatrix<f32>,
     bounds: &DMatrix<f64>,

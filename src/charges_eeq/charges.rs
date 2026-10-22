@@ -23,9 +23,12 @@ pub struct EeqParams {
 /// Configuration for EEQ calculations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EeqConfig {
-    /// Total molecular charge.
+    /// Total molecular charge, in units of elementary charge (e).
     pub total_charge: f64,
-    /// Regularization parameter for near-singular systems.
+    /// Regularization parameter for near-singular systems, in **eV**.
+    ///
+    /// Added to the diagonal of the electronegativity-equilibration matrix,
+    /// i.e. to the chemical hardness of every atom.
     pub regularization: f64,
 }
 
@@ -41,11 +44,11 @@ impl Default for EeqConfig {
 /// Result of EEQ charge calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EeqChargeResult {
-    /// Partial charges per atom.
+    /// Partial charges per atom, in units of elementary charge (e).
     pub charges: Vec<f64>,
-    /// Fractional coordination numbers per atom.
+    /// Fractional coordination numbers per atom (dimensionless).
     pub coordination_numbers: Vec<f64>,
-    /// Total charge (should match config).
+    /// Total charge (should match config), in units of elementary charge (e).
     pub total_charge: f64,
 }
 
@@ -317,8 +320,18 @@ pub(crate) fn erf_approx(x: f64) -> f64 {
 
 /// Compute EEQ charges by solving the extended linear system.
 ///
+/// The system solved is the electronegativity-equilibration condition with a
+/// Lagrange multiplier λ for the total charge:
+///
+/// ```text
 /// [η + γ   1] [q]   [−χ]
-/// [1^T     0] [λ] = [Q ]
+/// [1ᵀ     0] [λ] = [Q ]
+/// ```
+///
+/// where η is the diagonal chemical hardness, γ the damped Coulomb
+/// interaction matrix, χ the per-atom electronegativity and **Q** the
+/// requested total charge (in **e**). The returned charges are in **e** and
+/// the coordination numbers are dimensionless.
 pub fn compute_eeq_charges(
     elements: &[u8],
     positions: &[[f64; 3]],

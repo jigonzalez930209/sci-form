@@ -10,6 +10,8 @@ use super::basis::{BasisFunction, BasisSet};
 use super::gaussian_integrals::overlap_primitive;
 
 /// Build the full kinetic energy matrix T for the given basis set.
+///
+/// The matrix is symmetric and its elements are in Hartree.
 pub fn build_kinetic_matrix(basis: &BasisSet) -> DMatrix<f64> {
     let n = basis.n_basis;
     let mut t = DMatrix::zeros(n, n);

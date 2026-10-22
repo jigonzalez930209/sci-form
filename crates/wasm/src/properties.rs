@@ -224,7 +224,10 @@ mod tests {
     fn compute_rmsd_returns_the_rmsd_for_matching_structures() {
         let payload = compute_rmsd("[0,0,0,1,0,0]", "[0,0,0,1,0,0]");
         let parsed: serde_json::Value = serde_json::from_str(&payload).expect("valid JSON");
-        let rmsd = parsed.get("rmsd").and_then(|v| v.as_f64()).expect("an rmsd");
+        let rmsd = parsed
+            .get("rmsd")
+            .and_then(|v| v.as_f64())
+            .expect("an rmsd");
         assert!(rmsd.is_finite());
         assert!(rmsd < 1e-9);
     }

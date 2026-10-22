@@ -45,7 +45,8 @@ impl Default for RiemannianConfig {
 pub struct RiemannianResult {
     /// Final metric matrix (PSD).
     pub metric_matrix: DMatrix<f64>,
-    /// Final objective function value.
+    /// Final objective function value (Å⁴, the sum of the squared bound
+    /// violations of the metric matrix).
     pub objective: f64,
     /// Final gradient norm.
     pub grad_norm: f64,
@@ -65,15 +66,23 @@ pub struct RiemannianLbfgs {
 }
 
 /// A distance constraint: atoms i,j should have distance d.
+///
+/// The constraint is a *band*: the squared distance implied by the metric
+/// matrix must lie between `lower²` and `upper²`.
 #[derive(Debug, Clone, Copy)]
 pub struct DistanceConstraint {
+    /// Index of the first atom of the constrained pair.
     pub i: usize,
+    /// Index of the second atom of the constrained pair.
     pub j: usize,
+    /// Lower bound on the distance in Å.
     pub lower: f64,
+    /// Upper bound on the distance in Å.
     pub upper: f64,
 }
 
 impl RiemannianLbfgs {
+    /// Create an optimiser with the given configuration.
     pub fn new(config: RiemannianConfig) -> Self {
         Self { config }
     }

@@ -51,7 +51,7 @@ fn expand_packed_eris(eris: &[f64], n_basis: usize) -> Vec<f64> {
 pub struct ScfResult {
     /// Converged electronic energy (Hartree).
     pub energy: f64,
-    /// Orbital energies (eigenvalues).
+    /// Orbital energies (eigenvalues) in Hartree.
     pub orbital_energies: Vec<f64>,
     /// MO coefficient matrix C (columns are MOs).
     pub coefficients: DMatrix<f64>,
@@ -65,9 +65,19 @@ pub struct ScfResult {
 
 /// SCF solver configuration.
 pub struct ScfConfig {
+    /// Maximum number of SCF iterations before the loop is abandoned.
     pub max_iter: usize,
+    /// Energy convergence threshold in Hartree.
+    ///
+    /// The SCF is declared converged when the total energy changes by less
+    /// than this value between two iterations.
     pub energy_threshold: f64,
+    /// Density convergence threshold.
+    ///
+    /// The RMS change of the density matrix elements between two iterations
+    /// must fall below this value.
     pub density_threshold: f64,
+    /// Number of Fock/error pairs kept in the DIIS subspace.
     pub diis_size: usize,
     /// Level shift for virtual orbitals (Hartree). 0.0 = disabled.
     /// Typical values: 0.1-0.5 Eh for difficult convergence.
@@ -87,6 +97,14 @@ impl Default for ScfConfig {
 }
 
 /// Run the SCF procedure.
+///
+/// `h_core` is the core Hamiltonian in Hartree, `s_mat` the dimensionless
+/// overlap matrix and `eris` the packed electron-repulsion integrals in
+/// Hartree. `n_electrons` is the total electron count (closed shell: twice
+/// the number of occupied spatial orbitals).
+///
+/// The returned [`ScfResult`] carries the converged electronic energy in
+/// Hartree and the orbital energies in Hartree.
 pub fn solve_scf(
     h_core: &DMatrix<f64>,
     s_mat: &DMatrix<f64>,

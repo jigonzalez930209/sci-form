@@ -7,6 +7,7 @@
 /// Per-element GFN2-xTB parameter set.
 #[derive(Debug, Clone, Copy)]
 pub struct Gfn2ElementParams {
+    /// Atomic number.
     pub z: u8,
     /// Number of shells in the basis.
     pub nshell: usize,
@@ -16,15 +17,15 @@ pub struct Gfn2ElementParams {
     pub selfenergy: [f64; 3],
     /// Slater exponent per shell (bohr⁻¹).
     pub slater: [f64; 3],
-    /// Reference occupation per shell.
+    /// Reference occupation per shell (electrons).
     pub ref_occ: [f64; 3],
     /// Hubbard parameter (Hartree).
     pub hubbard: f64,
-    /// Shell-resolved Hubbard scaling: 1 + shell_hubbard[l].
+    /// Shell-resolved Hubbard scaling: `1 + shell_hubbard[l]`.
     pub shell_hubbard: [f64; 3],
-    /// Repulsion exponent α.
+    /// Repulsion exponent α (dimensionless).
     pub rep_alpha: f64,
-    /// Repulsion effective nuclear charge Z_eff.
+    /// Repulsion effective nuclear charge Z_eff (dimensionless, in units of `e`).
     pub rep_zeff: f64,
     /// Number of valence electrons.
     pub n_valence: u8,
@@ -46,13 +47,13 @@ pub struct Gfn2ElementParams {
     pub pauling_en: f64,
     /// Element kind (1=main group, 2=transition metal) for gam3shell lookup.
     pub kind: u8,
-    /// Multipole dipole XC kernel (already scaled by 0.01).
+    /// Multipole dipole XC kernel (already scaled by 0.01); dimensionless.
     pub dkernel: f64,
-    /// Multipole quadrupole XC kernel (already scaled by 0.01).
+    /// Multipole quadrupole XC kernel (already scaled by 0.01); dimensionless.
     pub qkernel: f64,
     /// Multipole damping radius (bohr).
     pub mp_rad: f64,
-    /// Valence CN for multipole radii.
+    /// Valence CN for multipole radii (dimensionless coordination number).
     pub mp_vcn: f64,
 }
 
@@ -66,7 +67,7 @@ pub const REP_KEXP_LIGHT: f64 = 1.0;
 pub const REP_REXP: f64 = 1.0;
 
 /// Global GFN2-xTB Hamiltonian scaling parameters.
-/// Off-diagonal K factor by angular momentum pair: kdiag[l].
+/// Off-diagonal K factor by angular momentum pair: `kdiag[l]`.
 pub const KDIAG: [f64; 5] = [1.85, 2.23, 2.23, 2.23, 2.23];
 /// Electronegativity scaling of off-diagonal elements.
 pub const ENSCALE: f64 = 2.0e-2;
@@ -90,20 +91,33 @@ pub const GAM3_SHELL: [[f64; 2]; 4] = [
 pub const GAMMA_EXP: f64 = 2.0;
 
 /// Multipole damping exponents.
+/// The second exponent (`MP_DMP5`) damps the five-function (quadrupole-like)
+/// multipole kernel; both are dimensionless exponents of the distance ratio.
 pub const MP_DMP3: f64 = 3.0;
+/// Damping exponent of the five-function multipole kernel; dimensionless.
 pub const MP_DMP5: f64 = 4.0;
 /// Multipole CN-dependent radius shift.
+/// Shifts the coordination number at which the multipole damping radius
+/// starts to saturate; dimensionless (a coordination-number offset).
 pub const MP_SHIFT: f64 = 1.2;
 /// Multipole radius sigmoid exponent.
+/// Steepness of the logistic function that saturates the multipole damping
+/// radius; dimensionless.
 pub const MP_KEXP_MULTI: f64 = 4.0;
 /// Multipole maximum radius (bohr).
 pub const MP_RMAX: f64 = 5.0;
 
 /// D4 dispersion parameters for GFN2-xTB.
+/// The `s6`, `s8` and `s9` scale factors are dimensionless; `a2` is the
+/// Becke-Johnson damping radius in Bohr and `a1` is dimensionless.
 pub const D4_S6: f64 = 1.0;
+/// D4 `s8` scaling of the C8 term; dimensionless.
 pub const D4_S8: f64 = 2.7;
+/// D4 Becke-Johnson damping `a1`; dimensionless.
 pub const D4_A1: f64 = 0.52;
+/// D4 Becke-Johnson damping `a2`, in Bohr.
 pub const D4_A2: f64 = 5.0;
+/// D4 `s9` scaling of the ATM (three-body) term; dimensionless.
 pub const D4_S9: f64 = 5.0;
 
 // ---- GFN2-xTB element parameters ----
@@ -821,7 +835,8 @@ pub fn gfn2_electron_count(elements: &[u8]) -> usize {
 }
 
 /// Compute kshell factor for off-diagonal H0 scaling.
-/// GFN2 uses: kshell(k, l) = merge(2.0, (kdiag[l]+kdiag[k])/2, ...)
+/// GFN2 uses: `kshell(k, l) = merge(2.0, (kdiag[l]+kdiag[k])/2, ...)`
+/// The result is dimensionless.
 pub fn kshell_factor(l_a: u8, l_b: u8) -> f64 {
     let la = l_a as usize;
     let lb = l_b as usize;

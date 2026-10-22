@@ -146,7 +146,13 @@ pub fn compute_rdf(
     } else {
         match serde_json::from_str::<Vec<f64>>(charges_json) {
             Ok(v) => v,
-            Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'charges'", charges_json, &e)),
+            Err(e) => {
+                return crate::helpers::json_error(&crate::helpers::bad_json(
+                    "'charges'",
+                    charges_json,
+                    &e,
+                ))
+            }
         }
     };
     crate::helpers::serialize_or_error(&sci_form::ml::rdf_descriptors::compute_rdf(
@@ -175,7 +181,11 @@ pub fn compute_getaway(
     } else {
         match serde_json::from_str::<Vec<(usize, usize)>>(bonds_json) {
             Ok(v) => v,
-            Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'bonds'", bonds_json, &e)),
+            Err(e) => {
+                return crate::helpers::json_error(&crate::helpers::bad_json(
+                    "'bonds'", bonds_json, &e,
+                ))
+            }
         }
     };
     crate::helpers::serialize_or_error(&sci_form::ml::getaway::compute_getaway(
@@ -213,11 +223,23 @@ pub fn train_random_forest(
 ) -> String {
     let features: Vec<Vec<f64>> = match serde_json::from_str(features_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'features'", features_json, &e)),
+        Err(e) => {
+            return crate::helpers::json_error(&crate::helpers::bad_json(
+                "'features'",
+                features_json,
+                &e,
+            ))
+        }
     };
     let targets: Vec<f64> = match serde_json::from_str(targets_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'targets'", targets_json, &e)),
+        Err(e) => {
+            return crate::helpers::json_error(&crate::helpers::bad_json(
+                "'targets'",
+                targets_json,
+                &e,
+            ))
+        }
     };
     if features.len() != targets.len() {
         return crate::helpers::json_error(&format!(
@@ -264,11 +286,23 @@ pub fn train_gradient_boosting(
 ) -> String {
     let features: Vec<Vec<f64>> = match serde_json::from_str(features_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'features'", features_json, &e)),
+        Err(e) => {
+            return crate::helpers::json_error(&crate::helpers::bad_json(
+                "'features'",
+                features_json,
+                &e,
+            ))
+        }
     };
     let targets: Vec<f64> = match serde_json::from_str(targets_json) {
         Ok(v) => v,
-        Err(e) => return crate::helpers::json_error(&crate::helpers::bad_json("'targets'", targets_json, &e)),
+        Err(e) => {
+            return crate::helpers::json_error(&crate::helpers::bad_json(
+                "'targets'",
+                targets_json,
+                &e,
+            ))
+        }
     };
     if features.len() != targets.len() {
         return crate::helpers::json_error(&format!(

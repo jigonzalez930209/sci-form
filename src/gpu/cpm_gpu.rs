@@ -1,4 +1,29 @@
 //! GPU-assisted CPM charges: GPU Coulomb matrix + CPU SCF update.
+//!
+//! Builds the dielectrically screened Coulomb coupling matrix **J** on the
+//! GPU and then equilibrates the constant-potential charges on the CPU.
+//!
+//! # Contract with callers
+//!
+//! The CPU implementation in [`crate::cpm::compute_cpm_charges`] always
+//! works; this module is the optional accelerator. The GPU path only replaces
+//! the O(N²) construction of **J**.
+//!
+//! # Units
+//!
+//! `positions` are in **Å**; the coupling entries are in **eV·Å** and the
+//! charges, grand potential and electrostatic energy in **e** and **eV**.
+//!
+//! # Numerical differences w.r.t. the CPU implementation
+//!
+//! Two deliberate differences exist:
+//!
+//! 1. The charge equilibration uses a **damped fixed-point iteration**
+//!    (`q ← (q + q_new)/2`) instead of the exact LU solve of the CPU path.
+//!    For electrode-sized conducting systems the fixed-point iteration can
+//!    fail to converge, so `converged` must be checked by the caller.
+//! 2. `config.mu_per_atom` (multi-electrode setups) is **ignored**; the
+//!    global `config.mu_ev` is applied to every atom.
 
 use super::context::{
     bytes_to_f32_vec, ceil_div_u32, pack_uniform_values, pack_vec3_positions_f32,
@@ -10,6 +35,25 @@ use crate::cpm::{CpmConfig, CpmResult};
 
 const EV_PER_ANGSTROM: f64 = 14.3996;
 
+/// Computes constant-potential equilibrium charges using a GPU Coulomb matrix.
+///
+/// `elements` holds the atomic numbers and `positions` the Cartesian
+/// coordinates in **Å**. The returned [`CpmResult`] holds the partial
+/// charges (**e**), the total charge (**e**), the grand potential Ω and the
+/// electrostatic energy (both **eV**), the applied potential (**eV**), the
+/// number of iterations and the convergence flag.
+///
+/// # Errors
+///
+/// - `"elements/position length mismatch"` when the two slices differ in
+///   length.
+/// - `"System too small for GPU dispatch"` when fewer than two atoms are
+///   supplied.
+/// - `"No output from CPM Coulomb kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"Output size mismatch: expected {n}, got {m}"` when the kernel produced
+///   the wrong number of matrix elements.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_cpm_charges_gpu(
     ctx: &GpuContext,
     elements: &[u8],
@@ -122,6 +166,14 @@ pub fn compute_cpm_charges_gpu(
     })
 }
 
+/// WGSL source of the CPM Coulomb-matrix kernel.
+///
+/// One invocation per matrix element (`@workgroup_size(16, 16, 1)`); the
+/// kernel writes the dielectrically screened coupling
+/// `J_ij = 14.3996 / (ε · r_ij)` (in **eV·Å**, positions in **Å**) for
+/// `i ≠ j` and zero on the diagonal. The uniform block carries `n_atoms`, the
+/// solvent dielectric constant ε (dimensionless), the Coulomb constant
+/// 14.3996 eV·Å and two padding words.
 pub const CPM_COULOMB_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

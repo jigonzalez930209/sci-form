@@ -8,6 +8,10 @@ use super::basis::BasisSet;
 use nalgebra::DMatrix;
 
 /// Compute the nuclear attraction matrix V.
+///
+/// `positions_bohr` holds the Cartesian centres in Bohr. The matrix
+/// elements `V_μν = −Σ_A Z_A ∫ χ_μ (1/|r − R_A|) χ_ν d³r` are in Hartree
+/// and the matrix is symmetric.
 pub fn compute_nuclear_matrix(
     basis: &BasisSet,
     elements: &[u8],
@@ -18,6 +22,14 @@ pub fn compute_nuclear_matrix(
     crate::scf::nuclear_matrix::build_nuclear_matrix(&scf_basis, elements, positions_bohr)
 }
 
+/// Boys function `F_n(t) = ∫₀¹ s^{2n} exp(-t s²) ds`.
+///
+/// `n` is the order (a non-negative integer) and `t` the non-negative
+/// argument. The function is dimensionless.
+///
+/// Three regimes are used: the exact limit `F_n(0) = 1/(2n+1)` for
+/// `t < 1e-15`, the asymptotic expansion for `t > 30`, and the convergent
+/// series `F_n(t) = e^{-t} Σ_k t^k / (2n+2k+1)!!` in between.
 pub fn boys_function(n: usize, t: f64) -> f64 {
     if t < 1e-15 {
         return 1.0 / (2.0 * n as f64 + 1.0);

@@ -19,13 +19,17 @@ pub struct UnitCell {
 /// Cell parameters in crystallographic notation (a, b, c, α, β, γ).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CellParameters {
-    /// Lattice lengths (Å).
+    /// Lattice length **a** (the x-axis vector) in Å.
     pub a: f64,
+    /// Lattice length **b** (the y-axis vector) in Å.
     pub b: f64,
+    /// Lattice length **c** (the z-axis vector) in Å.
     pub c: f64,
-    /// Lattice angles (degrees).
+    /// Lattice angle **α** = angle between **b** and **c**, in degrees.
     pub alpha: f64,
+    /// Lattice angle **β** = angle between **a** and **c**, in degrees.
     pub beta: f64,
+    /// Lattice angle **γ** = angle between **a** and **b**, in degrees.
     pub gamma: f64,
 }
 
@@ -141,8 +145,10 @@ impl UnitCell {
     }
 
     /// Convert Cartesian coordinates (Å) to fractional.
-    /// frac_to_cart computes: r = f[0]*a + f[1]*b + f[2]*c = M^T · f
-    /// So: f = (M^T)^{-1} · r = (M^{-1})^T · r
+    /// `frac_to_cart` computes `r = f[0]*a + f[1]*b + f[2]*c = M^T · f`,
+    /// so `f = (M^T)^{-1} · r = (M^{-1})^T · r`.
+    ///
+    /// The returned fractional coordinates are dimensionless.
     pub fn cart_to_frac(&self, cart: [f64; 3]) -> [f64; 3] {
         let inv = self.inverse_matrix();
         // We need (M^{-1})^T applied to cart, so use columns of inv as rows
@@ -782,7 +788,8 @@ fn void_percolates(void: &[bool], nx: usize, ny: usize, nz: usize) -> bool {
 /// Pore-limiting diameter: largest sphere that can traverse the cell.
 ///
 /// Bisects the probe radius: the PLD is twice the largest probe whose
-/// void space still percolates (see [`void_percolates`]). Returns 0 when
+/// void space still percolates (see the internal `void_percolates` helper).
+/// Returns 0 when
 /// even a point probe cannot cross, and infinity for an atom-free cell
 /// (unbounded void). Resolution is limited by `grid_spacing`.
 pub fn pore_limiting_diameter(

@@ -101,7 +101,10 @@ mod kpm_py {
     /// Returns:
     ///     KpmMullikenResultPy
     #[pyfunction]
-    pub fn beta_compute_kpm_mulliken(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<KpmMullikenResultPy> {
+    pub fn beta_compute_kpm_mulliken(
+        elements: Vec<u8>,
+        coords: Vec<f64>,
+    ) -> PyResult<KpmMullikenResultPy> {
         let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
         let (basis, hamiltonian, overlap) = build_eht_matrices(&elements, &positions);
         let eht = sci_form_core::eht::solve_eht(&elements, &positions, None)

@@ -59,8 +59,15 @@ fn validate_dos_params(sigma: f64, e_min: f64, e_max: f64, n_points: usize) -> R
 ///
 /// `orbital_energies`: eigenvalues from EHT (eV).
 /// `sigma`: Gaussian smearing width (eV).
-/// `e_min`, `e_max`: energy window.
+/// `e_min`, `e_max`: energy window (eV).
 /// `n_points`: grid resolution (must be >= 2).
+///
+/// The returned DOS is in states/eV.
+///
+/// # Errors
+///
+/// Returns `Err` if `n_points < 2`, if `sigma` is not a finite positive
+/// number, if the energy window is not finite, or if `e_max < e_min`.
 pub fn compute_dos(
     orbital_energies: &[f64],
     sigma: f64,
@@ -94,6 +101,12 @@ pub fn compute_dos(
 }
 
 /// Compute total DOS using rayon over the energy grid.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`compute_dos`]: a grid with
+/// fewer than two points, a non-positive or non-finite `sigma`, a
+/// non-finite energy window, or `e_max < e_min`.
 #[cfg(feature = "parallel")]
 pub fn compute_dos_parallel(
     orbital_energies: &[f64],
@@ -137,8 +150,16 @@ pub fn compute_dos_parallel(
 /// `coefficients`: coefficients\[orbital\]\[basis\] from EHT.
 /// `n_electrons`: number of electrons.
 /// `sigma`: Gaussian smearing width (eV).
-/// `e_min`, `e_max`: energy window.
+/// `e_min`, `e_max`: energy window (eV).
 /// `n_points`: grid resolution (must be >= 2).
+///
+/// The returned DOS and PDOS are in states/eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the DOS grid parameters are invalid (see
+/// [`compute_dos`]) or if the flat geometry is invalid (wrong length or
+/// non-finite coordinates).
 #[allow(clippy::too_many_arguments)]
 pub fn compute_pdos(
     elements: &[u8],
@@ -232,6 +253,11 @@ pub fn compute_pdos(
 }
 
 /// Compute atom-projected DOS using rayon for orbital weights and atom-grid accumulation.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`compute_pdos`]: invalid DOS
+/// grid parameters or an invalid flat geometry.
 #[cfg(feature = "parallel")]
 #[allow(clippy::too_many_arguments)]
 pub fn compute_pdos_parallel(
@@ -334,6 +360,12 @@ pub fn compute_pdos_parallel(
 ///
 /// Both curves must have the same length.  Useful for comparing against
 /// reference DOS (e.g. Multiwfn output).
+///
+/// The result is in (states/eV)² when the inputs are DOS curves.
+///
+/// # Panics
+///
+/// Panics if the two curves have different lengths.
 pub fn dos_mse(a: &[f64], b: &[f64]) -> f64 {
     assert_eq!(a.len(), b.len(), "DOS curves must have same length");
     let n = a.len() as f64;

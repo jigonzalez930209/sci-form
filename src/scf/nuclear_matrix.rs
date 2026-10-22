@@ -10,6 +10,10 @@ use super::basis::{BasisFunction, BasisSet};
 use super::gaussian_integrals::{boys_function, distance_squared, gaussian_product_center};
 
 /// Build the nuclear attraction matrix V for all nuclei.
+///
+/// `positions_bohr` holds the Cartesian centres in Bohr. The matrix
+/// elements `V_μν = −Σ_A Z_A ∫ χ_μ (1/|r − R_A|) χ_ν d³r` are in Hartree
+/// and the matrix is symmetric.
 pub fn build_nuclear_matrix(
     basis: &BasisSet,
     elements: &[u8],
@@ -19,6 +23,15 @@ pub fn build_nuclear_matrix(
     build_nuclear_matrix_charges(basis, &charges, positions_bohr)
 }
 
+/// Build the nuclear attraction matrix V using explicit nuclear charges.
+///
+/// `charges` holds one charge per atom in units of `e` (it may be an
+/// effective charge, e.g. after ECP core removal) and `positions_bohr` the
+/// Cartesian centres in Bohr.
+///
+/// The returned matrix elements
+/// `V_μν = -Σ_A Z_A ∫ χ_μ(r) (1/|r − R_A|) χ_ν(r) d³r` are in Hartree and
+/// the matrix is symmetric.
 pub fn build_nuclear_matrix_charges(
     basis: &BasisSet,
     charges: &[f64],

@@ -9,8 +9,12 @@ use nalgebra::DMatrix;
 #[derive(Debug, Clone)]
 pub struct ScfOutput {
     /// Converged total energy (method-specific units).
+    ///
+    /// Hartree for the Hartree-Fock backend, eV for the PM3 and xTB
+    /// backends — the same units the underlying solver reports.
     pub energy: f64,
-    /// Orbital energies (eigenvalues).
+    /// Orbital energies (eigenvalues), in the method-specific unit of
+    /// [`ScfOutput::energy`] (Hartree for HF, eV for PM3 and xTB).
     pub orbital_energies: Vec<f64>,
     /// Number of SCF iterations.
     pub iterations: usize,
@@ -27,13 +31,16 @@ pub struct ScfOutput {
 pub struct ScfConvergenceConfig {
     /// Maximum number of SCF iterations.
     pub max_iter: usize,
-    /// Energy convergence threshold.
+    /// Energy convergence threshold in Hartree.
     pub energy_threshold: f64,
     /// Density convergence threshold.
+    ///
+    /// The RMS change of the density matrix elements between two iterations
+    /// must fall below this value.
     pub density_threshold: f64,
     /// DIIS history size (0 to disable).
     pub diis_size: usize,
-    /// Level shift for virtual orbitals (0.0 to disable).
+    /// Level shift for virtual orbitals in Hartree (0.0 to disable).
     pub level_shift: f64,
     /// Enable ADIIS for initial iterations before switching to DIIS.
     pub use_adiis: bool,
@@ -72,9 +79,15 @@ pub trait ScfSolver {
 
 /// HF SCF solver wrapping the existing Roothaan-Hall implementation.
 pub struct HfScfSolver {
+    /// Core Hamiltonian matrix `H_core` in the AO basis, in Hartree.
     pub h_core: DMatrix<f64>,
+    /// Overlap matrix `S` in the AO basis (dimensionless).
     pub s_mat: DMatrix<f64>,
+    /// Packed electron-repulsion integrals in Hartree, in the layout of
+    /// [`super::integrals::compute_eris`].
     pub eris: Vec<f64>,
+    /// Number of electrons in the system (closed shell: twice the number of
+    /// occupied spatial orbitals).
     pub n_elec: usize,
 }
 
@@ -120,7 +133,9 @@ impl ScfSolver for HfScfSolver {
 
 /// PM3 SCF solver wrapping the existing NDDO implementation.
 pub struct Pm3ScfSolver {
+    /// Atomic numbers of the molecule.
     pub elements: Vec<u8>,
+    /// Cartesian coordinates in Ångström.
     pub positions: Vec<[f64; 3]>,
 }
 
@@ -150,7 +165,9 @@ impl ScfSolver for Pm3ScfSolver {
 
 /// xTB SCC solver wrapping the existing tight-binding implementation.
 pub struct XtbScfSolver {
+    /// Atomic numbers of the molecule.
     pub elements: Vec<u8>,
+    /// Cartesian coordinates in Ångström.
     pub positions: Vec<[f64; 3]>,
 }
 

@@ -8,11 +8,12 @@ use nalgebra::DMatrix;
 /// Result of a matrix comparison.
 #[derive(Debug, Clone)]
 pub struct ComparisonResult {
-    /// Maximum absolute difference between elements.
+    /// Maximum absolute difference between elements (same unit as the
+    /// compared matrices).
     pub max_abs_error: f64,
-    /// Mean absolute error.
+    /// Mean absolute error (same unit as the compared matrices).
     pub mean_abs_error: f64,
-    /// Root mean square error.
+    /// Root mean square error (same unit as the compared matrices).
     pub rms_error: f64,
     /// Whether all elements match within the tolerance.
     pub passed: bool,
@@ -23,6 +24,14 @@ pub struct ComparisonResult {
 }
 
 /// Compare two matrices element-wise with configurable tolerance.
+///
+/// The returned errors are the absolute element-wise differences between
+/// the two matrices; they carry the unit of whatever the matrices hold
+/// (Hartree for the SCF energy matrices, dimensionless for the overlap).
+///
+/// # Panics
+///
+/// Panics if the two matrices have different row or column counts.
 pub fn compare_matrices(a: &DMatrix<f64>, b: &DMatrix<f64>, tolerance: f64) -> ComparisonResult {
     assert_eq!(a.nrows(), b.nrows(), "Row count mismatch");
     assert_eq!(a.ncols(), b.ncols(), "Column count mismatch");

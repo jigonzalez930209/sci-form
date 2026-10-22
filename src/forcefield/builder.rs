@@ -1,17 +1,22 @@
-/// Build a full UFF force field for a given molecule.
-///
-/// Walks all bonds, angles, torsions, out-of-plane inversions, and non-bonded
-/// pairs and adds the appropriate [`ForceFieldContribution`] terms to a fresh
-/// [`MolecularForceField`].
-///
-/// The assembly mirrors the canonical RDKit builder
-/// (`ForceFieldHelpers/UFF/Builder.cpp`) so energies can be cross-validated:
-/// - sp2 angles use the trigonal-planar functional (`order = 3`) with the
-///   3-/4-membered ring `theta0` corrections,
-/// - torsions are only built for non-terminal, non-triple central bonds and
-///   their force constants are divided by the number of torsion paths,
-/// - inversions add three contributions per sp2 centre (K already /3),
-/// - van der Waals uses geometric-mean combining with no 1-4 scaling.
+//! Construction of a UFF force field from a molecular graph.
+//!
+//! [`build_uff_force_field`] walks all bonds, angles, torsions, out-of-plane
+//! inversions and non-bonded pairs and adds the appropriate
+//! [`crate::forcefield::traits::ForceFieldContribution`] terms to a fresh
+//! [`crate::forcefield::traits::MolecularForceField`].
+//!
+//! The assembly mirrors the canonical RDKit builder
+//! (`ForceFieldHelpers/UFF/Builder.cpp`) so energies can be cross-validated:
+//!
+//! - sp² angles use the trigonal-planar functional (`order = 3`) with the
+//!   3-/4-membered ring `theta0` corrections,
+//! - torsions are only built for non-terminal, non-triple central bonds and
+//!   their force constants are divided by the number of torsion paths,
+//! - inversions add three contributions per sp² centre (K already /3),
+//! - van der Waals uses geometric-mean combining with no 1-4 scaling.
+//!
+//! All energies produced by the resulting force field are in kcal/mol and
+//! the gradients are `dE/dR` in kcal/mol/Å.
 use crate::forcefield::atom_typer::{
     assign_uff_type, atom_total_valence, conjugated_bond_flags, is_atom_aromatic, order_value,
 };

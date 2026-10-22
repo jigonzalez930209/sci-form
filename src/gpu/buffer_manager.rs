@@ -2,6 +2,26 @@
 //!
 //! Manages allocation, tracking, and release of GPU storage/uniform buffers,
 //! enforcing WebGPU binding limits (128 MB per storage buffer, 256 MB device max).
+//!
+//! # Contract with callers
+//!
+//! The manager is a *book-keeping* layer: it owns the CPU-side view of which
+//! buffers a calculation needs and how many bytes they take, and it refuses
+//! allocations that would break the WebGPU limits (128 MB per storage
+//! binding) or the caller-supplied budget. It never touches a device, so it
+//! is usable without a GPU — the CPU fallback path of this crate uses exactly
+//! the same buffer plan, just without the device-side allocation.
+//!
+//! # Example
+//!
+//! ```
+//! use sci_form::gpu::buffer_manager::{BufferManager, BufferRole};
+//!
+//! let mut mgr = BufferManager::new(256); // 256 MB budget
+//! let idx = mgr.allocate(BufferRole::OverlapMatrix, 1024, "overlap").unwrap();
+//! assert_eq!(idx, 0);
+//! assert_eq!(mgr.total_allocated, 1024);
+//! ```
 
 use super::aligned_types::{GpuMatrixParams, GpuScfParams};
 
@@ -46,17 +66,28 @@ impl BufferRole {
 }
 
 /// CPU-side representation of a managed GPU buffer.
+///
+/// The struct records the *plan* for a buffer (role, size, label) and
+/// optionally keeps the CPU shadow copy that will be uploaded to (or was
+/// read back from) the device.
 #[derive(Debug, Clone)]
 pub struct ManagedBuffer {
+    /// Role this buffer plays in the calculation (determines uniform vs storage).
     pub role: BufferRole,
+    /// Size of the buffer in bytes.
     pub size_bytes: usize,
+    /// Debug label of the buffer.
     pub label: String,
+    /// `true` while the buffer is mapped (i.e. readable/writable) on the device.
     pub is_mapped: bool,
     /// CPU shadow copy (for readback or initial upload).
     pub cpu_data: Option<Vec<u8>>,
 }
 
 impl ManagedBuffer {
+    /// Creates an empty managed buffer of `size_bytes` bytes.
+    ///
+    /// The buffer starts unmapped and without a CPU shadow copy.
     pub fn new(role: BufferRole, size_bytes: usize, label: &str) -> Self {
         Self {
             role,
@@ -67,6 +98,10 @@ impl ManagedBuffer {
         }
     }
 
+    /// Creates a managed buffer pre-filled with `data`.
+    ///
+    /// `size_bytes` is set to `data.len()`, and the payload is kept as the CPU
+    /// shadow copy that will be uploaded to the device.
     pub fn with_data(role: BufferRole, data: Vec<u8>, label: &str) -> Self {
         let size = data.len();
         Self {
@@ -83,13 +118,24 @@ impl ManagedBuffer {
 const MAX_STORAGE_BUFFER_SIZE: usize = 128 * 1024 * 1024; // 128 MB
 
 /// Manages the lifecycle of all GPU buffers for a quantum chemistry calculation.
+///
+/// The manager tracks the buffers it has handed out (by index) and the total
+/// number of bytes they occupy, so a caller can build a bind group without
+/// re-deriving the sizes.
 pub struct BufferManager {
+    /// All buffers handed out so far, in allocation order.
     pub buffers: Vec<ManagedBuffer>,
+    /// Total number of bytes allocated across all buffers.
     pub total_allocated: usize,
+    /// Maximum number of bytes that may be allocated, in bytes.
     pub max_budget: usize,
 }
 
 impl BufferManager {
+    /// Creates a manager with a budget of `max_budget_mb` megabytes.
+    ///
+    /// `max_budget_mb` is converted to bytes (× 1024 × 1024); a value of 0
+    /// therefore forbids every allocation.
     pub fn new(max_budget_mb: usize) -> Self {
         Self {
             buffers: Vec::new(),
@@ -99,6 +145,15 @@ impl BufferManager {
     }
 
     /// Allocate a new managed buffer. Returns error if it exceeds WebGPU limits.
+    ///
+    /// Returns the index of the new buffer inside [`BufferManager::buffers`].
+    ///
+    /// # Errors
+    ///
+    /// - `"Buffer '{label}' ({n} MB) exceeds WebGPU maxStorageBufferBindingSize (128 MB)"`
+    ///   when a non-uniform buffer is larger than the 128 MB per-binding limit.
+    /// - `"Buffer '{label}' ({n} bytes) would exceed GPU memory budget ({m} MB)"`
+    ///   when the allocation would push `total_allocated` past `max_budget`.
     pub fn allocate(
         &mut self,
         role: BufferRole,
@@ -130,6 +185,15 @@ impl BufferManager {
     }
 
     /// Allocate a buffer with initial CPU data.
+    ///
+    /// Returns the index of the new buffer inside [`BufferManager::buffers`].
+    ///
+    /// # Errors
+    ///
+    /// - `"Buffer '{label}' ({n} MB) exceeds WebGPU maxStorageBufferBindingSize"`
+    ///   when a non-uniform buffer is larger than the 128 MB per-binding limit.
+    /// - `"Allocation would exceed budget: {used} + {size} > {max}"`
+    ///   when the allocation would push `total_allocated` past `max_budget`.
     pub fn allocate_with_data(
         &mut self,
         role: BufferRole,
@@ -159,11 +223,23 @@ impl BufferManager {
     }
 
     /// Compute buffer size for a dense n×n matrix of f32.
+    ///
+    /// Returns `n_basis * n_basis * 4` bytes.
     pub fn matrix_size(n_basis: usize) -> usize {
         n_basis * n_basis * std::mem::size_of::<f32>()
     }
 
     /// Plan all buffers needed for an SCF calculation.
+    ///
+    /// Reserves the atom, basis and primitive input buffers, the six
+    /// `n_basis × n_basis` matrices (S, T, V, H, P, F) and the two uniform
+    /// parameter blocks. The returned [`ScfBufferPlan`] holds the buffer
+    /// indices and the total number of bytes reserved.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the error of the first failing [`BufferManager::allocate`]
+    /// call, i.e. a 128 MB per-binding violation or a budget overflow.
     pub fn plan_scf_buffers(
         &mut self,
         n_atoms: usize,
@@ -214,6 +290,10 @@ impl BufferManager {
     }
 
     /// Summary of all allocated buffers for debugging.
+    ///
+    /// Returns a multi-line human-readable report: one header line with the
+    /// buffer count and the used/available budget in MB, followed by one
+    /// indented line per buffer with its index, role, label and size in bytes.
     pub fn summary(&self) -> String {
         let mut s = format!(
             "BufferManager: {} buffers, {:.2} MB / {:.2} MB\n",
@@ -232,19 +312,36 @@ impl BufferManager {
 }
 
 /// Indices into the BufferManager for all SCF-related buffers.
+///
+/// The six matrix buffers (overlap, kinetic, nuclear, core Hamiltonian,
+/// density, Fock) each hold a dense `n_basis × n_basis` block of `f32`
+/// matrix elements in row-major order; the two parameter blocks hold the
+/// uniform structs consumed by the kernels.
 #[derive(Debug, Clone)]
 pub struct ScfBufferPlan {
+    /// Index of the atom buffer (positions and per-atom parameters).
     pub atoms: usize,
+    /// Index of the basis-function descriptor buffer.
     pub basis: usize,
+    /// Index of the Gaussian primitive contraction table.
     pub prims: usize,
+    /// Index of the overlap matrix **S** buffer.
     pub overlap: usize,
+    /// Index of the kinetic energy matrix **T** buffer.
     pub kinetic: usize,
+    /// Index of the nuclear attraction matrix **V** buffer.
     pub nuclear: usize,
+    /// Index of the core Hamiltonian **H = T + V** buffer.
     pub core_h: usize,
+    /// Index of the density matrix **P** buffer.
     pub density: usize,
+    /// Index of the Fock matrix **F** buffer.
     pub fock: usize,
+    /// Index of the matrix-dimension uniform buffer.
     pub mat_params: usize,
+    /// Index of the SCF-parameter uniform buffer.
     pub scf_params: usize,
+    /// Total number of bytes reserved for all buffers of the plan.
     pub total_bytes: usize,
 }
 

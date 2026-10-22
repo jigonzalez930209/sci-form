@@ -9,7 +9,19 @@
 //! - Electrostatic steering during approach
 //! - Multi-angular orientation sampling
 //!
-//! Feature flag: `alpha-reaction-dynamics`
+//! # Stability tier
+//!
+//! **Alpha** — early research tier. Gated behind the `alpha-reaction-dynamics`
+//! feature flag. The validation gate is
+//! `tests/alpha_reaction_dynamics_3d.rs`; the subsystem is currently
+//! self-consistency-only (no parity with the ASE NEB reference) and is
+//! therefore **not** promoted — see [`crate::experimental_status`].
+//!
+//! # Units
+//!
+//! Coordinates are flat `3N` arrays in **Å**, energies in **kcal/mol**,
+//! forces in **kcal/(mol·Å)**, the NEB spring constant in
+//! **kcal/(mol·Å²)** and the dipole moment in **Debye**.
 
 pub mod ci_neb;
 pub mod complex;
@@ -120,9 +132,13 @@ impl Default for ReactionDynamics3DConfig {
 /// A single frame along the 3D reaction coordinate with optional properties.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReactionFrame3D {
+    /// Index of the frame in the reaction coordinate (0-based).
     pub index: usize,
+    /// Flat `3N` array of Cartesian coordinates in **Å**.
     pub coords: Vec<f64>,
+    /// Total energy of the frame in **kcal/mol**.
     pub energy_kcal_mol: f64,
+    /// Phase label of the frame ("approach", "neb", "departure", ...).
     pub phase: String,
     /// Per-frame properties (if `compute_properties` was true).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -132,19 +148,38 @@ pub struct ReactionFrame3D {
 /// Full result of the improved 3D reaction dynamics pipeline.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReactionDynamics3DResult {
+    /// All frames of the reaction coordinate, in order.
     pub frames: Vec<ReactionFrame3D>,
+    /// Atomic numbers of the reacting system (one entry per atom).
     pub elements: Vec<u8>,
+    /// Index into `frames` of the transition-state frame.
     pub ts_frame_index: usize,
+    /// Activation energy (transition state − reactant) in **kcal/mol**.
     pub activation_energy_kcal_mol: f64,
+    /// Reaction energy (product − reactant) in **kcal/mol**.
     pub reaction_energy_kcal_mol: f64,
+    /// Name of the energy backend that produced the path.
     pub method: String,
+    /// Number of atoms in the reacting system.
     pub n_atoms: usize,
+    /// Human-readable notes about the run (warnings, fallbacks, ...).
     pub notes: Vec<String>,
     /// Approach direction used (unit vector), for diagnostics.
     pub approach_direction: Option<[f64; 3]>,
 }
 
 /// Main entry point — full 3D reaction dynamics pipeline.
+///
+/// # Errors
+///
+/// - `"At least one reactant SMILES required"` when `reactant_smiles` is
+///   empty.
+/// - `"At least one product SMILES required"` when `product_smiles` is empty.
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when
+///   `config.method` names an unknown energy backend.
+/// - `"Failed to embed reactant '{smiles}': {err}"` / `"Failed to embed
+///   product '{smiles}': {err}"` when a fragment could not be embedded.
+/// - Any error raised by the CI-NEB, complex-optimisation or IRC stages.
 pub fn compute_reaction_dynamics_3d(
     reactant_smiles: &[&str],
     product_smiles: &[&str],
@@ -786,6 +821,16 @@ pub fn compute_reaction_dynamics_3d(
 /// `reaction_energy_kcal_mol` is always 0.0 because no products are known.
 ///
 /// Feature flag: `alpha-reaction-dynamics`
+///
+/// # Errors
+///
+/// - `"compute_approach_dynamics requires at least 2 reactant SMILES (one per
+///   fragment)"` when fewer than two fragments are supplied.
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when
+///   `config.method` names an unknown energy backend.
+/// - `"Failed to embed reactant '{smiles}': {err}"` when a fragment could not
+///   be embedded.
+/// - Any error raised by the approach-path stages.
 pub fn compute_approach_dynamics(
     reactant_smiles: &[&str],
     config: &ReactionDynamics3DConfig,

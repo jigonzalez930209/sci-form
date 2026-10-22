@@ -6,5 +6,11 @@
 //!
 //! Documented gap: [`crate::riemannian::psd_distance`] is the Frobenius
 //! proxy, not the affine-invariant geodesic distance.
+//!
+//! # Stability tier
+//!
+//! Core (promoted). This alias is gated behind the `beta-riemannian` feature
+//! flag (alias: `experimental-riemannian`); the validation gate that covered
+//! the module is `tests/beta_riemannian_validation.rs` (F94).
 
 pub use crate::riemannian::*;

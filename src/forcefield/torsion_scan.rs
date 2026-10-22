@@ -1,3 +1,11 @@
+//! Rotatable-bond detection and systematic torsion-angle scanning.
+//!
+//! This approximates ETKDG's torsion knowledge terms by directly setting
+//! preferred torsion angles after distance-geometry embedding: rotatable bonds
+//! are identified from the molecular graph and each is scanned over a grid of
+//! dihedral angles to find its lowest-energy rotamer.
+//!
+//! Dihedral angles are in radians and energies in kcal/mol.
 use nalgebra::DMatrix;
 use petgraph::visit::EdgeRef;
 use rand::rngs::StdRng;
@@ -23,6 +31,12 @@ pub struct RotatableBond {
 ///
 /// Excludes ring bonds, double bonds, and terminal groups.
 /// Returns dihedral atom indices and the mobile atoms to rotate.
+/// Identify the rotatable bonds of a molecule and their preferred torsion angles.
+///
+/// A bond is rotatable when it is a single, acyclic bond between two
+/// non-terminal heavy atoms. For each such bond the preferred dihedral angles
+/// are derived from the hybridisation of the two central atoms; the angles are
+/// in radians.
 pub fn find_rotatable_bonds(mol: &crate::graph::Molecule) -> Vec<RotatableBond> {
     let mut bonds = Vec::new();
     let n = mol.graph.node_count();

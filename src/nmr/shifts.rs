@@ -28,6 +28,11 @@ pub struct ChemicalShift {
     pub confidence: f64,
 }
 
+/// A per-nucleus series of predicted chemical shifts.
+///
+/// Produced for nuclei that have no dedicated field in
+/// [`NmrShiftResult`]; the fixed ¹H/¹³C/¹⁹F/³¹P/¹⁵N/¹¹B/²⁹Si/⁷⁷Se/¹⁷O/³³S
+/// series are returned through their own fields instead.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NucleusShiftSeries {
     /// Representative nucleus for this shift list.
@@ -66,6 +71,14 @@ pub struct NmrShiftResult {
 }
 
 impl NmrShiftResult {
+    /// The predicted shifts belonging to one nuclide.
+    ///
+    /// Returns the dedicated field for the ten nuclei that have one
+    /// (¹H, ¹³C, ¹⁹F, ³¹P, ¹⁵N, ¹¹B, ²⁹Si, ⁷⁷Se, ¹⁷O, ³³S) and otherwise
+    /// the matching entry of [`NmrShiftResult::other_shifts`]. The slice is
+    /// empty when the molecule contains no atom of that element.
+    ///
+    /// The shifts are in ppm; see [`ChemicalShift::shift_ppm`].
     pub fn shifts_for_nucleus(&self, nucleus: NmrNucleus) -> &[ChemicalShift] {
         match nucleus {
             NmrNucleus::H1 => &self.h_shifts,
@@ -947,6 +960,33 @@ fn predict_s_shift(mol: &Molecule, s_idx: NodeIndex) -> (f64, String, f64) {
     }
 }
 
+/// Predict the chemical shifts of every atom of one nuclide in a molecule.
+///
+/// Only atoms whose element matches `nucleus` are considered; the returned
+/// vector therefore contains one entry per atom of that element, in atom
+/// index order. Aromaticity is perceived first (via
+/// [`crate::rings::perceived_aromaticity`]) when the input molecule is drawn
+/// in a Kekulé form, so a Kekulé and an aromatic SMILES give the same
+/// answer.
+///
+/// The shifts are in ppm relative to the usual reference compound of the
+/// nuclide, and the per-atom `confidence` is the model's own estimate for
+/// that environment (0.0–1.0). ¹H and ¹³C use dedicated additivity rules;
+/// the other nuclei fall back to the generic relative model and are intended
+/// for screening rather than for quantitative work.
+///
+/// # Example
+///
+/// ```
+/// use sci_form::graph::Molecule;
+/// use sci_form::nmr::nucleus::NmrNucleus;
+/// use sci_form::nmr::shifts::predict_chemical_shifts_for_nucleus;
+///
+/// let mol = Molecule::from_smiles("CCO").unwrap();
+/// let shifts = predict_chemical_shifts_for_nucleus(&mol, NmrNucleus::H1);
+/// assert_eq!(shifts.len(), 6); // 5 C-H + 1 O-H
+/// assert!(shifts.iter().all(|s| s.shift_ppm >= 0.0 && s.shift_ppm <= 15.0));
+/// ```
 pub fn predict_chemical_shifts_for_nucleus(
     mol: &Molecule,
     nucleus: NmrNucleus,

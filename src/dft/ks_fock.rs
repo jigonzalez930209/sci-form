@@ -46,10 +46,18 @@ pub struct DftConfig {
     pub density_threshold: f64,
     /// DIIS subspace size.
     pub diis_size: usize,
+    /// Net molecular charge in units of `e` (positive = cation).
     pub charge: i32,
+    /// Spin multiplicity `2S + 1` (1 = singlet, 2 = doublet, 3 = triplet).
     pub multiplicity: u32,
     /// Force UKS even for singlets.
+    ///
+    /// When `true` the spin channels are always solved separately, even when
+    /// the molecule is closed-shell. A multiplicity greater than 1 or an odd
+    /// electron count already forces the unrestricted path regardless of this
+    /// flag.
     pub unrestricted: bool,
+    /// Basis set used for the valence orbitals.
     pub basis: DftBasisKind,
 }
 
@@ -109,8 +117,11 @@ pub struct DftResult {
     pub n_electrons: usize,
     /// Number of grid points.
     pub n_grid_points: usize,
+    /// Number of occupied alpha-spin orbitals.
     pub n_alpha: usize,
+    /// Number of occupied beta-spin orbitals.
     pub n_beta: usize,
+    /// Whether the unrestricted (spin-polarised) Kohn-Sham solution was used.
     pub unrestricted: bool,
     /// AO density, row-major n_basis² (total density).
     pub density: Vec<f64>,
@@ -119,6 +130,42 @@ pub struct DftResult {
 }
 
 /// Run a Kohn-Sham DFT calculation.
+///
+/// The geometry is given in Ångström and converted internally to Bohr. The
+/// Kohn-Sham Fock matrix is `F = H_core + J + V_XC` (pure DFT: no exact
+/// exchange), and the SCF is accelerated with DIIS.
+///
+/// A restricted (closed-shell) solution is used unless the molecule is
+/// open-shell — an odd electron count or a multiplicity above 1 forces the
+/// unrestricted (UKS) path — or unless
+/// [`DftConfig::unrestricted`] is set explicitly.
+///
+/// # Errors
+///
+/// Returns `Err` if:
+/// * the geometry is invalid (see `crate::validation::validate_geometry`);
+/// * the molecule has no valence electron left after the ECP core removal;
+/// * a closed-shell calculation was requested with an odd electron count;
+/// * the requested basis set is not available for one of the elements;
+/// * an unrestricted calculation would leave zero alpha electrons.
+///
+/// # Example
+///
+/// ```no_run
+/// use sci_form::dft::ks_fock::{solve_ks_dft, DftConfig, DftMethod};
+///
+/// fn main() -> Result<(), String> {
+///     let elements = [8u8, 1, 1];
+///     let positions = [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
+///     let config = DftConfig { method: DftMethod::Svwn, ..DftConfig::default() };
+///     let result = solve_ks_dft(&elements, &positions, &config)?;
+///
+///     // Energies are reported in Hartree; `total_energy_ev` gives eV.
+///     println!("E = {} Hartree", result.total_energy);
+///     println!("HOMO-LUMO gap = {} eV", result.gap);
+///     Ok(())
+/// }
+/// ```
 pub fn solve_ks_dft(
     elements: &[u8],
     positions: &[[f64; 3]],

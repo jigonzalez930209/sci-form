@@ -1,3 +1,23 @@
+//! SMILES parsing: a recursive-descent parser that builds a [`crate::graph::Molecule`].
+//!
+//! The parser follows the Daylight SMILES grammar for the subset the crate
+//! needs:
+//!
+//! * organic-subset and bracket atoms with isotopes, formal charges and
+//!   explicit hydrogen counts,
+//! * ring-closure numbers (single and multi-digit),
+//! * branches written with `(` and `)`,
+//! * tetrahedral chirality (`@` / `@@`) and double-bond stereo (`/` / `\`),
+//! * implicit-hydrogen completion and hybridisation assignment.
+//!
+//! The result is the crate's core data model, [`crate::graph::Molecule`],
+//! which every downstream module (conformer generation, force fields,
+//! electronic methods, property prediction) consumes.
+//!
+//! [`SmilesParser::parse`](crate::smiles::SmilesParser::parse) is the entry point; [`crate::graph::Molecule::from_smiles`]
+//! is the convenience wrapper that also keeps only the largest connected
+//! fragment.
+
 use crate::graph::{Atom, Bond, BondOrder, BondStereo, ChiralType, Hybridization, Molecule};
 use nalgebra::Vector3;
 use petgraph::graph::NodeIndex;

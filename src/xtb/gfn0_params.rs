@@ -14,25 +14,52 @@
 //! polynomial, `XI/KAPPA/ALPG` = EEQ chi/CN-factor/width.
 
 /// GFN0 global parameters ($globpar).
+///
+/// The values are those of the xtb 6.7.1 `param_gfn0-xtb.txt` `$globpar`
+/// block, in the same units as the xtb source: energies in eV unless stated
+/// otherwise, lengths in Bohr, exponents in Bohr⁻¹.
 pub struct Gfn0Globals {
+    /// Shell-resolved prefactors of the Hückel-like Hamiltonian element
+    /// `H_ij` (indexed by angular momentum s, p, d, f); dimensionless.
     pub kshell: [f64; 4],
+    /// Extra factor applied to `H_ij` when exactly one of the two shells
+    /// carries an additional valence-AO polynomial; dimensionless.
     pub kdiff: f64,
+    /// Shell-resolved electronegativity-difference scaling of the
+    /// Hamiltonian polynomial (indexed by angular momentum s, p, d, f);
+    /// dimensionless.
     pub enshell: [f64; 4],
+    /// Coefficient of the ΔEN⁴ term of the Hamiltonian polynomial;
+    /// dimensionless.
     pub enscale4: f64,
+    /// Scaling of the electronegativity difference in the pair-repulsion
+    /// exponent; dimensionless.
     pub renscale: f64,
+    /// Exponent `k` of the pair-repulsion radial function `r^k`; dimensionless.
     pub kexp: f64,
+    /// The same exponent for the light elements; dimensionless.
     pub kexp_light: f64,
+    /// Constant shift added to the SRB equilibrium radii, in Bohr.
     pub srb_shift: f64,
+    /// Prefactor of the SRB (short-range repulsion) energy, in Hartree.
     pub srb_prefactor: f64,
+    /// Steepness of the SRB Gaussian, in Bohr⁻².
     pub srb_steepness: f64,
+    /// Electronegativity scaling of the SRB steepness; dimensionless.
     pub srb_enscale: f64,
+    /// Becke-Johnson damping `a1` of the D4 dispersion correction; dimensionless.
     pub d4_a1: f64,
+    /// Becke-Johnson damping `a2` of the D4 dispersion correction, in Bohr.
     pub d4_a2: f64,
+    /// D4 `s6` scaling of the C6 term; dimensionless.
     pub d4_s6: f64,
+    /// D4 `s8` scaling of the C8 term; dimensionless.
     pub d4_s8: f64,
+    /// D4 `s9` scaling of the ATM (three-body) term; dimensionless.
     pub d4_s9: f64,
 }
 
+/// The GFN0 global parameters (xtb 6.7.1 `$globpar` block).
 pub const GFN0_GLOBALS: Gfn0Globals = Gfn0Globals {
     kshell: [2.0, 2.4868, 2.27, 0.0],
     kdiff: 1.1241,
@@ -53,29 +80,70 @@ pub const GFN0_GLOBALS: Gfn0Globals = Gfn0Globals {
 };
 
 /// Per-element GFN0 parameters (Z = 1..86).
+///
+/// The values are those of the xtb 6.7.1 `param_gfn0-xtb.txt` per-element
+/// blocks, in the units used by the xtb source: shell self-energies in eV,
+/// Slater exponents in Bohr⁻¹, the electrostatic quantities (`hubbard`,
+/// `eeq_chi`, `eeq_kcn`) in Hartree, and the EEQ width in Bohr.
 pub struct Gfn0ElementParams {
+    /// Atomic number.
     pub z: u8,
+    /// Number of valence shells of this element.
     pub nshell: usize,
+    /// Angular momentum of each valence shell (0 = s, 1 = p, 2 = d, 3 = f).
     pub ang_shell: [u8; 4],
+    /// Principal quantum number of each valence shell.
     pub pqn: [u8; 4],
+    /// On-site shell energies `H_ii` in eV (one entry per valence shell).
     pub selfenergy: [f64; 4],
+    /// Slater exponents of the valence shells in Bohr⁻¹.
     pub slater: [f64; 4],
+    /// Approximate electronegativity used by the repulsion model
+    /// (dimensionless, Pauling-like scale).
     pub electronegativity: f64,
+    /// Hubbard parameter `GAM` in Hartree.
+    ///
+    /// Enters the diagonal of the electrostatics (EEQ) matrix.
     pub hubbard: f64,
+    /// Coordination-number shift of the s-shell self-energy.
+    ///
+    /// The tabulated value is multiplied by 0.1 before use, so its effective
+    /// unit is eV per unit coordination number.
     pub kcn_s: f64,
+    /// Coordination-number shift of the p-shell self-energy (scaled by 0.1
+    /// at use, so effectively eV per unit coordination number).
     pub kcn_p: f64,
+    /// Coordination-number shift of the d-shell self-energy (scaled by 0.1
+    /// at use, so effectively eV per unit coordination number).
     pub kcn_d: f64,
+    /// Charge shift of the s-shell self-energy, in eV per unit charge.
     pub kq_shell_s: f64,
+    /// Charge shift of the p-shell self-energy, in eV per unit charge.
     pub kq_shell_p: f64,
+    /// Charge shift of the d-shell self-energy, in eV per unit charge.
     pub kq_shell_d: f64,
+    /// Quadratic charge shift of the atomic self-energy, in eV per unit
+    /// charge squared.
     pub kq_atom: f64,
+    /// Repulsion exponent `α` of this element in Bohr^(−3/2).
+    ///
+    /// The pair exponent is `α_ij = √(α_i α_j)` scaled by the
+    /// electronegativity difference.
     pub rep_alpha: f64,
+    /// Effective nuclear charge used in the pair repulsion, in units of `e`.
     pub rep_zeff: f64,
+    /// Polynomial prefactor of the s-shell Hamiltonian element; dimensionless.
     pub shell_poly_s: f64,
+    /// Polynomial prefactor of the p-shell Hamiltonian element; dimensionless.
     pub shell_poly_p: f64,
+    /// Polynomial prefactor of the d-shell Hamiltonian element; dimensionless.
     pub shell_poly_d: f64,
+    /// Chemical potential `XI` of the EEQ charge model, in Hartree.
     pub eeq_chi: f64,
+    /// Coordination-number dependence of the EEQ chemical potential, in
+    /// Hartree per √(coordination number).
     pub eeq_kcn: f64,
+    /// Width of the EEQ charge distribution of this element, in Bohr.
     pub eeq_width: f64,
 }
 
@@ -2327,12 +2395,24 @@ pub const GFN0_NVALENCE: [u8; 86] = [
 ];
 
 /// SRB reference lengths/factors (xtb approxrab, bohr/eV-free).
+///
+/// The short-range-repulsion (SRB) reference data of xtb's `approxrab`
+/// model: an approximate electronegativity per element, a reference radius
+/// per element, and the per-period polynomial prefactors.
 pub struct Gfn0SrbTables {
+    /// Approximate electronegativity per element (Z = 1..86), dimensionless.
     pub en: [f64; 86],
+    /// SRB reference radius per element (Z = 1..86), in Bohr.
     pub r0: [f64; 86],
+    /// Coordination-number correction to the SRB radius per element
+    /// (Z = 1..86), in Bohr per unit coordination number.
     pub cnfak: [f64; 86],
+    /// Polynomial prefactors `[k1, k2]` per period (periods 1 to 4);
+    /// dimensionless.
     pub p: [[f64; 2]; 4],
 }
+
+/// The GFN0 SRB reference tables (xtb `approxrab`).
 pub const GFN0_SRB: Gfn0SrbTables = Gfn0SrbTables {
     en: [
         2.3008563, 2.7844515, 1.5295608, 1.517147, 2.205683, 2.4964082, 2.8100717, 4.5107844,

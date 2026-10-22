@@ -68,7 +68,7 @@ impl Activation {
 pub struct DenseLayer {
     /// Weight matrix, row-major [out_features × in_features].
     pub weights: Vec<f64>,
-    /// Bias vector [out_features].
+    /// Bias vector, one entry per output feature.
     pub bias: Vec<f64>,
     /// Input dimension.
     pub in_features: usize,
@@ -115,6 +115,7 @@ impl DenseLayer {
 /// A simple feed-forward network composed of sequential dense layers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InferenceNet {
+    /// The dense layers, applied in order by [`InferenceNet::forward`].
     pub layers: Vec<DenseLayer>,
 }
 

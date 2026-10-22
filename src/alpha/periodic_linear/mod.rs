@@ -2,6 +2,20 @@
 //!
 //! Meshes, Bloch phases, and adapters live in core [`crate::kmesh`]
 //! (re-exported below).
+//!
+//! # Stability tier
+//!
+//! **Alpha** — early research tier. Gated behind the
+//! `alpha-periodic-linear` feature flag (alias: `experimental-periodic-linear`,
+//! which requires the `beta-kpm` and `beta-randnla` solvers). The validation
+//! gate is `tests/alpha_periodic_validation.rs` (F88): the k-mesh and band
+//! structure are compared against ASE. Promotion criteria are listed in
+//! [`crate::experimental_status`].
+//!
+//! # Units
+//!
+//! Energies and Fermi levels in **eV**, the density of states in
+//! **states/eV**, and the k-points in **Å⁻¹**.
 
 #[cfg(feature = "experimental-gpu")]
 pub mod gpu;
@@ -10,6 +24,18 @@ pub use crate::kmesh::*;
 
 use nalgebra::DMatrix;
 /// Compute a k-averaged DOS by applying beta KPM to one operator per k-point.
+///
+/// The energies are in **eV** and the density of states in **states/eV**.
+///
+/// # Errors
+///
+/// - `"at least one Hamiltonian operator is required"` when `operators` is
+///   empty.
+/// - `"periodic KPM output requires at least 2 energy points"` when
+///   `config.n_points < 2`.
+/// - `"number of operators must match the number of k-points"` when the
+///   operator count differs from the k-mesh size.
+/// - Any error from the k-mesh builder.
 pub fn compute_periodic_kpm_dos_from_operators(
     operators: &[DMatrix<f64>],
     config: &PeriodicKpmAdapterConfig,
@@ -72,6 +98,19 @@ pub fn compute_periodic_kpm_dos_from_operators(
 }
 
 /// Solve one generalized eigenproblem per k-point with the beta RandNLA solver.
+///
+/// The Hamiltonian and overlap matrices are in **eV**, the band edges and
+/// the Fermi level in **eV**.
+///
+/// # Errors
+///
+/// - `"at least one Hamiltonian matrix is required"` when `hamiltonians` is
+///   empty.
+/// - `"Hamiltonian and overlap lists must have the same length"` when the two
+///   lists differ in length.
+/// - `"number of Hamiltonians must match the number of k-points"` when the
+///   matrix count differs from the k-mesh size.
+/// - Any error from the k-mesh builder.
 pub fn solve_periodic_randnla(
     hamiltonians: &[DMatrix<f64>],
     overlaps: &[DMatrix<f64>],

@@ -1,3 +1,12 @@
+//! Core abstractions shared by every force field in the crate.
+//!
+//! A force field is a list of [`ForceFieldContribution`] terms held in a
+//! [`MolecularForceField`]. Each term evaluates its own energy and adds its
+//! own Cartesian gradient, so new terms can be mixed freely (UFF, MMFF94 and
+//! the distance-geometry restraints all implement the same trait).
+//!
+//! Energies are in kcal/mol and gradients are `dE/dR` in kcal/mol/Å.
+
 /// Core interface for a molecular force-field contribution.
 pub trait ForceFieldContribution: Send + Sync {
     /// Evaluate the energy term and accumulate its Cartesian gradient contribution.
@@ -22,7 +31,14 @@ pub trait ForceFieldContribution: Send + Sync {
 /// chunks instead of to the number of terms (blocker D-H4).
 pub const DETERMINISTIC_TERM_CHUNK: usize = 64;
 
+/// A collection of force-field terms that together define the energy of a system.
+///
+/// The terms are evaluated in registration order and their energies summed;
+/// the total is in kcal/mol for the UFF and MMFF94 terms. The gradient
+/// convention is `dE/dR` (kcal/mol/Å), so the mechanical force is the
+/// negative of the returned gradient.
 pub struct MolecularForceField {
+    /// The registered terms, evaluated in this order.
     pub iter_terms: Vec<Box<dyn ForceFieldContribution>>,
 }
 
@@ -33,6 +49,10 @@ impl Default for MolecularForceField {
 }
 
 /// Sum the energy of a term list per term type, preserving first-seen order.
+///
+/// Returns one `(term_type, energy)` pair per distinct term type, in the order
+/// the types were first encountered. The energies are in kcal/mol and sum to
+/// the total energy of the term list.
 pub fn aggregate_breakdown(
     terms: &[Box<dyn ForceFieldContribution>],
     coords: &[f64],
@@ -54,12 +74,14 @@ pub fn aggregate_breakdown(
 }
 
 impl MolecularForceField {
+    /// Create an empty force field with no registered terms.
     pub fn new() -> Self {
         MolecularForceField {
             iter_terms: Vec::new(),
         }
     }
 
+    /// Register an additional term; terms are evaluated in registration order.
     pub fn insert_dynamic_term(&mut self, term: Box<dyn ForceFieldContribution>) {
         self.iter_terms.push(term);
     }

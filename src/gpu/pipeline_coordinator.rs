@@ -4,6 +4,15 @@
 //! (e.g., orbital grid → marching cubes → isosurface). Enforces
 //! memory budget checks before each dispatch and provides tier-aware
 //! scheduling decisions.
+//!
+//! # Contract with callers
+//!
+//! The coordinator never dispatches anything itself: it *decides* whether a
+//! step should run on the GPU and, when it should not, says why. The CPU
+//! fallback always works, so a [`StepDecision::CpuRequired`] or
+//! [`StepDecision::CpuPreferred`] verdict is a normal outcome, not an error.
+//! The limits it enforces are the WebGPU defaults of **256 invocations per
+//! workgroup** and **128 MB per storage buffer binding**.
 
 use super::memory_budget::{GpuMemoryBudget, MemoryError};
 use super::shader_registry::ShaderDescriptor;
@@ -32,6 +41,9 @@ pub enum DispatchShape {
 
 impl DispatchShape {
     /// Compute workgroup count given a workgroup size.
+    ///
+    /// Returns the number of workgroups to dispatch along each axis, i.e. the
+    /// grid dimension divided by the workgroup size, rounded up.
     pub fn workgroup_count(&self, workgroup_size: [u32; 3]) -> [u32; 3] {
         match self {
             DispatchShape::Linear(n) => [(*n).div_ceil(workgroup_size[0]), 1, 1],
@@ -45,20 +57,35 @@ impl DispatchShape {
 }
 
 /// Outcome of validating a pipeline step.
+///
+/// The three variants correspond to the three scheduling outcomes the
+/// coordinator can reach: run on the GPU, prefer the CPU although the GPU
+/// could do it, or must use the CPU because a hard limit was hit.
 #[derive(Debug, Clone)]
 pub enum StepDecision {
     /// GPU dispatch is feasible and recommended.
     GpuDispatch {
+        /// Number of workgroups to dispatch along each axis.
         workgroup_count: [u32; 3],
+        /// Total number of bytes the step's buffers occupy.
         total_buffer_bytes: u64,
     },
     /// GPU dispatch possible but CPU may be faster for this tier/size.
-    CpuPreferred { reason: String },
+    CpuPreferred {
+        /// Human-readable explanation of the recommendation.
+        reason: String,
+    },
     /// Must fall back to CPU — exceeds GPU limits.
-    CpuRequired { error: MemoryError },
+    CpuRequired {
+        /// The limit that was violated.
+        error: MemoryError,
+    },
 }
 
 /// Coordinates multi-step GPU pipelines.
+///
+/// The coordinator holds the memory budget used for the limit checks and a
+/// flag telling whether a GPU is actually present.
 #[derive(Debug)]
 pub struct PipelineCoordinator {
     budget: GpuMemoryBudget,
@@ -66,6 +93,10 @@ pub struct PipelineCoordinator {
 }
 
 impl PipelineCoordinator {
+    /// Creates a coordinator with an explicit budget and GPU availability flag.
+    ///
+    /// Passing `gpu_available = false` makes every step decision a
+    /// [`StepDecision::CpuPreferred`] with the reason "No GPU available".
     pub fn new(budget: GpuMemoryBudget, gpu_available: bool) -> Self {
         Self {
             budget,
@@ -126,6 +157,11 @@ impl PipelineCoordinator {
     }
 
     /// Validate an entire multi-step pipeline and return decisions for each step.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `steps.len() != shaders.len()`; the two slices are walked
+    /// in lockstep and must describe the same pipeline.
     pub fn plan_pipeline(
         &self,
         steps: &[PipelineStep],
@@ -159,6 +195,15 @@ impl PipelineCoordinator {
     ///
     /// Returns chunk sizes for atoms when the pairwise O(N²) matrix
     /// exceeds the storage buffer binding limit.
+    ///
+    /// `bytes_per_pair` is the number of bytes one pair contributes to the
+    /// pairwise buffer. The returned vector holds `(start, end)` atom-index
+    /// ranges (half-open); a single `(0, n_atoms)` entry means no chunking is
+    /// needed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `bytes_per_pair` is zero (integer division by zero).
     pub fn compute_chunks(&self, n_atoms: usize, bytes_per_pair: u64) -> Vec<(usize, usize)> {
         let max_pairs = self.budget.limits.max_storage_buffer_binding_size / bytes_per_pair;
         let max_chunk = (max_pairs as f64).sqrt() as usize;

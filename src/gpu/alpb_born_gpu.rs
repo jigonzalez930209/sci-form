@@ -1,4 +1,30 @@
 //! GPU-accelerated ALPB Born-radii evaluation.
+//!
+//! Computes the Onufriev–Bashford–Case (OBC) effective Born radii of the
+//! ALPB generalised-Born solvation model on the GPU.
+//!
+//! # Contract with callers
+//!
+//! The CPU path in [`crate::solvation_alpb`] always works; this module is the
+//! optional accelerator. The kernel refuses systems with fewer than three
+//! atoms ("System too small for GPU dispatch") because the launch overhead
+//! dominates there.
+//!
+//! # Units
+//!
+//! `positions` are in **Å**, `probe_radius` in **Å** and the returned radii
+//! in **Å**.
+//!
+//! # Numerical differences w.r.t. the CPU implementation
+//!
+//! The GPU kernel evaluates the *same* OBC functional form
+//! (`1/R_i = 1/or_i − tanh(αψ − βψ² + γψ³)/radius_i` with α = 1.0,
+//! β = 0.8, γ = 4.85) but its pairwise descreening integral is a simplified
+//! algebraic approximation, and it does **not** apply the OBC `−0.009 Å`
+//! offset of the intrinsic radius nor the adaptive radius cap used by
+//! [`crate::solvation_alpb::compute_born_radii`]. The GPU radii therefore
+//! differ slightly from the CPU ones and may exceed 100 Å where the CPU
+//! implementation clamps.
 
 use super::context::{
     bytes_to_f64_vec_from_f32, ceil_div_u32, f32_slice_to_bytes, pack_uniform_values,
@@ -9,6 +35,24 @@ use crate::solvation_alpb::{intrinsic_radius, AlpbBornRadii};
 
 const GPU_DISPATCH_THRESHOLD: usize = 3;
 
+/// Computes OBC effective Born radii on the GPU.
+///
+/// `elements` holds the atomic numbers (proton counts), `positions` the
+/// Cartesian coordinates in **Å** and `probe_radius` the solvent probe radius
+/// in **Å**. The returned [`AlpbBornRadii`] holds the effective radii (Å) and
+/// the intrinsic Bondi radii (Å) that were used as the starting point.
+///
+/// # Errors
+///
+/// - `"System too small for GPU dispatch"` when fewer than three atoms are
+///   supplied.
+/// - `"elements/position length mismatch"` when the two slices differ in
+///   length.
+/// - `"No output from ALPB Born kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"ALPB Born output size mismatch: expected {n}, got {m}"` when the
+///   kernel produced the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_born_radii_gpu(
     ctx: &GpuContext,
     elements: &[u8],
@@ -87,6 +131,13 @@ pub fn compute_born_radii_gpu(
     Ok(AlpbBornRadii { radii, intrinsic })
 }
 
+/// WGSL source of the ALPB Born-radii compute kernel.
+///
+/// One invocation per atom (`@workgroup_size(64, 1, 1)`); the kernel reads
+/// the intrinsic radii (`rho`) and the atom positions and writes one effective
+/// Born radius per atom (in **Å**) to the read-write output buffer. The
+/// uniform block carries `n_atoms`, the OBC parameters α = 1.0, β = 0.8 and
+/// γ = 4.85, and one padding word.
 pub const ALPB_BORN_RADII_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

@@ -18,6 +18,11 @@ use super::basis::{BasisFunction, BasisSet};
 use super::gaussian_integrals::{gaussian_product_center, overlap_1d};
 
 /// 1D dipole integral: ∫ (x−A)^la (x−B)^lb · x · exp(−α(x−A)² − β(x−B)²) dx.
+///
+/// `p` is the combined exponent `α + β` (Bohr⁻²), `p_x`/`pa_x`/`pb_x` are
+/// the x-coordinates (Bohr) of the product centre and of the two primitive
+/// centres, and `prefactor` is the 1D prefactor of the overlap integral.
+/// The result is in Bohr.
 pub fn dipole_1d(la: u32, lb: u32, p_x: f64, pa_x: f64, pb_x: f64, p: f64, prefactor: f64) -> f64 {
     let s = |a: u32, b: u32| overlap_1d(a, b, pa_x, pb_x, p, prefactor);
     let mut d = p_x * s(la, lb);
@@ -85,6 +90,9 @@ fn contracted_dipole(bf_a: &BasisFunction, bf_b: &BasisFunction, component: usiz
 
 /// Dipole matrices `[D^x, D^y, D^z]` in the AO basis (Bohr), with the given
 /// origin (Bohr). Convention: `D^α_μν = ⟨χ_μ| r_α − origin_α |χ_ν⟩`.
+///
+/// The matrix elements are in Bohr (atomic units, i.e. Bohr·e for an electron
+/// charge of 1); multiply by 2.541746 to obtain Debye.
 pub fn dipole_matrices(basis: &BasisSet, origin: [f64; 3]) -> [DMatrix<f64>; 3] {
     let n = basis.n_basis;
     let s = super::overlap_matrix::build_overlap_matrix(basis);

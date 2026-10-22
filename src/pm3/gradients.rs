@@ -35,6 +35,17 @@ pub struct Pm3GradientResult {
 /// density matrix using Hellmann-Feynman + Pulay corrections.
 ///
 /// Returns gradient dE/dR in eV/Å for each atom.
+///
+/// # Errors
+///
+/// Returns `Err` if the underlying PM3 SCF fails (invalid geometry, an
+/// element without PM3 parameters, or a non-convergent SCF).
+///
+/// # Panics
+///
+/// Panics if an element has no PM3 parameters. This cannot happen for the
+/// molecules the SCF accepts, because the parameter lookup is validated
+/// before the gradient is evaluated.
 pub fn compute_pm3_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],

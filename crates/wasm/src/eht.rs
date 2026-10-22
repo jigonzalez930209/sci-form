@@ -47,8 +47,8 @@ fn orbital_grid_from_coefficients(
     spacing: f64,
 ) -> Result<sci_form::eht::VolumetricGrid, String> {
     let (elems, positions) = parse_elements_and_positions(elements, coords_flat)?;
-    let coefficients: Vec<Vec<f64>> =
-        serde_json::from_str(coefficients_json).map_err(|e| bad_json("'coefficients'", coefficients_json, &e))?;
+    let coefficients: Vec<Vec<f64>> = serde_json::from_str(coefficients_json)
+        .map_err(|e| bad_json("'coefficients'", coefficients_json, &e))?;
     let basis = sci_form::eht::basis::build_basis(&elems, &positions);
 
     if basis.is_empty() {
@@ -317,11 +317,11 @@ pub fn eht_volumetric_grid_info(
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let (origin, dims) = match sci_form::eht::volume::compute_grid_extents(&positions, padding, spacing)
-    {
-        Ok(v) => v,
-        Err(e) => return json_error(&e),
-    };
+    let (origin, dims) =
+        match sci_form::eht::volume::compute_grid_extents(&positions, padding, spacing) {
+            Ok(v) => v,
+            Err(e) => return json_error(&e),
+        };
     grid_info_json(origin, spacing, dims)
 }
 

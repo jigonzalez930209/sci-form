@@ -93,7 +93,10 @@ fn compute_mmff94_energy(smiles: &str, coords: Vec<f64>) -> PyResult<f64> {
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute_uff_energy, m)?)?;
-    m.add_function(wrap_pyfunction!(compute_uff_energy_with_aromatic_heuristics, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        compute_uff_energy_with_aromatic_heuristics,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(compute_empirical_pka, m)?)?;
     m.add_function(wrap_pyfunction!(compute_mmff94_energy, m)?)?;
     m.add_class::<UffHeuristicEnergyPy>()?;

@@ -7,11 +7,11 @@ use nalgebra::DMatrix;
 pub struct MolecularSystem {
     /// Atomic numbers (Z) for each atom.
     pub atomic_numbers: Vec<u8>,
-    /// Cartesian coordinates in Bohr, shape [n_atoms][3].
+    /// Cartesian coordinates in Bohr, shape `[n_atoms][3]`.
     pub positions_bohr: Vec<[f64; 3]>,
-    /// Total molecular charge (0 = neutral).
+    /// Total molecular charge in units of `e` (0 = neutral).
     pub charge: i32,
-    /// Spin multiplicity (1 = singlet, 2 = doublet, etc.).
+    /// Spin multiplicity `2S + 1` (1 = singlet, 2 = doublet, etc.).
     pub multiplicity: u32,
 }
 
@@ -154,9 +154,9 @@ impl MolecularSystem {
 pub struct ScfResult {
     /// Orbital energies sorted ascending (Hartree).
     pub orbital_energies: Vec<f64>,
-    /// MO coefficient matrix C (n_basis × n_basis).
+    /// MO coefficient matrix C (n_basis × n_basis), dimensionless.
     pub mo_coefficients: DMatrix<f64>,
-    /// Density matrix P (n_basis × n_basis).
+    /// Density matrix P (n_basis × n_basis), dimensionless.
     pub density_matrix: DMatrix<f64>,
     /// Total electronic energy (Hartree).
     pub electronic_energy: f64,
@@ -170,7 +170,7 @@ pub struct ScfResult {
     pub lumo_energy: Option<f64>,
     /// HOMO-LUMO gap (eV).
     pub gap_ev: f64,
-    /// Mulliken charges per atom.
+    /// Mulliken charges per atom, in units of `e`.
     pub mulliken_charges: Vec<f64>,
     /// Number of SCF iterations performed.
     pub scf_iterations: usize,
@@ -180,9 +180,9 @@ pub struct ScfResult {
     pub n_basis: usize,
     /// Number of electrons.
     pub n_electrons: usize,
-    /// Overlap matrix S.
+    /// Overlap matrix S (n_basis × n_basis), dimensionless.
     pub overlap_matrix: DMatrix<f64>,
-    /// Fock matrix F at convergence.
+    /// Fock matrix F at convergence, in Hartree.
     pub fock_matrix: DMatrix<f64>,
     /// Error message when the calculation could not be run at all
     /// (invalid geometry). `None` for a completed calculation.

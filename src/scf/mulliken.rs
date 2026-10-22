@@ -10,13 +10,16 @@ use nalgebra::DMatrix;
 pub struct MullikenResult {
     /// Gross atomic populations (electrons per atom).
     pub populations: Vec<f64>,
-    /// Partial charges (= Z - population).
+    /// Partial charges in units of `e` (= Z − population).
     pub charges: Vec<f64>,
-    /// Per-orbital populations.
+    /// Per-orbital populations (electrons per basis function).
     pub orbital_populations: Vec<f64>,
 }
 
 /// Compute Mulliken population analysis.
+///
+/// The density and overlap matrices are dimensionless; the returned
+/// populations are electron counts and the charges are in units of `e`.
 pub fn mulliken_analysis(
     density: &DMatrix<f64>,
     overlap: &DMatrix<f64>,

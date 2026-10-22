@@ -1,65 +1,155 @@
 //! SMARTS parser: converts a SMARTS string into a pattern graph.
+//!
+//! The parser covers the subset of SMARTS used by the CSD torsion-preference
+//! patterns: atom primitives (element, aromaticity, hydrogen count, degree,
+//! ring membership and size, formal charge, hybridisation, chirality and
+//! recursive `$(...)` queries), bond primitives (single, double, triple,
+//! aromatic, any, ring/not-ring) and the logical combinators AND, OR and
+//! NOT.
+//!
+//! The result is a small pattern graph ([`SmartsPattern`]) of atom queries
+//! and bond queries, which [`crate::smarts::matcher`] then matches against a
+//! molecule.
 
 use crate::graph::ChiralType;
 
 /// A parsed SMARTS pattern as a small graph of atom/bond queries.
+///
+/// The atoms and bonds are stored in parallel vectors; a bond refers to its
+/// endpoints by index into [`SmartsPattern::atoms`].
 #[derive(Debug, Clone)]
 pub struct SmartsPattern {
+    /// The atom queries of the pattern, in the order they were written.
     pub atoms: Vec<SmartsAtom>,
+    /// The bond queries of the pattern.
     pub bonds: Vec<SmartsBond>,
 }
 
+/// One atom of a SMARTS pattern.
 #[derive(Debug, Clone)]
 pub struct SmartsAtom {
+    /// The primitive (or combination of primitives) the atom must satisfy.
     pub query: AtomQuery,
-    pub map_idx: Option<u8>, // :N atom map number
+    /// The SMARTS atom-map number (`:N`) if the pattern declares one.
+    pub map_idx: Option<u8>,
 }
 
+/// One bond of a SMARTS pattern.
 #[derive(Debug, Clone)]
 pub struct SmartsBond {
+    /// Index of the first atom in [`SmartsPattern::atoms`].
     pub from: usize,
+    /// Index of the second atom in [`SmartsPattern::atoms`].
     pub to: usize,
+    /// The primitive (or combination of primitives) the bond must satisfy.
     pub query: BondQuery,
 }
 
+/// An atom-level SMARTS primitive.
+///
+/// The combinator variants [`AtomQuery::And`], [`AtomQuery::Or`] and
+/// [`AtomQuery::Not`] mirror the SMARTS logical operators; the primitive
+/// variants correspond one-to-one to the SMARTS atom primitives and carry
+/// the argument of that primitive (an atomic number, a count, a ring size,
+/// …).
 #[derive(Debug, Clone)]
 pub enum AtomQuery {
-    True,                  // matches any atom (used for *)
-    Element(u8),           // aliphatic element by atomic number
-    AromaticElem(u8),      // aromatic element (c=6, n=7, o=8, s=16, p=15)
-    AnyAromatic,           // 'a'
-    AnyAliphatic,          // 'A'
-    AtomicNum(u8),         // #N
-    NotAtomicNum(u8),      // !#N
-    TotalH(u8),            // HN
-    TotalDegree(u8),       // XN (total connections including implicit H)
-    HeavyDegree(u8),       // DN (connections to non-H)
-    RingBondCount(u8),     // xN
-    InRing,                // R (in any ring)
-    RingSize(u8),          // rN (in ring of exactly size N)
-    RingSizeRange(u8, u8), // r{N-M}
-    RingSizeMin(u8),       // r{N-}
-    FormalCharge(i8),      // +N or -N
-    Hybridization(u8),     // ^N
-    RingCount(u8),         // RN (number of SSSR rings containing this atom)
+    /// Matches any atom; the SMARTS `*` primitive.
+    True,
+    /// Matches an aliphatic atom of the given element, by atomic number
+    /// (SMARTS `C`, `N`, `Cl`, …).
+    Element(u8),
+    /// Matches an aromatic atom of the given element, by atomic number
+    /// (SMARTS `c`, `n`, `o`, `s`, `p`, `se`, `as`).
+    AromaticElem(u8),
+    /// Matches any aromatic atom (SMARTS `a`).
+    AnyAromatic,
+    /// Matches any aliphatic atom (SMARTS `A`).
+    AnyAliphatic,
+    /// Matches an atom of the given atomic number regardless of aromaticity
+    /// (SMARTS `#N`).
+    AtomicNum(u8),
+    /// Matches an atom whose atomic number differs from the given one
+    /// (SMARTS `!#N`).
+    ///
+    /// The parser does not emit this variant — a leading `!` becomes
+    /// [`AtomQuery::Not`] — but the matcher understands it.
+    NotAtomicNum(u8),
+    /// Matches an atom with exactly the given total hydrogen count
+    /// (SMARTS `HN`).
+    TotalH(u8),
+    /// Matches an atom with exactly the given total connection count,
+    /// hydrogens included (SMARTS `XN`).
+    TotalDegree(u8),
+    /// Matches an atom with exactly the given number of connections to
+    /// non-hydrogen atoms (SMARTS `DN`).
+    HeavyDegree(u8),
+    /// Matches an atom that has exactly the given number of ring bonds
+    /// (SMARTS `xN`).
+    RingBondCount(u8),
+    /// Matches an atom that is part of any ring (SMARTS `R`).
+    InRing,
+    /// Matches an atom that is part of a ring of exactly the given size
+    /// (SMARTS `rN`).
+    RingSize(u8),
+    /// Matches an atom that is part of a ring whose size lies between the
+    /// two bounds, inclusive (SMARTS `r{N-M}`).
+    RingSizeRange(u8, u8),
+    /// Matches an atom that is part of a ring of at least the given size
+    /// (SMARTS `r{N-}`).
+    RingSizeMin(u8),
+    /// Matches an atom with exactly the given formal charge, in units of the
+    /// elementary charge (SMARTS `+N` / `-N`).
+    FormalCharge(i8),
+    /// Matches an atom with the given hybridisation code: 1 = sp, 2 = sp²,
+    /// 3 = sp³ (SMARTS `^N`).
+    Hybridization(u8),
+    /// Matches an atom that belongs to exactly the given number of
+    /// smallest-set-of-smallest-rings (SMARTS `RN`).
+    RingCount(u8),
+    /// Matches an atom with the given tetrahedral configuration
+    /// (SMARTS `@` / `@@`).
     Chiral(ChiralType),
+    /// Matches an atom that is itself the anchor of an embedded pattern
+    /// (SMARTS `$(...)`).
     Recursive(Box<SmartsPattern>),
+    /// Matches an atom that satisfies every one of the sub-queries
+    /// (juxtaposition or explicit `&`).
     And(Vec<AtomQuery>),
+    /// Matches an atom that satisfies at least one of the sub-queries
+    /// (SMARTS `,`).
     Or(Vec<AtomQuery>),
+    /// Matches an atom that does *not* satisfy the sub-query (SMARTS `!`).
     Not(Box<AtomQuery>),
 }
 
+/// A bond-level SMARTS primitive.
+///
+/// As with [`AtomQuery`], the combinator variants mirror the SMARTS logical
+/// operators applied to bond primitives.
 #[derive(Debug, Clone)]
 pub enum BondQuery {
+    /// Matches a single bond (SMARTS `-`).
     Single,
+    /// Matches a double bond (SMARTS `=`).
     Double,
+    /// Matches a triple bond (SMARTS `#`).
     Triple,
-    Aromatic, // ':'
-    Any,      // '~'
-    Ring,     // '@'
-    NotRing,  // '!@'
-    Implicit, // default (single or aromatic)
+    /// Matches an aromatic bond (SMARTS `:`).
+    Aromatic,
+    /// Matches any bond (SMARTS `~`).
+    Any,
+    /// Matches a bond that is part of a ring (SMARTS `@`).
+    Ring,
+    /// Matches a bond that is *not* part of a ring (SMARTS `!@`).
+    NotRing,
+    /// The default bond of an unspecified SMARTS bond: matches a single or
+    /// an aromatic bond.
+    Implicit,
+    /// Matches a bond that satisfies every one of the sub-queries
+    /// (several bond primitives juxtaposed, e.g. `!@;-`).
     And(Vec<BondQuery>),
+    /// Matches a bond that does *not* satisfy the sub-query (SMARTS `!`).
     Not(Box<BondQuery>),
 }
 

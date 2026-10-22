@@ -12,51 +12,94 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 /// Hybridization state of an atom, used to compute bond angles and geometry.
 pub enum Hybridization {
+    /// sp hybridised: two σ-bonds, linear geometry (180°).
     SP,
+    /// sp² hybridised: three σ-bonds, trigonal-planar geometry (120°).
     SP2,
+    /// sp³ hybridised: four σ-bonds, tetrahedral geometry (109.5°).
     SP3,
+    /// sp³d hybridised: five σ-bonds, trigonal-bipyramidal geometry.
     SP3D,
+    /// sp³d² hybridised: six σ-bonds, octahedral geometry.
     SP3D2,
+    /// Not assigned yet (e.g. before SMILES parsing) or not one of the
+    /// five classical states.
     Unknown,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 /// Tetrahedral chirality type derived from the SMILES `@`/`@@` specification.
 pub enum ChiralType {
+    /// No tetrahedral stereochemistry assigned.
     Unspecified,
-    TetrahedralCW,  // R usually
-    TetrahedralCCW, // S usually
+    /// Clockwise (`@@`) tetrahedral configuration, usually the *R* descriptor.
+    TetrahedralCW,
+    /// Counter-clockwise (`@`) tetrahedral configuration, usually the *S* descriptor.
+    TetrahedralCCW,
+    /// A stereochemistry that is not tetrahedral. The SMILES parser does not
+    /// currently produce this variant.
     Other,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 /// E/Z (cis/trans) stereochemistry of a double bond.
 pub enum BondStereo {
+    /// No double-bond stereochemistry specified.
     None,
+    /// *E* configuration: the higher-priority substituents are on opposite sides.
     E,
+    /// *Z* configuration: the higher-priority substituents are on the same side.
     Z,
+    /// Stereochemistry not fixed to one configuration: the bond may be either
+    /// *E* or *Z*. The SMILES parser does not currently produce this variant.
     Any,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 /// Bond order: single, double, triple, aromatic, or unknown.
 pub enum BondOrder {
+    /// Single bond (σ only).
     Single,
+    /// Double bond (one σ plus one π).
     Double,
+    /// Triple bond (one σ plus two π).
     Triple,
+    /// Aromatic bond, as used in the aromatic SMILES form.
     Aromatic,
+    /// Bond order not determined.
     Unknown,
 }
 
 #[derive(Clone, Debug)]
 /// A single atom node in the molecular graph.
 pub struct Atom {
+    /// Atomic number (proton number Z) of the element, e.g. 6 for carbon.
     pub element: u8,
+    /// Cartesian coordinates of the atom in **Ångström**.
     pub position: Vector3<f32>,
+    /// Net atomic charge carried by the atom, in units of the elementary
+    /// charge (**e**).
+    ///
+    /// A freshly parsed molecule carries the SMILES formal charge here (0 for
+    /// a neutral atom); the field is a float so that a partial charge can be
+    /// stored instead. The GPU force-field paths read it: MMFF94 uses it in
+    /// its Coulomb term and the GPU nuclear-attraction matrix uses it as the
+    /// nuclear charge.
     pub charge: f32,
+    /// Formal integer charge in units of the elementary charge (**e**).
+    ///
+    /// Negative for anions, positive for cations, 0 for a neutral atom.
     pub formal_charge: i8,
+    /// Hybridization state assigned during SMILES parsing.
     pub hybridization: Hybridization,
+    /// Tetrahedral stereochemistry assigned during SMILES parsing.
     pub chiral_tag: ChiralType,
+    /// Hydrogen count written inside the SMILES brackets of this atom.
+    ///
+    /// It is 0 for atoms that were not written in brackets and for the
+    /// hydrogen atoms that the parser adds for implicit-hydrogen
+    /// completion: those are added as separate graph nodes. For a bracketed
+    /// atom the value is the exact hydrogen count of that atom.
     pub explicit_h: u8,
     /// True for atoms written inside SMILES brackets: their hydrogen count is
     /// exactly `explicit_h` and no implicit hydrogens are added.
@@ -66,7 +109,9 @@ pub struct Atom {
 #[derive(Clone, Debug)]
 /// A bond edge in the molecular graph.
 pub struct Bond {
+    /// Bond order of the connection.
     pub order: BondOrder,
+    /// Double-bond stereochemistry of the connection.
     pub stereo: BondStereo,
 }
 
@@ -92,7 +137,12 @@ impl Atom {
 /// Constructed from a SMILES string via [`Molecule::from_smiles`].
 #[derive(Clone)]
 pub struct Molecule {
+    /// Undirected multigraph whose nodes are [`Atom`]s and whose edges are
+    /// [`Bond`]s. Node indices are the atom indices used throughout the
+    /// crate.
     pub graph: UnGraph<Atom, Bond>,
+    /// Name of the molecule; for molecules parsed from SMILES this is the
+    /// original SMILES string.
     pub name: String,
 }
 

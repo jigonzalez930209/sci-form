@@ -1,30 +1,67 @@
+//! Coordination-topology analysis of transition-metal centres.
+//!
+//! Given the atomic numbers and Cartesian coordinates of a molecule, this
+//! module finds the transition-metal centres, determines which atoms are
+//! coordinated to them from a covalent-radius criterion, and classifies the
+//! resulting coordination geometry by comparing the ligand directions with
+//! the idealised directions of the common polyhedra.
+//!
+//! The geometry classification is purely geometric: the metal–ligand
+//! vectors are matched against the ideal directions of the linear,
+//! trigonal, tetrahedral, square-planar, trigonal-bipyramidal and octahedral
+//! polyhedra by minimising `1 − v̂ · î` over all assignments, and the winning
+//! geometry is reported together with a dimensionless quality score.
+
 use serde::{Deserialize, Serialize};
 
+/// Best-fit coordination geometry of a metal centre.
+///
+/// The variant is selected by comparing the observed metal–ligand directions
+/// with the ideal directions of the candidate polyhedra; it is a guess from
+/// the geometry alone and carries no energetic information.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CoordinationGeometryGuess {
+    /// Two-coordinate, 180° (a linear MCl₂ fragment).
     Linear,
+    /// Three-coordinate, 120° planar.
     Trigonal,
+    /// Four-coordinate, 109.5° tetrahedral (e.g. ZnCl₄²⁻).
     Tetrahedral,
+    /// Four-coordinate, square planar with 90° angles (e.g. PtCl₄²⁻).
     SquarePlanar,
+    /// Five-coordinate, trigonal bipyramidal (e.g. Fe(CO)₅).
     TrigonalBipyramidal,
+    /// Six-coordinate, octahedral (e.g. W(CO)₆).
     Octahedral,
+    /// Geometry could not be assigned (unsupported coordination number).
     Unknown,
 }
 
+/// A transition-metal centre found by [`analyze_topology`].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetalCoordinationCenter {
+    /// Index of the metal atom in the input arrays.
     pub atom_index: usize,
+    /// Atomic number (Z) of the metal.
     pub element: u8,
+    /// Indices of the atoms classified as ligands of this metal.
     pub ligand_indices: Vec<usize>,
+    /// Number of coordinated ligands (the coordination number).
     pub coordination_number: usize,
+    /// Best-fit coordination geometry of the ligand arrangement.
     pub geometry: CoordinationGeometryGuess,
+    /// Dimensionless quality of the geometry fit, in the range 0.0 (poor) to
+    /// 1.0 (perfect match with the ideal polyhedron).
     pub geometry_score: f64,
 }
 
+/// Result of a coordination-topology analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TopologyAnalysisResult {
+    /// The transition-metal centres that were located.
     pub metal_centers: Vec<MetalCoordinationCenter>,
+    /// Human-readable caveats, e.g. when no metal centre was found.
     pub warnings: Vec<String>,
 }
 
@@ -168,6 +205,43 @@ fn classify_geometry(vectors: &[[f64; 3]]) -> (CoordinationGeometryGuess, f64) {
     (best_geometry, score)
 }
 
+/// Locate the transition-metal centres of a molecule and classify their
+/// coordination geometry.
+///
+/// `elements` holds the atomic numbers (Z) of the atoms and `positions` their
+/// Cartesian coordinates in **Ångström**; the two slices are walked in
+/// parallel and the shorter one bounds the analysis, so a missing trailing
+/// coordinate is treated as "no atom" rather than causing a panic.
+///
+/// An atom counts as a ligand of a metal when its distance to the metal is
+/// at most `1.3 · (r_covalent(metal) + r_covalent(ligand)) + 0.25 Å` and it
+/// is not a hydrogen. Only elements with Z in the d-block ranges 21–30,
+/// 39–48 and 72–80 are treated as metal centres.
+///
+/// The returned geometry is the candidate polyhedron whose ideal directions
+/// best match the observed metal–ligand vectors; the accompanying
+/// `geometry_score` (0.0–1.0) reports how good that match is. The result is a
+/// geometric guess: it does not consider oxidation state, d-electron count or
+/// ligand-field stabilisation.
+///
+/// # Example
+///
+/// ```
+/// use sci_form::topology::analyze_topology;
+///
+/// // A square-planar Pt(II) centre with four chloride ligands.
+/// let elements = [78u8, 17, 17, 17, 17];
+/// let positions = [
+///     [0.0, 0.0, 0.0],
+///     [2.32, 0.0, 0.0],
+///     [-2.32, 0.0, 0.0],
+///     [0.0, 2.05, 0.0],
+///     [0.0, -2.05, 0.0],
+/// ];
+/// let result = analyze_topology(&elements, &positions);
+/// assert_eq!(result.metal_centers.len(), 1);
+/// assert_eq!(result.metal_centers[0].coordination_number, 4);
+/// ```
 pub fn analyze_topology(elements: &[u8], positions: &[[f64; 3]]) -> TopologyAnalysisResult {
     let mut metal_centers = Vec::new();
 

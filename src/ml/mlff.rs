@@ -128,7 +128,7 @@ fn compute_energy_only(elements: &[u8], positions: &[[f64; 3]], config: &MlffCon
 pub struct MlffDynamicsResult {
     /// Total energy (eV).
     pub energy: f64,
-    /// Flat gradient array [3*n_atoms]: dE/dx0, dE/dy0, dE/dz0, ...
+    /// Flat gradient array of `3 * n_atoms` entries: dE/dx0, dE/dy0, dE/dz0, ...
     pub gradient_flat: Vec<f64>,
 }
 

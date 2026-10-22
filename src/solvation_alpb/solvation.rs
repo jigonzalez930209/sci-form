@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 /// surface tension 0.005 kcal/(mol·Å²).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlpbConfig {
-    /// Solvent dielectric constant.
+    /// Solvent dielectric constant (dimensionless; water is 78.5).
     pub solvent_dielectric: f64,
     /// Probe radius for SASA (Å).
     pub probe_radius: f64,
@@ -50,7 +50,8 @@ pub struct AlpbResult {
     pub total_energy: f64,
     /// Born radii (Å).
     pub born_radii: Vec<f64>,
-    /// ALPB correction factor.
+    /// ALPB correction factor (dimensionless; Klamt's charge-penetration
+    /// correction).
     pub alpb_factor: f64,
 }
 

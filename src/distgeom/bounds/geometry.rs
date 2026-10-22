@@ -294,6 +294,13 @@ fn uff_chi(element: u8) -> f64 {
     }
 }
 
+/// Reference bond length between two bonded atoms, in Å.
+///
+/// The value follows RDKit's `set12Bounds`: the UFF equilibrium bond-length
+/// formula `r_ij = r_i + r_j + r_BO - r_EN` with the UFF radii of the two
+/// atom types (conjugated sp² atoms use the `_R` radius) and the
+/// bond-order and electronegativity corrections. The length is used as the
+/// centre of the 1-2 distance bounds.
 pub fn get_bond_length(mol: &Molecule, n1: NodeIndex, n2: NodeIndex) -> f64 {
     let a1 = &mol.graph[n1];
     let a2 = &mol.graph[n2];

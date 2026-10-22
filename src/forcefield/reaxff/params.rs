@@ -18,11 +18,21 @@ pub struct ReaxffAtomParams {
     /// ππ bond equilibrium distance (Å).
     pub r_pipi: f64,
     /// Bond order parameters.
+    ///
+    /// The six `p_bo` values are the empirical exponents of the ReaxFF
+    /// bond-order function (dimensionless); they are published in the
+    /// `ffield.reaxff` files of van Duin et al., *J. Phys. Chem. A* **2001**,
+    /// 105, 9393.
     pub p_bo1: f64,
+    /// Second bond-order exponent (dimensionless).
     pub p_bo2: f64,
+    /// Third bond-order exponent (dimensionless).
     pub p_bo3: f64,
+    /// Fourth bond-order exponent (dimensionless).
     pub p_bo4: f64,
+    /// Fifth bond-order exponent (dimensionless).
     pub p_bo5: f64,
+    /// Sixth bond-order exponent (dimensionless).
     pub p_bo6: f64,
     /// Valence (nominal number of bonds).
     pub valence: f64,
@@ -40,13 +50,13 @@ pub struct ReaxffParams {
     /// Bond energy exponent (global fallback; per-pair values in
     /// [`ReaxffParams::pair_table`] take precedence).
     pub p_be2: f64,
-    /// Over-coordination penalty.
+    /// Over-coordination penalty (kcal/mol).
     pub p_ovun1: f64,
-    /// Over-coordination threshold.
+    /// Over-coordination threshold (dimensionless bond-order sum).
     pub p_val3: f64,
-    /// Under-coordination penalty.
+    /// Under-coordination penalty (kcal/mol).
     pub p_ovun5: f64,
-    /// Equilibrium angles (radians) [i][j][k].
+    /// Equilibrium angles (radians), indexed as `[i][j][k]`.
     pub equilibrium_angles: Vec<f64>,
     /// Angle force constants.
     pub angle_force_constants: Vec<f64>,

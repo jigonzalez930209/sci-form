@@ -13,13 +13,13 @@ use super::overlap_matrix::build_overlap_matrix;
 /// All one-electron matrices needed for an SCF calculation.
 #[derive(Debug, Clone)]
 pub struct CoreMatrices {
-    /// Overlap matrix S (n_basis × n_basis).
+    /// Overlap matrix S (n_basis × n_basis), dimensionless.
     pub overlap: DMatrix<f64>,
-    /// Kinetic energy matrix T (n_basis × n_basis).
+    /// Kinetic energy matrix T (n_basis × n_basis), in Hartree.
     pub kinetic: DMatrix<f64>,
-    /// Nuclear attraction matrix V (n_basis × n_basis).
+    /// Nuclear attraction matrix V (n_basis × n_basis), in Hartree.
     pub nuclear: DMatrix<f64>,
-    /// Core Hamiltonian H⁰ = T + V (n_basis × n_basis).
+    /// Core Hamiltonian H⁰ = T + V (n_basis × n_basis), in Hartree.
     pub core_hamiltonian: DMatrix<f64>,
     /// Number of basis functions.
     pub n_basis: usize,
@@ -34,6 +34,12 @@ impl CoreMatrices {
         Self::build_with_charges(basis, &charges, positions_bohr)
     }
 
+    /// Build all one-electron matrices using explicit nuclear charges.
+    ///
+    /// `charges` holds one charge per atom in units of `e`; it may differ
+    /// from the nuclear charge (e.g. the effective charges of an ECP
+    /// valence calculation). `positions_bohr` holds the Cartesian centres
+    /// in Bohr.
     pub fn build_with_charges(
         basis: &BasisSet,
         charges: &[f64],
@@ -57,11 +63,26 @@ impl CoreMatrices {
 /// Compute nuclear repulsion energy.
 ///
 /// E_nuc = Σ_{A>B} Z_A · Z_B / |R_A - R_B|
+///
+/// `positions_bohr` holds the Cartesian centres in Bohr and the returned
+/// energy is in Hartree.
 pub fn nuclear_repulsion_energy(elements: &[u8], positions_bohr: &[[f64; 3]]) -> f64 {
     let charges: Vec<f64> = elements.iter().map(|&z| z as f64).collect();
     nuclear_repulsion_energy_charges(&charges, positions_bohr)
 }
 
+/// Compute the nuclear repulsion energy with explicit nuclear charges.
+///
+/// `charges` holds one charge per atom in units of `e` and
+/// `positions_bohr` the Cartesian centres in Bohr. The returned energy is
+/// in Hartree (atomic units: the Coulomb constant `e²/4πε₀` is 1).
+///
+/// # Panics
+///
+/// This function never panics: the charge and position slices are indexed
+/// in lock-step and no assertion is made on their lengths. If `charges` is
+/// shorter than `positions_bohr`, the extra atoms are ignored; if it is
+/// longer, the extra charges are ignored.
 pub fn nuclear_repulsion_energy_charges(charges: &[f64], positions_bohr: &[[f64; 3]]) -> f64 {
     let n_atoms = charges.len();
     let mut e_nuc = 0.0;

@@ -2,6 +2,16 @@
 //!
 //! Spectral bounds estimation, matrix rescaling, Chebyshev recursion,
 //! and Jackson kernel damping for Gibbs oscillation suppression.
+//!
+//! # Stability tier
+//!
+//! **Beta** — gated behind the `beta-kpm` feature flag; the validation gate
+//! is `tests/beta_kpm_validation.rs` (F91).
+//!
+//! # Units
+//!
+//! The matrices and the spectral bounds are in the energy unit of the caller
+//! (**eV** for the electronic-structure backends of this crate).
 
 use nalgebra::DMatrix;
 

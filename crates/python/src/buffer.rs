@@ -58,8 +58,11 @@ extern "C" {
     /// Request a buffer view of `obj`.
     ///
     /// Returns 0 on success and -1 with a Python exception set on failure.
-    fn PyObject_GetBuffer(obj: *mut pyo3::ffi::PyObject, view: *mut CPyBuffer, flags: c_int)
-        -> c_int;
+    fn PyObject_GetBuffer(
+        obj: *mut pyo3::ffi::PyObject,
+        view: *mut CPyBuffer,
+        flags: c_int,
+    ) -> c_int;
 
     /// Release a buffer view previously obtained with `PyObject_GetBuffer`.
     fn PyBuffer_Release(view: *mut CPyBuffer);

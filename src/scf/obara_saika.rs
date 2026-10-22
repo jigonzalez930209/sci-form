@@ -68,21 +68,26 @@ fn erf_accurate(x: f64) -> f64 {
 }
 
 /// Shell pair data pre-computed for efficient ERI evaluation.
+///
+/// All lengths are in Bohr and all exponents in Bohr⁻², matching the rest of
+/// the `scf` integral engine.
 #[derive(Debug, Clone)]
 pub struct ShellPairData {
-    /// Combined exponent p = α + β.
+    /// Combined exponent p = α + β, in Bohr⁻².
     pub p: f64,
-    /// Reduced exponent μ = αβ / (α + β).
+    /// Reduced exponent μ = αβ / (α + β), in Bohr⁻².
     pub mu: f64,
-    /// Gaussian product center P = (αA + βB) / p.
+    /// Gaussian product center P = (αA + βB) / p, in Bohr.
     pub center_p: [f64; 3],
-    /// Pre-factor exp(-μ|AB|²).
+    /// Pre-factor exp(−μ|AB|²), dimensionless.
     pub k_ab: f64,
-    /// Original centers.
+    /// Original centers, in Bohr.
     pub center_a: [f64; 3],
+    /// Original centers, in Bohr.
     pub center_b: [f64; 3],
-    /// Exponents.
+    /// Exponent of the first primitive, in Bohr⁻².
     pub alpha: f64,
+    /// Exponent of the second primitive, in Bohr⁻².
     pub beta: f64,
 }
 
@@ -116,6 +121,10 @@ impl ShellPairData {
 /// Taylor series for x <= 6 (no cancellation issues), F_0 from the
 /// machine-precision erf plus upward recursion above (stable there:
 /// the 2x denominator dominates and exp(-x) is negligible).
+///
+/// The function is dimensionless; `x` is the dimensionless Boys argument
+/// (the product of the Gaussian exponents and the squared internuclear
+/// distance, both in atomic units).
 pub fn boys_function(n: usize, x: f64) -> f64 {
     if x <= 0.0 {
         return 1.0 / (2 * n + 1) as f64;
@@ -153,6 +162,9 @@ pub fn boys_function(n: usize, x: f64) -> f64 {
 /// (μν|λσ) = 2π^{5/2} / (pq√(p+q)) · K_ab · K_cd · F_0(T)
 ///
 /// where T = ρ|PQ|², ρ = pq/(p+q)
+///
+/// The result is in Hartree (the exponents are in Bohr⁻² and the centres in
+/// Bohr, so the integral is an atomic-unit Coulomb integral).
 pub fn eri_ssss(sp_ab: &ShellPairData, sp_cd: &ShellPairData) -> f64 {
     let p = sp_ab.p;
     let q = sp_cd.p;
@@ -167,6 +179,9 @@ pub fn eri_ssss(sp_ab: &ShellPairData, sp_cd: &ShellPairData) -> f64 {
 /// Compute Schwarz bound for a shell pair: Q_ij = sqrt((ij|ij)).
 ///
 /// Used for pre-screening: skip (ij|kl) when Q_ij * Q_kl < threshold.
+///
+/// The bound is in √Hartree (the ERI is in Hartree), so the screening
+/// threshold it is compared against must be in the same units.
 pub fn schwarz_bound(alpha: f64, center_a: [f64; 3], beta: f64, center_b: [f64; 3]) -> f64 {
     let sp = ShellPairData::new(alpha, center_a, beta, center_b);
     let eri = eri_ssss(&sp, &sp);
@@ -175,7 +190,11 @@ pub fn schwarz_bound(alpha: f64, center_a: [f64; 3], beta: f64, center_b: [f64; 
 
 /// Batch ERI computation for a list of shell pairs with Schwarz screening.
 ///
-/// Returns the non-zero ERIs as (i, j, k, l, value) tuples.
+/// Returns the non-zero ERIs as (i, j, k, l, value) tuples, with the
+/// values in Hartree.
+///
+/// `schwarz_q` holds one Schwarz bound per shell pair (in √Hartree) and
+/// `threshold` the screening threshold in the same units.
 pub fn compute_eris_screened(
     shell_pairs: &[ShellPairData],
     schwarz_q: &[f64],

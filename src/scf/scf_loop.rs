@@ -85,6 +85,12 @@ pub fn run_scf(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
 }
 
 /// Run a complete Hartree-Fock SCF calculation, reporting invalid input.
+///
+/// # Errors
+///
+/// Returns `Err` if the molecular system fails validation (mismatched atom
+/// count or a non-finite coordinate). A non-convergent SCF is *not* an
+/// error: it is reported through [`ScfResult::converged`].
 pub fn try_run_scf(system: &MolecularSystem, config: &ScfConfig) -> Result<ScfResult, String> {
     system.validate_geometry()?;
     Ok(run_scf_impl(system, config))

@@ -1,6 +1,17 @@
 //! Kabsch algorithm for optimal rotation alignment and RMSD computation.
 //!
 //! Provides a clean f64 public API for molecular alignment.
+//!
+//! The superposition follows Kabsch, *Acta Cryst.* **1976**, A32, 922: the
+//! centroids are removed, the optimal proper rotation is obtained from the
+//! singular-value decomposition of the covariance matrix, and the smallest
+//! singular value is sign-flipped when needed so that the result is a proper
+//! rotation (`det(R) = +1`) rather than a reflection. The alternative
+//! quaternion route follows Coutsias, Dill & Church, *Protein Sci.* **2004**,
+//! 13, 275, and is numerically more stable for near-degenerate cases.
+//!
+//! Coordinates are flat `[x0, y0, z0, x1, ...]` arrays in Å; the returned
+//! RMSD and translation are in Å.
 
 /// Result of a Kabsch alignment.
 #[derive(Debug, Clone)]
@@ -14,9 +25,13 @@ pub struct AlignmentResult {
     pub rmsd: f64,
     /// 3×3 rotation matrix (row-major).
     pub rotation: [[f64; 3]; 3],
-    /// Translation applied to `coords` centroid.
+    /// Translation applied to `coords` centroid, in Å.
+    ///
+    /// The aligned coordinates are `rotation · (p - c_mobile) + c_reference`,
+    /// i.e. this is the offset `c_reference - c_mobile` expressed in the
+    /// reference frame.
     pub translation: [f64; 3],
-    /// Aligned coordinates: flat [x0,y0,z0, x1,...].
+    /// Aligned coordinates: flat [x0,y0,z0, x1,...] in Å.
     pub aligned_coords: Vec<f64>,
     /// Reason why the alignment failed, if any.
     ///
@@ -51,6 +66,11 @@ pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
 
 /// Fallible variant of [`compute_rmsd`]: returns an explicit error when the
 /// two structures cannot be compared (mismatched lengths).
+///
+/// # Errors
+///
+/// Returns `Err` if the two coordinate arrays have different lengths, or if
+/// their length is not a multiple of three (a partial `x, y, z` triplet).
 pub fn try_compute_rmsd(coords: &[f64], reference: &[f64]) -> Result<f64, String> {
     try_align_coordinates(coords, reference).map(|result| result.rmsd)
 }
@@ -79,6 +99,11 @@ pub fn align_coordinates(coords: &[f64], reference: &[f64]) -> AlignmentResult {
 }
 
 /// Fallible variant of [`align_coordinates`].
+///
+/// # Errors
+///
+/// Returns `Err` if the two coordinate arrays have different lengths, or if
+/// their length is not a multiple of three (a partial `x, y, z` triplet).
 pub fn try_align_coordinates(coords: &[f64], reference: &[f64]) -> Result<AlignmentResult, String> {
     if coords.len() != reference.len() {
         return Err(format!(
@@ -239,6 +264,11 @@ pub fn align_quaternion(coords: &[f64], reference: &[f64]) -> AlignmentResult {
 }
 
 /// Fallible variant of [`align_quaternion`].
+///
+/// # Errors
+///
+/// Returns `Err` if the two coordinate arrays have different lengths, or if
+/// their length is not a multiple of three (a partial `x, y, z` triplet).
 pub fn try_align_quaternion(coords: &[f64], reference: &[f64]) -> Result<AlignmentResult, String> {
     if coords.len() != reference.len() {
         return Err(format!(

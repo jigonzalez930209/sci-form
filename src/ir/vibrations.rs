@@ -792,6 +792,15 @@ fn compute_thermochemistry(frequencies_cm1: &[f64], temperature_k: f64) -> Therm
 ///
 /// Computes the numerical Hessian, mass-weighted eigenvalue problem,
 /// vibrational frequencies, and IR intensities.
+///
+/// The frequencies are in cm⁻¹ and the IR intensities in km/mol.
+///
+/// # Errors
+///
+/// Returns `Err` if `HessianMethod::Uff` is requested (use
+/// [`compute_vibrational_analysis_uff`] instead), if the molecule has fewer
+/// than two atoms, or if the underlying Hessian or frequency computation
+/// fails.
 pub fn compute_vibrational_analysis(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -819,6 +828,12 @@ pub fn compute_vibrational_analysis(
 ///
 /// This avoids the expensive O(9N²) energy evaluations of the standard numerical Hessian
 /// by using O(6N) gradient evaluations with UFF's analytical gradients.
+///
+/// # Errors
+///
+/// Returns `Err` if the molecule has fewer than two atoms, if the SMILES
+/// string cannot be parsed, or if the underlying Hessian computation
+/// fails.
 pub fn compute_vibrational_analysis_uff(
     smiles: &str,
     elements: &[u8],
@@ -875,9 +890,15 @@ pub fn compute_vibrational_analysis_uff(
 /// Build vibrational analysis from a pre-computed Hessian matrix.
 ///
 /// The Hessian must be in eV/Å² with atom-major XYZ ordering
-/// ([x1,y1,z1,x2,y2,z2,…]). Used to validate the mass-weighting,
+/// ([x1,y1,z2,x2,y2,z2,…]). Used to validate the mass-weighting,
 /// projection and frequency-conversion machinery against external
 /// Hessians (validation F48).
+///
+/// # Errors
+///
+/// Returns `Err` if an atomic mass is unknown for one of the elements, if
+/// the Hessian dimension does not match `3N`, or if the geometry is
+/// invalid.
 pub fn build_vibrational_analysis_from_hessian(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1096,6 +1117,10 @@ pub fn compute_ir_spectrum(
 }
 
 /// Generate a broadened IR spectrum with selectable broadening function.
+///
+/// `gamma` is the broadening width (FWHM) in cm⁻¹, `wn_min`/`wn_max` the
+/// wavenumber window (cm⁻¹) and `n_points` the number of grid points. The
+/// returned intensities are in km/mol.
 pub fn compute_ir_spectrum_with_broadening(
     analysis: &VibrationalAnalysis,
     gamma: f64,

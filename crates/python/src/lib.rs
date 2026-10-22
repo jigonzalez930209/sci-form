@@ -379,10 +379,7 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // tables above plus the deprecated aliases.  Every entry is checked
     // against the module, so a name in `__all__` always exists.
     let mut all: Vec<String> = Vec::new();
-    for name in __ALL__
-        .iter()
-        .chain(__ALL_EXPERIMENTAL__.iter())
-    {
+    for name in __ALL__.iter().chain(__ALL_EXPERIMENTAL__.iter()) {
         if m.hasattr(name)? {
             all.push((*name).to_string());
         }

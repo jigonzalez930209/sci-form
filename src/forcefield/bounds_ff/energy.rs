@@ -301,6 +301,11 @@ pub fn chiral_violation_gradient_f64(
     }
 }
 
+/// Cartesian gradient of the chiral-volume violation term.
+///
+/// `coords` is an `n × 3` matrix of positions in Å and `chiral_sets` the
+/// stereocentres whose signed volume must stay inside the allowed window. The
+/// contribution is accumulated into `grad`, which holds `dE/dR` in kcal/mol/Å.
 pub fn chiral_violation_gradient(
     coords: &DMatrix<f32>,
     chiral_sets: &[ChiralSet],

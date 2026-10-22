@@ -1,6 +1,23 @@
 //! Interactive Molecular Dynamics (IMD) steering forces.
 //!
 //! Provides harmonic spring potentials for interactive atom manipulation.
+//!
+//! An interactive simulation applies an extra force
+//! `F = −k (r − r_target)` to a chosen atom so that the user can drag it
+//! around; the energy of the same interaction is the harmonic potential
+//! `E = ½ k |r − r_target|²`.
+//!
+//! # Stability tier
+//!
+//! Core (promoted to core, F85: harmonic energy/force agreement with an
+//! analytic oracle at 1.1 × 10⁻¹³ kcal/mol). The module is unconditional;
+//! the validation gate is `tests/alpha_imd_validation.rs`.
+//!
+//! # Units
+//!
+//! Positions are in **Å**, the spring constant in **kcal/(mol·Å²)**, the
+//! resulting forces in **kcal/(mol·Å)** and the steering energy in
+//! **kcal/mol**.
 
 use serde::{Deserialize, Serialize};
 

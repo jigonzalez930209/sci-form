@@ -558,6 +558,20 @@ pub(crate) fn compute_halogen_bond(elements: &[u8], pos_bohr: &[[f64; 3]]) -> f6
 }
 
 /// Solve GFN1-xTB for a molecular system (neutral, closed shell).
+///
+/// `positions` are Cartesian coordinates in Ångström. The returned
+/// [`Gfn1Result`] carries energies in eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if `elements` and `positions`
+/// have different lengths, or if an element has no GFN1 parameters.
+///
+/// # Panics
+///
+/// Panics if an element has no GFN1 parameters. This cannot happen for the
+/// molecules this function accepts, because the parameter lookup is
+/// validated before the calculation starts.
 pub fn solve_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn1Result, String> {
     crate::validation::validate_geometry(elements, positions)?;
     if elements.len() != positions.len() {

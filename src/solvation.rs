@@ -2,6 +2,18 @@
 //!
 //! Implements the Still Generalized Born model with Hawkins-Cramer-Truhlar (HCT)
 //! descreening for effective Born radii, combined with non-polar SASA-based solvation.
+//!
+//! # Units
+//!
+//! Positions and Born radii in **Å**, charges in **e** (elementary charge),
+//! energies in **kcal/mol**, the atomic solvation parameters (ASP) in
+//! **cal/(mol·Å²)**, the surface tension in **kcal/(mol·Å²)** and the Coulomb
+//! constant in **kcal·Å/e²**.
+//!
+//! # Stability tier
+//!
+//! Core (promoted). This is the plain-GB sibling of the more accurate
+//! [`crate::solvation_alpb`] module, which shares the same SASA implementation.
 
 use serde::{Deserialize, Serialize};
 
@@ -86,11 +98,11 @@ pub struct GbSolvation {
     pub total_energy_kcal_mol: f64,
     /// Effective Born radii for each atom (Å).
     pub born_radii: Vec<f64>,
-    /// Partial charges used.
+    /// Partial charges used, in units of elementary charge (e).
     pub charges: Vec<f64>,
-    /// Solvent dielectric constant used.
+    /// Solvent dielectric constant used (dimensionless).
     pub solvent_dielectric: f64,
-    /// Solute dielectric constant used.
+    /// Solute dielectric constant used (dimensionless).
     pub solute_dielectric: f64,
 }
 

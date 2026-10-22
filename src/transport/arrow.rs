@@ -82,16 +82,26 @@ pub struct RecordBatch {
 /// Schema entry for a column.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColumnSchema {
+    /// Column name/label.
     pub name: String,
+    /// Element type of the column.
     pub dtype: DataType,
+    /// Shape of the column: `[n_rows]` for 1D, `[n_rows, n_cols]` for 2D.
     pub shape: Vec<usize>,
 }
 
 /// Supported data types.
+///
+/// These mirror the column kinds this module can carry; the variants are
+/// deliberately kept in sync with [`RecordBatch::float_columns`],
+/// [`RecordBatch::int_columns`] and [`RecordBatch::uint8_columns`].
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum DataType {
+    /// 64-bit IEEE-754 floating point column.
     Float64,
+    /// 32-bit signed integer column.
     Int32,
+    /// 8-bit unsigned integer column.
     Uint8,
 }
 

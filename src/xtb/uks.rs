@@ -73,15 +73,15 @@ pub struct UksResult {
     pub halogen_bond_energy: f64,
     /// Spin-polarization energy ½ΣmWm (eV, in `electronic_energy`).
     pub spin_energy: f64,
-    /// Mulliken charges per atom (total).
+    /// Mulliken charges per atom (total), in units of `e`.
     pub mulliken_charges: Vec<f64>,
-    /// Magnetization per atom (pop_α − pop_β).
+    /// Magnetization per atom (pop_α − pop_β), in units of `e`.
     pub spin_moments: Vec<f64>,
-    /// Magnetization per shell.
+    /// Magnetization per shell, in units of `e`.
     pub shell_magnetization: Vec<f64>,
-    /// Alpha/beta electron counts.
+    /// Number of alpha electrons.
     pub n_alpha: f64,
-    /// Beta electron count.
+    /// Number of beta electrons.
     pub n_beta: f64,
     /// Alpha HOMO/LUMO (eV).
     pub homo_alpha: f64,
@@ -195,6 +195,22 @@ fn density_from(coeff: &DMatrix<f64>, focc: &[f64], n_basis: usize) -> DMatrix<f
 ///
 /// Total charge is neutral (as in `solve_gfn2`); open-shell anions/cations
 /// are out of scope. `uhf = 0` reproduces the restricted solver.
+///
+/// `positions` are Cartesian coordinates in Ångström. The energies in the
+/// returned [`UksResult`] are in eV.
+///
+/// # Errors
+///
+/// Returns `Err` if `elements` and `positions` have different lengths, if
+/// an element has no GFN2 parameters, if `uhf` is incompatible with the
+/// electron count (`N ± uhf` must both be even and `0 <= uhf <= N`), or if
+/// the basis set ends up empty.
+///
+/// # Panics
+///
+/// Panics if an element has no GFN2 parameters. This cannot happen for the
+/// molecules this function accepts, because the parameter lookup is
+/// validated before the calculation starts.
 pub fn solve_gfn2_unrestricted(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -929,13 +945,13 @@ pub struct Gfn1UksResult {
     pub halogen_bond_energy: f64,
     /// Spin-polarization energy ½ΣmWm (eV, in `electronic_energy`).
     pub spin_energy: f64,
-    /// Mulliken charges per atom (total).
+    /// Mulliken charges per atom (total), in units of `e`.
     pub mulliken_charges: Vec<f64>,
-    /// Magnetization per atom (pop_α − pop_β).
+    /// Magnetization per atom (pop_α − pop_β), in units of `e`.
     pub spin_moments: Vec<f64>,
-    /// Alpha/beta electron counts.
+    /// Number of alpha electrons.
     pub n_alpha: f64,
-    /// Beta electron count.
+    /// Number of beta electrons.
     pub n_beta: f64,
     /// Alpha HOMO/LUMO (eV).
     pub homo_alpha: f64,
@@ -956,6 +972,21 @@ pub struct Gfn1UksResult {
 /// Same spin model as the GFN2 solver above (on-site W from `spin_params`,
 /// AES-free GFN1 electrostatics on total quantities). `uhf = 0` reproduces
 /// `solve_gfn1`.
+///
+/// `positions` are Cartesian coordinates in Ångström. The energies in the
+/// returned [`Gfn1UksResult`] are in eV.
+///
+/// # Errors
+///
+/// Returns `Err` if `elements` and `positions` have different lengths, if
+/// an element has no GFN1 parameters, or if `uhf` is incompatible with the
+/// electron count.
+///
+/// # Panics
+///
+/// Panics if an element has no GFN1 parameters. This cannot happen for the
+/// molecules this function accepts, because the parameter lookup is
+/// validated before the calculation starts.
 pub fn solve_gfn1_unrestricted(
     elements: &[u8],
     positions: &[[f64; 3]],

@@ -2,6 +2,16 @@
 //!
 //! Provides Gaussian sketch matrix generation and low-rank matrix
 //! approximation via the Nyström method.
+//!
+//! # Stability tier
+//!
+//! **Beta** — gated behind the `beta-randnla` feature flag; the validation
+//! gate is `tests/beta_randnla_validation.rs` (F93).
+//!
+//! # Units
+//!
+//! The matrices are dimensionless here; the caller supplies them in the
+//! energy unit of its own model (**eV** for the EHT backends of this crate).
 
 use nalgebra::{DMatrix, DVector};
 use rand::Rng;

@@ -55,6 +55,8 @@ pub struct Descriptors3D {
     pub eccentricity: f64,
     /// Principal moments of inertia ratios (NPR1 = I1/I3, NPR2 = I2/I3).
     pub npr1: f64,
+    /// Second normalised principal moment of inertia, NPR2 = I2/I3
+    /// (dimensionless; 0 for a rod, 1 for a disc).
     pub npr2: f64,
     /// Sphericity (0 = asymmetric, 1 = sphere).
     pub sphericity: f64,

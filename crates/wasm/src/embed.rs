@@ -146,8 +146,9 @@ pub fn embed_batch_seed64(smiles_list: &str, seed: u64) -> String {
         num_threads: 0,
     };
     match sci_form::embed_batch(&lines, &config) {
-        Ok(results) => serde_json::to_string(&results)
-            .unwrap_or_else(|e| json_error_list(&e.to_string())),
+        Ok(results) => {
+            serde_json::to_string(&results).unwrap_or_else(|e| json_error_list(&e.to_string()))
+        }
         Err(e) => json_error_list(&e),
     }
 }
