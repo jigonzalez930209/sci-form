@@ -64,7 +64,8 @@ pub fn cmd_alpb(elements: &str, coords: &str, charges_str: Option<&str>, dielect
         probe_radius: 1.4,
         surface_tension: 0.005,
     };
-    let r = sci_form::solvation_alpb::compute_alpb_solvation(&elems, &positions, &charges, &config);
+    let r = sci_form::solvation_alpb::compute_alpb_solvation(&elems, &positions, &charges, &config)
+        .unwrap_or_else(|e| crate::format::fail(format!("ALPB solvation error: {e}")));
     println!(
         "{}",
         serde_json::json!({

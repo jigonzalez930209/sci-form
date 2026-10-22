@@ -161,6 +161,33 @@ test('Data roundtrip JSON', () => {
   console.log('    JSON roundtrip: OK');
 });
 
+// C-H4: a zero dielectric constant used to divide by zero and return a
+// `NaN` energy; the binding must report it as a JSON error instead.
+test('GB solvation rejects a zero dielectric constant', () => {
+  const elements = JSON.stringify([8, 1, 1]);
+  const coords = JSON.stringify([0, 0, 0.1173, 0, 0.7572, -0.4692, 0, -0.7572, -0.4692]);
+  const charges = JSON.stringify([0.5, -0.25, -0.25]);
+  const r = JSON.parse(
+    wasm.compute_gb_solvation(elements, coords, charges, 0.0, 1.0, 1.4),
+  );
+  assert(r.error !== null && r.error !== undefined, 'Should have an error for epsilon = 0');
+  assert(!String(r.error).includes('NaN'), `The error must not be a NaN: ${r.error}`);
+  console.log(`    zero dielectric error: "${r.error}"`);
+});
+
+// C-M1: a charge vector shorter than the atom list used to index past its
+// end inside the GB kernel.
+test('GB solvation rejects a charge vector of the wrong length', () => {
+  const elements = JSON.stringify([8, 1, 1]);
+  const coords = JSON.stringify([0, 0, 0.1173, 0, 0.7572, -0.4692, 0, -0.7572, -0.4692]);
+  const charges = JSON.stringify([0.5]);
+  const r = JSON.parse(
+    wasm.compute_gb_solvation(elements, coords, charges, 78.5, 1.0, 1.4),
+  );
+  assert(r.error !== null && r.error !== undefined, 'Should have an error for 1 charge / 3 atoms');
+  console.log(`    charge length error: "${r.error}"`);
+});
+
 console.log('='.repeat(60));
 console.log(`Results: ${passed} passed, ${failed} failed`);
 console.log('='.repeat(60));

@@ -59,14 +59,36 @@ pub struct AlpbResult {
 ///
 /// ALPB applies a Klamt correction to standard GB:
 /// E_ALPB = E_GB · (ε-1)/(ε + A·x)  where A = 0.571412
+///
+/// # Errors
+///
+/// Returns `Err` when:
+///
+/// * the geometry is invalid (mismatched lengths, empty system, non-finite
+///   coordinates),
+/// * the charge vector does not have one finite charge per atom,
+/// * `config.solvent_dielectric` is non-finite or below 1.0 (`ε = 0` used to
+///   divide by zero and return a `NaN` energy),
+/// * `config.probe_radius` is negative or non-finite,
+/// * `config.surface_tension` is not finite.
 pub fn compute_alpb_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
     charges: &[f64],
     config: &AlpbConfig,
-) -> AlpbResult {
+) -> Result<AlpbResult, String> {
+    crate::validation::validate_geometry(elements, positions)?;
+    crate::validation::validate_charges(elements.len(), charges)?;
+    crate::validation::validate_dielectric("solvent_dielectric", config.solvent_dielectric)?;
+    crate::validation::validate_probe_radius(config.probe_radius)?;
+    if !config.surface_tension.is_finite() {
+        return Err(format!(
+            "surface_tension must be finite (got {})",
+            config.surface_tension
+        ));
+    }
     let n = elements.len();
-    let born = compute_born_radii(elements, positions, config.probe_radius);
+    let born = compute_born_radii(elements, positions, config.probe_radius)?;
 
     let eps = config.solvent_dielectric;
     let prefactor = -0.5 * (1.0 - 1.0 / eps);
@@ -120,13 +142,13 @@ pub fn compute_alpb_solvation(
 
     let e_nonpolar = config.surface_tension * sasa_total;
 
-    AlpbResult {
+    Ok(AlpbResult {
         electrostatic_energy: e_electrostatic,
         nonpolar_energy: e_nonpolar,
         total_energy: e_electrostatic + e_nonpolar,
         born_radii: born.radii,
         alpb_factor,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -139,7 +161,8 @@ mod tests {
         let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let charges = [-0.834, 0.417, 0.417];
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         // Same Shrake-Rupley implementation as `solvation::compute_nonpolar_solvation`.
         let shared = crate::surface::sasa::compute_sasa(
             &elements,
@@ -157,7 +180,8 @@ mod tests {
         let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let charges = [-0.834, 0.417, 0.417];
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(result.total_energy.is_finite());
         assert!(
             result.electrostatic_energy < 0.0 || result.electrostatic_energy.abs() < 1.0,
@@ -175,7 +199,8 @@ mod tests {
             solvent_dielectric: 1.0,
             ..Default::default()
         };
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(
             result.electrostatic_energy.abs() < 1e-10,
             "Vacuum solvation should be 0: {}",
@@ -195,7 +220,8 @@ mod tests {
         ];
         let charges = [0.0, 0.0, 0.0, 0.0, 0.0];
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(result.nonpolar_energy >= 0.0);
     }
 
@@ -205,11 +231,39 @@ mod tests {
         let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
         let charges = [-0.834, 0.417, 0.417];
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(
             result.alpb_factor >= 0.0 && result.alpb_factor <= 1.0,
             "ALPB factor should be in [0,1]: {}",
             result.alpb_factor
         );
+    }
+
+    // ── C-H4 / C-M1 regression tests ────────────────────────────────────────
+
+    #[test]
+    fn c_h4_alpb_zero_dielectric_is_an_error_not_a_nan() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let charges = [-0.834, 0.417, 0.417];
+        let config = AlpbConfig {
+            solvent_dielectric: 0.0,
+            ..Default::default()
+        };
+        let err = compute_alpb_solvation(&elements, &positions, &charges, &config)
+            .expect_err("a dielectric constant of zero must be rejected");
+        assert!(err.contains("solvent_dielectric"), "{}", err);
+    }
+
+    #[test]
+    fn c_m1_alpb_short_charge_vector_is_an_error_not_a_panic() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let charges = [0.5];
+        let config = AlpbConfig::default();
+        let err = compute_alpb_solvation(&elements, &positions, &charges, &config)
+            .expect_err("a short charge vector must be rejected");
+        assert!(err.contains("charges has 1 values"), "{}", err);
     }
 }

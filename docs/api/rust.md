@@ -902,13 +902,25 @@ pub fn compute_gb_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
     charges: &[f64],
-    solvent_dielectric: Option<f64>,   // default: 78.5 (water)
-    solute_dielectric: Option<f64>,    // default: 1.0
-    probe_radius: Option<f64>,         // default: 1.4 Å
-) -> solvation::GbSolvation
+    solvent_dielectric: Option<f64>,   // default: 78.5 (water), must be >= 1.0
+    solute_dielectric: Option<f64>,    // default: 1.0, must be >= 1.0
+    probe_radius: Option<f64>,         // default: 1.4 Å, must be >= 0.0
+) -> Result<solvation::GbSolvation, String>
 ```
 
 Generalized Born + Surface Area (GB/SA) electrostatic solvation using the HCT pairwise descreening model for effective Born radii and the Still GB equation.
+
+**Errors** (`Err`):
+
+| Situation | Message |
+|---|---|
+| `positions` does not have one triple per atom | `positions has N entries but M atoms require M` |
+| `charges` does not have one value per atom | `charges has N values but M atoms require M` |
+| a charge is `NaN` or `±Inf` | `atom I has a non-finite partial charge` |
+| a dielectric constant is not finite or `< 1.0` | `solvent_dielectric must be >= 1.0 (1.0 = vacuum)` |
+| the probe radius is negative or not finite | `probe_radius must be >= 0.0 Å` |
+
+`ε = 1.0` is the vacuum limit and is accepted: the electrostatic term then vanishes and only the non-polar term remains.
 
 ```rust
 pub struct GbSolvation {
@@ -929,10 +941,10 @@ let conf = sci_form::embed("CCO", 42);
 let pos: Vec<[f64;3]> = conf.coords.chunks(3).map(|c| [c[0],c[1],c[2]]).collect();
 let charges = sci_form::compute_charges("CCO").unwrap().charges;
 
-let np = sci_form::compute_nonpolar_solvation(&conf.elements, &pos, None);
+let np = sci_form::compute_nonpolar_solvation(&conf.elements, &pos, None)?;
 println!("Non-polar ΔG: {:.2} kcal/mol", np.energy_kcal_mol);
 
-let gb = sci_form::compute_gb_solvation(&conf.elements, &pos, &charges, None, None, None);
+let gb = sci_form::compute_gb_solvation(&conf.elements, &pos, &charges, None, None, None)?;
 println!("Total solvation: {:.2} kcal/mol", gb.total_energy_kcal_mol);
 ```
 

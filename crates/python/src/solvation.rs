@@ -2,6 +2,8 @@
 
 use pyo3::prelude::*;
 
+use crate::errors::value_error;
+
 #[pyclass(name = "NonPolarSolvation")]
 #[derive(Clone)]
 pub(crate) struct NonPolarSolvationPy {
@@ -42,8 +44,10 @@ fn compute_nonpolar_solvation(
     coords: Vec<f64>,
     probe_radius: f64,
 ) -> PyResult<NonPolarSolvationPy> {
-    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-    let r = sci_form_core::compute_nonpolar_solvation(&elements, &positions, Some(probe_radius));
+    crate::errors::check_coords_len(&coords, elements.len())?;
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let r = sci_form_core::compute_nonpolar_solvation(&elements, &positions, Some(probe_radius))
+        .map_err(value_error)?;
     Ok(NonPolarSolvationPy {
         energy_kcal_mol: r.energy_kcal_mol,
         atom_contributions: r.atom_contributions,
@@ -63,7 +67,9 @@ fn compute_gb_solvation(
     solute_dielectric: f64,
     probe_radius: f64,
 ) -> PyResult<GbSolvationPy> {
-    let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
+    crate::errors::check_coords_len(&coords, elements.len())?;
+    crate::errors::check_charges_len(&charges, elements.len())?;
+    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
     let r = sci_form_core::compute_gb_solvation(
         &elements,
         &positions,
@@ -71,7 +77,8 @@ fn compute_gb_solvation(
         Some(solvent_dielectric),
         Some(solute_dielectric),
         Some(probe_radius),
-    );
+    )
+    .map_err(value_error)?;
     Ok(GbSolvationPy {
         electrostatic_energy_kcal_mol: r.electrostatic_energy_kcal_mol,
         nonpolar_energy_kcal_mol: r.nonpolar_energy_kcal_mol,

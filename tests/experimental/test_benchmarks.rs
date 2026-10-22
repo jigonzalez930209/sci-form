@@ -477,8 +477,10 @@ mod bench_alpb_vs_gb {
     #[test]
     fn b4_solvation_sign_agreement() {
         let (elems, pos, charges) = water();
-        let gb = compute_gb_solvation(&elems, &pos, &charges, Some(78.5), Some(1.0), Some(1.4));
-        let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default());
+        let gb = compute_gb_solvation(&elems, &pos, &charges, Some(78.5), Some(1.0), Some(1.4))
+            .expect("valid input");
+        let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default())
+            .expect("valid input");
 
         println!(
             "[B4] GB-HCT total: {:.3} kcal/mol",
@@ -499,8 +501,10 @@ mod bench_alpb_vs_gb {
     #[test]
     fn b4_deviation_from_experimental() {
         let (elems, pos, charges) = water();
-        let gb = compute_gb_solvation(&elems, &pos, &charges, Some(78.5), Some(1.0), Some(1.4));
-        let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default());
+        let gb = compute_gb_solvation(&elems, &pos, &charges, Some(78.5), Some(1.0), Some(1.4))
+            .expect("valid input");
+        let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default())
+            .expect("valid input");
 
         let gb_dev = (gb.total_energy_kcal_mol - WATER_SOLVATION_REF).abs();
         let alpb_dev = (alpb.total_energy - WATER_SOLVATION_REF).abs();
@@ -516,8 +520,8 @@ mod bench_alpb_vs_gb {
     #[test]
     fn b4_born_radii_comparison() {
         let (elems, pos, _) = water();
-        let gb_born = sci_form::solvation::compute_born_radii(&elems, &pos);
-        let alpb_born = compute_born_radii(&elems, &pos, 1.4);
+        let gb_born = sci_form::solvation::compute_born_radii(&elems, &pos).expect("valid input");
+        let alpb_born = compute_born_radii(&elems, &pos, 1.4).expect("valid input");
 
         println!("[B4] GB-HCT Born radii: {:?}", gb_born);
         println!("[B4] ALPB   Born radii: {:?}", alpb_born.radii);
@@ -532,9 +536,10 @@ mod bench_alpb_vs_gb {
     #[test]
     fn b4_nonpolar_component_agreement() {
         let (elems, pos, _) = water();
-        let np = compute_nonpolar_solvation(&elems, &pos, None);
+        let np = compute_nonpolar_solvation(&elems, &pos, None).expect("valid input");
         let charges = vec![-0.834, 0.417, 0.417];
-        let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default());
+        let alpb = compute_alpb_solvation(&elems, &pos, &charges, &AlpbConfig::default())
+            .expect("valid input");
 
         println!("[B4] Legacy non-polar: {:.4} kcal/mol", np.energy_kcal_mol);
         println!(
@@ -552,14 +557,15 @@ mod bench_alpb_vs_gb {
 
         let t0 = Instant::now();
         for _ in 0..100 {
-            let _ = compute_gb_solvation(&elems, &pos, &charges, Some(78.5), Some(1.0), Some(1.4));
+            let _ = compute_gb_solvation(&elems, &pos, &charges, Some(78.5), Some(1.0), Some(1.4))
+                .expect("valid input");
         }
         let gb_us = t0.elapsed().as_micros() as f64 / 100.0;
 
         let config = AlpbConfig::default();
         let t0 = Instant::now();
         for _ in 0..100 {
-            let _ = compute_alpb_solvation(&elems, &pos, &charges, &config);
+            let _ = compute_alpb_solvation(&elems, &pos, &charges, &config).expect("valid input");
         }
         let alpb_us = t0.elapsed().as_micros() as f64 / 100.0;
 

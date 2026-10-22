@@ -330,6 +330,39 @@ def test_gb_solvation():
     assert finite(result.electrostatic_energy_kcal_mol)
 
 
+def test_gb_solvation_rejects_a_zero_dielectric():
+    """C-H4: `solvent_dielectric=0` used to divide by zero and return NaN."""
+    with pytest.raises(ValueError):
+        sci_form.compute_gb_solvation(E, C, [0.1, -0.1, 0.0], solvent_dielectric=0.0)
+
+
+def test_gb_solvation_rejects_a_charge_vector_of_the_wrong_length():
+    """C-M1: a short charge vector used to index past its end and abort."""
+    with pytest.raises(ValueError):
+        sci_form.compute_gb_solvation(E, C, [0.1])
+
+
+def test_gb_solvation_rejects_a_coordinate_vector_of_the_wrong_length():
+    """C-M1: a short coordinate array used to panic in the flat->triple split."""
+    with pytest.raises(ValueError):
+        sci_form.compute_gb_solvation([8, 1, 1], [0.0], [0.1, -0.1, 0.0])
+
+
+def test_gb_solvation_rejects_a_non_finite_charge():
+    with pytest.raises(ValueError):
+        sci_form.compute_gb_solvation(E, C, [float("nan"), -0.1, 0.0])
+
+
+def test_gb_solvation_rejects_a_negative_probe_radius():
+    with pytest.raises(ValueError):
+        sci_form.compute_gb_solvation(E, C, [0.1, -0.1, 0.0], probe_radius=-1.0)
+
+
+def test_gb_solvation_keeps_the_vacuum_limit_working():
+    result = sci_form.compute_gb_solvation(E, C, [0.1, -0.1, 0.0], solvent_dielectric=1.0)
+    assert finite(result.total_energy_kcal_mol)
+
+
 # ─── Rings, fingerprints, clustering ─────────────────────────────────────────
 
 

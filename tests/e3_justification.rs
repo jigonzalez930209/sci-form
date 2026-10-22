@@ -226,7 +226,8 @@ mod alpb_justification {
     fn alpb_solvation_stabilizing() {
         let (elements, positions, charges) = water_with_charges();
         let config = AlpbConfig::default(); // water solvent
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(
             result.total_energy < 0.0,
             "Water solvation must be stabilizing: ΔG = {:.4} kcal/mol",
@@ -238,7 +239,8 @@ mod alpb_justification {
     fn alpb_electrostatic_dominates_nonpolar() {
         let (elements, positions, charges) = water_with_charges();
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(
             result.electrostatic_energy.abs() > result.nonpolar_energy.abs(),
             "Electrostatic ({:.4}) should dominate non-polar ({:.4})",
@@ -254,7 +256,8 @@ mod alpb_justification {
             solvent_dielectric: 1.0, // vacuum
             ..AlpbConfig::default()
         };
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(
             result.electrostatic_energy.abs() < 1e-6,
             "Vacuum dielectric should give zero electrostatic: {:.8}",
@@ -266,7 +269,8 @@ mod alpb_justification {
     fn alpb_factor_bounded() {
         let (elements, positions, charges) = water_with_charges();
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
         assert!(
             result.alpb_factor > 0.0 && result.alpb_factor < 1.0,
             "ALPB Klamt factor should be in (0,1): {:.6}",
@@ -279,7 +283,8 @@ mod alpb_justification {
         // The ALPB correction should differ from a simple 1/ε_s factor
         let (elements, positions, charges) = water_with_charges();
         let config = AlpbConfig::default();
-        let result = compute_alpb_solvation(&elements, &positions, &charges, &config);
+        let result =
+            compute_alpb_solvation(&elements, &positions, &charges, &config).expect("valid input");
 
         // Simple GB factor: -(1 - 1/ε)
         let simple_factor = 1.0 - 1.0 / config.solvent_dielectric;
@@ -511,7 +516,8 @@ mod integration {
 
         // Step 3: ALPB solvation using EEQ charges
         let alpb_config = AlpbConfig::default();
-        let solv = compute_alpb_solvation(&elements, &positions, &charges.charges, &alpb_config);
+        let solv = compute_alpb_solvation(&elements, &positions, &charges.charges, &alpb_config)
+            .expect("valid input");
         assert!(
             solv.total_energy < 0.0,
             "Methanol in water should have negative solvation energy: {:.4}",
@@ -539,7 +545,8 @@ mod integration {
 
         let eeq = compute_eeq_charges(&elements, &positions, &EeqConfig::default());
         let solv =
-            compute_alpb_solvation(&elements, &positions, &eeq.charges, &AlpbConfig::default());
+            compute_alpb_solvation(&elements, &positions, &eeq.charges, &AlpbConfig::default())
+                .expect("valid input");
 
         // Water in water: electrostatic component should be stabilizing
         assert!(solv.electrostatic_energy < 0.0);

@@ -33,6 +33,9 @@ capability is the Rust root name in all four surfaces.
     between the elements and the coordinates, a non-finite coordinate and an
     empty system with one actionable message, and it guards every public
     entry point that takes a geometry.
+  - The same validator family now also checks the parameters that reach a
+    kernel: a partial-charge vector of the wrong length, a non-finite charge,
+    a dielectric constant outside `ε >= 1.0` and a negative probe radius.
   - All 30 `partial_cmp(...).unwrap()` sites became `unwrap_or(Ordering::Equal)`.
     A single NaN coordinate used to panic the whole library.
   - `Molecule::from_smiles("[")` returns an error instead of panicking, and
@@ -62,6 +65,19 @@ capability is the Rust root name in all four surfaces.
 
 ### Fixed
 
+- **The Generalized Born solvation returned `NaN` for a zero dielectric
+  constant and aborted the process on a short charge vector.**
+  `compute_gb_solvation` divided by `ε` without checking it, so
+  `solvent_dielectric = 0` produced a `NaN` energy that looked like a
+  number; a charge vector shorter than the atom list indexed past its end
+  and killed the process (in Python, a `PanicException`, which inherits from
+  `BaseException` and is therefore *not* caught by `except Exception:`).
+  The same hole was in the ALPB sibling and in the Born-radius helpers.
+  The solvation family now validates the geometry, the charge vector, the
+  dielectric constants and the probe radius, and returns an error instead:
+  `ValueError` in Python, `{"error": "..."}` in WASM, a non-zero exit in the
+  CLI. `ε = 1.0` (the vacuum limit) and a zero probe radius (the plain van
+  der Waals surface) remain valid.
 - **The force-field energy and gradient are now bit-identical regardless of
   the rayon thread count.** The tree reduction made every UFF/MD/NEB result
   depend on the machine's core count — three different bit patterns were

@@ -700,6 +700,7 @@ console.log(`Non-polar solvation: ${np.energy_kcal_mol.toFixed(2)} kcal/mol`);
 // Generalized Born electrostatic solvation
 const charges = JSON.stringify([-0.8, 0.4, 0.4]);
 const gb = JSON.parse(compute_gb_solvation(elements, coords, charges, 78.5, 1.0, 1.4));
+if (gb.error) throw new Error(gb.error);   // invalid input → {"error": "..."}
 console.log(`GB electrostatic: ${gb.electrostatic_energy_kcal_mol.toFixed(2)} kcal/mol`);
 console.log(`Total solvation: ${gb.total_energy_kcal_mol.toFixed(2)} kcal/mol`);
 ```

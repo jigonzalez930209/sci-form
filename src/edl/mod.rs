@@ -748,7 +748,7 @@ pub fn compute_alpb_stern_correction(
             probe_radius: alpb_config.probe_radius,
             surface_tension: alpb_config.surface_tension,
         },
-    );
+    )?;
 
     // Derive effective Stern dielectric from average Born radius and solvent bulk dielectric.
     // Concept: the compact layer has a dielectric that ramps from a low value (~2-6) near the

@@ -1223,6 +1223,12 @@ def compute_gb_solvation(
 GB/SA electrostatic solvation (HCT Born radii + Still GB equation). Energies in **kcal/mol**,
 born radii in **Å**.
 
+**Raises `ValueError`** when the input is malformed: `coords` does not have
+`3 * len(elements)` values, `charges` does not have one value per atom, a
+charge is `NaN`/`±Inf`, a dielectric constant is not finite or `< 1.0`
+(`ε = 1.0` is the vacuum limit and is accepted), or the probe radius is
+negative or not finite.
+
 > **Deprecated alias:** `gb_solvation` → `compute_gb_solvation`.
 
 ### Return types

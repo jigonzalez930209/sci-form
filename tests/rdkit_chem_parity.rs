@@ -870,8 +870,10 @@ mod f84_alpb {
 
         for case in &fixture.cases {
             let positions = positions_from(&case.coords);
-            let result = compute_alpb_solvation(&case.elements, &positions, &case.charges, &config);
-            let born = compute_born_radii(&case.elements, &positions, config.probe_radius);
+            let result = compute_alpb_solvation(&case.elements, &positions, &case.charges, &config)
+                .expect("valid input");
+            let born = compute_born_radii(&case.elements, &positions, config.probe_radius)
+                .expect("valid input");
 
             // The Born radii must be positive and larger than the intrinsic
             // radii (the descreening can only *increase* the effective

@@ -163,6 +163,21 @@ pub(crate) fn check_coords_len(coords: &[f64], n_atoms: usize) -> Result<(), PyE
     Ok(())
 }
 
+/// Canonical message for a partial-charge array whose length is wrong.
+pub(crate) fn charges_length_error(got: usize, expected: usize) -> String {
+    format!("Invalid 'charges' length {got}. Expected {expected} values (one per atom).")
+}
+
+/// Validate that a partial-charge array has one entry per atom.
+///
+/// Returns a `ValueError` describing the mismatch.
+pub(crate) fn check_charges_len(charges: &[f64], n_atoms: usize) -> Result<(), PyErr> {
+    if charges.len() != n_atoms {
+        return Err(value_error(charges_length_error(charges.len(), n_atoms)));
+    }
+    Ok(())
+}
+
 /// Whether a core error message comes from the SMILES parser.
 ///
 /// The core reports a handful of bare messages (`Expected ')'`, `Unknown

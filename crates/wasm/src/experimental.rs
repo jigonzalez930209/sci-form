@@ -85,7 +85,10 @@ pub fn compute_alpb_solvation(
         probe_radius,
         surface_tension,
     };
-    let r = sci_form::solvation_alpb::compute_alpb_solvation(&elems, &pos, &q, &config);
+    let r = match sci_form::solvation_alpb::compute_alpb_solvation(&elems, &pos, &q, &config) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
     serde_json::json!({
         "electrostatic_energy": r.electrostatic_energy,
         "nonpolar_energy": r.nonpolar_energy,
@@ -106,7 +109,10 @@ pub fn compute_alpb_born_radii(elements: &str, coords_flat: &str, probe_radius: 
         Ok(v) => v,
         Err(e) => return json_error(&e),
     };
-    let r = sci_form::solvation_alpb::compute_born_radii(&elems, &pos, probe_radius);
+    let r = match sci_form::solvation_alpb::compute_born_radii(&elems, &pos, probe_radius) {
+        Ok(v) => v,
+        Err(e) => return json_error(&e),
+    };
     serde_json::json!({
         "radii": r.radii,
         "intrinsic": r.intrinsic

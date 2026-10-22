@@ -119,7 +119,8 @@ fn smoke_properties_and_solvation() {
     assert!(uff.is_finite());
     assert!(mmff.is_finite());
 
-    let nonpolar = sci_form::compute_nonpolar_solvation(&ethanol.elements, &positions, Some(1.4));
+    let nonpolar = sci_form::compute_nonpolar_solvation(&ethanol.elements, &positions, Some(1.4))
+        .expect("valid input");
     assert!(nonpolar.total_sasa > 0.0);
     assert_eq!(nonpolar.atom_contributions.len(), ethanol.num_atoms);
 
@@ -130,7 +131,8 @@ fn smoke_properties_and_solvation() {
         Some(78.5),
         Some(1.0),
         Some(1.4),
-    );
+    )
+    .expect("valid input");
     assert!(gb.total_energy_kcal_mol.is_finite());
 }
 

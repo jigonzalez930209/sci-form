@@ -50,11 +50,19 @@ pub struct AlpbBornRadii {
 ///
 /// The intrinsic radii `radius_i` include the probe offset (`+0.1*probe`),
 /// as in the rest of the ALPB module.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid (mismatched lengths, empty
+/// system, non-finite coordinates) or when the probe radius is negative or
+/// non-finite.
 pub fn compute_born_radii(
     elements: &[u8],
     positions: &[[f64; 3]],
     probe_radius: f64,
-) -> AlpbBornRadii {
+) -> Result<AlpbBornRadii, String> {
+    crate::validation::validate_geometry(elements, positions)?;
+    crate::validation::validate_probe_radius(probe_radius)?;
     let n = elements.len();
     let radius: Vec<f64> = elements
         .iter()
@@ -138,10 +146,10 @@ pub fn compute_born_radii(
         };
     }
 
-    AlpbBornRadii {
+    Ok(AlpbBornRadii {
         radii: born_radii,
         intrinsic: elements.iter().map(|&z| intrinsic_radius(z)).collect(),
-    }
+    })
 }
 
 /// Generalized Born kernel f_GB.
@@ -163,10 +171,28 @@ mod tests {
     fn test_born_radii_positive() {
         let elements = [8, 1, 1];
         let pos = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
-        let result = compute_born_radii(&elements, &pos, 1.4);
+        let result = compute_born_radii(&elements, &pos, 1.4).expect("valid input");
         for &r in &result.radii {
             assert!(r > 0.0 && r < 100.0, "Born radius = {}", r);
         }
+    }
+
+    #[test]
+    fn c_m1_born_radii_reject_a_short_position_list() {
+        let elements = [8, 1, 1];
+        let pos = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0]];
+        let err = compute_born_radii(&elements, &pos, 1.4)
+            .expect_err("a short position list must be rejected, not panic");
+        assert!(err.contains("positions has 2 entries"), "{}", err);
+    }
+
+    #[test]
+    fn c_h4_born_radii_reject_a_negative_probe_radius() {
+        let elements = [8, 1, 1];
+        let pos = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
+        let err = compute_born_radii(&elements, &pos, -1.0)
+            .expect_err("a negative probe radius must be rejected");
+        assert!(err.contains("probe_radius"), "{}", err);
     }
 
     #[test]

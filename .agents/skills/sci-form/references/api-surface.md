@@ -88,8 +88,8 @@ This is a compact map of the major public surfaces. For exact signatures and cur
 
 ### Solvation
 
-- `compute_nonpolar_solvation` → NonPolarSolvation (SASA-based energy, kcal/mol)
-- `compute_gb_solvation` → GbSolvation (electrostatic + non-polar, kcal/mol)
+- `compute_nonpolar_solvation` → Result<NonPolarSolvation> (SASA-based energy, kcal/mol)
+- `compute_gb_solvation` → Result<GbSolvation> (electrostatic + non-polar, kcal/mol)
 
 ### Rings, fingerprints, and clustering
 
