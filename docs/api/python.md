@@ -47,6 +47,11 @@ The module also exposes `sci_form.__all__` — the grouped public surface — so
 The list holds 145 callables (93 canonical functions plus 52 deprecated aliases), 98 result
 classes, the three submodules `alpha`, `beta` and `potentials`, and the `__version__` string.
 
+The count depends on the features the wheel was built with: **247** for the default
+build, **254** for the wheel the release pipeline publishes (it adds the alpha and beta
+modules) and **309** for a full-feature build. The names are always the same; only the
+feature-gated ones come and go.
+
 ---
 
 ## Units

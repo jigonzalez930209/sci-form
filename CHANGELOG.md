@@ -12,8 +12,8 @@ _(nothing yet — the next release starts here)_
 
 ## v1.0.0 - 2026-10-22
 
-The first stable release. v1.0.0 closes **two exhaustive audits** (100 findings
-in `reports/auditoria-total.md`, 59 blockers in `reports/v1.0-blockers.md`) and
+The first stable release. v1.0.0 closes **three exhaustive audits** (100 findings
+in `reports/auditoria-total.md`, 88 findings in `reports/v1.0-blockers.md`) and
 raises the floor on everything that matters for a chemistry library: the crate
 no longer panics on user input, its results are reproducible bit-for-bit
 regardless of the machine's core count, every public item is documented, and
@@ -129,6 +129,10 @@ capability is the Rust root name in all four surfaces.
   note. The EHT model is one-electron, so it has no repulsive wall and its
   Hessian curvature is negative: the numbers are unchanged but the failure is
   no longer silent.
+- **The reaction-dynamics path repeated the same departure frame.** With a
+  single product there is no second fragment to separate, so the departure
+  phase returned the *same* geometry `n_departure_frames` times. It now
+  contributes one frame and says so in the result notes.
 - **The reaction-dynamics path could diverge into `NaN`.** The product-guided
   alignment of acetaldehyde + water put a water oxygen 0.14 Å away from the
   carbonyl carbon; the 1/r repulsion terms diverged, the analytic GFN0-xTB
@@ -177,7 +181,7 @@ capability is the Rust root name in all four surfaces.
   absent.
 - One error-message style across the three surfaces:
   `<What failed> '<actual value>'. Supported: 'a', 'b', 'c'.`
-- The published crate carries an allow-list: 612 → 339 files, 20.6 → 7.7 MiB.
+- The published crate carries an allow-list: 612 → 339 files, 20.6 → 7.9 MiB.
   The 27 developer binaries (`benchmark`, `test_eigen`, `check_grad`, …) are
   no longer installed on every user's `$PATH`.
 
