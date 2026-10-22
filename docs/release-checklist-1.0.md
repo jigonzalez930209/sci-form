@@ -83,7 +83,7 @@ Legend: `[x]` done, `[ ]` pending.
 - [x] The version is `1.0.0` in all four manifests, `pyproject.toml`,
       `package.json` and `pkg-node/package.json`.
 - [x] The root `Cargo.toml` uses an allow-list `include`; the published crate
-      is 339 files / 7.9 MiB.
+      is 340 files / 8.0 MiB.
 - [x] The 27 developer binaries are not in the published crate.
 - [x] `rust-version = "1.87"` is declared in all four manifests.
 - [x] `license`, `repository`, `homepage`, `keywords`, `categories` are set in

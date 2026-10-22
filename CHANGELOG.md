@@ -156,8 +156,9 @@ capability is the Rust root name in all four surfaces.
   and the CLI**: the open-shell SCF (`compute_uhf`, `compute_rohf`), the
   analytical PM3 and xTB gradients, the UFF and MMFF94 energy breakdowns, the
   topological polar surface area, the ensemble property prediction and the
-  CIF import/export. The Python `__all__` grows from 247 to 264 names and the
-  CLI from 90 to 100 subcommands.
+  CIF import/export. The Python `__all__` grows from 247 to 265 names in the
+  default build (327 in the release wheel, which now enables every alpha and
+  beta module) and the CLI from 90 to 100 subcommands.
 - `compute_esp` is now a deprecated alias of `compute_esp_grid`, the name of
   the Rust root function that returns the full grid.
 - **Every public enum is now `#[non_exhaustive]`** (57 of 60; three
@@ -181,7 +182,7 @@ capability is the Rust root name in all four surfaces.
   absent.
 - One error-message style across the three surfaces:
   `<What failed> '<actual value>'. Supported: 'a', 'b', 'c'.`
-- The published crate carries an allow-list: 612 → 339 files, 20.6 → 7.9 MiB.
+- The published crate carries an allow-list: 612 → 340 files, 20.6 → 8.0 MiB.
   The 27 developer binaries (`benchmark`, `test_eigen`, `check_grad`, …) are
   no longer installed on every user's `$PATH`.
 
