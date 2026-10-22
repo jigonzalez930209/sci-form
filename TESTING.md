@@ -9,7 +9,7 @@ and how to reproduce the full pre-release test gate locally.
 
 | Tool | Minimum version | Install |
 |------|-----------------|---------|
-| Rust toolchain | stable (1.77+) | `rustup update stable` |
+| Rust toolchain | stable (1.87+, the declared MSRV) | `rustup update stable` |
 | `maturin` | 1.6+ | `pip install maturin` |
 | `wasm-pack` | 0.13+ | `cargo install wasm-pack` |
 | Node.js | 18+ | [nodejs.org](https://nodejs.org) |
@@ -99,6 +99,29 @@ cargo test --release --test regression test_gdb20_rmsd -- --nocapture
 cargo test --release --test regression test_gdb20 -- --nocapture
 cargo test --release --test regression test_tet_centers -- --nocapture
 ```
+
+### Benchmarks (opt-in, `#[ignore]`d)
+
+The `tests/benchmarks.rs` target holds the throughput and scale benchmarks:
+10 k molecules, the ChemBL 10 k set, and 1 k molecules across 14
+capabilities. They take **tens of minutes** and are therefore `#[ignore]`d,
+so `cargo test --workspace --all-targets` stays fast enough for CI.
+
+```bash
+# Run one benchmark suite
+cargo test --release --test benchmarks -- --ignored --nocapture
+
+# Run only the 10k-molecule one
+cargo test --release --test benchmarks test_smiles_parsing_10k -- --ignored --nocapture
+
+# The ChemBL set honours CHEMBL_LIMIT to scale the run down
+CHEMBL_LIMIT=100 cargo test --release --test benchmarks test_chembl_10k -- --ignored --nocapture
+```
+
+They report timings; they do not assert on them. The one exception is
+`tests/beta_benchmarks.rs`, whose 5 tests compare an approximate method
+against an exact reference computed in the same test and therefore run by
+default.
 
 ### Test descriptions
 

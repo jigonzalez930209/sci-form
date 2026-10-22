@@ -177,6 +177,7 @@ fn validate_chembl_molecule(smiles: &str, chembl_id: &str, heavy_atoms: usize) -
 }
 
 #[test]
+#[ignore = "benchmark: ChemBL 10k, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_chembl_10k() {
     let chembl_file =
         std::env::var("CHEMBL_FILE").unwrap_or_else(|_| "data/chembl_1k_practical.smi".to_string());

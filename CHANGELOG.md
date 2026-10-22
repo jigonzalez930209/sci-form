@@ -78,6 +78,15 @@ capability is the Rust root name in all four surfaces.
   note. The EHT model is one-electron, so it has no repulsive wall and its
   Hessian curvature is negative: the numbers are unchanged but the failure is
   no longer silent.
+- **The reaction-dynamics path could diverge into `NaN`.** The product-guided
+  alignment of acetaldehyde + water put a water oxygen 0.14 Å away from the
+  carbonyl carbon; the 1/r repulsion terms diverged, the analytic GFN0-xTB
+  gradients overflowed and every remaining frame of the path was `NaN`. The
+  fix adds a minimum inter-fragment separation (1.5 Å), a displacement cap
+  and a descent-direction check in the constrained relaxation, and a refusal
+  to run the CI-NEB on a singular geometry. The test that caught it,
+  `tests/reaction_dynamics_study.rs`, had never run in CI — the packaging
+  audit found 9 test targets that CI skipped.
 - `align_coordinates` can no longer return NaN.
 - The `unsafe` block in `stda_gpu.rs` had a factually wrong SAFETY comment and
   a silent empty-slice fallback; it now returns a `Result`.
@@ -166,6 +175,10 @@ capability is the Rust root name in all four surfaces.
 - All 9 integration test targets that CI never ran now run in CI (77 tests).
 - The 20 hard-coded absolute paths in the scripts became an environment
   variable and a repo-relative default.
+- The 52 heavy benchmark tests (10 k molecules, ChemBL 10 k, 1 k molecules ×
+  14 capabilities) are `#[ignore]`d, so `cargo test --workspace --all-targets`
+  no longer takes tens of minutes. Run them explicitly with
+  `cargo test --release --test benchmarks -- --ignored`.
 - 6 of the 9 parameter generators gained a `--check` mode so they cannot
   drift silently; CI checks all of them.
 - `rust-version` (MSRV 1.87) is declared in all four manifests.

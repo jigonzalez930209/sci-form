@@ -42,6 +42,7 @@ const MAX_FAILURE_RATE: f64 = 0.005; // 0.5%
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_conformer_embedding_1k() {
     let smiles = load_smiles(N_MOLECULES);
     assert!(smiles.len() >= N_MOLECULES, "Need at least 1000 SMILES");
@@ -140,6 +141,7 @@ fn benchmark_conformer_embedding_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_gasteiger_charges_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut success = 0usize;
@@ -186,6 +188,7 @@ fn benchmark_gasteiger_charges_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_sasa_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -243,6 +246,7 @@ fn benchmark_sasa_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_population_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -303,6 +307,7 @@ fn benchmark_population_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_dipole_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -364,6 +369,7 @@ fn benchmark_dipole_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_dos_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -427,6 +433,7 @@ fn benchmark_dos_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_forcefield_energy_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -488,6 +495,7 @@ fn benchmark_forcefield_energy_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_pm3_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -548,6 +556,7 @@ fn benchmark_pm3_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_xtb_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -603,6 +612,7 @@ fn benchmark_xtb_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_ml_properties_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut parse_ok = 0usize;
@@ -675,6 +685,7 @@ fn benchmark_ml_properties_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_eht_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -728,6 +739,7 @@ fn benchmark_eht_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_uvvis_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -792,6 +804,7 @@ fn benchmark_uvvis_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_nmr_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut nmr_ok = 0usize;
@@ -847,6 +860,7 @@ fn benchmark_nmr_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_bond_orders_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -898,6 +912,7 @@ fn benchmark_bond_orders_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_reactivity_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -957,6 +972,7 @@ fn benchmark_reactivity_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_topology_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -991,6 +1007,7 @@ fn benchmark_topology_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_hose_codes_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut hose_ok = 0usize;
@@ -1027,6 +1044,7 @@ fn benchmark_hose_codes_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_graph_features_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut graph_ok = 0usize;
@@ -1060,6 +1078,7 @@ fn benchmark_graph_features_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_pka_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut pka_ok = 0usize;
@@ -1101,6 +1120,7 @@ fn benchmark_pka_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_cross_method_consistency_100() {
     // Subset of 100 molecules for cross-method validation
     let smiles = load_smiles(100);
@@ -1147,6 +1167,7 @@ fn benchmark_cross_method_consistency_100() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_reproducibility_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut tested = 0usize;
@@ -1187,6 +1208,7 @@ fn benchmark_reproducibility_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_esp_100() {
     // ESP is expensive, test on smaller subset
     let smiles = load_smiles(100);
@@ -1242,6 +1264,7 @@ fn benchmark_esp_100() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_ir_50() {
     // IR (numerical Hessian) is extremely expensive (6N EHT evaluations per molecule).
     // Test only small molecules (< 15 atoms) to keep runtime reasonable.
@@ -1305,6 +1328,7 @@ fn benchmark_ir_50() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_materials() {
     // Test unit cell creation with various parameters
     let params = vec![
@@ -1331,6 +1355,7 @@ fn benchmark_materials() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_nmr_spectrum_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut h_spec_ok = 0usize;
@@ -1376,6 +1401,7 @@ fn benchmark_nmr_spectrum_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_alignment_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut tested = 0usize;
@@ -1420,6 +1446,7 @@ fn benchmark_alignment_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn summary_all_modules_1k() {
     // This test just verifies all SMILES can be loaded and parsed
     let smiles = load_smiles(N_MOLECULES);
@@ -1455,6 +1482,7 @@ fn summary_all_modules_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_all_3d_modules_1k() {
     let smiles = load_smiles(N_MOLECULES);
     assert!(smiles.len() >= N_MOLECULES);
@@ -1776,6 +1804,7 @@ fn benchmark_all_3d_modules_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_embed_batch_100() {
     let smiles = load_smiles(100);
     let smiles_refs: Vec<&str> = smiles.iter().map(|(s, _)| s.as_str()).collect();
@@ -1816,6 +1845,7 @@ fn benchmark_embed_batch_100() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_nmr_couplings_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut coupling_ok = 0usize;
@@ -1863,6 +1893,7 @@ fn benchmark_nmr_couplings_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_uv_vis_eht_200() {
     let smiles = load_smiles(200);
     let mut embed_ok = 0usize;
@@ -1906,6 +1937,7 @@ fn benchmark_uv_vis_eht_200() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_eht_uff_fallback_200() {
     let smiles = load_smiles(200);
     let mut embed_ok = 0usize;
@@ -1946,6 +1978,7 @@ fn benchmark_eht_uff_fallback_200() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_compare_methods_100() {
     let smiles = load_smiles(100);
     let mut embed_ok = 0usize;
@@ -1986,6 +2019,7 @@ fn benchmark_compare_methods_100() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_uff_aromatic_1k() {
     let smiles = load_smiles(N_MOLECULES);
     let mut embed_ok = 0usize;
@@ -2027,6 +2061,7 @@ fn benchmark_uff_aromatic_1k() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_md_trajectory_20() {
     let smiles = load_smiles(20);
     let mut embed_ok = 0usize;
@@ -2076,6 +2111,7 @@ fn benchmark_md_trajectory_20() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_conformer_search_10() {
     let smiles = load_smiles(10);
     let mut search_ok = 0usize;
@@ -2111,6 +2147,7 @@ fn benchmark_conformer_search_10() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_framework_assembly() {
     // Test framework assembly using proper Topology constructors
     use sci_form::materials::{ConnectionPoint, CoordinationGeometry, Sbu, Topology};
@@ -2179,6 +2216,7 @@ fn benchmark_framework_assembly() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "benchmark: 1k molecules x 14 capabilities, run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn benchmark_neb_path_5() {
     let smiles = load_smiles(5);
     let mut neb_ok = 0usize;

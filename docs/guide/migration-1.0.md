@@ -1,8 +1,8 @@
 # Migrating from 0.15.x to 1.0.0
 
 `sci-form` 1.0.0 is the first stable release. It closes two exhaustive audits
-(100 findings in [`reports/auditoria-total.md`](../../reports/auditoria-total.md),
-58 blockers in [`reports/v1.0-blockers.md`](../../reports/v1.0-blockers.md)).
+(100 findings in [`reports/auditoria-total.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/auditoria-total.md),
+58 blockers in [`reports/v1.0-blockers.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/v1.0-blockers.md)).
 
 Almost everything in this guide is **additive**: the deprecated names still
 work, they just warn. The genuinely breaking changes are the ones where a
@@ -400,10 +400,10 @@ were documented as eV in 0.15.
 
 ## See also
 
-- [`CHANGELOG.md`](../../CHANGELOG.md) — the full 1.0.0 entry
-- [`reports/v1.0-blockers.md`](../../reports/v1.0-blockers.md) — the 58 blockers
+- [`CHANGELOG.md`](https://github.com/jigonzalez930209/sci-form/blob/main/CHANGELOG.md) — the full 1.0.0 entry
+- [`reports/v1.0-blockers.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/v1.0-blockers.md) — the 58 blockers
   and their disposition
-- [`reports/auditoria-resolucion.md`](../../reports/auditoria-resolucion.md) —
+- [`reports/auditoria-resolucion.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/auditoria-resolucion.md) —
   the 100 findings of the first audit
 - [`docs/api/complete-supported-reference.md`](../api/complete-supported-reference.md)
   — every capability, by surface

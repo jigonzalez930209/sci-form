@@ -8,6 +8,7 @@ use sci_form::eht::{basis::build_basis, evaluate_orbital_on_grid, marching_cubes
 use std::time::Instant;
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 #[allow(clippy::type_complexity)]
 fn volume_vs_mesh_comparison() {
     let molecules: Vec<(&str, Vec<u8>, Vec<[f64; 3]>)> = vec![

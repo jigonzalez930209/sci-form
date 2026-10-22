@@ -30,6 +30,7 @@ fn _to_pos(coords: &[f64]) -> Vec<[f64; 3]> {
 // ─── SMARTS batch matching benchmark ──────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_smarts_batch_matching() {
     let smiles_list = [
         "CCO",
@@ -86,6 +87,7 @@ fn test_bench_smarts_batch_matching() {
 // ─── 3D descriptors benchmark ─────────────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_3d_descriptors() {
     let smiles_list = [
         "CCO",
@@ -132,6 +134,7 @@ fn test_bench_3d_descriptors() {
 // ─── Pharmacophore fingerprint benchmark ──────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_pharmacophore_fingerprints() {
     use sci_form::ml::pharmacophore::{
         compute_pharmacophore_fingerprint, detect_features, pharmacophore_tanimoto,
@@ -211,6 +214,7 @@ fn test_bench_pharmacophore_fingerprints() {
 // ─── Powder XRD benchmark ─────────────────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_powder_xrd() {
     use sci_form::materials::{simulate_powder_xrd, UnitCell};
 
@@ -243,6 +247,7 @@ fn test_bench_powder_xrd() {
 // ─── Space group symmetry benchmark ───────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_symmetry_expansion() {
     use sci_form::materials::{expand_by_symmetry, get_space_group};
 
@@ -279,6 +284,7 @@ fn test_bench_symmetry_expansion() {
 // ─── Porosity benchmark ──────────────────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_porosity() {
     use sci_form::materials::{compute_porosity, UnitCell};
 
@@ -316,6 +322,7 @@ fn test_bench_porosity() {
 // ─── ML uncertainty benchmark ─────────────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_ml_prediction_with_uncertainty() {
     use petgraph::visit::EdgeRef;
 
@@ -371,6 +378,7 @@ fn test_bench_ml_prediction_with_uncertainty() {
 // ─── Semi-analytical Hessian benchmark ────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_semianalytical_hessian_pm3() {
     let elements = [8u8, 1, 1]; // Water
     let positions = [[0.0, 0.0, 0.0], [0.757, 0.586, 0.0], [-0.757, 0.586, 0.0]];
@@ -411,6 +419,7 @@ fn test_bench_semianalytical_hessian_pm3() {
 // ─── MMFF94 vs MMFF94s benchmark ──────────────────────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_mmff94_vs_mmff94s() {
     use sci_form::forcefield::mmff94::{Mmff94Builder, Mmff94Variant};
 
@@ -448,6 +457,7 @@ fn test_bench_mmff94_vs_mmff94s() {
 // ─── Stereo analysis with new features benchmark ──────────────────────────────
 
 #[test]
+#[ignore = "benchmark: run it explicitly with `cargo test --release --test benchmarks -- --ignored`"]
 fn test_bench_stereo_with_atropisomerism() {
     let smiles_list = [
         "C[C@H](F)Cl",
