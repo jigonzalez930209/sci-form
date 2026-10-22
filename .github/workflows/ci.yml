@@ -187,6 +187,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --features "${RUST_EXPERIMENTAL_FEATURES}" -- -D warnings
+      # The published wheel and npm package must expose exactly the
+      # capabilities CI builds and tests. The two workflows used to carry
+      # their own copy of the feature lists and the release copy silently
+      # fell behind, shipping five alpha modules that CI never exercised.
+      - name: Check that CI and release agree on the feature sets
+        run: python3 scripts/check_feature_parity.py
 
   wasm:
     name: WASM Build
@@ -230,6 +236,24 @@ jobs:
           test -f crates/wasm/pkg/cjs/beta/index.js
           node -e "const p=require('./crates/wasm/pkg/package.json'); if (!p.files.includes('cjs')) throw new Error('pkg.files is missing cjs'); if (p.exports['.'].require !== './cjs/sci_form_wasm.js') throw new Error('pkg is missing the CommonJS entry point'); if (p.exports['./alpha'].require !== './cjs/alpha/index.js') throw new Error('pkg is missing the CommonJS ./alpha entry point'); if (p.exports['./beta'].require !== './cjs/beta/index.js') throw new Error('pkg is missing the CommonJS ./beta entry point');"
           node -e "const p=require('./crates/wasm/pkg/cjs/package.json'); if (p.type !== 'commonjs') throw new Error('pkg/cjs must be CommonJS, got ' + p.type);"
+          # The subpath declarations are generated from the build, so every
+          # name they declare must exist in the binary. A declaration that
+          # the build does not contain is a promise the package cannot keep.
+          node -e "
+          const fs = require('fs');
+          const check = (dts, wasm) => {
+            const declared = [...fs.readFileSync(dts, 'utf8').matchAll(/^export (?:function|class) ([A-Za-z0-9_]+)/gm)].map((m) => m[1]);
+            const built = new Set([...fs.readFileSync(wasm, 'utf8').matchAll(/^export (?:function|class) ([A-Za-z0-9_]+)/gm)].map((m) => m[1]));
+            const missing = declared.filter((n) => !built.has(n));
+            if (missing.length) throw new Error(dts + ' declares functions the build does not have: ' + missing.join(', '));
+            if (declared.length === 0) throw new Error(dts + ' declares nothing');
+            console.log('  ' + dts + ': ' + declared.length + ' declarations, all present in the build');
+          };
+          check('crates/wasm/pkg/alpha/index.d.ts', 'crates/wasm/pkg/sci_form_wasm.d.ts');
+          check('crates/wasm/pkg/beta/index.d.ts', 'crates/wasm/pkg/sci_form_wasm.d.ts');
+          check('crates/wasm/pkg-node/alpha/index.d.ts', 'crates/wasm/pkg-node/sci_form_wasm.d.ts');
+          check('crates/wasm/pkg-node/beta/index.d.ts', 'crates/wasm/pkg-node/sci_form_wasm.d.ts');
+          "
       - name: Verify Node.js install
         run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const alpha = require('./alpha'); const beta = require('./beta'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.assert(typeof sci.alpha_compute_dft === 'function', 'missing alpha root export'); console.assert(typeof sci.beta_compute_kpm_dos === 'function', 'missing beta root export'); console.assert(typeof alpha.alpha_modules_info === 'function', 'missing alpha subpath export'); console.assert(typeof beta.beta_modules_info === 'function', 'missing beta subpath export'); console.log('✓ Node.js WASM works with alpha/beta exports');"
       # The published package is the dual one in crates/wasm/pkg/.  Packing

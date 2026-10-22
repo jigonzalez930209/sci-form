@@ -195,9 +195,12 @@ if [[ "$NODE_ONLY" == false ]]; then
   echo "→ Copying alpha/beta ESM subpath shims into pkg/..."
   mkdir -p pkg/alpha pkg/beta
   cp js/alpha/index.js pkg/alpha/index.js
-  cp js/alpha/index.d.ts pkg/alpha/index.d.ts
   cp js/beta/index.js pkg/beta/index.js
-  cp js/beta/index.d.ts pkg/beta/index.d.ts
+  # The declarations are generated from the build that was just produced, so
+  # they can never promise a function the binary does not contain.
+  echo "→ Generating the alpha/beta TypeScript declarations from the build..."
+  node js/generate-subpath-types.js pkg pkg/alpha/index.d.ts --rust src/alpha.rs,src/dynamics_live.rs
+  node js/generate-subpath-types.js pkg pkg/beta/index.d.ts --rust src/beta.rs
 fi
 
 # ── 4. Node.js target (server-side / CommonJS) ───────────────────────────────
@@ -236,8 +239,10 @@ EOF
 'use strict';
 module.exports = require('../sci_form_wasm.js');
 EOF
-  cp js/alpha/index.d.ts pkg-node/alpha/index.d.ts
-  cp js/beta/index.d.ts pkg-node/beta/index.d.ts
+  # Same as for pkg/: the declarations come from the nodejs build itself.
+  echo "→ Generating the alpha/beta TypeScript declarations from the node build..."
+  node js/generate-subpath-types.js pkg-node pkg-node/alpha/index.d.ts --rust src/alpha.rs,src/dynamics_live.rs
+  node js/generate-subpath-types.js pkg-node pkg-node/beta/index.d.ts --rust src/beta.rs
 
   # ── 5. Assemble the dual package: pkg/cjs/ (CommonJS) ───────────────────
   # The published package is `pkg/`.  Its `exports` map sends `import` to the

@@ -23,6 +23,7 @@
 | A11 | `alpha::periodic_linear` | `alpha-periodic-linear` | Periodic k-mesh, Bloch-phase, and linear-scaling spectral contracts |
 | A12 | `alpha::kinetics` | `alpha-kinetics` | HTST and microkinetic contracts with CPU reference rates |
 | A13 | `render_bridge` (core base, F90) | — | Chart/trajectory payloads (domain builders stay alpha) |
+| A14 | `alpha::reaction_dynamics` | `alpha-reaction-dynamics` | 3D reaction path: approach frames, CI-NEB images and departure frames |
 
 ---
 
@@ -576,7 +577,6 @@ sci-form htst-rate --activation 0.45 --reaction -0.10 --temperature 298.15
 ---
 
 ## A13 — Render Bridge (`alpha-render-bridge`)
-
 **Module:** base in `sci_form::render_bridge` (core, F90) + domain builders gated in alpha
 
 Defines solver-agnostic payloads for charts, traces, and trajectory visualizations. Shared chart generator for EDL profiles, band structures, microkinetic population traces, Arrhenius plots, and capacitance scans. Converts computed results into Arrow RecordBatch format for transport to web frontends or Jupyter notebooks.
@@ -718,6 +718,73 @@ bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-reaxff alph
 > `pkg/package.json` from scratch and drops the `snippets` entry that
 > `wasm-bindgen-rayon` needs at runtime, as well as the `./alpha` and
 > `./beta` subpath exports.
+
+---
+
+## A14 — 3D Reaction Dynamics (`alpha-reaction-dynamics`)
+
+**Module:** `sci_form::alpha::reaction_dynamics`
+
+Builds a full 3D reaction path: **approach frames** (the fragments are
+approached along the reactive axis), **CI-NEB images** (the transition state
+is located by a climbing-image NEB) and **departure frames** (the product
+separates from the reactive complex).
+
+> **This module is not a validated reaction path.** The frames are always
+> finite — a divergent path used to produce `NaN` and is now rejected — but
+> the CI-NEB frequently does not converge (`notes` reports
+> `converged=false` and the final maximum force), and the energies of the
+> images are computed with the *reactant* topology. Treat the result as a
+> geometric exploration of the path, not as a reaction energy. The
+> `alpha_modules_info` entry point lists the modules the binary contains.
+
+### Rust
+
+```rust
+use sci_form::alpha::reaction_dynamics::{
+    compute_reaction_dynamics_3d, ReactionDynamics3DConfig,
+};
+
+let config = ReactionDynamics3DConfig {
+    method: "gfn2".to_string(),
+    n_images: 30,
+    ..Default::default()
+};
+let result = compute_reaction_dynamics_3d(&["[Cl-]", "CBr"], &["ClC", "[Br-]"], &config)?;
+for frame in &result.frames {
+    println!("{} {} {:.2} kcal/mol", frame.index, frame.phase, frame.energy_kcal_mol);
+}
+```
+
+### Python
+
+```python
+from sci_form.alpha import compute_reaction_dynamics_3d
+
+result = compute_reaction_dynamics_3d(
+    ["[Cl-]", "CBr"], ["ClC", "[Br-]"], method="gfn2", n_images=30
+)
+print(result.notes)          # e.g. ['CI-NEB ... converged=false', ...]
+print(result.activation_energy_kcal_mol, result.reaction_energy_kcal_mol)
+```
+
+### WASM / TypeScript
+
+```typescript
+import { compute_reaction_dynamics_3d } from 'sci-form-wasm/alpha';
+
+const path = JSON.parse(
+  compute_reaction_dynamics_3d('["[Cl-]", "CBr"]', '["ClC", "[Br-]"]', '{}'),
+);
+if (path.error) throw new Error(path.error);
+console.log(path.frames.length, 'frames');
+```
+
+### CLI
+
+```bash
+sci-form reaction-dynamics3d '["[Cl-]", "CBr"]' '["ClC", "[Br-]"]' --method gfn2
+```
 
 ---
 

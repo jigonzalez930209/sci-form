@@ -10,18 +10,30 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # The feature lists MUST be identical to the ones in ci.yml: the published
+  # artefacts are what CI tests, so a shorter list here would ship a wheel
+  # and an npm package with fewer capabilities than the documentation
+  # promises. `scripts/check_feature_parity.py` fails the build if the two
+  # workflows ever drift apart.
   PYTHON_BINDING_FEATURES: >-
     parallel
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
+    alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
+    alpha-render-bridge alpha-reaction-dynamics
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
   WASM_WEB_FEATURES: >-
     parallel experimental-gpu
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
-    alpha-dynamics-live alpha-imd
+    alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
+    alpha-render-bridge alpha-reaction-dynamics
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
+  # The Node.js build has no rayon threads (wasm-bindgen-rayon needs the
+  # browser Worker API) and no WebGPU (Node.js has no WebGPU): both features
+  # change behaviour, not the export list, so the API is the same.
   WASM_NODE_FEATURES: >-
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
-    alpha-dynamics-live alpha-imd
+    alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
+    alpha-render-bridge alpha-reaction-dynamics
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
 
 # ─────────────────────────────────────────────────────────────────────────────

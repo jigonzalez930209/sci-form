@@ -1,0 +1,167 @@
+#!/usr/bin/env node
+/**
+ * Generate the subpath TypeScript declarations from the *built* package.
+ *
+ * The `sci-form-wasm/alpha` and `sci-form-wasm/beta` entry points re-export
+ * the whole WASM surface at runtime (`export * from '../sci_form_wasm.js'`).
+ * Their declarations used to be a hand-written file listing every research
+ * function — a file that silently lied whenever the build was compiled with
+ * a different feature set: the declarations promised functions that the
+ * binary did not contain.
+ *
+ * This script reads the declarations that wasm-bindgen generated for the
+ * build that actually exists and keeps the ones belonging to the subpath.
+ * The result can never drift from the binary, and the doc comments are the
+ * ones the Rust source carries.
+ *
+ * Usage:
+ *   node generate-subpath-types.js <package-dir> <output-file> --prefix <name>
+ *   node generate-subpath-types.js <package-dir> <output-file> --rust <file[,file...]>
+ *
+ *   <package-dir>  directory holding sci_form_wasm.d.ts (e.g. `pkg`)
+ *   <output-file>  where to write the declarations (e.g. `pkg/alpha/index.d.ts`)
+ *   --prefix       keep the declarations whose name starts with `<name>_`
+ *   --rust         keep the declarations whose name is defined in one of the
+ *                  given Rust sources (comma separated)
+ *
+ * The `--rust` mode exists because two alpha entry points are not prefixed
+ * with `alpha_` (`compute_reaction_dynamics_3d`, `compute_approach_dynamics`)
+ * and one alpha module is not prefixed at all (`LiveSimulation`): the
+ * membership of the subpath is defined by the Rust module, not by the name.
+ */
+
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+
+const [dir, outFile, mode, value] = process.argv.slice(2);
+if (!dir || !outFile || !mode || !value) {
+  console.error(
+    'usage: generate-subpath-types.js <package-dir> <output-file> --prefix <name> | --rust <files>',
+  );
+  process.exit(2);
+}
+
+const source = path.join(dir, 'sci_form_wasm.d.ts');
+if (!fs.existsSync(source)) {
+  console.error(`error: ${source} does not exist (build the package first)`);
+  process.exit(1);
+}
+
+/**
+ * Split a declaration file into its top-level blocks.
+ *
+ * A block is an optional doc comment plus one `export ...` declaration. The
+ * end of a declaration is found by balancing brackets, so multi-line
+ * parameter lists and class bodies are handled correctly.
+ */
+function topLevelBlocks(text) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const match = /^export\s+(?:declare\s+)?(?:async\s+)?(function|class|const|let|var|interface|type|enum)\s+([A-Za-z0-9_$]+)/.exec(
+      lines[i],
+    );
+    if (!match) {
+      i += 1;
+      continue;
+    }
+
+    // The doc comment sits directly above the declaration.
+    let start = i;
+    let j = i - 1;
+    while (j >= 0 && /^\s*(\/\*\*|\*|\*\/)/.test(lines[j])) {
+      start = j;
+      j -= 1;
+    }
+
+    // Find the last line of the declaration.
+    let end = i;
+    let depth = 0;
+    let sawBracket = false;
+    for (let k = i; k < lines.length; k += 1) {
+      for (const ch of lines[k]) {
+        if (ch === '{' || ch === '(' || ch === '[') {
+          depth += 1;
+          sawBracket = true;
+        } else if (ch === '}' || ch === ')' || ch === ']') {
+          depth -= 1;
+        }
+      }
+      if (sawBracket) {
+        if (depth <= 0) {
+          end = k;
+          break;
+        }
+      } else if (lines[k].trimEnd().endsWith(';')) {
+        end = k;
+        break;
+      }
+    }
+
+    blocks.push({ name: match[2], text: lines.slice(start, end + 1).join('\n') });
+    i = end + 1;
+  }
+
+  return blocks;
+}
+
+const blocks = topLevelBlocks(fs.readFileSync(source, 'utf8'));
+
+/** Names of the public items defined in a Rust source file. */
+function rustNames(files) {
+  const names = new Set();
+  for (const file of files) {
+    if (!fs.existsSync(file)) {
+      console.error(`error: ${file} does not exist`);
+      process.exit(1);
+    }
+    const text = fs.readFileSync(file, 'utf8');
+    const re = /^pub\s+(?:async\s+)?(?:fn|struct|enum|const|static)\s+([A-Za-z0-9_]+)/gm;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      names.add(m[1]);
+    }
+  }
+  return names;
+}
+
+let wanted;
+if (mode === '--prefix') {
+  wanted = blocks.filter((b) => b.name.startsWith(`${value}_`));
+} else if (mode === '--rust') {
+  const names = rustNames(value.split(',').map((f) => f.trim()).filter(Boolean));
+  wanted = blocks.filter((b) => names.has(b.name));
+} else {
+  console.error(`error: unknown mode '${mode}'`);
+  process.exit(2);
+}
+
+if (wanted.length === 0) {
+  console.error(
+    `error: no declaration selected from ${source} — the build has no ${value} module`,
+  );
+  process.exit(1);
+}
+
+const subpath = path.basename(path.dirname(outFile));
+const header = `/**
+ * sci-form-wasm/${subpath} — TypeScript declarations.
+ *
+ * GENERATED by \`crates/wasm/js/generate-subpath-types.js\` from the
+ * declarations of the build that produced this package. Do not edit by hand:
+ * the file is regenerated on every build, so it can never promise a function
+ * the binary does not contain.
+ *
+ * All functions accept/return JSON strings except where noted.
+ * Call \`await init()\` from the main \`sci-form-wasm\` package once before use.
+ */
+`;
+
+const body = wanted.map((b) => b.text).join('\n\n');
+fs.mkdirSync(path.dirname(outFile), { recursive: true });
+fs.writeFileSync(outFile, `${header}\n${body}\n`);
+console.log(`  ${outFile}: ${wanted.length} declarations`);
