@@ -28,6 +28,9 @@
 /// full type quadruple.
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94Def {
+    /// The four equivalence levels of this atom type, from the most specific
+    /// (level 0, the type itself) to the most general. Level 0 is always the
+    /// type's own number.
     pub eq_level: [u8; 4],
 }
 
@@ -148,13 +151,21 @@ pub const MMFF94_DEFS: [Mmff94Def; 100] = [
 /// * `sbmb` - 1 if single bonds to this atom are "special" (conjugated)
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94Prop {
+    /// Atomic number of the element.
     pub atno: u8,
+    /// Number of connections (neighbours) of the atom.
     pub crd: u8,
+    /// Total valence (bond-order sum) of the atom.
     pub val: u8,
+    /// Number of π lone pairs on the atom.
     pub pilp: u8,
+    /// Number of lone pairs on the atom.
     pub mltb: u8,
+    /// `1` if the atom is aromatic, `0` otherwise.
     pub arom: u8,
+    /// `1` if the atom is linear (sp hybridised with two connections).
     pub linh: u8,
+    /// `1` if single bonds to this atom are "special" (conjugated).
     pub sbmb: u8,
 }
 
@@ -275,13 +286,20 @@ pub const MMFF94_AROMATIC_TYPES: &[u8] = &[
 /// so that they can be binary searched.
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94BondParam {
+    /// Bond type: `0` = single, `1` = double, `2` = triple, `3` = aromatic,
+    /// `4` = default (used when the specific type is not tabulated).
     pub bond_type: u8,
+    /// MMFF94 atom type of the first atom of the pair.
     pub i_type: u8,
+    /// MMFF94 atom type of the second atom of the pair.
     pub j_type: u8,
+    /// Bond force constant `kb` in md/Å.
     pub kb: f64,
+    /// Equilibrium bond length `r0` in Å.
     pub r0: f64,
 }
 
+/// Bond stretching parameter table (MMFF.II, Table II).
 #[rustfmt::skip]
 pub const MMFF94_BOND_PARAMS: &[Mmff94BondParam] = &[
     Mmff94BondParam { bond_type: 0, i_type: 1, j_type: 1, kb: 4.258, r0: 1.508 },
@@ -786,14 +804,21 @@ pub const MMFF94_BOND_PARAMS: &[Mmff94BondParam] = &[
 /// k_type)` so that they can be binary searched.
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94AngleParam {
+    /// Angle type: `0` = general, `1` = linear, `2` = aromatic.
     pub angle_type: u8,
+    /// MMFF94 atom type of the first outer atom.
     pub i_type: u8,
+    /// MMFF94 atom type of the central atom.
     pub j_type: u8,
+    /// MMFF94 atom type of the second outer atom.
     pub k_type: u8,
+    /// Angle force constant `ka` in md·Å/rad².
     pub ka: f64,
+    /// Equilibrium valence angle `theta0` in degrees.
     pub theta0: f64,
 }
 
+/// Angle bending parameter table (MMFF.III, Table II).
 #[rustfmt::skip]
 pub const MMFF94_ANGLE_PARAMS: &[Mmff94AngleParam] = &[
     Mmff94AngleParam { angle_type: 0, i_type: 0, j_type: 1, k_type: 0, ka: 0.0, theta0: 108.9 },
@@ -3147,13 +3172,21 @@ pub const MMFF94_ANGLE_PARAMS: &[Mmff94AngleParam] = &[
 /// searched.
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94TorParam {
+    /// Torsion type: `0` = general, `1` = aromatic (planar), `2` = sp2-sp3.
     pub tor_type: u8,
+    /// MMFF94 atom type of the first terminal atom.
     pub i_type: u8,
+    /// MMFF94 atom type of the second atom.
     pub j_type: u8,
+    /// MMFF94 atom type of the third atom.
     pub k_type: u8,
+    /// MMFF94 atom type of the fourth terminal atom.
     pub l_type: u8,
+    /// First torsion coefficient `V1` in kcal/mol (the `cos φ` term).
     pub v1: f64,
+    /// Second torsion coefficient `V2` in kcal/mol (the `cos 2φ` term).
     pub v2: f64,
+    /// Third torsion coefficient `V3` in kcal/mol (the `cos 3φ` term).
     pub v3: f64,
 }
 
@@ -5034,6 +5067,7 @@ pub struct Mmff94VdWGlobals {
     pub daeps: f64,
 }
 
+/// Global van der Waals combination-rule constants (MMFF.V, Table II).
 pub const MMFF94_VDW_GLOBALS: Mmff94VdWGlobals = Mmff94VdWGlobals {
     power: 0.25,
     b: 0.2,
@@ -5048,14 +5082,21 @@ pub const MMFF94_VDW_GLOBALS: Mmff94VdWGlobals = Mmff94VdWGlobals {
 /// 2 = donor.
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94VdWParam {
+    /// MMFF94 atom type this row describes.
     pub atom_type: u8,
+    /// Polarizability `alpha_i` in Å³.
     pub alpha_i: f64,
+    /// Exponent `N_i` of the vdW combination rule (dimensionless).
     pub n_i: f64,
+    /// Scaling coefficient `A_i` in Å⁴.
     pub a_i: f64,
+    /// Well depth `G_i` in kcal·Å⁴/mol.
     pub g_i: f64,
+    /// Donor/acceptor flag: `0` = none, `1` = acceptor, `2` = donor.
     pub da: u8,
 }
 
+/// Per-atom-type van der Waals parameter table (`MMFFVDW.PAR`).
 #[rustfmt::skip]
 pub const MMFF94_VDW_PARAMS: &[Mmff94VdWParam] = &[
     Mmff94VdWParam { atom_type: 1, alpha_i: 1.05, n_i: 2.49, a_i: 3.89, g_i: 1.282, da: 0 },
@@ -5160,13 +5201,18 @@ pub const MMFF94_VDW_PARAMS: &[Mmff94VdWParam] = &[
 /// `r0` in A, `kb` in md/A; keyed by the pair of atomic numbers.
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94BndkParam {
+    /// Atomic number of the first atom of the pair.
     pub z_i: u8,
+    /// Atomic number of the second atom of the pair.
     pub z_j: u8,
+    /// Default equilibrium bond length `r0` in Å.
     pub r0: f64,
+    /// Default bond force constant `kb` in md/Å.
     pub kb: f64,
 }
 
 #[rustfmt::skip]
+/// Default bond length / force constant table (`MMFFBNDK.PAR`).
 pub const MMFF94_BNDK_PARAMS: &[Mmff94BndkParam] = &[
     Mmff94BndkParam { z_i: 1, z_j: 6, r0: 1.084, kb: 5.15 },
     Mmff94BndkParam { z_i: 1, z_j: 7, r0: 1.001, kb: 7.35 },
@@ -5233,14 +5279,20 @@ pub const MMFF94_BNDK_PARAMS: &[Mmff94BndkParam] = &[
 /// Indexed by the pair of periodic-table rows (Halgren's `HL` rows).
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94HerschbachLaurie {
+    /// Periodic-table row of the first atom (Halgren's `HL` row numbering).
     pub row_i: u8,
+    /// Periodic-table row of the second atom.
     pub row_j: u8,
+    /// Badger's-rule coefficient `a_ij` in Å.
     pub a_ij: f64,
+    /// Electronegativity correction coefficient `d_ij` (dimensionless).
     pub d_ij: f64,
+    /// Electronegativity correction coefficient `dp_ij` (dimensionless).
     pub dp_ij: f64,
 }
 
 #[rustfmt::skip]
+/// Herschbach-Laurie table used by the MMFF94 Badger's-rule bond lengths.
 pub const MMFF94_HERSCHBACH_LAURIE: &[Mmff94HerschbachLaurie] = &[
     Mmff94HerschbachLaurie { row_i: 0, row_j: 0, a_ij: 1.26, d_ij: 0.025, dp_ij: 0.025 },
     Mmff94HerschbachLaurie { row_i: 0, row_j: 1, a_ij: 1.66, d_ij: 0.3, dp_ij: 0.36 },
@@ -5272,12 +5324,16 @@ pub const MMFF94_HERSCHBACH_LAURIE: &[Mmff94HerschbachLaurie] = &[
 /// Covalent radius (A) and Pauling electronegativity per atomic number.
 #[derive(Debug, Clone, Copy)]
 pub struct Mmff94CovRadPauEle {
+    /// Atomic number of the element.
     pub z: u8,
+    /// Covalent radius `r0` in Å.
     pub r0: f64,
+    /// Pauling electronegativity `chi` (dimensionless).
     pub chi: f64,
 }
 
 #[rustfmt::skip]
+/// Covalent radius and Pauling electronegativity table (MMFF.V, Table I).
 pub const MMFF94_COV_RAD_PAU_ELE: &[Mmff94CovRadPauEle] = &[
     Mmff94CovRadPauEle { z: 1, r0: 0.33, chi: 2.2 },
     Mmff94CovRadPauEle { z: 3, r0: 1.34, chi: 0.97 },

@@ -23,6 +23,18 @@ const GPU_DISPATCH_THRESHOLD: usize = 100;
 /// `n_singles`: number of single excitations.
 ///
 /// Returns the off-diagonal contribution to the A matrix (n_singles × n_singles), row-major.
+///
+/// The matrix elements are in **Hartree** (atomic units).
+///
+/// # Errors
+///
+/// - `"sTDA GPU dispatch size overflow"` when the size of the intermediate
+///   `n_atoms × n_singles` buffer overflows a `usize`.
+/// - `"sTDA GPU readback has {n} bytes, expected {m}"` when the read-back
+///   payload has the wrong length.
+/// - `"GPU readback buffer is not 4-byte aligned: ..."` when the read-back
+///   buffer cannot be reinterpreted as `f32`.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_stda_j_matrix_gpu(
     ctx: &GpuContext,
     q_matrix: &[f64],

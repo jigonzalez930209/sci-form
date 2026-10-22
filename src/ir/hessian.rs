@@ -59,6 +59,16 @@ fn evaluate_energy(
 /// `positions`: Cartesian coordinates in Å
 /// `method`: which energy method to use
 /// `step_size`: finite difference step in Å (if None, auto-selects based on atomic mass)
+///
+/// The returned Hessian is in eV/Å² (the energies of all supported methods
+/// are in eV and the displacements are in Å).
+///
+/// # Errors
+///
+/// Returns `Err` if `elements` and `positions` have different lengths, if
+/// the selected method cannot provide a numerical Hessian (UFF — use
+/// [`compute_uff_analytical_hessian`] instead), or if any of the displaced
+/// energy evaluations fails.
 pub fn compute_numerical_hessian(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -185,6 +195,14 @@ fn flat_to_positions(coords: &[f64]) -> Vec<[f64; 3]> {
 ///
 /// This requires only 6N gradient evaluations (one ± displacement per coordinate),
 /// which is much cheaper since UFF gradients are computed analytically.
+///
+/// The returned Hessian is in kcal/(mol·Å²) (UFF energies are in
+/// kcal/mol).
+///
+/// # Errors
+///
+/// Returns `Err` if the SMILES string cannot be parsed or if the length of
+/// `coords_flat` does not equal `3N` for the parsed molecule.
 pub fn compute_uff_analytical_hessian(
     smiles: &str,
     coords_flat: &[f64],
@@ -240,6 +258,15 @@ pub fn compute_uff_analytical_hessian(
 /// Same algorithm as `compute_numerical_hessian` but evaluates all
 /// diagonal elements in parallel, then all off-diagonal (i,j) pairs
 /// in parallel. Each energy evaluation is independent.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`compute_numerical_hessian`].
+///
+/// # Panics
+///
+/// Panics if a worker thread panicked while holding the internal mutex
+/// (which poisons the lock).
 #[cfg(feature = "parallel")]
 pub fn compute_numerical_hessian_parallel(
     elements: &[u8],
@@ -332,6 +359,16 @@ pub fn compute_numerical_hessian_parallel(
 /// Parallel UFF analytical Hessian via rayon.
 ///
 /// Evaluates gradient displacements for each coordinate in parallel.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as
+/// [`compute_uff_analytical_hessian`].
+///
+/// # Panics
+///
+/// Panics if a worker thread panicked while holding the internal mutex
+/// (which poisons the lock).
 #[cfg(feature = "parallel")]
 pub fn compute_uff_analytical_hessian_parallel(
     smiles: &str,
@@ -433,6 +470,14 @@ fn evaluate_gradient(
 ///
 /// This needs only 6N gradient evaluations instead of O(9N²) energy evaluations,
 /// and is more accurate since analytical gradients have less numerical noise.
+///
+/// The returned Hessian is in eV/Å² for the PM3 and xTB methods.
+///
+/// # Errors
+///
+/// Returns `Err` if `elements` and `positions` have different lengths, if
+/// the method has no analytical gradients (only PM3 and xTB do), or if any
+/// of the displaced gradient evaluations fails.
 pub fn compute_semianalytical_hessian(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -476,6 +521,11 @@ pub fn compute_semianalytical_hessian(
 }
 
 /// Parallel semi-analytical Hessian via rayon.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as
+/// [`compute_semianalytical_hessian`].
 #[cfg(feature = "parallel")]
 pub fn compute_semianalytical_hessian_parallel(
     elements: &[u8],

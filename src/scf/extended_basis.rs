@@ -17,6 +17,9 @@ pub enum BasisSetType {
 }
 
 /// Build a basis set of the specified type.
+///
+/// `positions_bohr` holds the Cartesian centres in Bohr; the returned
+/// basis functions carry the same centres.
 pub fn build_basis_set(
     basis_type: BasisSetType,
     elements: &[u8],

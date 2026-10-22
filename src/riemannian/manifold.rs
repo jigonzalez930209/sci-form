@@ -72,6 +72,9 @@ impl PsdManifold {
     }
 
     /// Get eigenvalues (cached).
+    ///
+    /// The eigenvalues of the current point, in ascending order. The
+    /// eigendecomposition is computed on first use and cached.
     pub fn eigenvalues(&mut self) -> &[f64] {
         if self.eigenvalues.is_none() {
             let eigen = SymmetricEigen::new(self.x.clone());
@@ -92,6 +95,8 @@ impl PsdManifold {
     }
 
     /// Frobenius norm of the matrix.
+    ///
+    /// `‖X‖_F = sqrt(Σ_ij X_ij²)`. For a metric matrix in Å² the norm is in Å².
     pub fn frobenius_norm(&self) -> f64 {
         let n = self.x.nrows();
         let mut sum = 0.0;

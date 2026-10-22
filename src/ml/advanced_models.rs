@@ -12,15 +12,26 @@ use serde::{Deserialize, Serialize};
 // ─── Decision Tree ───────────────────────────────────────────────────────────
 
 /// A single decision tree node (binary split).
+///
+/// The tree is a binary regression tree: every internal node splits the
+/// samples on one feature at one threshold and sends the lower branch
+/// (`value <= threshold`) left and the upper branch right.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TreeNode {
+    /// Terminal node holding the constant prediction for its samples.
     Leaf {
+        /// Predicted value, in the units of the regression target.
         value: f64,
     },
+    /// Internal node that splits on one feature.
     Split {
+        /// Index of the split feature in the feature vector.
         feature: usize,
+        /// Split threshold, in the units of the split feature.
         threshold: f64,
+        /// Branch taken when `feature <= threshold`.
         left: Box<TreeNode>,
+        /// Branch taken when `feature > threshold`.
         right: Box<TreeNode>,
     },
 }
@@ -228,21 +239,31 @@ fn select_features(n_features: usize, max_features: usize, seed: u64) -> Vec<usi
 /// Random Forest model: ensemble of bagged decision trees.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RandomForest {
+    /// The bagged trees; their predictions are averaged.
     pub trees: Vec<TreeNode>,
+    /// Number of trees in the forest (equal to the number requested in the
+    /// configuration).
     pub n_trees: usize,
     /// Out-of-bag mean squared error, computed from the samples each tree's
     /// bootstrap did not draw. `None` when no sample was ever out of bag
     /// (e.g. a bootstrap that covers the whole training set).
+    ///
+    /// The value has the unit of the regression target squared (e.g. eV² for
+    /// an energy target).
     pub oob_score: Option<f64>,
 }
 
 /// Configuration for Random Forest.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RandomForestConfig {
+    /// Number of trees to grow.
     pub n_trees: usize,
+    /// Tree-growth parameters applied to every tree of the forest.
     pub tree_config: TreeConfig,
     /// Fraction of samples for each bootstrap (0.0–1.0). Default: 1.0
     pub sample_fraction: f64,
+    /// Seed of the deterministic pseudo-random generator that drives the
+    /// bootstrap sampling and the feature selection.
     pub seed: u64,
 }
 
@@ -346,19 +367,31 @@ fn bootstrap_indices(n: usize, n_sample: usize, seed: u64) -> Vec<usize> {
 /// Gradient Boosted Trees regressor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GradientBoosting {
+    /// The sequentially fitted regression trees; their contributions are
+    /// summed with the learning rate.
     pub trees: Vec<TreeNode>,
+    /// Shrinkage factor applied to every tree contribution (dimensionless).
     pub learning_rate: f64,
+    /// Constant offset the model starts from, i.e. the mean of the training
+    /// targets, in the units of the regression target.
     pub initial_value: f64,
+    /// Number of boosting stages (trees) that were fitted.
     pub n_estimators: usize,
 }
 
 /// Configuration for Gradient Boosting.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GradientBoostingConfig {
+    /// Number of boosting stages to fit.
     pub n_estimators: usize,
+    /// Shrinkage factor applied to each tree contribution (dimensionless).
     pub learning_rate: f64,
+    /// Tree-growth parameters applied to every stage.
     pub tree_config: TreeConfig,
+    /// Fraction of the training set used at each stage (0.0–1.0).
     pub subsample: f64,
+    /// Seed of the deterministic pseudo-random generator that drives the
+    /// stage subsampling.
     pub seed: u64,
 }
 
@@ -450,8 +483,12 @@ pub struct CrossValidationResult {
 }
 
 /// Model type for cross-validation.
+///
+/// Selects which regressor [`cross_validate`] trains inside each fold.
 pub enum ModelType {
+    /// Train a [`RandomForest`] in every fold.
     RandomForest(RandomForestConfig),
+    /// Train a [`GradientBoosting`] regressor in every fold.
     GradientBoosting(GradientBoostingConfig),
 }
 
@@ -577,7 +614,11 @@ fn compute_metrics(predictions: &[f64], targets: &[f64]) -> (f64, f64, f64) {
 /// Fits a monotone non-decreasing function to prediction-target pairs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IsotonicCalibrator {
+    /// The sorted prediction values that act as knots, in the units of the
+    /// model prediction.
     pub knots_x: Vec<f64>,
+    /// The fitted target value at each knot, in the units of the regression
+    /// target.
     pub knots_y: Vec<f64>,
 }
 

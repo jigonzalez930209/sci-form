@@ -11,14 +11,23 @@
 use serde::{Deserialize, Serialize};
 
 /// Crystal system classification.
+///
+/// The seven crystal systems, ordered from lowest to highest symmetry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CrystalSystem {
+    /// Triclinic: `a ≠ b ≠ c`, `α ≠ β ≠ γ ≠ 90°`.
     Triclinic,
+    /// Monoclinic: two equal lengths, two equal angles, one 90° angle.
     Monoclinic,
+    /// Orthorhombic: `a ≠ b ≠ c`, all angles 90°.
     Orthorhombic,
+    /// Tetragonal: `a = b ≠ c`, all angles 90°.
     Tetragonal,
+    /// Trigonal (rhombohedral): `a = b = c`, `α = β = γ ≠ 90°`.
     Trigonal,
+    /// Hexagonal: `a = b ≠ c`, `α = β = 90°`, `γ = 120°`.
     Hexagonal,
+    /// Cubic: `a = b = c`, all angles 90°.
     Cubic,
 }
 

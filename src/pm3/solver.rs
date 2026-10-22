@@ -766,6 +766,21 @@ pub(crate) fn solve_pm3_with_state(
 }
 
 /// Run PM3 calculation on a molecule.
+///
+/// `positions` are Cartesian coordinates in Ångström. The returned
+/// [`Pm3Result`] carries energies in eV and the heat of formation in
+/// kcal/mol.
+///
+/// Molecules whose elements all have `Z <= 17` are handled by the faithful
+/// MOPAC 23.2.5 port ([`crate::pm3::faithful`]); everything else uses the
+/// legacy NDDO path. The `notes` field of the result records which path
+/// produced the numbers.
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if an element has no PM3
+/// parameters, or if the underlying solver fails (for example an odd
+/// electron count, which the closed-shell NDDO SCF cannot represent).
 pub fn solve_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<Pm3Result, String> {
     // Faithful MOPAC port for the sp elements (Z <= 17), validated against
     // MOPAC 23.2.5 (validation F42): exact SCF/H-matrix/core-core energies.

@@ -16,7 +16,11 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 /// Read a `float` from the options mapping.
-pub(crate) fn f64_from(opts: Option<&Bound<'_, PyDict>>, key: &str, fallback: f64) -> PyResult<f64> {
+pub(crate) fn f64_from(
+    opts: Option<&Bound<'_, PyDict>>,
+    key: &str,
+    fallback: f64,
+) -> PyResult<f64> {
     match opts.and_then(|d| d.get_item(key).ok().flatten()) {
         None => Ok(fallback),
         Some(value) => value.extract::<f64>().map_err(|e| {
@@ -103,10 +107,7 @@ pub(crate) fn usize_list_from(
 ///
 /// A typo in an options mapping is a silent no-op otherwise, which is exactly
 /// the failure mode the options object is meant to remove.
-pub(crate) fn reject_unknown(
-    opts: Option<&Bound<'_, PyDict>>,
-    known: &[&str],
-) -> PyResult<()> {
+pub(crate) fn reject_unknown(opts: Option<&Bound<'_, PyDict>>, known: &[&str]) -> PyResult<()> {
     let Some(opts) = opts else { return Ok(()) };
     for key in opts.keys() {
         let key = key.extract::<String>()?;

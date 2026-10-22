@@ -90,6 +90,11 @@ pub fn build_fock_dftb(
 ///
 /// γ_{AB} = 1 / |R_A - R_B| for A ≠ B
 /// γ_{AA} = η_A (chemical hardness / Hubbard parameter)
+///
+/// `positions_bohr` holds the Cartesian centres in Bohr and `eta` the
+/// atomic chemical hardnesses. In the atomic-unit convention used by
+/// DFTB the off-diagonal entries are in Bohr⁻¹ and the diagonal entries
+/// are in Hartree.
 pub fn build_gamma_matrix(eta: &[f64], positions_bohr: &[[f64; 3]]) -> DMatrix<f64> {
     let n = eta.len();
     let mut gamma = DMatrix::zeros(n, n);

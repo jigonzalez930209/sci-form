@@ -11,6 +11,9 @@ use nalgebra::DMatrix;
 /// Compute the electronic energy from density and matrices.
 ///
 /// E_elec = 0.5 · Tr[P · (H + F)]
+///
+/// The returned energy is in Hartree (the density matrix is dimensionless
+/// and `h_core`/`fock` are in Hartree).
 pub fn electronic_energy(
     density: &DMatrix<f64>,
     h_core: &DMatrix<f64>,
@@ -30,6 +33,9 @@ pub fn electronic_energy(
 }
 
 /// Compute total energy = electronic + nuclear repulsion.
+///
+/// `nuclear_repulsion` must be in Hartree; the returned total energy is in
+/// Hartree as well.
 pub fn total_energy(
     density: &DMatrix<f64>,
     h_core: &DMatrix<f64>,
@@ -42,6 +48,8 @@ pub fn total_energy(
 /// Compute the one-electron energy contribution.
 ///
 /// E_1e = Tr[P · H⁰]
+///
+/// The returned energy is in Hartree.
 pub fn one_electron_energy(density: &DMatrix<f64>, h_core: &DMatrix<f64>) -> f64 {
     let n = density.nrows();
     let mut energy = 0.0;
@@ -57,6 +65,8 @@ pub fn one_electron_energy(density: &DMatrix<f64>, h_core: &DMatrix<f64>) -> f64
 ///
 /// E_2e = 0.5 · Tr[P · G]
 /// where G = F - H⁰ is the two-electron part of the Fock matrix.
+///
+/// The returned energy is in Hartree.
 pub fn two_electron_energy(
     density: &DMatrix<f64>,
     h_core: &DMatrix<f64>,

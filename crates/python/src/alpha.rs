@@ -74,8 +74,8 @@ mod dft_py {
             method: dft_method,
             ..Default::default()
         };
-        let r = solve_ks_dft(&elements, &positions, &config)
-            .map_err(crate::errors::engine_error)?;
+        let r =
+            solve_ks_dft(&elements, &positions, &config).map_err(crate::errors::engine_error)?;
         Ok(DftResultPy {
             energy: r.total_energy_ev,
             homo_energy: r.homo_energy,
@@ -200,15 +200,17 @@ mod reaxff_py {
     /// Returns:
     ///     ReaxffEnergyResultPy: bonded, coulomb, van_der_waals, total
     #[pyfunction]
-    pub fn alpha_compute_reaxff_energy(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<ReaxffEnergyResultPy> {
+    pub fn alpha_compute_reaxff_energy(
+        elements: Vec<u8>,
+        coords: Vec<f64>,
+    ) -> PyResult<ReaxffEnergyResultPy> {
         let params = ReaxffParams::default_chon();
         let atom_params = build_atom_params(&elements, &params);
         let eem_params: Vec<_> = elements
             .iter()
             .map(|&z| sci_form_core::forcefield::reaxff::eem::default_eem_params(z))
             .collect();
-        let charges = solve_eem(&coords, &eem_params, 0.0)
-            .map_err(crate::errors::engine_error)?;
+        let charges = solve_eem(&coords, &eem_params, 0.0).map_err(crate::errors::engine_error)?;
         let bo = compute_bond_orders(&coords, &atom_params, params.cutoff);
         let bonded = compute_bonded_energy(&coords, &bo, &params);
         let (van_der_waals, coulomb) =
@@ -302,8 +304,8 @@ mod mlff_py {
             .map_err(|e| crate::errors::value_error(format!("bad config: {}", e)))?;
         let config: MlffConfig = serde_json::from_str(&config_json)
             .map_err(|e| crate::errors::value_error(format!("bad config: {}", e)))?;
-        let r = compute_mlff(&elements, &positions, &config)
-            .map_err(crate::errors::engine_error)?;
+        let r =
+            compute_mlff(&elements, &positions, &config).map_err(crate::errors::engine_error)?;
         Ok(MlffResultPy {
             energy: r.energy,
             atomic_energies: r.atomic_energies,
@@ -751,9 +753,7 @@ mod gsm_py {
     }
 
     fn parse_backend(method: &str) -> PyResult<GsmEnergyBackend> {
-        method
-            .parse()
-            .map_err(crate::errors::value_error)
+        method.parse().map_err(crate::errors::value_error)
     }
 
     fn parse_methods(methods: Option<Vec<String>>) -> PyResult<Vec<GsmEnergyBackend>> {
@@ -950,7 +950,7 @@ mod reaction_dynamics_py {
         let result = sci_form_core::alpha::reaction_dynamics::compute_reaction_dynamics_3d(
             &r_refs, &p_refs, &config,
         )
-            .map_err(crate::errors::engine_error)?;
+        .map_err(crate::errors::engine_error)?;
 
         Ok(ReactionDynamics3DResultPy {
             frames: result

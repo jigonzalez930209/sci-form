@@ -8,17 +8,37 @@
 //! - FIRE optimizer (Fast Inertial Relaxation Engine) instead of steepest descent
 //! - Post-convergence perpendicular relaxation of each image
 //! - Image redistribution to maintain even spacing
+//!
+//! # Stability tier
+//!
+//! **Alpha** — early research tier. Gated behind the `alpha-reaction-dynamics`
+//! feature flag; the validation gate is
+//! `tests/alpha_reaction_dynamics_3d.rs` (self-consistency only, no parity
+//! with the ASE NEB reference).
+//!
+//! # Units
+//!
+//! Coordinates are flat `3N` arrays in **Å**, energies in **kcal/mol**,
+//! forces in **kcal/(mol·Å)**, the spring constant in **kcal/(mol·Å²)** and
+//! the step size in **Å**.
 
 use serde::{Deserialize, Serialize};
 
 /// Configuration for CI-NEB calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CiNebConfig {
+    /// Number of NEB images, including the two fixed endpoints (≥ 3).
     pub n_images: usize,
+    /// Maximum number of NEB optimisation iterations.
     pub max_iter: usize,
+    /// NEB spring constant in **kcal/(mol·Å²)**.
     pub spring_k: f64,
+    /// Optimiser step size (FIRE time step) in **Å**.
     pub step_size: f64,
+    /// Convergence threshold on the maximum image force, in **kcal/(mol·Å)**.
     pub force_threshold: f64,
+    /// Name of the energy backend ("uff", "pm3", "xtb", "gfn1", "gfn2",
+    /// "hf3c").
     pub method: String,
     /// Use IDPP initialization instead of linear interpolation.
     #[serde(default = "default_true")]
@@ -41,19 +61,30 @@ fn default_relax_steps() -> usize {
 /// A single NEB image.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CiNebImage {
+    /// Index of the image along the band (0 = reactant, `n_images - 1` =
+    /// product).
     pub index: usize,
+    /// Flat `3N` array of Cartesian coordinates in **Å**.
     pub coords: Vec<f64>,
+    /// Total energy of the image in **kcal/mol**.
     pub energy_kcal_mol: f64,
+    /// `true` for the image that was selected as the climbing image.
     pub is_climbing: bool,
 }
 
 /// Result of a CI-NEB computation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CiNebResult {
+    /// All images of the converged band, in order.
     pub images: Vec<CiNebImage>,
+    /// `true` when the maximum image force fell below
+    /// `CiNebConfig::force_threshold`.
     pub converged: bool,
+    /// Number of NEB iterations actually performed.
     pub iterations: usize,
+    /// Largest image force seen at the end of the run, in **kcal/(mol·Å)**.
     pub max_force: f64,
+    /// Human-readable notes about the run (fallbacks, non-convergence, ...).
     pub notes: Vec<String>,
 }
 
@@ -144,6 +175,20 @@ fn climbing_image_force(real_force: &[f64], tau: &[f64]) -> Vec<f64> {
 }
 
 /// Compute CI-NEB path between reactant and product coordinates.
+///
+/// `start_coords` and `end_coords` are flat `3N` arrays of Cartesian
+/// coordinates in **Å**; the returned [`CiNebResult`] holds the band images
+/// and their energies in **kcal/mol**.
+///
+/// # Errors
+///
+/// - `"CI-NEB requires at least 3 images"` when `config.n_images < 3`.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"start/end coords length mismatch"` when the two coordinate arrays have
+///   different lengths.
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when
+///   `config.method` names an unknown energy backend.
+/// - Any error raised by the energy/gradient backend during the path search.
 pub fn compute_ci_neb_path(
     smiles: &str,
     start_coords: &[f64],

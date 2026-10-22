@@ -136,6 +136,12 @@ pub(crate) fn rdkit_scale_gradient(grad: &mut [f64]) -> f64 {
 /// Uses f64 arithmetic, full N×N inverse Hessian, RDKit's line search,
 /// and RDKit's gradient scaling hack.
 /// Returns: 0=converged, 1=max iterations reached
+///
+/// `coords` (an `n × 3` matrix of positions in Å) is updated in place, `bounds`
+/// is the `n × n` lower/upper distance-bounds matrix in Å, `basin_thresh` is
+/// the maximum allowed bound width in Å and `weight_4d` / `weight_chiral`
+/// scale the fourth-dimension and chiral-volume penalties. The loop stops when
+/// the gradient norm falls below `grad_tol` (kcal/mol/Å).
 pub fn minimize_bfgs_rdkit(
     coords: &mut DMatrix<f64>,
     bounds: &DMatrix<f64>,

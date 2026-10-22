@@ -11,7 +11,10 @@ use super::lebedev::lebedev_grid;
 pub struct GridPoint {
     /// Cartesian position (Bohr).
     pub xyz: [f64; 3],
-    /// Combined quadrature weight.
+    /// Combined quadrature weight (dimensionless).
+    ///
+    /// Product of the radial (Euler-Maclaurin), angular (Lebedev) and
+    /// Becke-partitioning weights of this point.
     pub weight: f64,
     /// Index of the atom this point belongs to.
     pub atom_index: usize,

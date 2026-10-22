@@ -30,6 +30,16 @@ pub struct SamplingCandidate {
 /// Generates `n_samples` orientations on the unit sphere, positions fragment B
 /// around fragment A at each orientation, then runs a short NEB probe (few images)
 /// to estimate the barrier. Returns the candidate with the lowest barrier.
+///
+/// `reactive_dist` is the target distance between the reactive atoms in **Å**
+/// and the reported barriers are in **kcal/mol**. A probe that fails is
+/// recorded with an infinite barrier and `converged = false` instead of
+/// aborting the sweep.
+///
+/// # Errors
+///
+/// - `"No candidates generated"` when `n_samples` is zero, so that no
+///   orientation was probed at all.
 pub fn sample_approach_orientations(
     smiles: &str,
     elements_a: &[u8],

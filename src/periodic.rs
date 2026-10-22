@@ -33,7 +33,7 @@ pub struct PeriodicBond {
     pub atom_j: usize,
     /// Bond order.
     pub order: String,
-    /// Image vector [na, nb, nc] — [0,0,0] for bonds within the cell.
+    /// Image vector `[na, nb, nc]` — `[0, 0, 0]` for bonds within the cell.
     pub image: [i32; 3],
     /// Bond length in Å.
     pub distance: f64,

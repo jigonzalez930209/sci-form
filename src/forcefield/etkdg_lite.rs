@@ -1,9 +1,21 @@
+//! Lightweight ETKDG helpers: the M6 empirical torsion potential and
+//! torsion-geometry utilities.
+//!
+//! The M6 form is the six-term Fourier torsion potential that RDKit's ETKDG
+//! implementation uses to encode the preferred torsion angles of a bond.
+//! Energies are in kcal/mol and angles in radians.
 use crate::graph::{Hybridization, Molecule};
 use nalgebra::Vector3;
 
+/// Coefficients of the RDKit M6 empirical torsion potential.
+///
+/// The M6 form is a six-term Fourier series in the dihedral angle
+/// `φ` (see [`calc_torsion_energy_m6`]).
 #[derive(Debug, Clone)]
 pub struct M6Params {
+    /// Amplitudes `V₁ … V₆` of the six cosine terms, in kcal/mol.
     pub v: [f32; 6],
+    /// Phase factors `s₁ … s₆` of the six cosine terms (dimensionless, each `±1`).
     pub s: [f32; 6],
 }
 
@@ -18,6 +30,9 @@ impl Default for M6Params {
 
 /// Calculates the RDKit M6 Empirical Torsion Energy:
 /// V = V1*(1 + s1*cos(phi)) + V2*(1 + s2*cos(2*phi)) + ... + V6*(1 + s6*cos(6*phi))
+///
+/// The dihedral angle `phi` is in radians and the returned energy is in
+/// kcal/mol. A degenerate (collinear) quadruple returns `0.0`.
 pub fn calc_torsion_energy_m6(
     p1: &Vector3<f32>,
     p2: &Vector3<f32>,
@@ -73,7 +88,8 @@ pub fn calc_torsion_energy_m6(
 /// Computes the analytical gradient for the M6 torsion potential.
 /// Matches RDKit's TorsionAngleM6::getGrad dE/dPhi computation exactly, including:
 /// - Chebyshev polynomial derivatives for dE/dPhi
-/// - RDKit's copy-paste bug: 6th harmonic uses V[4]/s[4] instead of V[5]/s[5]
+/// - RDKit's copy-paste bug: the 6th harmonic uses `V[4]`/`s[4]` instead of
+///   `V[5]`/`s[5]`
 ///
 /// Uses Blondel & Karplus for gradient distribution (mathematically equivalent to RDKit's Wilson B-matrix).
 pub fn calc_torsion_grad_m6(

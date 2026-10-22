@@ -3,6 +3,27 @@
 //! This module documents which experimental methods remain gated behind
 //! feature flags and the criteria required for eventual promotion to core.
 //!
+//! # This is the authoritative "is this feature ready?" table
+//!
+//! When you ask whether a subsystem of this crate is production-ready, the
+//! answer is the table in this file — not the module's own doc comment and
+//! not the feature-flag list in `Cargo.toml`. Every experimental subsystem
+//! appears exactly once, with its **feature flag**, its **location**, the
+//! **validation gate** that covers it and its **promotion criteria**. A
+//! subsystem moves out of the "Retained as Experimental" section only when
+//! its listed criteria are met and the corresponding validation gate passes;
+//! the "Promoted to Core" table above records the subsystems that already
+//! cleared that bar.
+//!
+//! # Validation gates
+//!
+//! The gates are the cross-library *fichas* and integration tests under
+//! `tests/` — one per subsystem, named in the tables below. The culture they
+//! follow is documented in `docs/validation/cross-library-validation.es.md`
+//! §13–§14: a module is promoted when a cross-library comparison (or a
+//! documented external benchmark) gates its observable, plus integration
+//! tests through the public API.
+//!
 //! ## Promoted to Core
 //!
 //! | Module | Core path | Justification |
@@ -27,6 +48,11 @@
 //! a module is promoted when a cross-library ficha (or a documented external
 //! benchmark) gates its observable, plus integration tests through the public
 //! API. See `docs/validation/cross-library-validation.es.md` §13–§14.
+//!
+//! **This module is documentation-only; it contains no runtime code.** The
+//! experimental modules themselves remain behind their respective feature
+//! flags, and the table above is the single source of truth for whether a
+//! given subsystem has been promoted.
 //!
 //! ---
 //!
@@ -239,6 +265,11 @@
 //! Known gaps: the GPU results are only ever compared against sci-form's own
 //! CPU code, never against an external reference (libcint for the ERI/S/T/V
 //! kernels, dftd4 for the dispersion kernel, VTK for marching cubes).
+//!
+//! The GPU tree also honours two hard WebGPU limits that callers may rely
+//! on: **256 invocations per workgroup**
+//! (`max_compute_invocations_per_workgroup`) and **128 MB per storage-buffer
+//! binding** (`max_storage_buffer_binding_size`).
 
 // This module is documentation-only; no runtime code.
 // The experimental modules remain behind their respective feature flags.

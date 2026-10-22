@@ -205,8 +205,7 @@ fn embed_diverse(
 /// The output is deterministic regardless of the input atom ordering.
 #[pyfunction]
 fn to_canonical_smiles(smiles: &str) -> PyResult<String> {
-    sci_form_core::to_canonical_smiles(smiles)
-        .map_err(|e| value_error(smiles_error(&e, smiles)))
+    sci_form_core::to_canonical_smiles(smiles).map_err(|e| value_error(smiles_error(&e, smiles)))
 }
 
 /// Parse a SMILES string into a [`ParseResult`].

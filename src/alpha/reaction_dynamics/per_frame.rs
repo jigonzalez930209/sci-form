@@ -8,9 +8,10 @@ use serde::{Deserialize, Serialize};
 /// Properties computed at a single frame.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FrameProperties {
-    /// Mulliken partial charges.
+    /// Mulliken partial charges, in units of elementary charge (e).
     pub mulliken_charges: Vec<f64>,
-    /// Wiberg bond order matrix (flattened, row-major, n_atoms × n_atoms).
+    /// Wiberg bond order matrix (flattened, row-major, n_atoms × n_atoms);
+    /// the bond orders are dimensionless.
     pub wiberg_bond_orders: Vec<f64>,
     /// HOMO energy (eV).
     pub homo_energy: f64,
@@ -20,7 +21,7 @@ pub struct FrameProperties {
     pub gap: f64,
     /// Dipole moment magnitude (Debye).
     pub dipole_magnitude: f64,
-    /// Dipole moment vector [x, y, z].
+    /// Dipole moment vector [x, y, z] in **Debye**.
     pub dipole_vector: [f64; 3],
     /// Total electronic energy at this frame (eV).
     pub energy: f64,
@@ -30,6 +31,18 @@ pub struct FrameProperties {
 ///
 /// Uses EHT (fast) for orbital info + population analysis for charges.
 /// Falls back gracefully if individual calculations fail.
+///
+/// # Errors
+///
+/// This function never returns `Err` today: a failing EHT, population or
+/// dipole calculation is reported as zeros instead of an error. The `Result`
+/// is kept so that future property calculators can fail without breaking the
+/// signature.
+///
+/// # Panics
+///
+/// Panics if `coords` is not a whole number of triples, because the
+/// coordinate array is split into `[c[0], c[1], c[2]]` chunks of three.
 pub fn compute_frame_properties(
     elements: &[u8],
     coords: &[f64],
@@ -72,7 +85,7 @@ pub fn compute_frame_properties(
     })
 }
 
-/// Compute Wiberg bond orders from the density matrix.
+/// Compute Wiberg-style bond orders from the density matrix.
 ///
 /// Uses the EHT density to compute bond orders:
 /// BOij = Σ_μ∈A Σ_ν∈B (P*S)_μν²
@@ -82,7 +95,8 @@ pub fn compute_frame_properties(
 /// It is a reasonable reactivity proxy for the EHT density but it is NOT
 /// comparable with a Wiberg index computed by a quantum-chemistry package.
 ///
-/// Falls back to zero matrix on failure.
+/// The values are dimensionless bond-order indices (a formal single bond is
+/// ≈ 1). Falls back to a zero matrix on failure.
 fn compute_wiberg_bond_orders(elements: &[u8], coords: &[f64], n_atoms: usize) -> Vec<f64> {
     let pos: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
 

@@ -1,7 +1,24 @@
+//! Chiral-volume helpers for distance-geometry embedding.
+//!
+//! The signed volume `V = (r₁ - r₄) · [(r₂ - r₄) × (r₃ - r₄)]` of the
+//! tetrahedron formed by a stereocentre and three of its neighbours encodes
+//! the handedness of that centre. Its magnitude is in Å³; its sign is
+//! positive for a clockwise and negative for a counter-clockwise arrangement
+//! of the neighbours, following the RDKit convention used by the bounds force
+//! field.
 use crate::graph::{BondOrder, Molecule};
 use nalgebra::DMatrix;
 use petgraph::graph::NodeIndex;
 
+/// Signed chiral volume of a tetrahedral centre, in `f32` precision.
+///
+/// `idx1`, `idx2` and `idx3` are the three neighbours and `idx4` is the
+/// stereocentre. `coords` is an `n × 3` (or wider) matrix of positions in Å.
+/// The returned value is the signed volume in Å³.
+///
+/// # Panics
+///
+/// Panics if `coords` has fewer than three columns.
 pub fn calc_chiral_volume(
     idx1: usize,
     idx2: usize,
@@ -29,6 +46,15 @@ pub fn calc_chiral_volume(
     v1.dot(&v2.cross(&v3))
 }
 
+/// Signed chiral volume of a tetrahedral centre, in `f64` precision.
+///
+/// Same convention as [`calc_chiral_volume`] (neighbours `idx1`–`idx3`,
+/// stereocentre `idx4`, coordinates in Å); the returned signed volume is in
+/// Å³.
+///
+/// # Panics
+///
+/// Panics if `coords` has fewer than three columns.
 pub fn calc_chiral_volume_f64(
     idx1: usize,
     idx2: usize,
@@ -56,6 +82,13 @@ pub fn calc_chiral_volume_f64(
     v1.dot(&v2.cross(&v3))
 }
 
+/// Collect the chiral constraints of a molecule for the bounds force field.
+///
+/// Every stereocentre with an explicit `@`/`@@` tag and four neighbours
+/// contributes one [`crate::forcefield::bounds_ff::ChiralSet`]. The three
+/// neighbours are sorted into a canonical (CIP-like) order and the volume
+/// window is signed accordingly, so that satisfying the constraint reproduces
+/// the requested handedness. The volume bounds are in Å³.
 pub fn identify_chiral_sets(mol: &Molecule) -> Vec<crate::forcefield::bounds_ff::ChiralSet> {
     let mut sets = Vec::new();
     for i in 0..mol.graph.node_count() {

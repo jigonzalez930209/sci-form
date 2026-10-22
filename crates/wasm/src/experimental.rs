@@ -1416,9 +1416,6 @@ pub fn pack_chart_payload(chart_json: &str) -> String {
     pack_chart_payload_wasm(chart_json)
 }
 
-
-
-
 /// Compute Helmholtz-only profile.
 ///
 /// Returns JSON EDL profile result.
@@ -2113,15 +2110,26 @@ pub fn compute_periodic_dos_wasm(
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
 #[allow(clippy::too_many_arguments)]
-pub fn compute_periodic_dos(blocks_json: &str,
+pub fn compute_periodic_dos(
+    blocks_json: &str,
     grid_json: &str,
     centering: &str,
     order: usize,
     e_min: f64,
     e_max: f64,
     n_points: usize,
-    fermi_energy_ev: Option<f64>,) -> String {
-    compute_periodic_dos_wasm(blocks_json, grid_json, centering, order, e_min, e_max, n_points, fermi_energy_ev)
+    fermi_energy_ev: Option<f64>,
+) -> String {
+    compute_periodic_dos_wasm(
+        blocks_json,
+        grid_json,
+        centering,
+        order,
+        e_min,
+        e_max,
+        n_points,
+        fermi_energy_ev,
+    )
 }
 
 /// Solve the periodic generalized eigenproblem with the core RandNLA solver.
@@ -2195,17 +2203,23 @@ pub fn solve_periodic_randnla_wasm(
 /// WASM namespace; the canonical name is exported as well (blocker C-H1).
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
-pub fn solve_periodic_randnla(hamiltonian_blocks_json: &str,
+pub fn solve_periodic_randnla(
+    hamiltonian_blocks_json: &str,
     overlap_blocks_json: &str,
     n_electrons: usize,
     grid_json: &str,
     centering: &str,
-    sketch_size: Option<usize>,) -> String {
-    solve_periodic_randnla_wasm(hamiltonian_blocks_json, overlap_blocks_json, n_electrons, grid_json, centering, sketch_size)
+    sketch_size: Option<usize>,
+) -> String {
+    solve_periodic_randnla_wasm(
+        hamiltonian_blocks_json,
+        overlap_blocks_json,
+        n_electrons,
+        grid_json,
+        centering,
+        sketch_size,
+    )
 }
-
-
-
 
 /// Compute the Bloch phase factor for a lattice translation.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2228,9 +2242,6 @@ pub fn bloch_phase_wasm(k_x: f64, k_y: f64, k_z: f64, t_x: i32, t_y: i32, t_z: i
 pub fn bloch_phase(k_x: f64, k_y: f64, k_z: f64, t_x: i32, t_y: i32, t_z: i32) -> String {
     bloch_phase_wasm(k_x, k_y, k_z, t_x, t_y, t_z)
 }
-
-
-
 
 /// Build the Bloch Hamiltonian `H(k)` from real-space operator blocks.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2262,9 +2273,6 @@ pub fn build_bloch_hamiltonian_wasm(blocks_json: &str, k_x: f64, k_y: f64, k_z: 
 pub fn build_bloch_hamiltonian(blocks_json: &str, k_x: f64, k_y: f64, k_z: f64) -> String {
     build_bloch_hamiltonian_wasm(blocks_json, k_x, k_y, k_z)
 }
-
-
-
 
 /// Assemble periodic Hamiltonians and overlaps for every k-point of a mesh.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2326,15 +2334,19 @@ pub fn assemble_periodic_operators_wasm(
 /// WASM namespace; the canonical name is exported as well (blocker C-H1).
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
-pub fn assemble_periodic_operators(hamiltonian_blocks_json: &str,
+pub fn assemble_periodic_operators(
+    hamiltonian_blocks_json: &str,
     overlap_blocks_json: &str,
     grid_json: &str,
-    centering: &str,) -> String {
-    assemble_periodic_operators_wasm(hamiltonian_blocks_json, overlap_blocks_json, grid_json, centering)
+    centering: &str,
+) -> String {
+    assemble_periodic_operators_wasm(
+        hamiltonian_blocks_json,
+        overlap_blocks_json,
+        grid_json,
+        centering,
+    )
 }
-
-
-
 
 /// Integrate a scalar observable over the Brillouin zone.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2365,9 +2377,6 @@ pub fn bz_integrate_scalar(values_json: &str, weights_json: &str) -> String {
     bz_integrate_scalar_wasm(values_json, weights_json)
 }
 
-
-
-
 /// Integrate a vector observable over the Brillouin zone.
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
@@ -2397,9 +2406,6 @@ pub fn bz_integrate_vector(vectors_json: &str, weights_json: &str) -> String {
     bz_integrate_vector_wasm(vectors_json, weights_json)
 }
 
-
-
-
 /// Check that the electron count fits into the available band/k-point states.
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
@@ -2420,14 +2426,9 @@ pub fn validate_electron_count_wasm(
 /// WASM namespace; the canonical name is exported as well (blocker C-H1).
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
-pub fn validate_electron_count(n_electrons: usize,
-    n_bands: usize,
-    n_kpoints: usize,) -> String {
+pub fn validate_electron_count(n_electrons: usize, n_bands: usize, n_kpoints: usize) -> String {
     validate_electron_count_wasm(n_electrons, n_bands, n_kpoints)
 }
-
-
-
 
 /// Verify that k-mesh weights sum to 1 within a tolerance.
 #[cfg(feature = "alpha-periodic-linear")]
@@ -2469,9 +2470,6 @@ pub fn validate_kmesh_weights(weights_json: &str, tolerance: f64) -> String {
     validate_kmesh_weights_wasm(weights_json, tolerance)
 }
 
-
-
-
 // ─── KINETICS EXPORTS ──────────────────────────────────────────
 
 /// Extract convergence diagnostics from a solved microkinetic trace.
@@ -2511,9 +2509,6 @@ pub fn extract_kinetics_diagnostics(network_json: &str, n_steps: usize) -> Strin
     extract_kinetics_diagnostics_wasm(network_json, n_steps)
 }
 
-
-
-
 /// Solve a microkinetic network and report the resulting trace.
 #[cfg(feature = "alpha-kinetics")]
 #[wasm_bindgen]
@@ -2551,9 +2546,6 @@ pub fn solve_microkinetic_network_wasm(network_json: &str, n_steps: usize) -> St
 pub fn solve_microkinetic_network(network_json: &str, n_steps: usize) -> String {
     solve_microkinetic_network_wasm(network_json, n_steps)
 }
-
-
-
 
 /// Solve a microkinetic network and propagate it to steady state.
 #[cfg(feature = "alpha-kinetics")]
@@ -2594,14 +2586,9 @@ pub fn solve_microkinetic_steady_state_wasm(
 /// WASM namespace; the canonical name is exported as well (blocker C-H1).
 #[cfg(feature = "alpha-kinetics")]
 #[wasm_bindgen]
-pub fn solve_microkinetic_steady_state(network_json: &str,
-    n_steps: usize,
-    tol: f64,) -> String {
+pub fn solve_microkinetic_steady_state(network_json: &str, n_steps: usize, tol: f64) -> String {
     solve_microkinetic_steady_state_wasm(network_json, n_steps, tol)
 }
-
-
-
 
 /// Analyze one GSM + MBH + HTST coupled elementary step.
 #[cfg(feature = "alpha-kinetics")]
@@ -2630,7 +2617,9 @@ pub fn analyze_gsm_mbh_htst_step_wasm(
             return json_error(&invalid_value(
                 "'method'",
                 method,
-                &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
+                &[
+                    "uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff",
+                ],
             ))
         }
     };
@@ -2670,17 +2659,23 @@ pub fn analyze_gsm_mbh_htst_step_wasm(
 /// WASM namespace; the canonical name is exported as well (blocker C-H1).
 #[cfg(feature = "alpha-kinetics")]
 #[wasm_bindgen]
-pub fn analyze_gsm_mbh_htst_step(smiles: &str,
+pub fn analyze_gsm_mbh_htst_step(
+    smiles: &str,
     reactant_coords_json: &str,
     product_coords_json: &str,
     method: &str,
     temperature_k: f64,
-    pressure_bar: f64,) -> String {
-    analyze_gsm_mbh_htst_step_wasm(smiles, reactant_coords_json, product_coords_json, method, temperature_k, pressure_bar)
+    pressure_bar: f64,
+) -> String {
+    analyze_gsm_mbh_htst_step_wasm(
+        smiles,
+        reactant_coords_json,
+        product_coords_json,
+        method,
+        temperature_k,
+        pressure_bar,
+    )
 }
-
-
-
 
 // ──── RENDER BRIDGE: chart utilities ──────────────────────────────────────
 
@@ -2710,9 +2705,6 @@ pub fn chart_to_json(chart_json: &str) -> String {
     chart_to_json_wasm(chart_json)
 }
 
-
-
-
 /// Deserialize a chart payload (wrapper or bare chart) to chart JSON.
 #[cfg(feature = "alpha-render-bridge")]
 #[wasm_bindgen]
@@ -2734,9 +2726,6 @@ pub fn chart_from_json(json_str: &str) -> String {
     chart_from_json_wasm(json_str)
 }
 
-
-
-
 /// Validate the structure of a chart payload (wrapper or bare chart).
 #[cfg(feature = "alpha-render-bridge")]
 #[wasm_bindgen]
@@ -2753,6 +2742,3 @@ pub fn validate_chart_schema_wasm(json_str: &str) -> bool {
 pub fn validate_chart_schema(json_str: &str) -> bool {
     validate_chart_schema_wasm(json_str)
 }
-
-
-

@@ -80,63 +80,121 @@ pub const MMFF94_CUBIC_BEND_DEG: f64 = MMFF94_CUBIC_BEND_RAD * MMFF94_DEG2RAD;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum Mmff94AtomType {
-    CR = 1,    // Alkyl carbon, SP3
-    CSp2 = 2,  // Vinyl/generic SP2 carbon
-    CSp = 3,   // Acetylenic carbon, SP
-    CO = 4,    // Carbonyl carbon C=O
-    HC = 5,    // Hydrogen on carbon
-    OR = 6,    // Alcohol/ether oxygen SP3
-    O2 = 7,    // Carbonyl/carboxyl oxygen SP2
-    NR = 8,    // Amine nitrogen SP3
-    N2 = 9,    // Imine/SPH nitrogen SP2
-    NC = 10,   // Isonitrile/cyano nitrogen SP
-    F = 11,    // Fluorine
-    Cl = 12,   // Chlorine
-    Br = 13,   // Bromine
-    I = 14,    // Iodine
-    S = 15,    // Thiol/thioether sulfur
-    SdO = 16,  // S=O in >S=O (not sulfonyl)
-    SO = 17,   // Sulfoxide sulfur
-    SO2 = 18,  // Sulfone/sulfonamide sulfur
-    SI = 19,   // Silicon
-    CR4R = 20, // Carbon in 4-membered ring
-    HO = 21,   // Hydrogen on oxygen
-    CR3R = 22, // Carbon in 3-membered ring
-    HN = 23,   // Hydrogen on nitrogen
-    HOCO = 24, // Hydroxyl H in carboxylic acid
-    P = 25,    // Phosphorus SP3
-    HaP = 26,  // H on ≥4-coordinate P
-    HOS = 28,  // Hydrogen on -OH of sulfur acid
-    NPl3 = 30, // Nitrogen SP2 trigonal planar (3-coord)
-    ON2 = 31,  // Oxygen in nitro group
-    OX = 32,   // Anionic oxygen (carboxylate, etc.)
-    OM = 33,   // Anionic oxide (deprotonated -O⁻)
-    HNR = 34,  // H on NH in ring
-    HIM = 35,  // H on imidazole N
-    CB = 37,   // Aromatic carbon
-    NPOX = 38, // N-oxide nitrogen
-    NR2 = 39,  // Aromatic nitrogen (pyridine-like)
-    NAm = 40,  // Amide nitrogen
-    NSO = 41,  // N attached to S=O
-    Sthi = 44, // Thiol sulfur (-SH or -S-S-)
-    NdOx = 45, // Nitrogen in N-oxide
-    NPl = 46,  // Uncharged nitrogen SP2 planar
-    C5A = 63,  // Alpha carbon in 5-ring heteroaromatic
-    C5B = 64,  // Beta carbon in 5-ring heteroaromatic
-    N5A = 65,  // Alpha nitrogen in 5-ring heteroaromatic (pyrrole-like)
-    N5B = 66,  // Beta nitrogen in 5-ring heteroaromatic (basic, pyridine-like in 5-ring)
-    NAZT = 47, // Azide terminal nitrogen
-    NSP = 48,  // Nitrogen in thioamide
-    N5M = 49,  // Anionic N in 5-ring
-    N2OX = 50, // Nitrogen in NO2 group
-    N3OX = 51, // Nitrogen in NO3 (nitrate)
-    NPYD = 52, // Nitrogen in pyridinium cation
-    O5 = 59,   // Furan/oxazole oxygen
-    Fe2 = 87,  // Iron(II) cation
-    Fe3 = 88,  // Iron(III) cation
-    HS = 71,   // Hydrogen on sulfur
-    HP = 72,   // Hydrogen on phosphorus
-    PO = 75,   // Phosphate P (4-coordinate with P=O)
+    /// Alkyl (sp³) carbon — official MMFF94 type 1 (`CR`).
+    CR = 1,
+    /// Vinyl / generic sp² carbon — official MMFF94 type 2 (`C=C`).
+    CSp2 = 2,
+    /// Acetylenic (sp) carbon — official MMFF94 type 4 (`CSP`).
+    CSp = 3,
+    /// Carbonyl carbon (C=O) — official MMFF94 type 3 (`C=O`).
+    CO = 4,
+    /// Hydrogen attached to carbon — official MMFF94 type 5 (`HC`).
+    HC = 5,
+    /// Alcohol / ether oxygen (sp³) — official MMFF94 type 6 (`OR`).
+    OR = 6,
+    /// Carbonyl / carboxyl oxygen (sp²) — official MMFF94 type 7 (`O=C`).
+    O2 = 7,
+    /// Amine nitrogen (sp³) — official MMFF94 type 8 (`NR`).
+    NR = 8,
+    /// Imine / sp² nitrogen — official MMFF94 type 9 (`N=C`).
+    N2 = 9,
+    /// Isonitrile / cyano nitrogen (sp) — official MMFF94 type 10 (`NC=O`).
+    NC = 10,
+    /// Fluorine — official MMFF94 type 11.
+    F = 11,
+    /// Chlorine — official MMFF94 type 12.
+    Cl = 12,
+    /// Bromine — official MMFF94 type 13.
+    Br = 13,
+    /// Iodine — official MMFF94 type 14.
+    I = 14,
+    /// Thiol / thioether sulfur — official MMFF94 type 15 (`S`).
+    S = 15,
+    /// Sulfur bonded to a single oxygen (not sulfonyl) — official MMFF94 type 17 (`SO`).
+    SdO = 16,
+    /// Sulfoxide sulfur — official MMFF94 type 17 (`SO`).
+    SO = 17,
+    /// Sulfone / sulfonamide sulfur — official MMFF94 type 18 (`SO2`).
+    SO2 = 18,
+    /// Silicon — official MMFF94 type 19 (`SI`).
+    SI = 19,
+    /// Carbon in a 4-membered ring — official MMFF94 type 20 (`CR4R`).
+    CR4R = 20,
+    /// Hydrogen attached to oxygen — official MMFF94 type 21 (`HOR`).
+    HO = 21,
+    /// Carbon in a 3-membered ring — official MMFF94 type 22 (`CR3R`).
+    CR3R = 22,
+    /// Hydrogen attached to nitrogen — official MMFF94 type 23 (`HNR`).
+    HN = 23,
+    /// Hydroxyl hydrogen of a carboxylic acid — official MMFF94 type 24 (`HOCO`).
+    HOCO = 24,
+    /// Phosphorus — official MMFF94 type 26 (`P`, tricoordinate).
+    P = 25,
+    /// Hydrogen on a phosphorus with four or more neighbours — official MMFF94 type 5 (`HC`).
+    HaP = 26,
+    /// Hydrogen on the –OH of a sulfur acid — official MMFF94 type 33 (`HOS`).
+    HOS = 28,
+    /// Trigonal-planar sp² nitrogen with a delocalised lone pair — official MMFF94 type 39 (`NPYL`).
+    NPl3 = 30,
+    /// Oxygen of a nitro group — official MMFF94 type 32 (`O2N`).
+    ON2 = 31,
+    /// Anionic oxygen (e.g. carboxylate) — official MMFF94 type 32 (`O2CM`).
+    OX = 32,
+    /// Anionic oxide (deprotonated –O⁻) — official MMFF94 type 35 (`OM`).
+    OM = 33,
+    /// Hydrogen on a ring NH — official MMFF94 type 23 (`HNR`).
+    HNR = 34,
+    /// Hydrogen on an imidazole nitrogen — official MMFF94 type 23 (`HNR`; MMFF94 has no separate imidazole N–H type).
+    HIM = 35,
+    /// Aromatic carbon — official MMFF94 type 37 (`CB`).
+    CB = 37,
+    /// Nitrogen of an N-oxide — official MMFF94 type 69 (`NPOX`).
+    NPOX = 38,
+    /// Aromatic (pyridine-like) nitrogen — official MMFF94 type 38 (`NPYD`).
+    NR2 = 39,
+    /// Amide nitrogen — official MMFF94 type 10 (`NC=O`).
+    NAm = 40,
+    /// Sulfonamide nitrogen (bonded to an S(=O)₂ group) — official MMFF94 type 43 (`NSO2`).
+    NSO = 41,
+    /// Sulfur of a thiol or disulfide (–SH / –S–S–) — official MMFF94 type 44 (`STHI`).
+    Sthi = 44,
+    /// Nitrogen of an N-oxide — official MMFF94 type 67 (`N2OX`).
+    NdOx = 45,
+    /// Generic uncharged sp² nitrogen — mapped onto the official type 9 (`N=C`).
+    NPl = 46,
+    /// α-carbon of a 5-membered heteroaromatic ring — official MMFF94 type 63 (`C5A`).
+    C5A = 63,
+    /// β-carbon of a 5-membered heteroaromatic ring — official MMFF94 type 64 (`C5B`).
+    C5B = 64,
+    /// α-nitrogen of a 5-membered heteroaromatic ring (pyrrole-like) — official MMFF94 type 65 (`N5A`).
+    N5A = 65,
+    /// β-nitrogen of a 5-membered heteroaromatic ring (basic) — official MMFF94 type 66 (`N5B`).
+    N5B = 66,
+    /// Terminal nitrogen of an azide — official MMFF94 type 47 (`NAZT`).
+    NAZT = 47,
+    /// Nitrogen of a thioamide — official MMFF94 type 42 (`NSP`).
+    NSP = 48,
+    /// Anionic nitrogen in a 5-membered ring — official MMFF94 type 76 (`N5M`).
+    N5M = 49,
+    /// Nitrogen of a nitro group — official MMFF94 type 45 (`NO2`).
+    N2OX = 50,
+    /// Nitrogen of a nitrate group — official MMFF94 type 45 (`NO2`).
+    N3OX = 51,
+    /// Nitrogen of a pyridinium cation — official MMFF94 type 58 (`NPD+`).
+    NPYD = 52,
+    /// Oxygen of a furan/oxazole ring — official MMFF94 type 59 (`OFUR`).
+    O5 = 59,
+    /// Iron(II) cation — official MMFF94 type 87.
+    Fe2 = 87,
+    /// Iron(III) cation — official MMFF94 type 88.
+    Fe3 = 88,
+    /// Hydrogen attached to sulfur — official MMFF94 type 71 (`HS`).
+    HS = 71,
+    /// Hydrogen attached to phosphorus — official MMFF94 type 5 (`HC`).
+    HP = 72,
+    /// Four-coordinate phosphate phosphorus (with P=O) — official MMFF94 type 25 (`PO4`).
+    PO = 75,
+    /// Unassigned atom (no MMFF94 type could be determined).
     Unknown = 0,
 }
 
@@ -697,10 +755,15 @@ pub fn assign_all_mmff94_types(mol: &crate::graph::Molecule) -> Vec<Mmff94AtomTy
 /// E = 0.5 · k_b · Δr² · (1 + cs · Δr + 7/12 · cs² · Δr²)
 /// where cs = -2.0 Å⁻¹ (cubic stretch constant)
 pub struct Mmff94BondStretch {
+    /// Index of the first bonded atom.
     pub atom_i: usize,
+    /// Index of the second bonded atom.
     pub atom_j: usize,
-    pub k_b: f64, // Force constant (md/Å)
-    pub r0: f64,  // Equilibrium bond length (Å)
+    /// Bond force constant `k_b` in md/Å (millidyne per ångström); the energy
+    /// evaluation converts it to kcal/mol with [`MMFF94_MDYNE_A_TO_KCAL_MOL`].
+    pub k_b: f64,
+    /// Equilibrium bond length `r_0` in Å.
+    pub r0: f64,
 }
 
 impl ForceFieldContribution for Mmff94BondStretch {
@@ -747,11 +810,16 @@ impl ForceFieldContribution for Mmff94BondStretch {
 /// DREIDING/UFF cosine form instead (Halgren 1996 eq. 4):
 /// E = 143.9325 · k_a · (1 + cos θ).
 pub struct Mmff94AngleBend {
+    /// Index of the first terminal atom of the angle.
     pub atom_i: usize,
-    pub atom_j: usize, // central
+    /// Index of the central atom of the angle.
+    pub atom_j: usize,
+    /// Index of the second terminal atom of the angle.
     pub atom_k: usize,
-    pub k_a: f64,        // Force constant (md·Å/rad²)
-    pub theta0_deg: f64, // Equilibrium angle (degrees)
+    /// Angle force constant `k_a` in md·Å/rad².
+    pub k_a: f64,
+    /// Equilibrium valence angle `θ_0` in **degrees**.
+    pub theta0_deg: f64,
     /// True when the central atom is linear; selects the cosine functional form.
     pub linear: bool,
 }
@@ -828,12 +896,19 @@ impl ForceFieldContribution for Mmff94AngleBend {
 /// MMFF94 torsion:
 /// E = 0.5 · (V1·(1+cos φ) + V2·(1-cos 2φ) + V3·(1+cos 3φ))
 pub struct Mmff94Torsion {
+    /// Index of the first terminal atom of the dihedral.
     pub atom_i: usize,
+    /// Index of the second atom of the dihedral.
     pub atom_j: usize,
+    /// Index of the third atom of the dihedral.
     pub atom_k: usize,
+    /// Index of the fourth atom of the dihedral.
     pub atom_l: usize,
+    /// First torsion coefficient `V₁` in kcal/mol (the `cos φ` term).
     pub v1: f64,
+    /// Second torsion coefficient `V₂` in kcal/mol (the `cos 2φ` term).
     pub v2: f64,
+    /// Third torsion coefficient `V₃` in kcal/mol (the `cos 3φ` term).
     pub v3: f64,
 }
 
@@ -971,10 +1046,14 @@ impl ForceFieldContribution for Mmff94Torsion {
 
 /// Repulsive/attractive steric interaction using Halgren's buffered 14-7 form.
 pub struct Mmff94BufferedVanDerWaals {
+    /// Index of the first atom of the interacting pair.
     pub atom_i_idx: usize,
+    /// Index of the second atom of the interacting pair.
     pub atom_j_idx: usize,
-    pub radius_star: f64,   // Cross interaction radius parameter R*ij
-    pub epsilon_depth: f64, // Well depth parameter eps_ij
+    /// Cross-interaction radius parameter `R*_ij` in Å.
+    pub radius_star: f64,
+    /// Well depth parameter `eps_ij` in kcal/mol.
+    pub epsilon_depth: f64,
 }
 
 impl ForceFieldContribution for Mmff94BufferedVanDerWaals {

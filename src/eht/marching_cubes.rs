@@ -17,11 +17,18 @@ pub struct IsosurfaceMesh {
     pub indices: Vec<u32>,
     /// Number of triangles.
     pub num_triangles: usize,
-    /// The isovalue used.
+    /// The isovalue used, in the units of the sampled grid.
+    ///
+    /// For an orbital-amplitude grid this is the isovalue of the wave
+    /// function; for a density grid it is the electron density.
     pub isovalue: f32,
 }
 
 impl IsosurfaceMesh {
+    /// Number of vertices in the mesh.
+    ///
+    /// Derived from the flat `vertices` array, which stores three
+    /// components (x, y, z) per vertex in Ångström.
     pub fn num_vertices(&self) -> usize {
         self.vertices.len() / 3
     }

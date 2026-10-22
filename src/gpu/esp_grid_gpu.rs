@@ -1,4 +1,19 @@
 //! GPU point-charge ESP grid evaluation.
+//!
+//! Evaluates the molecular electrostatic potential of a set of point charges
+//! on a regular 3D grid.
+//!
+//! # Contract with callers
+//!
+//! The CPU path always works: [`compute_esp_grid_with_report`] attempts the
+//! GPU dispatch only when a device is present and falls back to the CPU
+//! implementation otherwise, recording the reason in the report.
+//!
+//! # Units
+//!
+//! Grid origin, spacing and atom positions are in **Å**, the point charges
+//! are in **e** (elementary charge) and the potential values are in
+//! **Hartree/e** (atomic units of electrostatic potential).
 
 use super::backend_report::OrbitalGridReport;
 use super::context::{
@@ -8,6 +23,13 @@ use super::context::{
 };
 use crate::esp::{compute_esp_grid, compute_esp_grid_with_config, EspGrid, EspGridConfig};
 
+/// Evaluates the point-charge ESP on a 3D grid and reports which backend ran.
+///
+/// `positions` are the atom coordinates in **Å** and `mulliken_charges` the
+/// corresponding partial charges in **e**. The returned [`EspGrid`] holds the
+/// potential in **Hartree/e** at every grid point; the returned
+/// [`OrbitalGridReport`] names the backend, states whether the GPU was
+/// attempted and, on failure, why the CPU path was used.
 pub fn compute_esp_grid_with_report(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -68,6 +90,22 @@ pub fn compute_esp_grid_with_report(
     )
 }
 
+/// Evaluates the point-charge ESP on a 3D grid using the GPU.
+///
+/// `positions` are the atom coordinates in **Å** and `mulliken_charges` the
+/// corresponding partial charges in **e**. The returned [`EspGrid`] holds the
+/// grid origin (Å), the spacing (Å), the dimensions and the potential values
+/// in **Hartree/e**, in the flat, x-slowest ordering.
+///
+/// # Errors
+///
+/// - `"positions/charges length mismatch"` when the two slices differ in
+///   length.
+/// - `"No output from ESP grid kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"Output size mismatch: expected {n}, got {m}"` when the kernel produced
+///   the wrong number of grid values.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_esp_grid_gpu(
     ctx: &GpuContext,
     positions: &[[f64; 3]],
@@ -170,6 +208,14 @@ pub fn compute_esp_grid_gpu(
     })
 }
 
+/// WGSL source of the point-charge ESP grid kernel.
+///
+/// One invocation per grid point (`@workgroup_size(8, 8, 4)`); the kernel
+/// sums `q_i / r_i` over the point charges and writes the potential in
+/// **Hartree/e** to the read-write output buffer. The uniform block carries
+/// the grid origin (x, y, z in **Å**), the spacing (**Å**), the three grid
+/// dimensions, the number of atoms and the minimum distance (Å) at which the
+/// nuclear `1/r` singularity is clamped.
 pub const ESP_GRID_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

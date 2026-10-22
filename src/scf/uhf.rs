@@ -28,15 +28,15 @@ pub struct UhfResult {
     pub alpha_orbital_energies: Vec<f64>,
     /// Beta orbital energies (Hartree, ascending).
     pub beta_orbital_energies: Vec<f64>,
-    /// Alpha MO coefficients (n_basis × n_basis).
+    /// Alpha MO coefficients (n_basis × n_basis), dimensionless.
     pub alpha_coefficients: DMatrix<f64>,
-    /// Beta MO coefficients (n_basis × n_basis).
+    /// Beta MO coefficients (n_basis × n_basis), dimensionless.
     pub beta_coefficients: DMatrix<f64>,
-    /// Alpha density matrix.
+    /// Alpha density matrix (n_basis × n_basis), dimensionless.
     pub alpha_density: DMatrix<f64>,
-    /// Beta density matrix.
+    /// Beta density matrix (n_basis × n_basis), dimensionless.
     pub beta_density: DMatrix<f64>,
-    /// Total density matrix (P^α + P^β).
+    /// Total density matrix (P^α + P^β), dimensionless.
     pub total_density: DMatrix<f64>,
     /// Electronic energy (Hartree).
     pub electronic_energy: f64,
@@ -50,7 +50,7 @@ pub struct UhfResult {
     pub lumo_energy: Option<f64>,
     /// HOMO-LUMO gap (eV).
     pub gap_ev: f64,
-    /// Mulliken charges per atom.
+    /// Mulliken charges per atom, in units of `e`.
     pub mulliken_charges: Vec<f64>,
     /// Number of SCF iterations.
     pub scf_iterations: usize,
@@ -62,27 +62,41 @@ pub struct UhfResult {
     pub n_alpha: usize,
     /// Number of beta electrons.
     pub n_beta: usize,
-    /// Expectation value <S²> (ideally S(S+1) for clean spin state).
+    /// Expectation value <S²> (ideally S(S+1) for clean spin state),
+    /// in units of ħ².
     pub s2_expectation: f64,
-    /// Spin contamination: <S²> - S(S+1).
+    /// Spin contamination: <S²> - S(S+1), in units of ħ².
     pub spin_contamination: f64,
-    /// Overlap matrix.
+    /// Overlap matrix (n_basis × n_basis), dimensionless.
     pub overlap_matrix: DMatrix<f64>,
-    /// Alpha Fock matrix at convergence.
+    /// Alpha Fock matrix at convergence, in Hartree.
     pub alpha_fock: DMatrix<f64>,
-    /// Beta Fock matrix at convergence.
+    /// Beta Fock matrix at convergence, in Hartree.
     pub beta_fock: DMatrix<f64>,
 }
 
 /// Configuration for UHF/ROHF calculations.
 #[derive(Debug, Clone)]
 pub struct UhfConfig {
+    /// Maximum number of SCF iterations.
     pub max_iterations: usize,
+    /// Energy convergence threshold in Hartree.
+    ///
+    /// The SCF stops when the total energy changes by less than this value
+    /// between two iterations.
     pub energy_threshold: f64,
+    /// Density convergence threshold.
+    ///
+    /// The RMS change of the density matrix elements between two iterations
+    /// must fall below this value.
     pub density_threshold: f64,
+    /// Number of Fock/error pairs kept in the DIIS subspace.
     pub diis_size: usize,
+    /// Level shift applied to the virtual orbitals, in Hartree (0.0 = off).
     pub level_shift: f64,
+    /// Density damping factor in `]0, 1]` (0.0 = off, 1.0 = undamped).
     pub damping: f64,
+    /// Whether the electron-repulsion integrals are evaluated in parallel.
     pub use_parallel_eri: bool,
     /// If true, apply ROHF constraint after UHF convergence.
     pub rohf: bool,
@@ -412,6 +426,15 @@ fn run_uhf_loop(
 /// Set `multiplicity = 1` for closed-shell (equivalent to RHF),
 /// `multiplicity = 2` for doublet (radical), `multiplicity = 3` for
 /// triplet, etc.
+///
+/// The energies in the returned [`UhfResult`] are in Hartree and the gap in
+/// eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the molecular system fails validation — a non-finite
+/// coordinate, or a charge/multiplicity combination that is inconsistent
+/// with the real electron count.
 pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> Result<UhfResult, String> {
     // Reject a geometry with non-finite coordinates and a charge/multiplicity
     // combination that does not match the real electron count *before* any
@@ -593,6 +616,10 @@ pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> Result<UhfResult
 }
 
 /// Convenience: run UHF with parallel ERI.
+///
+/// # Errors
+///
+/// Propagates the errors of [`run_uhf`].
 pub fn run_uhf_parallel(system: &MolecularSystem) -> Result<UhfResult, String> {
     run_uhf(
         system,
@@ -604,6 +631,10 @@ pub fn run_uhf_parallel(system: &MolecularSystem) -> Result<UhfResult, String> {
 }
 
 /// Convenience: run ROHF (restricted open-shell).
+///
+/// # Errors
+///
+/// Propagates the errors of [`run_uhf`].
 pub fn run_rohf(system: &MolecularSystem) -> Result<UhfResult, String> {
     run_uhf(
         system,

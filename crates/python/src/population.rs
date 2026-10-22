@@ -130,7 +130,10 @@ fn compute_bond_orders(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<BondOrde
 }
 
 #[pyfunction]
-fn compute_frontier_descriptors(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<FrontierDescriptorsPy> {
+fn compute_frontier_descriptors(
+    elements: Vec<u8>,
+    coords: Vec<f64>,
+) -> PyResult<FrontierDescriptorsPy> {
     let positions = coords_to_positions(&coords);
     sci_form_core::compute_frontier_descriptors(&elements, &positions)
         .map(|r| FrontierDescriptorsPy {

@@ -1,16 +1,34 @@
 //! Universal Force Field (UFF) energy terms: bond stretch, angle bend,
 //! torsion, inversion, and van der Waals contributions.
 //!
-//! Reference: Rappé et al., J. Am. Chem. Soc. 1992, 114, 10024–10035.
+//! Reference: Rappé et al., *J. Am. Chem. Soc.* **1992**, 114, 10024–10035.
+//! The functional forms and the parameter lookups follow the canonical RDKit
+//! implementation (`ForceFieldHelpers/UFF`) so that energies can be
+//! cross-validated against it.
+//!
+//! # Units
+//!
+//! Energies are in **kcal/mol**, gradients are `dE/dR` in **kcal/mol/Å**,
+//! bond lengths and van der Waals radii in **Å**, and angles in **radians**.
 
 use super::traits::ForceFieldContribution;
 
 /// Classical harmonic bond-stretch term in UFF.
+///
+/// `E = ½ · k_b · (r - r_0)²` with `r` the distance between the two atoms
+/// in Å. The energy is in kcal/mol and the injected gradient is
+/// `dE/dR` in kcal/mol/Å.
+///
+/// Reference: Rappé et al., *J. Am. Chem. Soc.* **1992**, 114, 10024, eq. 6.
 pub struct UffHarmonicBondStretch {
+    /// Index of the first bonded atom.
     pub atom_i_idx: usize,
+    /// Index of the second bonded atom.
     pub atom_j_idx: usize,
-    pub force_constant_kb: f64, // Bond stiffness constant k_b
-    pub equilibrium_r0: f64,    // Equilibrium bond length r_0
+    /// Bond force constant `k_b` in kcal/mol/Å².
+    pub force_constant_kb: f64,
+    /// Equilibrium bond length `r_0` in Å.
+    pub equilibrium_r0: f64,
 }
 
 impl ForceFieldContribution for UffHarmonicBondStretch {
@@ -52,14 +70,29 @@ impl ForceFieldContribution for UffHarmonicBondStretch {
     }
 }
 
-/// Three-term Fourier angle-bending term used in UFF.
+/// Angle-bending term used in UFF.
+///
+/// The functional form is selected by [`Self::order`]: the general Fourier
+/// polynomial (`order = 0`) or the `E = k_a/n² · (1 - cos(nθ))` family used
+/// for linear, trigonal-planar and square-planar/octahedral centres. The
+/// equilibrium angle is in **radians**, the force constant `k_a` in
+/// kcal/mol/rad², the energy in kcal/mol and the injected gradient in
+/// kcal/mol/Å.
+///
+/// Reference: Rappé et al., *J. Am. Chem. Soc.* **1992**, 114, 10024, eq. 13.
 pub struct UffAngleBend {
+    /// Index of the first terminal atom of the angle.
     pub atom_i_idx: usize,
-    pub atom_j_idx: usize, // Central
+    /// Index of the central atom of the angle.
+    pub atom_j_idx: usize,
+    /// Index of the second terminal atom of the angle.
     pub atom_k_idx: usize,
+    /// Angle force constant `k_a` in kcal/mol/rad².
     pub force_constant_ka: f64,
+    /// Equilibrium valence angle `θ_0` in radians.
     pub equilibrium_theta0: f64,
-    /// `0` = Fourier polynomial, `1` = linear, `3` = trigonal planar,
+    /// Functional-form selector: `0` = Fourier polynomial, `1` = linear,
+    /// `2` = double-angle, `3` = trigonal planar,
     /// `4` = square planar/octahedral (RDKit `AngleBendContrib::order`).
     pub order: usize,
 }
@@ -166,15 +199,27 @@ impl ForceFieldContribution for UffAngleBend {
     }
 }
 
-/// UFF torsion term: E = 0.5 * V * [1 - cos(phi0) * cos(n * phi)].
+/// UFF torsion term: `E = ½ · V · [1 - cos(φ₀) · cos(n·φ)]`.
+///
+/// `φ` is the signed dihedral angle about the j–k bond in radians, `V` is the
+/// torsion barrier in kcal/mol, `n` the periodicity (dimensionless) and
+/// `cos_phi0` the phase factor (dimensionless, usually `+1` or `-1`). The
+/// energy is in kcal/mol and the injected gradient in kcal/mol/Å.
 pub struct UffTorsion {
+    /// Index of the first terminal atom of the dihedral.
     pub atom_i_idx: usize,
+    /// Index of the second atom of the dihedral.
     pub atom_j_idx: usize,
+    /// Index of the third atom of the dihedral.
     pub atom_k_idx: usize,
+    /// Index of the fourth atom of the dihedral.
     pub atom_l_idx: usize,
+    /// Torsion barrier `V` in kcal/mol.
     pub force_constant_v: f64,
+    /// Torsion periodicity `n` (dimensionless, e.g. 2 or 3).
     pub periodicity_n: f64,
-    pub cos_phi0: f64, // Usually 1.0 or -1.0
+    /// Phase factor `cos(φ₀)` (dimensionless, usually `1.0` or `-1.0`).
+    pub cos_phi0: f64,
 }
 
 impl ForceFieldContribution for UffTorsion {
@@ -312,14 +357,25 @@ impl ForceFieldContribution for UffTorsion {
 /// where `sinY` comes from the cosine between the out-of-plane bond and the
 /// plane normal, and three contributions share the centre force constant
 /// (already divided by three in `get_uff_inversion_params`).
+///
+/// `K` is in kcal/mol/rad², the three coefficients are dimensionless, the
+/// energy is in kcal/mol and the injected gradient in kcal/mol/Å.
 pub struct UffInversion {
+    /// Index of the first in-plane atom bonded to the central atom.
     pub idx_i: usize,
-    pub idx_j: usize, // Central
+    /// Index of the central atom whose planarity is measured.
+    pub idx_j: usize,
+    /// Index of the second in-plane atom bonded to the central atom.
     pub idx_k: usize,
+    /// Index of the out-of-plane atom.
     pub idx_l: usize,
+    /// Inversion force constant `K` in kcal/mol/rad², already divided by three.
     pub k_inv: f64,
+    /// Constant term `C0` (dimensionless).
     pub c0: f64,
+    /// `sinY` coefficient `C1` (dimensionless).
     pub c1: f64,
+    /// `cos2W` coefficient `C2` (dimensionless).
     pub c2: f64,
 }
 
@@ -410,10 +466,15 @@ impl ForceFieldContribution for UffInversion {
 ///   x_ij  = (x_i + x_j) / 2          [arithmetic mean of VDW distances]
 ///   ε_ij  = √(D_i · D_j) · scale     [geometric mean of well depths; scale = 0.5 for 1-4]
 pub struct UffLennardJones {
+    /// Index of the first atom of the pair.
     pub atom_i_idx: usize,
+    /// Index of the second atom of the pair.
     pub atom_j_idx: usize,
-    pub r_star: f64,  // x_ij = (x_i + x_j) / 2
-    pub epsilon: f64, // ε_ij = √(D_i · D_j) [already scaled before construction]
+    /// Combined Lennard-Jones distance `x_ij = (x_i + x_j)/2` in Å.
+    pub r_star: f64,
+    /// Combined well depth `ε_ij = √(D_i·D_j)` in kcal/mol
+    /// (already scaled, e.g. by 0.5 for 1-4 pairs, before construction).
+    pub epsilon: f64,
 }
 
 impl ForceFieldContribution for UffLennardJones {

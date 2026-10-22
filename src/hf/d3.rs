@@ -12,9 +12,9 @@ use serde::{Deserialize, Serialize};
 pub struct D3Result {
     /// Total D3 dispersion energy (Hartree).
     pub energy: f64,
-    /// C6 contribution.
+    /// C6 contribution to the dispersion energy (Hartree).
     pub e6: f64,
-    /// C8 contribution.
+    /// C8 contribution to the dispersion energy (Hartree).
     pub e8: f64,
 }
 
@@ -288,6 +288,24 @@ impl D3Params {
     }
 }
 
+/// Compute the D3-BJ dispersion correction with the HF-3c damping parameters.
+///
+/// `elements` holds the atomic numbers and `positions_bohr` the Cartesian
+/// centres in Bohr. The returned energy is the *total* D3 dispersion energy
+/// in Hartree (`e6 + e8`), which is negative for a bound system.
+///
+/// This is [`compute_d3_energy_with_params`] with
+/// [`D3Params::hf3c()`].
+///
+/// # Example
+///
+/// ```no_run
+/// use sci_form::hf::d3::compute_d3_energy;
+///
+/// let energy = compute_d3_energy(&[1, 1], &[[0.0, 0.0, 0.0], [0.0, 0.0, 1.4]]);
+/// // Dispersion is attractive, so the correction is negative.
+/// assert!(energy.energy < 0.0);
+/// ```
 pub fn compute_d3_energy(elements: &[u8], positions_bohr: &[[f64; 3]]) -> D3Result {
     compute_d3_energy_with_params(elements, positions_bohr, D3Params::hf3c())
 }

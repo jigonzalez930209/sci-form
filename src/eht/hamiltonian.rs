@@ -14,6 +14,9 @@ use super::params::DEFAULT_K;
 /// - `basis`: molecular orbital basis set
 /// - `s_matrix`: pre-computed overlap matrix
 /// - `k`: Wolfsberg-Helmholtz constant (pass `None` for default 1.75)
+///
+/// The matrix is symmetric and its elements are in eV (the diagonal is the
+/// valence-state ionization potential).
 pub fn build_hamiltonian(
     basis: &[AtomicOrbital],
     s_matrix: &DMatrix<f64>,

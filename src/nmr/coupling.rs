@@ -29,10 +29,22 @@ const KARPLUS_B: f64 = -1.10;
 const KARPLUS_C: f64 = 1.40;
 
 /// Karplus parameters for a specific coupling pathway.
+///
+/// The three coefficients parameterise the Karplus relation
+/// `³J = a·cos²φ + b·cosφ + c` for a given H–X–Y–H pathway. `a`, `b` and
+/// `c` all carry the unit of the resulting coupling constant, i.e. **Hz**;
+/// `φ` is the torsion angle in **radians**.
+///
+/// The pathway-dependent values are tabulated in `get_karplus_params`:
+/// H–C–C–H uses the Altona & Sundaralingam (1972) set, H–C–N–H the Bystrov
+/// peptide set, H–C–O–H the glycosidic set and H–C–S–H the thiol set.
 #[derive(Debug, Clone, Copy)]
 pub struct KarplusParams {
+    /// Quadratic coefficient of the cos²φ term, in **Hz**.
     pub a: f64,
+    /// Linear coefficient of the cosφ term, in **Hz**.
     pub b: f64,
+    /// Constant offset, in **Hz**.
     pub c: f64,
 }
 
@@ -63,13 +75,36 @@ impl KarplusParams {
 // small by the same source). The Δχ values recover the Huggins ordering
 // (Si 0.0 < C/S 0.59 < N 1.26 < Cl 1.40 < O 1.92 < F 2.0).
 
-/// HLA base coefficients (P1, P2, P3), fitted to the reference all-H curve.
+/// HLA base coefficient P1: the quadratic (cos²φ) term, in **Hz**.
+///
+/// Part of the Haasnoot–de Leeuw–Altona generalised Karplus equation
+/// `³J = P1 cos²φ + P2 cosφ + P3 + Σᵢ Δχᵢ [P4 + P5 cos²(ξᵢφ + P6·|Δχᵢ|)]`.
+/// Fitted to the reference all-H curve (13.893 Hz).
 pub const HLA_P1: f64 = 13.893;
+/// HLA base coefficient P2: the linear (cosφ) term, in **Hz**.
+///
+/// Fitted to the reference all-H curve (−0.981 Hz).
 pub const HLA_P2: f64 = -0.981;
+/// HLA base coefficient P3: the constant offset, in **Hz**.
+///
+/// The reference all-H curve has no offset (0.0 Hz).
 pub const HLA_P3: f64 = 0.0;
-/// HLA substituent coefficients (P4, P5) and phase scale (P6, degrees).
+/// HLA substituent coefficient P4: the constant part of the Δχ correction, in **Hz**.
+///
+/// Multiplies the dimensionless Huggins electronegativity difference Δχ of
+/// one substituent.
 pub const HLA_P4: f64 = 0.637;
+/// HLA substituent coefficient P5: the amplitude of the cos² phase term, in **Hz**.
+///
+/// Multiplies the dimensionless Huggins electronegativity difference Δχ of
+/// one substituent.
 pub const HLA_P5: f64 = -2.243;
+/// HLA phase scale P6: the Δχ-dependent phase shift of the substituent
+/// correction, in **degrees**.
+///
+/// The argument of the cosine is `ξᵢ·φ [deg] + P6·|Δχᵢ|`, so P6 sets how
+/// strongly the substituent correction is shifted by the electronegativity
+/// difference.
 pub const HLA_P6: f64 = 5.0;
 
 /// Huggins-scale electronegativity difference Δχ relative to hydrogen.

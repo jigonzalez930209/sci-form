@@ -2,6 +2,22 @@
 //!
 //! Wraps `wgpu::Device` + `Queue` for native GPU compute, or falls back
 //! to CPU-only mode when no GPU is available or the feature is disabled.
+//!
+//! # Contract with callers
+//!
+//! **The CPU fallback always works.** [`GpuContext::cpu_fallback`] and
+//! [`GpuContext::best_available`] never fail and never panic, so a caller can
+//! always obtain a usable context. When the `experimental-gpu` feature is
+//! disabled, or no adapter is present, or adapter acquisition panics inside
+//! `wgpu-hal` (headless hosts aborting with `BadDisplay`), the context
+//! degrades to CPU-only mode and records the reason in
+//! [`GpuContext::activation_report`].
+//!
+//! The GPU path is therefore *optional*: the WebGPU default limits that the
+//! rest of the crate respects are **256 invocations per workgroup**
+//! (`max_compute_invocations_per_workgroup`) and a **128 MB per storage
+//! binding** limit (`max_storage_buffer_binding_size`), see
+//! [`crate::gpu::memory_budget`].
 
 #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
 use std::borrow::Cow;
@@ -30,13 +46,26 @@ use super::backend_report::{GpuActivationReport, GpuActivationState};
 static GLOBAL_CONTEXT: OnceLock<GpuContext> = OnceLock::new();
 
 /// Capabilities detected from the GPU adapter.
+///
+/// The `Default` implementation describes the conservative CPU-fallback
+/// profile: no GPU, but the WebGPU *minimum* limits (256 threads per
+/// workgroup axis, 256 invocations per workgroup) so that dispatch
+/// configurations planned against a fallback context stay valid.
 #[derive(Debug, Clone)]
 pub struct ComputeCapabilities {
+    /// Human-readable backend name, e.g. `"CPU-fallback"` or the `wgpu`
+    /// backend enum (`"Vulkan"`, `"Metal"`, `"Dx12"`).
     pub backend: String,
+    /// Maximum workgroup size along the x axis, in threads.
     pub max_workgroup_size_x: u32,
+    /// Maximum workgroup size along the y axis, in threads.
     pub max_workgroup_size_y: u32,
+    /// Maximum number of invocations in a single workgroup (threads).
     pub max_workgroup_invocations: u32,
+    /// Maximum size of a single storage-buffer binding, in bytes
+    /// (WebGPU default: 134 217 728 = 128 MB).
     pub max_storage_buffer_size: u64,
+    /// `true` when a real GPU device is attached.
     pub gpu_available: bool,
 }
 
@@ -54,40 +83,74 @@ impl Default for ComputeCapabilities {
 }
 
 /// Buffer access mode for compute bindings.
+///
+/// The mode determines the `wgpu` buffer usage flags and the bind-group
+/// layout entry, and therefore whether the kernel may write to the buffer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ComputeBindingKind {
+    /// Uniform buffer: read-only, fast-path, limited to 64 KB by default.
     Uniform,
+    /// Storage buffer: read-only, up to 128 MB by default.
     StorageReadOnly,
+    /// Storage buffer: read-write; its contents are read back after the
+    /// dispatch and appear in [`ComputeDispatchResult::outputs`].
     StorageReadWrite,
 }
 
 /// One logical binding passed to a compute kernel.
+///
+/// The binding index in the kernel's bind group is the position of the
+/// descriptor in [`ComputeDispatchDescriptor::bindings`].
 #[derive(Debug, Clone)]
 pub struct ComputeBindingDescriptor {
+    /// Debug label for the underlying GPU buffer.
     pub label: String,
+    /// Access mode, which decides the buffer usage flags and layout entry.
     pub kind: ComputeBindingKind,
+    /// Raw payload; interpreted as `f32`/`u32` words by the shader.
     pub bytes: Vec<u8>,
 }
 
 /// Generic compute dispatch description.
+///
+/// This is the CPU-side description of one WGSL compute dispatch; it is
+/// independent of the physical workgroup size, which the shader itself
+/// declares with `@workgroup_size`.
 #[derive(Debug, Clone)]
 pub struct ComputeDispatchDescriptor {
+    /// Debug label for the pipeline, bind group and command encoder.
     pub label: String,
+    /// Full WGSL source of the compute shader.
     pub shader_source: String,
+    /// Entry-point name inside `shader_source` (usually `"main"`).
     pub entry_point: String,
+    /// Number of workgroups dispatched along each axis.
     pub workgroup_count: [u32; 3],
+    /// Bindings, in binding-index order.
     pub bindings: Vec<ComputeBindingDescriptor>,
 }
 
 /// Output produced by a compute dispatch.
+///
+/// `outputs` contains one byte vector per read-write binding, in the order
+/// the read-write bindings appear in [`ComputeDispatchDescriptor::bindings`].
+/// The contents are raw bytes; use
+/// [`bytes_to_f32_vec`] to decode
+/// `f32` data.
 #[derive(Debug, Clone)]
 pub struct ComputeDispatchResult {
+    /// Backend that executed the dispatch (e.g. `"Vulkan"` or `"CPU-fallback"`).
     pub backend: String,
+    /// Raw read-back payloads of the read-write bindings.
     pub outputs: Vec<Vec<u8>>,
 }
 
 /// GPU compute context handle.
+///
+/// Holds the detected [`ComputeCapabilities`] and, when the GPU is actually
+/// available, the `wgpu` device/queue plus a compiled-pipeline cache.
 pub struct GpuContext {
+    /// Capabilities of the attached device (or the CPU-fallback profile).
     pub capabilities: ComputeCapabilities,
     runtime_error: Option<String>,
     #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
@@ -160,6 +223,17 @@ impl GpuContext {
     /// GLES/EGL backend aborts with `BadDisplay` on headless hosts). The whole
     /// acquisition is therefore wrapped in `catch_unwind` so the CPU-fallback
     /// contract of [`GpuContext::best_available`] always holds.
+    ///
+    /// # Errors
+    ///
+    /// - `"experimental-gpu feature not enabled"` when the `experimental-gpu`
+    ///   feature is off (or the target is `wasm32`).
+    /// - `"No GPU adapter found"` when no compatible adapter could be
+    ///   acquired.
+    /// - `"Failed to create wgpu device: {err}"` when the device request was
+    ///   rejected by the driver.
+    /// - `"GPU adapter acquisition panicked: {detail}"` when the underlying
+    ///   `wgpu-hal` aborted during adapter enumeration.
     pub fn try_create() -> Result<Self, String> {
         #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
         {
@@ -297,6 +371,21 @@ impl GpuContext {
     }
 
     /// Dispatch an arbitrary WGSL compute kernel.
+    ///
+    /// Compiled pipelines are cached by (label, shader source, entry point,
+    /// binding kinds), so repeatedly dispatching the same kernel does not
+    /// re-create the shader module.
+    ///
+    /// # Errors
+    ///
+    /// - `"experimental-gpu feature not enabled"` when the `experimental-gpu`
+    ///   feature is off (or the target is `wasm32`).
+    /// - The stored runtime error, or `"GPU runtime not initialized"`, when
+    ///   this context is a CPU-fallback context.
+    /// - `"GPU readback channel error"` when the mapping callback never
+    ///   delivered a result.
+    /// - `"GPU buffer map failed: {err}"` when the device refused to map the
+    ///   staging buffer for reading.
     pub fn run_compute(
         &self,
         descriptor: &ComputeDispatchDescriptor,
@@ -517,6 +606,18 @@ impl GpuContext {
     }
 
     /// Validate that a WGSL shader compiles successfully on the current device.
+    ///
+    /// Returns a human-readable confirmation message naming the backend the
+    /// shader was compiled on.
+    ///
+    /// # Errors
+    ///
+    /// - `"experimental-gpu feature not enabled"` when the `experimental-gpu`
+    ///   feature is off (or the target is `wasm32`).
+    /// - The stored runtime error, or `"GPU runtime not initialized"`, when
+    ///   this context is a CPU-fallback context.
+    /// - A `wgpu` validation error string when the WGSL source does not
+    ///   compile.
     pub fn validate_shader(&self, label: &str, source: &str) -> Result<String, String> {
         #[cfg(all(feature = "experimental-gpu", not(target_arch = "wasm32")))]
         {
@@ -542,6 +643,16 @@ impl GpuContext {
     }
 
     /// Convenience: f32 vector addition for GPU validation.
+    ///
+    /// Returns the element-wise sum `lhs[i] + rhs[i]` as computed on the GPU.
+    /// The values are plain `f32` numbers with no unit attached.
+    ///
+    /// # Errors
+    ///
+    /// - `"Vectors must have the same length"` when `lhs.len() != rhs.len()`.
+    /// - `"No output from GPU kernel"` when the dispatch produced no read-back
+    ///   payload.
+    /// - Any error from [`GpuContext::run_compute`].
     pub fn vector_add_f32(&self, lhs: &[f32], rhs: &[f32]) -> Result<Vec<f32>, String> {
         if lhs.len() != rhs.len() {
             return Err("Vectors must have the same length".to_string());
@@ -598,6 +709,12 @@ struct VectorAddParams {
     _pad: [u32; 3],
 }
 
+/// Packs a slice of `f32` into a little-endian-free native-endian byte buffer
+/// suitable for uploading as a storage or uniform buffer.
+///
+/// The output is `4 * values.len()` bytes long and uses the host byte order
+/// (`to_ne_bytes`), so it round-trips exactly with
+/// [`bytes_to_f32_vec`].
 pub fn f32_slice_to_bytes(values: &[f32]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(values.len() * 4);
     for v in values {
@@ -606,6 +723,11 @@ pub fn f32_slice_to_bytes(values: &[f32]) -> Vec<u8> {
     bytes
 }
 
+/// Decodes a native-endian byte buffer into `f32` values.
+///
+/// The buffer is consumed in 4-byte chunks; a trailing partial chunk is
+/// silently dropped, and the returned vector may therefore be shorter than
+/// `bytes.len() / 4`.
 pub fn bytes_to_f32_vec(bytes: &[u8]) -> Vec<f32> {
     bytes
         .chunks_exact(4)
@@ -613,12 +735,19 @@ pub fn bytes_to_f32_vec(bytes: &[u8]) -> Vec<f32> {
         .collect()
 }
 
+/// A single 32-bit word of a uniform buffer.
 #[derive(Debug, Clone, Copy)]
 pub enum UniformValue {
+    /// Raw 32-bit unsigned integer word.
     U32(u32),
+    /// 32-bit IEEE-754 floating-point word.
     F32(f32),
 }
 
+/// Packs uniform words into a native-endian byte buffer for a uniform binding.
+///
+/// The result is `4 * values.len()` bytes long and is written in the host
+/// byte order, matching the WGSL `uniform` block layout used by this crate.
 pub fn pack_uniform_values(values: &[UniformValue]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(values.len() * 4);
     for value in values {
@@ -630,6 +759,12 @@ pub fn pack_uniform_values(values: &[UniformValue]) -> Vec<u8> {
     bytes
 }
 
+/// Packs 3D positions into the `vec4<f32>` layout expected by the GPU kernels.
+///
+/// Each position contributes 16 bytes: `x`, `y`, `z` as `f32` plus a
+/// zero padding word. The input coordinates are **Å** and are converted to
+/// `f32` without any unit change, so the caller must convert to bohr (or
+/// whatever length unit the shader expects) beforehand.
 pub fn pack_vec3_positions_f32(positions: &[[f64; 3]]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(positions.len() * 16);
     for position in positions {
@@ -641,6 +776,10 @@ pub fn pack_vec3_positions_f32(positions: &[[f64; 3]]) -> Vec<u8> {
     bytes
 }
 
+/// Decodes a buffer of `f32` words and widens every value to `f64`.
+///
+/// This is the read-back path for GPU kernels that work in single precision
+/// but whose results are reported in double precision by the CPU code path.
 pub fn bytes_to_f64_vec_from_f32(bytes: &[u8]) -> Vec<f64> {
     bytes_to_f32_vec(bytes)
         .into_iter()
@@ -648,6 +787,13 @@ pub fn bytes_to_f64_vec_from_f32(bytes: &[u8]) -> Vec<f64> {
         .collect()
 }
 
+/// Rounds `value / chunk` up to the next whole number, as a `u32`.
+///
+/// Used to translate an element count into a workgroup count.
+///
+/// # Panics
+///
+/// Panics if `chunk` is zero (integer division by zero).
 pub fn ceil_div_u32(value: usize, chunk: u32) -> u32 {
     (value as u32).div_ceil(chunk)
 }

@@ -9,6 +9,8 @@ use nalgebra::DMatrix;
 /// Build the density matrix from MO coefficients.
 ///
 /// P_μν = 2 Σ_{k=0}^{n_occ-1} C_μk · C_νk
+///
+/// The density matrix is dimensionless.
 pub fn build_density_matrix(coefficients: &DMatrix<f64>, n_occupied: usize) -> DMatrix<f64> {
     let n = coefficients.nrows();
     let mut p = DMatrix::zeros(n, n);
@@ -29,6 +31,8 @@ pub fn build_density_matrix(coefficients: &DMatrix<f64>, n_occupied: usize) -> D
 }
 
 /// Single-spin density: P^σ_μν = Σ_{k ∈ occ_σ} C_μk C_νk (no factor of 2).
+///
+/// The density matrix is dimensionless.
 pub fn build_spin_density(coefficients: &DMatrix<f64>, n_occ: usize) -> DMatrix<f64> {
     let n = coefficients.nrows();
     let mut p = DMatrix::zeros(n, n);
@@ -136,6 +140,9 @@ fn find_fermi_level(orbital_energies: &[f64], n_electrons: usize, temperature: f
 }
 
 /// Compute the density matrix change (RMS difference).
+///
+/// The result is the root-mean-square of the element-wise difference over
+/// all `n²` matrix elements; it is dimensionless.
 pub fn density_rms_change(p_new: &DMatrix<f64>, p_old: &DMatrix<f64>) -> f64 {
     let n = p_new.nrows();
     let diff = p_new - p_old;

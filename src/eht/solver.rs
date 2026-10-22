@@ -17,7 +17,8 @@ use super::params::{analyze_eht_support, EhtSupport};
 pub struct EhtResult {
     /// Orbital energies (eigenvalues) in eV, sorted ascending.
     pub energies: Vec<f64>,
-    /// MO coefficient matrix C (rows = AO index, cols = MO index).
+    /// MO coefficient matrix C (rows = AO index, cols = MO index),
+    /// dimensionless.
     /// Each column is one molecular orbital.
     pub coefficients: Vec<Vec<f64>>,
     /// Total number of valence electrons.
@@ -39,6 +40,9 @@ pub struct EhtResult {
 /// Solve the generalized eigenproblem HC = SCE using Löwdin orthogonalization.
 ///
 /// Returns eigenvalues (sorted ascending) and the coefficient matrix C.
+///
+/// The eigenvalues are the orbital energies in eV (the Hamiltonian is built
+/// from eV diagonal elements); the coefficient matrix is dimensionless.
 pub fn solve_generalized_eigenproblem(
     h: &DMatrix<f64>,
     s: &DMatrix<f64>,
@@ -128,6 +132,15 @@ fn count_valence_electrons(elements: &[u8]) -> usize {
 /// - `elements`: atomic numbers
 /// - `positions`: Cartesian coordinates in Ångström
 /// - `k`: Wolfsberg-Helmholtz constant (None = 1.75)
+///
+/// The orbital energies in the returned [`EhtResult`] are in eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if one of the elements has no
+/// Extended Hückel parameter set (the support warnings are joined into the
+/// error message), if no valence orbital could be built for the element
+/// set, or if the basis is empty.
 pub fn solve_eht(
     elements: &[u8],
     positions: &[[f64; 3]],

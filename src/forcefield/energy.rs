@@ -1,3 +1,14 @@
+//! Simplified UFF-style energy model and its building blocks.
+//!
+//! The functions here implement a *generic* UFF-like potential (harmonic
+//! bond, angle, torsion, out-of-plane, distance-bounds and van der Waals
+//! terms) with hand-tuned force constants
+//! ([`crate::forcefield::energy::FFParams`]), used for the distance-geometry
+//! refinement stages where only the relative ranking of nearby geometries
+//! matters. The published UFF parameterisation lives in [`super::uff`] and
+//! [`super::params`].
+//!
+//! Energies are in kcal/mol, lengths in Å and angles in radians.
 use nalgebra::Vector3;
 use petgraph::visit::EdgeRef;
 
@@ -142,7 +153,14 @@ pub fn bounds_energy(
     }
 }
 
-/// Harmonic Out-of-Plane bending penalty
+/// Harmonic Out-of-Plane bending penalty.
+///
+/// The out-of-plane angle `phi` of the atom `p1` relative to the plane spanned
+/// by `p1`, `p2` and `p3` around `p_center` is measured in radians, and the
+/// energy is `½ · k_oop · (phi - phi_eq)²`.
+///
+/// `k_oop` is in kcal/mol/rad² and `phi_eq` in radians; the returned energy is
+/// in kcal/mol. Positions are in Å.
 pub fn oop_energy(
     p_center: &Vector3<f64>,
     p1: &Vector3<f64>,
@@ -163,7 +181,14 @@ pub fn oop_energy(
     0.5 * k_oop * (phi - phi_eq) * (phi - phi_eq)
 }
 
-/// Chiral volume penalty
+/// Chiral volume penalty.
+///
+/// The signed volume of the tetrahedron formed by `p_center`, `p1`, `p2` and
+/// `p3` is compared with `target_vol` and the difference is penalised
+/// quadratically.
+///
+/// `target_vol` is in Å³ and `k_chiral` in kcal/mol/Å⁶; the returned energy is
+/// in kcal/mol. Positions are in Å.
 pub fn chirality_energy(
     p_center: &Vector3<f64>,
     p1: &Vector3<f64>,
@@ -179,14 +204,27 @@ pub fn chirality_energy(
     0.5 * k_chiral * (vol - target_vol) * (vol - target_vol)
 }
 
+/// Generic force-field constants used by the simplified UFF-style energy model.
+///
+/// These are *not* the published UFF parameters: they are hand-tuned scalars
+/// that give a reasonable relative ranking during distance-geometry
+/// refinement, where the goal is to satisfy the distance bounds rather than to
+/// reproduce experimental energies.
 #[derive(Clone, Debug)]
 pub struct FFParams {
+    /// Bond-stretch force constant in kcal/mol/Å².
     pub kb: f32,
+    /// Angle-bend force constant in kcal/mol/rad².
     pub k_theta: f32,
+    /// Torsion force constant in kcal/mol.
     pub k_omega: f32,
+    /// Out-of-plane (inversion) force constant in kcal/mol/rad².
     pub k_oop: f32,
+    /// Distance-bounds violation force constant in kcal/mol/Å².
     pub k_bounds: f32,
+    /// Chiral-volume violation force constant in kcal/mol/Å⁶.
     pub k_chiral: f32,
+    /// van der Waals weighting factor (dimensionless, `0.0` disables the term).
     pub k_vdw: f32,
 }
 

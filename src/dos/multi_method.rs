@@ -48,6 +48,15 @@ pub struct MultiMethodDosResult {
 ///
 /// Runs the chosen method to obtain orbital energies, then broadens
 /// them with Gaussian smearing to produce the DOS.
+///
+/// The energy grid is in eV and the DOS in states/eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the underlying electronic-structure calculation fails
+/// (unsupported element, invalid geometry, non-convergent SCF) or if the
+/// DOS grid parameters are invalid (fewer than two points, a non-positive
+/// or non-finite `sigma`, a non-finite energy window, or `e_max < e_min`).
 pub fn compute_dos_multimethod(
     elements: &[u8],
     positions: &[[f64; 3]],

@@ -215,6 +215,12 @@ fn compute_hf3c_mesh(
 /// - `spacing`: grid spacing in Å (default 0.2)
 /// - `padding`: padding around molecule in Å (default 3.0)
 /// - `isovalue`: isosurface threshold (default 0.02)
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if `spacing` is not a finite
+/// positive number, or if the selected method fails (unsupported element,
+/// out-of-range orbital index, or an unusable grid).
 pub fn compute_orbital_mesh(
     elements: &[u8],
     positions: &[[f64; 3]],

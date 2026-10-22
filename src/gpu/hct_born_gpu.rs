@@ -37,7 +37,21 @@ fn hct_scale(z: u8) -> f64 {
     }
 }
 
-/// Compute HCT Born radii on GPU.
+/// Computes HCT Born radii on GPU.
+///
+/// `elements` holds the atomic numbers and `positions` the Cartesian
+/// coordinates in **Å**. The returned vector holds one effective Born radius
+/// per atom, in **Å**.
+///
+/// # Errors
+///
+/// - `"System too small for GPU dispatch"` when fewer than eight atoms are
+///   supplied.
+/// - `"No output from HCT Born kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"HCT Born output size mismatch: expected {n}, got {m}"` when the kernel
+///   produced the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_hct_born_radii_gpu(
     ctx: &GpuContext,
     elements: &[u8],
@@ -111,6 +125,14 @@ pub fn compute_hct_born_radii_gpu(
     Ok(bytes_to_f64_vec_from_f32(&bytes))
 }
 
+/// WGSL source of the HCT Born-radii compute kernel.
+///
+/// One invocation per atom (`@workgroup_size(64, 1, 1)`); the kernel
+/// accumulates the Hawkins–Cramer–Truhlar descreening integral from the
+/// intrinsic radii `rho` and the per-element scale factors, then writes the
+/// effective Born radius (in **Å**, floored at the intrinsic radius and
+/// capped at 50 Å) to the read-write output buffer. The uniform block
+/// carries `n_atoms` and three padding words.
 pub const HCT_BORN_RADII_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

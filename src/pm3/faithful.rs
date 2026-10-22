@@ -25,17 +25,68 @@ pub(crate) const A0: f64 = 0.529_177_210_903;
 pub(crate) const KCAL_PER_EV: f64 = 23.060_547_830_619_03;
 
 /// Derived per-element quantities (MOPAC `calpar` + `inid`).
+///
+/// These are the auxiliary parameters that MOPAC's `calpar`/`inid`
+/// routines derive once per element from the tabulated PM3 parameters; they
+/// are not tabulated themselves. The two-centre NDDO integral kernels
+/// (`reppd`, `spcore`) consume them as the effective radial widths and
+/// screening lengths of the s and p Slater orbitals.
+///
+/// The MOPAC convention mixes "atomic units" freely: an energy in Hartree
+/// and an inverse length in Bohr are numerically interchangeable, so
+/// quantities that look like reciprocals of energies are used as lengths.
 #[derive(Debug, Clone, Copy)]
 pub struct Pm3Derived {
+    /// MOPAC `AM`: the s-orbital one-electron integral `g_ss` expressed in
+    /// Hartree (`g_ss / 27.2114`).
+    ///
+    /// The code uses `0.5 / am` as the s-shell screening length (Bohr) in
+    /// the two-centre integrals.
     pub am: f64,
+    /// MOPAC `AD`: the p-shell "d" parameter, in Hartree.
+    ///
+    /// Obtained from a Newton iteration that matches the analytic s/p
+    /// integral `H_sp` to the tabulated `h_sp`. The code uses
+    /// `0.5 / ad` as the p-shell screening length (Bohr).
     pub ad: f64,
+    /// MOPAC `AQ`: the p-shell "q" parameter, in Hartree.
+    ///
+    /// Obtained from a Newton iteration that matches the analytic p/p
+    /// integral `G_pp` to the tabulated `g_pp`. The code uses
+    /// `0.5 / aq` as the p-shell screening length (Bohr).
     pub aq: f64,
+    /// MOPAC `DD`: the radial width of the p-shell Slater orbital, in Bohr.
+    ///
+    /// `DD = (2n+1) (4 ζ_s ζ_p)^(n+½) / (ζ_s + ζ_p)^(2n+2) / √3` with the
+    /// principal quantum number `n` of the valence sp shell. Zero for
+    /// hydrogen, which has no p shell.
     pub dd: f64,
+    /// MOPAC `QQ`: the second p-shell radial parameter, in Bohr.
+    ///
+    /// `QQ = √((4n² + 6n + 2)/20) / ζ_p`. Zero for hydrogen.
     pub qq: f64,
+    /// MOPAC `PO1`: the s-shell radial parameter, in Bohr (`0.5 / am`).
+    ///
+    /// Used in the electron–core attraction terms of `spcore`.
     pub po1: f64,
+    /// MOPAC `PO2`: the p-shell radial parameter, in Bohr (`0.5 / ad`).
+    ///
+    /// Zero for hydrogen, which has no p shell.
     pub po2: f64,
+    /// MOPAC `PO3`: the second p-shell radial parameter, in Bohr
+    /// (`0.5 / aq`).
+    ///
+    /// Zero for hydrogen, which has no p shell.
     pub po3: f64,
+    /// MOPAC `PO7`: the radial parameter of the p shell in the
+    /// electron–core attraction, in Bohr.
+    ///
+    /// Equal to `po1` in this port.
     pub po7: f64,
+    /// MOPAC `PO9`: the radial parameter of the s shell in the
+    /// electron–core attraction and in the core–core `gab` term, in Bohr.
+    ///
+    /// Equal to `po1` in this port.
     pub po9: f64,
 }
 
@@ -1241,22 +1292,38 @@ fn solve_generalized(fock: &DMatrix<f64>, _overlap: &DMatrix<f64>) -> (Vec<f64>,
 
 /// Result of the faithful solver.
 pub struct FaithfulResult {
+    /// NDDO orbital energies in eV, sorted ascending.
     pub orbital_energies: Vec<f64>,
+    /// Electronic energy (sum of the one- and two-electron terms) in eV.
     pub electronic_energy: f64,
+    /// Core–core (nuclear) repulsion energy in eV.
     pub nuclear_repulsion: f64,
+    /// Total energy in eV (`electronic_energy + nuclear_repulsion`).
     pub total_energy: f64,
+    /// Heat of formation in kcal/mol.
+    ///
+    /// `ΔHf = (E_total − Σ E_isolated_atom) · 23.0605 + Σ ΔHf_atom`, the
+    /// MOPAC `ITER` convention.
     pub heat_of_formation: f64,
+    /// HOMO energy in eV.
     pub homo_energy: f64,
+    /// LUMO energy in eV.
     pub lumo_energy: f64,
+    /// HOMO–LUMO gap in eV.
     pub gap: f64,
+    /// Number of NDDO basis functions (orbitals in the minimal valence space).
     pub n_basis: usize,
+    /// Number of valence electrons in the molecule.
     pub n_electrons: usize,
+    /// Mulliken atomic charges in units of `e`.
     pub mulliken_charges: Vec<f64>,
+    /// Number of SCF iterations taken.
     pub scf_iterations: usize,
+    /// Whether the SCF converged.
     pub converged: bool,
-    /// Converged Fock matrix (validation/debug).
+    /// Converged Fock matrix (validation/debug), in eV.
     pub fock: DMatrix<f64>,
-    /// Converged density matrix (validation/debug).
+    /// Converged density matrix (validation/debug), dimensionless.
     pub density: DMatrix<f64>,
 }
 
@@ -1367,6 +1434,17 @@ fn build_g_matrix(
 }
 
 /// Run the faithful PM3 SCF (sp elements, Z <= 17).
+///
+/// `positions` are Cartesian coordinates in Ångström. The returned
+/// [`FaithfulResult`] carries energies in eV (heat of formation in
+/// kcal/mol).
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if an element has no PM3
+/// parameters, if an element has `Z > 17` (the faithful port currently
+/// covers only the sp-block elements), or if the electron count is odd
+/// (the NDDO SCF implemented here is closed-shell).
 pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, String> {
     crate::validation::validate_geometry(elements, positions)?;
     let n_atoms = elements.len();
@@ -1591,6 +1669,10 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
 }
 
 /// Debug helper for validation: overlap and one-electron matrices.
+///
+/// # Errors
+///
+/// Returns `Err` if an element has no PM3 parameters.
 #[doc(hidden)]
 pub fn debug_matrices(
     elements: &[u8],
@@ -1682,6 +1764,10 @@ pub fn debug_derived(p: &Pm3Params) -> Pm3Derived {
 }
 
 /// Debug: two-center block for one pair (validation harness).
+///
+/// # Errors
+///
+/// Returns `Err` if one of the two elements has no PM3 parameters.
 #[doc(hidden)]
 pub fn debug_block(
     za: u8,
@@ -1697,6 +1783,10 @@ pub fn debug_block(
 }
 
 /// Debug: G matrix for a given density (validation harness).
+///
+/// # Errors
+///
+/// Returns `Err` if an element has no PM3 parameters.
 #[doc(hidden)]
 pub fn debug_g(
     elements: &[u8],

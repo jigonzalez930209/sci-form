@@ -14,6 +14,20 @@ const GPU_DISPATCH_THRESHOLD: usize = 8;
 ///
 /// Each atom i gets a vector of radial symmetry function values summed over
 /// all neighbors j within the cutoff radius.
+///
+/// `positions` are the Cartesian coordinates in **Å** and `cutoff` the
+/// neighbour cutoff radius in **Å**; the returned values are dimensionless
+/// symmetry-function amplitudes. The output is laid out as
+/// `atom * (n_species * n_radial) + species * n_radial + radial`, where
+/// `n_radial = eta.len() * rs.len()`.
+///
+/// # Errors
+///
+/// - `"System too small for GPU dispatch"` when fewer than eight atoms are
+///   supplied.
+/// - `"No output from ANI AEV kernel"` when the dispatch returned no
+///   read-back payload.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_radial_aev_gpu(
     ctx: &GpuContext,
     species: &[u32],
@@ -103,6 +117,14 @@ pub fn compute_radial_aev_gpu(
     Ok(bytes_to_f64_vec_from_f32(&bytes))
 }
 
+/// WGSL source of the ANI radial atomic-environment-vector kernel.
+///
+/// One invocation per central atom (`@workgroup_size(64, 1, 1)`); the kernel
+/// sums the Behler-style radial symmetry functions of every neighbour within
+/// the cutoff and writes `n_species * n_eta * n_rs` values per atom to the
+/// read-write output buffer. The uniform block carries `n_atoms`,
+/// `n_species`, `n_eta`, `n_rs` and the cutoff radius (in the same length unit
+/// as the positions, **Å**).
 pub const ANI_RADIAL_AEV_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

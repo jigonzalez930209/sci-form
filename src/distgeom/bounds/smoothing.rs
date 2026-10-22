@@ -8,10 +8,28 @@
 
 use nalgebra::DMatrix;
 
+/// Enforce the triangle inequality on a distance-bounds matrix, in place.
+///
+/// The matrix uses the RDKit convention: `b[(i, j)]` (upper triangle) holds
+/// the *upper* distance bound between atoms `i` and `j` and `b[(j, i)]` the
+/// *lower* bound, all in Å. After the call the bounds are consistent with
+/// every triangle `i–j–k`.
+///
+/// Returns `false` if the bounds are infeasible (a lower bound ends up above
+/// its upper bound), in which case the matrix is left in a partially smoothed
+/// state.
 pub fn triangle_smooth(b: &mut DMatrix<f64>) -> bool {
     triangle_smooth_tol(b, 0.0)
 }
 
+/// Enforce the triangle inequality with a relative feasibility tolerance.
+///
+/// `tol` is the largest relative gap `lower/upper - 1` that is still accepted:
+/// with `tol > 0` a marginally inconsistent pair is repaired by raising the
+/// upper bound to the lower bound instead of aborting. `tol = 0.0` (the
+/// default of [`triangle_smooth`]) requires exact consistency.
+///
+/// Returns `true` when the bounds are feasible, `false` otherwise.
 pub fn triangle_smooth_tol(b: &mut DMatrix<f64>, tol: f64) -> bool {
     let n = b.nrows();
     for k in 0..n {
@@ -55,6 +73,11 @@ pub fn triangle_smooth_tol(b: &mut DMatrix<f64>, tol: f64) -> bool {
     true
 }
 
+/// Return a smoothed copy of a distance-bounds matrix.
+///
+/// This is the non-mutating convenience wrapper around [`triangle_smooth`]:
+/// the input matrix is copied, smoothed in place and returned. Bounds that
+/// cannot be made consistent are left as they are rather than reported.
 pub fn smooth_bounds_matrix(mut b: DMatrix<f64>) -> DMatrix<f64> {
     triangle_smooth(&mut b);
     b

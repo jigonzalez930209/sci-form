@@ -521,6 +521,14 @@ pub(crate) fn solve_xtb_with_state(
 }
 
 /// Run an xTB tight-binding calculation.
+///
+/// `positions` are Cartesian coordinates in Ångström. The returned
+/// [`XtbResult`] carries energies in eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid or if an element has no
+/// tight-binding parameters.
 pub fn solve_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<XtbResult, String> {
     solve_xtb_with_state(elements, positions).map(|(r, _)| r)
 }

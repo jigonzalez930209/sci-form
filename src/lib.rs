@@ -1,6 +1,67 @@
 //! **sci-form** — computational chemistry library for conformer generation, quantum methods,
 //! spectroscopy, molecular properties, and materials science.
 //!
+//! # What this library is (and is not)
+//!
+//! sci-form is a **fast, approximate** computational-chemistry toolkit. Its centre of gravity is
+//! ETKDG-style 3D conformer generation (see [`conformer`], [`distgeom`], [`etkdg`]) plus a
+//! collection of cheap electronic-structure and property models that run in milliseconds.
+//!
+//! It is **not** a general-purpose quantum-chemistry package:
+//!
+//! - **EHT** ([`eht`]) is a Hoffmann extended-Hückel treatment: valence-orbital, no electron
+//!   correlation, no basis-set superposition, parameterised per element. It is a qualitative
+//!   orbital picture (HOMO/LUMO gaps, orbital shapes), not a quantitative electronic-structure
+//!   method.
+//! - **PM3** ([`pm3`]) and **xTB** ([`xtb`], GFN0/GFN1/GFN2) are **semi-empirical / tight-binding
+//!   approximations** with fitted parameters. Their energies are on their own internal scales
+//!   (eV, Hartree) and are not directly comparable to experiment or to a correlated ab initio
+//!   method.
+//! - **UFF** ([`forcefield`]) and **MMFF94** ([`forcefield::mmff94`]) are **classical force
+//!   fields** for geometry and energy ranking. They have no electronic structure at all and
+//!   cannot produce orbitals, charges or spectra.
+//! - **ANI** ([`ani`]) is a neural-network potential whose bundled weights are test weights, not
+//!   a trained production model.
+//!
+//! For quantitative energetics, use a correlated wave-function or DFT code. sci-form's value is
+//! fast screening, geometry generation, and property estimation at scale.
+//!
+//! # Coordinate convention
+//!
+//! All coordinate arrays are **flat** `[x0, y0, z0, x1, y1, z1, ...]` in ångströms (Å).
+//! The alternative "matrix" form is one `[x, y, z]` triple per atom, in Å, and is used by the
+//! electronic-structure entry points.
+//!
+//! Element arrays are atomic numbers (`u8`): 1 = H, 6 = C, 7 = N, 8 = O, etc.
+//! Atom indices are 0-based and refer to the order of atoms in the parsed molecule / element
+//! array.
+//!
+//! # Unit conventions by method
+//!
+//! Units are not uniform across the crate, so check the doc of the specific function:
+//!
+//! | Quantity | Unit |
+//! |---|---|
+//! | Geometry (coordinates, bond lengths, cell parameters) | Å (cell angles in degrees) |
+//! | UFF / MMFF94 energies | kcal/mol |
+//! | UFF / MMFF94 gradients | kcal/mol/Å |
+//! | EHT, PM3, xTB orbital energies and gaps | eV |
+//! | PM3 / xTB / HF total energies | Hartree (eV where stated per field) |
+//! | PM3 / xTB gradients | eV/Å |
+//! | Vibrational frequencies, IR wavenumbers | cm⁻¹ |
+//! | NMR chemical shifts and shieldings | ppm |
+//! | NMR J-couplings | Hz |
+//! | Dipole moment | Debye |
+//! | Partial charges | elementary charge (e) |
+//! | Electrostatic potential | Hartree/e |
+//! | DOS/PDOS | 1/eV |
+//! | Surface area | Å² |
+//! | Pressure | bar |
+//!
+//! Energies are always **total system energies**, not per-atom normalised, unless the field
+//! name says otherwise. Gradients are `dE/dR` with `R` in Å, so they carry the sign convention
+//! "force = −gradient".
+//!
 //! # Architecture
 //!
 //! The crate is organized in layers from molecular construction up to derived properties:
@@ -17,16 +78,73 @@
 //! - **Materials** — [`materials`], [`periodic`]
 //! - **Transport & infra** — [`transport`], [`gpu`], [`mesh`]
 //!
-//! # Coordinate convention
+//! # How do I compute a property?
 //!
-//! All coordinate arrays are **flat** `[x0, y0, z0, x1, y1, z1, ...]` in ångströms.
-//! Element arrays are atomic numbers (`u8`): 1 = H, 6 = C, 7 = N, 8 = O, etc.
+//! | I want | Call | Result |
+//! |---|---|---|
+//! | A 3D conformer from SMILES | [`embed`] | flat Å coordinates |
+//! | Many conformers, deduplicated | [`embed_diverse`], [`search_conformers_with_uff`] | ranked conformers + RMSD clusters |
+//! | A batch of conformers in parallel | [`embed_batch`] | one result per SMILES |
+//! | Partial charges | [`compute_charges`] | Gasteiger charges (e) |
+//! | Force-field energy | [`compute_uff_energy`], [`compute_mmff94_energy`] | kcal/mol |
+//! | Per-term energy breakdown | [`compute_uff_energy_breakdown`] | kcal/mol per term kind |
+//! | Orbital energies / HOMO-LUMO gap | [`compute_population`], [`compute_gfn1`], [`compute_gfn2`] | eV |
+//! | Dipole moment | [`compute_dipole`] | Debye |
+//! | Frontier / Fukui reactivity | [`compute_frontier_descriptors`], [`compute_fukui_descriptors`] | per-atom descriptors |
+//! | Electrostatic potential grid | [`compute_esp`] | Hartree/e on a grid |
+//! | Density of states | [`compute_dos`] | 1/eV vs eV |
+//! | Vibrational frequencies + IR | [`compute_vibrational_analysis`], [`compute_ir_spectrum`] | cm⁻¹ |
+//! | NMR shifts and spectrum | [`predict_nmr_shifts`], [`compute_nmr_spectrum`], [`compute_giao_nmr`] | ppm |
+//! | Solvation free energy | [`compute_gb_solvation`], [`compute_alpb_solvation`] | kcal/mol |
+//! | Molecular volume / surface | [`compute_sasa`], [`materials`] | Å², Å³ |
+//! | Crystallographic structure | [`parse_cif`], [`create_unit_cell`] | cell + sites |
+//! | RMSD between two structures | [`compute_rmsd`] | Å |
+//! | A molecular dynamics trajectory | [`compute_md_trajectory`] | frames + energies |
+//! | A reaction path | [`compute_simplified_neb_path`] | images + energies |
+//! | Is this method valid for my elements? | [`system_capabilities`], [`system_method_plan`] | support metadata |
+//!
+//! # Feature flags
+//!
+//! The default feature set is `parallel` (rayon-backed batch paths). The remaining flags gate
+//! **experimental** modules that are not part of the stable surface:
+//!
+//! | Feature | Gates |
+//! |---|---|
+//! | `parallel` | rayon-parallel batch APIs (default **on**) |
+//! | `experimental-gpu`, `experimental-gpu-rendering` | the `gpu` compute / mesh rendering backends |
+//! | `alpha-cga`, `alpha-gsm`, `alpha-sdr`, `alpha-edl`, `alpha-periodic-linear`, `alpha-kinetics`, `alpha-render-bridge`, `alpha-reaction-dynamics` | the `alpha` research modules |
+//! | `beta-kpm`, `beta-mbh`, `beta-cpm`, `beta-randnla`, `beta-riemannian` | the `beta` modules |
+//! | `alpha-dft` | the `dft` module |
+//! | `alpha-dynamics-live` | the `dynamics_live` module |
+//! | `alpha-mlff` | the `mlff` re-export module |
+//!
+//! The legacy `experimental-*` flags (e.g. `experimental-riemannian`) are kept as no-op
+//! aliases of the corresponding `beta-*` / `alpha-*` flags so existing build scripts keep
+//! resolving.
 //!
 //! # Targets
 //!
 //! The public surface is mirrored across four targets: Rust (this crate), Python (`crates/python/`),
 //! WASM/TypeScript (`crates/wasm/`), and CLI (`crates/cli/`). Changes to public types or functions
 //! must be propagated to all targets.
+//!
+//! # Example
+//!
+//! ```
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Embed ethanol and report the C-C bond length in Å.
+//! let result = sci_form::embed("CCO", 42);
+//! assert!(result.error.is_none());
+//!
+//! let coords = &result.coords;
+//! let dx = coords[3] - coords[0];
+//! let dy = coords[4] - coords[1];
+//! let dz = coords[5] - coords[2];
+//! let bond = (dx * dx + dy * dy + dz * dz).sqrt();
+//! assert!(bond > 1.0 && bond < 2.0);
+//! # Ok(())
+//! # }
+//! ```
 
 // Scientific/numerical code patterns that are idiomatic in this domain
 #![allow(clippy::too_many_arguments)]
@@ -39,16 +157,43 @@ pub mod cga;
 pub mod charges;
 pub mod charges_eeq;
 pub mod clustering;
+/// End-to-end 3D conformer generation (ETKDG), the crate's headline entry point.
+///
+/// [`conformer::generate_3d_conformer`] takes a [`graph::Molecule`] and a seed and returns an
+/// `n × 3` coordinate matrix in Å, using the RDKit ETKDG recipe: distance-bounds matrix →
+/// Floyd–Warshall smoothing → random-distance sampling → metric-matrix embedding (3D, or 4D when
+/// the molecule has chiral centres) → bounds-force-field minimisation → ETKDG-3D minimisation →
+/// planarity and double-bond geometry checks.
 pub mod conformer;
 pub mod cpm;
 pub mod dipole;
 pub mod dispersion;
+/// Distance geometry: bounds matrices, chirality, embedding and validation.
+///
+/// This is the geometric core of ETKDG. It follows the classic distance-geometry pipeline
+/// described in Blainey, Todeschini & van Gunsteren, *Chem. Rev.* **2000**, 100, 2557, and
+/// mirrors RDKit's `DistGeom` / `DistGeomHelpers` structure:
+///
+/// 1. [`distgeom::calculate_bounds_matrix`] builds a lower/upper bound matrix from the molecular
+///    graph and the UFF-derived reference bond lengths.
+/// 2. [`distgeom::smooth_bounds_matrix`] / [`distgeom::triangle_smooth`] close the bounds under
+///    the triangle inequality (Floyd–Warshall).
+/// 3. [`distgeom::embedding`] samples random distances inside those bounds, builds a metric
+///    matrix and diagonalises it into 3D (or 4D) coordinates.
+/// 4. [`distgeom::validation`] checks tetrahedral centres, chiral volumes and planarity.
 pub mod distgeom;
 pub mod dos;
+/// Molecular dynamics: velocity-Verlet integrators, thermostats and NEB paths.
+///
+/// Energies are in kcal/mol, times in femtoseconds (fs), temperatures in kelvin (K), masses in
+/// atomic mass units (amu) and forces in kcal/mol/Å.
 pub mod dynamics;
 pub mod edl;
 pub mod eht;
 pub mod esp;
+/// ETKDG internals: dihedral angles, torsion energy terms and their gradients.
+///
+/// All angles are in **radians** in the range `[-π, π]`; torsion energies are in kcal/mol.
 pub mod etkdg;
 pub mod experimental_status;
 #[doc(hidden)]
@@ -76,6 +221,12 @@ pub mod rings;
 pub mod scf;
 pub mod sdr;
 pub mod smarts;
+/// SMILES parsing into a molecular graph.
+///
+/// A recursive-descent parser covering the Daylight SMILES grammar subset used by the crate:
+/// aliphatic and aromatic atoms, bracket atoms with isotopes and formal charges, ring-closure
+/// numbers, branches, `@`/`@@` tetrahedral stereo, `/`/`\` double-bond stereo, and implicit
+/// hydrogen addition.
 pub mod smiles;
 pub mod smirks;
 pub mod solvation;
@@ -83,6 +234,11 @@ pub mod solvation_alpb;
 pub mod spectroscopy;
 pub mod stereo;
 pub mod surface;
+/// Topology analysis: metal coordination environments from 3D coordinates.
+///
+/// Given atomic numbers and Cartesian positions (Å), detects metal centres, their ligand
+/// spheres, coordination numbers and a geometric guess of the coordination polyhedron
+/// (linear, trigonal, tetrahedral, square-planar, trigonal-bipyramidal, octahedral).
 pub mod topology;
 pub mod transport;
 pub mod xtb;
@@ -219,16 +375,27 @@ pub struct MethodCapability {
 }
 
 /// Explicit computational method exposed by top-level planning APIs.
+///
+/// The variant names map to the concrete implementations available in the crate; see
+/// [`system_method_plan`] for how a method is chosen for a given element set.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ScientificMethod {
+    /// ETKDG distance-geometry embedding ([`conformer`]) — geometry only, no energy.
     Embed,
+    /// UFF classical force field ([`forcefield::uff`]) — energy and gradients in kcal/mol.
     Uff,
+    /// Extended Hückel theory ([`eht`]) — orbital energies in eV, qualitative electronic structure.
     Eht,
+    /// PM3 semi-empirical method ([`pm3`]) — total energy in Hartree, orbital energies in eV.
     Pm3,
+    /// xTB tight binding ([`xtb`]) — GFN2-xTB by default; total energy in Hartree.
     Xtb,
+    /// MMFF94 classical force field ([`forcefield::mmff94`]) — energy in kcal/mol.
     Mmff94,
+    /// ANI neural-network potential ([`ani`]) — energy in kcal/mol with bundled test weights.
     Ani,
+    /// HF-3c minimal-basis Hartree–Fock with dispersion and gCP corrections ([`hf`]).
     Hf3c,
 }
 
@@ -236,65 +403,105 @@ pub enum ScientificMethod {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PropertyRequest {
+    /// 3D molecular geometry generation.
     Geometry,
+    /// Force-field total energy (UFF or MMFF94).
     ForceFieldEnergy,
+    /// Molecular orbital energies and the HOMO–LUMO gap.
     Orbitals,
+    /// Atomic partial charges (Mulliken / Löwdin).
     Population,
+    /// 3D molecular-orbital isosurface grid for visualisation.
     OrbitalGrid,
 }
 
 /// Structured metadata for one method on a specific element set.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MethodMetadata {
+    /// The method this row describes.
     pub method: ScientificMethod,
+    /// Whether the method can run at all for the inspected element set.
     pub available: bool,
+    /// Qualitative confidence in the method for this element set.
     pub confidence: eht::SupportLevel,
+    /// Numeric confidence in the range `0.0` (unusable) to `1.0` (fully trusted).
+    ///
+    /// The score is a fixed lookup table, not a calibrated probability: UFF/MMFF94 score 0.95
+    /// when supported and 0.75 when experimental, EHT/PM3/xTB score 0.95/0.60, ANI 0.90/0.70
+    /// and HF-3c 0.85/0.65.
     pub confidence_score: f64,
+    /// Human-readable statements of what the method cannot do here (e.g. unsupported elements).
     pub limitations: Vec<String>,
+    /// Human-readable warnings surfaced by the underlying support analysis.
     pub warnings: Vec<String>,
 }
 
 /// Recommended method plan for one requested property domain.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropertyMethodPlan {
+    /// The property domain this plan addresses.
     pub property: PropertyRequest,
+    /// The recommended method, or `None` when no method supports the element set.
     pub recommended: Option<ScientificMethod>,
+    /// The fallback method to use when the recommended one is unavailable, if any.
     pub fallback: Option<ScientificMethod>,
+    /// Free-text reasons behind the recommendation.
     pub rationale: Vec<String>,
+    /// Per-method metadata rows considered while building the plan.
     pub methods: Vec<MethodMetadata>,
 }
 
 /// Full method-planning summary for a molecule element set.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemMethodPlan {
+    /// Capability summary for the core operations on this element set.
     pub capabilities: SystemCapabilities,
+    /// Plan for the [`PropertyRequest::Geometry`] domain.
     pub geometry: PropertyMethodPlan,
+    /// Plan for the [`PropertyRequest::ForceFieldEnergy`] domain.
     pub force_field_energy: PropertyMethodPlan,
+    /// Plan for the [`PropertyRequest::Orbitals`] domain.
     pub orbitals: PropertyMethodPlan,
+    /// Plan for the [`PropertyRequest::Population`] domain.
     pub population: PropertyMethodPlan,
+    /// Plan for the [`PropertyRequest::OrbitalGrid`] domain.
     pub orbital_grid: PropertyMethodPlan,
 }
 
 /// Capability summary for core operations on a given element set.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemCapabilities {
+    /// Capability of the ETKDG embedding path (element presence only, always "experimental").
     pub embed: MethodCapability,
+    /// Capability of the UFF force field (element coverage of the UFF parameter tables).
     pub uff: MethodCapability,
+    /// Capability of the EHT electronic-structure path.
     pub eht: MethodCapability,
+    /// Capability of the population analysis path (tracks EHT).
     pub population: MethodCapability,
+    /// Capability of the orbital-grid rendering path (tracks EHT).
     pub orbital_grid: MethodCapability,
 }
 
 /// Result of an electronic workflow with optional UFF fallback.
+///
+/// The serde representation is externally tagged with the `mode` key, so the JSON form is
+/// `{"mode": "eht", "result": {...}}` or `{"mode": "uff_fallback", ...}`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "mode", rename_all = "snake_case")]
 pub enum ElectronicWorkflowResult {
+    /// EHT ran successfully and produced a full electronic-structure result.
     Eht {
+        /// The EHT solution: orbital energies in eV, MO coefficients, HOMO/LUMO levels and gap in eV.
         result: eht::EhtResult,
     },
+    /// EHT was not applicable and the workflow fell back to a UFF force-field energy.
     UffFallback {
+        /// UFF total energy in kcal/mol.
         energy_kcal_mol: f64,
+        /// Human-readable explanation of why the fallback was taken.
         reason: String,
+        /// The EHT support metadata that triggered the fallback.
         support: eht::EhtSupport,
     },
 }
@@ -303,8 +510,11 @@ pub enum ElectronicWorkflowResult {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MethodComparisonStatus {
+    /// The method ran and produced a payload.
     Success,
+    /// The method was not run because it is unavailable or not permitted for this system.
     Unavailable,
+    /// The method was run but failed; the message is in [`MethodComparisonEntry::error`].
     Error,
 }
 
@@ -312,13 +522,20 @@ pub enum MethodComparisonStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum MethodComparisonPayload {
+    /// Frontier-orbital observables from the EHT method.
     Eht {
+        /// HOMO orbital energy in eV.
         homo_energy: f64,
+        /// LUMO orbital energy in eV.
         lumo_energy: f64,
+        /// HOMO–LUMO gap in eV.
         gap: f64,
+        /// EHT capability metadata for the inspected element set.
         support: eht::EhtSupport,
     },
+    /// Force-field energy observable.
     Uff {
+        /// UFF total energy in kcal/mol.
         energy_kcal_mol: f64,
     },
 }
@@ -326,42 +543,61 @@ pub enum MethodComparisonPayload {
 /// One method row in the multi-method comparison workflow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MethodComparisonEntry {
+    /// The method this row describes.
     pub method: ScientificMethod,
+    /// Whether the method ran successfully.
     pub status: MethodComparisonStatus,
+    /// Whether the method is usable at all for this element set.
     pub available: bool,
+    /// Qualitative confidence in the method for this element set.
     pub confidence: eht::SupportLevel,
+    /// Numeric confidence in the range `0.0`–`1.0` (see [`MethodMetadata::confidence_score`]).
     pub confidence_score: f64,
+    /// Human-readable warnings surfaced by the support analysis.
     pub warnings: Vec<String>,
+    /// Human-readable statements of what the method cannot do here.
     pub limitations: Vec<String>,
+    /// The method's numeric output, present only when [`Self::status`] is
+    /// [`MethodComparisonStatus::Success`].
     pub payload: Option<MethodComparisonPayload>,
+    /// Error message when the method failed or was skipped; `None` on success.
     pub error: Option<String>,
 }
 
 /// Structured comparison result for multiple methods on the same geometry/system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MethodComparisonResult {
+    /// The method plan that was applied to this system.
     pub plan: SystemMethodPlan,
+    /// One row per method that was considered (UFF and EHT).
     pub comparisons: Vec<MethodComparisonEntry>,
 }
 
 /// Aromaticity analysis summary from graph-level bond annotations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AromaticityAnalysis {
+    /// Per-atom aromatic flag; `true` when the atom belongs to at least one aromatic bond.
     pub aromatic_atoms: Vec<bool>,
+    /// Aromatic bonds as `(atom_i, atom_j)` index pairs.
     pub aromatic_bonds: Vec<(usize, usize)>,
 }
 
 /// Graph-level stereocenter analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StereocenterAnalysis {
+    /// Atom indices whose stereochemistry was explicitly tagged in the SMILES (`@`/`@@`).
     pub tagged_tetrahedral_centers: Vec<usize>,
+    /// Atom indices inferred to be tetrahedral stereocentres: four neighbours, sp³ hybridisation
+    /// and at least three distinct neighbour elements.
     pub inferred_tetrahedral_centers: Vec<usize>,
 }
 
 /// Combined structural graph feature analysis for UI/API consumers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphFeatureAnalysis {
+    /// Aromaticity results.
     pub aromaticity: AromaticityAnalysis,
+    /// Stereocentre results.
     pub stereocenters: StereocenterAnalysis,
 }
 
@@ -383,31 +619,53 @@ pub struct GiaoNmrConfig {
 /// One isotope-specific shielding entry returned by the high-level GIAO API.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GiaoNmrEntry {
+    /// Index of the nucleus in the input element/position arrays.
     pub atom_index: usize,
+    /// Atomic number of the nucleus.
     pub element: u8,
+    /// 3×3 chemical-shift tensor in ppm (rows = x, y, z components).
     pub tensor: [[f64; 3]; 3],
+    /// Isotropic shielding σ_iso = Tr(σ)/3, in ppm.
     pub isotropic: f64,
+    /// Anisotropic shielding in ppm.
     pub anisotropy: f64,
+    /// Chemical shift δ = σ_ref − σ, in ppm.
     pub chemical_shift: f64,
 }
 
 /// Result of a high-level SCF-backed GIAO NMR calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GiaoNmrResult {
+    /// Canonical nucleus label, e.g. `"1H"` or `"13C"`.
     pub nucleus: String,
+    /// Atomic number of the requested nucleus.
     pub target_atomic_number: u8,
+    /// Electronic-structure method label, always `"RHF/GIAO"` for this route.
     pub method: String,
+    /// Basis set label, always `"STO-3G"` for this route.
     pub basis_set: String,
+    /// Total molecular charge used in the SCF calculation.
     pub charge: i32,
+    /// Spin multiplicity used in the SCF calculation (1 = singlet).
     pub multiplicity: u32,
+    /// Whether the SCF reached its convergence threshold.
     pub scf_converged: bool,
+    /// Number of SCF iterations performed.
     pub scf_iterations: usize,
+    /// Converged SCF total energy in Hartree.
     pub total_energy_hartree: f64,
+    /// Number of basis functions in the STO-3G expansion.
     pub n_basis: usize,
+    /// Number of nuclei of the requested element found in the system.
     pub n_target_atoms: usize,
+    /// Chemical shifts in ppm, in the same order as [`Self::shieldings`].
     pub chemical_shifts: Vec<f64>,
+    /// Per-nucleus shielding entries.
     pub shieldings: Vec<GiaoNmrEntry>,
+    /// Atomic numbers that fell back to the hydrogen-like minimal basis instead of explicit
+    /// STO-3G data.
     pub fallback_elements: Vec<u8>,
+    /// Human-readable notes about convergence, basis fallbacks and nucleus caveats.
     pub notes: Vec<String>,
 }
 
@@ -490,7 +748,7 @@ fn unique_sorted_unsupported(elements: &[u8], pred: impl Fn(u8) -> bool) -> Vec<
 
 /// Report operation capability metadata for a given element list.
 pub fn system_capabilities(elements: &[u8]) -> SystemCapabilities {
-    let eht_support = get_eht_support(elements);
+    let eht_support = eht_support(elements);
     let uff_unsupported = unique_sorted_unsupported(elements, is_uff_element_supported);
 
     let embed = MethodCapability {
@@ -634,7 +892,7 @@ fn build_property_plan(
 
 /// Build a structured method plan with recommendations, fallback paths, and confidence scores.
 pub fn system_method_plan(elements: &[u8]) -> SystemMethodPlan {
-    let capabilities = get_system_capabilities(elements);
+    let capabilities = system_capabilities(elements);
 
     let geometry_method = build_method_metadata(
         ScientificMethod::Embed,
@@ -719,19 +977,28 @@ pub fn system_method_plan(elements: &[u8]) -> SystemMethodPlan {
 }
 
 /// Deprecated alias for [`eht_support`].
-#[deprecated(since = "0.16.0", note = "renamed to `eht_support`; the `get_` prefix is not idiomatic in Rust")]
+#[deprecated(
+    since = "0.16.0",
+    note = "renamed to `eht_support`; the `get_` prefix is not idiomatic in Rust"
+)]
 pub fn get_eht_support(elements: &[u8]) -> eht::EhtSupport {
     eht_support(elements)
 }
 
 /// Deprecated alias for [`system_capabilities`].
-#[deprecated(since = "0.16.0", note = "renamed to `system_capabilities`; the `get_` prefix is not idiomatic in Rust")]
+#[deprecated(
+    since = "0.16.0",
+    note = "renamed to `system_capabilities`; the `get_` prefix is not idiomatic in Rust"
+)]
 pub fn get_system_capabilities(elements: &[u8]) -> SystemCapabilities {
     system_capabilities(elements)
 }
 
 /// Deprecated alias for [`system_method_plan`].
-#[deprecated(since = "0.16.0", note = "renamed to `system_method_plan`; the `get_` prefix is not idiomatic in Rust")]
+#[deprecated(
+    since = "0.16.0",
+    note = "renamed to `system_method_plan`; the `get_` prefix is not idiomatic in Rust"
+)]
 pub fn get_system_method_plan(elements: &[u8]) -> SystemMethodPlan {
     system_method_plan(elements)
 }
@@ -929,6 +1196,11 @@ pub fn embed_diverse(
 }
 
 /// Parse a SMILES string and return molecular structure (no 3D generation).
+///
+/// # Errors
+///
+/// Returns `Err` with a human-readable message when the SMILES string is
+/// syntactically invalid or uses a feature the parser does not support.
 pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
     graph::Molecule::from_smiles(smiles)
 }
@@ -937,6 +1209,13 @@ pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
 ///
 /// Parses the molecule, extracts bonds and elements, then runs 6 iterations
 /// of electronegativity equalization.
+///
+/// The returned charges are in elementary charge (e) and sum to the total
+/// formal charge of the molecule.
+///
+/// # Errors
+///
+/// Returns `Err` if the SMILES string cannot be parsed.
 pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
@@ -982,7 +1261,16 @@ pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult,
 
 /// Compute solvent-accessible surface area from SMILES + 3D coordinates.
 ///
-/// The `coords_flat` parameter is a flat [x0,y0,z0, x1,y1,z1,...] array.
+/// The `coords_flat` parameter is a flat [x0,y0,z0, x1,y1,z1,...] array in Å.
+///
+/// The result carries the total and per-atom SASA in Å² and the probe radius
+/// that was used (Å). A `None` probe radius selects the module default of
+/// 1.4 Å (the solvent-accessible convention).
+///
+/// # Errors
+///
+/// Returns `Err` when the element list and the coordinate array are
+/// inconsistent (mismatched lengths, empty input, non-finite coordinates).
 pub fn compute_sasa(
     elements: &[u8],
     coords_flat: &[f64],
@@ -1017,8 +1305,16 @@ pub fn compute_sasa(
 
 /// Compute Mulliken & Löwdin population analysis from atomic elements and positions.
 ///
-/// The result also carries the EHT HOMO/LUMO levels and gap, plus coverage
-/// warnings when an element has no valence model or EHT basis parameters.
+/// `positions` is one `[x, y, z]` triple per atom, in Å.
+///
+/// The result also carries the EHT HOMO/LUMO levels and gap (all in eV), plus
+/// coverage warnings when an element has no valence model or EHT basis
+/// parameters. Partial charges are in elementary charge (e).
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid or when the EHT solve fails
+/// (for example because an element has no EHT valence-orbital parameters).
 pub fn compute_population(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1050,6 +1346,10 @@ pub fn compute_dipole(
 }
 
 /// Compute atom-resolved HOMO/LUMO frontier descriptors from EHT.
+///
+/// Frontier orbital energies and the gap are in eV; per-atom frontier
+/// coefficients are dimensionless weights that sum to one over the atoms
+/// that carry the frontier orbital.
 pub fn compute_frontier_descriptors(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1064,6 +1364,9 @@ pub fn compute_frontier_descriptors(
 }
 
 /// Compute Fukui-function workflows and condensed per-atom descriptors from EHT.
+///
+/// The condensed per-atom Fukui indices are dimensionless; the frontier
+/// orbital energies they are derived from are in eV.
 pub fn compute_fukui_descriptors(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1078,6 +1381,9 @@ pub fn compute_fukui_descriptors(
 }
 
 /// Build empirical reactivity rankings using condensed Fukui descriptors and Mulliken charges.
+///
+/// Ranking scores are dimensionless; the underlying charges are in
+/// elementary charge (e) and the frontier energies in eV.
 pub fn compute_reactivity_ranking(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1098,6 +1404,14 @@ pub fn compute_reactivity_ranking(
 }
 
 /// Build an exploratory UV-Vis-like spectrum from low-cost EHT transitions.
+///
+/// `sigma` is the Gaussian broadening width in eV, `e_min`/`e_max` bound
+/// the scanned transition-energy window in eV and `n_points` is the number of
+/// grid points. The returned energies are in eV and the intensities are
+/// dimensionless relative oscillator strengths.
+///
+/// This is an exploratory approximation built on EHT level spacings, not a
+/// TDDFT or CIS spectrum.
 pub fn compute_uv_vis_spectrum(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1118,6 +1432,10 @@ pub fn compute_uv_vis_spectrum(
 }
 
 /// Compute Wiberg-like and Mayer-like bond orders from EHT.
+///
+/// The returned bond orders are dimensionless indices in roughly the 0-3
+/// range (1 = single, 2 = double, 3 = triple), derived from EHT density
+/// matrix elements rather than from a correlated wave function.
 pub fn compute_bond_orders(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1141,6 +1459,10 @@ pub fn compute_topology(
 }
 
 /// Analyze aromaticity and graph-level stereocenters from a SMILES string.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed.
 pub fn analyze_graph_features(smiles: &str) -> Result<GraphFeatureAnalysis, String> {
     use petgraph::visit::EdgeRef;
 
@@ -1204,7 +1526,7 @@ pub fn compute_eht_or_uff_fallback(
     positions: &[[f64; 3]],
     allow_experimental_eht: bool,
 ) -> Result<ElectronicWorkflowResult, String> {
-    let support = get_eht_support(elements);
+    let support = eht_support(elements);
     let should_fallback = match support.level {
         eht::SupportLevel::Unsupported => true,
         eht::SupportLevel::Experimental => !allow_experimental_eht,
@@ -1245,7 +1567,7 @@ pub fn compare_methods(
     positions: &[[f64; 3]],
     allow_experimental_eht: bool,
 ) -> MethodComparisonResult {
-    let plan = get_system_method_plan(elements);
+    let plan = system_method_plan(elements);
     let mut comparisons = Vec::new();
 
     let coords_flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
@@ -1409,6 +1731,16 @@ pub fn compute_esp_with_config(
 }
 
 /// Compute DOS/PDOS from EHT orbital energies.
+///
+/// `sigma` is the Gaussian smearing width in eV, `e_min`/`e_max` bound the
+/// energy window in eV and `n_points` is the grid resolution. The result
+/// carries the energy grid in eV and the total DOS and per-atom PDOS in
+/// states/eV.
+///
+/// # Errors
+///
+/// Returns `Err` when `n_points < 2`, when `sigma` is not a positive
+/// finite number, or when the EHT solve fails.
 pub fn compute_dos(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1457,6 +1789,14 @@ pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
 }
 
 /// Compute UFF force field energy for a molecule.
+///
+/// `coords` is a flat `[x0, y0, z0, x1, y1, z1, ...]` array in Å with one
+/// triplet per atom. The returned energy is the UFF total energy in kcal/mol.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed, or when `coords`
+/// does not have exactly `3 × n_atoms` entries.
 pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
@@ -1481,6 +1821,11 @@ pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
 /// terms are not implemented, so this is *not* the complete MMFF94 energy.
 ///
 /// Returns total MMFF94 energy in kcal/mol.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed, or when `coords`
+/// does not have exactly `3 × n_atoms` entries.
 pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
@@ -1550,6 +1895,17 @@ pub fn compute_mmff94_energy_breakdown(
 /// Main-group elements use Stewart's PM3 parameters and transition metals the
 /// PM3(tm) set ([`pm3::pm3_method`] reports which one applies to an element).
 /// MOPAC parity is a documented gap (validation F42).
+///
+/// # Units
+///
+/// The total energy is in Hartree, the orbital energies and the heat of
+/// formation in eV, and the Mulliken charges in elementary charge (e).
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry fails validation (mismatched element and
+/// position counts, empty input, non-finite coordinates), when an element has
+/// no PM3 parameter set, or when the SCF cycle does not converge.
 pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Result, String> {
     validation::validate_geometry(elements, positions)?;
     pm3::solve_pm3(elements, positions)
@@ -1578,6 +1934,17 @@ pub fn compute_pm3_gradient(
 ///
 /// This is the root-level entry point for the GFN1-xTB method; the
 /// implementation lives in [`xtb::gfn1`].
+///
+/// # Units
+///
+/// Orbital energies, HOMO/LUMO levels and the gap are in eV; the electronic,
+/// repulsive and total energies are in Hartree; Mulliken charges are in
+/// elementary charge (e).
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, when an element has no GFN1
+/// parameter set, or when the SCC cycle does not converge.
 pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1Result, String> {
     xtb::gfn1::solve_gfn1(elements, positions)
 }
@@ -1586,10 +1953,37 @@ pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1
 ///
 /// This is the root-level entry point for the GFN2-xTB method; the
 /// implementation lives in [`xtb::gfn2`].
+///
+/// # Units
+///
+/// Orbital energies, HOMO/LUMO levels and the gap are in eV; the electronic,
+/// repulsive and total energies are in Hartree; Mulliken charges are in
+/// elementary charge (e).
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, when an element has no GFN2
+/// parameter set, or when the SCC cycle does not converge.
 pub fn compute_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn2Result, String> {
     xtb::gfn2::solve_gfn2(elements, positions)
 }
 
+/// Compute a generic xTB single point (electrical structure + total energy).
+///
+/// This is a convenience wrapper that runs **GFN2-xTB** internally (the most reliable of the
+/// GFN family for SCC convergence and energetics) and re-packages the result into the common
+/// [`xtb::XtbResult`] type. Use [`compute_gfn1`] or [`compute_gfn2`] directly when the specific
+/// GFN parameterisation matters.
+///
+/// # Units
+///
+/// Orbital energies, HOMO/LUMO levels and the gap are in eV; electronic, repulsive and total
+/// energies are in Hartree; Mulliken charges are in elementary charge (e).
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry fails validation (mismatched element/position counts, empty
+/// input, non-finite coordinates) or when the GFN2-xTB SCC cycle fails to converge.
 pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
     validation::validate_geometry(elements, positions)?;
     let gfn2 = xtb::gfn2::solve_gfn2(elements, positions)?;
@@ -1628,6 +2022,11 @@ pub fn compute_xtb_gradient(
 ///
 /// Uses EHT/xTB molecular orbital transitions with transition dipole moment
 /// evaluation and configurable broadening (Gaussian or Lorentzian).
+///
+/// `sigma` is the broadening width in eV, `e_min`/`e_max` bound the
+/// scanned energy window in eV and `n_points` is the grid resolution.
+/// The returned transition energies are in eV and the oscillator strengths
+/// are dimensionless.
 pub fn compute_stda_uvvis(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1714,6 +2113,14 @@ pub fn compute_ir_spectrum(
 }
 
 /// Predict representative NMR chemical shifts from SMILES.
+///
+/// The shifts are in ppm and come from an empirical, topology-based
+/// increment scheme (not from a GIAO calculation) - use
+/// [`compute_giao_nmr`] for a quantum-chemical estimate.
+///
+/// # Errors
+///
+/// Returns `Err` if the SMILES string cannot be parsed.
 pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(nmr::predict_chemical_shifts(&mol))
@@ -2011,6 +2418,15 @@ pub fn compute_nmr_spectrum_with_coords(
 }
 
 /// Generate HOSE codes for all atoms in a molecule.
+///
+/// HOSE (homotopic environment for each atom) codes are the canonical
+/// strings used by the nmrdb/ACD shift-prediction machinery to identify
+/// chemically equivalent environments. `max_radius` is the maximum number
+/// of bonds explored around each atom.
+///
+/// # Errors
+///
+/// Returns `Err` if the SMILES string cannot be parsed.
 pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> Result<Vec<nmr::HoseCode>, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(nmr::hose::generate_hose_codes(&mol, max_radius))
@@ -2089,11 +2505,28 @@ pub fn predict_ensemble(
 }
 
 /// Compute Topological Polar Surface Area (TPSA) in Å².
+///
+/// This is the Ertl fragment-contribution TPSA: polar fragments contribute
+/// fixed area increments, so the result is a topological quantity and does
+/// not depend on a 3D geometry.
 pub fn compute_tpsa(elements: &[u8], bonds: &[(usize, usize, u8)]) -> f64 {
     ml::compute_tpsa(elements, bonds)
 }
 
 /// Run short exploratory molecular dynamics with Velocity Verlet (NVE-like).
+///
+/// `coords` is a flat `[x0,y0,z0, x1,y1,z1, ...]` array in Å, `n_steps` is
+/// the number of integration steps, `dt_fs` the timestep in femtoseconds and
+/// `seed` the RNG seed for the initial Maxwell-Boltzmann velocities.
+///
+/// The trajectory stores positions in Å, times in fs, velocities in Å/fs,
+/// kinetic and potential energies in kcal/mol and temperatures in K.
+///
+/// # Errors
+///
+/// Returns `Err` if the SMILES cannot be parsed, the coordinate array does
+/// not match the atom count, or the UFF force field cannot be built for the
+/// molecule.
 pub fn compute_md_trajectory(
     smiles: &str,
     coords: &[f64],
@@ -2105,6 +2538,12 @@ pub fn compute_md_trajectory(
 }
 
 /// Run short exploratory molecular dynamics with Velocity Verlet + Berendsen NVT thermostat.
+///
+/// In addition to the arguments of [`compute_md_trajectory`], `target_temp_k`
+/// is the thermostat set point in K and `thermostat_tau_fs` the coupling
+/// time in fs. The Berendsen thermostat does not produce a canonical
+/// ensemble, so the reported temperature fluctuates around the set point
+/// rather than sampling it exactly.
 pub fn compute_md_trajectory_nvt(
     smiles: &str,
     coords: &[f64],
@@ -2125,6 +2564,14 @@ pub fn compute_md_trajectory_nvt(
 }
 
 /// Build a simplified NEB path between two geometries.
+///
+/// `start_coords` and `end_coords` are flat `[x,y,z,...]` arrays in Å,
+/// `n_images` is the number of images between the two endpoints (including
+/// them), `n_iter` the number of relaxation iterations per image,
+/// `spring_k` the harmonic spring constant in kcal/mol/Å² and `step_size`
+/// the gradient step in Å.
+///
+/// The returned path energies are in kcal/mol relative to the start image.
 pub fn compute_simplified_neb_path(
     smiles: &str,
     start_coords: &[f64],
@@ -2173,6 +2620,12 @@ pub fn compute_simplified_neb_path_configurable(
 /// Compute single-point energy (kcal/mol) with any NEB-capable backend.
 ///
 /// `method`: one of `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`, `"hf3c"`.
+///
+/// # Errors
+///
+/// Returns `Err` when the method name is not recognised, when the SMILES
+/// string cannot be parsed, when the coordinate array does not match the atom
+/// count, or when the selected backend fails.
 pub fn neb_backend_energy_kcal(method: &str, smiles: &str, coords: &[f64]) -> Result<f64, String> {
     dynamics::neb_backend_energy_kcal(method, smiles, coords)
 }
@@ -2359,6 +2812,15 @@ pub fn compute_uff_energy_with_aromatic_heuristics(
 }
 
 /// Estimate acidic/basic pKa sites from graph environments and Gasteiger-charge heuristics.
+///
+/// The returned pKa values are in pKa units (dimensionless, the negative log
+/// of the acid dissociation constant) and are heuristic estimates, not
+/// measured or computed values.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed or when the
+/// Gasteiger charge calculation fails.
 pub fn compute_empirical_pka(smiles: &str) -> Result<reactivity::EmpiricalPkaResult, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let charges = compute_charges(smiles)?;
@@ -2401,6 +2863,11 @@ pub fn assemble_framework(
 /// Parse a CIF (Crystallographic Information File) string into a crystal structure.
 ///
 /// Returns cell parameters, space group info, and atom site positions.
+///
+/// # Errors
+///
+/// Returns `Err` when the CIF text cannot be parsed, when the cell parameters
+/// are missing or inconsistent, or when the atom-site loop is malformed.
 pub fn parse_cif(input: &str) -> Result<materials::CifStructure, String> {
     materials::cif::parse_cif(input)
 }
@@ -2487,6 +2954,13 @@ pub fn compute_hf3c(
 ///
 /// `elements`: atomic numbers (supported: H, C, N, O, F, S, Cl).
 /// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
+///
+/// The energy is in kcal/mol and the forces (when requested) in kcal/mol/Å.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry fails validation or when an element has
+/// no ANI network.
 pub fn compute_ani(elements: &[u8], positions: &[[f64; 3]]) -> Result<ani::AniResult, String> {
     validation::validate_geometry(elements, positions)?;
     ani::api::compute_ani_test(elements, positions)
@@ -2526,6 +3000,10 @@ pub fn compute_esp_grid(
 ///
 /// Produces a deterministic SMILES representation regardless of
 /// input atom ordering (e.g., "CCO" and "OCC" produce the same output).
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed.
 pub fn to_canonical_smiles(smiles: &str) -> Result<String, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(canonical_smiles::to_canonical_smiles(&mol))
@@ -2534,6 +3012,14 @@ pub fn to_canonical_smiles(smiles: &str) -> Result<String, String> {
 // ─── Stereochemistry API ─────────────────────────────────────────────────────
 
 /// Analyze stereochemistry: detect chiral centers (R/S) and E/Z double bonds.
+///
+/// `coords` is a flat `[x0, y0, z0, x1, y1, z1, ...]` array in Å. When the
+/// coordinates are empty the analysis is graph-based only and the 3D
+/// configuration of double bonds cannot be assigned.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed.
 pub fn analyze_stereo(smiles: &str, coords: &[f64]) -> Result<stereo::StereoAnalysis, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
@@ -2543,6 +3029,9 @@ pub fn analyze_stereo(smiles: &str, coords: &[f64]) -> Result<stereo::StereoAnal
 // ─── Solvation API ───────────────────────────────────────────────────────────
 
 /// Compute non-polar solvation energy from SASA and atomic solvation parameters.
+///
+/// The returned energy is in kcal/mol and is a sum of `gamma_i * SASA_i` terms
+/// with atomic surface tensions `gamma_i` in kcal/(mol·Å²).
 pub fn compute_nonpolar_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -2603,6 +3092,12 @@ pub fn compute_rmsd_matrix(conformers: &[Vec<f64>]) -> Vec<Vec<f64>> {
 // ─── Rings & Fingerprints API ────────────────────────────────────────────────
 
 /// Compute the Smallest Set of Smallest Rings (SSSR).
+///
+/// The returned rings are lists of 0-based atom indices; no units are involved.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES string cannot be parsed.
 pub fn compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(rings::sssr::compute_sssr(&mol))
@@ -2633,6 +3128,10 @@ pub fn compute_ecfp_batch(
 }
 
 /// Compute Tanimoto similarity between two ECFP fingerprints.
+///
+/// The Tanimoto (Jaccard) coefficient of two bit vectors is
+/// `|A ∩ B| / |A ∪ B|`; the returned similarity is dimensionless and lies in
+/// `[0, 1]`, with `1.0` meaning identical fingerprints.
 pub fn compute_tanimoto(
     fp1: &rings::ecfp::ECFPFingerprint,
     fp2: &rings::ecfp::ECFPFingerprint,

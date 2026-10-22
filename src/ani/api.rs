@@ -38,11 +38,13 @@ impl Default for AniConfig {
 pub struct AniResult {
     /// Total potential energy (Hartree).
     pub energy: f64,
-    /// Atomic forces [x,y,z] per atom (Hartree/Å). Empty if not requested.
+    /// Atomic forces \[x, y, z\] per atom (Hartree/Å). Empty if not requested.
     pub forces: Vec<[f64; 3]>,
     /// Atomic species (atomic numbers).
     pub species: Vec<u8>,
-    /// Per-atom energy contributions.
+    /// Per-atom energy contributions, in Hartree.
+    ///
+    /// These sum to `energy`.
     pub atomic_energies: Vec<f64>,
     /// Optional AEVs for each atom.
     pub aevs: Option<Vec<Vec<f64>>>,
@@ -51,9 +53,15 @@ pub struct AniResult {
 /// Compute ANI energy (and optionally forces) for a molecular geometry.
 ///
 /// `elements`: atomic numbers.
-/// `positions`: [x,y,z] coordinates in Ångström.
+/// `positions`: \[x, y, z\] coordinates in Ångström.
 /// `config`: computation parameters.
 /// `models`: pre-loaded element→network map (from `weights::load_weights`).
+///
+/// # Errors
+///
+/// Returns `Err` if `elements` and `positions` have different lengths, if
+/// the geometry is invalid, if an element is outside the ANI species table,
+/// or if no network weights were loaded for one of the elements.
 pub fn compute_ani(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -127,6 +135,12 @@ pub fn compute_ani(
 /// Compute ANI energy using internally-generated test weights.
 ///
 /// This is for testing and demonstration only — not physically meaningful.
+///
+/// # Errors
+///
+/// Propagates the errors of [`compute_ani`]: a length mismatch between
+/// `elements` and `positions`, an invalid geometry, an element outside the
+/// ANI species table, or a missing network.
 pub fn compute_ani_test(elements: &[u8], positions: &[[f64; 3]]) -> Result<AniResult, String> {
     let params = default_ani2x_params();
     let aev_len = params.total_aev_length();

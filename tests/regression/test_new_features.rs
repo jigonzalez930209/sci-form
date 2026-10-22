@@ -265,7 +265,8 @@ fn test_3d_descriptors_benzene_vs_ethane() {
     assert!(benzene.error.is_none());
     assert!(ethane.error.is_none());
 
-    let desc_benz = sci_form::ml::compute_3d_descriptors(&benzene.elements, &benzene.coords).unwrap();
+    let desc_benz =
+        sci_form::ml::compute_3d_descriptors(&benzene.elements, &benzene.coords).unwrap();
     let desc_eth = sci_form::ml::compute_3d_descriptors(&ethane.elements, &ethane.coords).unwrap();
 
     // Benzene has larger Rg than ethane

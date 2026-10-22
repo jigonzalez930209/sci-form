@@ -350,6 +350,17 @@ pub fn orient_fragment_along_direction(
 /// Optimise the reactive complex with constrained geometry optimisation.
 ///
 /// Freezes inter-fragment reactive distance while relaxing internal geometries.
+///
+/// The returned coordinates are a flat `3N` array in **Å**.
+///
+/// # Errors
+///
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when `method`
+///   names an unknown energy backend.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - Any error raised by the energy/gradient backend.
+/// - `"Complex optimisation diverged"` when the optimisation produced
+///   non-finite coordinates.
 pub fn optimize_reactive_complex(
     smiles: &str,
     coords: &[f64],
@@ -397,6 +408,21 @@ pub fn optimize_reactive_complex(
 ///
 /// `n_trials = 1` reproduces the product-guided placement alone, so the result
 /// is never worse than the single-orientation assembly.
+///
+/// Returns the lowest-energy geometry (flat `3N` array in **Å**) together
+/// with its energy (in the unit of the chosen backend).
+///
+/// # Errors
+///
+/// - The error of [`crate::dynamics::NebBackend::from_method`] when `method`
+///   names an unknown energy backend.
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"elements ({n}) do not match the complex ({m} atoms)"` when the element
+///   list does not describe the assembled complex.
+/// - `"empty fragment assembly"` when no fragment could be assembled.
+/// - `"global orientation search produced no finite candidate"` when none of
+///   the trials yielded a finite energy.
+/// - Any error raised by the energy/gradient backend.
 #[allow(clippy::too_many_arguments)]
 pub fn optimize_reactive_complex_global(
     smiles: &str,

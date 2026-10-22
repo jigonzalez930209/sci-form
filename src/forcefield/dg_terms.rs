@@ -1,12 +1,33 @@
+//! Distance-geometry restraint terms used during embedding refinement.
+//!
+//! These are the two restraints that a bounds-matrix force field needs beyond
+//! the plain distance bounds:
+//!
+//! - [`DistanceViolation`] penalises a distance that leaves its allowed
+//!   `[lower_bound, upper_bound]` window,
+//! - [`ChiralViolation`] penalises a signed tetrahedral volume that leaves its
+//!   allowed window, which is what pins down a stereocentre's handedness.
+//!
+//! The energy of both is in kcal/mol and the injected gradient is `dE/dR` in
+//! kcal/mol/Å.
 use super::traits::ForceFieldContribution;
 
 /// Distance Violation contribution for Distance Geometry refinement.
 /// E = weight * (d/ub - 1)^2 if d > ub, or weight * (2*lb/(lb+d) - 1)^2 if d < lb.
+///
+/// `d` is the interatomic distance in Å, the bounds are in Å and the energy
+/// is in kcal/mol. The injected gradient is `dE/dR` in kcal/mol/Å.
+/// The term is zero inside `[lower_bound, upper_bound]`.
 pub struct DistanceViolation {
+    /// Index of the first atom of the restrained pair.
     pub atom_i_idx: usize,
+    /// Index of the second atom of the restrained pair.
     pub atom_j_idx: usize,
+    /// Lower distance bound `lb` in Å (violations below this are penalised).
     pub lower_bound: f64,
+    /// Upper distance bound `ub` in Å (violations above this are penalised).
     pub upper_bound: f64,
+    /// Force constant of the penalty in kcal/mol (dimensionless per Å²).
     pub weight: f64,
 }
 
@@ -67,10 +88,21 @@ impl ForceFieldContribution for DistanceViolation {
 }
 
 /// Chiral Violation contribution for Distance Geometry refinement.
+///
+/// The signed volume `V = (r_i - r_l) · [(r_j - r_l) × (r_k - r_l)]` is the
+/// triple product of the three centre-to-neighbour vectors; its magnitude is in
+/// Å³ and its sign encodes the handedness. The term is a quadratic penalty
+/// when `V` falls outside `[lower_vol, upper_vol]`, is zero inside that
+/// window, and the energy is in kcal/mol.
 pub struct ChiralViolation {
-    pub atom_idx: [usize; 4], // [i, j, k, l] -> l is center? No, usually i, j, k are neighbors, l is center
+    /// The four atom indices `[i, j, k, l]`: `i`, `j` and `k` are the three
+    /// neighbours of the stereocentre and `l` is the stereocentre itself.
+    pub atom_idx: [usize; 4],
+    /// Lower bound on the signed chiral volume in Å³.
     pub lower_vol: f64,
+    /// Upper bound on the signed chiral volume in Å³.
     pub upper_vol: f64,
+    /// Force constant of the penalty in kcal/mol (per Å⁶).
     pub weight: f64,
 }
 

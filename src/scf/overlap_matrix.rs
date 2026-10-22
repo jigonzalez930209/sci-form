@@ -8,6 +8,9 @@ use super::basis::{BasisFunction, BasisSet};
 use super::gaussian_integrals::overlap_primitive;
 
 /// Build the full overlap matrix S for the given basis set.
+///
+/// The matrix is symmetric and dimensionless (`S_μμ = 1` for normalised
+/// basis functions).
 pub fn build_overlap_matrix(basis: &BasisSet) -> DMatrix<f64> {
     let n = basis.n_basis;
     let mut s = DMatrix::zeros(n, n);

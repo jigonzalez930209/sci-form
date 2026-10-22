@@ -5,6 +5,19 @@
 //!
 //! GPU path: dispatches ORBITAL_GRID_SHADER via wgpu.
 //! CPU path: direct triple-nested loop (always available as fallback).
+//!
+//! # Contract with callers
+//!
+//! The CPU path always works: [`evaluate_orbital_with_report`] only attempts
+//! the GPU dispatch when a device is present and falls back to the CPU
+//! implementation otherwise, recording the reason in the report.
+//!
+//! # Units
+//!
+//! Grid origin, spacing, basis centres and the returned wavefunction values
+//! follow the atomic-unit convention of the basis set: lengths in **Bohr**,
+//! the orbital values are dimensionless (the MO is normalised to one
+//! electron).
 
 use super::backend_report::OrbitalGridReport;
 use super::context::{
@@ -73,11 +86,16 @@ impl GridParams {
 }
 
 /// Result of orbital grid evaluation.
+///
+/// The grid values are the orbital wavefunction ψ_i(r) at each grid point;
+/// they are dimensionless (the MO is normalised to one electron).
 #[derive(Debug, Clone)]
 pub struct OrbitalGrid {
     /// Grid values (flat, row-major: x varies slowest).
     pub values: Vec<f64>,
+    /// Grid geometry (origin and spacing in Bohr, dimensions).
     pub params: GridParams,
+    /// Index of the evaluated orbital in the MO coefficient matrix (0-based).
     pub orbital_index: usize,
 }
 

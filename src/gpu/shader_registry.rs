@@ -64,6 +64,14 @@ impl ShaderDescriptor {
     }
 
     /// Pre-flight check against memory budget limits.
+    ///
+    /// # Errors
+    ///
+    /// - `"Shader '{name}' needs {n} bindings, budget allows {m}"` when the
+    ///   shader's total binding count exceeds what the device allows.
+    /// - `"Shader '{name}' workgroup has {n} invocations, max {m}"` when the
+    ///   shader's workgroup size exceeds the per-workgroup invocation limit
+    ///   (256 by default).
     pub fn check_against_budget(&self, budget: &GpuMemoryBudget) -> Result<(), String> {
         let total = self.storage_bindings + self.uniform_bindings;
         if total > budget.limits.max_storage_buffers_per_stage + 4 {
@@ -275,6 +283,11 @@ pub const SHADER_STDA_MATMUL: ShaderDescriptor = ShaderDescriptor {
     description: "sTDA Coulomb matrix matmul (GPU Tier 2: O(N^3) dense)",
 };
 
+/// Catalogue of every compute shader known to the crate.
+///
+/// The slice holds one entry per registered shader, in registration order;
+/// use [`find_shader`] to look one up by name and [`shaders_by_tier`] to
+/// filter by tier.
 pub const ALL_SHADERS: &[&ShaderDescriptor] = &[
     &SHADER_VECTOR_ADD,
     &SHADER_ORBITAL_GRID,

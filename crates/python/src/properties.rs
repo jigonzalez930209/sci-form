@@ -214,11 +214,7 @@ fn compute_charges_configured(
 /// Compute the solvent-accessible surface area.
 #[pyfunction]
 #[pyo3(signature = (elements, coords, probe_radius=1.4))]
-fn compute_sasa(
-    elements: Vec<u8>,
-    coords: Vec<f64>,
-    probe_radius: f64,
-) -> PyResult<SasaResultPy> {
+fn compute_sasa(elements: Vec<u8>, coords: Vec<f64>, probe_radius: f64) -> PyResult<SasaResultPy> {
     crate::errors::check_coords_len(&coords, elements.len())?;
     let pr = if (probe_radius - 1.4).abs() < 1e-10 {
         None

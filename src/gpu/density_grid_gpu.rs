@@ -1,4 +1,19 @@
 //! GPU electron-density grid evaluation.
+//!
+//! Computes the electron density
+//! ρ(r) = Σ_μν P_μν φ_μ(r) φ_ν(r) on a regular 3D grid, using the same
+//! basis functions and density matrix as the SCF calculation.
+//!
+//! # Contract with callers
+//!
+//! The CPU path always works: [`evaluate_density_with_report`] attempts the
+//! GPU dispatch only when a device is present and silently falls back to the
+//! CPU implementation otherwise, recording the reason in the report.
+//!
+//! # Units
+//!
+//! Grid origin, spacing and basis centres are in **Bohr**; the density values
+//! are in **electrons/bohr³**.
 
 use nalgebra::DMatrix;
 
@@ -45,6 +60,15 @@ fn pack_basis_for_gpu(basis: &BasisSet) -> (Vec<u8>, Vec<u8>) {
     (basis_bytes, prim_bytes)
 }
 
+/// Evaluates the electron density on a 3D grid and reports which backend ran.
+///
+/// Tries the GPU first when a device is available and falls back to the CPU
+/// implementation otherwise; the returned
+/// [`OrbitalGridReport`] states
+/// the backend, whether the GPU was attempted and, on failure, the reason for
+/// the fallback. The returned values are the density in
+/// **electrons/bohr³**, one value per grid point in the flat, x-slowest
+/// ordering of [`GridParams`].
 pub fn evaluate_density_with_report(
     basis: &BasisSet,
     density: &DMatrix<f64>,
@@ -91,6 +115,20 @@ pub fn evaluate_density_with_report(
     )
 }
 
+/// Evaluates the electron density on a 3D grid using the GPU.
+///
+/// `density` is the converged density matrix **P** in the atomic-unit
+/// (dimensionless) convention, `params` the grid description (Bohr) and the
+/// returned vector holds one density value in **electrons/bohr³** per grid
+/// point, in the flat, x-slowest ordering of [`GridParams`].
+///
+/// # Errors
+///
+/// - `"No output from density grid kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"Output size mismatch: expected {n}, got {m}"` when the kernel produced
+///   the wrong number of grid values.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn evaluate_density_gpu(
     ctx: &GpuContext,
     basis: &BasisSet,
@@ -166,6 +204,13 @@ pub fn evaluate_density_gpu(
     Ok(values.into_iter().map(|value| value as f64).collect())
 }
 
+/// WGSL source of the electron-density grid kernel.
+///
+/// One invocation per grid point (`@workgroup_size(8, 8, 4)`); the kernel
+/// evaluates ρ(r) = Σ_μν P_μν φ_μ(r) φ_ν(r) in **electrons/bohr³** and
+/// writes it to the read-write output buffer. The uniform block carries the
+/// grid origin (x, y, z in **Bohr**), the spacing (**Bohr**), the three grid
+/// dimensions and the number of basis functions.
 pub const DENSITY_GRID_SHADER: &str = r#"
 struct BasisFunc {
     center_x: f32, center_y: f32, center_z: f32,

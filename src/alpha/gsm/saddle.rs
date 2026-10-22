@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// Result of a GSM transition state search.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GsmResult {
-    /// Transition state coordinates (flat).
+    /// Transition state coordinates (flat `3N` array in **Å**).
     pub ts_coords: Vec<f64>,
     /// Transition state energy (kcal/mol).
     pub ts_energy: f64,
@@ -17,9 +17,9 @@ pub struct GsmResult {
     pub activation_energy: f64,
     /// Reverse barrier: E(TS) - E(product) (kcal/mol).
     pub reverse_barrier: f64,
-    /// Energy along the path at each node.
+    /// Energy along the path at each node (kcal/mol).
     pub path_energies: Vec<f64>,
-    /// Coordinates along the path.
+    /// Coordinates along the path (each node is a flat `3N` array in **Å**).
     pub path_coords: Vec<Vec<f64>>,
     /// Index of the TS node in the path.
     pub ts_node_index: usize,

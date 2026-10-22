@@ -13,10 +13,28 @@ use super::params::{EhtParams, OrbitalDef};
 
 const HARTREE_EV: f64 = 13.605693;
 
+/// Whether the element's Extended Hückel parameters are *derived* rather
+/// than tabulated.
+///
+/// True for the metals that have no literature EHT parameter set but do have
+/// a hydrogenic fallback built from their first ionization potential (see
+/// [`derived_params`]). False for elements with literature parameters and
+/// for elements with no parameters at all.
 pub fn is_derived(z: u8) -> bool {
     derived_params(z).is_some()
 }
 
+/// Number of valence electrons used for the Extended Hückel electron count.
+///
+/// This is the number of electrons in the ns and np shells (plus, where the
+/// fallback basis adds them, the (n−1)d shell) of the neutral atom.
+///
+/// Special cases follow the neutral-atom configuration rather than the
+/// group number: Eu(63) and Yb(70) have an empty d sub-shell and are
+/// counted as 2, and the actinides are counted as the number of 5f/6d
+/// electrons they contribute to the valence space (3 for Ac(89) up to 16 for
+/// No(102)). Returns 0 for elements with no valence electrons at all (for
+/// example the noble gases), for which no fallback parameters exist.
 pub fn valence_electrons(z: u8) -> usize {
     match z {
         3 | 11 | 19 | 37 | 55 | 87 => 1,
@@ -222,6 +240,24 @@ fn build_orbitals(z: u8) -> Vec<OrbitalDef> {
     orbitals
 }
 
+/// Hydrogenic Extended Hückel parameters derived from the first ionization
+/// potential.
+///
+/// The returned parameter set has the same shape as a tabulated one: an
+/// ns shell whose VSIP is minus the experimental first ionization potential
+/// (in eV) and whose Slater exponent is `ζ = sqrt(IP / 13.6057 eV)` in
+/// bohr⁻¹, plus — for the elements that need them — an np shell and an
+/// (n−1)d shell with slightly shifted exponents.
+///
+/// The lanthanides and actinides keep their f electrons in the core: the
+/// valence basis is ns, np and (n−1)d only, because the Extended Hückel
+/// overlap engine supports s, p and d shells.
+///
+/// The parameters are built once and cached in a `static`, so the returned
+/// reference has `'static` lifetime and is cheap to call repeatedly.
+///
+/// Returns `None` for elements with no valence electrons (noble gases and
+/// the like) and for `Z > 103`.
 pub fn derived_params(z: u8) -> Option<&'static EhtParams> {
     if valence_electrons(z) == 0 {
         return None;

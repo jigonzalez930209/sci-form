@@ -112,6 +112,36 @@ fn eht_surface_energy(elements: &[u8], positions: &[[f64; 3]]) -> Result<f64, St
     Ok(eht_band_energy(&eht) + eht_nuclear_repulsion(elements, positions))
 }
 
+/// Compute the EHT nuclear gradient by central finite differences.
+///
+/// The gradient is the derivative of the EHT geometry-surface energy
+///
+///   E(R) = Σ_k n_k ε_k(R) + Σ_{i<j} Z_i Z_j e²/(4πε₀ R_ij)
+///
+/// i.e. the occupied band energy plus the nuclear repulsion, evaluated by
+/// re-solving the EHT problem at `R ± δ` along each Cartesian component
+/// with `δ = 1e-5` Å. The returned components are `∂E/∂R` in eV/Å (the
+/// *gradient*, not the force: the force is its negative).
+///
+/// # Errors
+///
+/// Returns `Err` if any of the displaced EHT solves fails, e.g. because an
+/// element has no Extended Hückel parameter set or the overlap matrix
+/// could not be diagonalised. The underlying error string is propagated
+/// unchanged.
+///
+/// # Example
+///
+/// ```no_run
+/// use sci_form::eht::gradients::compute_eht_gradient;
+///
+/// fn main() -> Result<(), String> {
+///     let gradient = compute_eht_gradient(&[8, 1, 1], &[[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]])?;
+///     // Gradients are dE/dR in eV/Å.
+///     println!("max |dE/dR| = {} eV/A", gradient.max_gradient);
+///     Ok(())
+/// }
+/// ```
 pub fn compute_eht_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -167,6 +197,12 @@ pub fn compute_eht_gradient(
 /// bond lengths are not quantitative and polar molecules can dissociate
 /// (there is no correlation/repulsion parametrization), so prefer the
 /// force-field/ETKDG pipelines for production geometries.
+///
+/// # Errors
+///
+/// Returns `Err` if any gradient evaluation fails (unsupported element,
+/// invalid geometry, singular overlap matrix) or if the shared BFGS
+/// optimizer reports a failure.
 pub fn optimize_geometry_eht(
     elements: &[u8],
     initial_positions: &[[f64; 3]],

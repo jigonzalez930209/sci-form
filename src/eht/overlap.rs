@@ -9,6 +9,8 @@ use std::f64::consts::PI;
 use super::basis::{orbital_cartesian_terms, AtomicOrbital};
 
 /// Build the symmetric overlap matrix S for the given molecular basis.
+///
+/// The matrix is dimensionless.
 pub fn build_overlap_matrix(basis: &[AtomicOrbital]) -> DMatrix<f64> {
     let n = basis.len();
     let mut s = DMatrix::zeros(n, n);

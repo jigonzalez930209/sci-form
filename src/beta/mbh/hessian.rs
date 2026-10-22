@@ -2,6 +2,17 @@
 //!
 //! Projects the full Hessian onto the reduced MBH basis and
 //! solves the generalized eigenvalue problem for frequencies.
+//!
+//! # Stability tier
+//!
+//! **Beta** — gated behind the `beta-mbh` feature flag; the validation gate
+//! is `tests/beta_mbh_validation.rs` (F92).
+//!
+//! # Units
+//!
+//! Coordinates in **Å**, the finite-difference Hessian step in **Å**,
+//! force constants in **kcal/(mol·Å²)** and the reported vibrational
+//! frequencies in **cm⁻¹**.
 
 use super::blocks::{build_projection_matrix, detect_rigid_blocks};
 

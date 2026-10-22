@@ -16,18 +16,30 @@ const EV_TO_CM: f64 = 8065.543937;
 /// Einstein A prefactor: A = PREFACTOR · n² · ν̃² · f, with ν̃ in cm⁻¹.
 const EINSTEIN_A_CM2_PER_S: f64 = 0.667025;
 
+/// Settings for the simulated fluorescence band.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FluorescenceConfig {
+    /// Width parameter of the emission line shape, in **eV**.
+    ///
+    /// For the Gaussian profile this is the standard deviation; for the
+    /// Lorentzian profile it is the half-width at half maximum.
     pub sigma: f64,
+    /// Lower end of the emission energy window, in **eV**.
     pub e_min: f64,
+    /// Upper end of the emission energy window, in **eV**.
     pub e_max: f64,
+    /// Number of grid points sampled across the energy window.
     pub n_points: usize,
     /// Extra red-shift in eV applied to the vertical emitting energy.
     /// Zero means vertical emission: this path does not optimize S1.
     pub stokes_ev: f64,
+    /// Refractive index of the medium the emission propagates in
+    /// (dimensionless); it scales the emission intensity and the radiative
+    /// rate with `n²`.
     pub refractive_index: f64,
     /// Oscillator strength below which a state is treated as dark.
     pub dark_threshold: f64,
+    /// Line shape used for the emission band.
     pub broadening: BroadeningType,
 }
 
@@ -46,15 +58,23 @@ impl Default for FluorescenceConfig {
     }
 }
 
+/// The simulated fluorescence band of one molecule.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FluorescenceSpectrum {
+    /// Emission energy grid, in **eV**, ascending from `e_min` to `e_max`.
     pub energies_ev: Vec<f64>,
+    /// Wavelength grid corresponding to [`FluorescenceSpectrum::energies_ev`],
+    /// in **nm** (`hc / E`); 0 for energies at or below 0.01 eV.
     pub wavelengths_nm: Vec<f64>,
     /// Relative emission intensity, normalized so the maximum is 1.
     pub intensity: Vec<f64>,
+    /// Vertical excitation energy of the emitting state, in **eV**.
     pub absorption_energy_ev: f64,
+    /// Emission energy of the emitting state after the Stokes shift, in **eV**.
     pub emission_energy_ev: f64,
+    /// Wavelength of the emission maximum, in **nm**.
     pub emission_wavelength_nm: f64,
+    /// Oscillator strength of the emitting transition (dimensionless).
     pub oscillator_strength: f64,
     /// Einstein A coefficient in s⁻¹.
     pub radiative_rate_hz: f64,
@@ -62,8 +82,11 @@ pub struct FluorescenceSpectrum {
     pub radiative_lifetime_ns: f64,
     /// True when the emitter is the lowest singlet and it is bright.
     pub kasha: bool,
+    /// Index of the occupied molecular orbital the excitation starts from.
     pub from_mo: usize,
+    /// Index of the virtual molecular orbital the excitation ends in.
     pub to_mo: usize,
+    /// Notes describing the approximations that were made.
     pub notes: Vec<String>,
 }
 
@@ -119,6 +142,55 @@ fn select_emitter(
     Err("Every sTDA singlet in the window is dark; no fluorescence band is emitted".to_string())
 }
 
+/// Simulate the fluorescence band of a molecule from its sTDA singlets.
+///
+/// `elements` and `positions` describe the molecule in the usual convention
+/// of this crate: atomic numbers and Cartesian coordinates in **Ångström**.
+///
+/// The emitting state follows Kasha's rule: the lowest singlet is used when
+/// it is bright (oscillator strength ≥ `dark_threshold`); otherwise the
+/// lowest bright singlet is used and the departure is recorded in
+/// `notes` and flagged through [`FluorescenceSpectrum::kasha`].
+///
+/// The band shape is the spontaneous-emission lineshape
+/// `I(E) ∝ n² E³ |μ|² g(E)`, normalised to a maximum of 1, and the
+/// radiative rate is the Einstein A coefficient
+/// `A = 0.667025 · n² · ν̃² · f` (ν̃ in cm⁻¹, `A` in s⁻¹). Excited-state
+/// geometry relaxation is *not* computed: `stokes_ev` is an optional
+/// user-supplied red shift, and 0 means vertical emission.
+///
+/// # Errors
+///
+/// Returns `Err` when
+///
+/// * `config.stokes_ev` is negative,
+/// * `config.refractive_index` is smaller than 1,
+/// * the sTDA calculation fails (the error of the underlying
+///   [`crate::reactivity::collect_stda_excitations`] is propagated unchanged),
+/// * the sTDA window contains no singlet at all, or every singlet in it is
+///   dark, or
+/// * the Stokes shift is so large that the emitting state falls to
+///   0.05 eV or below.
+///
+/// # Example
+///
+/// ```
+/// use sci_form::spectroscopy::fluorescence::{compute_fluorescence_spectrum, FluorescenceConfig};
+///
+/// // Formaldehyde, H2C=O.
+/// let elements = [6u8, 8, 1, 1];
+/// let positions = [
+///     [0.0, 0.0, 0.0],
+///     [1.22, 0.0, 0.0],
+///     [-0.55, 0.94, 0.0],
+///     [-0.55, -0.94, 0.0],
+/// ];
+/// let spectrum = compute_fluorescence_spectrum(&elements, &positions, &FluorescenceConfig::default())
+///     .expect("formaldehyde has a bright singlet");
+/// // Emission energies are in eV, the radiative rate in s^-1.
+/// assert!(spectrum.emission_energy_ev > 0.0);
+/// assert!(spectrum.radiative_rate_hz > 0.0);
+/// ```
 pub fn compute_fluorescence_spectrum(
     elements: &[u8],
     positions: &[[f64; 3]],

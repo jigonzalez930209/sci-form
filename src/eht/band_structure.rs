@@ -14,7 +14,11 @@ pub struct KPoint {
     pub frac: [f64; 3],
     /// Label (e.g., "Γ", "X", "M", "K").
     pub label: Option<String>,
-    /// Linear path distance for plotting.
+    /// Cumulative distance along the k-path in reciprocal-lattice units
+    /// (dimensionless; the sum of the segment lengths in fractional
+    /// reciprocal coordinates).
+    ///
+    /// This is the abscissa to use when plotting a band structure.
     pub path_distance: f64,
 }
 
@@ -23,7 +27,7 @@ pub struct KPoint {
 pub struct BandStructure {
     /// k-points along the path.
     pub kpoints: Vec<KPoint>,
-    /// Eigenvalues at each k-point: bands[k_idx][band_idx] in eV.
+    /// Eigenvalues at each k-point: `bands[k_idx][band_idx]` in eV.
     pub bands: Vec<Vec<f64>>,
     /// Number of bands (= number of basis functions per cell).
     pub n_bands: usize,
@@ -70,6 +74,15 @@ impl Default for BandStructureConfig {
 ///   S(k) = Σ_R S(R) exp(i k·R)
 ///
 /// where R are lattice translation vectors.
+///
+/// The band energies are in eV.
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if no atoms are given, if an
+/// element has no Extended Hückel parameters, or if the generalized
+/// eigenproblem at some k-point cannot be solved (for example because the
+/// overlap matrix is singular).
 pub fn compute_band_structure(
     elements: &[u8],
     positions: &[[f64; 3]],

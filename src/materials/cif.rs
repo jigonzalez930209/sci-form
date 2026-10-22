@@ -33,11 +33,13 @@ pub struct CifAtomSite {
     pub type_symbol: String,
     /// Atomic number.
     pub atomic_number: u8,
-    /// Fractional coordinates.
+    /// Fractional x coordinate (dimensionless, in units of the lattice vector **a**).
     pub frac_x: f64,
+    /// Fractional y coordinate (dimensionless, in units of the lattice vector **b**).
     pub frac_y: f64,
+    /// Fractional z coordinate (dimensionless, in units of the lattice vector **c**).
     pub frac_z: f64,
-    /// Occupancy (default 1.0).
+    /// Site occupancy (dimensionless, 0–1; `1.0` for a fully occupied site).
     pub occupancy: f64,
 }
 
@@ -45,6 +47,14 @@ pub struct CifAtomSite {
 ///
 /// Handles standard CIF 1.1 tags for cell parameters, space group, and atom sites.
 /// Numbers with uncertainty notation (e.g., "5.640(1)") are stripped of the parenthetical.
+///
+/// The cell lengths are in Å and the cell angles in degrees; the atom sites
+/// carry fractional (dimensionless) coordinates.
+///
+/// # Errors
+///
+/// Returns `Err` when the CIF text cannot be parsed, when the cell parameters
+/// are missing or inconsistent, or when the atom-site loop is malformed.
 pub fn parse_cif(input: &str) -> Result<CifStructure, String> {
     let mut data_block = String::new();
     let mut a = None;

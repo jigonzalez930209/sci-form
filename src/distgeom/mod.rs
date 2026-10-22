@@ -1,3 +1,20 @@
+//! Distance geometry: bounds matrices, chirality, embedding and validation.
+//!
+//! This is the geometric core of ETKDG. It follows the classic distance-geometry
+//! pipeline described in Blainey, Todeschini & van Gunsteren, *Chem. Rev.*
+//! **2000**, 100, 2557, and mirrors RDKit's `DistGeom` / `DistGeomHelpers`
+//! structure:
+//!
+//! 1. [`crate::distgeom::calculate_bounds_matrix`] builds a lower/upper bound matrix from the
+//!    molecular graph and the UFF-derived reference bond lengths.
+//! 2. [`crate::distgeom::smooth_bounds_matrix`] / [`crate::distgeom::triangle_smooth`] close the bounds under the
+//!    triangle inequality (Floyd–Warshall style propagation).
+//! 3. the `embedding` module samples random distances inside those bounds, builds a
+//!    metric matrix and diagonalises it into 3D (or 4D) coordinates.
+//! 4. the `validation` module checks tetrahedral centres, chiral volumes and planarity.
+//!
+//! Distances are in **Å** throughout.
+
 pub mod bounds;
 pub mod chirality;
 pub mod embedding;

@@ -8,6 +8,12 @@
 //! CPU code and the parity test compares CPU against CPU. The audit
 //! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
 //! call site for the kernel to be added.
+//!
+//! # Stability tier
+//!
+//! **Alpha** — gated behind `alpha-render-bridge` (plus `experimental-gpu`
+//! for the GPU context); the validation gate is
+//! `tests/alpha_render_validation.rs` (F90).
 
 use super::{pack_chart_payload, ChartPayload};
 use crate::gpu::context::GpuContext;

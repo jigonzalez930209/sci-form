@@ -7,12 +7,22 @@ use nalgebra::{DMatrix, Vector3};
 
 const MIN_TETRAHEDRAL_CHIRAL_VOL: f64 = 0.50;
 const TETRAHEDRAL_CENTERINVOLUME_TOL: f64 = 0.30;
+/// Upper bound on the minimised energy per atom (kcal/mol) that an embedded
+/// conformer may have before it is rejected as physically implausible.
+///
+/// RDKit applies the same `0.05` threshold in its `embedPoints()` retry loop.
 pub const MAX_MINIMIZED_E_PER_ATOM: f32 = 0.05;
 
-/// Tetrahedral center — any sp3 atom with 4 neighbors (not necessarily chiral)
+/// Tetrahedral center — any sp3 atom with 4 neighbors (not necessarily chiral).
+///
+/// Used by the volume check that rejects embeddings in which a tetrahedral
+/// centre has collapsed.
 pub struct TetrahedralCenter {
+    /// Index of the central atom.
     pub center: usize,
+    /// Indices of the four neighbours of the central atom.
     pub neighbors: [usize; 4],
+    /// Whether the central atom sits in a ring smaller than five members.
     pub in_small_ring: bool,
 }
 

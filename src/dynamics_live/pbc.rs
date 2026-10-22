@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 /// Simulation box for periodic boundary conditions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimulationBox {
-    /// Lattice vectors as rows: [[ax,ay,az],[bx,by,bz],[cx,cy,cz]].
+    /// Lattice vectors as rows: `[[ax,ay,az],[bx,by,bz],[cx,cy,cz]]` (Å).
     pub lattice: [[f64; 3]; 3],
-    /// Inverse lattice matrix for fractional coordinate conversion.
+    /// Inverse lattice matrix for fractional coordinate conversion (Å⁻¹).
     pub inv_lattice: [[f64; 3]; 3],
     /// Whether PBC is active.
     pub periodic: bool,

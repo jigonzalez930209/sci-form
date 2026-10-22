@@ -851,15 +851,29 @@ fn form_product(a: &[f64], b: &[f64], la: usize, lb: usize, d: &mut [f64]) {
 }
 
 /// Result of multipole integral computation for one Cartesian primitive pair.
+///
+/// Positions are in Bohr, so the dipole integral is in Bohr·e and the
+/// quadrupole integral in Bohr²·e.
 #[derive(Clone, Debug)]
 pub struct MultipoleResult {
+    /// Overlap integral `⟨a|b⟩`, dimensionless.
     pub overlap: f64,
+    /// Dipole integral `[x, y, z]` about the centre of the first
+    /// primitive, in Bohr·e.
     pub dipole: [f64; 3],
+    /// Second-moment (quadrupole) integrals `[xx, xy, yy, xz, yz, zz]`
+    /// about the centre of the first primitive, in Bohr²·e.
+    ///
+    /// These are the raw second moments; the traceless correction
+    /// (`q' = 1.5 q − ½ tr(q) I`) is applied by
+    /// [`sto_multipole_with_ng`], not here.
     pub quadrupole: [f64; 6],
 }
 
 /// Compute overlap, dipole, and quadrupole integrals between two Cartesian Gaussian primitives.
-/// Dipole is about center A (the first atom). Quadrupole is traceless about center A.
+/// Dipole is about center A (the first atom). The quadrupole returned here is
+/// the raw second moment `[xx, xy, yy, xz, yz, zz]`; the traceless
+/// correction is applied by [`sto_multipole_with_ng`].
 fn primitive_multipole(
     lx_a: u8,
     ly_a: u8,
@@ -963,12 +977,14 @@ fn primitive_multipole(
     }
 }
 
-/// Compute STO-NG multipole integrals (overlap, dipole[3], traceless quadrupole[6])
+/// Compute STO-NG multipole integrals (overlap, dipole\[3\], traceless quadrupole\[6\])
 /// between two basis functions.
 ///
 /// Dipole is about center A (pos_a). Quadrupole is traceless.
 /// For d-orbitals, uses proper spherical harmonic → Cartesian decomposition.
-/// Returns (overlap, dipole[3], quadrupole[6]).
+/// Returns `(overlap, dipole[3], quadrupole[6])`: the overlap is
+/// dimensionless, the dipole components are in Bohr·e and the quadrupole
+/// components in Bohr²·e.
 pub fn sto_multipole_with_ng(
     n_a: u8,
     l_a: u8,

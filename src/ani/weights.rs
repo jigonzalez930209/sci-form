@@ -18,6 +18,12 @@ use std::collections::HashMap;
 use std::io::{Read, Write};
 
 /// Load ANI model weights from a binary reader.
+///
+/// # Errors
+///
+/// Returns `Err` with the underlying I/O error message if the reader ends
+/// prematurely or fails while reading the header, the layer dimensions or
+/// the weight/bias arrays.
 pub fn load_weights<R: Read>(reader: &mut R) -> Result<HashMap<u8, FeedForwardNet>, String> {
     let mut buf4 = [0u8; 4];
     let mut buf1 = [0u8; 1];
@@ -77,6 +83,11 @@ pub fn load_weights<R: Read>(reader: &mut R) -> Result<HashMap<u8, FeedForwardNe
 }
 
 /// Save ANI model weights to a binary writer.
+///
+/// # Errors
+///
+/// Returns `Err` with the underlying I/O error message if the writer fails
+/// while writing the header, the layer dimensions or the weight/bias arrays.
 pub fn save_weights<W: Write>(
     writer: &mut W,
     models: &HashMap<u8, FeedForwardNet>,

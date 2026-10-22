@@ -8,6 +8,16 @@
 //! CPU code and the parity test compares CPU against CPU. The audit
 //! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
 //! call site for the kernel to be added.
+//!
+//! # Stability tier
+//!
+//! **Alpha** — gated behind `alpha-periodic-linear` (plus `experimental-gpu`
+//! for the GPU context); the validation gate is
+//! `tests/alpha_periodic_validation.rs` (F88).
+//!
+//! # Units
+//!
+//! Operators and eigenvalues in **eV**, k-points in **Å⁻¹**.
 
 use nalgebra::DMatrix;
 

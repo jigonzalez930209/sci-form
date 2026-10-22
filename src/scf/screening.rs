@@ -19,7 +19,10 @@ pub struct SchwarzScreener {
     q_values: Vec<f64>,
     /// Number of basis functions.
     n_basis: usize,
-    /// Screening threshold.
+    /// Screening threshold in Hartree.
+    ///
+    /// Shell pairs whose Schwarz bound `Q_μν · Q_λσ` falls below this
+    /// value are skipped during ERI evaluation.
     pub threshold: f64,
 }
 

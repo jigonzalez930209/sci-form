@@ -1,4 +1,20 @@
 //! GPU-accelerated two-body D4 dispersion accumulation.
+//!
+//! Evaluates the pairwise (two-body) part of the D4 dispersion model
+//! (Grimme et al., *J. Chem. Phys.* 2017, 147, 061701) on the GPU.
+//!
+//! # Contract with callers
+//!
+//! The CPU implementation in [`crate::dispersion::compute_d4_energy`] always
+//! works; this module is the optional accelerator. Only the **two-body** term
+//! is computed on the GPU — the optional three-body ATM term is always taken
+//! from the CPU implementation.
+//!
+//! # Units
+//!
+//! `positions` are in **Å** (the shader converts them to **Bohr**), `c6` and
+//! `c8` are in **Hartree·Bohr⁶** and **Hartree·Bohr⁸**, the returned energies
+//! in **Hartree** and `total_kcal_mol` in **kcal/mol**.
 
 use super::context::{
     bytes_to_f32_vec, ceil_div_u32, f32_slice_to_bytes, pack_uniform_values,
@@ -9,6 +25,25 @@ use crate::dispersion::{c8_from_c6, d4_coordination_number, dynamic_c6, D4Config
 
 const ANG_TO_BOHR: f64 = 1.0 / 0.529177;
 
+/// Computes the two-body D4 dispersion energy with a GPU pair kernel.
+///
+/// `elements` holds the atomic numbers and `positions` the Cartesian
+/// coordinates in **Å**. The returned [`D4Result`] holds the two-body energy
+/// (Hartree), the three-body ATM energy (Hartree, always from the CPU path),
+/// the total (Hartree and kcal/mol) and the per-atom coordination numbers
+/// (dimensionless).
+///
+/// # Errors
+///
+/// - `"elements/position length mismatch"` when the two slices differ in
+///   length.
+/// - `"System too small for GPU dispatch"` when fewer than two atoms are
+///   supplied.
+/// - `"No output from D4 dispersion kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"Output size mismatch: expected {n}, got {m}"` when the kernel produced
+///   the wrong number of pair energies.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_d4_energy_gpu(
     ctx: &GpuContext,
     elements: &[u8],
@@ -113,6 +148,14 @@ pub fn compute_d4_energy_gpu(
     })
 }
 
+/// WGSL source of the two-body D4 dispersion kernel.
+///
+/// One invocation per atom pair (`@workgroup_size(16, 16, 1)`); the kernel
+/// writes the damped pair energy
+/// `−s6·C6/r⁶·f₆ − s8·C8/r⁸·f₈` (in **Hartree**, `r` in **Bohr**) for `j > i`
+/// and zero for the lower triangle. The uniform block carries `n_atoms`, the
+/// scaling factors `s6` and `s8` (dimensionless), the Å→Bohr conversion
+/// factor and one padding word.
 pub const D4_DISPERSION_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

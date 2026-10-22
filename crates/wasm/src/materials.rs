@@ -41,7 +41,13 @@ pub fn assemble_framework(
             return crate::helpers::json_error(&crate::helpers::invalid_value(
                 "'geometry'",
                 geometry,
-                &["linear", "trigonal", "tetrahedral", "square_planar", "octahedral"],
+                &[
+                    "linear",
+                    "trigonal",
+                    "tetrahedral",
+                    "square_planar",
+                    "octahedral",
+                ],
             ))
         }
     };

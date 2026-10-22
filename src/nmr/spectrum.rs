@@ -326,6 +326,22 @@ pub fn compute_nmr_spectrum(
     )
 }
 
+/// Simulate a Lorentzian-broadened NMR spectrum from an explicit shift list.
+///
+/// This is the lower-level entry point of the module: it takes the shifts of
+/// one nuclide directly instead of extracting them from an
+/// [`NmrShiftResult`], which is what [`compute_nmr_spectrum`] does.
+///
+/// `active_shifts` are the shifts of the observed nucleus (in ppm),
+/// `couplings` the predicted J-couplings (in Hz) used for ¹H multiplet
+/// splitting, `gamma` the Lorentzian half-width in ppm (values ≤ 1e-6 fall
+/// back to the nucleus-specific natural line width converted from Hz),
+/// `ppm_min`/`ppm_max` the spectral window in ppm and `n_points` the number
+/// of grid points (clamped to at least 2).
+///
+/// The returned ppm axis runs from high to low, following the NMR
+/// convention. Only ¹H is split into multiplets; every other nucleus is
+/// rendered as singlets.
 pub fn compute_nmr_spectrum_for_shifts(
     active_shifts: &[ChemicalShift],
     couplings: &[JCoupling],

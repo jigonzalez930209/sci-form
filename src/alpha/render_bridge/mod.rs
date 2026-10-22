@@ -1,6 +1,15 @@
 //! Alpha render-bridge domain builders (EDL/kinetics/periodic/GSM charts).
 //!
 //! Generic payloads live in core [`crate::render_bridge`] (re-exported below).
+//!
+//! # Stability tier
+//!
+//! **Alpha** — early research tier. Gated behind the `alpha-render-bridge`
+//! feature flag (alias: `experimental-render-bridge`, which requires
+//! `experimental-kpm` and `experimental-gsm`). The validation gate is
+//! `tests/alpha_render_validation.rs` (F90): the payloads are checked against
+//! JSON Schema 2020-12 and the packing round-trip. Promotion criteria are
+//! listed in [`crate::experimental_status`].
 
 #[cfg(feature = "experimental-gpu")]
 pub mod gpu;

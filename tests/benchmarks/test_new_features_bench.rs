@@ -123,9 +123,8 @@ fn test_bench_3d_descriptors() {
     );
 
     // Validate one
-    let desc =
-        sci_form::ml::compute_3d_descriptors(&conformers[0].elements, &conformers[0].coords)
-            .unwrap();
+    let desc = sci_form::ml::compute_3d_descriptors(&conformers[0].elements, &conformers[0].coords)
+        .unwrap();
     assert!(desc.radius_of_gyration > 0.0);
     assert!(desc.span > 0.0);
 }

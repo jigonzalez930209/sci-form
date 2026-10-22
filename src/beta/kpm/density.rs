@@ -37,10 +37,11 @@ impl Default for KpmConfig {
 pub struct KpmDosResult {
     /// Energy grid (eV).
     pub energies: Vec<f64>,
-    /// Total DOS at each energy point.
+    /// Total DOS at each energy point, in **states/eV**.
     pub total_dos: Vec<f64>,
     /// Spectral bounds [E_min, E_max] in eV.
     pub e_min: f64,
+    /// Upper spectral bound of the rescaled Hamiltonian, in **eV**.
     pub e_max: f64,
     /// Expansion order used.
     pub order: usize,
@@ -49,9 +50,9 @@ pub struct KpmDosResult {
 /// Result of KPM Mulliken charge calculation.
 #[derive(Debug, Clone)]
 pub struct KpmMullikenResult {
-    /// Mulliken charges per atom.
+    /// Mulliken charges per atom, in units of elementary charge (e).
     pub charges: Vec<f64>,
-    /// Estimated electron count.
+    /// Estimated electron count (dimensionless number of electrons).
     pub n_electrons_kpm: f64,
     /// Target electron count.
     pub n_electrons_target: usize,

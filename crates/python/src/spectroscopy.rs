@@ -341,9 +341,8 @@ fn compute_ir_spectrum(
     }
     let positions = coords_to_positions(&coords);
     let analysis = if method.eq_ignore_ascii_case("uff") {
-        let smiles = smiles.ok_or_else(|| {
-            crate::errors::value_error("UFF IR spectrum requires smiles=...")
-        })?;
+        let smiles = smiles
+            .ok_or_else(|| crate::errors::value_error("UFF IR spectrum requires smiles=..."))?;
         sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
     } else {
         sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)
@@ -456,9 +455,8 @@ fn compute_ir_spectrum_broadened(
     }
     let positions = coords_to_positions(&coords);
     let analysis = if method.eq_ignore_ascii_case("uff") {
-        let smiles = smiles.ok_or_else(|| {
-            crate::errors::value_error("UFF IR spectrum requires smiles=...")
-        })?;
+        let smiles = smiles
+            .ok_or_else(|| crate::errors::value_error("UFF IR spectrum requires smiles=..."))?;
         sci_form_core::compute_vibrational_analysis_uff(smiles, &elements, &positions, step_size)
     } else {
         sci_form_core::compute_vibrational_analysis(&elements, &positions, method, step_size)

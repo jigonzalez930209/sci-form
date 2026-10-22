@@ -1,10 +1,23 @@
 //! GSM String growth — E11.1
 //!
 //! Core algorithm for growing the string of images between reactant and product.
+//!
+//! # Stability tier
+//!
+//! **Alpha** — early research tier. Gated behind the `alpha-gsm` feature
+//! flag; the validation gate is `tests/alpha_gsm_validation.rs` (F82).
+//!
+//! # Units
+//!
+//! Coordinates are flat `3N` arrays in **Å**, energies in **kcal/mol** and
+//! gradients in **kcal/(mol·Å)**.
 
-/// GSM configuration.
 use serde::{Deserialize, Serialize};
 
+/// GSM configuration.
+///
+/// Controls the string growth: how many images the string may hold, how far
+/// a new image is inserted, and when the growth is considered converged.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GsmConfig {
     /// Maximum number of nodes in the string (including endpoints).
@@ -34,11 +47,12 @@ impl Default for GsmConfig {
 /// A string of images along the reaction path.
 #[derive(Debug, Clone)]
 pub struct GsmPath {
-    /// Coordinates of each node (each node is a flat Vec of 3N coordinates).
+    /// Coordinates of each node (each node is a flat Vec of 3N coordinates in
+    /// **Å**).
     pub nodes: Vec<Vec<f64>>,
     /// Energy at each node (kcal/mol).
     pub energies: Vec<f64>,
-    /// Perpendicular gradient magnitude at each node.
+    /// Perpendicular gradient magnitude at each node, in **kcal/(mol·Å)**.
     pub perp_grad_norms: Vec<f64>,
     /// Whether the string has joined (tips are close enough).
     pub joined: bool,

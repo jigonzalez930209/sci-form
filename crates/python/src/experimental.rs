@@ -517,8 +517,7 @@ mod alpha_edl_py {
             ionic_strength_m,
             ..Default::default()
         };
-        scan_edl_capacitance(v_min, v_max, n_points, &config)
-            .map_err(crate::errors::engine_error)
+        scan_edl_capacitance(v_min, v_max, n_points, &config).map_err(crate::errors::engine_error)
     }
 
     /// Compute Helmholtz-only profile (linearcompact compact layer only, no diffuse response).
@@ -789,11 +788,9 @@ mod alpha_periodic_py {
     ) -> PyResult<String> {
         use sci_form_core::alpha::periodic_linear::*;
         let blocks = parse_blocks(blocks_json).map_err(crate::errors::value_error)?;
-        let centering =
-            parse_centering(centering).map_err(crate::errors::value_error)?;
+        let centering = parse_centering(centering).map_err(crate::errors::value_error)?;
         let kmesh_config = KMeshConfig { grid, centering };
-        let mesh = monkhorst_pack_mesh(&kmesh_config)
-            .map_err(crate::errors::engine_error)?;
+        let mesh = monkhorst_pack_mesh(&kmesh_config).map_err(crate::errors::engine_error)?;
         let hamiltonian_refs = as_core_refs(&blocks);
         let (hamiltonians, _overlaps) =
             sci_form_core::kmesh::assemble_periodic_operators(&hamiltonian_refs, &[], &mesh);
@@ -847,15 +844,13 @@ mod alpha_periodic_py {
         sketch_size: Option<usize>,
     ) -> PyResult<String> {
         use sci_form_core::alpha::periodic_linear::*;
-        let hamiltonian_blocks = parse_blocks(hamiltonian_blocks_json)
-            .map_err(crate::errors::value_error)?;
+        let hamiltonian_blocks =
+            parse_blocks(hamiltonian_blocks_json).map_err(crate::errors::value_error)?;
         let overlap_blocks =
             parse_blocks(overlap_blocks_json).map_err(crate::errors::value_error)?;
-        let centering =
-            parse_centering(centering).map_err(crate::errors::value_error)?;
+        let centering = parse_centering(centering).map_err(crate::errors::value_error)?;
         let kmesh_config = KMeshConfig { grid, centering };
-        let mesh = monkhorst_pack_mesh(&kmesh_config)
-            .map_err(crate::errors::engine_error)?;
+        let mesh = monkhorst_pack_mesh(&kmesh_config).map_err(crate::errors::engine_error)?;
         let hamiltonian_refs = as_core_refs(&hamiltonian_blocks);
         let overlap_refs = as_core_refs(&overlap_blocks);
         let (hamiltonians, overlaps) = sci_form_core::kmesh::assemble_periodic_operators(
@@ -943,15 +938,14 @@ mod alpha_periodic_py {
         grid: [usize; 3],
         centering: &str,
     ) -> PyResult<String> {
-        let hamiltonian_blocks = parse_blocks(hamiltonian_blocks_json)
-            .map_err(crate::errors::value_error)?;
+        let hamiltonian_blocks =
+            parse_blocks(hamiltonian_blocks_json).map_err(crate::errors::value_error)?;
         let overlap_blocks = if overlap_blocks_json.trim().is_empty() {
             Vec::new()
         } else {
             parse_blocks(overlap_blocks_json).map_err(crate::errors::value_error)?
         };
-        let centering =
-            parse_centering(centering).map_err(crate::errors::value_error)?;
+        let centering = parse_centering(centering).map_err(crate::errors::value_error)?;
         let mesh = sci_form_core::kmesh::monkhorst_pack_mesh(&sci_form_core::kmesh::KMeshConfig {
             grid,
             centering,
@@ -1104,8 +1098,7 @@ mod alpha_kinetics_py {
             temperature_k,
             pressure_bar: 1.0,
         };
-        let result =
-            evaluate_htst_rate(&step, state).map_err(crate::errors::engine_error)?;
+        let result = evaluate_htst_rate(&step, state).map_err(crate::errors::engine_error)?;
         Ok(HtstRateResultPy {
             step_id: result.step_id,
             forward_rate_s_inv: result.forward_rate_s_inv,
@@ -1161,10 +1154,8 @@ mod alpha_kinetics_py {
         n_steps: usize,
     ) -> PyResult<String> {
         use sci_form_core::alpha::kinetics::*;
-        let config = network_config(network_json, n_steps)
-            .map_err(crate::errors::value_error)?;
-        let trace = solve_microkinetic_network(&config)
-            .map_err(crate::errors::engine_error)?;
+        let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
+        let trace = solve_microkinetic_network(&config).map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
         Ok(serde_json::json!({
             "max_population": diagnostics.max_population,
@@ -1184,10 +1175,8 @@ mod alpha_kinetics_py {
         n_steps: usize,
     ) -> PyResult<String> {
         use sci_form_core::alpha::kinetics::*;
-        let config = network_config(network_json, n_steps)
-            .map_err(crate::errors::value_error)?;
-        let trace = solve_microkinetic_network(&config)
-            .map_err(crate::errors::engine_error)?;
+        let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
+        let trace = solve_microkinetic_network(&config).map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
         let last = trace.frames.last();
         Ok(serde_json::json!({
@@ -1212,10 +1201,9 @@ mod alpha_kinetics_py {
         tol: f64,
     ) -> PyResult<String> {
         use sci_form_core::alpha::kinetics::*;
-        let config = network_config(network_json, n_steps)
-            .map_err(crate::errors::value_error)?;
-        let trace = solve_microkinetic_steady_state(&config, tol)
-            .map_err(crate::errors::engine_error)?;
+        let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
+        let trace =
+            solve_microkinetic_steady_state(&config, tol).map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
         let last = trace.frames.last();
         Ok(serde_json::json!({
@@ -1259,7 +1247,9 @@ mod alpha_kinetics_py {
             crate::errors::value_error(crate::errors::invalid_value(
                 "'method'",
                 method,
-                &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
+                &[
+                    "uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff",
+                ],
             ))
         })?;
         let config = HtstAdapterConfig {
@@ -1512,7 +1502,10 @@ mod alpha_edl_chart_py {
     /// Build an EDL profile chart payload from a given surface potential and config.
     #[pyfunction]
     #[pyo3(signature = (surface_potential_v, ionic_strength_m = 0.1))]
-    pub fn compute_edl_chart(surface_potential_v: f64, ionic_strength_m: f64) -> PyResult<ChartPayloadPy> {
+    pub fn compute_edl_chart(
+        surface_potential_v: f64,
+        ionic_strength_m: f64,
+    ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::edl::*;
         use sci_form_core::alpha::render_bridge::edl_profile_chart;
         let config = EdlConfig {
@@ -1563,8 +1556,8 @@ mod alpha_edl_chart_py {
         let mut capacitances = Vec::with_capacity(scan.len());
         let mut charges = Vec::with_capacity(scan.len());
         for (potential, capacitance) in &scan {
-            let profile = compute_edl_profile(*potential, &config)
-                .map_err(crate::errors::engine_error)?;
+            let profile =
+                compute_edl_profile(*potential, &config).map_err(crate::errors::engine_error)?;
             potentials.push(*potential);
             capacitances.push(*capacitance);
             charges.push(integrated_charge_c_per_m2(&profile));
@@ -1728,10 +1721,8 @@ mod alpha_kinetics_chart_py {
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::kinetics::solve_microkinetic_network;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
-        let config = network_config(network_json, n_steps)
-            .map_err(crate::errors::value_error)?;
-        let trace = solve_microkinetic_network(&config)
-            .map_err(crate::errors::engine_error)?;
+        let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
+        let trace = solve_microkinetic_network(&config).map_err(crate::errors::engine_error)?;
         if config.species.len() < 2 {
             return Err(crate::errors::value_error(
                 "a phase portrait needs a network with at least two species",
@@ -1831,10 +1822,7 @@ mod alpha_periodic_chart_py {
     /// Build a DOS chart from a periodic KPM result.
     #[pyfunction]
     #[pyo3(signature = (energies, dos_values))]
-    pub fn compute_dos_chart(
-        energies: Vec<f64>,
-        dos_values: Vec<f64>,
-    ) -> PyResult<ChartPayloadPy> {
+    pub fn compute_dos_chart(energies: Vec<f64>, dos_values: Vec<f64>) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::periodic_linear::{
             PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
         };
@@ -2205,15 +2193,15 @@ mod alpha_gsm_chart_py {
         use sci_form_core::alpha::gsm::{
             find_transition_state_with_backend, GsmConfig, GsmEnergyBackend,
         };
-        let backend: GsmEnergyBackend = method
-            .parse()
-            .map_err(|_e: String| {
-                crate::errors::invalid_value(
-                    "'method'",
-                    method,
-                    &["uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff"],
-                )
-            })?;
+        let backend: GsmEnergyBackend = method.parse().map_err(|_e: String| {
+            crate::errors::invalid_value(
+                "'method'",
+                method,
+                &[
+                    "uff", "mmff94", "pm3", "xtb", "gfn1", "gfn2", "hf3c", "reaxff",
+                ],
+            )
+        })?;
         find_transition_state_with_backend(
             smiles,
             reactant,

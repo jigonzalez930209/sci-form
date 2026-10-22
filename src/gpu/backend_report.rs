@@ -56,7 +56,8 @@ pub struct IsosurfaceReport {
     pub grid_used_gpu: bool,
     /// Number of triangles produced.
     pub n_triangles: usize,
-    /// Isovalue used.
+    /// Isovalue used (dimensionless; the orbital wavefunction is normalised
+    /// to one electron).
     pub isovalue: f64,
 }
 

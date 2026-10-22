@@ -3,6 +3,21 @@
 //! High-level API that combines orbital grid evaluation + marching cubes
 //! into a single pipeline with dual-lobe support (positive/negative ψ)
 //! and optional normal smoothing.
+//!
+//! # Contract with callers
+//!
+//! The CPU fallback always works: the grid evaluation may run on the GPU
+//! (when the optional `experimental-gpu` feature is enabled and a device is
+//! present) but the mesh extraction itself always runs on the CPU with the
+//! marching-cubes implementation. The returned
+//! [`IsosurfaceReport`] states
+//! which backend produced the grid.
+//!
+//! # Units
+//!
+//! Grid spacing, padding and vertex coordinates are in **Bohr**; the
+//! isovalue is the orbital wavefunction value (dimensionless, normalised so
+//! that ∫|ψ|²dV = 1).
 
 use super::backend_report::IsosurfaceReport;
 use super::marching_cubes::{marching_cubes_cpu, smooth_mesh_normals, McOutput};
@@ -18,6 +33,9 @@ pub struct IsosurfaceConfig {
     /// Padding around the molecule in Bohr.
     pub padding: f64,
     /// Isovalue for the surface. Typical orbital values: 0.02–0.05.
+    ///
+    /// Dimensionless: the orbital wavefunction is normalised so that
+    /// ∫|ψ|²dV = 1.
     pub isovalue: f64,
     /// Whether to generate both positive and negative lobes.
     pub both_lobes: bool,
@@ -38,12 +56,22 @@ impl Default for IsosurfaceConfig {
 }
 
 /// Dual-lobe orbital isosurface.
+///
+/// Holds the meshes of the positive (ψ > 0) and negative (ψ < 0) lobes of one
+/// molecular orbital, extracted with the marching-cubes algorithm.
 #[derive(Debug, Clone)]
 pub struct OrbitalIsosurface {
+    /// Mesh of the positive lobe (the region where ψ ≥ isovalue).
     pub positive_lobe: McOutput,
+    /// Mesh of the negative lobe (the region where ψ ≤ −isovalue); empty when
+    /// `both_lobes` was disabled.
     pub negative_lobe: McOutput,
+    /// Index of the orbital in the MO coefficient matrix (0-based).
     pub orbital_index: usize,
+    /// Isovalue the surface was extracted at (dimensionless; the orbital
+    /// wavefunction is normalised to 1 electron).
     pub isovalue: f64,
+    /// Total number of triangles in both lobes combined.
     pub total_triangles: usize,
 }
 
@@ -51,6 +79,9 @@ pub struct OrbitalIsosurface {
 ///
 /// Uses GPU for grid evaluation when available, CPU fallback otherwise.
 /// Returns both the mesh and a report describing which backend was used.
+///
+/// `positions` are the atom coordinates in **Bohr**; `orbital_index` is the
+/// 0-based column of `mo_coefficients` to visualise.
 pub fn generate_orbital_isosurface(
     basis: &BasisSet,
     mo_coefficients: &DMatrix<f64>,
@@ -105,6 +136,9 @@ pub fn generate_orbital_isosurface(
 }
 
 /// Generate HOMO isosurface.
+///
+/// The HOMO index is `n_electrons / 2 - 1` for a closed-shell system (0 when
+/// there are no electrons). `positions` are in **Bohr**.
 pub fn generate_homo_isosurface(
     basis: &BasisSet,
     mo_coefficients: &DMatrix<f64>,
@@ -118,6 +152,9 @@ pub fn generate_homo_isosurface(
 }
 
 /// Generate LUMO isosurface.
+///
+/// The LUMO index is `n_electrons / 2` (0-based), i.e. the first virtual
+/// orbital of a closed-shell system. `positions` are in **Bohr**.
 pub fn generate_lumo_isosurface(
     basis: &BasisSet,
     mo_coefficients: &DMatrix<f64>,
@@ -130,6 +167,12 @@ pub fn generate_lumo_isosurface(
 }
 
 /// Estimate mesh complexity for a given grid resolution.
+///
+/// `spacing` and `padding` are in **Bohr** and `positions` in **Bohr**.
+/// Returns `(estimated_triangles, estimated_vertices)`; the triangle count is
+/// derived from the number of grid voxels with the empirical rule that ~5 % of
+/// the voxels contribute a triangle, and the vertex count is three times the
+/// triangle count (unwelded mesh).
 pub fn estimate_mesh_complexity(
     positions: &[[f64; 3]],
     spacing: f64,

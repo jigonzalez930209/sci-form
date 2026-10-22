@@ -148,10 +148,7 @@ pub(crate) fn coords_triplet_error(what: &str, got: usize) -> String {
 /// Validate that a flat coordinate array has `3 * n_atoms` entries.
 ///
 /// Returns a `ValueError` describing the mismatch.
-pub(crate) fn check_coords_len(
-    coords: &[f64],
-    n_atoms: usize,
-) -> Result<(), PyErr> {
+pub(crate) fn check_coords_len(coords: &[f64], n_atoms: usize) -> Result<(), PyErr> {
     let expected = n_atoms * 3;
     if coords.len() != expected {
         return Err(value_error(coords_length_error(
@@ -161,10 +158,7 @@ pub(crate) fn check_coords_len(
         )));
     }
     if !coords.len().is_multiple_of(3) {
-        return Err(value_error(coords_triplet_error(
-            "'coords'",
-            coords.len(),
-        )));
+        return Err(value_error(coords_triplet_error("'coords'", coords.len())));
     }
     Ok(())
 }
@@ -198,10 +192,7 @@ pub(crate) fn smiles_or_engine_error(message: impl Into<String>, smiles: &str) -
 
 /// Register the error taxonomy on the package.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add(
-        "NotConvergedError",
-        m.py().get_type::<NotConvergedError>(),
-    )?;
+    m.add("NotConvergedError", m.py().get_type::<NotConvergedError>())?;
     Ok(())
 }
 

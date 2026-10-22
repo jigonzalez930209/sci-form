@@ -12,7 +12,9 @@ use super::params_table::PM3_MAIN_GROUP;
 /// PM3 atomic parameters for one element.
 #[derive(Debug, Clone, Serialize)]
 pub struct Pm3Params {
+    /// Atomic number.
     pub z: u8,
+    /// Element symbol.
     pub symbol: &'static str,
     /// Whether the entry comes from the PM3(tm) transition-metal
     /// parameterization (Cundari et al.) instead of Stewart's PM3.

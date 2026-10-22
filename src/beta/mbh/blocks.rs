@@ -2,13 +2,22 @@
 //!
 //! Identifies rigid groups in a molecule and decomposes it into
 //! rigid blocks (6 DOF) and flexible atoms (3 DOF).
+//!
+//! # Stability tier
+//!
+//! **Beta** — gated behind the `beta-mbh` feature flag; the validation gate
+//! is `tests/beta_mbh_validation.rs` (F92).
+//!
+//! # Units
+//!
+//! Coordinates and block centres of mass in **Å**.
 
 /// A rigid block (group of atoms treated as a rigid body).
 #[derive(Debug, Clone)]
 pub struct RigidBlock {
     /// Atom indices belonging to this block.
     pub atom_indices: Vec<usize>,
-    /// Center of mass of the block.
+    /// Center of mass of the block, in **Å**.
     pub center_of_mass: [f64; 3],
     /// Whether the block is aromatic.
     pub is_aromatic: bool,

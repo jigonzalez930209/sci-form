@@ -35,9 +35,21 @@ pub(crate) const ALIASES: &[(Scope, &str, &str)] = &[
     (Scope::Root, "compute_dipole", "dipole"),
     (Scope::Root, "compute_dos", "dos"),
     (Scope::Root, "compute_bond_orders", "bond_orders"),
-    (Scope::Root, "compute_frontier_descriptors", "frontier_descriptors"),
-    (Scope::Root, "compute_fukui_descriptors", "fukui_descriptors"),
-    (Scope::Root, "compute_reactivity_ranking", "reactivity_ranking"),
+    (
+        Scope::Root,
+        "compute_frontier_descriptors",
+        "frontier_descriptors",
+    ),
+    (
+        Scope::Root,
+        "compute_fukui_descriptors",
+        "fukui_descriptors",
+    ),
+    (
+        Scope::Root,
+        "compute_reactivity_ranking",
+        "reactivity_ranking",
+    ),
     (Scope::Root, "compute_rmsd", "rmsd"),
     (Scope::Root, "compute_esp", "esp"),
     // ── Force fields ───────────────────────────────────────────────────────
@@ -82,22 +94,38 @@ pub(crate) const ALIASES: &[(Scope, &str, &str)] = &[
     (Scope::Root, "compute_giao_nmr", "giao_nmr"),
     (Scope::Root, "compute_hose_codes", "hose_codes"),
     // ── Spectroscopy ───────────────────────────────────────────────────────
-    (Scope::Root, "compute_vibrational_analysis", "vibrational_analysis"),
+    (
+        Scope::Root,
+        "compute_vibrational_analysis",
+        "vibrational_analysis",
+    ),
     (Scope::Root, "compute_ir_spectrum", "ir_spectrum"),
     (Scope::Root, "compute_stda_uvvis", "stda_uvvis"),
     (Scope::Root, "compute_fluorescence", "fluorescence_spectrum"),
     // ── Solvation ──────────────────────────────────────────────────────────
     (Scope::Root, "compute_gb_solvation", "gb_solvation"),
     (Scope::Root, "compute_alpb_solvation", "alpb_solvation"),
-    (Scope::Root, "compute_nonpolar_solvation", "nonpolar_solvation"),
+    (
+        Scope::Root,
+        "compute_nonpolar_solvation",
+        "nonpolar_solvation",
+    ),
     // ── EHT ────────────────────────────────────────────────────────────────
-    (Scope::Root, "compute_eht_or_uff_fallback", "eht_or_uff_fallback"),
+    (
+        Scope::Root,
+        "compute_eht_or_uff_fallback",
+        "eht_or_uff_fallback",
+    ),
     (Scope::Root, "solve_eht", "eht_calculate"),
     // ── Materials ──────────────────────────────────────────────────────────
     (Scope::Root, "create_unit_cell", "unit_cell"),
     // ── Dynamics ───────────────────────────────────────────────────────────
     (Scope::Root, "compute_md_trajectory", "md_trajectory"),
-    (Scope::Root, "compute_md_trajectory_nvt", "md_trajectory_nvt"),
+    (
+        Scope::Root,
+        "compute_md_trajectory_nvt",
+        "md_trajectory_nvt",
+    ),
     (
         Scope::Root,
         "compute_simplified_neb_path",
@@ -122,20 +150,48 @@ pub(crate) const ALIASES: &[(Scope, &str, &str)] = &[
         "edl_capacitance_scan",
     ),
     (Scope::Root, "compute_helmholtz_profile", "edl_helmholtz"),
-    (Scope::Root, "compute_gouy_chapman_profile", "edl_gouy_chapman"),
+    (
+        Scope::Root,
+        "compute_gouy_chapman_profile",
+        "edl_gouy_chapman",
+    ),
     (Scope::Root, "compute_gcs_profile", "edl_gcs"),
     (Scope::Root, "compute_kmesh", "kmesh"),
     (Scope::Root, "compute_htst_rate", "htst_rate"),
     (Scope::Root, "compute_htst_sweep", "htst_temperature_sweep"),
     (Scope::Root, "compute_edl_chart", "edl_chart"),
-    (Scope::Root, "compute_capacitance_chart", "capacitance_chart"),
+    (
+        Scope::Root,
+        "compute_capacitance_chart",
+        "capacitance_chart",
+    ),
     (Scope::Root, "compute_arrhenius_chart", "arrhenius_chart"),
-    (Scope::Root, "compute_thermal_prop_chart", "thermal_prop_chart"),
-    (Scope::Root, "compute_phase_portrait_chart", "phase_portrait_chart"),
-    (Scope::Root, "compute_band_structure_chart", "band_structure_chart"),
+    (
+        Scope::Root,
+        "compute_thermal_prop_chart",
+        "thermal_prop_chart",
+    ),
+    (
+        Scope::Root,
+        "compute_phase_portrait_chart",
+        "phase_portrait_chart",
+    ),
+    (
+        Scope::Root,
+        "compute_band_structure_chart",
+        "band_structure_chart",
+    ),
     (Scope::Root, "compute_dos_chart", "density_of_states_chart"),
-    (Scope::Root, "compute_kpoint_path_chart", "kpoint_path_chart"),
-    (Scope::Root, "compute_fermi_surface_chart", "fermi_surface_chart"),
+    (
+        Scope::Root,
+        "compute_kpoint_path_chart",
+        "kpoint_path_chart",
+    ),
+    (
+        Scope::Root,
+        "compute_fermi_surface_chart",
+        "fermi_surface_chart",
+    ),
     (Scope::Root, "compute_trajectory_chart", "trajectory_chart"),
     (
         Scope::Root,
@@ -163,19 +219,23 @@ pub(crate) const ALIASES: &[(Scope, &str, &str)] = &[
     ),
     (Scope::Alpha, "alpha_gsm_interpolate", "gsm_interpolate"),
     (Scope::Alpha, "alpha_gsm_backend_plan", "gsm_backend_plan"),
-    (Scope::Alpha, "alpha_gsm_compare_backends", "gsm_compare_backends"),
+    (
+        Scope::Alpha,
+        "alpha_gsm_compare_backends",
+        "gsm_compare_backends",
+    ),
     (Scope::Alpha, "alpha_gsm_find_ts", "gsm_find_ts"),
     (Scope::Alpha, "alpha_sdr_embed", "sdr_embed_py"),
     // ── Beta tier ──────────────────────────────────────────────────────────
     (Scope::Beta, "beta_compute_kpm_dos", "kpm_dos"),
     (Scope::Beta, "beta_compute_kpm_mulliken", "kpm_mulliken"),
-    (Scope::Beta, "beta_compute_mbh_frequencies", "mbh_frequencies"),
-    (Scope::Beta, "beta_solve_eht_randnla", "eht_randnla"),
     (
         Scope::Beta,
-        "beta_compute_cpm_charges",
-        "cpm_charges",
+        "beta_compute_mbh_frequencies",
+        "mbh_frequencies",
     ),
+    (Scope::Beta, "beta_solve_eht_randnla", "eht_randnla"),
+    (Scope::Beta, "beta_compute_cpm_charges", "cpm_charges"),
 ];
 
 /// Build the deprecated wrapper for `canonical` and register it as `alias`.
@@ -202,13 +262,18 @@ fn add_alias(module: &Bound<'_, PyAny>, canonical: &str, alias: &str) -> PyResul
     let dict = module.getattr("__dict__")?;
     let globals = dict.downcast::<pyo3::types::PyDict>()?;
     py.run(
-        std::ffi::CString::new(code).expect("alias code has no interior nul").as_c_str(),
+        std::ffi::CString::new(code)
+            .expect("alias code has no interior nul")
+            .as_c_str(),
         Some(globals),
         Some(globals),
     )?;
 
     let func = module.getattr(alias)?;
-    func.setattr("__doc__", format!("Deprecated alias of `sci_form.{canonical}`."))?;
+    func.setattr(
+        "__doc__",
+        format!("Deprecated alias of `sci_form.{canonical}`."),
+    )?;
     // `__wrapped__` makes `inspect.signature()` follow the alias to the
     // canonical function.
     func.setattr("__wrapped__", module.getattr(canonical)?)?;
@@ -255,9 +320,14 @@ mod tests {
                 seen.insert((*scope, *alias)),
                 "duplicate alias {alias} in {scope:?}"
             );
-            assert_ne!(*canonical, *alias, "an alias must differ from the canonical name");
+            assert_ne!(
+                *canonical, *alias,
+                "an alias must differ from the canonical name"
+            );
             assert!(
-                canonical.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_'),
+                canonical
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_'),
                 "canonical name {canonical} is not a plain identifier"
             );
         }

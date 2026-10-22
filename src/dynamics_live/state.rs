@@ -212,6 +212,16 @@ impl LiveMolecularSystem {
     }
 
     /// Compute forces using the configured backend.
+    ///
+    /// Writes the forces into the flat `forces_flat` buffer and into each
+    /// [`DynamicAtom`]. The returned potential energy is in **kcal/mol**.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the errors of
+    /// [`crate::dynamics::compute_backend_energy_and_gradients`]: an
+    /// unparsable SMILES, a coordinate array that does not hold exactly
+    /// three coordinates per atom, or a failure of the force backend.
     pub fn compute_forces(&mut self) -> Result<f64, String> {
         let elements: Vec<u8> = self.atoms.iter().map(|a| a.element).collect();
         let energy = crate::dynamics::compute_backend_energy_and_gradients(
@@ -238,6 +248,16 @@ impl LiveMolecularSystem {
     }
 
     /// Run one Velocity Verlet integration step.
+    ///
+    /// `dt_fs` is the time step in **fs**. On return the kinetic energy
+    /// (**kcal/mol**), the temperature (**K**), the elapsed time (**fs**) and
+    /// the step counter are updated.
+    ///
+    /// # Errors
+    ///
+    /// - `"simulation diverged: non-finite coordinates"` when the integration
+    ///   produced non-finite positions.
+    /// - Any error from [`LiveMolecularSystem::compute_forces`].
     pub fn verlet_step(&mut self, dt_fs: f64) -> Result<(), String> {
         let n = self.n_atoms();
 
@@ -289,6 +309,12 @@ impl LiveMolecularSystem {
     }
 
     /// Run N substeps of Velocity Verlet, returning the updated state.
+    ///
+    /// `dt_fs` is the time step of a single substep in **fs**.
+    ///
+    /// # Errors
+    ///
+    /// Propagates the errors of [`LiveMolecularSystem::verlet_step`].
     pub fn integrate(&mut self, dt_fs: f64, substeps: usize) -> Result<(), String> {
         for _ in 0..substeps {
             self.verlet_step(dt_fs)?;

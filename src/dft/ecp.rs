@@ -24,15 +24,32 @@ pub fn n_core(z: u8) -> u8 {
     }
 }
 
+/// Effective nuclear charge `Z_eff = Z - n_core(Z)` in units of `e`.
+///
+/// The core electrons removed by [`n_core`] are replaced by a local
+/// Gaussian potential (see [`local_gaussian`]), so the explicit valence
+/// space sees a reduced nuclear charge. The result is clamped from below at
+/// `1.0`, so a hypothetical element with more core electrons than valence
+/// electrons still reports a positive charge.
 pub fn z_eff(z: u8) -> f64 {
     (z as f64 - n_core(z) as f64).max(1.0)
 }
 
+/// Effective nuclear charges of a whole molecule, in units of `e`.
+///
+/// The returned vector has one entry per element in `elements` and follows
+/// the same atom ordering as the input slice.
 pub fn effective_charges(elements: &[u8]) -> Vec<f64> {
     elements.iter().map(|&z| z_eff(z)).collect()
 }
 
 /// Local Gaussian ECP: U(r) = A exp(−α r²).
+///
+/// Returns `(amplitude, exponent)` with the amplitude in Hartree and the
+/// exponent in Bohr⁻² (the potential is evaluated with `r` in Bohr).
+///
+/// `None` is returned for elements that have no core electrons to remove
+/// (`Z <= 30`), i.e. when no ECP is needed.
 pub fn local_gaussian(z: u8) -> Option<(f64, f64)> {
     let n = n_core(z);
     if n == 0 {
@@ -43,6 +60,10 @@ pub fn local_gaussian(z: u8) -> Option<(f64, f64)> {
 }
 
 /// Add the local Gaussian ECP to the nuclear attraction matrix.
+///
+/// `v` is the nuclear attraction matrix in Hartree; the ECP contribution
+/// (also in Hartree) is added to it in place. The basis centres are in
+/// Bohr.
 pub fn add_local_ecp(v: &mut nalgebra::DMatrix<f64>, basis: &BasisSet, elements: &[u8]) {
     for (atom, &z) in elements.iter().enumerate() {
         let Some((amp, alpha)) = local_gaussian(z) else {
@@ -113,6 +134,13 @@ fn contracted_local(
     s
 }
 
+/// Principal valence quantum number `n` used to size the valence basis.
+///
+/// * `4` for Ga(31) – Xe(36)
+/// * `5` for Rb(37) – Xe(54)
+/// * `6` for Cs(55) – Rn(86)
+/// * `7` for everything else (including the light elements and the
+///   superheavy actinides, which fall back to the largest value).
 pub fn valence_n(z: u8) -> u8 {
     match z {
         31..=36 => 4,
@@ -122,6 +150,13 @@ pub fn valence_n(z: u8) -> u8 {
     }
 }
 
+/// Whether the element is given an explicit d-type valence shell.
+///
+/// True for the transition metals Ga(31) – Kr(36), Y(39) – Cd(48) and
+/// Hf(72) – Hg(80) plus the lanthanides La(57) – Lu(71): the metals whose
+/// valence space contains a filled or partially filled `(n-1)d` sub-shell
+/// that must be represented explicitly. False for the main-group p-block
+/// metals, the alkali and alkaline-earth metals, and the actinides.
 pub fn needs_d_valence(z: u8) -> bool {
     matches!(z, 31..=36 | 39..=48 | 57..=80)
 }

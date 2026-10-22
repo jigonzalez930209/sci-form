@@ -1,8 +1,7 @@
 //! EHT, SASA, population, dipole, ESP, DOS, cell, assemble, ANI, PM3, xTB, GFN, HF-3c command handlers.
 
 use crate::format::{
-    fail,
-    gasteiger_charges_from_geometry, parse_bond_list, parse_elems_coords, perceive_bonds,
+    fail, gasteiger_charges_from_geometry, parse_bond_list, parse_elems_coords, perceive_bonds,
 };
 
 pub fn cmd_eht(elements: &str, coords: &str, k: Option<f64>) {
@@ -128,7 +127,13 @@ pub fn cmd_assemble(topology: &str, a: f64, metal: u8, geometry: &str, supercell
             fail(crate::format::invalid_value(
                 "'geometry'",
                 geometry,
-                &["linear", "trigonal", "tetrahedral", "square_planar", "octahedral"],
+                &[
+                    "linear",
+                    "trigonal",
+                    "tetrahedral",
+                    "square_planar",
+                    "octahedral",
+                ],
             ));
         }
     };
@@ -370,10 +375,18 @@ pub fn cmd_ensemble_j_couplings(
     temperature_k: f64,
 ) {
     let conformers: Vec<Vec<f64>> = serde_json::from_str(conformer_coords).unwrap_or_else(|e| {
-        fail(crate::format::bad_json("'conformer coords'", conformer_coords, &e));
+        fail(crate::format::bad_json(
+            "'conformer coords'",
+            conformer_coords,
+            &e,
+        ));
     });
     let energies: Vec<f64> = serde_json::from_str(energies_kcal).unwrap_or_else(|e| {
-        fail(crate::format::bad_json("'conformer energies'", energies_kcal, &e));
+        fail(crate::format::bad_json(
+            "'conformer energies'",
+            energies_kcal,
+            &e,
+        ));
     });
     match sci_form::compute_ensemble_j_couplings(smiles, &conformers, &energies, temperature_k) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
@@ -745,9 +758,7 @@ pub fn cmd_space_group(number: Option<u16>, symbol: Option<&str>) {
         Some(sg) => println!("{}", serde_json::to_string_pretty(&sg).unwrap()),
         None => {
             let message = match number {
-                Some(n) => format!(
-                    "Invalid 'number' '{n}'. Supported: an ITC number in 1-230."
-                ),
+                Some(n) => format!("Invalid 'number' '{n}'. Supported: an ITC number in 1-230."),
                 None => format!(
                     "Invalid 'symbol' '{}'. Supported: a Hermann-Mauguin symbol, e.g. 'P 21/c'.",
                     symbol.unwrap_or_default()
@@ -782,7 +793,11 @@ pub fn cmd_periodic_molecule(
         fail(crate::format::bad_json("'elements'", elements, &e));
     });
     let frac: Vec<[f64; 3]> = serde_json::from_str(frac_coords).unwrap_or_else(|e| {
-        fail(crate::format::bad_json("'fractional coords'", frac_coords, &e));
+        fail(crate::format::bad_json(
+            "'fractional coords'",
+            frac_coords,
+            &e,
+        ));
     });
     let cell = sci_form::create_unit_cell(a, b, c, alpha, beta, gamma);
     // `--bond-tolerance` omitted means "engine default" (blocker C-M5).
@@ -846,8 +861,8 @@ pub fn cmd_optimize_framework(
         }
     };
     // `--fixed-atoms` omitted means "fix no atom" (blocker C-M5).
-    let fixed: Vec<usize> = crate::format::parse_usize_list(fixed_atoms, "'fixed atoms'")
-        .unwrap_or_default();
+    let fixed: Vec<usize> =
+        crate::format::parse_usize_list(fixed_atoms, "'fixed atoms'").unwrap_or_default();
     let lattice =
         cell.map(|c| sci_form::create_unit_cell(c[0], c[1], c[2], c[3], c[4], c[5]).lattice);
 

@@ -9,10 +9,19 @@ use serde::{Deserialize, Serialize};
 
 /// Gasteiger parametrization for one element: a, b, c coefficients for the
 /// orbital-electronegativity polynomial  χ(q) = a + b·q + c·q².
+///
+/// `q` is the partial charge in units of the elementary charge (**e**); the
+/// coefficients are dimensionless, so χ(q) is an orbital electronegativity on
+/// the (Pauling-like) scale of the original Gasteiger–Marsili paper.
 #[derive(Debug, Clone, Copy)]
 pub struct GasteigerParams {
+    /// Constant term `a` of the orbital-electronegativity polynomial
+    /// (dimensionless).
     pub a: f64,
+    /// Linear coefficient `b` multiplying the partial charge `q`
+    /// (dimensionless).
     pub b: f64,
+    /// Quadratic coefficient `c` multiplying `q²` (dimensionless).
     pub c: f64,
 }
 

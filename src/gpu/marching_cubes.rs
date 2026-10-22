@@ -16,13 +16,16 @@ use super::context::{
 use super::orbital_grid::GridParams;
 
 /// Triangle mesh output from marching cubes.
+///
+/// Vertex coordinates inherit the grid unit (**Bohr** for the orbital and
+/// density grids of this crate); the normals are unit vectors.
 #[derive(Debug, Clone)]
 pub struct McOutput {
-    /// Triangle vertices (flat: [x0,y0,z0, x1,y1,z1, ...]).
+    /// Triangle vertices (flat: [x0,y0,z0, x1,y1,z1, ...]) in **Bohr**.
     pub vertices: Vec<f32>,
-    /// Triangle normals (flat: [nx0,ny0,nz0, ...]).
+    /// Triangle normals (flat: [nx0,ny0,nz0, ...]); unit vectors.
     pub normals: Vec<f32>,
-    /// Triangle indices.
+    /// Triangle indices (three per triangle, into `vertices`).
     pub indices: Vec<u32>,
     /// Number of triangles.
     pub n_triangles: usize,
@@ -266,6 +269,15 @@ pub fn marching_cubes_with_report(
 /// Each workgroup processes one voxel. The shader classifies corners,
 /// looks up the edge/triangle tables, interpolates edge vertices, and
 /// writes triangle data into an append-style output buffer.
+///
+/// The returned mesh carries the vertex coordinates of the grid, i.e. in
+/// **Bohr** for the orbital and density grids of this crate.
+///
+/// # Errors
+///
+/// - `"Missing outputs from marching cubes kernel"` when the dispatch did not
+///   return both the triangle counter and the vertex buffer.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn marching_cubes_gpu(
     ctx: &GpuContext,
     values: &[f64],

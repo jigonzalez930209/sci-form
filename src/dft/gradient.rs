@@ -18,6 +18,43 @@ use nalgebra::DMatrix;
 
 const STEP: f64 = 1.0e-4;
 
+/// Kohn-Sham nuclear gradient at the converged density.
+///
+/// The gradient is computed as a *frozen-density* derivative: the AO
+/// integrals (core Hamiltonian, ERIs, exchange-correlation potential and the
+/// overlap) are re-evaluated at the displaced geometry, but the converged
+/// density matrix is held fixed, and the Pulay term `−W:∂S/∂R` is added
+/// afterwards. Atomic integrals are differentiated by central finite
+/// differences with a step of `1e-4` Bohr, so this is an analytic Kohn-Sham
+/// force built from numerically differentiated integrals.
+///
+/// `elements` and `positions` describe the molecule in the usual convention
+/// of this crate: atomic numbers and Cartesian coordinates in Ångström.
+///
+/// # Errors
+///
+/// Returns `Err` if the Kohn-Sham SCF fails (see
+/// [`super::ks_fock::solve_ks_dft`]), if the geometry is invalid, or if the
+/// requested basis set is unavailable for one of the elements. The error
+/// string of the underlying SCF failure is propagated unchanged.
+///
+/// # Example
+///
+/// ```no_run
+/// use sci_form::dft::gradient::ks_nuclear_gradient;
+/// use sci_form::dft::ks_fock::DftConfig;
+///
+/// fn main() -> Result<(), String> {
+///     let gradient = ks_nuclear_gradient(
+///         &[1, 1],
+///         &[[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]],
+///         &DftConfig::default(),
+///     )?;
+///     // Gradients are dE/dR in Hartree/Bohr, one [x, y, z] triple per atom.
+///     println!("{:?}", gradient.gradients);
+///     Ok(())
+/// }
+/// ```
 pub fn ks_nuclear_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],

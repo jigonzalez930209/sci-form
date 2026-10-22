@@ -2,6 +2,21 @@
 //!
 //! The roadmap needs a stable serialization-friendly layer for elementary-step
 //! barriers, transition-state theory rates, and simple reaction-network traces.
+//!
+//! # Stability tier
+//!
+//! **Alpha** — early research tier. Gated behind the `alpha-kinetics` feature
+//! flag (alias: `experimental-kinetics`, which in turn requires
+//! `experimental-gsm` and `experimental-mbh`). The validation gate is
+//! `tests/alpha_kinetics_validation.rs` (F87): the Eyring rate expression is
+//! compared against `scipy.integrate.solve_ivp` for the microkinetic traces.
+//! Promotion criteria are listed in [`crate::experimental_status`].
+//!
+//! # Units
+//!
+//! Activation barriers are in **kcal/mol**, rates in **s⁻¹**, temperature in
+//! **K**, pressure in **bar**, and the thermodynamic constants
+//! ([`BOLTZMANN_EV_PER_K`], [`PLANCK_EV_S`]) are in **eV/K** and **eV·s**.
 
 #[cfg(feature = "experimental-gpu")]
 pub mod gpu;
@@ -58,7 +73,7 @@ pub struct ElementaryRateResult {
     pub forward_rate_s_inv: f64,
     /// Reverse rate constant in s^-1.
     pub reverse_rate_s_inv: f64,
-    /// Equilibrium constant from the free-energy change.
+    /// Equilibrium constant from the free-energy change (dimensionless).
     pub equilibrium_constant: f64,
     /// Thermodynamic state used for evaluation.
     pub state: ThermodynamicState,
@@ -100,7 +115,7 @@ pub struct HtstAdapterConfig {
     pub state: ThermodynamicState,
     /// GSM transition-state search controls.
     pub gsm: crate::alpha::gsm::GsmConfig,
-    /// Finite-difference step used by MBH at the TS geometry.
+    /// Finite-difference step used by MBH at the TS geometry, in **Å**.
     pub mbh_fd_step: f64,
 }
 
@@ -126,7 +141,7 @@ pub struct HtstAnalysisResult {
     pub activation_energy_kcal_mol: f64,
     /// Reverse barrier in kcal/mol.
     pub reverse_barrier_kcal_mol: f64,
-    /// Lowest imaginary mode from MBH, if present.
+    /// Lowest imaginary mode from MBH, if present, in **cm⁻¹**.
     pub imaginary_frequency_cm1: Option<f64>,
     /// Reduced MBH frequencies in cm^-1.
     pub mbh_frequencies_cm1: Vec<f64>,
@@ -136,9 +151,9 @@ pub struct HtstAnalysisResult {
     pub n_flexible: usize,
     /// GSM path energies in kcal/mol.
     pub path_energies_kcal_mol: Vec<f64>,
-    /// GSM path coordinates.
+    /// GSM path coordinates (each node is a flat `3N` array in **Å**).
     pub path_coords: Vec<Vec<f64>>,
-    /// TS coordinates.
+    /// TS coordinates (flat `3N` array in **Å**).
     pub ts_coords: Vec<f64>,
     /// Number of GSM nodes.
     pub n_nodes: usize,
@@ -151,13 +166,14 @@ pub struct HtstAnalysisResult {
 /// Convergence diagnostics for kinetics solvers.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct KineticsConvergenceDiagnostics {
-    /// Maximum population in the final frame.
+    /// Maximum population in the final frame (normalized units).
     pub max_population: f64,
-    /// Total population sum (should be conserved).
+    /// Total population sum (should be conserved; normalized units).
     pub total_population: f64,
-    /// Relative mass conservation error.
+    /// Relative mass conservation error (dimensionless fraction).
     pub mass_conservation_error: f64,
-    /// Maximum rate of change in the final frame (steady-state proxy).
+    /// Maximum rate of change in the final frame (steady-state proxy), in
+    /// **s⁻¹** of the normalized population.
     pub max_rate_of_change: f64,
     /// Whether the system appears to have reached steady state.
     pub is_steady_state: bool,
@@ -220,6 +236,18 @@ pub fn extract_kinetics_diagnostics(trace: &MicrokineticTrace) -> KineticsConver
 }
 
 /// Evaluate forward and reverse HTST-style rates for one elementary step.
+///
+/// The returned rates are in **s⁻¹** and the equilibrium constant is
+/// dimensionless.
+///
+/// # Errors
+///
+/// - `"temperature must be positive and finite"` when the thermodynamic
+///   state's temperature is not a positive finite number.
+/// - `"activation free energy must be finite and non-negative"` when the
+///   step's activation free energy (in **eV**) is negative or non-finite.
+/// - `"reaction free energy must be finite"` when the step's reaction free
+///   energy (in **eV**) is non-finite.
 pub fn evaluate_htst_rate(
     step: &ElementaryStep,
     state: ThermodynamicState,
@@ -256,6 +284,15 @@ pub fn evaluate_htst_rate(
 }
 
 /// Evaluate HTST rates over a temperature grid for one elementary step.
+///
+/// `temperatures_k` are in **K** and `pressure_bar` in **bar**; the returned
+/// rates are in **s⁻¹**.
+///
+/// # Errors
+///
+/// Propagates the errors of [`evaluate_htst_rate`] for every temperature in
+/// the grid: a non-positive or non-finite temperature, a negative or
+/// non-finite activation free energy, or a non-finite reaction free energy.
 pub fn evaluate_htst_temperature_sweep(
     step: &ElementaryStep,
     temperatures_k: &[f64],
@@ -305,7 +342,7 @@ pub struct MicrokineticNetworkConfig {
     /// Stoichiometry: for each step, (species_index, coefficient) pairs.
     /// Negative = reactant, positive = product.
     pub stoichiometry: Vec<Vec<(usize, f64)>>,
-    /// Initial species concentrations/populations.
+    /// Initial species concentrations/populations (normalized units).
     pub initial_populations: Vec<f64>,
     /// Total integration time in seconds.
     pub total_time_s: f64,
@@ -318,6 +355,22 @@ pub struct MicrokineticNetworkConfig {
 /// Build and solve a microkinetic network using simple forward Euler integration.
 ///
 /// dc_i/dt = Σ_j ν_{ij} (k_fwd_j · Π_{reactants} c_r - k_rev_j · Π_{products} c_p)
+///
+/// The populations are in normalized units, the integration time in **s** and
+/// the rates in **s⁻¹**.
+///
+/// # Errors
+///
+/// - `"at least one species is required"` when the species list is empty.
+/// - `"initial_populations length must match species count"` when the initial
+///   populations and the species list have different lengths.
+/// - `"steps and stoichiometry must have the same length"` when the step list
+///   and the stoichiometry table have different lengths.
+/// - `"need at least 2 frames"` when fewer than two output frames are
+///   requested.
+/// - `"total time must be positive"` when the total integration time is not
+///   positive.
+/// - Any error from [`evaluate_htst_rate`] for the individual steps.
 pub fn solve_microkinetic_network(
     config: &MicrokineticNetworkConfig,
 ) -> Result<MicrokineticTrace, String> {
@@ -432,6 +485,13 @@ pub fn solve_microkinetic_network(
 }
 
 /// Steady-state solver for a microkinetic network via simple time propagation to equilibrium.
+///
+/// `convergence_tol` is the tolerance on the change of the population between
+/// the last two frames (normalized units).
+///
+/// # Errors
+///
+/// Propagates the errors of [`solve_microkinetic_network`].
 pub fn solve_microkinetic_steady_state(
     config: &MicrokineticNetworkConfig,
     convergence_tol: f64,
@@ -461,6 +521,17 @@ pub fn solve_microkinetic_steady_state(
 }
 
 /// Build an HTST rate analysis by chaining GSM transition-state search and MBH frequencies.
+///
+/// # Errors
+///
+/// - `"reactant and product coordinates must have the same length"` when the
+///   two coordinate arrays differ in length.
+/// - `"reactant/product coordinates must be flat arrays of length 3 * n_atoms"`
+///   when a coordinate array does not hold exactly three coordinates per
+///   atom.
+/// - `"MBH finite-difference step must be positive"` when
+///   `config.mbh_fd_step` is not positive.
+/// - Any error raised by the GSM transition-state search.
 pub fn analyze_gsm_mbh_htst_step(
     elements: &[u8],
     reactant: &[f64],
@@ -533,6 +604,17 @@ pub fn analyze_gsm_mbh_htst_step(
 }
 
 /// Build an HTST rate analysis using a named sci-form GSM backend.
+///
+/// # Errors
+///
+/// - The SMILES parser's error message when `smiles` cannot be parsed.
+/// - `"unknown GSM backend '{name}'"` when the requested backend is not
+///   registered.
+/// - The first limitation or warning of the backend capability when the
+///   backend is unavailable or not fit for reaction paths.
+/// - `"flat coordinate array length must be a multiple of 3"` when the
+///   reactant or product coordinate array is not a whole number of atoms.
+/// - Any error raised by the GSM backend during the single points.
 pub fn analyze_gsm_mbh_htst_step_with_backend(
     smiles: &str,
     reactant: &[f64],

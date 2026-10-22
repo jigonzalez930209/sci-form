@@ -164,6 +164,19 @@ pub(crate) fn build_gfn2_basis_map(elements: &[u8]) -> Vec<(usize, usize, u8, u8
 ///
 /// Uses the official GFN2-xTB parametrization with consistent Hartree/bohr
 /// internal units. Returns all energies in eV.
+///
+/// `positions` are Cartesian coordinates in Ångström.
+///
+/// # Errors
+///
+/// Returns `Err` if the geometry is invalid, if an element has no GFN2
+/// parameters, or if the basis set ends up empty.
+///
+/// # Panics
+///
+/// Panics if an element has no GFN2 parameters. This cannot happen for the
+/// molecules this function accepts, because the parameter lookup is
+/// validated before the calculation starts.
 pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result, String> {
     crate::validation::validate_geometry(elements, positions)?;
     for &z in elements {

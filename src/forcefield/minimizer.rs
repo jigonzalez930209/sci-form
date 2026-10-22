@@ -1,3 +1,8 @@
+//! L-BFGS geometry minimiser for the simplified UFF-style energy model.
+//!
+//! The minimiser uses synchronised energy and gradient evaluations, so the
+//! returned geometry is a true stationary point of the same potential that
+//! [`super::energy::calculate_total_energy_f64`] evaluates.
 use super::energy::FFParams;
 use nalgebra::DMatrix;
 
@@ -163,6 +168,14 @@ pub fn minimize_energy_lbfgs(
 ///
 /// Both matrices must have shape `N × 3`. Centers are subtracted, then the optimal rotation
 /// is found via SVD of the covariance matrix, and RMSD is computed on the aligned coordinates.
+///
+/// The coordinates are in Å and the returned RMSD is in Å.
+///
+/// # Panics
+///
+/// Panics if `coords` and `reference` do not have the same number of rows, or
+/// if the singular-value decomposition of the covariance matrix fails to
+/// produce the `U` and `V` factors.
 pub fn calculate_rmsd_kabsch(coords: &DMatrix<f32>, reference: &DMatrix<f32>) -> f32 {
     let n = coords.nrows();
     if n == 0 {

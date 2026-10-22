@@ -9,6 +9,17 @@
 //! CPU code and the parity test compares CPU against CPU. The audit
 //! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
 //! call site for the kernel to be added.
+//!
+//! # Stability tier
+//!
+//! **Alpha** — gated behind `alpha-kinetics` (plus `experimental-gpu` for the
+//! GPU context); the validation gate is `tests/alpha_kinetics_validation.rs`
+//! (F87).
+//!
+//! # Units
+//!
+//! Temperatures in **K**, pressure in **bar**, activation barriers in
+//! **kcal/mol** and the returned rates in **s⁻¹**.
 
 use super::{evaluate_htst_temperature_sweep, ElementaryRateResult, ElementaryStep};
 use crate::gpu::context::GpuContext;
@@ -21,6 +32,12 @@ const GPU_HTST_SWEEP_THRESHOLD: usize = 256;
 /// Strategy: each temperature point is independent — the exponential
 /// Arrhenius/Eyring evaluation is trivially parallel on GPU. Current
 /// implementation: CPU fallback. Full WGSL kernel pending.
+///
+/// # Errors
+///
+/// Propagates the errors of [`evaluate_htst_temperature_sweep`]: a
+/// non-positive or non-finite temperature, a negative or non-finite
+/// activation free energy, or a non-finite reaction free energy.
 pub fn evaluate_htst_sweep_gpu(
     ctx: &GpuContext,
     step: &ElementaryStep,

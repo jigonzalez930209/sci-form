@@ -2,20 +2,40 @@
 //!
 //! Computes equilibrium charges under an applied electrochemical potential μ
 //! by minimizing the grand potential Ω = E_elec - μ·Q.
+//!
+//! This is the Constant Potential Method for electrochemistry, in the spirit
+//! of LAMMPS `fix electrode/conp` (constant-potential electrodes with a
+//! coupled charge equilibration) and of the grand-canonical charge
+//! equilibration used in classical polarisable-force-field codes.
+//!
+//! # Units
+//!
+//! The applied potential μ is in **eV** (referenced to the vacuum level; the
+//! standard hydrogen electrode sits at ≈ −4.44 eV), the per-element
+//! electronegativity χ and hardness η are in **eV**, the partial charges are
+//! in **e** (elementary charge), the Coulomb coupling is
+//! `14.3996 eV·Å / (ε · r_ij)` and the grand potential Ω and electrostatic
+//! energy E_elec are in **eV**. Positions are in **Å**.
 
-/// CPM configuration.
 use serde::{Deserialize, Serialize};
 
+/// CPM configuration.
+///
+/// Controls the constant-potential charge equilibration: the applied
+/// electrochemical potential, the solvent screening and the convergence
+/// criteria. All quantities are in the units named by the fields (potential
+/// in **eV**, charges in **e**, energies in **eV**).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpmConfig {
     /// Electrochemical potential in eV (vs vacuum).
     /// SHE ≈ -4.44 eV. Range: [-5.5, -3.5] eV for typical electrochemistry.
     pub mu_ev: f64,
-    /// Solvent dielectric constant (affects charge screening).
+    /// Solvent dielectric constant (dimensionless; affects charge screening).
     pub dielectric: f64,
     /// Maximum SCF iterations for charge equilibration.
     pub max_iter: usize,
-    /// Convergence threshold for charge changes.
+    /// Convergence threshold for charge changes, in units of elementary
+    /// charge (e).
     pub charge_tol: f64,
     /// Optional per-atom applied potential in eV (multi-electrode setups:
     /// plate A at +V/2, plate B at −V/2, as in LAMMPS `fix electrode/conp`
@@ -39,9 +59,11 @@ impl Default for CpmConfig {
 /// Result of CPM charge calculation.
 #[derive(Debug, Clone)]
 pub struct CpmResult {
-    /// Equilibrium partial charges under potential μ.
+    /// Equilibrium partial charges under potential μ, in units of elementary
+    /// charge (e).
     pub charges: Vec<f64>,
-    /// Total charge Q = Σ q_i (not necessarily zero!).
+    /// Total charge Q = Σ q_i (not necessarily zero!), in units of
+    /// elementary charge (e).
     pub total_charge: f64,
     /// Grand potential Ω = E_elec - μ·Q (eV).
     pub grand_potential: f64,

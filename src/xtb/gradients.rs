@@ -23,6 +23,17 @@ pub struct XtbGradientResult {
 ///
 /// Runs a full xTB SCC, then computes the gradient from the converged
 /// density using Hellmann-Feynman + Pulay + repulsive pair potential derivatives.
+///
+/// # Errors
+///
+/// Returns `Err` if the underlying xTB SCC fails (invalid geometry, an
+/// element without tight-binding parameters, or a non-convergent SCC).
+///
+/// # Panics
+///
+/// Panics if an element has no tight-binding parameters. This cannot
+/// happen for the molecules the SCC accepts, because the parameter lookup
+/// is validated before the gradient is evaluated.
 pub fn compute_xtb_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],

@@ -43,21 +43,27 @@ impl Default for HfConfig {
 ///
 /// Energy breakdown: `energy = hf_energy + d3_energy + gcp_energy + srb_energy`
 /// where `hf_energy = electronic + nuclear_repulsion`.
+///
+/// **All energies in this struct are in Hartree.** The orbital energies are
+/// the eigenvalues of the Hartree-based Fock matrix and are therefore *not*
+/// converted to eV; multiply by 27.211386 to obtain eV. The CIS block
+/// carries both units itself (`Excitation::energy` in Hartree and
+/// `Excitation::energy_ev` in eV).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Hf3cResult {
     /// Total HF-3c energy (Hartree).
     pub energy: f64,
-    /// Pure HF electronic energy.
+    /// Pure HF energy (Hartree): electronic energy plus nuclear repulsion.
     pub hf_energy: f64,
-    /// Nuclear repulsion energy.
+    /// Nuclear repulsion energy (Hartree).
     pub nuclear_repulsion: f64,
-    /// D3 dispersion correction energy.
+    /// D3 dispersion correction energy (Hartree, negative).
     pub d3_energy: f64,
-    /// gCP BSSE correction energy.
+    /// gCP BSSE correction energy (Hartree).
     pub gcp_energy: f64,
-    /// SRB short-range correction energy.
+    /// SRB short-range correction energy (Hartree).
     pub srb_energy: f64,
-    /// Orbital energies (sorted, eV).
+    /// Orbital energies (sorted ascending, Hartree).
     pub orbital_energies: Vec<f64>,
     /// Number of SCF iterations.
     pub scf_iterations: usize,
@@ -69,13 +75,13 @@ pub struct Hf3cResult {
     pub n_basis: usize,
     /// Number of electrons.
     pub n_electrons: usize,
-    /// HOMO energy (eV).
+    /// HOMO energy (Hartree).
     pub homo_energy: f64,
-    /// LUMO energy (eV), if available.
+    /// LUMO energy (Hartree), if available.
     pub lumo_energy: Option<f64>,
-    /// HOMO–LUMO gap (eV).
+    /// HOMO–LUMO gap (Hartree).
     pub gap: f64,
-    /// Mulliken charges per atom.
+    /// Mulliken charges per atom, in units of `e`.
     pub mulliken_charges: Vec<f64>,
 }
 
@@ -146,6 +152,17 @@ fn hf_basis_to_gpu_basis(basis: &super::basis::BasisSet) -> crate::scf::basis::B
 }
 
 /// Run a complete HF-3c calculation.
+///
+/// `positions` are Cartesian coordinates in Ångström and `elements` the
+/// atomic numbers. All energies in the returned [`Hf3cResult`] are in
+/// Hartree.
+///
+/// # Errors
+///
+/// Returns `Err` only if the geometry is invalid (see
+/// `crate::validation::validate_geometry`). Elements outside the tabulated
+/// STO-3G set are not an error: the basis builder falls back to a scaled
+/// hydrogen-like 1s shell for them.
 pub fn solve_hf3c(
     elements: &[u8],
     positions: &[[f64; 3]],

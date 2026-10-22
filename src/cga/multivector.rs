@@ -28,6 +28,9 @@ const METRIC: [f64; 5] = [1.0, 1.0, 1.0, 1.0, -1.0];
 /// Components are stored in a 32-element array indexed by blade bitmask.
 #[derive(Debug, Clone, Copy)]
 pub struct Multivector {
+    /// The blade coefficients of the multivector, in the canonical G(4,1)
+    /// blade order (scalar, then the 6 bivectors, then the 4 trivectors, then
+    /// the pseudoscalar).
     pub data: [f64; N_BLADES],
 }
 

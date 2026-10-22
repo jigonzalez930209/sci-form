@@ -540,7 +540,7 @@ fn bond_query_needs_ring(q: &BondQuery) -> bool {
 }
 
 /// Batch substructure matching: match a single pattern against many molecules.
-/// Returns one Vec<Vec<usize>> per molecule (empty if no match).
+/// Returns one `Vec<Vec<usize>>` per molecule (empty if no match).
 pub fn substruct_match_batch(
     molecules: &[&Molecule],
     pattern: &SmartsPattern,

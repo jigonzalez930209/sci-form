@@ -20,6 +20,11 @@ const GPU_DISPATCH_THRESHOLD: usize = 16;
 /// Fock matrix diagonal: G_ii += Σ_{B≠A_i} P_BB · γ_{A_i,B}
 ///
 /// Falls back to error if basis is too small or GPU unavailable.
+///
+/// # Errors
+///
+/// Returns `Err` if the basis has fewer than 16 functions (below the GPU
+/// dispatch threshold) or if the GPU dispatch itself fails.
 #[cfg(feature = "experimental-gpu")]
 pub fn build_pm3_g_matrix_gpu(
     ctx: &GpuContext,

@@ -47,13 +47,13 @@ pub struct CisdExcitation {
     pub energy_ev: f64,
     /// Wavelength (nm).
     pub wavelength_nm: f64,
-    /// Oscillator strength.
+    /// Oscillator strength (dimensionless).
     pub oscillator_strength: f64,
     /// Dominant transition: (occ_indices, virt_indices).
     pub dominant_transition: Vec<(usize, usize)>,
     /// Character: "singles" or "doubles".
     pub character: String,
-    /// Singles weight (fraction of singles contribution).
+    /// Singles weight (fraction of singles contribution, 0–1).
     pub singles_weight: f64,
 }
 

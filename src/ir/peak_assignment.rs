@@ -26,7 +26,10 @@ pub struct GroupFrequency {
 pub struct PeakAssignment {
     /// Frequency (cm⁻¹).
     pub frequency: f64,
-    /// Computed intensity.
+    /// Computed IR intensity (km/mol).
+    ///
+    /// This is the absolute intensity of the mode, not a normalised or
+    /// relative strength.
     pub intensity: f64,
     /// Assigned functional group(s).
     pub assignments: Vec<FunctionalGroupMatch>,
@@ -496,6 +499,11 @@ const GROUP_FREQUENCIES: &[GroupFrequency] = &[
 ];
 
 /// Assign peaks from vibrational analysis to functional groups.
+///
+/// `frequencies` are in cm⁻¹ and `intensities` in km/mol; `elements` are
+/// the atomic numbers of the molecule and `mode_displacements` the
+/// mass-weighted normal coordinates (used to check that the mode's motion
+/// matches the assigned group).
 pub fn assign_peaks(
     frequencies: &[f64],
     intensities: &[f64],

@@ -1,4 +1,19 @@
 //! GPU-accelerated SCC-DFTB gamma-matrix construction.
+//!
+//! Builds the (undamped, inverse-distance) second-order perturbation matrix
+//! **Γ** used by the self-consistent-charge DFTB SCC cycle.
+//!
+//! # Contract with callers
+//!
+//! The CPU implementation always works; this module is the optional
+//! accelerator. The kernel refuses systems with fewer than two atoms.
+//!
+//! # Units
+//!
+//! `positions_bohr` are in **Bohr**, so the off-diagonal entries `1/r_ij` are
+//! in **Bohr⁻¹**; the diagonal entries are the per-atom chemical hardness
+//! `eta` (in the unit the caller supplies — the SCC DFTB codes of this crate
+//! work in **eV**).
 
 use nalgebra::DMatrix;
 
@@ -10,6 +25,22 @@ use super::context::{
 
 const GPU_DISPATCH_THRESHOLD: usize = 2;
 
+/// Builds the inverse-distance gamma matrix on the GPU.
+///
+/// `eta` holds the per-atom chemical hardness and `positions_bohr` the atom
+/// coordinates in **Bohr**. The returned matrix has `1/r_ij` (in
+/// **Bohr⁻¹**) off the diagonal and `eta_i` on it.
+///
+/// # Errors
+///
+/// - `"Matrix too small for GPU dispatch"` when fewer than two atoms are
+///   supplied.
+/// - `"eta/position length mismatch"` when the two slices differ in length.
+/// - `"No output from gamma kernel"` when the dispatch returned no read-back
+///   payload.
+/// - `"Gamma output size mismatch: expected {n}, got {m}"` when the kernel
+///   produced the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn build_gamma_gpu(
     ctx: &GpuContext,
     eta: &[f64],
@@ -79,6 +110,11 @@ pub fn build_gamma_gpu(
     Ok(DMatrix::from_row_slice(n, n, &values))
 }
 
+/// WGSL source of the inverse-distance gamma-matrix kernel.
+///
+/// One invocation per matrix element (`@workgroup_size(16, 16, 1)`); the
+/// kernel writes `1/r_ij` (in **Bohr⁻¹**) for `i ≠ j` and `eta_i` on the
+/// diagonal. The uniform block carries `n_atoms` and three padding words.
 pub const GAMMA_MATRIX_SHADER: &str = r#"
 struct AtomPos {
     x: f32, y: f32, z: f32, _pad: f32,

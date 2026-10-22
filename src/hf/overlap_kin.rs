@@ -5,12 +5,21 @@
 use super::basis::BasisSet;
 use nalgebra::DMatrix;
 
+/// Overlap matrix `S_μν = <μ|ν>` of the given basis.
+///
+/// The matrix is dimensionless and symmetric, with `S_μμ = 1` for
+/// normalised basis functions. The integrals are produced by the
+/// cross-validated `scf` engine (fichas F36/F37).
 pub fn compute_overlap_matrix(basis: &BasisSet) -> DMatrix<f64> {
     // Use the cross-validated `scf` engine (fichas F36/F37).
     let scf_basis = super::basis::to_scf_basis(basis);
     crate::scf::overlap_matrix::build_overlap_matrix(&scf_basis)
 }
 
+/// Kinetic energy matrix `T_μν = <μ| −½ ∇² |ν>` of the given basis.
+///
+/// The matrix elements are in Hartree (atomic units), symmetric, and are
+/// produced by the cross-validated `scf` engine (fichas F36/F37).
 pub fn compute_kinetic_matrix(basis: &BasisSet) -> DMatrix<f64> {
     let scf_basis = super::basis::to_scf_basis(basis);
     crate::scf::kinetic_matrix::build_kinetic_matrix(&scf_basis)

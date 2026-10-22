@@ -25,18 +25,46 @@ const P_VAL: [(f64, f64); 3] = [
     (0.075139, 0.39195739),
 ];
 
+/// Choice of valence basis set for the Kohn-Sham calculation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DftBasisKind {
+    /// Minimal all-electron basis: the tabulated Hehre–Stewart–Pople
+    /// STO-3G shells where available, Slater-rule exponents with the
+    /// STO-3G Gaussian fit elsewhere, and an ECP valence basis for
+    /// `Z > 30`.
     #[default]
     Minimal,
     /// 3-21G split-valence where tabulated (H, C, O); otherwise the minimal KS basis.
     SplitValence,
 }
 
+/// Build the minimal Kohn-Sham valence basis for a molecule.
+///
+/// `elements` holds the atomic numbers, `positions_bohr` the Cartesian
+/// centres in Bohr. This is [`ks_basis_kind`] with
+/// [`DftBasisKind::Minimal`].
+///
+/// # Errors
+///
+/// Returns `Err` if the resulting minimal basis has fewer than half as many
+/// functions as there are valence electrons (the Kohn-Sham problem would
+/// not have enough virtuals to hold the electrons).
 pub fn ks_basis(elements: &[u8], positions_bohr: &[[f64; 3]]) -> Result<BasisSet, String> {
     ks_basis_kind(elements, positions_bohr, DftBasisKind::Minimal)
 }
 
+/// Build the Kohn-Sham valence basis for a molecule with a selectable basis.
+///
+/// `elements` holds the atomic numbers, `positions_bohr` the Cartesian
+/// centres in Bohr, and `kind` the requested basis family. Elements with
+/// `Z > 30` always use the small-core ECP valence basis of
+/// [`super::ecp::ecp_shells`], regardless of `kind`.
+///
+/// # Errors
+///
+/// Returns `Err` if the resulting basis has fewer than half as many
+/// functions as there are valence electrons, or (for the split-valence
+/// path) if an element's tabulated 3-21G shells cannot be built.
 pub fn ks_basis_kind(
     elements: &[u8],
     positions_bohr: &[[f64; 3]],

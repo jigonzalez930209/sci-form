@@ -25,6 +25,16 @@ const GPU_DISPATCH_THRESHOLD: usize = 4;
 /// - `n_basis`: Number of basis functions
 ///
 /// Returns the Fock matrix F = H + G(P) as flattened f64 (N×N).
+///
+/// The returned matrix elements are in **Hartree** (atomic units).
+///
+/// # Errors
+///
+/// - `"Basis too small for GPU dispatch"` when `n_basis` is below the
+///   dispatch threshold.
+/// - `"Matrix dimension mismatch"` when `h_core` or `density` does not hold
+///   exactly `n_basis * n_basis` elements.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn build_fock_gpu(
     ctx: &GpuContext,
     h_core: &[f64],

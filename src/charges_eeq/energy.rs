@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 pub struct EeqEnergyResult {
     /// Total electrostatic energy (kcal/mol).
     pub electrostatic_energy: f64,
-    /// Per-atom charges.
+    /// Per-atom charges, in units of elementary charge (e).
     pub charges: Vec<f64>,
-    /// Coordination numbers.
+    /// Fractional coordination numbers (dimensionless).
     pub coordination_numbers: Vec<f64>,
 }
 

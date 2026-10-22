@@ -18,12 +18,20 @@ pub struct ConnectionPoint {
 }
 
 /// Coordination geometry of a metal center or node.
+///
+/// The variant fixes the number of connection points of the node and the
+/// ideal directions in which the linkers attach.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum CoordinationGeometry {
+    /// Two connection points 180° apart.
     Linear,
+    /// Three connection points in a plane, 120° apart.
     Trigonal,
+    /// Four connection points pointing at the corners of a tetrahedron.
     Tetrahedral,
+    /// Four connection points in a plane, 90° apart.
     SquarePlanar,
+    /// Six connection points pointing at the corners of an octahedron.
     Octahedral,
 }
 

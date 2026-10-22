@@ -5,11 +5,18 @@
 use serde::{Deserialize, Serialize};
 
 /// Confidence level for the current EHT parameterization.
+///
+/// The level describes how well validated the tabulated Extended Hückel
+/// parameters for an element are, not the accuracy of the EHT method itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SupportLevel {
+    /// No EHT parameter set exists for the element.
     Unsupported,
+    /// Parameters exist but are provisional: literature d-block values or
+    /// hydrogenic values derived from the first ionization potential.
     Experimental,
+    /// The element is covered by a validated, benchmarked parameter set.
     Supported,
 }
 

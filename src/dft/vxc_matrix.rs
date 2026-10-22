@@ -93,8 +93,8 @@ fn compute_density_gradient(phi: &[f64], dphi: &[[f64; 3]], density: &DMatrix<f6
 
 /// Build the V_XC matrix from the density matrix on the molecular grid.
 ///
-/// Returns (V_xc, E_xc) where V_xc is the XC potential matrix and E_xc is
-/// the XC energy.
+/// Returns (V_xc, E_xc) where V_xc is the XC potential matrix (in Hartree)
+/// and E_xc is the XC energy (in Hartree).
 pub fn build_vxc_matrix(
     basis: &BasisSet,
     density: &DMatrix<f64>,
@@ -166,6 +166,9 @@ pub fn build_vxc_matrix(
 
 /// Spin-polarized V_XC. SVWN uses polarized Slater; PBE uses spin scaling of the
 /// closed-shell kernel on 2ρ_σ.
+///
+/// Returns `(V_XC^α, V_XC^β, E_XC)`: the two AO-basis potential matrices in
+/// Hartree and the total exchange-correlation energy in Hartree.
 pub fn build_vxc_uks(
     basis: &BasisSet,
     density_a: &DMatrix<f64>,

@@ -229,7 +229,14 @@ fn main() {
             beta,
             r_max,
             n_points,
-        } => calc_cmds::cmd_rdf(&elements, &coords, charges.as_deref(), beta, r_max, n_points),
+        } => calc_cmds::cmd_rdf(
+            &elements,
+            &coords,
+            charges.as_deref(),
+            beta,
+            r_max,
+            n_points,
+        ),
         Commands::Getaway {
             elements,
             coords,
@@ -281,14 +288,12 @@ fn main() {
             intensities,
             elements,
             mode_displacements,
-        } => {
-            calc_cmds::cmd_assign_peaks(
-                &frequencies,
-                &intensities,
-                &elements,
-                mode_displacements.as_deref(),
-            )
-        }
+        } => calc_cmds::cmd_assign_peaks(
+            &frequencies,
+            &intensities,
+            &elements,
+            mode_displacements.as_deref(),
+        ),
         Commands::SpaceGroup { number, symbol } => {
             calc_cmds::cmd_space_group(number, symbol.as_deref())
         }

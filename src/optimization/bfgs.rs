@@ -3,6 +3,14 @@
 //! The optimizer maintains an inverse-Hessian approximation (dense, full-rank)
 //! and applies gradient scaling borrowed from RDKit's embedding pipeline when
 //! the initial gradient norm exceeds 1.0.
+//!
+//! The minimizer is unit-agnostic: the energy and gradient units are those of
+//! the caller-supplied objective. In the embedding pipeline the coordinates
+//! are in Å, the energies in kcal/mol and the gradients in kcal/mol/Å.
+//!
+//! The step length is clamped to 0.3 (the same value RDKit uses, expressed in
+//! its internal bohr/energy units) so that a badly scaled initial Hessian
+//! cannot produce unphysical displacements.
 
 use nalgebra::{DMatrix, DVector};
 
@@ -11,8 +19,13 @@ use nalgebra::{DMatrix, DVector};
 ///
 /// Returns `(final_energy, converged)` from [`execute_minimization`](Self::execute_minimization).
 pub struct RustBfgsEngine {
+    /// Maximum number of BFGS outer iterations before the minimiser gives up.
     pub iter_limit_max: usize,
+    /// Convergence threshold on the L2 norm of the gradient, in the units of
+    /// the objective (energy per unit length).
     pub strict_grad_tolerance: f64,
+    /// Maximum number of backtracking steps per line search (the step size is
+    /// halved each time).
     pub backtracking_line_search_limit: usize,
 }
 
@@ -27,6 +40,16 @@ impl Default for RustBfgsEngine {
 }
 
 impl RustBfgsEngine {
+    /// Minimise the objective, updating `global_coords` in place.
+    ///
+    /// `eval_lambda` is called with the current coordinates and a scratch
+    /// gradient buffer; it must return the energy and fill the buffer with
+    /// `dE/dR`. The returned tuple is `(final_energy, converged)`, where
+    /// `converged` is `true` when the gradient norm fell below
+    /// [`Self::strict_grad_tolerance`] (or was already below it on entry).
+    ///
+    /// The function does not panic and never mutates the caller's gradient
+    /// buffer: the scratch gradient is local.
     pub fn execute_minimization<F>(
         &self,
         global_coords: &mut [f64],

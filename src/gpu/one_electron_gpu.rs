@@ -22,12 +22,16 @@ const MAX_PRIMITIVES: usize = 3;
 const GPU_DISPATCH_THRESHOLD: usize = 6;
 
 /// Result of GPU one-electron matrix computation.
+///
+/// The overlap matrix **S** is dimensionless (atomic units), while the
+/// kinetic matrix **T** and the nuclear attraction matrix **V** are in
+/// **Hartree** (per basis-function pair).
 pub struct OneElectronResult {
-    /// Overlap matrix S, row-major flat (N×N).
+    /// Overlap matrix S, row-major flat (N×N); dimensionless.
     pub overlap: Vec<f64>,
-    /// Kinetic energy matrix T, row-major flat (N×N).
+    /// Kinetic energy matrix T, row-major flat (N×N); in **Hartree**.
     pub kinetic: Vec<f64>,
-    /// Nuclear attraction matrix V, row-major flat (N×N).
+    /// Nuclear attraction matrix V, row-major flat (N×N); in **Hartree**.
     pub nuclear: Vec<f64>,
     /// Number of basis functions.
     pub n_basis: usize,
@@ -132,6 +136,18 @@ fn pack_one_electron_data(
 /// Compute one-electron matrices (S, T, V) on the GPU.
 ///
 /// Returns overlap, kinetic, and nuclear matrices packed as flat f64 arrays.
+/// The overlap matrix is dimensionless, the kinetic and nuclear attraction
+/// matrices are in **Hartree**.
+///
+/// # Errors
+///
+/// - `"Basis too small for GPU dispatch"` when the basis has fewer than six
+///   functions.
+/// - `"No output from one-electron kernel"` when the dispatch returned no
+///   read-back payload.
+/// - `"Output size mismatch: expected {n}, got {m}"` when the kernel produced
+///   the wrong number of bytes.
+/// - Any error from [`GpuContext::run_compute`].
 pub fn compute_one_electron_gpu(
     ctx: &GpuContext,
     basis: &BasisSet,

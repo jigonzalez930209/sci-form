@@ -23,6 +23,10 @@ pub fn svwn(rho: f64) -> (f64, f64) {
 /// Spin-polarized Slater exchange plus unpolarized VWN-5 on the total density.
 ///
 /// Returns (ε per particle, v_α, v_β) with E_xc = ∫ ρ ε dV.
+///
+/// `rho_a`/`rho_b` are the alpha/beta electron densities in electrons per
+/// Bohr³. The energy density ε is in Hartree per electron and the
+/// potentials v_α, v_β are in Hartree.
 pub fn svwn_spin(rho_a: f64, rho_b: f64) -> (f64, f64, f64) {
     let rho = rho_a + rho_b;
     if rho < 1e-20 {

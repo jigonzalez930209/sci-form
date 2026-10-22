@@ -14,15 +14,19 @@ use super::params::{ReaxffAtomParams, ReaxffParams};
 use super::taper::taper_function;
 
 /// Bond order between two atoms.
+///
+/// All four order components are dimensionless; a value of `1.0` corresponds
+/// to a single bond. The components are the ReaxFF decomposition of the total
+/// order into its σ, π and ππ contributions.
 #[derive(Debug, Clone, Copy)]
 pub struct BondOrder {
-    /// Total bond order.
+    /// Total bond order (dimensionless).
     pub total: f64,
-    /// σ component.
+    /// σ component of the bond order (dimensionless).
     pub sigma: f64,
-    /// π component.
+    /// π component of the bond order (dimensionless).
     pub pi: f64,
-    /// ππ component.
+    /// ππ component of the bond order (dimensionless).
     pub pipi: f64,
     /// Distance (Å).
     pub distance: f64,

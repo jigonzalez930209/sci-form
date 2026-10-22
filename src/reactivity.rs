@@ -29,7 +29,7 @@ pub struct EmpiricalPkaSite {
     pub environment: String,
     /// Estimated pKa value from simple charge/environment heuristics.
     pub estimated_pka: f64,
-    /// Rule confidence in [0,1].
+    /// Rule confidence, between 0 and 1.
     pub confidence: f64,
 }
 

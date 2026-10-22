@@ -166,7 +166,8 @@ fn test_water_homo_visualization() {
     let basis = eht::basis::build_basis(&elems, &pos);
 
     let homo = result.homo_index;
-    let grid = evaluate_orbital_on_grid(&basis, &result.coefficients, homo, &pos, 0.25, 3.0).unwrap();
+    let grid =
+        evaluate_orbital_on_grid(&basis, &result.coefficients, homo, &pos, 0.25, 3.0).unwrap();
 
     // HOMO should have both positive and negative lobes
     let has_positive = grid.values.iter().any(|&v| v > 0.01);

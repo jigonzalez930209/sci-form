@@ -8,6 +8,9 @@
 /// tap(r) = 1 for r = 0
 /// tap(r) = 0 for r ≥ r_cut
 /// tap, tap', tap'', tap''' are continuous at r = r_cut
+///
+/// `r` and `r_cut` are distances in Å; the returned taper factor is
+/// dimensionless and lies in `[0, 1]`.
 #[inline]
 pub fn taper_function(r: f64, r_cut: f64) -> f64 {
     if r >= r_cut {
@@ -29,6 +32,9 @@ pub fn taper_function(r: f64, r_cut: f64) -> f64 {
 }
 
 /// Derivative of the taper function d(tap)/dr.
+///
+/// `r` and `r_cut` are distances in Å; the returned derivative is
+/// dimensionless per Å (Å⁻¹) and is zero outside `[0, r_cut]`.
 #[inline]
 pub fn taper_derivative(r: f64, r_cut: f64) -> f64 {
     if r >= r_cut || r <= 0.0 {
