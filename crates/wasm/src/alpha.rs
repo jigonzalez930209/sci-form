@@ -716,22 +716,59 @@ pub fn alpha_sdr_embed(distance_pairs_json: &str, n_atoms: usize, config_json: &
 
 /// Return alpha module metadata.
 ///
-/// Returns JSON: `{ "alpha_modules": ["dft", "reaxff", "mlff", "obara-saika",
-///                   "cga", "gsm", "sdr", "dynamics-live"] }`
+/// The module list is derived from the features the binary was compiled
+/// with, so it always describes what the package actually contains.
+///
+/// Returns JSON: `{ "alpha_modules": ["dft", "reaxff", …],
+///                   "stability": "alpha — experimental, …",
+///                   "version": "1.0.0" }`
 #[wasm_bindgen]
 pub fn alpha_modules_info() -> String {
+    let mut modules: Vec<&str> = Vec::new();
+    if cfg!(feature = "alpha-dft") {
+        modules.push("dft");
+    }
+    if cfg!(feature = "alpha-reaxff") {
+        modules.push("reaxff");
+    }
+    if cfg!(feature = "alpha-mlff") {
+        modules.push("mlff");
+    }
+    if cfg!(feature = "alpha-obara-saika") {
+        modules.push("obara-saika");
+    }
+    if cfg!(feature = "alpha-cga") {
+        modules.push("cga");
+    }
+    if cfg!(feature = "alpha-gsm") {
+        modules.push("gsm");
+    }
+    if cfg!(feature = "alpha-sdr") {
+        modules.push("sdr");
+    }
+    if cfg!(feature = "alpha-dynamics-live") {
+        modules.push("dynamics-live");
+    }
+    if cfg!(feature = "alpha-imd") {
+        modules.push("imd");
+    }
+    if cfg!(feature = "alpha-edl") {
+        modules.push("edl");
+    }
+    if cfg!(feature = "alpha-periodic-linear") {
+        modules.push("periodic-linear");
+    }
+    if cfg!(feature = "alpha-kinetics") {
+        modules.push("kinetics");
+    }
+    if cfg!(feature = "alpha-render-bridge") {
+        modules.push("render-bridge");
+    }
+    if cfg!(feature = "alpha-reaction-dynamics") {
+        modules.push("reaction-dynamics");
+    }
     serde_json::json!({
-        "alpha_modules": [
-            "dft",
-            "reaxff",
-            "mlff",
-            "obara-saika",
-            "cga",
-            "gsm",
-            "sdr",
-            "dynamics-live",
-            "reaction-dynamics"
-        ],
+        "alpha_modules": modules,
         "stability": "alpha — experimental, subject to breaking changes",
         "version": env!("CARGO_PKG_VERSION"),
     })

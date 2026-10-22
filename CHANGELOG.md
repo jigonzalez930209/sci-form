@@ -65,6 +65,21 @@ capability is the Rust root name in all four surfaces.
 
 ### Fixed
 
+- **The published wheel and npm package shipped fewer capabilities than CI
+  tested.** The release workflow carried its own copy of the feature lists
+  and that copy had fallen behind: the published Python wheel and npm
+  package were missing the `alpha-edl`, `alpha-periodic-linear`,
+  `alpha-kinetics`, `alpha-render-bridge` and `alpha-reaction-dynamics`
+  modules, while CI built and tested all of them. Both workflows now use
+  the same lists, and `scripts/check_feature_parity.py` fails the build if
+  they ever drift apart again.
+- **The TypeScript declarations of the alpha/beta subpaths promised functions
+  the binary did not contain.** They were a hand-written file listing every
+  research function, independent of the feature set the package was compiled
+  with: with the release feature set, 18 of the 36 declared functions were
+  missing from the binary. They are now generated from the build itself, so
+  they cannot drift. `alpha_modules_info()` likewise reports the modules the
+  binary actually contains.
 - **The npm package could not be used from Node.js.** Only the browser ESM
   build was ever published: `require('sci-form-wasm')` — the path the
   TypeScript guide documents — failed with `self is not defined`, and the

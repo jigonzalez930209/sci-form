@@ -230,7 +230,9 @@ Practical note:
 | `compute_simplified_neb_path` | `compute_simplified_neb_path` | `simplified_neb_path` | `compute_simplified_neb_path` / `compute_neb_path_with_method` | `simplified-neb-path` | Approximate reaction path between geometries | Simplified NEB |
 | `neb_backend_energy_kcal` / `neb_backend_energy_and_gradient` | – | – | `neb_single_point_energy` / `neb_energy_and_gradient` | `neb-energy` / `neb-gradient` | Single-point energy and gradient for any NEB backend | Backend dispatch over UFF/PM3/xTB/HF-3c |
 | `search_conformers_with_uff` | `search_conformers_with_uff` | `search_conformers` | `search_conformers_with_uff` / `search_conformers_with_uff_seed64` | – | UFF-ranked conformer exploration | Multi-seed embedding + UFF scoring + clustering |
-| `compute_reaction_dynamics` | – | – | `compute_reaction_dynamics` | `reaction-dynamics3d` | Full 3D reaction-dynamics path | Fragment embedding + NEB + approach/departure frames |
+| `compute_reaction_dynamics` | – | – | `compute_reaction_dynamics` | – | 2D reaction-coordinate energy profile | NEB along a 1D coordinate |
+| `alpha::reaction_dynamics::compute_reaction_dynamics_3d` | `compute_reaction_dynamics_3d` | – | `compute_reaction_dynamics_3d` | `reaction-dynamics3d` | 3D reaction path: approach frames, CI-NEB images, departure frames | Fragment embedding + IDPP + climbing-image NEB |
+| `alpha::reaction_dynamics::compute_approach_dynamics` | – | – | `compute_approach_dynamics` | – | Approach frames of a 3D reaction path | Fragment embedding + orbital-guided approach |
 
 ### 9. Materials, Periodic Systems, and Framework Construction
 
