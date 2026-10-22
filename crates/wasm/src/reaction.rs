@@ -264,9 +264,9 @@ pub fn list_neb_backends(elements_json: &str) -> String {
 /// `reactant_smiles_json`: JSON array of reactant SMILES, e.g. `["CC(=O)O", "N"]`.
 /// `product_smiles_json`:  JSON array of product SMILES, e.g. `["CC(=O)N", "O"]`.
 /// `method`: energy backend — `"uff"`, `"mmff94"`, `"pm3"`, `"xtb"`, `"gfn1"`, `"gfn2"`, `"hf3c"`.
-/// `config_json`: optional JSON [`ReactionDynamicsConfig`]; pass `""` or `"{}"` for defaults.
+/// `config_json`: optional JSON `ReactionDynamicsConfig`; pass `""` or `"{}"` for defaults.
 ///
-/// Returns JSON [`ReactionDynamicsResult`] with frames, energies, TS info.
+/// Returns JSON `ReactionDynamicsResult` with frames, energies, TS info.
 #[wasm_bindgen]
 pub fn compute_reaction_dynamics(
     reactant_smiles_json: &str,

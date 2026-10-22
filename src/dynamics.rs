@@ -8,8 +8,8 @@
 //!   (GFN0/GFN1/GFN2) and HF-3c (numerical central differences).
 //! - **Reaction paths** — a simplified, spring-coupled NEB for low-cost
 //!   pathway exploration, plus the shared energy/gradient helpers that the
-//!   alpha [`crate::alpha::reaction_dynamics`] module builds its climbing-image
-//!   NEB on.
+//!   `alpha::reaction_dynamics` module (behind the `alpha-reaction-dynamics`
+//!   feature) builds its climbing-image NEB on.
 //! - **Utilities** — atomic masses, centre-of-mass handling and XYZ export.
 //!
 //! # Units
