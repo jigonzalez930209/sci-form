@@ -233,7 +233,7 @@ pub fn list_neb_backends(elements_json: &str) -> String {
         serde_json::json!({
             "method": "xtb",
             "available": true,
-            "note": "GFN0-xTB tight-binding"
+            "note": "GFN2-xTB tight-binding (compute_xtb)"
         }),
         serde_json::json!({
             "method": "gfn1",

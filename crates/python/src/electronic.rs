@@ -352,7 +352,7 @@ fn compute_rohf(
         .map_err(crate::errors::engine_error)
 }
 
-/// Compute the PM3 analytical energy gradient (eV/Å per atom).
+/// Compute the PM3 energy gradient (eV/Å per atom).
 #[pyfunction]
 fn compute_pm3_gradient(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Pm3GradientResultPy> {
     let positions = validate_coords(&elements, &coords)?;
@@ -365,7 +365,7 @@ fn compute_pm3_gradient(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<Pm3Grad
         .map_err(crate::errors::engine_error)
 }
 
-/// Compute the xTB analytical energy gradient (eV/Å per atom).
+/// Compute the xTB (GFN2) energy gradient (eV/Å per atom).
 #[pyfunction]
 fn compute_xtb_gradient(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<XtbGradientResultPy> {
     let positions = validate_coords(&elements, &coords)?;

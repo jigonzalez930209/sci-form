@@ -17,7 +17,6 @@ from sci_form.alpha import (
     gsm_compare_backends,
     gsm_find_ts,
     sdr_embed_py,
-    reaction_dynamics_3d,
 )
 from common import require_ok
 
@@ -73,9 +72,6 @@ def run():
     print("SDR", sdr.coords[:3], sdr.max_distance_error)
     print("SDR", sdr)
 
-    rd = reaction_dynamics_3d(["CC"], ["CC"], "uff", 5, 2, 2, None, 42)
-    print("reaction dynamics", rd.ts_frame_index, rd.activation_energy_kcal_mol, len(rd.frames))
-    print("reaction dynamics", rd)
 
 
 if __name__ == "__main__":

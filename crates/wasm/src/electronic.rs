@@ -251,7 +251,7 @@ pub fn compute_rohf(
     }
 }
 
-/// Compute the PM3 analytical energy gradient (eV/Å per atom).
+/// Compute the PM3 energy gradient (eV/Å per atom).
 #[wasm_bindgen]
 pub fn compute_pm3_gradient(elements_json: &str, coords_flat_json: &str) -> String {
     let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)
@@ -265,7 +265,7 @@ pub fn compute_pm3_gradient(elements_json: &str, coords_flat_json: &str) -> Stri
     }
 }
 
-/// Compute the xTB analytical energy gradient (eV/Å per atom).
+/// Compute the xTB (GFN2) energy gradient (eV/Å per atom).
 #[wasm_bindgen]
 pub fn compute_xtb_gradient(elements_json: &str, coords_flat_json: &str) -> String {
     let (elements, positions) = match parse_elements_and_positions(elements_json, coords_flat_json)

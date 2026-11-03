@@ -71,10 +71,6 @@ export {
   // ── A8: Live MD (also available via main entry) ───────────────────────────
   LiveSimulation,
 
-  // ── A9: 3D reaction dynamics ─────────────────────────────────────────────
-  compute_reaction_dynamics_3d,
-  compute_approach_dynamics,
-
   // ── Render bridge: chart utilities ────────────────────────────────────────
   alpha_render_edl_profile_chart,
   alpha_render_capacitance_scan_chart,
