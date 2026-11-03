@@ -1,16 +1,16 @@
 name: Deploy Documentation
 
+# The site has live examples that run the COMPILED WebAssembly package in the
+# visitor's browser. A release calls this workflow after its builds with
+# `use_artifact: true` and the package that was just built is reused; a manual
+# run (workflow_dispatch) builds it first.
+
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'docs/**'
-      # A change in the library can change what the API reference says, so
-      # the site must be rebuilt when the source changes too (blocker B-M1).
-      - 'src/**'
-      - 'crates/**'
-      - 'package.json'
-      - '.github/workflows/docs.yml'
+  workflow_call:
+    inputs:
+      use_artifact:
+        type: boolean
+        default: false
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,40 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+
+      # Release run: take the package the build-wasm job produced.
+      - name: Download the compiled WASM package
+        if: ${{ inputs.use_artifact }}
+        uses: actions/download-artifact@v8
+        with:
+          name: wasm-docs
+          path: docs/public/wasm
+
+      # Manual run: build it here (cached).
+      - name: Build the WASM package
+        if: ${{ !inputs.use_artifact }}
+        uses: dtolnay/rust-toolchain@nightly-2026-05-24
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        if: ${{ !inputs.use_artifact }}
+        with:
+          shared-key: wasm
+          workspaces: crates/wasm
+      - name: Compile and copy the WASM package
+        if: ${{ !inputs.use_artifact }}
+        run: |
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          NF=$(python3 - <<'PY'
+          import re
+          s=open('.github/workflows/release.yml').read()
+          m=re.search(r'WASM_NODE_FEATURES: >-\n((?:    .*\n)+)',s)
+          print(' '.join(m.group(1).split()))
+          PY
+          )
+          (cd crates/wasm && bash build.sh --docs-only --node-features "$NF")
+          npm run docs:wasm
+
       - run: npm run docs:build
       - uses: actions/upload-pages-artifact@v3
         with:

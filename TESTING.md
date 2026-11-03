@@ -1,3 +1,7 @@
+> **Where tests run.** GitHub Actions does not run tests (limited minutes): it only builds.
+> Everything is tested on the maintainer's machine with `scripts/release-check.sh`, which is
+> the gate for `scripts/release.sh`.
+
 # Testing Guide
 
 This document describes how to run every test in the project, what each test validates,
@@ -302,7 +306,11 @@ cargo run -p sci-form-cli --features alpha-gsm,alpha-kinetics -- \
     analyze-gsm-mbh-htst-step "<smiles>" "<reactant_coords_json>" "<product_coords_json>" --method xtb
 ```
 
-### 3D reaction-dynamics validation (`alpha-reaction-dynamics`)
+### 3D reaction-dynamics validation (`alpha-reaction-dynamics`, Rust core only)
+
+This pipeline is exposed only from the Rust crate: the CLI, Python and WASM
+bindings do not build it. The 17-category sweep `tests/reaction_dynamics_study.rs`
+is `#[ignore]` (GFN2, more than 10 minutes); run it with `-- --ignored`.
 
 For the newer 3D reaction pipeline, run focused regression tests instead of only the
 SMIRKS transform suite:
