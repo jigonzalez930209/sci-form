@@ -21,7 +21,7 @@ pub enum MeshMethod {
     Eht,
     /// PM3 semi-empirical.
     Pm3,
-    /// GFN0-xTB tight-binding.
+    /// GFN2-xTB tight-binding (`"xtb"`).
     Xtb,
     /// HF-3c composite method.
     Hf3c,

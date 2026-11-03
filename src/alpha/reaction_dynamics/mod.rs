@@ -449,7 +449,6 @@ pub fn compute_reaction_dynamics_3d(
         }
     };
 
-    let n_xyz = r_total * 3;
     let mol = crate::graph::Molecule::from_smiles(&combined_smiles)?;
 
     // Constrained optimisation config for approach/departure relaxation
@@ -527,14 +526,12 @@ pub fn compute_reaction_dynamics_3d(
             .par_iter()
             .enumerate()
             .map(|(idx, opt_result)| {
-                let mut grad = vec![0.0; n_xyz];
-                let energy = crate::dynamics::neb_energy_and_gradient(
+                let energy = crate::dynamics::neb_energy_kcal(
                     backend,
                     &combined_smiles,
                     &r_elements,
                     &mol,
                     &opt_result.coords,
-                    &mut grad,
                 )
                 .unwrap_or(opt_result.energy);
                 ReactionFrame3D {
@@ -552,14 +549,12 @@ pub fn compute_reaction_dynamics_3d(
         .iter()
         .enumerate()
         .map(|(idx, opt_result)| {
-            let mut grad = vec![0.0; n_xyz];
-            let energy = crate::dynamics::neb_energy_and_gradient(
+            let energy = crate::dynamics::neb_energy_kcal(
                 backend,
                 &combined_smiles,
                 &r_elements,
                 &mol,
                 &opt_result.coords,
-                &mut grad,
             )
             .unwrap_or(opt_result.energy);
             ReactionFrame3D {
@@ -725,14 +720,12 @@ pub fn compute_reaction_dynamics_3d(
             .par_iter()
             .enumerate()
             .map(|(idx, opt_result)| {
-                let mut grad = vec![0.0; n_xyz];
-                let energy = crate::dynamics::neb_energy_and_gradient(
+                let energy = crate::dynamics::neb_energy_kcal(
                     backend,
                     &combined_smiles,
                     &r_elements,
                     &mol,
                     &opt_result.coords,
-                    &mut grad,
                 )
                 .unwrap_or(opt_result.energy);
                 ReactionFrame3D {
@@ -750,14 +743,12 @@ pub fn compute_reaction_dynamics_3d(
         .iter()
         .enumerate()
         .map(|(idx, opt_result)| {
-            let mut grad = vec![0.0; n_xyz];
-            let energy = crate::dynamics::neb_energy_and_gradient(
+            let energy = crate::dynamics::neb_energy_kcal(
                 backend,
                 &combined_smiles,
                 &r_elements,
                 &mol,
                 &opt_result.coords,
-                &mut grad,
             )
             .unwrap_or(opt_result.energy);
             ReactionFrame3D {
@@ -1092,7 +1083,6 @@ pub fn compute_approach_dynamics(
     });
 
     // ── 6. Evaluate frame energies ─────────────────────────────────
-    let n_xyz = r_total * 3;
     let mol = crate::graph::Molecule::from_smiles(&combined_smiles)?;
 
     #[cfg(feature = "parallel")]
@@ -1102,14 +1092,12 @@ pub fn compute_approach_dynamics(
             .par_iter()
             .enumerate()
             .map(|(idx, opt)| {
-                let mut grad = vec![0.0; n_xyz];
-                let energy = crate::dynamics::neb_energy_and_gradient(
+                let energy = crate::dynamics::neb_energy_kcal(
                     backend,
                     &combined_smiles,
                     &r_elements,
                     &mol,
                     &opt.coords,
-                    &mut grad,
                 )
                 .unwrap_or(opt.energy);
                 ReactionFrame3D {
@@ -1127,14 +1115,12 @@ pub fn compute_approach_dynamics(
         .iter()
         .enumerate()
         .map(|(idx, opt)| {
-            let mut grad = vec![0.0; n_xyz];
-            let energy = crate::dynamics::neb_energy_and_gradient(
+            let energy = crate::dynamics::neb_energy_kcal(
                 backend,
                 &combined_smiles,
                 &r_elements,
                 &mol,
                 &opt.coords,
-                &mut grad,
             )
             .unwrap_or(opt.energy);
             ReactionFrame3D {

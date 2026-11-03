@@ -236,10 +236,7 @@ fn follow_irc_direction(
     let mut total_arc = 0.0f64;
 
     // Get TS energy
-    let mut g0 = vec![0.0f64; n];
-    let e_ts = crate::dynamics::neb_energy_and_gradient(
-        backend, smiles, elements, mol, ts_coords, &mut g0,
-    )?;
+    let e_ts = crate::dynamics::neb_energy_kcal(backend, smiles, elements, mol, ts_coords)?;
     energies.push(e_ts);
 
     // Get first displaced frame energy

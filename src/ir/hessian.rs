@@ -505,8 +505,12 @@ fn evaluate_gradient(
 ///
 /// Uses the formula: H_{ij} = [g_i(x + δe_j) - g_i(x - δe_j)] / (2δ)
 ///
-/// This needs only 6N gradient evaluations instead of O(9N²) energy evaluations,
-/// and is more accurate since analytical gradients have less numerical noise.
+/// The PM3 and xTB gradients are themselves central differences of the energy
+/// (there is no analytic NDDO/GFN2 gradient yet), so this is a *second*
+/// finite difference: it costs 6N gradients = 36N² energy evaluations and has
+/// no accuracy advantage over [`compute_numerical_hessian`], which should be
+/// preferred. The function is kept for API compatibility and for the day an
+/// analytic gradient lands.
 ///
 /// The returned Hessian is in eV/Å² for the PM3 and xTB methods.
 ///

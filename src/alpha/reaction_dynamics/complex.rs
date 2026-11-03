@@ -463,10 +463,7 @@ pub fn optimize_reactive_complex_global(
             rotate_fragments(&mut start, r_confs, &mut rng);
         }
         let relaxed = optimize_reactive_complex(smiles, &start, &elements, max_steps, method)?;
-        let mut grad = vec![0.0f64; relaxed.len()];
-        let energy = crate::dynamics::neb_energy_and_gradient(
-            backend, smiles, &elements, &mol, &relaxed, &mut grad,
-        )?;
+        let energy = crate::dynamics::neb_energy_kcal(backend, smiles, &elements, &mol, &relaxed)?;
         if energy.is_finite() && best.as_ref().is_none_or(|(_, e)| energy < *e) {
             best = Some((relaxed, energy));
         }
@@ -609,11 +606,7 @@ mod global_orientation_tests {
         let backend = crate::dynamics::NebBackend::from_method("uff").unwrap();
         let mol = crate::graph::Molecule::from_smiles(smiles).unwrap();
         let relaxed = optimize_reactive_complex(smiles, coords, elements, 20, "uff").unwrap();
-        let mut grad = vec![0.0f64; relaxed.len()];
-        crate::dynamics::neb_energy_and_gradient(
-            backend, smiles, elements, &mol, &relaxed, &mut grad,
-        )
-        .unwrap()
+        crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, &relaxed).unwrap()
     }
 
     #[test]

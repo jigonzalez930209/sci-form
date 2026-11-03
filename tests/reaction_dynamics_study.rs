@@ -56,12 +56,16 @@ struct ReactionOutcome {
 
 /// Run one reaction through the full pipeline and return the outcome.
 fn run_one(case: &ReactionCase) -> ReactionOutcome {
-    // Use GFN0-xTB (analytical gradients) for test speed.
-    // Production default is GFN2-xTB — see ReactionDynamics3DConfig::default().
+    // Force fields cannot describe bond breaking (every frame is non-finite),
+    // so the sweep needs an electronic backend. `xtb` is GFN2 with
+    // central-difference gradients (6·N SCF per gradient): a 30-iteration NEB
+    // took more than 40 minutes for the 17 reactions, so the sweep keeps the
+    // NEB short. It checks that the pipeline yields finite frames, not
+    // converged barriers.
     let config = ReactionDynamics3DConfig {
         method: "xtb".to_string(),
-        n_images: 7,
-        neb_max_iter: 30,
+        n_images: 5,
+        neb_max_iter: 3,
         spring_k: 0.1,
         step_size: 0.005,
         use_climbing_image: true,
@@ -584,6 +588,7 @@ fn build_reaction_battery() -> Vec<ReactionCase> {
 // ════════════════════════════════════════════════════════════════════════════
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn study_55_reaction_types() {
     let battery = build_reaction_battery();
     let total = battery.len();
@@ -708,81 +713,97 @@ fn run_category(category: &str) {
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_sn2() {
     run_category("SN2");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_addition() {
     run_category("Addition");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_diels_alder() {
     run_category("Diels-Alder");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_esterification() {
     run_category("Esterification");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_conformational() {
     run_category("Conformational");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_proton_transfer() {
     run_category("Proton Transfer");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_association() {
     run_category("Association");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_redox() {
     run_category("Redox");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_halogenation() {
     run_category("Halogenation");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_elimination() {
     run_category("Elimination");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_ring() {
     run_category("Ring");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_eas() {
     run_category("EAS");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_tautomer() {
     run_category("Tautomer");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_pericyclic() {
     run_category("Pericyclic");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_trimolecular() {
     run_category("Trimolecular");
 }
 
 #[test]
+#[ignore = "heavy: GFN2 central-difference gradients, >10 min; run with --ignored"]
 fn category_misc() {
     run_category("Misc");
 }

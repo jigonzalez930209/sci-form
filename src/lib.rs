@@ -46,7 +46,9 @@
 //! | UFF / MMFF94 energies | kcal/mol |
 //! | UFF / MMFF94 gradients | kcal/mol/Å |
 //! | EHT, PM3, xTB orbital energies and gaps | eV |
-//! | PM3 / xTB / HF total energies | Hartree (eV where stated per field) |
+//! | PM3 / xTB (GFN0, GFN1, GFN2) total, electronic, repulsive and dispersion energies | eV |
+//! | PM3 heat of formation | kcal/mol |
+//! | HF-3c / HF total energies | Hartree |
 //! | PM3 / xTB gradients | eV/Å |
 //! | Vibrational frequencies, IR wavenumbers | cm⁻¹ |
 //! | NMR chemical shifts and shieldings | ppm |
@@ -196,6 +198,7 @@ pub mod esp;
 /// All angles are in **radians** in the range `[-π, π]`; torsion energies are in kcal/mol.
 pub mod etkdg;
 pub mod experimental_status;
+pub(crate) mod fd_gradient;
 #[doc(hidden)]
 pub mod fixture_io;
 pub mod forcefield;
@@ -391,9 +394,9 @@ pub enum ScientificMethod {
     Uff,
     /// Extended Hückel theory ([`eht`]) — orbital energies in eV, qualitative electronic structure.
     Eht,
-    /// PM3 semi-empirical method ([`pm3`]) — total energy in Hartree, orbital energies in eV.
+    /// PM3 semi-empirical method ([`pm3`]) — total energy and orbital energies in eV, heat of formation in kcal/mol.
     Pm3,
-    /// xTB tight binding ([`xtb`]) — GFN2-xTB by default; total energy in Hartree.
+    /// xTB tight binding ([`xtb`]) — GFN2-xTB by default; total energy and orbital energies in eV.
     Xtb,
     /// MMFF94 classical force field ([`forcefield::mmff94`]) — energy in kcal/mol.
     Mmff94,
@@ -1900,22 +1903,23 @@ pub fn compute_mmff94_energy_breakdown(
         .collect())
 }
 
-/// Run a PM3 semi-empirical calculation.
-///
-/// `elements`: atomic numbers.
-/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
-///
-/// Returns orbital energies, total energy, heat of formation, and Mulliken charges.
 /// Compute PM3 semi-empirical energy and orbital information.
+///
+/// `elements`: atomic numbers. `positions`: Cartesian coordinates in Å, one
+/// `[x,y,z]` per atom.
 ///
 /// Main-group elements use Stewart's PM3 parameters and transition metals the
 /// PM3(tm) set ([`pm3::pm3_method`] reports which one applies to an element).
-/// MOPAC parity is a documented gap (validation F42).
+/// Molecules made only of elements with `Z <= 17` run on the MOPAC-parity solver
+/// (validated against MOPAC 23.2.5, validation F42); every other element, and any
+/// molecule that solver rejects, uses the legacy NDDO path. The `notes` field of the
+/// result records which one produced the numbers.
 ///
 /// # Units
 ///
-/// The total energy is in Hartree, the orbital energies and the heat of
-/// formation in eV, and the Mulliken charges in elementary charge (e).
+/// The total, electronic and nuclear-repulsion energies and the orbital
+/// energies are in eV, the heat of formation in kcal/mol, and the Mulliken
+/// charges in elementary charge (e).
 ///
 /// # Errors
 ///
@@ -1927,10 +1931,10 @@ pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Re
     pm3::solve_pm3(elements, positions)
 }
 
-/// Compute PM3 analytical energy gradients.
+/// Compute PM3 energy gradients.
 ///
-/// Returns dE/dR in eV/Å for each atom, computed from the converged
-/// SCF density matrix using Hellmann-Feynman + Pulay corrections.
+/// Returns dE/dR in eV/Å for each atom, computed by
+/// central differences of the PM3 energy (consistent with [`compute_pm3`]).
 pub fn compute_pm3_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1939,13 +1943,6 @@ pub fn compute_pm3_gradient(
     pm3::compute_pm3_gradient(elements, positions)
 }
 
-/// Run an xTB tight-binding calculation.
-///
-/// `elements`: atomic numbers.
-/// `positions`: Cartesian coordinates in Å, one `[x,y,z]` per atom.
-///
-/// Returns orbital energies, total energy, gap, and Mulliken charges.
-/// Uses GFN2-xTB internally for reliable SCC convergence and accurate energetics.
 /// Compute a GFN1-xTB single point (electrical structure + total energy).
 ///
 /// This is the root-level entry point for the GFN1-xTB method; the
@@ -1953,8 +1950,8 @@ pub fn compute_pm3_gradient(
 ///
 /// # Units
 ///
-/// Orbital energies, HOMO/LUMO levels and the gap are in eV; the electronic,
-/// repulsive and total energies are in Hartree; Mulliken charges are in
+/// Every energy (orbital energies, HOMO/LUMO levels, gap, electronic,
+/// repulsive, dispersion and total energies) is in eV; Mulliken charges are in
 /// elementary charge (e).
 ///
 /// # Errors
@@ -1972,8 +1969,8 @@ pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1
 ///
 /// # Units
 ///
-/// Orbital energies, HOMO/LUMO levels and the gap are in eV; the electronic,
-/// repulsive and total energies are in Hartree; Mulliken charges are in
+/// Every energy (orbital energies, HOMO/LUMO levels, gap, electronic,
+/// repulsive, dispersion and total energies) is in eV; Mulliken charges are in
 /// elementary charge (e).
 ///
 /// # Errors
@@ -1988,13 +1985,14 @@ pub fn compute_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn2
 ///
 /// This is a convenience wrapper that runs **GFN2-xTB** internally (the most reliable of the
 /// GFN family for SCC convergence and energetics) and re-packages the result into the common
-/// [`xtb::XtbResult`] type. Use [`compute_gfn1`] or [`compute_gfn2`] directly when the specific
+/// [`xtb::XtbResult`] type. Its numbers are identical to [`compute_gfn2`]; it is **not**
+/// GFN0 (the faithful GFN0 lives in [`xtb::solve_gfn0`]). Use [`compute_gfn1`] or [`compute_gfn2`] directly when the specific
 /// GFN parameterisation matters.
 ///
 /// # Units
 ///
-/// Orbital energies, HOMO/LUMO levels and the gap are in eV; electronic, repulsive and total
-/// energies are in Hartree; Mulliken charges are in elementary charge (e).
+/// Every energy (orbital energies, HOMO/LUMO levels, gap, electronic, repulsive and total
+/// energies) is in eV; Mulliken charges are in elementary charge (e).
 ///
 /// # Errors
 ///
@@ -2020,10 +2018,10 @@ pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbRe
     })
 }
 
-/// Compute xTB analytical energy gradients.
+/// Compute xTB (GFN2) energy gradients.
 ///
-/// Returns dE/dR in eV/Å for each atom, computed from the converged
-/// SCC density using Hellmann-Feynman + Pulay + repulsive corrections.
+/// Returns dE/dR in eV/Å for each atom, computed by
+/// central differences of the GFN2-xTB energy (consistent with [`compute_xtb`]).
 pub fn compute_xtb_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -2913,6 +2911,21 @@ pub fn assemble_framework(
     cell: &materials::UnitCell,
 ) -> materials::CrystalStructure {
     materials::assemble_framework(node, linker, topology, cell)
+}
+
+/// Assemble a framework with one linker SBU per inequivalent edge type.
+///
+/// Edge `i` uses `linkers[topology.edge_types[i]]`; when the slice is shorter
+/// than the type index, the last linker is reused. This is what allows the
+/// data-driven RCSR nets (`afw`, `xah`, `tfy`, …) to combine different
+/// linkers in the same framework.
+pub fn assemble_framework_with_linkers(
+    node: &materials::Sbu,
+    linkers: &[materials::Sbu],
+    topology: &materials::Topology,
+    cell: &materials::UnitCell,
+) -> materials::CrystalStructure {
+    materials::assemble_framework_with_linkers(node, linkers, topology, cell)
 }
 
 // ─── CIF Import/Export ────────────────────────────────────────────────────────

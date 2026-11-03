@@ -226,15 +226,8 @@ pub fn optimize_with_constraints(
             // Enforce constraints after each step
             enforce_distance_constraints(&mut x_trial, constraints, config.constraint_tolerance);
 
-            let mut grad_trial = vec![0.0; n_xyz];
-            let e_trial = crate::dynamics::neb_energy_and_gradient(
-                backend,
-                smiles,
-                elements,
-                &mol,
-                &x_trial,
-                &mut grad_trial,
-            )?;
+            let e_trial =
+                crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, &x_trial)?;
 
             // Sufficient decrease (Armijo). A non-finite trial energy is
             // never accepted: it means the trial geometry is singular.
@@ -641,12 +634,7 @@ pub fn relax_neb_images(
         use rayon::prelude::*;
         let par_e: Vec<Result<f64, String>> = images
             .par_iter()
-            .map(|img| {
-                let mut grad = vec![0.0; n_xyz];
-                crate::dynamics::neb_energy_and_gradient(
-                    backend, smiles, elements, &mol, img, &mut grad,
-                )
-            })
+            .map(|img| crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, img))
             .collect();
         for (i, r) in par_e.into_iter().enumerate() {
             energies[i] = r?;
@@ -655,10 +643,8 @@ pub fn relax_neb_images(
     #[cfg(not(feature = "parallel"))]
     {
         for i in 0..n_images {
-            let mut grad = vec![0.0; n_xyz];
-            energies[i] = crate::dynamics::neb_energy_and_gradient(
-                backend, smiles, elements, &mol, &images[i], &mut grad,
-            )?;
+            energies[i] =
+                crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, &images[i])?;
         }
     }
 
@@ -752,10 +738,8 @@ pub fn relax_neb_images(
                 }
             }
 
-            let mut grad = vec![0.0; n_xyz];
-            energies[i] = crate::dynamics::neb_energy_and_gradient(
-                backend, smiles, elements, &mol, &images[i], &mut grad,
-            )?;
+            energies[i] =
+                crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, &images[i])?;
         }
     }
 

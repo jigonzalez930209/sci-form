@@ -211,17 +211,7 @@ fn probe_neb_barrier(
         use rayon::prelude::*;
         let par_results: Vec<Result<f64, String>> = images
             .par_iter()
-            .map(|image| {
-                let mut grad_buf = vec![0.0f64; n_xyz];
-                crate::dynamics::neb_energy_and_gradient(
-                    backend,
-                    smiles,
-                    &elements,
-                    &mol,
-                    image,
-                    &mut grad_buf,
-                )
-            })
+            .map(|image| crate::dynamics::neb_energy_kcal(backend, smiles, &elements, &mol, image))
             .collect();
         let mut e = Vec::with_capacity(n_images);
         for r in par_results {
@@ -232,16 +222,8 @@ fn probe_neb_barrier(
     #[cfg(not(feature = "parallel"))]
     let energies: Vec<f64> = {
         let mut e = Vec::with_capacity(n_images);
-        let mut grad_buf = vec![0.0f64; n_xyz];
         for image in &images {
-            let energy = crate::dynamics::neb_energy_and_gradient(
-                backend,
-                smiles,
-                &elements,
-                &mol,
-                image,
-                &mut grad_buf,
-            )?;
+            let energy = crate::dynamics::neb_energy_kcal(backend, smiles, &elements, &mol, image)?;
             e.push(energy);
         }
         e

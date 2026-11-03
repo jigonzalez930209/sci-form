@@ -270,7 +270,9 @@ fn full_pipeline_ethanol_rearrangement() {
     let dyn_result = result.unwrap();
 
     // Should have approach + NEB + departure frames
-    let total_expected = 5 + 11 + 5;
+    // A single product has no second fragment to separate, so the departure
+    // phase contributes exactly one frame.
+    let total_expected = 5 + 11 + 1;
     assert_eq!(
         dyn_result.frames.len(),
         total_expected,

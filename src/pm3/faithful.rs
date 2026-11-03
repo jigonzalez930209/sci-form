@@ -1555,6 +1555,14 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
     let mut iterations = 0;
     let mut prev_energy = f64::MAX;
     let mut alpha: f64 = 0.4;
+    // Energy-only convergence (|ΔE| < 1e-9 between iterations) is not enough
+    // under adaptive damping: with α down to 0.02 the energy can stall while
+    // the density is still ~1e-3 away from the fixed point, leaving ~1e-6 eV
+    // of noise that central-difference gradients amplify by 1/(2h). The
+    // density residual must be small as well; an energy-only stall at the
+    // end of the iteration budget is still accepted (previous behaviour).
+    const DENSITY_RESIDUAL_TOL: f64 = 1e-7;
+    let mut energy_stalled = false;
     let build_g = |density: &DMatrix<f64>| build_g_matrix(&params, &basis, &blocks, density);
     let density_from = |coeff: &DMatrix<f64>| -> DMatrix<f64> {
         let mut d = DMatrix::zeros(n_basis, n_basis);
@@ -1579,7 +1587,25 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
         e
     };
 
+    // Pulay DIIS first: it reaches the exact fixed point in a few tens of
+    // iterations, so the energy is converged to ~1e-10 eV and its numerical
+    // derivatives are noise-free. The damped loop below remains as the
+    // fallback for cases where DIIS does not converge.
+    if let Some((p_conv, f_conv, n_iter)) =
+        diis_scf(&h_core, &build_g, &density_from, &|f: &DMatrix<f64>| {
+            solve_generalized(f, &s_mat).1
+        })
+    {
+        density = p_conv;
+        fock = f_conv;
+        converged = true;
+        iterations = n_iter;
+    }
+
     for iter in 0..200 {
+        if converged {
+            break;
+        }
         iterations = iter + 1;
         let (_, coeff) = solve_generalized(&fock, &s_mat);
         let p_new = density_from(&coeff);
@@ -1592,12 +1618,15 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
                 (0..n_basis).map(|i| p_new[(i, i)]).collect::<Vec<_>>()
             );
         }
-        if (e_elec_iter - prev_energy).abs() < 1e-9 && iter > 1 {
+        let energy_settled = (e_elec_iter - prev_energy).abs() < 1e-9 && iter > 1;
+        let residual = (&p_new - &density).amax();
+        if energy_settled && residual < DENSITY_RESIDUAL_TOL {
             converged = true;
             density = p_new;
             fock = f_new;
             break;
         }
+        energy_stalled = energy_settled;
         // Adaptive damping: shrink on energy increase, grow otherwise.
         if iter > 0 && e_elec_iter > prev_energy {
             alpha = (alpha * 0.5).max(0.02);
@@ -1609,6 +1638,9 @@ pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, 
         fock = &h_core + &build_g(&density);
     }
 
+    if !converged && energy_stalled {
+        converged = true;
+    }
     let (orbital_energies, coeff) = solve_generalized(&fock, &s_mat);
     // Final density from the converged coefficients (overwrites the damped
     // SCF density in place).
@@ -1814,6 +1846,77 @@ pub fn debug_g(
         }
     }
     Ok(build_g_matrix(&params, &basis, &blocks, density))
+}
+
+/// Pulay DIIS SCF for the closed-shell NDDO Fock build.
+///
+/// Returns `(density, fock, iterations)` once the commutator `FPS − SPF` is
+/// below 1e-9 (max-norm, orthonormal basis), or `None` if the iteration does not converge or
+/// becomes non-finite (the caller then falls back to damped iterations).
+fn diis_scf(
+    h_core: &DMatrix<f64>,
+    build_g: &dyn Fn(&DMatrix<f64>) -> DMatrix<f64>,
+    density_from: &dyn Fn(&DMatrix<f64>) -> DMatrix<f64>,
+    coefficients: &dyn Fn(&DMatrix<f64>) -> DMatrix<f64>,
+) -> Option<(DMatrix<f64>, DMatrix<f64>, usize)> {
+    const MAX_ITER: usize = 120;
+    const HISTORY: usize = 8;
+    const TOL: f64 = 1e-9;
+
+    let mut fock_in = h_core.clone();
+    let mut history: Vec<(DMatrix<f64>, DMatrix<f64>)> = Vec::new();
+    for iter in 0..MAX_ITER {
+        let p = density_from(&coefficients(&fock_in));
+        let f = h_core + build_g(&p);
+        // NDDO works in an orthonormal basis (S = 1), so the commutator is FP − PF.
+        let err = &f * &p - &p * &f;
+        let err_max = err.amax();
+        if !err_max.is_finite() {
+            return None;
+        }
+        if err_max < TOL {
+            return Some((p, f, iter + 1));
+        }
+        history.push((f.clone(), err));
+        if history.len() > HISTORY {
+            history.remove(0);
+        }
+        let m = history.len();
+        fock_in = if m < 2 {
+            f
+        } else {
+            let mut b = DMatrix::zeros(m + 1, m + 1);
+            for i in 0..m {
+                for j in 0..m {
+                    b[(i, j)] = history[i]
+                        .1
+                        .iter()
+                        .zip(history[j].1.iter())
+                        .map(|(x, y)| x * y)
+                        .sum::<f64>();
+                }
+                b[(i, m)] = -1.0;
+                b[(m, i)] = -1.0;
+            }
+            let mut rhs = nalgebra::DVector::zeros(m + 1);
+            rhs[m] = -1.0;
+            match b.lu().solve(&rhs) {
+                Some(c) if c.iter().all(|x| x.is_finite()) => {
+                    let mut acc = DMatrix::zeros(f.nrows(), f.ncols());
+                    for (i, (fi, _)) in history.iter().enumerate() {
+                        acc += fi * c[i];
+                    }
+                    acc
+                }
+                // Singular B (stagnation): restart the history from here.
+                _ => {
+                    history.clear();
+                    f
+                }
+            }
+        };
+    }
+    None
 }
 
 #[cfg(test)]
