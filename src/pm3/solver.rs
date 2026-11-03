@@ -113,21 +113,6 @@ pub(crate) fn dewar_gamma_ev(r_bohr: f64, gss_a_ev: f64, gss_b_ev: f64) -> f64 {
             .max(PM3_GAMMA_FLOOR_BOHR)
 }
 
-/// Derivative of [`dewar_gamma_ev`] with respect to distance in Angstrom.
-pub(crate) fn dewar_gamma_derivative_ev_per_angstrom(
-    r_bohr: f64,
-    gss_a_ev: f64,
-    gss_b_ev: f64,
-) -> f64 {
-    let rho_a = EV_PER_HARTREE / (2.0 * gss_a_ev.max(1e-12));
-    let rho_b = EV_PER_HARTREE / (2.0 * gss_b_ev.max(1e-12));
-    let rho = rho_a + rho_b;
-    let denom = (r_bohr * r_bohr + rho * rho)
-        .sqrt()
-        .max(PM3_GAMMA_FLOOR_BOHR);
-    -EV_PER_HARTREE * r_bohr * ANGSTROM_TO_BOHR / (denom * denom * denom)
-}
-
 /// STO overlap integral S(n,zeta_a,n,zeta_b,R) for s-s overlap.
 pub(crate) fn sto_ss_overlap(zeta_a: f64, zeta_b: f64, r_bohr: f64) -> f64 {
     if r_bohr < 1e-10 {
@@ -275,6 +260,9 @@ fn compute_pm3_two_center_diag_cpu(
 ///
 /// Returns `Pm3Result` with orbital energies, total energy, and heat of formation.
 /// SCF state needed for gradient computation.
+// The gradient is now a finite difference of the energy (see
+// `pm3::gradients`), so the state is only kept for a future analytic gradient.
+#[allow(dead_code)]
 pub(crate) struct Pm3ScfState {
     pub density: DMatrix<f64>,
     pub coefficients: DMatrix<f64>,
@@ -833,7 +821,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore = "F42: PM3 SCF breaks H2 inversion symmetry (charges ±1.28) —         the NDDO fixed-point landscape is under revalidation against MOPAC.         Re-enable once the solver preserves symmetry."]
     fn test_pm3_h2() {
         let elements = [1u8, 1];
         let positions = [[0.0, 0.0, 0.0], [0.74, 0.0, 0.0]];

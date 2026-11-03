@@ -5,7 +5,7 @@
 //! - **Integrators** — Velocity Verlet (NVE and Berendsen-NVT) and a
 //!   Nosé–Hoover chain thermostat for canonical sampling.
 //! - **Force backends** — UFF (analytical gradients), PM3 and the xTB family
-//!   (GFN0/GFN1/GFN2) and HF-3c (numerical central differences).
+//!   (`xtb`/GFN1/GFN2) and HF-3c (numerical central differences).
 //! - **Reaction paths** — a simplified, spring-coupled NEB for low-cost
 //!   pathway exploration, plus the shared energy/gradient helpers that the
 //!   `alpha::reaction_dynamics` module (behind the `alpha-reaction-dynamics`
@@ -43,7 +43,8 @@ pub enum MdBackend {
     Uff,
     /// PM3 semi-empirical (slower, more accurate).
     Pm3,
-    /// GFN-xTB tight-binding (moderate speed, good for metals).
+    /// GFN2-xTB tight-binding (`"xtb"` is its public name, as in `compute_xtb`);
+    /// central-difference gradients of the GFN2 energy.
     Xtb,
 }
 
@@ -92,13 +93,13 @@ pub enum NebBackend {
     Uff,
     /// MMFF94 force field — better organic coverage than UFF.
     Mmff94,
-    /// PM3 semi-empirical — analytical gradients.
+    /// PM3 semi-empirical — central-difference gradients of the PM3 energy.
     Pm3,
-    /// GFN0-xTB tight-binding — analytical gradients.
-    Xtb,
     /// GFN1-xTB — numerical gradients (energy-only + finite differences).
     Gfn1,
     /// GFN2-xTB — numerical gradients (energy-only + finite differences).
+    /// `"xtb"` (and the legacy `"gfn0"` spellings) select this backend.
+    #[serde(alias = "xtb")]
     Gfn2,
     /// HF-3c minimal-basis Hartree-Fock — numerical gradients (expensive).
     Hf3c,
@@ -116,9 +117,12 @@ impl NebBackend {
             "uff" => Ok(Self::Uff),
             "mmff94" | "mmff" => Ok(Self::Mmff94),
             "pm3" => Ok(Self::Pm3),
-            "xtb" | "gfn0" | "gfn0-xtb" | "gfn0_xtb" => Ok(Self::Xtb),
             "gfn1" | "gfn1-xtb" | "gfn1_xtb" => Ok(Self::Gfn1),
-            "gfn2" | "gfn2-xtb" | "gfn2_xtb" => Ok(Self::Gfn2),
+            // `xtb` is the public name of GFN2 (`compute_xtb`). The `gfn0*`
+            // spellings are legacy aliases of the same model.
+            "xtb" | "gfn2" | "gfn2-xtb" | "gfn2_xtb" | "gfn0" | "gfn0-xtb" | "gfn0_xtb" => {
+                Ok(Self::Gfn2)
+            }
             "hf3c" | "hf-3c" => Ok(Self::Hf3c),
             other => Err(format!(
                 "Unknown NEB backend '{}'. Expected: uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c",
@@ -133,7 +137,6 @@ impl NebBackend {
             Self::Uff => "uff",
             Self::Mmff94 => "mmff94",
             Self::Pm3 => "pm3",
-            Self::Xtb => "xtb",
             Self::Gfn1 => "gfn1",
             Self::Gfn2 => "gfn2",
             Self::Hf3c => "hf3c",
@@ -610,6 +613,34 @@ fn neb_numerical_gradient(
     Ok(e0)
 }
 
+/// Energy (kcal/mol) of one geometry with any NEB backend, **without** a gradient.
+///
+/// PM3 and xTB gradients are central differences (`6·N` extra SCF runs), so
+/// callers that only need the energy must not go through
+/// [`neb_energy_and_gradient`].
+pub(crate) fn neb_energy_kcal(
+    backend: NebBackend,
+    smiles: &str,
+    elements: &[u8],
+    mol: &crate::graph::Molecule,
+    coords: &[f64],
+) -> Result<f64, String> {
+    let positions = || -> Vec<[f64; 3]> { coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect() };
+    match backend {
+        NebBackend::Pm3 => {
+            Ok(crate::pm3::solve_pm3(elements, &positions())?.total_energy * EV_TO_KCAL_MOL)
+        }
+        NebBackend::Gfn1 | NebBackend::Gfn2 | NebBackend::Hf3c => {
+            neb_point_energy_kcal(backend, elements, coords)
+        }
+        // Force fields: the analytic gradient comes for free with the energy.
+        NebBackend::Uff | NebBackend::Mmff94 => {
+            let mut grad = vec![0.0f64; coords.len()];
+            neb_energy_and_gradient(backend, smiles, elements, mol, coords, &mut grad)
+        }
+    }
+}
+
 /// Compute energy (kcal/mol) and gradients (kcal/mol/Å) for a NEB image
 /// using the specified backend.
 ///
@@ -646,17 +677,6 @@ pub fn neb_energy_and_gradient(
         NebBackend::Pm3 => {
             let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
             let r = crate::pm3::gradients::compute_pm3_gradient(elements, &positions)?;
-            let energy_kcal = r.energy * EV_TO_KCAL_MOL;
-            for (a, g) in r.gradients.iter().enumerate() {
-                for d in 0..3 {
-                    grad[a * 3 + d] = g[d] * EV_TO_KCAL_MOL;
-                }
-            }
-            Ok(energy_kcal)
-        }
-        NebBackend::Xtb => {
-            let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
-            let r = crate::xtb::gradients::compute_xtb_gradient(elements, &positions)?;
             let energy_kcal = r.energy * EV_TO_KCAL_MOL;
             for (a, g) in r.gradients.iter().enumerate() {
                 for d in 0..3 {
@@ -780,8 +800,7 @@ pub fn compute_simplified_neb_path_configurable(
     // Evaluate final energies
     let mut out_images = Vec::with_capacity(n_images);
     for (i, coords) in images.into_iter().enumerate() {
-        let mut grad = vec![0.0f64; n_xyz];
-        let e = neb_energy_and_gradient(backend, smiles, &elements, &mol, &coords, &mut grad)?;
+        let e = neb_energy_kcal(backend, smiles, &elements, &mol, &coords)?;
         out_images.push(NebImage {
             index: i,
             coords,
@@ -830,8 +849,7 @@ pub fn neb_backend_energy_kcal(method: &str, smiles: &str, coords: &[f64]) -> Re
     let elements: Vec<u8> = (0..n_atoms)
         .map(|i| mol.graph[petgraph::graph::NodeIndex::new(i)].element)
         .collect();
-    let mut grad = vec![0.0f64; n_xyz];
-    neb_energy_and_gradient(backend, smiles, &elements, &mol, coords, &mut grad)
+    neb_energy_kcal(backend, smiles, &elements, &mol, coords)
 }
 
 /// Compute energy and return both energy (kcal/mol) and flat gradient (kcal/mol/Å).

@@ -94,6 +94,9 @@ pub(crate) fn build_basis_map(elements: &[u8]) -> Vec<(usize, u8, u8)> {
 /// `elements`: atomic numbers.
 /// `positions`: Cartesian coordinates in Å.
 /// SCF state for xTB gradient computation and GFN1 shell SCC.
+// The gradient is now a finite difference of the GFN2 energy (see
+// `xtb::gradients`), so most of the state is unused.
+#[allow(dead_code)]
 pub(crate) struct XtbScfState {
     pub density: DMatrix<f64>,
     pub coefficients: DMatrix<f64>,

@@ -57,7 +57,7 @@ pub enum GsmEnergyBackend {
     Eht,
     /// PM3 semi-empirical SCF (eV).
     Pm3,
-    /// GFN0-xTB tight binding (eV).
+    /// GFN2-xTB tight binding (eV); `"xtb"` is its public name, as in `compute_xtb`.
     Xtb,
     /// GFN1-xTB tight binding with shell-resolved SCC (eV).
     Gfn1,
@@ -615,7 +615,7 @@ fn backend_raw_energy(
         GsmEnergyBackend::Xtb => {
             let result = crate::compute_xtb(elements, &positions)?;
             if !result.converged {
-                return Err("GFN0-xTB did not converge at this geometry".to_string());
+                return Err("GFN2-xTB did not converge at this geometry".to_string());
             }
             Ok((
                 result.total_energy,

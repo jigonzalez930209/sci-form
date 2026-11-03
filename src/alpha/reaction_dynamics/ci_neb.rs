@@ -240,12 +240,7 @@ pub fn compute_ci_neb_path(
         use rayon::prelude::*;
         let par_energies: Vec<Result<f64, String>> = images
             .par_iter()
-            .map(|img| {
-                let mut grad = vec![0.0; n_xyz];
-                crate::dynamics::neb_energy_and_gradient(
-                    backend, smiles, elements, &mol, img, &mut grad,
-                )
-            })
+            .map(|img| crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, img))
             .collect();
         for (i, r) in par_energies.into_iter().enumerate() {
             let e = r?;
@@ -262,10 +257,7 @@ pub fn compute_ci_neb_path(
     #[cfg(not(feature = "parallel"))]
     {
         for i in 0..n_images {
-            let mut grad = vec![0.0; n_xyz];
-            let e = crate::dynamics::neb_energy_and_gradient(
-                backend, smiles, elements, &mol, &images[i], &mut grad,
-            )?;
+            let e = crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, &images[i])?;
             if !e.is_finite() {
                 return Err(format!(
                     "CI-NEB image {i} has a non-finite energy ({e}): the starting \
@@ -484,10 +476,8 @@ pub fn compute_ci_neb_path(
     #[cfg(not(feature = "parallel"))]
     {
         for i in 0..n_images {
-            let mut grad = vec![0.0; n_xyz];
-            energies[i] = crate::dynamics::neb_energy_and_gradient(
-                backend, smiles, elements, &mol, &images[i], &mut grad,
-            )?;
+            energies[i] =
+                crate::dynamics::neb_energy_kcal(backend, smiles, elements, &mol, &images[i])?;
         }
     }
 
