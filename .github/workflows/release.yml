@@ -162,7 +162,8 @@ jobs:
           exe=target/${{ matrix.target }}/release/sci-form
           [ -f "$exe.exe" ] && exe="$exe.exe"
           "$exe" --version
-          "$exe" | head -5
+          guide="$("$exe")"
+          grep -q "Try, in this order" <<<"$guide"
       # A cross-compiled binary cannot print the shell completions; the host
       # build can (the command set is the same on every target).
       - name: Build the host binary for the completions
