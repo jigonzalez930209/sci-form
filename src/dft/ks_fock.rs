@@ -159,6 +159,13 @@ pub struct DftResult {
     pub density: Vec<f64>,
     /// MO coefficients, row-major n_basis² (alpha / RKS).
     pub coefficients: Vec<f64>,
+    /// Beta-spin orbital energies (Hartree). Empty for a restricted solution.
+    #[serde(default)]
+    pub orbital_energies_beta: Vec<f64>,
+    /// Beta-spin MO coefficients, row-major n_basis². Empty for a restricted
+    /// solution.
+    #[serde(default)]
+    pub coefficients_beta: Vec<f64>,
 }
 
 /// Run a Kohn-Sham DFT calculation.
@@ -410,6 +417,8 @@ pub fn solve_ks_dft(
         unrestricted: false,
         density: flatten_matrix(&density),
         coefficients: flatten_matrix(&c),
+        orbital_energies_beta: Vec::new(),
+        coefficients_beta: Vec::new(),
     })
 }
 
@@ -601,6 +610,8 @@ fn solve_uks(
         unrestricted: true,
         density: flatten_matrix(&p_tot),
         coefficients: flatten_matrix(&c_a),
+        orbital_energies_beta: e_b.clone(),
+        coefficients_beta: flatten_matrix(&c_b),
     })
 }
 
