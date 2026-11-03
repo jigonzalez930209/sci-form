@@ -6,15 +6,38 @@ use clap::{Parser, Subcommand};
 #[command(
     name = "sci-form",
     version,
-    about = "3D molecular conformer generation"
+    about = "Computational chemistry from the command line: 3D structures, quantum methods, force fields, spectra and materials",
+    // The overview and the grouped command list are built at run time by
+    // `guide.rs` from the command catalogue; the flat list is replaced.
+    disable_help_subcommand = false
 )]
 pub struct Cli {
+    /// With no command, `sci-form` prints a short guide with examples.
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// List every command, grouped by topic (optionally only one topic)
+    #[command(name = "commands")]
+    Topics {
+        /// Topic to show (a word of its name, e.g. "quantum"); omit for all
+        topic: Option<String>,
+    },
+    /// Show a ready-to-run example for a command (or for all of them)
+    Examples {
+        /// Command name; omit to list the example of every command
+        command: Option<String>,
+        /// Run the example and print its output
+        #[arg(long)]
+        run: bool,
+    },
+    /// Print a shell completion script (bash, zsh, fish, powershell, elvish)
+    Completions {
+        /// Target shell
+        shell: clap_complete::Shell,
+    },
     /// Generate 3D conformer for a single SMILES
     Embed {
         /// SMILES string
@@ -176,7 +199,7 @@ pub enum Commands {
     Ani { elements: String, coords: String },
     /// Run PM3 semi-empirical quantum calculation
     Pm3 { elements: String, coords: String },
-    /// Run GFN0-xTB tight-binding quantum calculation
+    /// Run xTB tight-binding calculation (GFN2-xTB, identical to `gfn2`)
     Xtb { elements: String, coords: String },
     /// Run GFN1-xTB tight-binding quantum calculation
     Gfn1 { elements: String, coords: String },
@@ -1104,32 +1127,6 @@ pub enum Commands {
         json_input: Option<String>,
     },
 
-    /// [alpha-reaction-dynamics] Compute full 3D reaction dynamics path
-    #[cfg(feature = "alpha-reaction-dynamics")]
-    ReactionDynamics3d {
-        /// JSON array of reactant SMILES, e.g. '["[Cl-]", "CBr"]'
-        reactant_smiles: String,
-        /// JSON array of product SMILES, e.g. '["ClC", "[Br-]"]'
-        product_smiles: String,
-        /// Energy backend: uff, xtb, gfn1, gfn2 (default), pm3, hf3c
-        #[arg(long, default_value = "gfn2")]
-        method: String,
-        /// Number of NEB images
-        #[arg(long, default_value_t = 30)]
-        n_images: usize,
-        /// Number of approach frames
-        #[arg(long, default_value_t = 15)]
-        n_approach: usize,
-        /// Number of departure frames
-        #[arg(long, default_value_t = 15)]
-        n_departure: usize,
-        /// Optional SMIRKS reaction string
-        #[arg(long)]
-        smirks: Option<String>,
-        /// Random seed
-        #[arg(long, default_value_t = 42)]
-        seed: u64,
-    },
     /// Run an unrestricted Hartree-Fock (UHF) open-shell SCF
     Uhf {
         /// JSON array of atomic numbers
@@ -1156,14 +1153,14 @@ pub enum Commands {
         #[arg(long, default_value_t = 1)]
         multiplicity: u32,
     },
-    /// PM3 analytical energy gradient (eV/Å per atom)
+    /// PM3 energy gradient (eV/Å per atom)
     Pm3Gradient {
         /// JSON array of atomic numbers
         elements: String,
         /// JSON array of flat xyz coords
         coords: String,
     },
-    /// xTB analytical energy gradient (eV/Å per atom)
+    /// xTB (GFN2) energy gradient (eV/Å per atom)
     XtbGradient {
         /// JSON array of atomic numbers
         elements: String,
