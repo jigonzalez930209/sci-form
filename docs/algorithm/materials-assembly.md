@@ -90,32 +90,53 @@ Lattice vectors scale: $\vec{a}' = n_a \vec{a}$, etc.
 
 ### Assembly Pipeline
 
-1. **Select topology**: Define node positions and edge connectivity (pcu, dia, sql, etc.)
+1. **Select topology**: Define node positions and edge connectivity (pcu, dia, sql, or an RCSR net from `topology_data`)
 2. **Place metal nodes**: Position SBU at each topology vertex with appropriate coordination geometry
 3. **Orient linkers**: Use Rodrigues rotation to align linker SBUs along each edge direction
-4. **Build crystal**: Combine all atoms with fractional coordinates into a `CrystalStructure`
+4. **Select linker per edge type**: Inequivalent edges can use different linker SBUs
+5. **Build crystal**: Combine all atoms with fractional coordinates into a `CrystalStructure`
 
 ### Topologies
+
+Built-in homogeneous nets (`Topology::pcu/dia/sql/...`) and data-driven RCSR nets share the same assembler. `Topology::from_name` accepts both, and `Topology::from_net` converts a `topology_data::NetData` entry into the symmetry-expanded graph used by assembly.
 
 | Topology | Coordination | Nodes | Edges | Description |
 |----------|-------------|-------|-------|-------------|
 | **pcu** | 6 | 1 | 3 | Primitive cubic — octahedral nodes |
 | **dia** | 4 | 2 | 4 | Diamond — tetrahedral nodes |
 | **sql** | 4 | 1 | 2 | Square lattice — square planar nodes |
+| **bcu** | 8 | 2 | 8 | Body-centred cubic |
+| **fcu** | 12 | 4 | 24 | Face-centred cubic |
+| **nbo** | 4 | 2 | 4 | NbO net — square-planar nodes |
+| **kgm** | 4 | 3 | 6 | Kagomé lattice |
+| **hxl** | 6 | 1 | 3 | Hexagonal lattice |
+| **pillared_sql** | 6 | 1 | 3 | Pillared square lattice |
+| **acs** | 6 | 2 | 6 | RCSR net (`P6₃/mmc`) |
+| **afw** | 4 | 9 | 18 | RCSR net with two edge types |
+| **sod** | 4 | 12 | 24 | Sodalite net |
+| **pts** | 4 | 4 | 8 | PtS net (data-driven expansion) |
+| **xah** | 5 / 4 | 4 | 9 | RCSR net with two edge types |
+| **tfy** | 4 / 3 | 184 | 288 | Large RCSR net with two edge types |
+
+Nodes/edges are the symmetry-expanded counts in one unit cell.
 
 ### SBU Types
 
 **Metal Node**: A central metal atom with connection points arranged in the specified coordination geometry.
 
 ```rust
-let node = Sbu::metal_node("Zn", 2.0, CoordinationGeometry::Tetrahedral);
+let node = Sbu::metal_node(30, 2.0, CoordinationGeometry::Tetrahedral);
 ```
+
+The first argument is the atomic number (`30` = Zn).
 
 **Linear Linker**: A bridging unit connecting two metal nodes.
 
 ```rust
-let linker = Sbu::linear_linker(&["C", "C", "C"], 1.4, "BDC");
+let linker = Sbu::linear_linker(&[6, 6, 6], 1.4, "BDC");
 ```
+
+Elements are atomic numbers (`6` = C).
 
 ### Rodrigues Rotation
 
@@ -132,11 +153,30 @@ where $\hat{k}$ is the rotation axis (normalized cross product of $\hat{x}$ and 
 ### Rust
 
 ```rust
-use sci_form::{create_unit_cell, assemble_framework};
+use sci_form::materials::{CoordinationGeometry, Sbu, Topology, UnitCell};
 
-let cell = create_unit_cell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0);
-let crystal = assemble_framework("Zn", "BDC", "pcu", &cell);
+let cell = UnitCell::cubic(10.0);
+let node = Sbu::metal_node(30, 2.0, CoordinationGeometry::Octahedral);
+let linker = Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
+let topology = Topology::pcu();
+
+let crystal = sci_form::assemble_framework(&node, &linker, &topology, &cell);
+println!("{} atoms", crystal.num_atoms());
 ```
+
+For nets with inequivalent edges, pass one linker per edge type:
+
+```rust
+let topology = Topology::from_name("xah")?;
+let linkers = [
+    Sbu::linear_linker(&[6], 1.4, "short"),
+    Sbu::linear_linker(&[7], 1.2, "long"),
+];
+let crystal =
+    sci_form::assemble_framework_with_linkers(&node, &linkers, &topology, &cell);
+```
+
+Edge `i` uses `linkers[topology.edge_types[i]]`. If the linker list is shorter than the type index, the last linker is reused. Topologies without `edge_types` (older serialized data) default to type `0`.
 
 ### CLI
 
@@ -145,20 +185,23 @@ let crystal = assemble_framework("Zn", "BDC", "pcu", &cell);
 sci-form cell --a 10 --b 10 --c 10 --alpha 90 --beta 90 --gamma 90
 
 # Framework assembly
-sci-form assemble --topology pcu --a 10.0 --metal Zn --geometry octahedral
+sci-form assemble --topology pcu --a 10.0 --metal 30 --geometry octahedral
 ```
 
 ### Python
 
 ```python
 import sci_form
-cell = sci_form.unit_cell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
-print(cell.volume())       # 1000.0
-print(cell.parameters())   # (a, b, c, alpha, beta, gamma)
 
-crystal = sci_form.assemble_framework("pcu", 10.0, "Zn", "octahedral")
-print(crystal.num_atoms())
+cell = sci_form.create_unit_cell(10.0, 10.0, 10.0, 90.0, 90.0, 90.0)
+print(cell.volume)
+
+# topology, metal (atomic number), geometry, lattice_a, supercell
+crystal = sci_form.assemble_framework("pcu", 30, "octahedral", 10.0, 1)
+print(crystal.num_atoms)
 ```
+
+Python and WASM currently expose the single-linker wrapper; the multi-linker assembler is available from Rust.
 
 ## Validation
 
@@ -167,3 +210,5 @@ print(crystal.num_atoms())
 - **PBC wrapping**: All fractional coords in $[0, 1)$ after wrapping
 - **Minimum image**: Distance is always ≤ half the cell diagonal
 - **Supercell scaling**: $(2 \times 2 \times 2)$ supercell has 8× the atoms
+- **Extended nets (F67)**: node counts, coordination and edge-type counts match pormake's `.cgd` data
+- **Multi-edge assembly**: unit tests in `materials::assembly` check that `xah` uses the linker selected by each `edge_types` entry

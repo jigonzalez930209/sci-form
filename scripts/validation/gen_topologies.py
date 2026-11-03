@@ -12,7 +12,9 @@ Parsed per net:
   - nodes (fractional coordinates + declared connectivity),
   - unique edges (coordinate pairs) with an edge-type index derived from the
     `# EDGE_CENTER` groups,
-  - counts used by the F67 gate.
+  - counts used by the F67 gate,
+  - the symmetry-expanded graph used by `assemble_framework` (nodes and
+    undirected edges with their periodic image offsets and edge types).
 
 Usage:
     python scripts/validation/gen_topologies.py [--check]
@@ -82,14 +84,75 @@ def parse_cgd(path: Path) -> dict:
     # the edge types; the `.cgd` centre grouping is kept for provenance.
     pormake_types = None
     pormake_n_edge_types = 0
+    assembly_nodes = []
+    assembly_edges = []
     try:
         from pormake import Topology as _Topo
 
         t = _Topo(str(path))
-        pormake_types = [int(t.get_edge_type(e)) for e in range(t.n_edges)]
+        pormake_types = [
+            [int(x) for x in t.get_edge_type(e)] for e in range(t.n_edges)
+        ]
         pormake_n_edge_types = int(t.n_edge_types)
-    except Exception:
-        pass
+
+        # Expand the space group into a full unit-cell graph.  pormake lists
+        # one node slot per symmetry image and one edge-centre slot per edge;
+        # the periodic offset of the second endpoint is recovered from the
+        # midpoint: offset = round(2·centre − p_a − p_b).
+        scaled = t.atoms.get_scaled_positions()
+        node_indices = [int(i) for i in t.node_indices]
+        for i in node_indices:
+            assembly_nodes.append(
+                {
+                    "frac": [float(x) for x in scaled[i]],
+                    "cn": int(t.cn[i]),
+                    "node_type": int(t.get_node_type(i)),
+                }
+            )
+        node_slot = {slot: idx for idx, slot in enumerate(node_indices)}
+        seen = set()
+        for e in t.edge_indices:
+            a_slot, b_slot = (int(x) for x in t.get_neighbor_indices(e))
+            if a_slot not in node_slot or b_slot not in node_slot:
+                continue
+            a, b = node_slot[a_slot], node_slot[b_slot]
+            pa = scaled[a_slot]
+            pb = scaled[b_slot]
+            centre = scaled[e]
+            offset = tuple(
+                int(round(2.0 * centre[k] - pa[k] - pb[k])) for k in range(3)
+            )
+            # Map the edge back to its inequivalent `# EDGE_CENTER` group.
+            midpoint = [0.5 * (pa[k] + pb[k] + offset[k]) for k in range(3)]
+            best, best_idx = 1e9, 0
+            for idx, c in enumerate(edge_centers):
+                d = 0.0
+                for k in range(3):
+                    diff = midpoint[k] - c[k]
+                    diff -= round(diff)  # periodic image
+                    d += diff * diff
+                if d < best:
+                    best, best_idx = d, idx
+            edge_type = best_idx
+            # Deduplicate undirected edges.  A self-edge keeps both directions:
+            # +R and -R are different links of the net.
+            if a <= b:
+                key = (a, b, offset)
+            else:
+                key = (b, a, tuple(-x for x in offset))
+            if key in seen:
+                continue
+            seen.add(key)
+            assembly_edges.append(
+                {
+                    "a": key[0],
+                    "b": key[1],
+                    "offset": list(key[2]),
+                    "edge_type": edge_type,
+                }
+            )
+    except Exception as exc:
+        print(f"[warn] {path.stem}: symmetry-expanded graph unavailable ({exc})")
 
     return {
         "name": name,
@@ -100,6 +163,8 @@ def parse_cgd(path: Path) -> dict:
         "n_edge_types": len(set(types)) if types else 0,
         "pormake_edge_types": pormake_types,
         "pormake_n_edge_types": pormake_n_edge_types,
+        "assembly_nodes": assembly_nodes,
+        "assembly_edges": assembly_edges,
     }
 
 
@@ -132,7 +197,9 @@ def main() -> int:
         print(
             f"{net['name']}: nodes={len(net['nodes'])} "
             f"cn={[n['cn'] for n in net['nodes']]} "
-            f"edges={len(net['edges'])} edge_centres={net['n_edge_types']}"
+            f"edges={len(net['edges'])} edge_centres={net['n_edge_types']} "
+            f"assembly_nodes={len(net['assembly_nodes'])} "
+            f"assembly_edges={len(net['assembly_edges'])}"
         )
 
     out = [
@@ -143,6 +210,10 @@ def main() -> int:
         "//! not express. Regenerate with `scripts/validation/gen_topologies.py`;",
         "//! do not edit by hand.",
         "",
+        "// The cell parameters are the 5-decimal values of the RCSR/pormake data",
+        "// (e.g. 1.41420 is not meant to be `SQRT_2`).",
+        "#![allow(clippy::approx_constant)]",
+        "",
         "/// One node of a topology net.",
         "#[derive(Debug, Clone, Copy)]",
         "pub struct NetNode {",
@@ -152,6 +223,19 @@ def main() -> int:
         "    pub connectivity: u32,",
         "}",
         "",
+        "/// One edge of the symmetry-expanded net.",
+        "#[derive(Debug, Clone, Copy)]",
+        "pub struct NetEdge {",
+        "    /// Index of the first node (into `assembly_nodes`).",
+        "    pub a: usize,",
+        "    /// Index of the second node, possibly in a periodic image.",
+        "    pub b: usize,",
+        "    /// Lattice translation `[da, db, dc]` applied to node `b`.",
+        "    pub offset: [i32; 3],",
+        "    /// Inequivalent-edge type (index into the linker list).",
+        "    pub edge_type: u8,",
+        "}",
+        "",
         "/// A topology net from the RCSR/pormake database.",
         "#[derive(Debug, Clone, Copy)]",
         "pub struct NetData {",
@@ -159,14 +243,18 @@ def main() -> int:
         "    pub name: &'static str,",
         "    /// Cell parameters `[a, b, c, alpha, beta, gamma]` (Å, degrees).",
         "    pub cell: [f64; 6],",
-        "    /// Nodes with their fractional coordinates and connectivity.",
+        "    /// Nodes of the asymmetric unit with their fractional coordinates.",
         "    pub nodes: &'static [NetNode],",
-        "    /// Unique edges as `(node_a, node_b)` index pairs into `nodes`.",
+        "    /// Unique edges as `(node_a, node_b)` index pairs from the `.cgd`.",
         "    pub edges: &'static [(usize, usize)],",
-        "    /// Edge-type index per edge (inequivalent edges have distinct types).",
+        "    /// Edge-type index per unique `.cgd` edge.",
         "    pub edge_types: &'static [u8],",
         "    /// Number of distinct edge types.",
         "    pub n_edge_types: usize,",
+        "    /// Symmetry-expanded nodes of one unit cell, used for assembly.",
+        "    pub assembly_nodes: &'static [NetNode],",
+        "    /// Symmetry-expanded edges (with periodic offsets) used for assembly.",
+        "    pub assembly_edges: &'static [NetEdge],",
         "}",
         "",
         "/// Topology nets available to the assembler.",
@@ -222,6 +310,22 @@ def main() -> int:
             out.append(f"            {t},")
         out.append("        ],")
         out.append(f"        n_edge_types: {net['n_edge_types']},")
+        out.append("        assembly_nodes: &[")
+        for node in net["assembly_nodes"]:
+            f = node["frac"]
+            out.append(
+                f"            NetNode {{ frac: [{f[0]:.5f}, {f[1]:.5f}, {f[2]:.5f}], "
+                f"connectivity: {node['cn']} }},"
+            )
+        out.append("        ],")
+        out.append("        assembly_edges: &[")
+        for edge in net["assembly_edges"]:
+            out.append(
+                f"            NetEdge {{ a: {edge['a']}, b: {edge['b']}, "
+                f"offset: [{edge['offset'][0]}, {edge['offset'][1]}, {edge['offset'][2]}], "
+                f"edge_type: {edge['edge_type']} }},"
+            )
+        out.append("        ],")
         out.append("    },")
     out.append("];")
     text = "\n".join(out) + "\n"

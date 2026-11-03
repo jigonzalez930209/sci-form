@@ -41,6 +41,13 @@ pub struct Topology {
     /// Edges as (node_i, node_j, cell_offset_j).
     /// cell_offset_j = [da, db, dc] for the periodic image of node_j.
     pub edges: Vec<(usize, usize, [i32; 3])>,
+    /// Edge-type index for each entry in [`Topology::edges`].
+    ///
+    /// Nets with inequivalent edges use distinct values; the assembler selects
+    /// the linker SBU by this index. Older serialized topologies default to
+    /// one type (`0`).
+    #[serde(default)]
+    pub edge_types: Vec<u8>,
 }
 
 impl Topology {
@@ -56,6 +63,11 @@ impl Topology {
         "kgm",
         "hxl",
         "pillared_sql",
+        "acs",
+        "afw",
+        "sod",
+        "xah",
+        "tfy",
     ];
 
     /// Primitive cubic (pcu) topology: single node at origin with 6 edges.
@@ -69,6 +81,7 @@ impl Topology {
                 (0, 0, [0, 1, 0]), // +b
                 (0, 0, [0, 0, 1]), // +c
             ],
+            edge_types: vec![0; 3],
         }
     }
 
@@ -83,6 +96,7 @@ impl Topology {
                 (0, 1, [0, -1, 0]),
                 (0, 1, [0, 0, -1]),
             ],
+            edge_types: vec![0; 4],
         }
     }
 
@@ -92,6 +106,7 @@ impl Topology {
             name: "sql".to_string(),
             nodes: vec![[0.0, 0.0, 0.0]],
             edges: vec![(0, 0, [1, 0, 0]), (0, 0, [0, 1, 0])],
+            edge_types: vec![0; 2],
         }
     }
 
@@ -112,6 +127,7 @@ impl Topology {
                 (0, 1, [0, -1, -1]),
                 (0, 1, [-1, -1, -1]),
             ],
+            edge_types: vec![0; 8],
         }
     }
 
@@ -154,6 +170,7 @@ impl Topology {
                 (2, 3, [0, 0, 0]),
                 (2, 3, [0, 0, 1]),
             ],
+            edge_types: vec![0; 24],
         }
     }
 
@@ -169,6 +186,7 @@ impl Topology {
                 (0, 1, [0, -1, 0]),
                 (0, 1, [0, 0, -1]),
             ],
+            edge_types: vec![0; 4],
         }
     }
 
@@ -187,6 +205,7 @@ impl Topology {
                 (0, 1, [0, 0, 1]),
                 (0, 1, [0, -1, 1]),
             ],
+            edge_types: vec![0; 4],
         }
     }
 
@@ -204,6 +223,7 @@ impl Topology {
                 (1, 2, [-1, 1, 0]),
                 (0, 2, [0, -1, 0]),
             ],
+            edge_types: vec![0; 6],
         }
     }
 
@@ -214,6 +234,7 @@ impl Topology {
             name: "hxl".to_string(),
             nodes: vec![[0.0, 0.0, 0.0]],
             edges: vec![(0, 0, [1, 0, 0]), (0, 0, [0, 1, 0]), (0, 0, [1, -1, 0])],
+            edge_types: vec![0; 3],
         }
     }
 
@@ -224,12 +245,35 @@ impl Topology {
             name: "pillared_sql".to_string(),
             nodes: vec![[0.0, 0.0, 0.0]],
             edges: vec![(0, 0, [1, 0, 0]), (0, 0, [0, 1, 0]), (0, 0, [0, 0, 1])],
+            edge_types: vec![0; 3],
+        }
+    }
+
+    /// Build a topology from a data-driven RCSR net.
+    ///
+    /// The assembler uses the symmetry-expanded node set and the unique edges
+    /// with their periodic offsets, so multi-node and multi-edge nets
+    /// (`afw`, `xah`, `tfy`, …) can be assembled by
+    /// [`assemble_framework_with_linkers`].
+    pub fn from_net(net: &super::topology_data::NetData) -> Self {
+        Self {
+            name: net.name.to_string(),
+            nodes: net.assembly_nodes.iter().map(|n| n.frac).collect(),
+            edges: net
+                .assembly_edges
+                .iter()
+                .map(|e| (e.a, e.b, e.offset))
+                .collect(),
+            edge_types: net.assembly_edges.iter().map(|e| e.edge_type).collect(),
         }
     }
 
     /// Look up a topology by name string.
     ///
-    /// The comparison is case-insensitive.
+    /// The comparison is case-insensitive. Built-in homogeneous nets take
+    /// precedence; the remaining RCSR nets from
+    /// [`super::topology_data::TOPOLOGY_NETS`] are returned with their
+    /// symmetry-expanded graph.
     ///
     /// # Errors
     ///
@@ -246,11 +290,20 @@ impl Topology {
             "kgm" => Ok(Self::kgm()),
             "hxl" => Ok(Self::hxl()),
             "pillared_sql" => Ok(Self::pillared_sql()),
-            _ => Err(crate::method::unknown_method(
-                "'topology'",
-                name,
-                Self::SUPPORTED,
-            )),
+            other => {
+                if let Some(net) = super::topology_data::TOPOLOGY_NETS
+                    .iter()
+                    .find(|net| net.name.eq_ignore_ascii_case(other))
+                {
+                    Ok(Self::from_net(net))
+                } else {
+                    Err(crate::method::unknown_method(
+                        "'topology'",
+                        name,
+                        Self::SUPPORTED,
+                    ))
+                }
+            }
         }
     }
 }
@@ -314,9 +367,32 @@ impl CrystalStructure {
 /// `cell`: the unit cell for the framework
 ///
 /// Returns the assembled crystal structure.
+///
+/// This is the single-linker convenience wrapper around
+/// [`assemble_framework_with_linkers`].
 pub fn assemble_framework(
     node_sbu: &Sbu,
     linker_sbu: &Sbu,
+    topology: &Topology,
+    cell: &UnitCell,
+) -> CrystalStructure {
+    assemble_framework_with_linkers(node_sbu, std::slice::from_ref(linker_sbu), topology, cell)
+}
+
+/// Assemble a framework using one linker SBU per inequivalent edge type.
+///
+/// `linkers[type]` is used for an edge whose [`Topology::edge_types`] entry is
+/// `type`. When `linkers` has fewer entries than the type index, the last
+/// linker is reused; an empty slice places no linker atoms. Nets from
+/// [`super::topology_data::TOPOLOGY_NETS`] carry their edge types through
+/// [`Topology::from_net`], so `afw`, `xah` and `tfy` can combine different
+/// linkers in the same framework.
+///
+/// Invalid node indices in a hand-built topology are skipped instead of
+/// panicking.
+pub fn assemble_framework_with_linkers(
+    node_sbu: &Sbu,
+    linkers: &[Sbu],
     topology: &Topology,
     cell: &UnitCell,
 ) -> CrystalStructure {
@@ -344,12 +420,22 @@ pub fn assemble_framework(
 
     // 2. Place linker SBUs along each topology edge
     for (ei, &(ni, nj, offset)) in topology.edges.iter().enumerate() {
-        let node_i_frac = topology.nodes[ni];
+        let Some(&node_i_frac) = topology.nodes.get(ni) else {
+            continue;
+        };
+        let Some(&node_j_frac) = topology.nodes.get(nj) else {
+            continue;
+        };
         let node_j_frac = [
-            topology.nodes[nj][0] + offset[0] as f64,
-            topology.nodes[nj][1] + offset[1] as f64,
-            topology.nodes[nj][2] + offset[2] as f64,
+            node_j_frac[0] + offset[0] as f64,
+            node_j_frac[1] + offset[1] as f64,
+            node_j_frac[2] + offset[2] as f64,
         ];
+
+        let edge_type = topology.edge_types.get(ei).copied().unwrap_or(0) as usize;
+        let Some(linker_sbu) = linkers.get(edge_type).or_else(|| linkers.last()) else {
+            continue;
+        };
 
         let node_i_cart = cell.frac_to_cart(node_i_frac);
         let node_j_cart = cell.frac_to_cart(node_j_frac);
@@ -663,5 +749,81 @@ mod tests {
         let structure = assemble_framework(&node, &linker, &topo, &cell);
         // 2 nodes × 1 atom + 8 edges × 1 atom = 10
         assert_eq!(structure.num_atoms(), 10);
+    }
+
+    #[test]
+    fn test_topology_from_name_rcsr_nets() {
+        for name in ["acs", "afw", "sod", "xah", "tfy"] {
+            let topo = Topology::from_name(name).expect("RCSR net should be known");
+            assert_eq!(topo.name, name);
+            assert!(!topo.nodes.is_empty(), "{name}: nodes");
+            assert!(!topo.edges.is_empty(), "{name}: edges");
+            assert_eq!(
+                topo.edge_types.len(),
+                topo.edges.len(),
+                "{name}: one edge type per edge"
+            );
+        }
+
+        let xah = Topology::from_name("xah").unwrap();
+        assert_eq!(xah.nodes.len(), 4);
+        assert_eq!(xah.edges.len(), 9);
+        assert!(xah.edge_types.contains(&0));
+        assert!(xah.edge_types.contains(&1));
+    }
+
+    #[test]
+    fn test_assemble_with_linkers_uses_edge_types() {
+        let node = Sbu::metal_node(30, 0.0, CoordinationGeometry::Octahedral);
+        // Type 0 edges get carbon linkers, type 1 edges get nitrogen linkers.
+        let short = Sbu::linear_linker(&[6], 1.0, "short");
+        let long = Sbu::linear_linker(&[7], 1.0, "long");
+        let topo = Topology::from_name("xah").unwrap();
+        let cell = UnitCell::cubic(12.0);
+
+        let n_type0 = topo.edge_types.iter().filter(|&&t| t == 0).count();
+        let n_type1 = topo.edge_types.iter().filter(|&&t| t == 1).count();
+        assert!(n_type0 > 0 && n_type1 > 0);
+
+        let structure = assemble_framework_with_linkers(&node, &[short, long], &topo, &cell);
+
+        assert_eq!(structure.num_atoms(), topo.nodes.len() + n_type0 + n_type1);
+        assert_eq!(
+            structure.atoms.iter().filter(|a| a.element == 6).count(),
+            n_type0
+        );
+        assert_eq!(
+            structure.atoms.iter().filter(|a| a.element == 7).count(),
+            n_type1
+        );
+        assert_eq!(
+            structure.atoms.iter().filter(|a| a.element == 30).count(),
+            topo.nodes.len()
+        );
+    }
+
+    #[test]
+    fn test_assemble_with_linkers_degenerate_inputs() {
+        let node = Sbu::metal_node(30, 0.0, CoordinationGeometry::Octahedral);
+        let linker = Sbu::linear_linker(&[6], 1.0, "short");
+        let mut topo = Topology {
+            name: "xah-test".to_string(),
+            nodes: vec![[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]],
+            edges: vec![(0, 1, [0, 0, 0])],
+            edge_types: vec![0],
+        };
+        let cell = UnitCell::cubic(12.0);
+
+        // No linkers: only node atoms are placed.
+        let structure = assemble_framework_with_linkers(&node, &[], &topo, &cell);
+        assert_eq!(structure.num_atoms(), topo.nodes.len());
+
+        // Invalid node indices are skipped instead of panicking.
+        topo.edges.push((usize::MAX, 0, [0, 0, 0]));
+        let structure = assemble_framework_with_linkers(&node, &[linker], &topo, &cell);
+        assert_eq!(
+            structure.num_atoms(),
+            topo.nodes.len() + (topo.edges.len() - 1)
+        );
     }
 }
