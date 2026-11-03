@@ -47,8 +47,9 @@ jobs:
       # Manual run: build it here (cached).
       - name: Build the WASM package
         if: ${{ !inputs.use_artifact }}
-        uses: dtolnay/rust-toolchain@nightly-2026-05-24
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: nightly-2026-05-24
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         if: ${{ !inputs.use_artifact }}
