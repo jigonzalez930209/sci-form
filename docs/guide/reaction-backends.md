@@ -28,6 +28,30 @@ Available backends are grouped by role:
 - Reactive force field: ReaxFF, currently only through the alpha CHON parameter set when the `alpha-reaxff` feature is enabled.
 - Orbital-only analysis: EHT.
 
+## Energy surface and gradient of each backend
+
+<SvgDiagram src="/svg/energy-surface-map.svg" alt="Which energy surface each backend name evaluates and how its gradient is obtained" />
+
+| Backend name | Energy | Gradient (NEB, MD, reaction dynamics) |
+|---|---|---|
+| `uff`, `mmff94` | classical force field | analytic |
+| `pm3` | MOPAC-parity PM3 for `Z ≤ 17`, legacy NDDO otherwise | central differences of the PM3 energy (`6N` SCF runs) |
+| `xtb` (legacy `gfn0`) | GFN2 (`solve_gfn2`) on every surface, identical to `gfn2` | central differences of the GFN2 energy (GSM evaluates energies only) |
+| `gfn1`, `gfn2` | `solve_gfn1`, `solve_gfn2` | central differences |
+| `hf3c` | HF-3c | central differences |
+
+> **Absolute energies of different backends are not comparable.** For ethanol
+> `neb-energy` returns −7146 kcal/mol with `xtb`/`gfn2` and −14379 kcal/mol with
+> `pm3`. Compare energies only within one backend (differences along a path).
+> Before v1.0, `xtb` in NEB/MD was a simplified model that returned +9117 kcal/mol.
+
+The one rule that matters: for a given backend the gradient is always the
+derivative of the energy it is paired with. That was not true for `pm3` and
+`xtb` before the gradients were rebuilt (see
+[PM3 and xTB gradients](/algorithm/semiempirical-gradients)). Energy-only calls
+(`neb-energy`, the final image energies of the simplified NEB) do not compute a
+gradient. `"xtb"` and `"gfn2"` are the same surface on every tool.
+
 ## Why EHT is not exposed as a barrier backend
 
 EHT is retained in the planning API because users may still want to inspect whether the system is covered by the current orbital parameterization. It is intentionally marked as not suitable for GSM reaction-path energies.

@@ -26,6 +26,19 @@
 > Quedan gateados: dft, mlff, gsm, dynamics_live, kinetics, periodic-adapters,
 > render-builders, kpm, mbh, rand_nla, reaction_dynamics, cpm-compat.
 
+> **Ronda de gradientes (2026-11-02)**: los gates F80 de PM3, xTB y KS-DFT
+> quedan activos (`tests/gradient_parity.rs`: 10 tests, 0 ignorados). PM3 y xTB:
+> el gradiente analítico derivaba un modelo simplificado distinto de la energía
+> pública (18.4 y 209–263 eV/Å de error); ahora es la diferencia central de
+> `solve_pm3` y de la energía GFN2 de `compute_xtb` (6·N SCF). KS-DFT: el
+> gradiente era correcto, el gate comparaba Ha/Å con Ha/Bohr (factor 0.5292).
+> UKS: el gradiente de capa abierta estaba mal (1.4e-2 Ha/Bohr en OH); corregido con densidades por espín y gate nuevo. SCF PM3 con DIIS (27 iteraciones vs 200). `xtb` = GFN2 en toda la
+> documentación. Detalle: `docs/algorithm/semiempirical-gradients.md`.
+>
+> **Pendiente**: gradiente analítico NDDO/GFN2 (hoy 6·N SCF); (hecho en
+> esta ronda: `"xtb"` = GFN2 en NEB/MD/GSM, las energías sueltas de
+> `reaction_dynamics` ya no piden gradiente y el gate UKS está activo).
+
 ## Ciclo actual — Kohn–Sham DFT en la librería
 
 El DFT no se importa de otro paquete. El solver es `src/dft/` (`alpha-dft`): F = H + J + Vxc, SVWN y PBE, grilla de Becke.
@@ -175,7 +188,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 11. Materiales
 - [x] Normalización automática de coordenadas fraccionales (el parser CIF envuelve a [0,1) con `UnitCell::wrap_frac`)
-- [x] Topologías más allá de las homogéneas: `materials::topology_data` importa 6 nets de la base RCSR/pormake (acs, afw, sod, pts, xah, tfy) con tipos de nodo y — el punto del ítem — **aristas no equivalentes** (afw/xah/tfy con 2 tipos de arista, vía `# EDGE_CENTER`), generadas con `gen_topologies.py` desde los `.cgd`. Oráculo F67 ampliado (fixture con 15 nets) y gate nuevo `f67_extended_nets_match_pormake` (nodos, coordinaciones, coordenadas y tipos de arista vs pormake). Pendiente: que `assemble_framework` consuma nets con múltiples tipos de arista (hoy el ensamblado usa los 4 built-ins homogéneos)
+- [x] Topologías más allá de las homogéneas: `materials::topology_data` importa 6 nets de la base RCSR/pormake (acs, afw, sod, pts, xah, tfy) con tipos de nodo y — el punto del ítem — **aristas no equivalentes** (afw/xah/tfy con 2 tipos de arista, vía `# EDGE_CENTER`), generadas con `gen_topologies.py` desde los `.cgd`. Oráculo F67 ampliado (fixture con 15 nets) y gate nuevo `f67_extended_nets_match_pormake` (nodos, coordinaciones, coordenadas y tipos de arista vs pormake). El ensamblado ya consume esos nets: `Topology::from_net`/`from_name` conservan `edge_types`, y `assemble_framework_with_linkers` elige el linker por tipo de arista (tests de `xah`, lista vacía e índices inválidos en `materials::assembly`)
 
 ### 12. Force Fields
 - [x] MMFF94 cobertura para metales de transición: evaluado — el set oficial de MMFF94 no parametriza TMs; los metales se enrutan a UFF/GFN (documentado en el módulo)
@@ -206,8 +219,8 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Frontend (V-path X-axis fallback) — **cerrado como no aplicable en este repo**: el código afectado vive en el repositorio del frontend; aquí solo se exponen los payloads (render bridge, charts) que el frontend consume. Ruta: corregirlo en el repo del frontend y, si el payload necesita metadatos adicionales (p. ej. eje X explícito), exponerlos desde `alpha::render_bridge`
 
 ### 16. Alpha Export Gaps (bindings faltantes)
-- [x] Render Bridge (WASM): las 10 funciones de `alpha::render_bridge` que ya existían en Rust (edl_profile_chart, capacitance_scan_chart, periodic_dos_chart, band_structure_chart, microkinetic_population_chart, arrhenius_chart, gsm_path_trajectory, pack_chart_payload, verify_chart_round_trip) están ahora expuestas como `alpha_render_*` en `crates/wasm/src/alpha.rs`, cada una gated con su feature de entrada; el crate compila con y sin las features. Pendiente: Python (`alpha_render_py` solo tiene edl/capacitance/arrhenius; faltan ~5 wrappers JSON — no verificables aquí por el bloqueo pyo3 0.22/Python 3.14) y 3 chart types nuevos (kpoint_path, trajectory, dos) que no existen en Rust
-- [x] Periodic Linear (WASM): expuestas `alpha_periodic_monkhorst_pack`, `bloch_phase`, `bz_integrate_scalar`, `bz_integrate_vector`, `validate_kmesh_weights`, `validate_electron_count` y `band_structure_eht` (esta última cablea `eht::band_structure::compute_band_structure` con k-path). Pendiente: `kpath_standard` y `fermi_surface_from_bands` (no existen como funciones Rust; serían nuevas), los adaptadores KPM/RandNLA periódicos (firmas con matrices) y el mismo set en Python (bloqueado por pyo3 0.22/Python 3.14)
+- [x] Render Bridge (WASM): las 9 funciones de `alpha::render_bridge` que ya existían en Rust (edl_profile_chart, capacitance_scan_chart, periodic_dos_chart, band_structure_chart, microkinetic_population_chart, arrhenius_chart, gsm_path_trajectory, pack_chart_payload, verify_chart_round_trip) están ahora expuestas como `alpha_render_*` en `crates/wasm/src/alpha.rs`, cada una gated con su feature de entrada; el crate compila con y sin las features. Python (`alpha_render_py`) expone los wrappers JSON equivalentes (edl, capacitance, arrhenius, thermal_prop, phase_portrait, band_structure, dos, kpoint_path, fermi_surface, trajectory, reaction_coordinate) y `cargo check -p sci-form-python --features alpha-render-bridge,alpha-periodic-linear` pasa; los chart types kpoint_path, trajectory y dos ya existen y comparten el core
+- [x] Periodic Linear (WASM): expuestas `alpha_periodic_monkhorst_pack`, `bloch_phase`, `bz_integrate_scalar`, `bz_integrate_vector`, `validate_kmesh_weights`, `validate_electron_count`, `band_structure_eht` (esta última cablea `eht::band_structure::compute_band_structure` con k-path), `alpha_periodic_kpath_standard` y `alpha_periodic_fermi_surface_from_bands`. Las dos últimas son funciones nuevas del core (`kmesh::kpath_standard`, `kmesh::fermi_surface_from_bands`) que también consumen Python (`compute_kpoint_path_chart`, `compute_fermi_surface_chart`) y CLI, sin duplicar la interpolación ni el trazado de contornos. Sigue pendiente el mismo set de adaptadores KPM/RandNLA periódicos con matrices en Python/WASM
 - [x] Kinetics CLI: los 3 comandos eran stubs con JSON hardcodeado (y el feature `alpha-kinetics` no compilaba: `limitations` sin `mut` en `alpha/gsm/backend.rs`). Ahora `extract-kinetics-diagnostics`, `solve-microkinetic-network` y `solve-microkinetic-steady-state` aceptan `--network <JSON|ruta>` (con red demo integrada) y llaman a las APIs reales. Hallazgo colateral corregido: el solver explícito de Euler era inestable en redes stiff (barrera 0.3 eV a 350 K → k ≈ 3.6e8 s⁻¹ → poblaciones no finitas con 0.01 s); ahora el sub-stepping se elige por la tasa máxima (`k·Δt ≲ 0.1`) y hay guarda de finitud, con test de regresión
 
 ### 17. Validación a Gran Escala (Track G)
@@ -217,10 +230,10 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Límites de escalado documentados (plan §14.3: tiempos por método y memoria ERI O(N⁴))
 
 ### 18. Experimental Tracks Pendientes de Validación para Promoción
-- [x] Validación cuantitativa por submódulo (beta): benchmarks nuevos en `tests/beta_benchmarks.rs` — KPM DOS vs diagonalización (DOS integrada 40.17/40, centro 1e-4, corr 0.86 con el kernel Jackson), Nyström vs SVD exacta (error ≤ 2× el mejor rank-k y decreciente), MBH vs Hessiano analítico proyectado (desviación máxima 2.6 %, modos casi nulos con ruido de diferencias finitas ~5 cm⁻¹). Pendiente: cpm/riemannian/sdr/gsm y E1–E11 siguen con evidencia parcial
-- [x] Benchmarking frente a rutas estables: KPM vs diagonalización, Nyström vs SVD exacta y MBH vs Hessiano analítico implementados y verdes en `tests/beta_benchmarks.rs` (feature-gated). Pendiente: GSM vs NEB y SDR vs Butina (requieren habilitar `alpha-gsm`/`alpha-sdr` y definir la métrica de comparación de caminos/clusters)
+- [x] Validación cuantitativa por submódulo (beta): `tests/beta_benchmarks.rs` con benchmarks feature-gated frente a referencias exactas — KPM DOS vs diagonalización (DOS integrada 40.17/40, centro 1e-4, corr 0.86 con el kernel Jackson), Nyström vs SVD exacta (error ≤ 2× el mejor rank-k y decreciente), MBH vs Hessiano analítico proyectado (desviación máxima 2.6 %, modos casi nulos con ruido de diferencias finitas ~5 cm⁻¹), CPM vs forma cerrada de dos sitios (1.3e-15), Riemannian vs Gram exacto de un tetraedro (violación 6.0e-9), SDR vs MDS clásico (6.7e-16) y GSM vs MEP analítico de cinco pozos dobles (error relativo de barrera 0). Queda evidencia parcial en E1/E2/E4/E5/E6/E7/E9/E11; los criterios de promoción viven en `src/experimental_status.rs`
+- [x] Benchmarking frente a rutas estables: KPM vs diagonalización, Nyström vs SVD exacta, MBH vs Hessiano analítico, CPM vs forma cerrada, Riemannian vs Gram exacto, SDR vs MDS clásico y GSM vs MEP analítico implementados y verdes en `tests/beta_benchmarks.rs` (feature-gated). Sigue pendiente GSM vs NEB en 5+ reacciones (F82 cubre Müller–Brown) y SDR vs Butina (métrica de comparación de clusters sin definir)
 - [x] Criterios claros de promoción experimental → producción (`src/experimental_status.rs`, actualizado con la evidencia actual)
-- [x] Tests de integración para beta: `tests/beta_benchmarks.rs` cubre kpm/randnla/mbh contra rutas estables (no solo smoke tests) con gates cuantitativos documentados
+- [x] Tests de integración para beta: `tests/beta_benchmarks.rs` cubre kpm/randnla/mbh/cpm/riemannian/sdr/gsm contra rutas estables (no solo smoke tests) con gates cuantitativos documentados
 
 ---
 
@@ -228,17 +241,17 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 | Track | Módulo | Estado |
 |-------|--------|--------|
-| E1 CGA | `experimental::cga` | Implementado, pendiente validación |
-| E2 RandNLA | `beta::rand_nla` | Implementado, pendiente benchmarks a escala |
-| E3 Riemannian | `experimental::riemannian` | Implementado, baja prioridad (E8 resuelve lo mismo) |
-| E4 KPM | `beta::kpm` | Implementado, pendiente validación vs exact para N>100 |
-| E5 EEQ Dynamic | `experimental::eeq` / `charges_eeq` | Implementado, parcialmente integrado |
-| E6 ALPB | `experimental::alpb` / `solvation_alpb` | Implementado, pendiente unificación con GB |
-| E7 D4 Dispersion | `experimental::d4` | Implementado, pendiente cobertura de tablas |
-| E8 SDR Embedding | `experimental::sdr` | Implementado, pendiente benchmark 10K |
-| E9 MBH | `beta::mbh` | Implementado, pendiente validación completa de frecuencias |
-| E10 CPM | `beta::cpm` | Implementado, pendiente benchmarks electroquímicos |
-| E11 GSM | `alpha::gsm` | Implementado, pendiente validación vs NEB en 5+ reacciones |
+| E1 CGA | `cga` | Promovido a core (F81); huecos de refine/materials documentados |
+| E2 RandNLA | `beta::rand_nla` | Implementado; Nyström vs SVD exacta cuantificado, gap rank-N/4 documentado |
+| E3 Riemannian | `riemannian` | Promovido a core (F94); benchmark vs Gram exacto (6.0e-9) |
+| E4 KPM | `beta::kpm` | Implementado; DOS vs diagonalización validada; falta escala N>100 |
+| E5 EEQ Dynamic | `charges_eeq` | Implementado, parcialmente integrado |
+| E6 ALPB | `solvation_alpb` | Promovido a core; SASA unificada con GB |
+| E7 D4 Dispersion | `dispersion` | Promovido a core; cobertura de tablas hasta Z=118 documentada |
+| E8 SDR Embedding | `sdr` | Promovido a core (F83); benchmark vs MDS clásico (6.7e-16) |
+| E9 MBH | `beta::mbh` | Implementado; frecuencias vs Hessiano proyectado (2.6 %) |
+| E10 CPM | `cpm` | Promovido a core (F95); benchmark de dos sitios (1.3e-15) |
+| E11 GSM | `alpha::gsm` | Implementado; MEP analítico en 5 pozos dobles exacto; falta NEB en 5+ reacciones |
 
 ---
 

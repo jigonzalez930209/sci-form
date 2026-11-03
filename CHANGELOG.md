@@ -8,7 +8,71 @@ human-written changelog for the repository.
 
 ## Unreleased
 
-_(nothing yet — the next release starts here)_
+### Fixed
+
+- **`pm3-gradient` / `xtb-gradient` (and the NEB/MD `pm3` / `xtb` backends) returned
+  wrong forces.** The hand-written Hellmann-Feynman/Pulay expressions
+  differentiated a legacy simplified model, not the energy the API reports: they
+  deviated from the numerical gradient by up to 18 eV/Å (PM3, H₂O₂) and
+  209–263 eV/Å (xTB). The gradients are now central differences (5e-4 Å) of the
+  energy the matching `pm3` / `xtb` call returns — the MOPAC-parity PM3 energy
+  and the GFN2-xTB energy — so they agree with it to ≤ 1e-4 eV/Å (gates F80).
+  `xtb-gradient` now differentiates GFN2, matching `xtb`. Cost is `6·N` SCF
+  evaluations per gradient; an analytic NDDO/GFN2 gradient remains future work.
+  `compute_semianalytical_hessian` is therefore a double finite difference; prefer
+  `compute_numerical_hessian`.
+- **PM3 SCF (MOPAC-parity solver) converges with Pulay DIIS** (27 iterations
+  instead of the full 200 on H₂O₂). The energy moves by ≲ 1e-5 eV (1e-7 on H₂O₂, 4e-6 on ethanol), but
+  the scatter between finite-difference steps drops from ~2e-3 to ~6e-6 eV/Å.
+  The damped iteration remains as the fallback, now with a density-residual
+  criterion.
+- **The KS-DFT gradient was correct.** Its F80 gate compared it with a derivative
+  taken per Å (ratio exactly 0.5292 = Å/Bohr). The reference is now converted,
+  the gate is enforced (3e-7 Ha/Bohr on H₂O₂) and the module no longer claims a
+  missing XC response term.
+- **The UKS (open-shell) KS-DFT gradient was wrong; it is fixed.** It reused the restricted
+  density, occupation and orbital energies and was off by 1.4e-2 Ha/Bohr (5 %) on the OH
+  radical. It now uses the spin densities and a spin-resolved Pulay term (1e-6 Ha/Bohr with
+  `energy_threshold = 1e-13`), and a new F80 gate covers it. `DftResult` gains
+  `orbital_energies_beta` and `coefficients_beta` (empty when restricted).
+- **CI/CD: no tests on GitHub.** `ci.yml` only builds (with the cargo cache). The whole test
+  suite runs locally through `scripts/release-check.sh`; `scripts/release.sh` tags only a commit
+  that passed it. `release.yml` builds and publishes (crates.io, PyPI, npm) and attaches the CLI
+  to the GitHub Release as `.tar.gz` (Linux, macOS), `.zip` (Windows), `.deb` and `.rpm`, with
+  `SHA256SUMS`. The documentation is deployed afterwards.
+- **A guided CLI.** `sci-form` with no arguments prints a guide; new `commands`, `examples
+  [--run]` and `completions` commands; every command's `--help` ends with a ready-to-run example.
+  The catalogue is tested (every command listed, every example executed).
+- **Live examples in the documentation.** One runnable example for each of the 155 public WASM
+  functions, executed in the visitor's browser with the compiled package
+  (`/guide/live-examples`), plus examples embedded in the algorithm pages.
+- **The 3D reaction path (`alpha-reaction-dynamics`) is Rust-core only.** It is too
+  expensive for the bindings (`6·N` SCF per gradient) and is not a validated reaction path,
+  so `sci_form.alpha.compute_reaction_dynamics_3d`, the `sci-form-wasm/alpha`
+  `compute_reaction_dynamics_3d` / `compute_approach_dynamics` and the CLI command
+  `reaction-dynamics3d` are removed, together with the feature in the three binding
+  crates. The module, its tests and the feature in the core crate stay.
+- **`"xtb"` means GFN2 in NEB, MD and reaction dynamics too.** It used to select a
+  simplified model (`xtb::solve_xtb`) with unrelated absolute energies. `NebBackend::Xtb`
+  is gone (`from_method("xtb")` → `Gfn2`); `MdBackend::Xtb` evaluates GFN2; `"gfn0"` is a legacy alias.
+- Reaction-dynamics sites that only need an energy no longer compute a gradient
+  (`neb_energy_kcal`). `tests/reaction_dynamics_study.rs` (17 categories) is now
+  `#[ignore]`: with `xtb` = GFN2 it needs more than 10 minutes; run it with
+  `cargo test --test reaction_dynamics_study -- --ignored`.
+- **`xtb` is GFN2.** `compute_xtb`, `sci-form xtb` and the bindings run GFN2-xTB
+  (identical to `gfn2`); the documentation, the CLI `--help` and the README
+  called it GFN0. The crate-level unit table said PM3/xTB energies are in
+  Hartree; they are in eV (heat of formation in kcal/mol).
+- `neb-energy` and the final image energies of the simplified NEB no longer
+  compute (and discard) a gradient, which would have cost `6·N` extra SCF runs
+  for `pm3`/`xtb`.
+- `tests/integration/test_cross_language.py` was updated to the 1.0 API
+  (`embed` raises, `parse` returns a `ParseResult`, Node tests run against the
+  WASM `pkg-node`); `crates/python/tests/test_bindings.py` and the WASM
+  integration suite now run in CI.
+- The `topology_data.rs` clippy `approx_constant` error and the stale
+  `full_pipeline_ethanol_rearrangement` frame count (a single product has a
+  single departure frame).
 
 ## v1.0.0 - 2026-10-22
 
@@ -152,6 +216,12 @@ capability is the Rust root name in all four surfaces.
 
 ### Changed
 
+- **The k-path and Fermi-surface chart builders now live in the core.** The
+  Python `compute_kpoint_path_chart` / `compute_fermi_surface_chart`, the CLI
+  `kpoint-path-chart` / `fermi-surface-chart` commands and the new WASM
+  exports all call `kmesh::kpath_standard` / `kmesh::fermi_surface_from_bands`;
+  the duplicated interpolation and contour-tracing code in every binding was
+  removed.
 - **The capabilities that were Rust-only are now available in Python, WASM
   and the CLI**: the open-shell SCF (`compute_uhf`, `compute_rohf`), the
   analytical PM3 and xTB gradients, the UFF and MMFF94 energy breakdowns, the
@@ -188,6 +258,26 @@ capability is the Rust root name in all four surfaces.
 
 ### Added
 
+- **Multi-linker framework assembly.** `Topology::from_net` converts an RCSR
+  `NetData` entry into the symmetry-expanded graph used by assembly,
+  `Topology::from_name` now accepts the data-driven nets (`acs`, `afw`, `sod`,
+  `pts`, `xah`, `tfy`), and `Topology::edge_types` records one linker type per
+  edge. `assemble_framework_with_linkers` places a different linker on each
+  inequivalent edge; the single-linker `assemble_framework` remains as a
+  wrapper. The expanded node/edge data is generated from the pormake `.cgd`
+  files and the F67 gate checks it against pormake.
+- **Core k-path and Fermi-surface helpers.** `kmesh::kpath_standard` samples
+  the default Γ→X→M→Γ path with cumulative distances and vertex indices, and
+  `kmesh::fermi_surface_from_bands` traces the `kz = 0` contour from real-space
+  operator blocks. The WASM surface exposes
+  `alpha_periodic_kpath_standard` and
+  `alpha_periodic_fermi_surface_from_bands`.
+- **Quantitative benchmarks for the remaining beta/alpha methods** in
+  `tests/beta_benchmarks.rs`: CPM charges vs the closed-form two-site solution
+  (1.3e-15), Riemannian optimization vs the exact Gram matrix of a tetrahedron
+  (6.0e-9), SDR vs classical MDS (6.7e-16) and GSM barriers vs five analytic
+  double wells (relative error 0), alongside the existing KPM, Nyström and
+  MBH gates.
 - Two zero-copy Python entry points (`embed_coords_into`,
   `compute_esp_grid_into`) that write into a caller-owned buffer.
 - `try_*` variants and `Result` returns for every entry point that can fail,
@@ -222,6 +312,10 @@ capability is the Rust root name in all four surfaces.
   "how do I compute a property?" lookup table and the feature-flag table.
 - The API pages (Rust, Python, TypeScript, CLI) were regenerated against the
   current code, with a units table on each.
+- The materials-assembly page now documents the symmetry-expanded RCSR nets,
+  the `edge_types`-based multi-linker assembly, and the real Rust/Python/CLI
+  signatures. The complete supported-reference and TypeScript feature tables
+  list the new multi-linker and periodic k-path/Fermi-surface entries.
 
 ### Packaging and CI
 

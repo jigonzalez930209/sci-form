@@ -105,7 +105,7 @@ where $\gamma$ is the half-width at half-maximum (HWHM) in cm⁻¹.
 |-----------|------|---------|-------------|
 | `elements` | `&[u8]` | — | Atomic numbers |
 | `positions` | `&[[f64;3]]` | — | Cartesian coordinates (Å) |
-| `method` | `&str` | `"eht"` | Semiempirical method: `"eht"`, `"pm3"`, or `"xtb"` |
+| `method` | `&str` | `"eht"` | Hessian method: `"eht"`, `"pm3"` (MOPAC-parity PM3 energy) or `"xtb"` (**GFN2-xTB** energy, identical to `compute_xtb`). The Hessian is a central difference of the *energy*, not of a gradient, so it is unaffected by the PM3/xTB gradient rewrite. |
 | `step_size` | `Option<f64>` | `None` (→ 0.01 Å) | Finite-difference step Δ in Å |
 
 ### `compute_ir_spectrum`
@@ -223,6 +223,10 @@ const maxI = Math.max(...spec.intensities);
 const wn   = spec.wavenumbers[spec.intensities.indexOf(maxI)];
 console.log(`Dominant band at ${wn.toFixed(1)} cm⁻¹`);
 ```
+
+### Try it
+
+<LiveExample id="compute_ir_spectrum_broadened" />
 
 ## Performance Notes
 

@@ -580,6 +580,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Procedimiento: `scripts/compare_pm3_mopac.py` (nuevo; `mopac` con `PM3 1SCF`) → fixture; tests `test_extended_molecules.rs` + `test_pm3_cross`.
 - Estado en el repo: `src/pm3/*`, tests §5 de `test_session_algorithms.rs` (gaussianas PM3), `tests/fixtures/experimental_reference.json`.
 - Criterio: ΔHf ≤ 0.5 kcal/mol (misma geometría) o ≤ 1.5 kcal/mol optimizada; cargas ± 0.05 e; gap orden correcto.
+- **Actualización 2026-11-02 (gradiente y SCF):** `compute_pm3_gradient` ya no es la expresión Hellmann-Feynman del modelo NDDO simplificado (que derivaba otra superficie y fallaba por 18.4 eV/Å en H₂O₂); es la diferencia central (h = 5·10⁻⁴ Å) de la energía de `solve_pm3`, con lo que gradiente y energía son la misma superficie por construcción. El SCF del solver fiel a MOPAC converge ahora con DIIS de Pulay (27 iteraciones en lugar de agotar 200 en H₂O₂; misma energía a 10⁻⁷ eV). `test_pm3_h2` y `test_pm3_gradient_vs_numerical` se reactivaron; el gate F80 PM3 se aplica. Ver `docs/algorithm/semiempirical-gradients.md`.
 
 **F43 · GFN0/xTB (`xtb::solve_xtb`, `compute_xtb`, `compute_xtb_gradient`)**
 - Referencia probada: **xtb** oficial (binary, LGPL-3; `xtb mol.xyz --gfn 0 --sp`), **tblite** (biblioteca GFN de referencia, LGPL-3) y el set de regresión de xtb en GitHub.
@@ -588,6 +589,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Procedimiento: `scripts/compare_xtb_tblite.py` (nuevo) o invocación directa `xtb --sp`; tests `test_extended_molecules.rs`, `test_session_algorithms.rs` §6 (Broyden).
 - Estado en el repo: `src/xtb/{solver,broyden}.rs`, tests existentes; documentación advierte que `solve_xtb` es GFN0-style SCC. Desde 2026-10-13 el solver validado es `xtb::gfn0::solve_gfn0` (port término a término, ver §14); `solve_xtb` sobrevive únicamente como proveedor del gradiente analítico de los backends de fuerza `"xtb"` (NEB/MD, `compute_xtb_gradient`) hasta que existan gradientes GFN0/GFN2 analíticos.
 - Criterio: E ≤ 1 kcal/mol vs xtb GFN0; gradiente ≤ 1e-3 eV/Å; convergencia determinista.
+- **Actualización 2026-11-02:** `compute_xtb` ejecuta **GFN2-xTB** (no GFN0; su salida es idéntica a `compute_gfn2`) y `compute_xtb_gradient` es la diferencia central de esa energía GFN2. La expresión analítica anterior derivaba `solve_xtb` y fallaba por 209–263 eV/Å. Los backends `"xtb"`/`"gfn0"` de NEB/MD usan diferencias centrales de la energía de `solve_xtb` (admite fragmentos cargados y de capa abierta, que `solve_gfn0` con carga 0 rechaza); en GSM esos nombres ejecutan `compute_xtb` (GFN2).
 
 **F44 · GFN1-xTB (`xtb::solve_gfn1`)**
 - Referencia probada: **tblite** (GFN1 nativo) y **xtb** (`--gfn 1`); paper GFN1-xTB (Grimme 2016) con set de validación (S66x8, WATER27, HAL59, mor41).
@@ -794,12 +796,12 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/periodic.rs`, `src/materials/cell.rs`.
 - Criterio: mínimo imagen = cálculo por traslaciones ±1 celdas (± 1e-10); supercelda 8× como mínimo reproducible; wrap idempotente.
 
-**F67 · Ensamblado de frameworks y topologías (`materials::assemble_framework`, `pcu/bcu/fcu/dia/hxl/kgm/nbo/pts/sql/pillared_sql`, `place_sbu_cga`)**
+**F67 · Ensamblado de frameworks y topologías (`materials::assemble_framework`, `assemble_framework_with_linkers`, `pcu/bcu/fcu/dia/hxl/kgm/nbo/pts/sql/pillared_sql` + RCSR `acs/afw/sod/xah/tfy`, `place_sbu_cga`)**
 - Referencia probada: **pormake** (constructor de MOFs open-source, MIT; SBUs + topologías RCSR), **RCSR** (base de datos de topologías) y bases **CoRE MOF 2019 / ARC-MOF / hMOF** para estructuras ya resueltas.
 - Test equivalente: mismo SBU + misma topología → comparar el grafo de conectividad (nodos/grado), parámetros de celda esperados y coherencia geométrica; validar porosidad y comparar con la estructura CoRE del mismo MOF (MOF-5/UiO-66/ZIF-8 como casos canónicos).
 - Datasets: CoRE MOF 2019 (~14k estructuras con propiedades geométricas calculadas), ARC-MOF, RCSR topologías; `tests/regression/test_%` de ensamblado.
 - Procedimiento: `scripts/compare_pormake.py` (mismos SBU/topología) → fixture; tests `test_new_features.rs`/`test_roadmap_validation.rs`.
-- Estado en el repo: `src/materials/{assembly,sbu,topologies}.rs`, `assemble_framework`, `assemble_framework_cga`.
+- Estado en el repo: `src/materials/{assembly,sbu,topologies}.rs`, `assemble_framework`, `assemble_framework_with_linkers`, `Topology::from_net`, `assemble_framework_cga`. Los nets RCSR expandidos (`acs`, `afw`, `sod`, `pts`, `xah`, `tfy`) conservan `edge_types`, y el ensamblador elige un linker por arista; el fixture F67 compara nodos, coordinaciones y tipos de arista contra pormake.
 - Criterio: celda y conectividad correctas para MOF-5/UiO-66/ZIF-8 (± 1 % en parámetros vs CoRE); diámetro de poro dentro de ± 10 % de Zeo++ (ver F68).
 
 **F68 · Porosidad geométrica (`materials::compute_porosity`)**
@@ -1800,6 +1802,8 @@ detrás de su feature alpha/beta.
    - densidades no físicas (H₂O con polaridad invertida, HF con q=0.000);
    - `test_pm3_h2` y `test_pm3_gradient_vs_numerical` quedan en `#[ignore]`
      hasta la revalidación (criterios estrictos preservados, no relajados).
+     (Resuelto 2026-11-02: el solver fiel a MOPAC los hace pasar; ambos tests
+     están activos. El gradiente es ahora una diferencia central de la energía.)
    El oráculo `scripts/validation/oracle_pm3.py` trae rama MOPAC lista
    (`MOPAC=/ruta/mopac`): en cuanto exista toolchain, el fixture se convierte
    en validación cruzada real.
@@ -1987,9 +1991,10 @@ detrás de su feature alpha/beta.
   vibracional → GFN2 (`solve_gfn2`, coherente con el `compute_xtb` público y
   con los Hessianos de referencia F48 "xtb 6.7.1 GFN2-xTB"), `DosMethod::Xtb`
   y el mesh orbital → GFN2. El solver legacy se conserva **solo** como
-  proveedor del gradiente analítico de los backends de fuerza `"xtb"`
-  (NEB/MD + `compute_xtb_gradient` público); su eliminación queda pendiente de
-  gradientes GFN0/GFN2 analíticos.
+  energía de los backends de fuerza `"xtb"` de NEB/MD (su gradiente es ahora una
+  diferencia central de esa misma energía; `compute_xtb_gradient` público
+  deriva GFN2 desde 2026-11-02); su eliminación queda pendiente de gradientes
+  GFN0/GFN2 analíticos.
 
 
 

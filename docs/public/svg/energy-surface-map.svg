@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 344" width="860" height="344" font-family="system-ui, sans-serif" role="img" aria-label="Which energy surface each public name evaluates: pm3, xtb, gfn1, gfn2, and the NEB, MD and GSM xtb backends">
+  <style>
+    @media (prefers-reduced-motion: reduce) { .es-anim * { animation: none !important; } }
+    .es-flow { stroke-dasharray: 6 5; animation: es-dash 1.4s linear infinite; }
+    @keyframes es-dash { to { stroke-dashoffset: -11; } }
+  </style>
+  <g class="es-anim">
+  <rect width="860" height="344" fill="white" rx="12" stroke="#e2e8f0"/>
+  <text x="430" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="#0f172a">Which energy surface does each public name use?</text>
+  <text x="430" y="46" text-anchor="middle" font-size="10.5" fill="#64748b">Energy and gradient of one name always come from the same column</text>
+
+  <text x="110" y="76" text-anchor="middle" font-size="11" font-weight="bold" fill="#334155">public name</text>
+  <text x="400" y="76" text-anchor="middle" font-size="11" font-weight="bold" fill="#334155">energy surface (solver)</text>
+  <text x="725" y="76" text-anchor="middle" font-size="11" font-weight="bold" fill="#334155">gradient</text>
+
+  <!-- rows -->
+  <rect x="20" y="88" width="180" height="40" rx="6" fill="#dbeafe" stroke="#3b82f6"/><text x="110" y="106" text-anchor="middle" font-size="10.5" fill="#1e3a8a">pm3 · compute_pm3</text><text x="110" y="121" text-anchor="middle" font-size="10.5" fill="#1e3a8a">NEB/MD "pm3"</text>
+  <rect x="270" y="88" width="260" height="40" rx="6" fill="#eff6ff" stroke="#3b82f6"/><text x="400" y="106" text-anchor="middle" font-size="10.5" fill="#1e3a8a">MOPAC-parity PM3 (Z ≤ 17, closed shell)</text><text x="400" y="120" text-anchor="middle" font-size="9.5" fill="#475569">legacy NDDO for Z > 17 and as recorded fallback</text>
+  <rect x="610" y="88" width="230" height="40" rx="6" fill="#dcfce7" stroke="#22c55e"/><text x="725" y="106" text-anchor="middle" font-size="10.5" fill="#14532d">compute_pm3_gradient</text><text x="725" y="120" text-anchor="middle" font-size="9.5" fill="#166534">central differences, eV/Å</text>
+  <line class="es-flow" x1="202" y1="108" x2="268" y2="108" stroke="#3b82f6" stroke-width="2"/><line class="es-flow" x1="532" y1="108" x2="608" y2="108" stroke="#22c55e" stroke-width="2"/>
+
+  <rect x="20" y="144" width="180" height="40" rx="6" fill="#dbeafe" stroke="#3b82f6"/><text x="110" y="162" text-anchor="middle" font-size="10.5" fill="#1e3a8a">xtb · compute_xtb · IR "xtb"</text><text x="110" y="177" text-anchor="middle" font-size="10.5" fill="#1e3a8a">NEB · MD · GSM "xtb" / "gfn0"</text>
+  <rect x="270" y="144" width="260" height="40" rx="6" fill="#eff6ff" stroke="#3b82f6"/><text x="400" y="162" text-anchor="middle" font-size="10.5" fill="#1e3a8a">GFN2-xTB (solve_gfn2)</text><text x="400" y="176" text-anchor="middle" font-size="9.5" fill="#475569">XtbResult repackaged from Gfn2Result</text>
+  <rect x="610" y="144" width="230" height="40" rx="6" fill="#dcfce7" stroke="#22c55e"/><text x="725" y="162" text-anchor="middle" font-size="10.5" fill="#14532d">compute_xtb_gradient</text><text x="725" y="176" text-anchor="middle" font-size="9.5" fill="#166534">central differences, eV/Å</text>
+  <line class="es-flow" x1="202" y1="164" x2="268" y2="164" stroke="#3b82f6" stroke-width="2"/><line class="es-flow" x1="532" y1="164" x2="608" y2="164" stroke="#22c55e" stroke-width="2"/>
+
+  <rect x="20" y="200" width="180" height="40" rx="6" fill="#dbeafe" stroke="#3b82f6"/><text x="110" y="218" text-anchor="middle" font-size="10.5" fill="#1e3a8a">gfn1 · gfn2</text><text x="110" y="233" text-anchor="middle" font-size="10.5" fill="#1e3a8a">(and NEB "gfn1" / "gfn2")</text>
+  <rect x="270" y="200" width="260" height="40" rx="6" fill="#eff6ff" stroke="#3b82f6"/><text x="400" y="225" text-anchor="middle" font-size="10.5" fill="#1e3a8a">solve_gfn1 · solve_gfn2</text>
+  <rect x="610" y="200" width="230" height="40" rx="6" fill="#dcfce7" stroke="#22c55e"/><text x="725" y="218" text-anchor="middle" font-size="10.5" fill="#14532d">NEB/MD: finite differences of E</text><text x="725" y="232" text-anchor="middle" font-size="9.5" fill="#166534">(always numerical)</text>
+  <line class="es-flow" x1="202" y1="220" x2="268" y2="220" stroke="#3b82f6" stroke-width="2"/><line class="es-flow" x1="532" y1="220" x2="608" y2="220" stroke="#22c55e" stroke-width="2"/>
+
+  <rect x="20" y="256" width="180" height="40" rx="6" fill="#ede9fe" stroke="#8b5cf6"/><text x="110" y="281" text-anchor="middle" font-size="11" fill="#4c1d95">xtb::solve_gfn0 (Rust only)</text>
+  <rect x="270" y="256" width="260" height="40" rx="6" fill="#f5f3ff" stroke="#8b5cf6"/><text x="400" y="274" text-anchor="middle" font-size="10.5" fill="#4c1d95">faithful GFN0 (xtb 6.7.1, F43), charge argument</text><text x="400" y="288" text-anchor="middle" font-size="9.5" fill="#6d28d9">closed shell only (charge by argument) → not used by NEB</text>
+  <rect x="610" y="256" width="230" height="40" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/><text x="725" y="281" text-anchor="middle" font-size="10.5" fill="#475569">no gradient API</text>
+  <line class="es-flow" x1="202" y1="276" x2="268" y2="276" stroke="#8b5cf6" stroke-width="2"/>
+
+  <text x="430" y="326" text-anchor="middle" font-size="10" fill="#64748b">Colours: blue = public entry point · violet = Rust-only model · green = gradient from the same energy function</text>
+  </g>
+</svg>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 300" width="820" height="300" font-family="system-ui, sans-serif" role="img" aria-label="PM3 SCF iterations on the H2O2 test geometry: damped fixed point uses the full 200-iteration budget, Pulay DIIS converges in 27">
+  <style>
+    @media (prefers-reduced-motion: reduce) { .sd-anim * { animation: none !important; } }
+    .sd-bar-old { transform-origin: 170px 0; animation: sd-grow-old 7s linear infinite; }
+    .sd-bar-new { transform-origin: 170px 0; animation: sd-grow-new 7s linear infinite; }
+    @keyframes sd-grow-old { 0% { transform: scaleX(0); } 90%,100% { transform: scaleX(1); } }
+    @keyframes sd-grow-new { 0% { transform: scaleX(0); } 12.6%,100% { transform: scaleX(1); } }
+    .sd-done-new { animation: sd-show-new 7s steps(1,end) infinite; }
+    @keyframes sd-show-new { 0%,12% { opacity:0; } 12.6%,100% { opacity:1; } }
+    .sd-done-old { animation: sd-show-old 7s steps(1,end) infinite; }
+    @keyframes sd-show-old { 0%,89% { opacity:0; } 90%,100% { opacity:1; } }
+  </style>
+  <g class="sd-anim">
+  <rect width="820" height="300" fill="white" rx="12" stroke="#e2e8f0"/>
+  <text x="410" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="#0f172a">PM3 SCF (MOPAC-parity solver): damped fixed point vs Pulay DIIS</text>
+  <text x="410" y="46" text-anchor="middle" font-size="10.5" fill="#64748b">H₂O₂ gate geometry (tests/gradient_parity.rs) — measured SCF iterations, same converged energy to 1·10⁻⁷ eV</text>
+
+  <text x="20" y="92" font-size="11" font-weight="bold" fill="#991b1b">damped fixed point</text>
+  <text x="20" y="106" font-size="10" fill="#64748b">α ∈ [0.02, 0.9], energy-only test</text>
+  <rect x="170" y="78" width="560" height="26" rx="5" fill="#f1f5f9"/>
+  <rect class="sd-bar-old" x="170" y="78" width="560" height="26" rx="5" fill="#ef4444"/>
+  <g class="sd-done-old"><text x="740" y="96" font-size="12" font-weight="bold" fill="#991b1b">200 / 200</text><text x="740" y="110" font-size="9.5" fill="#991b1b">budget exhausted</text></g>
+
+  <text x="20" y="164" font-size="11" font-weight="bold" fill="#166534">Pulay DIIS (new first path)</text>
+  <text x="20" y="178" font-size="10" fill="#64748b">history 8, ‖FP − PF‖∞ &lt; 1·10⁻⁹</text>
+  <rect x="170" y="150" width="560" height="26" rx="5" fill="#f1f5f9"/>
+  <rect class="sd-bar-new" x="170" y="150" width="560" height="26" rx="5" fill="#22c55e"/>
+  <g class="sd-done-new"><text x="740" y="168" font-size="12" font-weight="bold" fill="#166534">27 iterations</text><text x="740" y="182" font-size="9.5" fill="#166534">converged</text></g>
+
+  <line x1="170" y1="204" x2="730" y2="204" stroke="#cbd5e1"/>
+  <text x="170" y="218" font-size="9.5" fill="#64748b">0</text><text x="450" y="218" text-anchor="middle" font-size="9.5" fill="#64748b">100</text><text x="730" y="218" text-anchor="end" font-size="9.5" fill="#64748b">200 iterations</text>
+
+  <rect x="20" y="228" width="782" height="62" rx="8" fill="#eff6ff" stroke="#3b82f6"/>
+  <text x="34" y="247" font-size="10.5" fill="#1e3a8a"><tspan font-weight="bold">Why it matters for gradients:</tspan> NDDO works in an orthonormal basis (S = 1), so the DIIS error</text>
+  <text x="34" y="262" font-size="10.5" fill="#1e3a8a">vector is the plain commutator FP − PF. The energy-only stop left ≈2·10⁻³ eV/Å of scatter across</text>
+  <text x="34" y="277" font-size="10.5" fill="#1e3a8a">finite-difference steps; with DIIS it is ≈6·10⁻⁶ eV/Å (steps ≤ 5·10⁻⁴ Å). The damped loop stays as fallback.</text>
+  </g>
+</svg>

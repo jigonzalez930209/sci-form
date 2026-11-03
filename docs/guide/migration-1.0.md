@@ -21,6 +21,7 @@ crashes on a malformed molecule is not a library you can ship.
 | Use the CLI | Stop passing `""` / `"[]"` / `0.0` to mean "absent". |
 | Compare energies across methods | Read the [units](#units) section. This one can silently change your answer. |
 | Compare `total_energy` between PM3 and SCF | **Stop.** One is eV, the other is Hartree. |
+| Use `pm3-gradient` / `xtb-gradient` or NEB/MD with `pm3` / `xtb` | Re-run. The values changed (they were wrong) — see [Gradients](#gradients-and-the-meaning-of-xtb). |
 
 ---
 
@@ -372,6 +373,14 @@ if you want to build them.
 
 ---
 
+### The 3D reaction path is not in the bindings
+
+`sci_form.alpha.compute_reaction_dynamics_3d`, the WASM
+`compute_reaction_dynamics_3d` / `compute_approach_dynamics` and the CLI command
+`reaction-dynamics3d` are removed: the `alpha-reaction-dynamics` feature now exists
+only in the Rust crate. Use the stable `compute_reaction_dynamics` (1D coordinate),
+the simplified NEB or the GSM tools, or call the Rust module directly.
+
 ## Units
 
 **This is the section that can silently change your answer.**
@@ -405,6 +414,38 @@ let scf_ev = scf.total_energy * HARTREE_TO_EV;     // Hartree -> eV
 And note the related trap the audit found: `Hf3cResult.homo_energy`,
 `lumo_energy`, `gap` and `orbital_energies` are **Hartree**, even though they
 were documented as eV in 0.15.
+
+---
+
+## Gradients and the meaning of `xtb`
+
+**Numerical results changed here, on purpose.**
+
+* `compute_pm3_gradient` and `compute_xtb_gradient` (every surface) used to
+  return forces that did not belong to the energy they were sold with: up to
+  18 eV/Å off for PM3 and 209–263 eV/Å off for xTB. They are now central
+  differences (5·10⁻⁴ Å) of the energy that `compute_pm3` / `compute_xtb`
+  return, so they agree with it to about 10⁻⁴ eV/Å. Anything computed with the
+  old values — NEB/MD/reaction-dynamics paths with the `pm3` or `xtb` backend,
+  geometry relaxations driven by them — should be re-run. The cost is `6·N`
+  SCF runs per gradient. Details: [PM3 and xTB gradients](/algorithm/semiempirical-gradients).
+* `xtb` / `compute_xtb` / `sci-form xtb` is **GFN2-xTB** and always was; the
+  documentation called it GFN0. Its numbers equal `gfn2`. `xtb::solve_gfn0`
+  (Rust only) is the faithful GFN0.
+* **Behaviour change:** in NEB, MD and reaction dynamics the backend name `"xtb"`
+  (and the legacy `"gfn0"` spellings) now selects **GFN2**, as it already did in GSM and
+  `compute_xtb`. It used to select a simplified model (`xtb::solve_xtb`) whose
+  absolute energies were unrelated to GFN2 (+9117 vs −7146 kcal/mol for ethanol).
+  `NebBackend::Xtb` no longer exists (`NebBackend::from_method("xtb")` returns
+  `Gfn2`; JSON `"xtb"` still deserialises). Re-run any path computed with `xtb`.
+* `compute_semianalytical_hessian` is now a double finite difference; prefer
+  `compute_numerical_hessian`.
+* The PM3 SCF of the MOPAC-parity solver converges with Pulay DIIS. Energies
+  agree with the previous ones to ≲ 10⁻⁵ eV (1·10⁻⁷ on H₂O₂, 4·10⁻⁶ on ethanol);
+  `scf_iterations` is lower (ethanol: 32 → 20).
+* Python: `embed()` of an invalid SMILES **raises** `ValueError` (unchanged
+  since the 1.0 candidates); `embed_batch` still returns one result per input,
+  with the failure in `.error`. `parse()` returns a `ParseResult` object.
 
 ---
 
