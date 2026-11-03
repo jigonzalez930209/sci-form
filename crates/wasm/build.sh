@@ -25,6 +25,8 @@
 #   ./build.sh                      # web (parallel) + nodejs targets
 #   ./build.sh --web-only           # skip the nodejs build
 #   ./build.sh --node-only          # skip the web build
+#   ./build.sh --docs-only          # single-threaded web build in pkg-docs/ for
+#                                   # the live examples of the documentation site
 #   ./build.sh --profile dev        # dev profile (faster, unoptimised)
 #
 # Options:
@@ -39,6 +41,7 @@ cd "$SCRIPT_DIR"
 PROFILE="release"
 WEB_ONLY=false
 NODE_ONLY=false
+DOCS_ONLY=false
 WEB_FEATURES="parallel"
 NODE_FEATURES=""
 
@@ -50,6 +53,13 @@ while [[ $# -gt 0 ]]; do
       ;;
     --node-only)
       NODE_ONLY=true
+      shift
+      ;;
+    --docs-only)
+      # GitHub Pages cannot send the COOP/COEP headers that threaded WASM
+      # (SharedArrayBuffer) needs, so the documentation site uses a
+      # single-threaded web build of the same API.
+      DOCS_ONLY=true
       shift
       ;;
     --profile)
@@ -89,6 +99,19 @@ if [[ "$WEB_ONLY" == true && "$NODE_ONLY" == true ]]; then
 fi
 
 PROFILE_FLAG="--$PROFILE"
+
+if [[ "$DOCS_ONLY" == true ]]; then
+  echo "→ Building WASM — docs build (web target, single-threaded, features: ${NODE_FEATURES:-<none>})..."
+  if [[ -n "${NODE_FEATURES// }" ]]; then
+    wasm-pack build --target web "$PROFILE_FLAG" --out-dir pkg-docs --no-default-features --features "$NODE_FEATURES"
+  else
+    wasm-pack build --target web "$PROFILE_FLAG" --out-dir pkg-docs --no-default-features
+  fi
+  rm -f pkg-docs/.gitignore pkg-docs/README.md
+  printf '{\n  "type": "module"\n}\n' > pkg-docs/package.json
+  echo "✓ docs build complete: $SCRIPT_DIR/pkg-docs/"
+  exit 0
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Patch helpers.

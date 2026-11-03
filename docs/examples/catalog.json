@@ -1,0 +1,1087 @@
+[
+ {
+  "id": "embed",
+  "group": "Structures & conformers",
+  "title": "3D structure from SMILES",
+  "about": "Builds 3D coordinates with ETKDG distance geometry. Same seed, same structure.",
+  "code": "return sci.embed(smiles, 42);"
+ },
+ {
+  "id": "embed_batch",
+  "group": "Structures & conformers",
+  "title": "Many molecules at once",
+  "about": "Embeds a list of SMILES; failures are reported per molecule, not thrown.",
+  "code": "return sci.embed_batch(J([\"CCO\",\"c1ccccc1\",\"CC(=O)O\"]), 42);"
+ },
+ {
+  "id": "embed_diverse",
+  "group": "Structures & conformers",
+  "title": "Diverse conformer ensemble",
+  "about": "Generates conformers and keeps one per RMSD cluster (Butina).",
+  "code": "return sci.embed_diverse(\"CCCC\", 8, 0.5, 42n);"
+ },
+ {
+  "id": "search_conformers_with_uff",
+  "group": "Structures & conformers",
+  "title": "UFF-ranked conformer search",
+  "about": "Samples conformers, minimises each with UFF and ranks them by energy.",
+  "code": "return sci.search_conformers_with_uff(\"CCCC\", 6, 42, 0.3);"
+ },
+ {
+  "id": "parse_smiles",
+  "group": "Structures & conformers",
+  "title": "Parse a SMILES",
+  "about": "Atoms and bonds of the molecular graph, no 3D needed.",
+  "code": "return sci.parse_smiles(\"c1ccccc1O\");"
+ },
+ {
+  "id": "to_canonical_smiles",
+  "group": "Structures & conformers",
+  "title": "Canonical SMILES",
+  "about": "Different spellings of one molecule give one string.",
+  "code": "return J({ input: \"OCC\", canonical: sci.to_canonical_smiles(\"OCC\") });"
+ },
+ {
+  "id": "compute_sssr",
+  "group": "Structures & conformers",
+  "title": "Smallest set of smallest rings",
+  "about": "Ring perception of a fused system (naphthalene).",
+  "code": "return sci.compute_sssr(\"c1ccc2ccccc2c1\");"
+ },
+ {
+  "id": "analyze_stereo",
+  "group": "Structures & conformers",
+  "title": "Stereochemistry",
+  "about": "R/S centres and E/Z bonds, from the graph and optionally from 3D coordinates.",
+  "code": "return sci.analyze_stereo(\"C(F)(Cl)(Br)I\", \"[]\");"
+ },
+ {
+  "id": "analyze_graph_features",
+  "group": "Structures & conformers",
+  "title": "Graph features",
+  "about": "Aromaticity, hybridisation and other per-atom perception results.",
+  "code": "return sci.analyze_graph_features(\"c1ccccc1\");"
+ },
+ {
+  "id": "compute_topology",
+  "group": "Structures & conformers",
+  "title": "Topology from coordinates",
+  "about": "Infers bonds from a 3D geometry alone.",
+  "code": "return sci.compute_topology(elements, coords);"
+ },
+ {
+  "id": "compute_bond_orders",
+  "group": "Structures & conformers",
+  "title": "Bond orders",
+  "about": "Bond orders from the Extended Hückel density.",
+  "code": "return sci.compute_bond_orders(elements, coords);"
+ },
+ {
+  "id": "compute_rmsd",
+  "group": "Structures & conformers",
+  "title": "RMSD after alignment",
+  "about": "Kabsch-aligned RMSD between two geometries (here ethanol against a re-embedded copy).",
+  "code": "const other = J(JSON.parse(sci.embed_coords(smiles, 7)).coords); return sci.compute_rmsd(coords, other);"
+ },
+ {
+  "id": "compute_rmsd_matrix",
+  "group": "Structures & conformers",
+  "title": "Pairwise RMSD matrix",
+  "about": "All-pairs RMSD for a set of conformers.",
+  "code": "const c = JSON.parse(sci.embed_diverse(\"CCCC\", 4, 0.1, 42n)); return sci.compute_rmsd_matrix(J(c.map(x => x.coords)));"
+ },
+ {
+  "id": "butina_cluster",
+  "group": "Structures & conformers",
+  "title": "Butina clustering",
+  "about": "Clusters conformers by RMSD.",
+  "code": "const c = JSON.parse(sci.embed_diverse(\"CCCC\", 4, 0.1, 42n)); return sci.butina_cluster(J(c.map(x => x.coords)), 0.5);"
+ },
+ {
+  "id": "filter_diverse",
+  "group": "Structures & conformers",
+  "title": "Keep the diverse conformers",
+  "about": "Drops conformers that are within the RMSD cutoff of one already kept.",
+  "code": "const c = JSON.parse(sci.embed_diverse(\"CCCC\", 4, 0.1, 42n)); return sci.filter_diverse(J(c.map(x => x.coords)), 0.5);"
+ },
+ {
+  "id": "compute_charges",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Gasteiger–Marsili charges",
+  "about": "Partial charges from electronegativity equalisation on the graph.",
+  "code": "return sci.compute_charges(\"CCO\");"
+ },
+ {
+  "id": "compute_charges_configured",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Charges with your own parameters",
+  "about": "Same method with iteration count, damping and tolerance exposed.",
+  "code": "return sci.compute_charges_configured(\"CCO\", 12, 0.5, 1e-6);"
+ },
+ {
+  "id": "compute_eeq_charges",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "EEQ charges (3D)",
+  "about": "Geometry-dependent charges from the electronegativity-equalisation model.",
+  "code": "return sci.compute_eeq_charges(elements, coords, 0);"
+ },
+ {
+  "id": "compute_eeq_energy",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "EEQ electrostatic energy",
+  "about": "Energy of the EEQ charge distribution.",
+  "code": "return sci.compute_eeq_energy(elements, coords, 0);"
+ },
+ {
+  "id": "compute_empirical_pka",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Empirical pKa",
+  "about": "Group-contribution pKa estimate for the acidic/basic sites.",
+  "code": "return sci.compute_empirical_pka(\"CC(=O)O\");"
+ },
+ {
+  "id": "compute_molecular_descriptors",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Molecular descriptors",
+  "about": "Weight, logP-like and topological descriptors.",
+  "code": "return sci.compute_molecular_descriptors(\"CC(=O)Oc1ccccc1C(=O)O\");"
+ },
+ {
+  "id": "compute_ml_descriptors",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "ML descriptor vector",
+  "about": "The feature vector the property models consume.",
+  "code": "return sci.compute_ml_descriptors(\"CCO\");"
+ },
+ {
+  "id": "compute_ml_properties",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Fast property estimates",
+  "about": "logP, solubility and drug-likeness from the descriptor model.",
+  "code": "return sci.compute_ml_properties(\"CCO\");"
+ },
+ {
+  "id": "predict_ml_properties",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Property prediction",
+  "about": "Same models through the prediction entry point.",
+  "code": "return sci.predict_ml_properties(\"CCO\");"
+ },
+ {
+  "id": "predict_ensemble",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Ensemble prediction with uncertainty",
+  "about": "Several models voting, with the spread as a confidence signal.",
+  "code": "return sci.predict_ensemble(\"CCO\");"
+ },
+ {
+  "id": "compute_ecfp",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "ECFP fingerprint",
+  "about": "Morgan/ECFP bit vector (radius 2, 1024 bits).",
+  "code": "return sci.compute_ecfp(\"CCO\", 2, 1024);"
+ },
+ {
+  "id": "compute_ecfp_batch",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Fingerprints for a list",
+  "about": "ECFP for many SMILES in one call.",
+  "code": "return sci.compute_ecfp_batch(J([\"CCO\",\"CCN\",\"c1ccccc1\"]), 2, 1024);"
+ },
+ {
+  "id": "compute_tanimoto",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Tanimoto similarity",
+  "about": "Similarity of two fingerprints (ethanol vs. ethylamine).",
+  "code": "const a = sci.compute_ecfp(\"CCO\", 2, 1024), b = sci.compute_ecfp(\"CCN\", 2, 1024); return sci.compute_tanimoto(a, b);"
+ },
+ {
+  "id": "compute_tpsa",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Topological polar surface area",
+  "about": "Polar surface in Å² from fragment contributions.",
+  "code": "return sci.compute_tpsa(\"CCO\");"
+ },
+ {
+  "id": "compute_whim",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "WHIM 3D descriptors",
+  "about": "Weighted holistic invariant descriptors of the 3D shape.",
+  "code": "return sci.compute_whim(elements, coords, \"mass\");"
+ },
+ {
+  "id": "compute_rdf",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "RDF descriptors",
+  "about": "Radial distribution function descriptor of the geometry.",
+  "code": "return sci.compute_rdf(elements, coords, \"[]\", 100.0, 8.0, 20);"
+ },
+ {
+  "id": "compute_getaway",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "GETAWAY descriptors",
+  "about": "Geometry, topology and atom-weights assembly descriptors.",
+  "code": "const bonds = JSON.parse(sci.compute_topology(elements, coords)).bonds ?? []; return sci.compute_getaway(elements, coords, J(bonds), 3);"
+ },
+ {
+  "id": "compute_aevs_tm",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "Atomic environment vectors",
+  "about": "Per-atom symmetry-function vectors used by the ANI potentials (24 elements).",
+  "code": "return sci.compute_aevs_tm(elements, coords);"
+ },
+ {
+  "id": "compute_hose_codes",
+  "group": "Charges, fingerprints & descriptors",
+  "title": "HOSE codes",
+  "about": "Hierarchically ordered spherical environments of each atom.",
+  "code": "return sci.compute_hose_codes(\"CCO\", 3);"
+ },
+ {
+  "id": "compute_uff_energy",
+  "group": "Force fields & optimisation",
+  "title": "UFF energy",
+  "about": "Universal force field energy of the geometry, in kcal/mol.",
+  "code": "return sci.compute_uff_energy(smiles, coords);"
+ },
+ {
+  "id": "compute_uff_energy_breakdown",
+  "group": "Force fields & optimisation",
+  "title": "UFF energy by term",
+  "about": "Bond, angle, torsion, inversion and van der Waals contributions.",
+  "code": "return sci.compute_uff_energy_breakdown(smiles, coords);"
+ },
+ {
+  "id": "compute_uff_energy_with_aromatic_heuristics",
+  "group": "Force fields & optimisation",
+  "title": "UFF with aromatic heuristics",
+  "about": "UFF energy using the aromatic bond-order heuristic.",
+  "code": "const b = JSON.parse(sci.embed(\"c1ccccc1\", 42)); return sci.compute_uff_energy_with_aromatic_heuristics(\"c1ccccc1\", J(b.coords));"
+ },
+ {
+  "id": "compute_mmff94_energy",
+  "group": "Force fields & optimisation",
+  "title": "MMFF94 energy",
+  "about": "Merck force field energy in kcal/mol.",
+  "code": "return sci.compute_mmff94_energy(smiles, coords);"
+ },
+ {
+  "id": "compute_mmff94_energy_breakdown",
+  "group": "Force fields & optimisation",
+  "title": "MMFF94 energy by term",
+  "about": "Stretch, bend, stretch-bend, torsion, out-of-plane, vdW and electrostatic parts.",
+  "code": "return sci.compute_mmff94_energy_breakdown(smiles, coords);"
+ },
+ {
+  "id": "optimize_framework",
+  "group": "Force fields & optimisation",
+  "title": "BFGS geometry optimisation",
+  "about": "Minimises the UFF energy with the shared BFGS engine.",
+  "code": "return sci.optimize_framework(smiles, coords, \"bfgs\", 50, 0.05, 1e-6, 0.2, \"[]\", \"\");"
+ },
+ {
+  "id": "optimize_geometry_eht",
+  "group": "Force fields & optimisation",
+  "title": "Optimise on the EHT surface",
+  "about": "Geometry optimisation with Extended Hückel forces.",
+  "code": "return sci.optimize_geometry_eht(waterEl, waterCo, 20, 0.05, 1e-6, 0.1);"
+ },
+ {
+  "id": "compute_eht_gradient",
+  "group": "Force fields & optimisation",
+  "title": "EHT gradient",
+  "about": "Energy gradient by central differences of the EHT energy.",
+  "code": "return sci.compute_eht_gradient(waterEl, waterCo);"
+ },
+ {
+  "id": "compute_pm3_gradient",
+  "group": "Force fields & optimisation",
+  "title": "PM3 gradient",
+  "about": "Central differences of the PM3 energy: it always matches the reported energy (eV/Å).",
+  "code": "return sci.compute_pm3_gradient(waterEl, waterCo);"
+ },
+ {
+  "id": "compute_xtb_gradient",
+  "group": "Force fields & optimisation",
+  "title": "xTB (GFN2) gradient",
+  "about": "Central differences of the GFN2 energy (eV/Å).",
+  "code": "return sci.compute_xtb_gradient(waterEl, waterCo);"
+ },
+ {
+  "id": "eht_calculate",
+  "group": "Quantum chemistry",
+  "title": "Extended Hückel theory",
+  "about": "Orbital energies, HOMO/LUMO and gap from a minimal-basis Hückel model.",
+  "code": "return sci.eht_calculate(elements, coords, 1.75);"
+ },
+ {
+  "id": "solve_eht",
+  "group": "Quantum chemistry",
+  "title": "EHT, full solution",
+  "about": "Same method returning coefficients and the overlap matrix as well.",
+  "code": "return sci.solve_eht(waterEl, waterCo, 1.75);"
+ },
+ {
+  "id": "compute_pm3",
+  "group": "Quantum chemistry",
+  "title": "PM3 semi-empirical",
+  "about": "MOPAC-style PM3: total energy (eV), heat of formation (kcal/mol), orbitals.",
+  "code": "return sci.compute_pm3(waterEl, waterCo);"
+ },
+ {
+  "id": "compute_xtb",
+  "group": "Quantum chemistry",
+  "title": "xTB (GFN2-xTB)",
+  "about": "`xtb` is GFN2-xTB in every part of the library.",
+  "code": "return sci.compute_xtb(waterEl, waterCo);"
+ },
+ {
+  "id": "compute_gfn1",
+  "group": "Quantum chemistry",
+  "title": "GFN1-xTB",
+  "about": "Tight-binding with shell-resolved SCC.",
+  "code": "return sci.compute_gfn1(waterEl, waterCo);"
+ },
+ {
+  "id": "compute_gfn2",
+  "group": "Quantum chemistry",
+  "title": "GFN2-xTB",
+  "about": "Tight-binding with multipole electrostatics and D4 dispersion.",
+  "code": "return sci.compute_gfn2(waterEl, waterCo);"
+ },
+ {
+  "id": "compute_hf3c",
+  "group": "Quantum chemistry",
+  "title": "HF-3c",
+  "about": "Minimal-basis Hartree–Fock with the three corrections (D3, gCP, SRB).",
+  "code": "return sci.compute_hf3c(waterEl, waterCo);"
+ },
+ {
+  "id": "compute_hf3c_custom",
+  "group": "Quantum chemistry",
+  "title": "HF-3c with options",
+  "about": "SCF iteration limit, CIS states and the corrections switch.",
+  "code": "return sci.compute_hf3c_custom(waterEl, waterCo, 100, 0, true);"
+ },
+ {
+  "id": "compute_uhf",
+  "group": "Quantum chemistry",
+  "title": "Unrestricted Hartree–Fock",
+  "about": "Open-shell SCF: the methyl radical as a doublet.",
+  "code": "return sci.compute_uhf(\"[6,1,1,1]\", \"[0,0,0,1.09,0,0,-0.36,1.03,0,-0.36,-0.52,0.89]\", 0, 2);"
+ },
+ {
+  "id": "compute_rohf",
+  "group": "Quantum chemistry",
+  "title": "Restricted open-shell HF",
+  "about": "ROHF for the same radical (no spin contamination).",
+  "code": "return sci.compute_rohf(\"[6,1,1,1]\", \"[0,0,0,1.09,0,0,-0.36,1.03,0,-0.36,-0.52,0.89]\", 0, 2);"
+ },
+ {
+  "id": "compute_cisd",
+  "group": "Quantum chemistry",
+  "title": "CISD excited states",
+  "about": "Excited states from an internal STO-3G RHF reference.",
+  "code": "return sci.compute_cisd(waterEl, waterCo, 3);"
+ },
+ {
+  "id": "compute_dft",
+  "group": "Quantum chemistry",
+  "title": "Kohn–Sham DFT",
+  "about": "SVWN or PBE Kohn–Sham on a valence basis (energies in Hartree).",
+  "code": "return sci.compute_dft(waterEl, waterCo, \"svwn\");"
+ },
+ {
+  "id": "compute_ani",
+  "group": "Quantum chemistry",
+  "title": "ANI neural-network potential",
+  "about": "Machine-learned energy for H, C, N, O, F, S, Cl.",
+  "code": "return sci.compute_ani(elements, coords);"
+ },
+ {
+  "id": "compare_methods",
+  "group": "Quantum chemistry",
+  "title": "Compare methods side by side",
+  "about": "Runs several methods on one molecule and tabulates them.",
+  "code": "return sci.compare_methods(smiles, elements, coords, true);"
+ },
+ {
+  "id": "eht_or_uff_fallback",
+  "group": "Quantum chemistry",
+  "title": "EHT with an explicit UFF fallback",
+  "about": "Never silently substitutes: the result says which method ran.",
+  "code": "return sci.eht_or_uff_fallback(smiles, elements, coords, true);"
+ },
+ {
+  "id": "compute_eht_or_uff_fallback",
+  "group": "Quantum chemistry",
+  "title": "EHT or UFF (typed result)",
+  "about": "The same decision as a structured result.",
+  "code": "return sci.compute_eht_or_uff_fallback(smiles, elements, coords, true);"
+ },
+ {
+  "id": "eht_support",
+  "group": "Quantum chemistry",
+  "title": "Which elements EHT supports",
+  "about": "Tells whether a set of elements is covered before you compute.",
+  "code": "return sci.eht_support(elements);"
+ },
+ {
+  "id": "get_eht_support",
+  "group": "Quantum chemistry",
+  "title": "EHT support (detailed)",
+  "about": "Per-element support and the reason when it is missing.",
+  "code": "return sci.get_eht_support(elements);"
+ },
+ {
+  "id": "system_capabilities",
+  "group": "Quantum chemistry",
+  "title": "Method capabilities of a system",
+  "about": "Which methods can handle these elements.",
+  "code": "return sci.system_capabilities(elements);"
+ },
+ {
+  "id": "get_system_capabilities",
+  "group": "Quantum chemistry",
+  "title": "System capabilities (full)",
+  "about": "Capability flags per method.",
+  "code": "return sci.get_system_capabilities(elements);"
+ },
+ {
+  "id": "system_method_plan",
+  "group": "Quantum chemistry",
+  "title": "Recommended methods",
+  "about": "A suggested method order for this composition.",
+  "code": "return sci.system_method_plan(elements);"
+ },
+ {
+  "id": "get_system_method_plan",
+  "group": "Quantum chemistry",
+  "title": "Method plan (full)",
+  "about": "The plan with the reasons attached.",
+  "code": "return sci.get_system_method_plan(elements);"
+ },
+ {
+  "id": "list_neb_backends",
+  "group": "Quantum chemistry",
+  "title": "Backends usable for paths",
+  "about": "Energy backends that can drive a reaction path for these elements.",
+  "code": "return sci.list_neb_backends(elements);"
+ },
+ {
+  "id": "compute_population",
+  "group": "Electronic properties & solvation",
+  "title": "Mulliken & Löwdin charges",
+  "about": "Atomic populations from the EHT density.",
+  "code": "return sci.compute_population(elements, coords);"
+ },
+ {
+  "id": "compute_dipole",
+  "group": "Electronic properties & solvation",
+  "title": "Dipole moment",
+  "about": "Magnitude and components in Debye.",
+  "code": "return sci.compute_dipole(elements, coords);"
+ },
+ {
+  "id": "compute_esp",
+  "group": "Electronic properties & solvation",
+  "title": "Electrostatic potential",
+  "about": "Potential on a 3D grid around the molecule.",
+  "code": "return sci.compute_esp_grid_info(waterEl, waterCo, 0.7, 3.0);"
+ },
+ {
+  "id": "compute_esp_grid_info",
+  "group": "Electronic properties & solvation",
+  "title": "ESP grid dimensions",
+  "about": "Origin, spacing and shape of the ESP grid before computing it.",
+  "code": "return sci.compute_esp_grid_info(elements, coords, 0.5, 3.0);"
+ },
+ {
+  "id": "compute_dos",
+  "group": "Electronic properties & solvation",
+  "title": "Density of states",
+  "about": "Gaussian-broadened DOS and the per-atom projections.",
+  "code": "return sci.compute_dos(elements, coords, 0.3, -30, 5, 50);"
+ },
+ {
+  "id": "compute_dos_multimethod",
+  "group": "Electronic properties & solvation",
+  "title": "DOS from any method",
+  "about": "DOS from EHT, PM3, xTB, GFN1/2 or HF-3c orbital energies.",
+  "code": "return sci.compute_dos_multimethod(waterEl, waterCo, \"pm3\", 0.3, -40, 10, 50);"
+ },
+ {
+  "id": "compute_frontier_descriptors",
+  "group": "Electronic properties & solvation",
+  "title": "Frontier-orbital descriptors",
+  "about": "HOMO/LUMO-based reactivity indices.",
+  "code": "return sci.compute_frontier_descriptors(elements, coords);"
+ },
+ {
+  "id": "compute_fukui_descriptors",
+  "group": "Electronic properties & solvation",
+  "title": "Fukui functions",
+  "about": "Where a molecule is electrophilic or nucleophilic.",
+  "code": "return sci.compute_fukui_descriptors(elements, coords);"
+ },
+ {
+  "id": "compute_reactivity_ranking",
+  "group": "Electronic properties & solvation",
+  "title": "Reactive-site ranking",
+  "about": "Atoms ranked by their combined reactivity indices.",
+  "code": "return sci.compute_reactivity_ranking(elements, coords);"
+ },
+ {
+  "id": "compute_sasa",
+  "group": "Electronic properties & solvation",
+  "title": "Solvent-accessible surface",
+  "about": "Shrake–Rupley SASA in Å², total and per atom.",
+  "code": "return sci.compute_sasa(elements, coords, 1.4);"
+ },
+ {
+  "id": "compute_nonpolar_solvation",
+  "group": "Electronic properties & solvation",
+  "title": "Non-polar solvation",
+  "about": "SASA-based non-polar solvation energy.",
+  "code": "return sci.compute_nonpolar_solvation(elements, coords, 1.4);"
+ },
+ {
+  "id": "compute_gb_solvation",
+  "group": "Electronic properties & solvation",
+  "title": "Generalised-Born solvation",
+  "about": "Polar solvation energy from partial charges (water by default).",
+  "code": "const q = JSON.parse(sci.compute_charges(smiles)).charges; return sci.compute_gb_solvation(elements, coords, J(q), 78.5, 1.0, 1.4);"
+ },
+ {
+  "id": "compute_vibrational_analysis",
+  "group": "Spectra",
+  "title": "Vibrational frequencies",
+  "about": "Normal modes from a numerical Hessian of the chosen method.",
+  "code": "return sci.compute_vibrational_analysis(waterEl, waterCo, \"pm3\", 0.005);"
+ },
+ {
+  "id": "compute_vibrational_analysis_uff",
+  "group": "Spectra",
+  "title": "Vibrational analysis with UFF",
+  "about": "Frequencies from the UFF Hessian.",
+  "code": "return sci.compute_vibrational_analysis_uff(smiles, elements, coords, 0.005);"
+ },
+ {
+  "id": "compute_ir_spectrum",
+  "group": "Spectra",
+  "title": "IR spectrum from an analysis",
+  "about": "Lorentzian-broadened spectrum from the vibrational analysis JSON.",
+  "code": "const a = sci.compute_vibrational_analysis_uff(smiles, elements, coords, 0.005); return sci.compute_ir_spectrum(a, 15, 400, 4000, 80);"
+ },
+ {
+  "id": "compute_ir_spectrum_broadened",
+  "group": "Spectra",
+  "title": "IR spectrum in one call",
+  "about": "Runs the analysis and broadens it (Lorentzian or Gaussian).",
+  "code": "return sci.compute_ir_spectrum_broadened(waterEl, waterCo, \"pm3\", 20, 400, 4500, 80, \"lorentzian\", 0.005, \"O\");"
+ },
+ {
+  "id": "assign_peaks",
+  "group": "Spectra",
+  "title": "Assign IR peaks to groups",
+  "about": "Matches peaks to functional groups through group-frequency tables.",
+  "code": "return sci.assign_peaks(\"[3400, 2950, 1050]\", \"[1.0, 0.6, 0.8]\", elements, \"[]\");"
+ },
+ {
+  "id": "compute_stda_uvvis",
+  "group": "Spectra",
+  "title": "UV–Vis (sTDA)",
+  "about": "Excitation energies and oscillator strengths, broadened.",
+  "code": "return sci.compute_stda_uvvis(waterEl, waterCo, 0.3, 1.0, 12.0, 60, \"gaussian\");"
+ },
+ {
+  "id": "compute_uv_vis_spectrum",
+  "group": "Spectra",
+  "title": "UV–Vis from EHT",
+  "about": "Quick UV–Vis estimate from EHT orbital energies.",
+  "code": "return sci.compute_uv_vis_spectrum(elements, coords, 0.3, 1.0, 12.0, 60);"
+ },
+ {
+  "id": "compute_fluorescence",
+  "group": "Spectra",
+  "title": "Fluorescence",
+  "about": "Emission spectrum with Stokes shift and a dark-state threshold.",
+  "code": "return sci.compute_fluorescence(waterEl, waterCo, 0.3, 1.0, 12.0, 60, 0.3, 1.0, 0.001, \"gaussian\");"
+ },
+ {
+  "id": "compute_nmr_spectrum",
+  "group": "Spectra",
+  "title": "NMR spectrum (¹H)",
+  "about": "Lorentzian-broadened ¹H spectrum predicted from HOSE codes.",
+  "code": "return sci.compute_nmr_spectrum(\"CCO\", \"1H\", 0.02, 0, 12, 100);"
+ },
+ {
+  "id": "compute_nmr_spectrum_with_coords",
+  "group": "Spectra",
+  "title": "NMR spectrum with 3D couplings",
+  "about": "Same spectrum with J-couplings from the geometry.",
+  "code": "return sci.compute_nmr_spectrum_with_coords(smiles, coords, \"1H\", 0.02, 0, 12, 100);"
+ },
+ {
+  "id": "predict_nmr_shifts",
+  "group": "Spectra",
+  "title": "NMR shifts",
+  "about": "Predicted ¹H chemical shifts per atom.",
+  "code": "return sci.predict_nmr_shifts(\"CCO\");"
+ },
+ {
+  "id": "predict_nmr_shifts_for_nucleus",
+  "group": "Spectra",
+  "title": "NMR shifts for a nucleus",
+  "about": "Same for ¹³C.",
+  "code": "return sci.predict_nmr_shifts_for_nucleus(\"CCO\", \"13C\");"
+ },
+ {
+  "id": "predict_nmr_couplings",
+  "group": "Spectra",
+  "title": "NMR J-couplings",
+  "about": "Karplus-type ³J couplings from the geometry.",
+  "code": "return sci.predict_nmr_couplings(smiles, coords);"
+ },
+ {
+  "id": "compute_ensemble_j_couplings",
+  "group": "Spectra",
+  "title": "Boltzmann-averaged J-couplings",
+  "about": "Couplings averaged over a conformer ensemble.",
+  "code": "const c = JSON.parse(sci.embed_diverse(\"CCCC\", 3, 0.1, 42n)); const xs = c.map(x => x.coords); return sci.compute_ensemble_j_couplings(\"CCCC\", J(xs), J(xs.map((_, i) => i * 0.5)), 298.15);"
+ },
+ {
+  "id": "compute_giao_nmr",
+  "group": "Spectra",
+  "title": "GIAO NMR shielding",
+  "about": "Ab-initio shielding tensors (slow; STO-3G).",
+  "code": "return sci.compute_giao_nmr(waterEl, waterCo, \"1H\", 0, 1, 50, true, false);"
+ },
+ {
+  "id": "eht_orbital_mesh",
+  "group": "Orbitals & grids",
+  "title": "Orbital isosurface (mesh)",
+  "about": "Marching-cubes mesh of a molecular orbital, ready for WebGL.",
+  "code": "return sci.eht_orbital_mesh(waterEl, waterCo, 3, 0.5, 0.05);"
+ },
+ {
+  "id": "compute_orbital_mesh",
+  "group": "Orbitals & grids",
+  "title": "Orbital mesh with any method",
+  "about": "Isosurface from EHT, PM3, xTB or HF-3c orbitals.",
+  "code": "return sci.compute_orbital_mesh(waterEl, waterCo, \"eht\", 3, 0.5, 3.0, 0.05);"
+ },
+ {
+  "id": "eht_volumetric_grid_info",
+  "group": "Orbitals & grids",
+  "title": "Orbital grid dimensions",
+  "about": "Grid shape and bounds for volumetric rendering.",
+  "code": "return sci.eht_volumetric_grid_info(elements, coords, 0.5, 3.0);"
+ },
+ {
+  "id": "apply_smirks",
+  "group": "Reactions, paths & kinetics",
+  "title": "Apply a SMIRKS reaction",
+  "about": "Runs a reaction transform on a SMILES and returns the products.",
+  "code": "return sci.apply_smirks(\"[C:1][OH:2]>>[C:1][O:2]C\", \"CCO\");"
+ },
+ {
+  "id": "parse_smirks",
+  "group": "Reactions, paths & kinetics",
+  "title": "Parse a SMIRKS",
+  "about": "Shows the reactant and product patterns and the atom maps.",
+  "code": "return sci.parse_smirks(\"[C:1][OH:2]>>[C:1][O:2]C\");"
+ },
+ {
+  "id": "compute_simplified_neb_path",
+  "group": "Reactions, paths & kinetics",
+  "title": "Simplified NEB path (UFF)",
+  "about": "A spring-coupled path between two geometries of the same molecule.",
+  "code": "const a = J(JSON.parse(sci.embed_coords(smiles, 1)).coords), b = J(JSON.parse(sci.embed_coords(smiles, 2)).coords); return sci.compute_simplified_neb_path(smiles, a, b, 4, 5, 0.1, 0.01);"
+ },
+ {
+  "id": "compute_neb_path_with_method",
+  "group": "Reactions, paths & kinetics",
+  "title": "NEB path with any backend",
+  "about": "Same path with a chosen energy backend (uff, mmff94, pm3, xtb, gfn1, gfn2, hf3c).",
+  "code": "const a = J(JSON.parse(sci.embed_coords(smiles, 1)).coords), b = J(JSON.parse(sci.embed_coords(smiles, 2)).coords); return sci.compute_neb_path_with_method(smiles, a, b, 4, 5, 0.1, 0.01, \"uff\");"
+ },
+ {
+  "id": "neb_single_point_energy",
+  "group": "Reactions, paths & kinetics",
+  "title": "Single-point energy (any backend)",
+  "about": "One energy in kcal/mol; no gradient is computed.",
+  "code": "return sci.neb_single_point_energy(\"pm3\", smiles, coords);"
+ },
+ {
+  "id": "neb_energy_and_gradient",
+  "group": "Reactions, paths & kinetics",
+  "title": "Energy and gradient (any backend)",
+  "about": "Energy plus gradient (analytic for force fields, central differences for PM3/xTB).",
+  "code": "return sci.neb_energy_and_gradient(\"uff\", smiles, coords);"
+ },
+ {
+  "id": "compute_md_trajectory",
+  "group": "Reactions, paths & kinetics",
+  "title": "Molecular dynamics (NVE)",
+  "about": "Velocity Verlet with the UFF force field.",
+  "code": "return sci.compute_md_trajectory(smiles, coords, 20, 0.5, 42);"
+ },
+ {
+  "id": "compute_md_trajectory_nvt",
+  "group": "Reactions, paths & kinetics",
+  "title": "Molecular dynamics (NVT)",
+  "about": "Berendsen thermostat at a target temperature.",
+  "code": "return sci.compute_md_trajectory_nvt(smiles, coords, 20, 0.5, 42, 300, 100);"
+ },
+ {
+  "id": "compute_md_trajectory_with_method",
+  "group": "Reactions, paths & kinetics",
+  "title": "Molecular dynamics with any backend",
+  "about": "MD driven by uff, pm3 or xtb (GFN2).",
+  "code": "return sci.compute_md_trajectory_with_method(smiles, coords, elements, 5, 0.5, 42, 300, \"uff\");"
+ },
+ {
+  "id": "compute_reaction_dynamics",
+  "group": "Reactions, paths & kinetics",
+  "title": "Reaction path (1D coordinate)",
+  "about": "Embeds reactants and products and relaxes a path between them.",
+  "code": "return sci.compute_reaction_dynamics(J([\"CC=O\"]), J([\"CC=O\"]), \"uff\", \"{}\");"
+ },
+ {
+  "id": "compute_htst_rate",
+  "group": "Reactions, paths & kinetics",
+  "title": "Harmonic TST rate",
+  "about": "Rate constant from the activation and reaction free energies (eV).",
+  "code": "return sci.compute_htst_rate(0.8, -0.2, 298.15);"
+ },
+ {
+  "id": "compute_htst_sweep",
+  "group": "Reactions, paths & kinetics",
+  "title": "Rate vs. temperature",
+  "about": "The same rate over a list of temperatures.",
+  "code": "return sci.compute_htst_sweep(0.8, -0.2, J([250, 300, 350, 400]));"
+ },
+ {
+  "id": "analyze_gsm_mbh_htst_step",
+  "group": "Reactions, paths & kinetics",
+  "title": "Elementary-step analysis",
+  "about": "GSM + MBH + HTST analysis of one step (reactant/product geometries).",
+  "code": "const a = J(JSON.parse(sci.embed_coords(smiles, 1)).coords); return sci.analyze_gsm_mbh_htst_step(smiles, a, a, \"uff\", 298.15, 1.0);"
+ },
+ {
+  "id": "extract_kinetics_diagnostics",
+  "group": "Reactions, paths & kinetics",
+  "title": "Kinetics diagnostics",
+  "about": "Diagnostics of a microkinetic network (demo network).",
+  "code": "return sci.extract_kinetics_diagnostics(\"\", 5);"
+ },
+ {
+  "id": "solve_microkinetic_network",
+  "group": "Reactions, paths & kinetics",
+  "title": "Microkinetic network",
+  "about": "Time evolution of the populations of a reaction network.",
+  "code": "return sci.solve_microkinetic_network(\"\", 5);"
+ },
+ {
+  "id": "solve_microkinetic_steady_state",
+  "group": "Reactions, paths & kinetics",
+  "title": "Microkinetic steady state",
+  "about": "Steady-state populations by integration to convergence.",
+  "code": "return sci.solve_microkinetic_steady_state(\"\", 5, 1e-10);"
+ },
+ {
+  "id": "create_unit_cell",
+  "group": "Crystals & materials",
+  "title": "Unit cell",
+  "about": "Lattice vectors, volume and parameters from a, b, c, α, β, γ.",
+  "code": "return sci.create_unit_cell(5.0, 5.0, 5.0, 90, 90, 90);"
+ },
+ {
+  "id": "assemble_framework",
+  "group": "Crystals & materials",
+  "title": "Assemble a framework",
+  "about": "Builds a periodic framework from a topology and a metal node.",
+  "code": "return sci.assemble_framework(\"pcu\", 30, \"octahedral\", 10.0, 1);"
+ },
+ {
+  "id": "build_periodic_molecule",
+  "group": "Crystals & materials",
+  "title": "Periodic molecular graph",
+  "about": "Bonds across cell boundaries from fractional coordinates.",
+  "code": "return sci.build_periodic_molecule(\"[11,17]\", \"[[0,0,0],[0.5,0.5,0.5]]\", J([5.64,5.64,5.64,90,90,90]), 0.3);"
+ },
+ {
+  "id": "detect_hapticity",
+  "group": "Crystals & materials",
+  "title": "Hapticity",
+  "about": "Finds η-bonded rings in organometallic complexes.",
+  "code": "return sci.detect_hapticity(elements, coords, \"[]\");"
+ },
+ {
+  "id": "space_group_by_number",
+  "group": "Crystals & materials",
+  "title": "Space group by number",
+  "about": "Symbol, system and symmetry operations of group 225.",
+  "code": "return sci.space_group_by_number(225);"
+ },
+ {
+  "id": "space_group_by_symbol",
+  "group": "Crystals & materials",
+  "title": "Space group by symbol",
+  "about": "Look up a group by its Hermann–Mauguin symbol.",
+  "code": "return sci.space_group_by_symbol(\"P1\");"
+ },
+ {
+  "id": "all_space_groups",
+  "group": "Crystals & materials",
+  "title": "All 230 space groups",
+  "about": "The complete list, for building selectors.",
+  "code": "return sci.all_space_groups();"
+ },
+ {
+  "id": "parse_cif",
+  "group": "Crystals & materials",
+  "title": "Parse a CIF",
+  "about": "Crystal structure from CIF text.",
+  "code": "return sci.parse_cif(\"data_test\\n_cell_length_a 5.0\\n_cell_length_b 5.0\\n_cell_length_c 5.0\\n_cell_angle_alpha 90\\n_cell_angle_beta 90\\n_cell_angle_gamma 90\\nloop_\\n_atom_site_label\\n_atom_site_type_symbol\\n_atom_site_fract_x\\n_atom_site_fract_y\\n_atom_site_fract_z\\n_atom_site_occupancy\\nNa1 Na 0.0 0.0 0.0 1.0\\n\");"
+ },
+ {
+  "id": "write_cif",
+  "group": "Crystals & materials",
+  "title": "Write a CIF",
+  "about": "Round trip: CIF text → structure → CIF text.",
+  "code": "const s = sci.parse_cif(\"data_test\\n_cell_length_a 5.0\\n_cell_length_b 5.0\\n_cell_length_c 5.0\\n_cell_angle_alpha 90\\n_cell_angle_beta 90\\n_cell_angle_gamma 90\\nloop_\\n_atom_site_label\\n_atom_site_type_symbol\\n_atom_site_fract_x\\n_atom_site_fract_y\\n_atom_site_fract_z\\n_atom_site_occupancy\\nNa1 Na 0.0 0.0 0.0 1.0\\n\"); return sci.write_cif(s);"
+ },
+ {
+  "id": "train_random_forest",
+  "group": "Machine learning",
+  "title": "Random forest",
+  "about": "Trains a regressor on a small feature table and reports the fit.",
+  "code": "const X = [[0],[1],[2],[3],[4],[5]], y = [0,1,4,9,16,25]; return sci.train_random_forest(J(X), J(y), 20, 4, 2, 1, 0.8, 42n);"
+ },
+ {
+  "id": "train_gradient_boosting",
+  "group": "Machine learning",
+  "title": "Gradient boosting",
+  "about": "Boosted trees on the same table.",
+  "code": "const X = [[0],[1],[2],[3],[4],[5]], y = [0,1,4,9,16,25]; return sci.train_gradient_boosting(J(X), J(y), 30, 0.1, 3, 2, 1, 0.8, 42n);"
+ },
+ {
+  "id": "version",
+  "group": "Utilities",
+  "title": "Library version",
+  "about": "The version of the compiled package that is running in your browser.",
+  "code": "return sci.version();"
+ },
+ {
+  "id": "estimate_workers",
+  "group": "Utilities",
+  "title": "Worker count",
+  "about": "How many workers to use for a batch of a given size.",
+  "code": "return J(sci.estimate_workers(1000, 8));"
+ },
+ {
+  "id": "compute_edl_profile",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Double-layer potential profile",
+  "about": "Potential versus distance from an electrode (Helmholtz, Gouy–Chapman or GCS).",
+  "code": "return sci.compute_edl_profile(0.1, \"gouy-chapman\", 0.1, 298.15, 20, 20);"
+ },
+ {
+  "id": "compute_helmholtz_profile",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Helmholtz layer",
+  "about": "The compact-layer model.",
+  "code": "return sci.compute_helmholtz_profile(0.05, 0.1);"
+ },
+ {
+  "id": "compute_gouy_chapman_profile",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Gouy–Chapman layer",
+  "about": "The diffuse-layer model.",
+  "code": "return sci.compute_gouy_chapman_profile(0.05, 0.1);"
+ },
+ {
+  "id": "compute_gcs_profile",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Gouy–Chapman–Stern",
+  "about": "A Stern layer in series with the diffuse layer.",
+  "code": "return sci.compute_gcs_profile(0.05, 0.1, 3.0);"
+ },
+ {
+  "id": "compute_edl_capacitance_scan",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Capacitance vs. potential",
+  "about": "Differential capacitance over a potential window.",
+  "code": "return sci.compute_edl_capacitance_scan(-0.3, 0.3, 7, 0.1, \"gouy-chapman\");"
+ },
+ {
+  "id": "compute_edl_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "EDL chart",
+  "about": "The profile as a ready-to-plot chart payload.",
+  "code": "return sci.compute_edl_chart(0.1, 0.1);"
+ },
+ {
+  "id": "compute_capacitance_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Capacitance chart",
+  "about": "The scan as a chart payload.",
+  "code": "return sci.compute_capacitance_chart(-0.5, 0.5, 11, 0.1, \"gouy-chapman\");"
+ },
+ {
+  "id": "compute_kmesh",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "k-point mesh",
+  "about": "A Monkhorst–Pack mesh of the Brillouin zone with its weights.",
+  "code": "return sci.compute_kmesh(\"[2,2,2]\", \"monkhorst-pack\");"
+ },
+ {
+  "id": "validate_kmesh_weights",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Check k-point weights",
+  "about": "Verifies that the weights of a mesh sum to one.",
+  "code": "return sci.validate_kmesh_weights(\"[0.25,0.25,0.25,0.25]\", 1e-9);"
+ },
+ {
+  "id": "bloch_phase",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Bloch phase",
+  "about": "The phase factor exp(i k·T) of a lattice translation.",
+  "code": "return sci.bloch_phase(0.5, 0, 0, 1, 0, 0);"
+ },
+ {
+  "id": "build_bloch_hamiltonian",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Bloch Hamiltonian",
+  "about": "H(k) built from real-space blocks (a 1D tight-binding chain).",
+  "code": "return sci.build_bloch_hamiltonian(J([{matrix:[[-1.0]],translation:[0,0,0]},{matrix:[[-0.5]],translation:[1,0,0]},{matrix:[[-0.5]],translation:[-1,0,0]}]), 0.25, 0, 0);"
+ },
+ {
+  "id": "assemble_periodic_operators",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Operators on a k-mesh",
+  "about": "H(k) and S(k) on every point of a mesh.",
+  "code": "return sci.assemble_periodic_operators(J([{matrix:[[-1.0]],translation:[0,0,0]},{matrix:[[-0.5]],translation:[1,0,0]},{matrix:[[-0.5]],translation:[-1,0,0]}]), J([{matrix:[[1.0]],translation:[0,0,0]}]), \"[4,1,1]\", \"monkhorst-pack\");"
+ },
+ {
+  "id": "compute_periodic_dos",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Periodic density of states",
+  "about": "KPM density of states of the tight-binding chain.",
+  "code": "return sci.compute_periodic_dos(J([{matrix:[[-1.0]],translation:[0,0,0]},{matrix:[[-0.5]],translation:[1,0,0]},{matrix:[[-0.5]],translation:[-1,0,0]}]), \"[8,1,1]\", \"monkhorst-pack\", 30, -3, 1, 40, null);"
+ },
+ {
+  "id": "solve_periodic_randnla",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Randomised periodic solver",
+  "about": "Nyström/RandNLA solution of the periodic eigenproblem.",
+  "code": "return sci.solve_periodic_randnla(J([{matrix:[[-1.0,-0.2],[-0.2,-0.6]],translation:[0,0,0]},{matrix:[[-0.3,0],[0,-0.2]],translation:[1,0,0]},{matrix:[[-0.3,0],[0,-0.2]],translation:[-1,0,0]}]), J([{matrix:[[1,0],[0,1]],translation:[0,0,0]}]), 2, \"[2,1,1]\", \"monkhorst-pack\", null);"
+ },
+ {
+  "id": "bz_integrate_scalar",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Brillouin-zone integral (scalar)",
+  "about": "Weighted average of a scalar over the k-mesh.",
+  "code": "return sci.bz_integrate_scalar(\"[1,2,3,4]\", \"[0.25,0.25,0.25,0.25]\");"
+ },
+ {
+  "id": "bz_integrate_vector",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Brillouin-zone integral (vector)",
+  "about": "Weighted average of a vector quantity.",
+  "code": "return sci.bz_integrate_vector(J([[1,0,0],[0,1,0]]), \"[0.5,0.5]\");"
+ },
+ {
+  "id": "validate_electron_count",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Check the electron count",
+  "about": "Whether the electrons fit the bands of the mesh.",
+  "code": "return sci.validate_electron_count(2, 2, 4);"
+ },
+ {
+  "id": "compute_band_structure_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Band-structure chart",
+  "about": "Bands along a high-symmetry path, as a chart payload.",
+  "code": "return sci.compute_band_structure_chart(\"[6]\", \"[0,0,0]\", \"[3,0,0,0,3,0,0,0,3]\", 3);"
+ },
+ {
+  "id": "compute_dos_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "DOS chart",
+  "about": "A density of states as a chart payload.",
+  "code": "return sci.compute_dos_chart(\"[-1,0,1]\", \"[0.1,0.5,0.1]\");"
+ },
+ {
+  "id": "compute_kpoint_path_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "k-path chart",
+  "about": "The high-symmetry path through the Brillouin zone.",
+  "code": "return sci.compute_kpoint_path_chart(5);"
+ },
+ {
+  "id": "compute_fermi_surface_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Fermi-surface chart",
+  "about": "Constant-energy contour of a 2D band.",
+  "code": "return sci.compute_fermi_surface_chart(J([{matrix:[[-1.0]],translation:[0,0,0]},{matrix:[[-0.5]],translation:[1,0,0]},{matrix:[[-0.5]],translation:[-1,0,0]}]), null, 4, 4);"
+ },
+ {
+  "id": "compute_arrhenius_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Arrhenius chart",
+  "about": "ln k against 1/T.",
+  "code": "return sci.compute_arrhenius_chart(\"[300,400,500]\", \"[0.001,0.1,5]\");"
+ },
+ {
+  "id": "compute_thermal_prop_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Thermal-properties chart",
+  "about": "Rate and equilibrium constants against temperature.",
+  "code": "return sci.compute_thermal_prop_chart(0.8, -0.2, \"[300,400,500]\");"
+ },
+ {
+  "id": "compute_phase_portrait_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Phase portrait",
+  "about": "Population trajectory of the demo microkinetic network.",
+  "code": "return sci.compute_phase_portrait_chart(\"\", 5);"
+ },
+ {
+  "id": "compute_trajectory_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Path trajectory chart",
+  "about": "The path between two geometries as a chart payload.",
+  "code": "const a = J(JSON.parse(sci.embed_coords(smiles, 1)).coords), b = J(JSON.parse(sci.embed_coords(smiles, 2)).coords); return sci.compute_trajectory_chart(smiles, a, b, \"uff\");"
+ },
+ {
+  "id": "compute_reaction_coordinate_chart",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Reaction-coordinate chart",
+  "about": "Energy along the path as a chart payload.",
+  "code": "const a = J(JSON.parse(sci.embed_coords(smiles, 1)).coords), b = J(JSON.parse(sci.embed_coords(smiles, 2)).coords); return sci.compute_reaction_coordinate_chart(smiles, a, b, \"uff\");"
+ },
+ {
+  "id": "chart_to_json",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Chart to JSON",
+  "about": "Serialises a chart payload.",
+  "code": "return sci.chart_to_json(sci.compute_dos_chart(\"[-1,0,1]\", \"[0.1,0.5,0.1]\"));"
+ },
+ {
+  "id": "chart_from_json",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Chart from JSON",
+  "about": "Parses a chart payload back.",
+  "code": "return sci.chart_from_json(sci.chart_to_json(sci.compute_dos_chart(\"[-1,0,1]\", \"[0.1,0.5,0.1]\")));"
+ },
+ {
+  "id": "validate_chart_schema",
+  "group": "Electrochemistry, periodic systems & charts",
+  "title": "Validate a chart",
+  "about": "Checks that a payload follows the chart schema.",
+  "code": "return J({ valid: sci.validate_chart_schema(sci.compute_dos_chart(\"[-1,0,1]\", \"[0.1,0.5,0.1]\")) });"
+ }
+]

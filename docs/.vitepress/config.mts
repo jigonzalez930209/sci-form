@@ -65,6 +65,7 @@ export default defineConfig({
             { text: 'Rust', link: '/guide/rust' },
             { text: 'Python', link: '/guide/python' },
             { text: 'TypeScript / JS', link: '/guide/typescript' },
+            { text: 'Live examples (run in the browser)', link: '/guide/live-examples' },
             { text: 'CLI', link: '/guide/cli' },
             { text: 'Metal EHT Validity', link: '/guide/metal-eht-validity' },
           ],
@@ -109,6 +110,7 @@ export default defineConfig({
           items: [
             { text: 'Extended Hückel Theory', link: '/algorithm/extended-huckel-theory' },
             { text: 'HF-3c Quantum Engine', link: '/algorithm/hf3c-quantum-engine' },
+            { text: 'PM3 & xTB: Surfaces and Gradients', link: '/algorithm/semiempirical-gradients' },
             { text: 'Kohn–Sham DFT', link: '/algorithm/ks-dft' },
             { text: 'Machine Learning Potentials', link: '/algorithm/machine-learning-potentials' },
             { text: 'Electrostatic Potential', link: '/algorithm/electrostatic-potential' },
