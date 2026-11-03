@@ -3,14 +3,34 @@ mod calc_cmds;
 mod embed_cmds;
 mod experimental_cmds;
 mod format;
+mod guide;
 
 use args::{Cli, Commands};
-use clap::Parser;
+use clap::FromArgMatches;
 
 fn main() {
-    let cli = Cli::parse();
+    // Behave like every Unix tool when the reader closes the pipe
+    // (`sci-form ... | head`): exit quietly instead of panicking in println!.
+    #[cfg(unix)]
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
 
-    match cli.command {
+    let matches = guide::build_command().get_matches();
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
+
+    let command = match cli.command {
+        Some(c) => c,
+        None => {
+            guide::overview();
+            return;
+        }
+    };
+
+    match command {
+        Commands::Topics { topic } => guide::cmd_commands(topic),
+        Commands::Examples { command, run } => guide::cmd_examples(command, run),
+        Commands::Completions { shell } => guide::cmd_completions(shell),
         Commands::Embed {
             smiles,
             seed,
@@ -700,47 +720,6 @@ fn main() {
             experimental_cmds::cmd_validate_chart_schema(json_input.unwrap_or_default())
         }
 
-        #[cfg(feature = "alpha-reaction-dynamics")]
-        Commands::ReactionDynamics3d {
-            reactant_smiles,
-            product_smiles,
-            method,
-            n_images,
-            n_approach,
-            n_departure,
-            smirks,
-            seed,
-        } => {
-            let reactants: Vec<String> =
-                serde_json::from_str(&reactant_smiles).unwrap_or_else(|e| {
-                    eprintln!("bad reactant_smiles: {e}");
-                    std::process::exit(1);
-                });
-            let products: Vec<String> = serde_json::from_str(&product_smiles).unwrap_or_else(|e| {
-                eprintln!("bad product_smiles: {e}");
-                std::process::exit(1);
-            });
-            let config = sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig {
-                method,
-                n_images,
-                n_approach_frames: n_approach,
-                n_departure_frames: n_departure,
-                smirks,
-                seed,
-                ..Default::default()
-            };
-            let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
-            let p_refs: Vec<&str> = products.iter().map(String::as_str).collect();
-            match sci_form::alpha::reaction_dynamics::compute_reaction_dynamics_3d(
-                &r_refs, &p_refs, &config,
-            ) {
-                Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
-                Err(e) => {
-                    eprintln!("Error: {e}");
-                    std::process::exit(1);
-                }
-            }
-        }
         Commands::Uhf {
             elements,
             coords,
