@@ -4,28 +4,24 @@ on:
   push:
     tags: ["v*"]
 
-permissions:
-  actions: read
-  contents: write
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   # The feature lists MUST be identical to the ones in ci.yml: the published
-  # artefacts are what CI tests, so a shorter list here would ship a wheel
-  # and an npm package with fewer capabilities than the documentation
-  # promises. `scripts/check_feature_parity.py` fails the build if the two
+  # artefacts are what the maintainer tested locally and CI built, so a
+  # shorter list here would ship a wheel and an npm package with fewer
+  # capabilities than the documentation promises. `scripts/check_feature_parity.py` fails the build if the two
   # workflows ever drift apart.
   PYTHON_BINDING_FEATURES: >-
     parallel
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
     alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
-    alpha-render-bridge alpha-reaction-dynamics
+    alpha-render-bridge
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
   WASM_WEB_FEATURES: >-
     parallel experimental-gpu
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
     alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
-    alpha-render-bridge alpha-reaction-dynamics
+    alpha-render-bridge
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
   # The Node.js build has no rayon threads (wasm-bindgen-rayon needs the
   # browser Worker API) and no WebGPU (Node.js has no WebGPU): both features
@@ -33,24 +29,31 @@ env:
   WASM_NODE_FEATURES: >-
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
     alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
-    alpha-render-bridge alpha-reaction-dynamics
+    alpha-render-bridge
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Release pipeline:
-#   0. check-version     — the tag MUST match the version of every crate
-#   1. wait-for-ci        — block until CI passes for the same SHA
-#   2. build-cli          — cross-compile CLI grouped by OS (3 runners, 5 targets)
-#   3. build-python       — maturin wheels (3 platforms × 3.11)
-#   4. build-wasm         — wasm-pack bundler + npm package validation
-#   5. verify-python      — install wheel + smoke test
-#   6. verify-node        — install npm pkg + smoke test
-#   7. verify-cli-linux   — run the linux binary + smoke test
-#   8. publish-crate      — cargo publish to crates.io
-#   9. publish-python     — twine upload to PyPI
-#  10. publish-npm        — npm publish
-#  11. release            — GitHub Release with all artifacts
+# Release pipeline (runs on a pushed tag `vX.Y.Z`).
+#
+# The tests are NOT run here: `scripts/release-check.sh` runs all of them on the
+# maintainer's machine and `scripts/release.sh` only creates the tag when they
+# pass. GitHub only BUILDS and PUBLISHES, with cached cargo registries/targets:
+#
+#   0. check-version   the tag must match every manifest
+#   1. build-cli       Linux x86_64/aarch64, macOS x86_64/arm64, Windows
+#                      → .tar.gz / .zip, plus .deb and .rpm on Linux
+#   2. build-python    wheels (3 platforms) + sdist
+#   3. build-wasm      npm package (web + node) and the single-threaded docs build
+#   4. publish-*       crates.io, PyPI, npm
+#   5. github-release  assets + SHA256SUMS
+#   6. docs            the documentation site, deployed AFTER the builds so its
+#                      live examples run on the package that was just compiled
 # ─────────────────────────────────────────────────────────────────────────────
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   # ─── Gate 0: the tag must match the version of every published crate ──────
@@ -115,140 +118,75 @@ jobs:
           fi
           exit "$status"
 
-  # ─── Gate 1: Wait for CI on the same SHA ───────────────────────────────────
-  wait-for-ci:
-    name: Wait for CI
+  # ─── Command-line tool: every platform, every package format ──────────────
+  build-cli:
+    name: CLI (${{ matrix.target }})
     needs: [check-version]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for CI workflow to finish successfully
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const workflowId = 'ci.yml';
-            const sha = context.sha;
-            const timeoutMs = 60 * 60 * 1000;
-            const intervalMs = 30 * 1000;
-            const deadline = Date.now() + timeoutMs;
-
-            while (Date.now() < deadline) {
-              const { data } = await github.rest.actions.listWorkflowRuns({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                workflow_id: workflowId,
-                head_sha: sha,
-                per_page: 10,
-              });
-
-              const run = data.workflow_runs.find((item) => item.head_sha === sha);
-
-              if (!run) {
-                core.info(`No CI run found yet for ${sha}; waiting...`);
-              } else if (run.status !== 'completed') {
-                core.info(`CI run ${run.id} is ${run.status}; waiting...`);
-              } else if (run.conclusion === 'success') {
-                core.info(`CI passed for ${sha}: ${run.html_url}`);
-                return;
-              } else {
-                throw new Error(`CI run ${run.id} finished with ${run.conclusion}: ${run.html_url}`);
-              }
-
-              await new Promise((resolve) => setTimeout(resolve, intervalMs));
-            }
-
-            throw new Error(`Timed out waiting for CI to complete successfully for ${sha}`);
-
-  # ─── CLI Binaries (grouped by OS to reduce runner startup overhead) ───────
-  build-cli-linux:
-    name: CLI (ubuntu-latest)
-    needs: [wait-for-ci]
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  target: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-latest,  target: aarch64-unknown-linux-gnu }
+          - { os: macos-latest,   target: aarch64-apple-darwin }
+          - { os: macos-latest,   target: x86_64-apple-darwin }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+          targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-      - name: Install cross-compilation tools (aarch64-linux)
+        with:
+          shared-key: cli-${{ matrix.target }}
+      - name: Install the aarch64 cross linker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
-      - name: Build Linux x86_64 CLI
-        run: cargo build --release --package sci-form-cli --target x86_64-unknown-linux-gnu
-      - name: Build Linux aarch64 CLI
-        run: cargo build --release --package sci-form-cli --target aarch64-unknown-linux-gnu
+      - name: Install the .deb / .rpm builders
+        if: contains(matrix.target, 'linux')
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb,cargo-generate-rpm
+      - name: Build
+        shell: bash
+        run: cargo build --release -p sci-form-cli --target ${{ matrix.target }}
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-      - name: Stage Linux x86_64 artifact
+      - name: Smoke test (native targets only)
+        if: matrix.target != 'aarch64-unknown-linux-gnu' && matrix.target != 'x86_64-apple-darwin'
         shell: bash
-        run: cp target/x86_64-unknown-linux-gnu/release/sci-form sci-form-linux-x86_64
-      - name: Stage Linux aarch64 artifact
+        run: |
+          exe=target/${{ matrix.target }}/release/sci-form
+          [ -f "$exe.exe" ] && exe="$exe.exe"
+          "$exe" --version
+          "$exe" | head -5
+      # A cross-compiled binary cannot print the shell completions; the host
+      # build can (the command set is the same on every target).
+      - name: Build the host binary for the completions
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: cargo build --release -p sci-form-cli
+      - name: Package (.tar.gz / .zip, .deb, .rpm, SHA256SUMS)
         shell: bash
-        run: cp target/aarch64-unknown-linux-gnu/release/sci-form sci-form-linux-aarch64
+        run: bash scripts/package-cli.sh ${{ matrix.target }} dist
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
       - uses: actions/upload-artifact@v6
         with:
-          name: sci-form-linux-x86_64
-          path: sci-form-linux-x86_64
-      - uses: actions/upload-artifact@v6
-        with:
-          name: sci-form-linux-aarch64
-          path: sci-form-linux-aarch64
+          name: cli-${{ matrix.target }}
+          path: |
+            dist/*
+            !dist/SHA256SUMS
 
-  build-cli-macos:
-    name: CLI (macos-latest)
-    needs: [wait-for-ci]
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin,aarch64-apple-darwin
-      - uses: Swatinem/rust-cache@v2
-      - name: Build macOS x86_64 CLI
-        run: cargo build --release --package sci-form-cli --target x86_64-apple-darwin
-      - name: Build macOS aarch64 CLI
-        run: cargo build --release --package sci-form-cli --target aarch64-apple-darwin
-      - name: Stage macOS x86_64 artifact
-        shell: bash
-        run: cp target/x86_64-apple-darwin/release/sci-form sci-form-macos-x86_64
-      - name: Stage macOS aarch64 artifact
-        shell: bash
-        run: cp target/aarch64-apple-darwin/release/sci-form sci-form-macos-aarch64
-      - uses: actions/upload-artifact@v6
-        with:
-          name: sci-form-macos-x86_64
-          path: sci-form-macos-x86_64
-      - uses: actions/upload-artifact@v6
-        with:
-          name: sci-form-macos-aarch64
-          path: sci-form-macos-aarch64
-
-  build-cli-windows:
-    name: CLI (windows-latest)
-    needs: [wait-for-ci]
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-msvc
-      - uses: Swatinem/rust-cache@v2
-      - name: Build Windows CLI
-        run: cargo build --release --package sci-form-cli --target x86_64-pc-windows-msvc
-      - name: Stage Windows artifact
-        shell: bash
-        run: cp target/x86_64-pc-windows-msvc/release/sci-form.exe sci-form-windows-x86_64.exe
-      - uses: actions/upload-artifact@v6
-        with:
-          name: sci-form-windows-x86_64.exe
-          path: sci-form-windows-x86_64.exe
-
-  # ─── Python Wheels ─────────────────────────────────────────────────────────
+  # ─── Python wheels ─────────────────────────────────────────────────────────
   build-python:
     name: Python (${{ matrix.os }})
-    needs: [wait-for-ci]
+    needs: [check-version]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
@@ -259,251 +197,80 @@ jobs:
           cache: pip
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Install maturin
-        run: pip install maturin
-      - name: Build wheel
+        with:
+          shared-key: python-${{ matrix.os }}
+      - run: pip install maturin
+      - name: Build the wheel
         run: cd crates/python && maturin build --release --features "${PYTHON_BINDING_FEATURES}"
+      - name: Build the sdist
+        if: matrix.os == 'ubuntu-latest'
+        run: cd crates/python && maturin sdist --out ../../target/wheels
       - uses: actions/upload-artifact@v6
         with:
-          name: python-wheel-${{ matrix.os }}
-          path: target/wheels/*.whl
+          name: python-${{ matrix.os }}
+          path: |
+            target/wheels/*.whl
+            target/wheels/*.tar.gz
 
-  # ─── WASM / npm ────────────────────────────────────────────────────────────
+  # ─── WASM / npm, and the docs build of the same code ───────────────────────
   build-wasm:
     name: WASM / npm
-    needs: [wait-for-ci]
+    needs: [check-version]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      # The WASM package needs nightly: `wasm-bindgen-rayon` (the `parallel`
-      # feature) refuses to compile on stable because the `atomics` target
-      # feature is not reported through `cfg(target_feature)` there.  The
-      # channel matches crates/wasm/rust-toolchain.toml.
+      # The channel matches crates/wasm/rust-toolchain.toml (wasm-bindgen-rayon
+      # needs the nightly-only `atomics` target feature).
       - uses: dtolnay/rust-toolchain@nightly-2026-05-24
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: wasm
+          workspaces: crates/wasm
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-      - name: Build WASM packages (web + nodejs)
+      - name: Build the npm package (web + node)
         run: cd crates/wasm && bash build.sh --web-features "${WASM_WEB_FEATURES}" --node-features "${WASM_NODE_FEATURES}"
-      - name: Check alpha/beta subpath packaging
-        run: |
-          test -f crates/wasm/pkg/alpha/index.js
-          test -f crates/wasm/pkg/alpha/index.d.ts
-          test -f crates/wasm/pkg/beta/index.js
-          test -f crates/wasm/pkg/beta/index.d.ts
-          test -f crates/wasm/pkg-node/alpha/index.js
-          test -f crates/wasm/pkg-node/beta/index.js
-          test -d crates/wasm/pkg/snippets
-          test -d crates/wasm/pkg-node/snippets
-          # The published package is dual: the ESM half at the root and the
-          # CommonJS half in pkg/cjs/.  Both must be wired into the exports
-          # map, or `require('sci-form-wasm')` — the path the TypeScript
-          # guide documents — does not resolve.
-          test -f crates/wasm/pkg/cjs/sci_form_wasm.js
-          test -f crates/wasm/pkg/cjs/sci_form_wasm_bg.wasm
-          test -f crates/wasm/pkg/cjs/alpha/index.js
-          test -f crates/wasm/pkg/cjs/beta/index.js
-          node -e "const p=require('./crates/wasm/pkg/package.json'); if (p.type !== 'module') throw new Error('pkg must be ESM'); if (!p.files.includes('snippets')) throw new Error('pkg.files is missing snippets'); if (!p.files.includes('cjs')) throw new Error('pkg.files is missing cjs'); if (!p.exports['./alpha']) throw new Error('pkg is missing the ./alpha export'); if (p.exports['.'].require !== './cjs/sci_form_wasm.js') throw new Error('pkg is missing the CommonJS entry point'); if (p.exports['./alpha'].require !== './cjs/alpha/index.js') throw new Error('pkg is missing the CommonJS ./alpha entry point');"
-          node -e "const p=require('./crates/wasm/pkg/cjs/package.json'); if (p.type !== 'commonjs') throw new Error('pkg/cjs must be CommonJS');"
-          node -e "const p=require('./crates/wasm/pkg-node/package.json'); if (p.type !== 'commonjs') throw new Error('pkg-node must be CommonJS'); if (!p.files.includes('snippets')) throw new Error('pkg-node.files is missing snippets'); if (!p.exports['./alpha']) throw new Error('pkg-node is missing the ./alpha export');"
-      - name: Verify Node.js install
-        run: cd crates/wasm/pkg-node && node -e "const sci = require('./sci_form_wasm.js'); const alpha = require('./alpha'); const beta = require('./beta'); const r = JSON.parse(sci.embed('CCO', 42)); console.assert(r.num_atoms === 9, 'Expected 9 atoms'); console.assert(typeof sci.alpha_compute_dft === 'function', 'missing alpha root export'); console.assert(typeof sci.beta_compute_kpm_dos === 'function', 'missing beta root export'); console.assert(typeof alpha.alpha_modules_info === 'function', 'missing alpha subpath export'); console.assert(typeof beta.beta_modules_info === 'function', 'missing beta subpath export'); console.log('✓ Node.js WASM works with alpha/beta exports');"
+      - name: Build the single-threaded package for the documentation site
+        run: cd crates/wasm && bash build.sh --docs-only --node-features "${WASM_NODE_FEATURES}"
       - uses: actions/upload-artifact@v6
         with:
           name: wasm-pkg
           path: crates/wasm/pkg/
       - uses: actions/upload-artifact@v6
         with:
-          name: wasm-pkg-node
-          path: crates/wasm/pkg-node/
+          name: wasm-docs
+          path: crates/wasm/pkg-docs/
 
-  # ─── Verify: Python wheel installs cleanly ─────────────────────────────────
-  verify-python:
-    name: Verify Python install
-    needs: [build-python]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-      - uses: actions/download-artifact@v8
-        with:
-          name: python-wheel-ubuntu-latest
-          path: wheels/
-      - name: Install wheel
-        run: pip install wheels/*.whl
-      - name: Smoke test — embed caffeine
-        run: |
-          python3 -c "
-          import sci_form
-          result = sci_form.embed('Cn1cnc2c1c(=O)n(c(=O)n2C)C', 42)
-          assert result.num_atoms > 0, 'embed failed'
-          assert len(result.coords) == result.num_atoms * 3, 'coords size mismatch'
-          assert result.error is None, f'error: {result.error}'
-          print(f'OK: {result.num_atoms} atoms embedded')
-          "
-      - name: Smoke test — batch embed
-        run: |
-          python3 -c "
-          import sci_form
-          smiles = ['CCO', 'c1ccccc1', 'CC(=O)O', 'C1CCCCC1']
-          results = [sci_form.embed(s, 42) for s in smiles]
-          failed = [r.smiles for r in results if r.error is not None]
-          assert not failed, f'Failed: {failed}'
-          print(f'OK: {len(results)} molecules embedded')
-          "
-      - name: Smoke test — experimental Python bindings
-        run: |
-          python3 -c "
-          from sci_form.alpha import dft_calculate, reaxff_gradient, alpha_compute_aevs
-          from sci_form.beta import kpm_dos, eht_randnla, cpm_charges
-          import sci_form
-          result = sci_form.embed('CCO', 42)
-          assert result.error is None, result.error
-          dft = dft_calculate(result.elements, result.coords, 'pbe')
-          reax = reaxff_gradient(result.elements, result.coords)
-          aevs = alpha_compute_aevs(result.elements, result.coords)
-          kpm = kpm_dos(result.elements, result.coords, order=64)
-          randnla = eht_randnla(result.elements, result.coords, sketch_size=8)
-          cpm = cpm_charges(result.elements, result.coords, potential=0.0)
-          assert dft.n_basis > 0
-          assert len(reax.gradient) == len(result.coords)
-          assert aevs.n_atoms == result.num_atoms
-          assert len(kpm.energies) > 0
-          assert len(randnla.orbital_energies) > 0
-          assert len(cpm.charges) == result.num_atoms
-          print('OK: experimental Python bindings work')
-          "
-
-  # ─── Verify: WASM/Node package installs cleanly ───────────────────────────
-  verify-node:
-    name: Verify Node.js install
-    needs: [build-wasm]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-      # The artifact under test is the one that gets published: the tarball
-      # is packed from it and installed by name, so the `exports` map (and
-      # therefore `require('sci-form-wasm')`) is exercised exactly as a user
-      # would experience it.  Testing the raw build directory instead would
-      # not prove that the published package resolves.
-      - uses: actions/download-artifact@v8
-        with:
-          name: wasm-pkg
-          path: pkg/
-      - name: Pack the published package
-        run: |
-          cd pkg
-          npm pack --pack-destination "$RUNNER_TEMP"
-          ls -1 "$RUNNER_TEMP"/*.tgz
-      - name: Install the tarball
-        run: |
-          cd "$RUNNER_TEMP"
-          npm init -y >/dev/null
-          npm install --no-audit --no-fund ./*.tgz
-      - name: Smoke test — embed caffeine through the CommonJS entry point
-        run: |
-          cd "$RUNNER_TEMP"
-          node -e "
-          const sci = require('sci-form-wasm');
-          const alpha = require('sci-form-wasm/alpha');
-          const beta = require('sci-form-wasm/beta');
-          const result = JSON.parse(sci.embed('Cn1cnc2c1c(=O)n(c(=O)n2C)C', 42));
-          if (result.error) throw new Error('embed failed: ' + result.error);
-          if (result.num_atoms !== 24) throw new Error('expected 24 atoms, got ' + result.num_atoms);
-          if (typeof sci.alpha_compute_dft !== 'function') throw new Error('missing alpha root export');
-          if (typeof sci.beta_compute_kpm_dos !== 'function') throw new Error('missing beta root export');
-          if (typeof alpha.alpha_modules_info !== 'function') throw new Error('missing alpha subpath export');
-          if (typeof beta.beta_modules_info !== 'function') throw new Error('missing beta subpath export');
-          console.log('OK: require(sci-form-wasm) embedded ' + result.num_atoms + ' atoms');
-          "
-
-  # ─── Verify: CLI binary runs ───────────────────────────────────────────────
-  verify-cli:
-    name: Verify CLI binary
-    needs: [build-cli-linux]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: sci-form-linux-x86_64
-          path: .
-      - name: Make executable
-        run: chmod +x sci-form-linux-x86_64
-      - name: Smoke test — version
-        run: ./sci-form-linux-x86_64 --version
-      - name: Smoke test — embed caffeine
-        run: |
-          ./sci-form-linux-x86_64 embed "Cn1cnc2c1c(=O)n(c(=O)n2C)C" \
-            | grep -E '"num_atoms"' || (echo "CLI embed failed"; exit 1)
-      - name: Smoke test — parse
-        run: |
-          ./sci-form-linux-x86_64 parse "CCO" \
-            | grep -iE 'Atoms:' || (echo "CLI parse failed"; exit 1)
-      # The capabilities that used to be Rust-only (blocker C-H2).
-      - name: Smoke test — TPSA, ensemble, UHF and the gradients
-        run: |
-          ./sci-form-linux-x86_64 tpsa "CCO" | grep -q '20.23' || (echo "CLI tpsa failed"; exit 1)
-          ./sci-form-linux-x86_64 ensemble "CCO" | grep -q '"logp"' || (echo "CLI ensemble failed"; exit 1)
-          ./sci-form-linux-x86_64 uhf '[6,1,1,1]' \
-            '[0,0,0,1.09,0,0,-0.36,1.03,0,-0.36,-0.52,0.89]' --multiplicity 2 \
-            | grep -q '"total_energy"' || (echo "CLI uhf failed"; exit 1)
-          ./sci-form-linux-x86_64 pm3-gradient '[8,1,1]' \
-            '[0,0,0.1173,0,0.7572,-0.4692,0,-0.7572,-0.4692]' \
-            | grep -q '"gradients"' || (echo "CLI pm3-gradient failed"; exit 1)
-      - name: Smoke test — CIF round trip
-        run: |
-          printf 'data_test\n_cell_length_a 5.0\n_cell_length_b 5.0\n_cell_length_c 5.0\n_cell_angle_alpha 90.0\n_cell_angle_beta 90.0\n_cell_angle_gamma 90.0\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n_atom_site_occupancy\nNa1 Na 0.0 0.0 0.0 1.0\n' > "$RUNNER_TEMP/test.cif"
-          ./sci-form-linux-x86_64 parse-cif "$RUNNER_TEMP/test.cif" > "$RUNNER_TEMP/test.json"
-          grep -q '"data_block": "test"' "$RUNNER_TEMP/test.json" || (echo "CLI parse-cif failed"; exit 1)
-          ./sci-form-linux-x86_64 write-cif "$RUNNER_TEMP/test.json" | grep -q 'data_test' || (echo "CLI write-cif failed"; exit 1)
-      # A misspelled method name must be an error, not a silent fallback.
-      - name: Smoke test — an unknown method is rejected
-        run: |
-          if ./sci-form-linux-x86_64 ir-spectrum-broadened '[8,1,1]' \
-               '[0,0,0.1173,0,0.7572,-0.4692,0,-0.7572,-0.4692]' \
-               --method ccsd >/dev/null 2>&1; then
-            echo "an unknown method must be rejected"; exit 1
-          fi
-          if ./sci-form-linux-x86_64 ir-spectrum-broadened '[8,1,1]' \
-               '[0,0,0.1173,0,0.7572,-0.4692,0,-0.7572,-0.4692]' \
-               --method pm3 --broadening gauassian >/dev/null 2>&1; then
-            echo "a misspelled line shape must be rejected"; exit 1
-          fi
-
-  # ─── Publish: crates.io ────────────────────────────────────────────────────
+  # ─── Publish ───────────────────────────────────────────────────────────────
   publish-crate:
     name: Publish to crates.io
-    needs: [verify-python, verify-node, verify-cli]
+    needs: [build-cli, build-python, build-wasm]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Publish sci-form (lib)
+        with:
+          shared-key: publish
+      - name: Publish sci-form (library)
         run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
       - name: Wait for crates.io propagation
-        run: sleep 30
+        run: sleep 45
       - name: Publish sci-form-cli
         run: cd crates/cli && cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-  # ─── Publish: PyPI ─────────────────────────────────────────────────────────
   publish-python:
     name: Publish to PyPI
-    needs: [verify-python]
+    needs: [build-cli, build-python, build-wasm]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: python-wheel-*
+          pattern: python-*
           path: dist/
           merge-multiple: true
       - name: Publish to PyPI
@@ -513,16 +280,12 @@ jobs:
           skip-existing: true
           verbose: true
 
-  # ─── Publish: npm ──────────────────────────────────────────────────────────
-  # NOTE: NPM_TOKEN must be a Granular Access Token with Automation type.
-  # Classic tokens require OTP even in CI. To create one:
-  #   npmjs.com → Avatar → Access Tokens → Generate New Token
-  #   → Granular Access Token → Expiration → Packages: sci-form-wasm (Read+Write)
-  #   → Token type: Automation → Generate Token
-  # Then update the NPM_TOKEN repository secret with the new token.
+  # NPM_TOKEN must be a Granular Access Token of type Automation (classic
+  # tokens ask for an OTP even in CI): npmjs.com → Access Tokens → Generate New
+  # Token → Granular → Packages: sci-form-wasm (Read+Write) → Automation.
   publish-npm:
     name: Publish to npm
-    needs: [verify-node]
+    needs: [build-cli, build-python, build-wasm]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -540,9 +303,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-  # ─── GitHub Release ────────────────────────────────────────────────────────
-  release:
-    name: Create GitHub Release
+  # ─── GitHub Release: CLI packages + wheels + checksums ─────────────────────
+  github-release:
+    name: GitHub Release
     needs: [publish-crate, publish-python, publish-npm]
     runs-on: ubuntu-latest
     steps:
@@ -550,42 +313,50 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: artifacts/
-      - name: Create GitHub Release
+      - name: Collect the assets and compute the checksums
+        run: |
+          mkdir release
+          cp artifacts/cli-*/* release/
+          cp artifacts/python-*/* release/
+          cd release && sha256sum * > SHA256SUMS && ls -l
+      - name: Create the release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/sci-form-linux-x86_64/*
-            artifacts/sci-form-linux-aarch64/*
-            artifacts/sci-form-macos-x86_64/*
-            artifacts/sci-form-macos-aarch64/*
-            artifacts/sci-form-windows-x86_64.exe/*
-            artifacts/python-wheel-*/*.whl
+          files: release/*
           generate_release_notes: true
           body: |
-            ## Installation
+            ## Install
 
-            ### Python
+            **Command line** (Linux, macOS, Windows) — download below, or:
+
+            | Platform | Package |
+            |---|---|
+            | Debian / Ubuntu | `sudo apt install ./sci-form_*_amd64.deb` (or `arm64`) |
+            | Fedora / RHEL | `sudo dnf install ./sci-form-*.x86_64.rpm` (or `aarch64`) |
+            | Linux (any) | `sci-form-*-<arch>-unknown-linux-gnu.tar.gz` |
+            | macOS | `sci-form-*-aarch64-apple-darwin.tar.gz` (Apple Silicon) or `x86_64-apple-darwin` |
+            | Windows | `sci-form-*-x86_64-pc-windows-msvc.zip` |
+
+            Then run `sci-form` for a short guide, `sci-form commands` for every command, and
+            `sci-form examples pm3 --run` for a ready-to-run example.
+
             ```bash
-            pip install sciforma
+            pip install sciforma          # Python
+            npm install sci-form-wasm     # JavaScript / TypeScript
+            cargo add sci-form            # Rust
+            cargo install sci-form-cli    # CLI from source
             ```
 
-            ### Node.js / TypeScript
-            ```bash
-            npm install sci-form-wasm
-            ```
+            Documentation with live examples: https://jigonzalez930209.github.io/sci-form/guide/live-examples
 
-            ### Rust
-            ```toml
-            [dependencies]
-            sci-form = "1.0"
-            ```
-
-            ### CLI
-            Download the binary for your platform from the assets below.
-            - **Linux x86_64**: `sci-form-linux-x86_64`
-            - **Linux aarch64**: `sci-form-linux-aarch64`
-            - **macOS x86_64**: `sci-form-macos-x86_64`
-            - **macOS Apple Silicon**: `sci-form-macos-aarch64`
-            - **Windows x86_64**: `sci-form-windows-x86_64.exe`
-
-
+  # ─── Documentation: deployed after the builds, on the compiled package ─────
+  docs:
+    name: Documentation site
+    needs: [publish-crate, publish-python, publish-npm]
+    uses: ./.github/workflows/docs.yml
+    with:
+      use_artifact: true
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
