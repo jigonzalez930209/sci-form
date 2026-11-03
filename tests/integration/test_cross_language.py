@@ -30,12 +30,18 @@ def run_cli(args, input_data=None):
                           input=input_data, timeout=30)
     return result.stdout, result.stderr, result.returncode
 
+WASM_NODE_PKG = os.path.abspath("crates/wasm/pkg-node/sci_form_wasm.js")
+# Every script starts with `sf`, the wasm-bindgen CommonJS build. Its
+# functions take and return JSON *strings* (build it with
+# `crates/wasm/build.sh --node-only`).
+NODE_PRELUDE = f"const sf = require({json.dumps(WASM_NODE_PKG)});\n"
+
+
 def run_node(script):
-    """Run Node.js script and return stdout."""
+    """Run Node.js script against the wasm `pkg-node` build; return stdout."""
     result = subprocess.run(
-        ["node", "-e", script],
-        capture_output=True, text=True, timeout=30,
-        cwd="crates/wasm/pkg"
+        ["node", "-e", NODE_PRELUDE + script.replace("const sf = require('./index.js');", "")],
+        capture_output=True, text=True, timeout=60,
     )
     return result.stdout.strip(), result.stderr, result.returncode
 
@@ -70,9 +76,16 @@ test("embed aspirin succeeds", r3.is_ok())
 test("aspirin time < 50ms", r3.time_ms < 50, f"got {r3.time_ms:.1f}ms")
 
 # 1.5 Invalid SMILES
-r4 = sci_form.embed("INVALID")
-test("invalid SMILES returns error", not r4.is_ok())
-test("error message exists", r4.error is not None)
+# v1.0: a failed single embed RAISES ValueError (blocker C-M4) instead of
+# returning an object with `.error`; `embed_batch` still returns one result
+# per input, with the failure recorded in `.error`.
+try:
+    sci_form.embed("INVALID")
+    raised, message = False, ""
+except ValueError as exc:
+    raised, message = True, str(exc)
+test("invalid SMILES raises ValueError", raised)
+test("error message exists", "INVALID" in message, message[:80])
 
 # 1.6 Batch processing
 batch = sci_form.embed_batch(["CCO", "c1ccccc1", "C#N", "CC(=O)O"])
@@ -88,8 +101,9 @@ test("batch: third OK", batch2[2].is_ok())
 
 # 1.8 Parse
 parsed = sci_form.parse("c1ccccc1")
-test("parse returns dict", isinstance(parsed, dict))
-test("parse has num_atoms=12", parsed.get("num_atoms") == 12, f"got {parsed}")
+# v1.0: `parse` returns a `ParseResult` pyclass (blocker C-H5), not a dict.
+test("parse returns ParseResult", type(parsed).__name__ == "ParseResult")
+test("parse has num_atoms=12", parsed.num_atoms == 12, f"got {parsed.num_atoms}")
 
 # 1.9 Version
 v = sci_form.version()
@@ -183,8 +197,7 @@ print("\n=== WASM / NODE.JS ===")
 
 # 3.1 Single embed
 out, err, code = run_node("""
-const sf = require('./index.js');
-const r = sf.embed('CCO', 42);
+const r = JSON.parse(sf.embed('CCO', 42));
 console.log(JSON.stringify({
     ok: r.error === null,
     num_atoms: r.num_atoms,
@@ -199,83 +212,59 @@ if code == 0:
     test("node CCO ok", d["ok"])
     test("node CCO 9 atoms", d["num_atoms"] == 9, f"got {d['num_atoms']}")
     test("node CCO 27 coords", d["coords_len"] == 27, f"got {d['coords_len']}")
+    test("node CCO 9 elements", d["elements_len"] == 9)
 
 # 3.2 Aromatic molecule
 out, err, code = run_node("""
-const sf = require('./index.js');
-const r = sf.embed('c1ccccc1', 42);
+const r = JSON.parse(sf.embed('c1ccccc1', 42));
 console.log(JSON.stringify({ok: r.error === null, num_atoms: r.num_atoms}));
 """)
+test("node benzene exit 0", code == 0, err[:100])
 if code == 0:
     d = json.loads(out)
     test("node benzene ok", d["ok"])
     test("node benzene 12 atoms", d["num_atoms"] == 12, f"got {d['num_atoms']}")
 
-# 3.3 getPositions
+# 3.3 Batch (newline-separated SMILES in, JSON array out)
 out, err, code = run_node("""
-const sf = require('./index.js');
-const r = sf.embed('CCO', 42);
-const pos = sf.getPositions(r);
-console.log(JSON.stringify({len: pos.length, first: pos[0]}));
-""")
-if code == 0:
-    d = json.loads(out)
-    test("node getPositions 9 items", d["len"] == 9, f"got {d['len']}")
-    test("node position has x,y,z", all(k in d["first"] for k in ["x","y","z"]))
-
-# 3.4 getAtoms  
-out, err, code = run_node("""
-const sf = require('./index.js');
-const r = sf.embed('CCO', 42);
-const atoms = sf.getAtoms(r);
-console.log(JSON.stringify({len: atoms.length, first: atoms[0]}));
-""")
-if code == 0:
-    d = json.loads(out)
-    test("node getAtoms 9 items", d["len"] == 9)
-    test("node atom has element+coords", "element" in d["first"] and "x" in d["first"])
-
-# 3.5 embedBatch
-out, err, code = run_node("""
-const sf = require('./index.js');
-const results = sf.embedBatch(['CCO', 'c1ccccc1', 'C#N'], 42);
+const results = JSON.parse(sf.embed_batch('CCO\\nc1ccccc1\\nC#N', 42));
 console.log(JSON.stringify({
     len: results.length,
     all_ok: results.every(r => r.error === null),
     smiles: results.map(r => r.smiles)
 }));
 """)
+test("node batch exit 0", code == 0, err[:100])
 if code == 0:
     d = json.loads(out)
-    test("node batch 3 results", d["len"] == 3) 
+    test("node batch 3 results", d["len"] == 3, f"got {d['len']}")
     test("node batch all ok", d["all_ok"])
 
-# 3.6 parseSmiles
+# 3.4 parse_smiles
 out, err, code = run_node("""
-const sf = require('./index.js');
-const r = sf.parseSmiles('c1ccccc1');
-console.log(JSON.stringify(r));
+const r = JSON.parse(sf.parse_smiles('c1ccccc1'));
+console.log(JSON.stringify({num_atoms: r.num_atoms, atoms: r.atoms.length}));
 """)
+test("node parse exit 0", code == 0, err[:100])
 if code == 0:
     d = json.loads(out)
     test("node parse benzene atoms=12", d.get("num_atoms") == 12, f"got {d}")
 
-# 3.7 Error handling
+# 3.5 Error handling: the WASM error path is a JSON object, never a throw
 out, err, code = run_node("""
-const sf = require('./index.js');
-const r = sf.embed('INVALID', 42);
-console.log(JSON.stringify({has_error: r.error !== null}));
+const r = JSON.parse(sf.embed('INVALID', 42));
+console.log(JSON.stringify({has_error: typeof r.error === 'string' && r.error.length > 0}));
 """)
+test("node invalid SMILES exit 0", code == 0, err[:100])
 if code == 0:
     d = json.loads(out)
     test("node invalid SMILES has error", d["has_error"])
 
-# 3.8 version
+# 3.6 version
 out, err, code = run_node("""
-const sf = require('./index.js');
 console.log(sf.version());
 """)
-test("node version works", code == 0 and "sci-form" in out)
+test("node version works", code == 0 and "sci-form" in out, err[:100])
 
 
 # ============================================================
@@ -299,8 +288,7 @@ cli_coords = cli_data.get("coords", [])
 
 # Node.js/WASM
 node_out, _, node_code = run_node(f"""
-const sf = require('./index.js');
-const r = sf.embed('{test_smiles}', 42);
+const r = JSON.parse(sf.embed('{test_smiles}', 42));
 console.log(JSON.stringify({{num_atoms: r.num_atoms, coords: r.coords}}));
 """)
 node_data = json.loads(node_out) if node_code == 0 else {}
