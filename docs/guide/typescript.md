@@ -22,6 +22,16 @@ Both halves expose **exactly the same API** — the two features that differ
 (`experimental-gpu`, `parallel`) change behaviour, not the export list. The
 subpaths `sci-form-wasm/alpha` and `sci-form-wasm/beta` work the same way.
 
+## Try it
+
+The same call you would write in your own code, running in this page:
+
+<LiveExample id="embed" />
+
+<LiveExample id="compute_pm3" />
+
+There is one runnable example for **every** function on the [live examples](/guide/live-examples) page.
+
 ## Conventions
 
 - Every entry point returns a **JSON string**, except the typed-array variants
@@ -478,7 +488,7 @@ console.log(`Converged: ${pm3.converged} (${pm3.scf_iterations} iterations)`);
 
 ### GFN-xTB tight binding
 
-GFN0/GFN1/GFN2-xTB support 25 elements including transition metals (Ti, Cr, Mn, Fe, Co, Ni,
+`compute_xtb` (GFN2, identical to `compute_gfn2`), `compute_gfn1` and `compute_gfn2` support 25 elements including transition metals (Ti, Cr, Mn, Fe, Co, Ni,
 Cu, Zn). All energies are in **eV**.
 
 ```typescript

@@ -41,3 +41,7 @@ __pycache__/
 
 # Upstream parameter caches used by the validation generators
 .cache/
+/crates/wasm/pkg-docs
+/docs/public/wasm
+
+.release-check.ok

@@ -9,7 +9,9 @@
   },
   "scripts": {
     "docs:dev": "vitepress dev docs",
+    "docs:wasm": "node scripts/copy-docs-wasm.mjs",
     "docs:build": "vitepress build docs",
+    "test:examples": "node scripts/test-live-examples.mjs",
     "docs:preview": "vitepress preview docs",
     "wasm:build": "bash crates/wasm/build.sh",
     "wasm:build:web": "bash crates/wasm/build.sh --web-only",
