@@ -240,10 +240,30 @@ const dos = JSON.parse(compute_dos('[6,8,6,1,1,1,1,1,1]', coords.toString(), 0.2
 
 ---
 
+### Live examples
+
+One runnable example for every function of the JavaScript API, computed in your browser with the compiled WebAssembly package: **[sci-form docs → live examples](https://jigonzalez930209.github.io/sci-form/guide/live-examples)**.
+
 ### CLI
 
+Download the package for your system from the [latest release](https://github.com/jigonzalez930209/sci-form/releases/latest):
+
+| System | Package | Install |
+|---|---|---|
+| Debian / Ubuntu | `sci-form_<version>_amd64.deb` / `arm64` | `sudo apt install ./sci-form_*.deb` |
+| Fedora / RHEL | `sci-form-<version>.x86_64.rpm` / `aarch64` | `sudo dnf install ./sci-form-*.rpm` |
+| Linux (any) | `sci-form-<version>-x86_64-unknown-linux-gnu.tar.gz` / `aarch64` | unpack, put `sci-form` on your `PATH` |
+| macOS | `…-aarch64-apple-darwin.tar.gz` (Apple Silicon) / `…-x86_64-apple-darwin.tar.gz` | unpack, put `sci-form` on your `PATH` |
+| Windows | `…-x86_64-pc-windows-msvc.zip` | unpack, add the folder to `PATH` |
+
+or from source: `cargo install sci-form-cli`. Each release carries a `SHA256SUMS` file.
+
 ```bash
-cargo install sci-form-cli
+sci-form                       # a short guide with examples
+sci-form commands              # every command, grouped by topic
+sci-form examples pm3 --run    # a ready-to-run example, with its output
+sci-form help pm3              # every option of one command
+sci-form completions bash      # shell completion (bash, zsh, fish, powershell)
 ```
 
 ```bash
@@ -377,7 +397,8 @@ More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader p
 | `sci_form::compute_dos` | Density of states + PDOS (EHT orbital energies) |
 | `sci_form::compute_rmsd` | RMSD after Kabsch alignment |
 | `sci_form::compute_pm3` | PM3/PM3(tm) semi-empirical SCF |
-| `sci_form::compute_xtb` | GFN0-xTB tight-binding with Broyden SCC |
+| `sci_form::compute_xtb` | xTB tight binding — runs GFN2-xTB (same numbers as `compute_gfn2`) |
+| `sci_form::compute_pm3_gradient` / `compute_xtb_gradient` | Energy gradients (eV/Å), central differences of the energy the matching `compute_*` returns |
 | `sci_form::compute_uhf` | Unrestricted Hartree-Fock SCF |
 | `sci_form::compute_rohf` | Restricted open-shell Hartree-Fock SCF |
 | `sci_form::compute_uff_energy` | UFF force field energy evaluation |
@@ -393,7 +414,7 @@ More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader p
 |-------------|---------|
 | `sci_form::eht` | `solve_eht()`, `EhtResult`, `evaluate_orbital_on_grid_chunked()`, `marching_cubes()` |
 | `sci_form::pm3` | `compute_pm3()`, PM3/PM3(tm) SCF, Gaussian core-core corrections |
-| `sci_form::xtb` | `compute_xtb()`, GFN0 SCC with Broyden mixing; `xtb::gfn1`, `xtb::gfn2` |
+| `sci_form::xtb` | `compute_xtb()` (GFN2), `xtb::gfn0` (faithful GFN0), `xtb::gfn1`, `xtb::gfn2`, `compute_xtb_gradient()` |
 | `sci_form::scf::uhf` | `run_uhf()`, `run_rohf()`, open-shell SCF with spin contamination analysis |
 | `sci_form::hf` | `solve_hf3c()`, CISD, `mo_transform::ao_to_mo_transform()` |
 | `sci_form::esp` | `compute_esp_grid_parallel()`, `esp_color_map()`, `esp_grid_to_colors()`, `export_cube()`, `read_cube()` |

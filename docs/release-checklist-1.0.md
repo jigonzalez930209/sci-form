@@ -14,10 +14,17 @@ Legend: `[x]` done, `[ ]` pending.
       every feature flag on.
 - [x] `cargo clippy --workspace --all-targets --features "<all>" -- -D warnings`
       is clean (0 warnings).
-- [x] `cargo test --lib --release` → 881 passed, 0 failed, 2 ignored.
-- [x] `cargo test --doc --release` → 15 passed, 0 failed, 1 ignored.
-- [x] All 9 integration test targets pass (78 tests with every feature on;
-      60 of them are compiled without the alpha/beta features).
+- [x] `cargo test --lib --release` → 891 passed, 0 failed, 0 ignored
+      (1023 passed with the CI feature set).
+- [x] `cargo test --doc --release` → 17 passed, 0 failed, 1 ignored.
+- [x] `cargo test --workspace --exclude sci-form-python --all-targets --release
+      --features "<CI feature set>"` → 1962 passed, 0 failed, 78 ignored
+      (52 are `--ignored` benchmarks, 17 are the `reaction_dynamics_study` sweep (GFN2, >10 min); the rest are heavy SCF runs and two that
+      need an RDKit-generated file). The `sci-form-python` crate is excluded
+      because a PyO3 extension module cannot link in `cargo test`; its tests
+      are the pytest suites below.
+- [x] `tests/gradient_parity.rs` (F80): 10 tests, none ignored. PM3 1.1e-5 eV/Å,
+      xTB 4.8e-5 eV/Å, KS-DFT 3.1e-7 Ha/Bohr, UKS (OH) 1.0e-6 Ha/Bohr, UFF/MMFF94/EHT/ANI ≤ 1e-6.
 - [x] `cargo doc --no-deps --all-features` → 0 warnings, and
       `cargo doc --workspace` works too (the Python library and the CLI binary
       are marked `doc = false` so they do not overwrite the root crate's
@@ -35,7 +42,11 @@ Legend: `[x]` done, `[ ]` pending.
 
 - [x] Python: `cargo build -p sci-form-python` succeeds; the wheel builds with
       `maturin build --release`.
-- [x] Python: the pytest suite passes (`tests/integration/test_python_integration.py`).
+- [x] Python: the pytest suites pass — `tests/integration/test_python_integration.py`
+      (99) and `crates/python/tests/test_bindings.py` (92); both run in CI.
+- [x] Python / CLI / WASM cross-language: `tests/integration/test_cross_language.py`
+      70 of 70 (run manually: it needs the release CLI, a wheel and the WASM
+      `pkg-node`).
 - [x] Python: `sci_form.__all__` matches the registered functions.
 - [x] Python: exactly one `cpm_charges` is registered (behind the
       `experimental-cpm` / `beta-cpm` feature flag) and it is the μ =
@@ -48,6 +59,7 @@ Legend: `[x]` done, `[ ]` pending.
       and release gates exercise — not the raw build directory.
 - [x] WASM: every error path emits valid JSON.
 - [x] CLI: `sci-form --help` and every subcommand's `--help` render.
+- [x] WASM: `tests/integration/test_wasm_integration.js` 19 of 19 (runs in CI).
 - [x] CLI: an optional argument is absent, not a sentinel value.
 
 ## 3. The validation gates
@@ -101,37 +113,52 @@ Legend: `[x]` done, `[ ]` pending.
 
 ## 6. CI and release
 
-- [x] `ci.yml` runs fmt, clippy (`--workspace`), the unit tests, the 9-target
-      integration suite, the validation matrix, the Python wheel, the WASM
-      build and the audit.
-- [x] `docs.yml` rebuilds the site on a change in `src/**` or `crates/**` as
-      well as in `docs/**`.
-- [x] `release.yml` compares the git tag with the version of all four
-      packages before publishing anything.
-- [x] `release.yml` publishes the crates.io crate, the PyPI wheel and the npm
-      package.
+- [x] **No tests run on GitHub** (limited minutes). `ci.yml` only *builds* — the
+      library with every feature, the CLI, the Python wheel and the WASM
+      packages — with `Swatinem/rust-cache`, and skips documentation-only
+      changes.
+- [x] **All tests run locally**: `scripts/release-check.sh` (versions, fmt,
+      clippy, the Rust suite, doctests, the CLI guide, the CLI packages, pytest,
+      WASM, the 155 live examples, cross-language, the docs build). It writes
+      `.release-check.ok` with the commit it verified.
+- [x] `scripts/release.sh <version>` creates and pushes the tag **only** if the
+      stamp matches the current commit and the tree is clean.
+- [x] `release.yml` (on the tag) compares the tag with every manifest, then
+      builds: the CLI for Linux x86_64/aarch64, macOS x86_64/arm64 and Windows
+      (`.tar.gz`/`.zip`, plus `.deb` and `.rpm` on Linux), the wheels + sdist,
+      and the npm package; publishes crates.io, PyPI and npm; creates the GitHub
+      Release with the packages and `SHA256SUMS`; and finally deploys the
+      documentation.
+- [x] The documentation is deployed **after** the builds (`docs.yml`, called by
+      `release.yml`), on the WASM package that was just compiled, so its live
+      examples run the released code. `docs.yml` can also be run by hand.
+- [x] Every public WASM function has a live example (`docs/examples/catalog.json`,
+      155 examples) and `scripts/test-live-examples.mjs` runs them all against
+      the compiled package.
 
 ---
 
 ## Publish procedure
 
 ```bash
-# 1. Make sure the tree is green and the version is right.
-cargo test --workspace --all-targets --release
-grep -n '^version' Cargo.toml crates/*/Cargo.toml     # all 1.0.0
-git status --short                                     # clean
+# 1. Commit everything, then run the whole gate on this machine.
+git status --short                      # clean
+scripts/release-check.sh                # add --heavy for the #[ignore]d tests
 
-# 2. Tag. The release workflow refuses to publish a tag that does not match
-#    the manifest versions, so a mismatch fails fast and safely.
-git tag -a v1.0.0 -m "sci-form 1.0.0"
-git push origin main --tags
+# 2. Tag and push — the script refuses unless the gate passed for this commit.
+scripts/release.sh 1.0.0
 
-# 3. Watch the workflow.
-#    It publishes, in order: crates.io (sci-form, sci-form-cli), the PyPI
-#    wheel (sciforma) and the npm package (sci-form-wasm).
+# 3. Watch the workflow (builds only; no tests run on GitHub).
+#    It publishes crates.io (sci-form, sci-form-cli), PyPI (sciforma), npm
+#    (sci-form-wasm), creates the GitHub Release with the CLI packages
+#    (.tar.gz, .zip, .deb, .rpm) and deploys the documentation.
 ```
 
 ## Post-release
+
+These four items require the published artefacts and cannot be verified from a
+local checkout; they stay unchecked until the tag is pushed and the registries
+have the release.
 
 - [ ] Tag the release notes from `CHANGELOG.md`.
 - [ ] Verify `cargo install sci-form-cli` and `pip install sciforma` and
@@ -150,10 +177,16 @@ These are documented, not hidden. See `reports/auditoria-resolucion.md` and
   Cholesky or density-fitting path.
 - The conformer minimiser rebuilds the force field on every MD step.
 - The ETKDG retry loop is 10 × N attempts of an O(N²) search.
-- The PM3, GFN0-xTB and KS-DFT analytic gradients are quantitatively wrong
-  (18.4 eV/Å, 209–263 eV/Å and 0.202 Ha/Bohr). The affected tests are
-  `#[ignore]`d with the measured numbers in them.
-- The 3D reaction path (`alpha-reaction-dynamics`) is **not a validated
+- The PM3 and xTB (GFN2) gradients are central differences of the reported
+  energy (`6·N` SCF runs per gradient), not analytic expressions. They agree
+  with the energy to ~1e-4 eV/Å (gates F80). An analytic NDDO/GFN2 gradient is
+  future work. The KS-DFT gradient is analytic and was never wrong; its F80
+  gate had a unit error (Ha/Å vs Ha/Bohr) and is now enforced.
+- `"xtb"` is GFN2 on every surface (NEB, MD, reaction dynamics, GSM,
+  `compute_xtb`); `"gfn0"` is only a legacy alias of it. The faithful GFN0 is
+  `xtb::solve_gfn0` (Rust only).
+- The 3D reaction path (`alpha-reaction-dynamics`) exists **only in the Rust
+  core**; the Python, WASM and CLI bindings do not expose it. It is **not a validated
   reaction path**: the CI-NEB frequently does not converge and the image
   energies are computed with the reactant topology. The frames are always
   finite, and the module says so in its notes and in

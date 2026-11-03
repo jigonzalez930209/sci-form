@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 290" width="820" height="290" font-family="system-ui, sans-serif" role="img" aria-label="KS-DFT gradient units: the analytic gradient in Hartree per Bohr is the per-angstrom energy derivative multiplied by 0.5292">
+  <style>
+    @media (prefers-reduced-motion: reduce) { .ku-anim * { animation: none !important; } }
+    .ku-slide { animation: ku-slide 6s ease-in-out infinite; }
+    @keyframes ku-slide { 0%,20% { transform: translateX(0); } 55%,100% { transform: translateX(-148px); } }
+    .ku-shrink { transform-origin: 380px 0; animation: ku-shrink 6s ease-in-out infinite; }
+    @keyframes ku-shrink { 0%,20% { transform: scaleX(1); } 55%,100% { transform: scaleX(.5292); } }
+    .ku-ok { animation: ku-ok 6s steps(1,end) infinite; }
+    @keyframes ku-ok { 0%,54% { opacity:0; } 55%,100% { opacity:1; } }
+  </style>
+  <g class="ku-anim">
+  <rect width="820" height="290" fill="white" rx="12" stroke="#e2e8f0"/>
+  <text x="410" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="#0f172a">KS-DFT gradient: a unit mismatch, not a missing physics term</text>
+  <text x="410" y="46" text-anchor="middle" font-size="10.5" fill="#64748b">H₂ at 0.80 Å, SVWN / STO-3G — values measured by the F80 gate before the fix</text>
+
+  <text x="20" y="92" font-size="11" font-weight="bold" fill="#334155">∂E/∂R from finite differences of E(R), R in Å</text>
+  <rect x="20" y="100" width="380" height="30" fill="#fecaca" stroke="#ef4444" class="ku-shrink" rx="4"/>
+  <text x="30" y="120" font-size="11" fill="#7f1d1d">−0.18137 Ha/Å   (the old reference)</text>
+
+  <text x="20" y="168" font-size="11" font-weight="bold" fill="#334155">analytic ks_nuclear_gradient, R in Bohr</text>
+  <rect x="20" y="176" width="201" height="30" fill="#bbf7d0" stroke="#22c55e" rx="4"/>
+  <text x="30" y="196" font-size="11" fill="#14532d">−0.09598 Ha/Bohr</text>
+
+  <g class="ku-ok"><text x="410" y="236" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">× 0.52918 Å/Bohr  →  −0.09598 Ha/Bohr: the two agree</text></g>
+  <text x="640" y="116" font-size="10.5" fill="#475569">ratio analytic / reference</text>
+  <text x="640" y="134" font-size="16" font-weight="bold" fill="#0f172a">0.5292</text>
+  <text x="640" y="152" font-size="10.5" fill="#475569">= Å per Bohr (for every component)</text>
+
+  <rect x="20" y="250" width="782" height="28" rx="8" fill="#f0fdf4" stroke="#22c55e"/>
+  <text x="34" y="268" font-size="10.5" fill="#14532d">After converting the reference: max |Δg| = 3·10⁻⁷ Ha/Bohr on H₂O₂ (max |g| = 0.227). The gradient was right; the F80 gate was un-ignored.</text>
+  </g>
+</svg>

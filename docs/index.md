@@ -28,10 +28,10 @@ features:
     details: "0.064 Å avg RMSD vs RDKit. 846 CSD torsion patterns. 100% stereo validation."
   - icon: 🔬
     title: Four QM Methods
-    details: "**NEW v0.6** — HF-3c Engine, EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast)."
+    details: "HF-3c Engine, EHT (all elements), PM3 (NDDO SCF, thermochemistry), GFN-xTB (25 elements, ultra-fast)."
   - icon: 🌈
     title: Spectroscopy (Track D)
-    details: "**NEW v0.5** — UV-Vis sTDA with oscillator strengths (Gaussian/Lorentzian broadening), IR via numerical Hessian (3N modes, ZPVE, km/mol intensities), ¹H/¹³C NMR with HOSE codes + Karplus ³J-couplings."
+    details: "UV-Vis sTDA with oscillator strengths (Gaussian/Lorentzian broadening), IR via numerical Hessian (3N modes, ZPVE, km/mol intensities), ¹H/¹³C NMR with HOSE codes + Karplus ³J-couplings."
   - icon: ⚛️
     title: Extended Hückel Theory
     details: "Wolfsberg-Helmholtz Hamiltonian, Löwdin orthogonalization, HOMO/LUMO gaps, population analysis, dipole moments."
@@ -40,7 +40,7 @@ features:
     details: "Coulomb ESP grids (red/white/blue mapping), total/per-atom DOS with Gaussian smearing, volumetric orbital grids, Marching Cubes isosurfaces."
   - icon: 🧬
     title: ML Potentials & Descriptors
-    details: "**NEW v0.6** — ANI Neural Network exact replication for energies/forces. Plus 17 descriptors, LogP, solubility, Lipinski Ro5."
+    details: "ANI Neural Network exact replication for energies/forces. Plus 17 descriptors, LogP, solubility, Lipinski Ro5."
   - icon: 🧲
     title: Force Fields
     details: "UFF (50+ elements + TM) and MMFF94 (Halgren 14-7 vdW, quartic/cubic bends, Fourier torsions)."
@@ -49,7 +49,7 @@ features:
     details: "Kabsch SVD and quaternion-based Coutsias 2004. RMSD after optimal superposition."
   - icon: 🏗️
     title: Materials Assembly
-    details: "Periodic unit cells, SBU topology, MOF-type framework crystal structure generation."
+    details: "Periodic unit cells, SBU topology, MOF-type framework generation with multi-node RCSR nets and one linker per inequivalent edge (afw, xah, tfy)."
   - icon: 🌐
     title: Multi-Platform Bindings
     details: "Native Rust, PyO3 (Python), WASM (TypeScript/JS, browser/Node.js/Deno/Bun), and CLI."

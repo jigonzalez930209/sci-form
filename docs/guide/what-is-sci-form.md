@@ -154,7 +154,9 @@ sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, eac
 
 **Use case:** Thermochemistry, activation barriers, charged species, reaction mechanisms
 
-### 3️⃣ GFN-xTB (Generalized Tight-Binding, GFN0)
+### 3️⃣ GFN-xTB (Generalized Tight-Binding: GFN0, GFN1, GFN2)
+
+> The generic `xtb` entry point (`compute_xtb`, `sci-form xtb`, `compute_xtb(...)` in WASM/Python) runs **GFN2-xTB** and returns the same numbers as `gfn2`. The faithful GFN0 port is `sci_form::xtb::solve_gfn0` (Rust only), validated against xtb 6.7.1 (F43).
 
 **Ultra-fast with transition metal support** — self-consistent charge (SCC) correction for modern accuracy.
 

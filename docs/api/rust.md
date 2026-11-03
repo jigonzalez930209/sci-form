@@ -490,13 +490,40 @@ Assemble a MOF-type framework crystal structure from node/linker SBUs on a topol
 **Example:**
 
 ```rust
-use sci_form::materials::{Sbu, Topology, CellParameters};
+use sci_form::materials::{CoordinationGeometry, Sbu, Topology, UnitCell};
 
-let cell = sci_form::create_unit_cell(26.3, 26.3, 26.3, 90.0, 90.0, 90.0);
-let node = Sbu { /* ... */ };
-let linker = Sbu { /* ... */ };
-let topology = Topology::Pcu;  // primitive cubic
+let cell = UnitCell::cubic(26.3);
+let node = Sbu::metal_node(30, 2.0, CoordinationGeometry::Octahedral);
+let linker = Sbu::linear_linker(&[6, 6], 1.4, "carboxylate");
+let topology = Topology::pcu();
 let crystal = sci_form::assemble_framework(&node, &linker, &topology, &cell);
+```
+
+### `assemble_framework_with_linkers`
+
+```rust
+pub fn assemble_framework_with_linkers(
+    node: &materials::Sbu,
+    linkers: &[materials::Sbu],
+    topology: &materials::Topology,
+    cell: &materials::UnitCell,
+) -> materials::CrystalStructure
+```
+
+Assemble a framework using one linker per inequivalent edge type. Edge `i`
+uses `linkers[topology.edge_types[i]]`; a shorter slice reuses the last
+linker, and an empty slice places no linker atoms. `Topology::from_name`
+accepts the data-driven RCSR nets (`afw`, `xah`, `tfy`, …) whose
+`edge_types` distinguish inequivalent edges.
+
+```rust
+let topology = Topology::from_name("xah")?;
+let linkers = [
+    Sbu::linear_linker(&[6], 1.4, "short"),
+    Sbu::linear_linker(&[7], 1.2, "long"),
+];
+let crystal =
+    sci_form::assemble_framework_with_linkers(&node, &linkers, &topology, &cell);
 ```
 
 ---
@@ -1281,7 +1308,8 @@ These capabilities are now available in every surface (Python, WASM and CLI).
 let uhf = sci_form::compute_uhf(&elements, &positions, 0, 2)?;   // doublet
 let rohf = sci_form::compute_rohf(&elements, &positions, 0, 2)?;
 
-// Analytical gradients (eV/Å per atom).
+// Energy gradients (eV/Å per atom): central differences (5e-4 Å) of the PM3 energy and of
+// the GFN2-xTB energy, i.e. of exactly what `compute_pm3` / `compute_xtb` return. 6·N SCF runs.
 let pm3_grad = sci_form::compute_pm3_gradient(&elements, &positions)?;
 let xtb_grad = sci_form::compute_xtb_gradient(&elements, &positions)?;
 
@@ -1329,7 +1357,7 @@ scalar part of the result (the same payload the JSON bindings return).
 | `sci_form::population::npa` | `compute_npa()`, `compute_nbo()`, `NpaResult`, `NboResult`, `NboBond`, `NboLonePair` |
 | `sci_form::dipole` | `compute_dipole_from_eht()`, `DipoleResult` |
 | `sci_form::pm3` | `compute_pm3()`, `Pm3Result` (PM3 + PM3(tm) transition metals) |
-| `sci_form::xtb` | `compute_xtb()`, `XtbResult` (GFN0) |
+| `sci_form::xtb` | `compute_xtb()`, `XtbResult` (GFN2), `solve_gfn0` (faithful GFN0), `solve_gfn1`, `solve_gfn2`, `compute_xtb_gradient()` |
 | `sci_form::xtb::gfn1` | `solve_gfn1()`, `Gfn1Result` (shell charges, D3 dispersion) |
 | `sci_form::xtb::gfn2` | `solve_gfn2()`, `Gfn2Result` (multipole, D4 dispersion, halogen bonding) |
 | `sci_form::hf` | `solve_hf3c()`, `HfConfig`, `Hf3cResult` (D3 + gCP + SRB corrections) |

@@ -623,8 +623,8 @@ print(pm3.converged, pm3.scf_iterations)
 def compute_xtb(elements: list[int], coords: list[float]) -> XtbResult
 ```
 
-GFN0-xTB tight binding with self-consistent charges (25 elements, including transition
-metals). All energies in **eV**, orbital energies and gap in **eV**.
+GFN2-xTB tight binding with self-consistent charges (25 elements, including transition
+metals); the numbers are identical to `compute_gfn2`. All energies in **eV**, orbital energies and gap in **eV**.
 
 ```python
 xtb = sci_form.compute_xtb(conf.elements, conf.coords)
@@ -750,8 +750,11 @@ spin contamination is zero by construction.
 def compute_pm3_gradient(elements: list[int], coords: list[float]) -> Pm3GradientResult
 ```
 
-Analytical PM3 energy gradient. The gradient is in **eV/Å** (one `[x, y, z]` per
-atom), the energy in **eV** and the heat of formation in **kcal/mol**.
+PM3 energy gradient: central differences (step 5·10⁻⁴ Å) of the energy `compute_pm3` returns, so
+the two are consistent by construction. `Pm3GradientResult.gradients` is in **eV/Å** (one `[x, y, z]`
+per atom), `.energy` in **eV** and `.heat_of_formation` in **kcal/mol**. Cost: 6·N SCF runs. Raises
+`ValueError` for a malformed geometry, `NotConvergedError` / `RuntimeError` when the SCF fails at the
+reference or at any displaced geometry.
 
 ### `compute_xtb_gradient`
 
@@ -759,7 +762,8 @@ atom), the energy in **eV** and the heat of formation in **kcal/mol**.
 def compute_xtb_gradient(elements: list[int], coords: list[float]) -> XtbGradientResult
 ```
 
-Analytical xTB energy gradient, in **eV/Å** per atom; the energy is in **eV**.
+xTB energy gradient: central differences (step 5·10⁻⁴ Å) of the GFN2-xTB energy, the one `compute_xtb`
+returns. `XtbGradientResult.gradients` is in **eV/Å** per atom and `.energy` in **eV**.
 
 ### `compute_aevs_tm`
 
@@ -1577,8 +1581,12 @@ def assemble_framework(
 ) -> CrystalStructure
 ```
 
-Assemble a MOF-type framework. `topology` ∈ `{pcu, dia, sql}`; `geometry` ∈ `{linear, trigonal,
-tetrahedral, square_planar, octahedral}`.
+Assemble a MOF-type framework. `topology` is any name accepted by
+`Topology::from_name` (`pcu`, `dia`, `sql`, `bcu`, `fcu`, `acs`, `afw`, `sod`,
+`pts`, `xah`, `tfy`); `metal` is the atomic number and `geometry` ∈ `{linear,
+trigonal, tetrahedral, square_planar, octahedral}`. This wrapper uses one
+carboxylate linker; the per-edge-type linker selection is available from Rust
+(`assemble_framework_with_linkers`).
 
 ### `space_group_by_number`
 

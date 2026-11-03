@@ -561,7 +561,7 @@ interface Pm3Result {
 function compute_xtb(elements_json: string, coords_flat_json: string): string
 ```
 
-GFN0-xTB: `{orbital_energies, electronic_energy, repulsive_energy, total_energy, n_basis,
+GFN2-xTB (the same numbers as `compute_gfn2`): `{orbital_energies, electronic_energy, repulsive_energy, total_energy, n_basis,
 n_electrons, homo_energy, lumo_energy, gap, mulliken_charges, scc_iterations, converged,
 notes}` — all energies in **eV**.
 
@@ -681,7 +681,7 @@ function compute_pm3_gradient(elements: string, coords_flat: string): string
 function compute_xtb_gradient(elements: string, coords_flat: string): string
 ```
 
-Analytical energy gradients in **eV/Å** per atom.
+Energy gradients in **eV/Å** per atom: central differences (5·10⁻⁴ Å) of the PM3 energy and of the GFN2-xTB energy. `compute_pm3_gradient` returns `{gradients: [[x, y, z], ...], energy, heat_of_formation}` (`energy` in eV, `heat_of_formation` in kcal/mol); `compute_xtb_gradient` returns `{gradients, energy}` (eV). Cost: 6·N SCF runs. On failure the payload is `{"error": "..."}`.
 
 ## Force fields
 
@@ -1411,9 +1411,12 @@ function create_unit_cell(a: number, b: number, c: number, alpha: number, beta: 
 function assemble_framework(topology: string, metal: number, geometry: string, lattice_a: number, supercell: number): string
 ```
 
-`topology` is `pcu`, `dia` or `sql`; `geometry` is `linear`, `trigonal`, `tetrahedral`,
-`octahedral`, `square_planar` or `trigonal`. Returns
-`{cell: {lattice}, atoms: [{element, frac_coords}], labels}`.
+`topology` is any name accepted by `Topology::from_name` (`pcu`, `dia`, `sql`,
+`bcu`, `fcu`, `acs`, `afw`, `sod`, `pts`, `xah`, `tfy`); `geometry` is `linear`,
+`trigonal`, `tetrahedral`, `square_planar` or `octahedral`. Returns
+`{cell: {lattice}, atoms: [{element, frac_coords}], labels}`. This wrapper uses
+one carboxylate linker; per-edge-type linker selection is Rust-only
+(`assemble_framework_with_linkers`).
 
 ### `space_group_by_number` / `space_group_by_symbol`
 
@@ -1758,7 +1761,7 @@ These exports only exist when the corresponding Cargo feature is enabled on the
 | `compute_alpb_solvation`, `compute_alpb_born_radii` | `experimental-alpb` |
 | `compute_d4_energy` | `experimental-d4` |
 | `compute_cpm_charges`, `compute_cpm_surface` | `experimental-cpm` |
-| `compute_kmesh`, `compute_periodic_dos`, `solve_periodic_randnla`, `bloch_phase`, `build_bloch_hamiltonian`, `assemble_periodic_operators`, `validate_electron_count`, `validate_kmesh_weights` | `alpha-periodic-linear` |
+| `compute_kmesh`, `compute_periodic_dos`, `solve_periodic_randnla`, `bloch_phase`, `build_bloch_hamiltonian`, `assemble_periodic_operators`, `validate_electron_count`, `validate_kmesh_weights`, `alpha_periodic_kpath_standard`, `alpha_periodic_fermi_surface_from_bands` | `alpha-periodic-linear` |
 | `compute_htst_rate`, `compute_htst_sweep`, `extract_kinetics_diagnostics`, `solve_microkinetic_network`, `solve_microkinetic_steady_state`, `analyze_gsm_mbh_htst_step` | `alpha-kinetics` |
 | `chart_to_json`, `chart_from_json`, `validate_chart_schema`, `pack_chart_payload`, `compute_edl_chart`, `compute_capacitance_chart`, `compute_arrhenius_chart`, `compute_thermal_prop_chart`, `compute_phase_portrait_chart`, `compute_band_structure_chart`, `compute_dos_chart`, `compute_kpoint_path_chart`, `compute_fermi_surface_chart`, `compute_trajectory_chart`, `compute_reaction_coordinate_chart` | `alpha-render-bridge` |
 | `alpha_*`, `beta_*` research functions | the matching `alpha-*` / `beta-*` features |

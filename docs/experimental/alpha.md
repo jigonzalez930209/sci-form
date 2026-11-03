@@ -23,7 +23,7 @@
 | A11 | `alpha::periodic_linear` | `alpha-periodic-linear` | Periodic k-mesh, Bloch-phase, and linear-scaling spectral contracts |
 | A12 | `alpha::kinetics` | `alpha-kinetics` | HTST and microkinetic contracts with CPU reference rates |
 | A13 | `render_bridge` (core base, F90) | — | Chart/trajectory payloads (domain builders stay alpha) |
-| A14 | `alpha::reaction_dynamics` | `alpha-reaction-dynamics` | 3D reaction path: approach frames, CI-NEB images and departure frames |
+| A14 | `alpha::reaction_dynamics` | `alpha-reaction-dynamics` (**Rust core only**) | 3D reaction path: approach frames, CI-NEB images and departure frames |
 
 ---
 
@@ -47,6 +47,22 @@ println!("DFT total energy: {:.6} Ha", result.total_energy);
 println!("HOMO: {:.3} eV,  LUMO: {:.3} eV,  gap: {:.3} eV",
     result.homo_energy, result.lumo_energy, result.gap);
 ```
+
+#### Nuclear gradient (Rust only)
+
+```rust
+use sci_form::dft::{ks_nuclear_gradient, DftConfig};
+
+let g = ks_nuclear_gradient(&conf.elements, &pos, &DftConfig::default())?;
+// g.gradients: Vec<[f64; 3]>  dE/dR in Hartree/Bohr, one triple per atom (positions are in Å)
+// g.rms_gradient, g.max_gradient: Hartree/Bohr;  g.energy: total energy in Hartree
+```
+
+The gradient is the analytic frozen-density force plus the Pulay term and is
+validated against the derivative of the converged energy (F80, 3·10⁻⁷ Ha/Bohr
+on H₂O₂). It is **not** exposed in Python, WASM or the CLI. See
+[Kohn–Sham DFT](/algorithm/ks-dft#nuclear-gradient) for the unit history
+(Hartree/Bohr, not Hartree/Å).
 
 ### WASM / TypeScript
 
@@ -452,6 +468,12 @@ println!("Band edges: HOMO {} eV, LUMO {} eV, gap {} eV",
 // BZ integration
 let dos_integrated = bz_integrate_scalar(&dos_values, &kmesh_weights);
 println!("Integrated DOS: {}", dos_integrated);
+
+// Core chart helpers (no alpha feature required)
+let path = sci_form::kmesh::kpath_standard(20);
+println!("k-path vertices: {:?}", path.vertices);
+// `fermi_surface_from_bands(&blocks, None, 40, 40)` traces the kz = 0 contour
+// from the same real-space operator blocks.
 ```
 
 ### Python
@@ -462,17 +484,21 @@ from sci_form.alpha import kmesh
 # Generate k-mesh
 mesh = kmesh(grid=[4, 4, 4], centering="monkhorst-pack")  # or "gamma"
 print(f"n_k = {mesh.n_points}, grid = {mesh.grid}")
-print(f"Weights sum: {sum({mesh.weights)}")
+print(f"Weights sum: {sum(mesh.weights)}")
 ```
 
 ### WASM / TypeScript
 
 ```typescript
-import { compute_kmesh } from 'sci-form-wasm/alpha';
+import { alpha_periodic_kpath_standard, compute_kmesh } from 'sci-form-wasm/alpha';
 
 // Generate k-mesh
 const mesh = JSON.parse(compute_kmesh('[4,4,4]', 'monkhorst-pack'));
 console.log(`n_k = ${mesh.n_points}, weights sum = ${mesh.weights.reduce((a,b)=>a+b,0)}`);
+
+// Core k-path helper (no alpha feature required)
+const kpath = JSON.parse(alpha_periodic_kpath_standard(20));
+console.log(kpath.vertices);
 ```
 
 ### CLI
@@ -756,35 +782,15 @@ for frame in &result.frames {
 }
 ```
 
-### Python
+### Python, WASM / TypeScript and CLI
 
-```python
-from sci_form.alpha import compute_reaction_dynamics_3d
-
-result = compute_reaction_dynamics_3d(
-    ["[Cl-]", "CBr"], ["ClC", "[Br-]"], method="gfn2", n_images=30
-)
-print(result.notes)          # e.g. ['CI-NEB ... converged=false', ...]
-print(result.activation_energy_kcal_mol, result.reaction_energy_kcal_mol)
-```
-
-### WASM / TypeScript
-
-```typescript
-import { compute_reaction_dynamics_3d } from 'sci-form-wasm/alpha';
-
-const path = JSON.parse(
-  compute_reaction_dynamics_3d('["[Cl-]", "CBr"]', '["ClC", "[Br-]"]', '{}'),
-);
-if (path.error) throw new Error(path.error);
-console.log(path.frames.length, 'frames');
-```
-
-### CLI
-
-```bash
-sci-form reaction-dynamics3d '["[Cl-]", "CBr"]' '["ClC", "[Br-]"]' --method gfn2
-```
+**Not exposed.** The 3D reaction path is expensive (the NEB needs `6·N` SCF runs
+per gradient with the GFN2, PM3 and GFN1 backends) and is not a validated reaction
+path, so it is available **only from the Rust core**. There is no
+`sci_form.alpha.compute_reaction_dynamics_3d`, no `sci-form-wasm/alpha` entry
+and no `reaction-dynamics3d` CLI command. The stable, cheap
+`compute_reaction_dynamics` (1D reaction coordinate) and the simplified NEB
+remain available on every surface. Bindings for the 3D path are future work.
 
 ---
 

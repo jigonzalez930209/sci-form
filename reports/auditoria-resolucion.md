@@ -107,7 +107,7 @@ c96ffa3 fix: resolve all P0 audit findings — real MMFF94, correct ANI forces, 
 | # | Gap | Por qué sigue abierto | Qué haría falta |
 |---|---|---|---|
 | P1-11 | NPA/NBO sin paridad | Psi4/NBO 6.0 no están disponibles; `population::npa` es una simplificación documentada (usa Z nuclear en vez de valencia) | Gate contra Psi4 `gen-nbo` o reimplementar NPA completo |
-| P1-20 | Gradientes PM3/xTB/KS-DFT incorrectos | **Descubierto por el gate F80**: PM3 18.4 eV/Å, GFN0-xTB 209–263 eV/Å, KS-DFT 0.202 Ha/Bohr (falta la respuesta XC adiabática). Los 3 tests quedan `#[ignore]` con las cifras | Completar la expresión HF/Pulay del PM3, la del GFN0 y el término de respuesta XC |
+| P1-20 | Gradientes PM3/xTB/KS-DFT incorrectos | **CERRADO 2026-11-02.** Descubierto por el gate F80 (PM3 18.4 eV/Å, GFN0-xTB 209–263 eV/Å, KS-DFT 0.202 Ha/Bohr). PM3 y xTB: las expresiones analíticas derivaban modelos simplificados, no la energía que devuelve la API; ahora son diferencias centrales (5·10⁻⁴ Å) de `solve_pm3` y de la energía GFN2 de `compute_xtb`, y los gates F80 se aplican. KS-DFT: **el gradiente era correcto**; el 0.5292 constante entre analítico y numérico era Å/Bohr (la referencia numérica estaba en Ha/Å); con la referencia convertida el desvío es 3·10⁻⁷ Ha/Bohr y el gate se aplica | Un gradiente analítico NDDO/GFN2 (trabajo futuro; hoy cuesta 6·N SCF) |
 
 ---
 
@@ -149,7 +149,7 @@ c96ffa3 fix: resolve all P0 audit findings — real MMFF94, correct ANI forces, 
 | P2-57 | Tabla de 230 grupos sin generador | `scripts/validation/gen_space_group_table.py` la regenera desde el fixture spglib/pymatgen y la reproduce byte a byte; CI la verifica con `--check` |
 | P2-60 | "Wiberg" P² y FMO heurístico sin avisar | Ambos documentos declaran explícitamente que no son comparables con un índice de Wiberg ni con un análisis FMO de DFT |
 | P2-52 | `materials::cell::minimum_image` con `round()` fraccional | **Corregido** por el gate F66: ahora busca la imagen de red más cercana (celdas triclínicas correctas) |
-| P2-54 | `test_pm3_h2` `#[ignore]`d | Subsumido por el gate F80, que cuantifica el gradiente PM3 como incorrecto (18.4 eV/Å) |
+| P2-54 | `test_pm3_h2` `#[ignore]`d | **Corregido 2026-11-02**: el solver fiel a MOPAC conserva la simetría de H₂; el test está activo |
 | P2-50 | `atomic_mass_amu` devolvía 12.0 para ~100 elementos | Tabla IUPAC Z=1..118; 0.0 para desconocidos; 2 tests nuevos |
 | P2-53 | Doc del barostat con fórmula distinta | Corregido (el virial contaba 3× menos en el doc) |
 | P2-55 | Tabla CSD sin verificación | Gate F76 con SHA-256 fijado |
@@ -180,9 +180,9 @@ Estas no son "problemas de la auditoría" sino limitaciones con nombre propio, a
 
 | Limitación | Dónde | Magnitud |
 |---|---|---|
-| Gradiente analítico de PM3 incorrecto | `src/pm3/gradients.rs` | 18.4 eV/Å (H2O2) |
-| Gradiente analítico de GFN0-xTB incorrecto | `src/xtb/gradients.rs` | 209–263 eV/Å |
-| Gradiente KS-DFT sin respuesta XC adiabática | `src/dft/gradient.rs` | 0.202 Ha/Bohr |
+| Gradiente PM3 por diferencias centrales (6·N SCF) en lugar de analítico | `src/pm3/gradients.rs` | coste, no exactitud (el error anterior de 18.4 eV/Å está corregido) |
+| Gradiente xTB (GFN2) por diferencias centrales (6·N SCC) en lugar de analítico | `src/xtb/gradients.rs` | coste, no exactitud (el error anterior de 209–263 eV/Å está corregido) |
+| Gradiente KS-DFT: gate F80 solo cerrado (RKS); sin gate UKS | `src/dft/gradient.rs` | el supuesto «falta la respuesta XC» era un error de unidades del test |
 | sTDA sin término de intercambio | `src/spectroscopy/stda_uvvis.rs` | 16 eV vs TD-SCF (gap de método) |
 | `EHT` sin paridad de energía externa | `src/eht/` | solo la tabla de parámetros está verificada (F31) |
 | `NPA/NBO` simplificado | `src/population/npa.rs` | usa Z nuclear en vez de valencia |

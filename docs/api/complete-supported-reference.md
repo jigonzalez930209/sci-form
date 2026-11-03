@@ -168,11 +168,11 @@ Practical note:
 | Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
 |------|--------|--------------------------|------|-----|---------|-------------------|
 | `compute_pm3` | `compute_pm3` | `pm3_calculate` | `compute_pm3` | `pm3` | PM3 semiempirical SCF | NDDO PM3 |
-| `compute_pm3_gradient` | `compute_pm3_gradient` | – | `compute_pm3_gradient` | `pm3-gradient` | Analytical PM3 gradients | Hellmann-Feynman + Pulay corrections |
-| `compute_xtb` | `compute_xtb` | `xtb_calculate` | `compute_xtb` | `xtb` | GFN0-xTB style tight-binding workflow | SCC tight-binding |
+| `compute_pm3_gradient` | `compute_pm3_gradient` | – | `compute_pm3_gradient` | `pm3-gradient` | PM3 gradients | Central differences of the PM3 energy (consistent with `compute_pm3`) |
+| `compute_xtb` | `compute_xtb` | `xtb_calculate` | `compute_xtb` | `xtb` | GFN2-xTB tight-binding (identical to `compute_gfn2`) | SCC tight-binding with multipole electrostatics and D4 |
 | `compute_gfn1` | `compute_gfn1` | `gfn1_calculate` | `compute_gfn1` | `gfn1` | GFN1-xTB workflow with shell charges and D3-style dispersion | Shell-resolved SCC tight-binding |
 | `compute_gfn2` | `compute_gfn2` | `gfn2_calculate` | `compute_gfn2` | `gfn2` | GFN2-xTB workflow with multipoles, D4-style dispersion, and XB correction | Multipole SCC tight-binding |
-| `compute_xtb_gradient` | `compute_xtb_gradient` | – | `compute_xtb_gradient` | `xtb-gradient` | Analytical xTB gradients | SCC gradient formalism |
+| `compute_xtb_gradient` | `compute_xtb_gradient` | – | `compute_xtb_gradient` | `xtb-gradient` | xTB gradients | Central differences of the GFN2-xTB energy (consistent with `compute_xtb`) |
 | `compute_hf3c` | `compute_hf3c` | `hf3c_calculate` | `compute_hf3c` / `compute_hf3c_custom` | `hf3c` | HF-3c quantum workflow | HF + D3 + gCP + SRB |
 | `compute_ani` | `compute_ani` | `ani_calculate` | `compute_ani` | `ani` | ANI neural potential using available test/default models | Atomic environment vectors + feed-forward NN |
 | `compute_ani_with_models` | – | – | – | – | ANI with explicit models/config (Rust only: the ANI networks are Rust objects) | Same ANI formalism with custom weights |
@@ -234,8 +234,8 @@ Practical note:
 | `neb_backend_energy_kcal` / `neb_backend_energy_and_gradient` | – | – | `neb_single_point_energy` / `neb_energy_and_gradient` | `neb-energy` / `neb-gradient` | Single-point energy and gradient for any NEB backend | Backend dispatch over UFF/PM3/xTB/HF-3c |
 | `search_conformers_with_uff` | `search_conformers_with_uff` | `search_conformers` | `search_conformers_with_uff` / `search_conformers_with_uff_seed64` | – | UFF-ranked conformer exploration | Multi-seed embedding + UFF scoring + clustering |
 | `compute_reaction_dynamics` | – | – | `compute_reaction_dynamics` | – | 2D reaction-coordinate energy profile | NEB along a 1D coordinate |
-| `alpha::reaction_dynamics::compute_reaction_dynamics_3d` | `compute_reaction_dynamics_3d` | – | `compute_reaction_dynamics_3d` | `reaction-dynamics3d` | 3D reaction path: approach frames, CI-NEB images, departure frames | Fragment embedding + IDPP + climbing-image NEB |
-| `alpha::reaction_dynamics::compute_approach_dynamics` | – | – | `compute_approach_dynamics` | – | Approach frames of a 3D reaction path | Fragment embedding + orbital-guided approach |
+| `alpha::reaction_dynamics::compute_reaction_dynamics_3d` | – | – | – | – | 3D reaction path (**Rust core only**, not bound) | Fragment embedding + IDPP + climbing-image NEB |
+| `alpha::reaction_dynamics::compute_approach_dynamics` | – | – | – | – | Approach frames of a 3D reaction path (**Rust core only**) | Fragment embedding + orbital-guided approach |
 
 ### 9. Materials, Periodic Systems, and Framework Construction
 
@@ -243,6 +243,10 @@ Practical note:
 |------|--------|--------------------------|------|-----|---------|-------------------|
 | `create_unit_cell` | `create_unit_cell` | `unit_cell` | `create_unit_cell` | `cell` | Build a unit cell from lattice parameters | Crystallographic cell tensor construction |
 | `assemble_framework` | `assemble_framework` | – | `assemble_framework` | `assemble` | Assemble framework structures from topology/SBUs | Topology-guided framework assembly |
+| `assemble_framework_with_linkers` | – | – | – | – | Assemble with one linker per inequivalent edge type | `Topology::edge_types` dispatch |
+| `materials::Topology::from_net` | – | – | – | – | Convert an RCSR `NetData` into a symmetry-expanded assembly graph | pormake `.cgd` expansion |
+| `kmesh::kpath_standard` | `compute_kpoint_path_chart` | – | `alpha_periodic_kpath_standard` | `kpoint-path-chart` | Sample the default Γ→X→M→Γ k-path | Linear interpolation + cumulative distance |
+| `kmesh::fermi_surface_from_bands` | `compute_fermi_surface_chart` | – | `alpha_periodic_fermi_surface_from_bands` | `fermi-surface-chart` | Trace the Fermi contour in the `kz = 0` plane | Bloch Hamiltonian + bisection |
 | `materials::space_groups::space_group_by_number` | `space_group_by_number` | – | `space_group_by_number` | `space-group --number` | Look up a space group by ITC number | Crystallographic space-group table |
 | `materials::space_groups::space_group_by_symbol` | `space_group_by_symbol` | – | `space_group_by_symbol` | `space-group --symbol` | Look up a space group by Hermann-Mauguin symbol | Crystallographic space-group table |
 | `materials::space_groups::all_space_groups` | `all_space_groups` | – | `all_space_groups` | `all-space-groups` | List all 230 space groups | Crystallographic space-group table |
@@ -290,7 +294,7 @@ The CLI is a curated subset intended for common user workflows rather than total
 
 ### Stable CLI commands
 
-The CLI exposes **100 subcommands** in total; 66 are always built and 34 are
+The CLI exposes **102 subcommands** in total; 69 are always built and 33 are
 feature-gated. The exhaustive reference is [`docs/api/cli.md`](./cli.md).
 
 - `embed`, `batch`, `parse`, `info`
@@ -320,7 +324,6 @@ feature-gated. The exhaustive reference is [`docs/api/cli.md`](./cli.md).
 - `htst-rate`, `extract-kinetics-diagnostics`, `solve-microkinetic-network`, `solve-microkinetic-steady-state`, `analyze-gsm-mbh-htst-step` behind `alpha-kinetics`
 - `kmesh`, `compute-periodic-dos`, `solve-periodic-randnla`, `bloch-phase`, `build-bloch-hamiltonian`, `assemble-periodic-operators`, `validate-electron-count` behind `alpha-periodic-linear`
 - `edl-chart`, `capacitance-chart`, `arrhenius-chart`, `thermal-prop-chart`, `phase-portrait-chart`, `band-structure-chart`, `dos-chart`, `kpoint-path-chart`, `fermi-surface-chart`, `trajectory-chart`, `reaction-coordinate-chart` behind `alpha-render-bridge` (each also needs the matching domain feature)
-- `reaction-dynamics3d` behind `alpha-reaction-dynamics`
 
 ---
 
@@ -684,13 +687,14 @@ Related SVGs:
 Core idea:
 
 - Map cell parameters to lattice tensors and place node/linker building units on topology templates to assemble periodic frameworks.
+- `Topology::from_name` accepts both the built-in homogeneous nets and the data-driven RCSR nets; nets with inequivalent edges select a linker per `edge_types` entry.
 
 Main API entries:
 
-- Rust: `create_unit_cell`, `assemble_framework`
+- Rust: `create_unit_cell`, `assemble_framework`, `assemble_framework_with_linkers`
 - Python: `create_unit_cell`, `assemble_framework`
-- WASM: `create_unit_cell`, `assemble_framework`
-- CLI: `cell`, `assemble`
+- WASM: `create_unit_cell`, `assemble_framework`, `alpha_periodic_kpath_standard`, `alpha_periodic_fermi_surface_from_bands`
+- CLI: `cell`, `assemble`, `kpoint-path-chart`, `fermi-surface-chart`
 
 Related theory docs:
 

@@ -4,19 +4,47 @@ This is the **guide**: a task-oriented tour of the `sci-form` binary. For the ex
 
 ## Installation
 
-Download prebuilt binaries from [GitHub Releases](https://github.com/jigonzalez930209/sci-form/releases), or build from source:
+Every [release](https://github.com/jigonzalez930209/sci-form/releases/latest) carries the CLI as an installable package for each system:
+
+| System | Package | Install |
+|---|---|---|
+| Debian / Ubuntu | `.deb` (`amd64`, `arm64`) | `sudo apt install ./sci-form_*.deb` |
+| Fedora / RHEL | `.rpm` (`x86_64`, `aarch64`) | `sudo dnf install ./sci-form-*.rpm` |
+| Linux (any) | `.tar.gz` (x86_64, aarch64) | unpack and copy `sci-form` to a folder on your `PATH` |
+| macOS | `.tar.gz` (Apple Silicon, Intel) | unpack and copy `sci-form` to a folder on your `PATH` |
+| Windows | `.zip` (x86_64) | unpack and add the folder to `PATH` |
+
+The `.deb` and `.rpm` also install the bash, zsh and fish completions. A `SHA256SUMS` file lists the checksums. Or build from source:
 
 ```bash
 cargo install sci-form-cli
 ```
 
-The binary exposes 100 subcommands. 66 are always available; the other 34 are compiled in only when the corresponding Cargo feature is enabled:
+The binary exposes 102 subcommands. 69 are always available; the other 33 are compiled in only when the corresponding Cargo feature is enabled:
 
 ```bash
 cargo install sci-form-cli --features alpha-gsm,alpha-edl,alpha-kinetics,alpha-periodic-linear
 ```
 
 Use `sci-form --help` to list what a given build actually contains.
+
+## Finding your way around
+
+The binary documents itself — you never need to leave the terminal:
+
+```bash
+sci-form                        # a short guide: three commands to try, then every command by topic
+sci-form commands               # the same list, grouped by topic
+sci-form commands quantum       # only one topic (any word of its name)
+sci-form examples pm3           # a ready-to-run example for one command
+sci-form examples pm3 --run     # …and its output
+sci-form examples               # the example of every command
+sci-form help pm3               # every option of one command (its last lines repeat the example)
+sci-form completions bash       # tab completion: bash, zsh, fish, powershell, elvish
+```
+
+Every example in that help is executed by the test-suite, so it works exactly as printed. For
+example outputs you can also run in the browser see the [live examples](/guide/live-examples).
 
 ## The two calling conventions
 
@@ -134,7 +162,7 @@ sci-form eht "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]" --k 1.75
 
 # Semi-empirical and tight binding
 sci-form pm3  "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
-sci-form xtb  "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"   # GFN0-xTB
+sci-form xtb  "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"   # GFN2-xTB (same as gfn2)
 sci-form gfn1 "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
 sci-form gfn2 "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
 sci-form hf3c "[6,8,1,1,1,1,1,1,1]" "[0.76,0.01,-0.08, ...]"
@@ -241,7 +269,7 @@ sci-form ensemble-j-couplings "CCO" '[[0.0,0.0,0.0, ...]]' '[-12.3]' --temperatu
 # Unit cell
 sci-form cell --a 5.43 --b 5.43 --c 5.43 --alpha 90 --beta 90 --gamma 90
 
-# Framework assembly (pcu, dia or sql)
+# Framework assembly (any Topology::from_name net)
 sci-form assemble --topology pcu --metal 30 --geometry octahedral --a 10.0
 
 # Crystallography
@@ -277,12 +305,7 @@ sci-form gsm-backend-plan  "CCO"
 sci-form gsm-compare-backends "CCO" "[...]" --methods '["uff","gfn2"]'
 ```
 
-The full 3D reaction-dynamics path needs `alpha-reaction-dynamics`:
-
-```bash
-sci-form reaction-dynamics3d '["[Cl-]", "CBr"]' '["ClC", "[Br-]"]' \
-  --method gfn2 --n-images 30 --smirks '[C:1][Br:2].[Cl-:3]>>[C:1][Cl:3].[Br-:2]'
-```
+The full 3D reaction-dynamics path (`alpha-reaction-dynamics`) is available only from the Rust core; it has no CLI command.
 
 ---
 

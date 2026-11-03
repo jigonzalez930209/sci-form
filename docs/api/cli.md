@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `sci-form` binary exposes **100 subcommands**: 66 are always built and 34 are behind Cargo
+The `sci-form` binary exposes **102 subcommands**: 69 are always built and 33 are behind Cargo
 feature flags. This page is the exhaustive reference; the [CLI guide](../guide/cli.md) is the
 task-oriented walkthrough.
 
@@ -43,13 +43,31 @@ cargo install sci-form-cli --features alpha-gsm,alpha-edl,alpha-kinetics
 | `alpha-kinetics` | `htst-rate`, `extract-kinetics-diagnostics`, `solve-microkinetic-network`, `solve-microkinetic-steady-state`, `analyze-gsm-mbh-htst-step` |
 | `alpha-periodic-linear` | `kmesh`, `compute-periodic-dos`, `solve-periodic-randnla`, `bloch-phase`, `build-bloch-hamiltonian`, `assemble-periodic-operators`, `validate-electron-count` |
 | `alpha-render-bridge` | `edl-chart`, `capacitance-chart`, `arrhenius-chart`, `thermal-prop-chart`, `phase-portrait-chart`, `band-structure-chart`, `dos-chart`, `kpoint-path-chart`, `fermi-surface-chart`, `trajectory-chart`, `reaction-coordinate-chart` |
-| `alpha-reaction-dynamics` | `reaction-dynamics3d` |
 
 The `alpha-render-bridge` chart commands need a second feature as well: `edl-chart` and
 `capacitance-chart` also require `alpha-edl`; `arrhenius-chart`, `thermal-prop-chart` and
 `phase-portrait-chart` require `alpha-kinetics`; `band-structure-chart`, `dos-chart`,
 `kpoint-path-chart` and `fermi-surface-chart` require `alpha-periodic-linear`; and
 `trajectory-chart` / `reaction-coordinate-chart` require `alpha-gsm`.
+
+---
+
+## The built-in guide
+
+| Command | What it does |
+|---|---|
+| `sci-form` | With no command: a short guide — three commands to try, then every command by topic. |
+| `sci-form commands [TOPIC]` | Every command grouped by topic; `TOPIC` is any word of a topic name (`quantum`, `crystals`, `charts`, …). |
+| `sci-form examples [COMMAND] [--run]` | The ready-to-run example of one command (or of all of them); `--run` also prints its output. |
+| `sci-form completions <SHELL>` | A shell-completion script: `bash`, `zsh`, `fish`, `powershell`, `elvish`. |
+| `sci-form help <COMMAND>` | Every option of one command; its last lines show the example. |
+
+The topics are *Getting started*, *Structure & chemistry*, *Conformers*, *Quantum chemistry*,
+*Gradients & optimisation*, *Surface, solvation & dispersion*, *Reaction paths & kinetics*,
+*Descriptors & machine learning*, *Crystals & materials*, *Electrochemistry* and *Charts (JSON for plotting)*.
+The list shows only the commands compiled into your binary. The catalogue behind it
+(`crates/cli/src/catalog.tsv`) is checked by `crates/cli/tests/guide.rs`: every command has an
+entry and every example exits successfully.
 
 ---
 
@@ -165,8 +183,7 @@ The examples below use `$EL` and `$COORDS` for those two arguments.
 `gsm-backend-plan`, `gsm-compare-backends` (`alpha-gsm`), `edl-chart`, `capacitance-chart`,
 `arrhenius-chart`, `thermal-prop-chart`, `phase-portrait-chart`, `band-structure-chart`,
 `dos-chart`, `kpoint-path-chart`, `fermi-surface-chart`, `trajectory-chart`,
-`reaction-coordinate-chart` (`alpha-render-bridge` + the matching domain feature),
-`reaction-dynamics3d` (`alpha-reaction-dynamics`).
+`reaction-coordinate-chart` (`alpha-render-bridge` + the matching domain feature).
 
 ---
 
@@ -766,7 +783,7 @@ Semi-empirical and tight-binding single points.
 
 ```
 sci-form pm3  <ELEMENTS_JSON> <COORDS_JSON>   # PM3
-sci-form xtb  <ELEMENTS_JSON> <COORDS_JSON>   # GFN0-xTB
+sci-form xtb  <ELEMENTS_JSON> <COORDS_JSON>   # GFN2-xTB (identical output to gfn2)
 sci-form gfn1 <ELEMENTS_JSON> <COORDS_JSON>   # GFN1-xTB
 sci-form gfn2 <ELEMENTS_JSON> <COORDS_JSON>   # GFN2-xTB
 sci-form hf3c <ELEMENTS_JSON> <COORDS_JSON>   # HF-3c
@@ -777,24 +794,24 @@ PM3 (all energies in **eV**, `heat_of_formation` in **kcal/mol**):
 ```bash
 $ sci-form pm3 "$EL" "$COORDS"
 {
-  "orbital_energies": [-38.82711576123044, -30.929875185107743, -22.646733347120808, "..."],
-  "electronic_energy": -1761.7957179078226,
+  "orbital_energies": [-38.827117278912816, -30.929876411517615, -22.64673365173473, "..."],
+  "electronic_energy": -1761.7957220727174,
   "nuclear_repulsion": 1138.2523453052277,
-  "total_energy": -623.5433726025949,
-  "heat_of_formation": -53.997668255763756,
+  "total_energy": -623.5433767674897,
+  "heat_of_formation": -53.99776430051929,
   "n_basis": 18,
   "n_electrons": 20,
-  "homo_energy": -11.091818031628284,
-  "lumo_energy": 3.266643650908672,
-  "gap": 14.358461682536955,
-  "mulliken_charges": [-0.1724405535934732, 0.08956201679898346, "..."],
-  "scf_iterations": 32,
+  "homo_energy": -11.091818400759617,
+  "lumo_energy": 3.2666430586158963,
+  "gap": 14.358461459375514,
+  "mulliken_charges": [-0.17244052751007377, 0.08956235044897287, "..."],
+  "scf_iterations": 20,
   "converged": true,
   "notes": ["Produced by the faithful MOPAC-parity PM3 solver."]
 }
 ```
 
-GFN0-xTB (all energies in **eV**):
+`xtb` (this runs GFN2-xTB; the output is identical to `gfn2`, all energies in **eV**):
 
 ```bash
 $ sci-form xtb "$EL" "$COORDS"
@@ -1126,12 +1143,34 @@ sci-form rohf <ELEMENTS_JSON> <COORDS_JSON> --charge 0 --multiplicity 2
 
 ### `pm3-gradient`, `xtb-gradient`
 
-Analytical energy gradients, in **eV/Å** per atom.
+Energy gradients in **eV/Å** per atom. They are central differences (5·10⁻⁴ Å) of
+the energy that the matching command returns: `pm3-gradient` differentiates the
+`pm3` total energy and `xtb-gradient` the `xtb` total energy (which is GFN2-xTB).
+Cost: `6·N` SCF runs. See [PM3 and xTB gradients](/algorithm/semiempirical-gradients).
 
 ```
 sci-form pm3-gradient <ELEMENTS_JSON> <COORDS_JSON>
 sci-form xtb-gradient <ELEMENTS_JSON> <COORDS_JSON>
 ```
+
+```bash
+$ sci-form pm3-gradient "$EL" "$COORDS"
+{
+  "gradients": [[0.778649, 0.255027, 0.293863], [1.426959, 0.399377, -0.030397], "..."],
+  "energy": -623.5433767674897,
+  "heat_of_formation": -53.99776430051929
+}
+
+$ sci-form xtb-gradient "$EL" "$COORDS"
+{
+  "gradients": [[1.285348, 0.165227, 0.274245], [1.058439, 0.77458, -0.314952], "..."],
+  "energy": -309.8910594776795
+}
+```
+
+`gradients` has one `[dE/dx, dE/dy, dE/dz]` triple per atom in input order (9 for ethanol), in eV/Å.
+`energy` (eV) equals the `total_energy` of `pm3` / `xtb` for the same input, and `heat_of_formation`
+is in kcal/mol.
 
 ### `uff-breakdown`, `mmff94-breakdown`
 
@@ -1480,7 +1519,7 @@ sci-form assemble [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `-t, --topology <T>` | `pcu` | Framework topology: `pcu`, `dia` or `sql` |
+| `-t, --topology <T>` | `pcu` | Framework topology, any name accepted by `Topology::from_name` (`pcu`, `dia`, `sql`, `bcu`, `fcu`, `nbo`, `pts`, `kgm`, `hxl`, `pillared_sql`, `acs`, `afw`, `sod`, `xah`, `tfy`) |
 | `--a <F>` | `10.0` | Lattice parameter a in Å |
 | `--metal <N>` | `30` | Metal atomic number |
 | `--geometry <G>` | `octahedral` | Coordination geometry: `linear`, `trigonal`, `tetrahedral`, `square_planar` or `octahedral` |
@@ -1633,6 +1672,13 @@ $ sci-form simplified-neb-path "CCO" "$COORDS" "$COORDS" --n-images 2 --n-iter 2
 
 Single-point energy and energy + gradient with any NEB-capable backend.
 
+`neb-energy` evaluates the energy only (one SCF for `pm3`/`xtb`). `neb-gradient`
+returns the analytic gradient for `uff`/`mmff94` and a central-difference
+gradient of the same energy for `pm3`, `xtb`, `gfn1`, `gfn2` and `hf3c`. `xtb` is
+GFN2, the same model as the `xtb` command and as `gfn2`; see
+[Reaction backends](/guide/reaction-backends). For ethanol `neb-energy` returns
+−14379.2 kcal/mol for `pm3`, −7146.0 for `xtb`/`gfn2` and 6.99 for `uff`; the absolute zero differs between methods.
+
 ```
 sci-form neb-energy   [OPTIONS] <SMILES> <COORDS_JSON>
 sci-form neb-gradient [OPTIONS] <SMILES> <COORDS_JSON>
@@ -1714,28 +1760,6 @@ sci-form reaction-coordinate-chart [OPTIONS] <SMILES> <REACTANT_COORDS> <PRODUCT
 | Option | Default | Description |
 |--------|---------|-------------|
 | `-m, --method <M>` | `uff` | GSM backend: `uff`, `mmff94`, `pm3`, `xtb`, `gfn1`, `gfn2`, `hf3c` |
-
----
-
-### `reaction-dynamics3d` *(feature `alpha-reaction-dynamics`)*
-
-Compute a full 3D reaction-dynamics path.
-
-```
-sci-form reaction-dynamics3d [OPTIONS] <REACTANT_SMILES> <PRODUCT_SMILES>
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--method <M>` | `gfn2` | Energy backend: `uff`, `xtb`, `gfn1`, `gfn2` (default), `pm3`, `hf3c` |
-| `--n-images <N>` | `30` | Number of NEB images |
-| `--n-approach <N>` | `15` | Number of approach frames |
-| `--n-departure <N>` | `15` | Number of departure frames |
-| `--smirks <S>` | *absent* | Optional SMIRKS reaction string |
-| `--seed <N>` | `42` | Random seed |
-
-Both positional arguments are JSON arrays of SMILES, e.g. `'["[Cl-]", "CBr"]'` and
-`'["ClC", "[Br-]"]'`.
 
 ---
 
