@@ -764,112 +764,12 @@ pub fn alpha_modules_info() -> String {
     if cfg!(feature = "alpha-render-bridge") {
         modules.push("render-bridge");
     }
-    if cfg!(feature = "alpha-reaction-dynamics") {
-        modules.push("reaction-dynamics");
-    }
     serde_json::json!({
         "alpha_modules": modules,
         "stability": "alpha — experimental, subject to breaking changes",
         "version": env!("CARGO_PKG_VERSION"),
     })
     .to_string()
-}
-
-// ─── A9: Alpha Reaction Dynamics 3D ─────────────────────────────────────────
-
-/// Compute a full 3D reaction dynamics path using the alpha pipeline.
-///
-/// Uses CI-NEB with IDPP initialisation, constrained geometry relaxation,
-/// orbital/electrostatic approach guidance, and optional SMIRKS atom mapping.
-///
-/// `reactant_smiles_json`: JSON array of reactant SMILES, e.g. `["[Cl-]", "CBr"]`.
-/// `product_smiles_json`:  JSON array of product SMILES, e.g. `["ClC", "[Br-]"]`.
-/// `config_json`: optional JSON config; pass `""` or `"{}"` for defaults (GFN2-xTB).
-///
-/// Returns JSON with frames (approach + NEB + departure), energies, TS info.
-#[cfg(feature = "alpha-reaction-dynamics")]
-#[wasm_bindgen]
-pub fn compute_reaction_dynamics_3d(
-    reactant_smiles_json: &str,
-    product_smiles_json: &str,
-    config_json: &str,
-) -> String {
-    let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
-        Ok(v) => v,
-        Err(e) => return json_error(&bad_json("'reactant smiles'", reactant_smiles_json, &e)),
-    };
-    let products: Vec<String> = match serde_json::from_str(product_smiles_json) {
-        Ok(v) => v,
-        Err(e) => return json_error(&bad_json("'product smiles'", product_smiles_json, &e)),
-    };
-
-    let config: sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig =
-        if config_json.is_empty() || config_json == "{}" {
-            sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig::default()
-        } else {
-            match serde_json::from_str(config_json) {
-                Ok(c) => c,
-                Err(e) => return json_error(&bad_json("'config'", config_json, &e)),
-            }
-        };
-
-    let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
-    let p_refs: Vec<&str> = products.iter().map(String::as_str).collect();
-
-    match sci_form::alpha::reaction_dynamics::compute_reaction_dynamics_3d(
-        &r_refs, &p_refs, &config,
-    ) {
-        Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| json_error(&e.to_string())),
-        Err(e) => json_error(&e),
-    }
-}
-
-/// Reactant-only approach PES scan — no product SMILES required.
-///
-/// Embeds the reactant fragments, identifies reactive sites using Fukui/FMO
-/// and electrostatic analysis, then performs a constrained-relaxed approach
-/// scan from `far_distance` down to `reactive_distance`.
-///
-/// This is the correct workflow when only reactants are known:
-/// sci-form builds a physically meaningful approach trajectory with real
-/// quantum energies without needing to specify the products.
-///
-/// `reactant_smiles_json`: JSON array of reactant SMILES, e.g. `["CC(=O)O", "N"]`.
-/// `config_json`: optional JSON [`ReactionDynamics3DConfig`]; pass `""` for defaults.
-///
-/// Returns JSON `ReactionDynamics3DResult` with approach frames only
-/// (`phase = "approach"`). `reaction_energy_kcal_mol` is `0.0` (no products known).
-#[cfg(feature = "alpha-reaction-dynamics")]
-#[wasm_bindgen]
-pub fn compute_approach_dynamics(reactant_smiles_json: &str, config_json: &str) -> String {
-    let reactants: Vec<String> = match serde_json::from_str(reactant_smiles_json) {
-        Ok(v) => v,
-        Err(e) => return json_error(&bad_json("'reactant smiles'", reactant_smiles_json, &e)),
-    };
-
-    let mut config: sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig =
-        if config_json.is_empty() || config_json == "{}" {
-            sci_form::alpha::reaction_dynamics::ReactionDynamics3DConfig::default()
-        } else {
-            match serde_json::from_str(config_json) {
-                Ok(c) => c,
-                Err(e) => return json_error(&bad_json("'config'", config_json, &e)),
-            }
-        };
-
-    // For approach-only, orbital and electrostatic guidance default to true
-    // so the user gets a physically meaningful direction without NEB.
-    if config_json.is_empty() || config_json == "{}" {
-        config.use_orbital_guidance = true;
-        config.use_electrostatic_steering = true;
-    }
-
-    let r_refs: Vec<&str> = reactants.iter().map(String::as_str).collect();
-
-    match sci_form::alpha::reaction_dynamics::compute_approach_dynamics(&r_refs, &config) {
-        Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| json_error(&e.to_string())),
-        Err(e) => json_error(&e),
-    }
 }
 
 // ─── RENDER BRIDGE (charts / trajectories / transport) ─────────────────────
@@ -1164,4 +1064,104 @@ pub fn alpha_periodic_validate_electron_count(
         Ok(dos) => validate_electron_count(&dos, fermi_energy_ev, expected_electrons),
         Err(_) => f64::NAN,
     }
+}
+
+/// One real-space operator block: the matrix and its lattice translation.
+#[cfg(feature = "alpha-periodic-linear")]
+type RealSpaceBlock = (nalgebra::DMatrix<f64>, [i32; 3]);
+
+/// Parse a JSON array of real-space operator blocks into matrices + translations.
+#[cfg(feature = "alpha-periodic-linear")]
+fn parse_real_space_blocks(blocks_json: &str) -> Result<Vec<RealSpaceBlock>, String> {
+    let value: serde_json::Value = serde_json::from_str(blocks_json)
+        .map_err(|e| format!("invalid real-space block JSON: {e}"))?;
+    let array = value
+        .as_array()
+        .ok_or_else(|| "real-space blocks must be a JSON array".to_string())?;
+    let mut blocks = Vec::with_capacity(array.len());
+    for item in array {
+        let matrix = item
+            .get("matrix")
+            .and_then(|m| m.as_array())
+            .ok_or_else(|| "each real-space block needs a 'matrix' array".to_string())?;
+        let translation = item
+            .get("translation")
+            .and_then(|t| t.as_array())
+            .ok_or_else(|| "each real-space block needs a 'translation' array".to_string())?;
+        if translation.len() != 3 {
+            return Err("lattice translations need exactly three components".into());
+        }
+        let mut trans = [0i32; 3];
+        for (slot, value) in trans.iter_mut().zip(translation.iter()) {
+            *slot = value
+                .as_i64()
+                .ok_or_else(|| "lattice translations must be integers".to_string())?
+                as i32;
+        }
+        let n = matrix.len();
+        if n == 0 {
+            return Err("real-space matrices must be non-empty".into());
+        }
+        let mut flat = Vec::with_capacity(n * n);
+        for row in matrix {
+            let row = row
+                .as_array()
+                .ok_or_else(|| "real-space matrix rows must be arrays".to_string())?;
+            if row.len() != n {
+                return Err("real-space matrices must be square".into());
+            }
+            for entry in row {
+                flat.push(
+                    entry
+                        .as_f64()
+                        .ok_or_else(|| "real-space matrix entries must be numbers".to_string())?,
+                );
+            }
+        }
+        blocks.push((nalgebra::DMatrix::from_row_slice(n, n, &flat), trans));
+    }
+    if blocks.is_empty() {
+        return Err("at least one real-space block is required".into());
+    }
+    Ok(blocks)
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+/// Interpolate the default high-symmetry k-path (`Γ → X → M → Γ`).
+///
+/// @param n_points_per_segment  Intervals per high-symmetry segment (≥ 1)
+/// @returns JSON `KPathStandard`
+pub fn alpha_periodic_kpath_standard(n_points_per_segment: usize) -> String {
+    use sci_form::alpha::periodic_linear::kpath_standard;
+    serde_json::to_string(&kpath_standard(n_points_per_segment))
+        .unwrap_or_else(|e| json_error(&e.to_string()))
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[wasm_bindgen]
+/// Trace the Fermi-surface contour of real-space operator blocks in `kz = 0`.
+///
+/// @param blocks_json  JSON array of `{ "matrix": [[…]], "translation": [i, j, k] }`
+/// @param fermi_energy_ev  Fermi energy in eV (`null`/`undefined` = median estimate)
+/// @param n_kx  Number of kx samples (≥ 2)
+/// @param n_ky  Number of ky samples (≥ 2)
+/// @returns JSON `FermiSurfaceContour`
+pub fn alpha_periodic_fermi_surface_from_bands(
+    blocks_json: &str,
+    fermi_energy_ev: Option<f64>,
+    n_kx: usize,
+    n_ky: usize,
+) -> String {
+    use sci_form::alpha::periodic_linear::fermi_surface_from_bands;
+    let blocks = match parse_real_space_blocks(blocks_json) {
+        Ok(blocks) => blocks,
+        Err(e) => return json_error(&e),
+    };
+    let refs: Vec<(&nalgebra::DMatrix<f64>, [i32; 3])> = blocks
+        .iter()
+        .map(|(matrix, trans)| (matrix, *trans))
+        .collect();
+    let contour = fermi_surface_from_bands(&refs, fermi_energy_ev, n_kx, n_ky);
+    serde_json::to_string(&contour).unwrap_or_else(|e| json_error(&e.to_string()))
 }

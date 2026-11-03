@@ -24,9 +24,8 @@
  *   --rust         keep the declarations whose name is defined in one of the
  *                  given Rust sources (comma separated)
  *
- * The `--rust` mode exists because two alpha entry points are not prefixed
- * with `alpha_` (`compute_reaction_dynamics_3d`, `compute_approach_dynamics`)
- * and one alpha module is not prefixed at all (`LiveSimulation`): the
+ * The `--rust` mode exists because one alpha module is not prefixed with
+ * `alpha_` at all (`LiveSimulation`): the
  * membership of the subpath is defined by the Rust module, not by the name.
  */
 

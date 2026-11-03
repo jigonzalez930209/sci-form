@@ -935,169 +935,36 @@ fn symmetric_eigenvalues(matrix: &nalgebra::DMatrix<f64>) -> Vec<f64> {
     values
 }
 
-/// Interpolate a high-symmetry k-path and return the cumulative path distance
-/// together with the sampled fractional k-points.
-#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
-fn interpolate_path(
-    path: &[([f64; 3], String)],
-    n_points_per_segment: usize,
-) -> (Vec<f64>, Vec<[f64; 3]>) {
-    let n = n_points_per_segment.max(1);
-    let mut distance = Vec::new();
-    let mut points = Vec::new();
-    let mut accumulated = 0.0_f64;
-    let mut previous: Option<[f64; 3]> = None;
-    for index in 0..path.len().saturating_sub(1) {
-        let start = path[index].0;
-        let end = path[index + 1].0;
-        for step in 0..=n {
-            if index > 0 && step == 0 {
-                continue;
-            }
-            let t = step as f64 / n as f64;
-            let mut k = [0.0_f64; 3];
-            for axis in 0..3 {
-                k[axis] = start[axis] + t * (end[axis] - start[axis]);
-            }
-            if let Some(prev) = previous {
-                accumulated += ((k[0] - prev[0]).powi(2)
-                    + (k[1] - prev[1]).powi(2)
-                    + (k[2] - prev[2]).powi(2))
-                .sqrt();
-            }
-            previous = Some(k);
-            distance.push(accumulated);
-            points.push(k);
-        }
-    }
-    (distance, points)
-}
-
-/// Compute the Fermi-surface contour of the selected band in the `kz = 0` plane.
-#[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
-fn fermi_contour(
-    refs: &[(&nalgebra::DMatrix<f64>, [i32; 3])],
-    fermi_energy_ev: Option<f64>,
-    n_kx: usize,
-    n_ky: usize,
-) -> (Vec<f64>, Vec<f64>, f64) {
-    let n_kx = n_kx.max(2);
-    let n_ky = n_ky.max(2);
-    let kx_values: Vec<f64> = (0..n_kx).map(|i| -0.5 + i as f64 / n_kx as f64).collect();
-    let ky_values: Vec<f64> = (0..n_ky).map(|j| -0.5 + j as f64 / n_ky as f64).collect();
-
-    let mut samples: Vec<Vec<Vec<f64>>> = Vec::with_capacity(n_ky);
-    let mut all_energies: Vec<f64> = Vec::new();
-    for &ky in &ky_values {
-        let mut row = Vec::with_capacity(n_kx);
-        for &kx in &kx_values {
-            let hamiltonian = sci_form::kmesh::build_bloch_hamiltonian(refs, [kx, ky, 0.0]);
-            let eigenvalues = symmetric_eigenvalues(&hamiltonian);
-            all_energies.extend(eigenvalues.iter().copied());
-            row.push(eigenvalues);
-        }
-        samples.push(row);
-    }
-
-    let fermi = match fermi_energy_ev {
-        Some(value) => value,
-        None => {
-            let mut sorted = all_energies.clone();
-            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            if sorted.is_empty() {
-                0.0
-            } else {
-                sorted[sorted.len() / 2]
-            }
-        }
-    };
-
-    let band = samples
-        .first()
-        .and_then(|row| row.first())
-        .map(|energies| {
-            energies
-                .iter()
-                .filter(|&&e| e < fermi)
-                .count()
-                .min(energies.len().saturating_sub(1))
-        })
-        .unwrap_or(0);
-
-    let mut contour_x = Vec::new();
-    let mut contour_y = Vec::new();
-    for (j, &ky) in ky_values.iter().enumerate() {
-        for i in 0..n_kx.saturating_sub(1) {
-            let e0 = samples[j][i].get(band).copied().unwrap_or(f64::NAN);
-            let e1 = samples[j][i + 1].get(band).copied().unwrap_or(f64::NAN);
-            if !e0.is_finite() || !e1.is_finite() {
-                continue;
-            }
-            let f0 = e0 - fermi;
-            let f1 = e1 - fermi;
-            if f0 == 0.0 {
-                contour_x.push(kx_values[i]);
-                contour_y.push(ky);
-                continue;
-            }
-            if f0 * f1 > 0.0 {
-                continue;
-            }
-            let span = kx_values[i + 1] - kx_values[i];
-            let energy_at = |x: f64| -> f64 {
-                if span == 0.0 {
-                    e0
-                } else {
-                    e0 + (x - kx_values[i]) / span * (e1 - e0)
-                }
-            };
-            let (mut lo, mut hi) = (kx_values[i], kx_values[i + 1]);
-            for _ in 0..60 {
-                let mid = 0.5 * (lo + hi);
-                if (energy_at(mid) - fermi) * f0 <= 0.0 {
-                    hi = mid;
-                } else {
-                    lo = mid;
-                }
-            }
-            contour_x.push(0.5 * (lo + hi));
-            contour_y.push(ky);
-        }
-    }
-    (contour_x, contour_y, fermi)
-}
-
 /// Generate a k-point path chart from the core high-symmetry path.
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 pub fn cmd_kpoint_path_chart(n_points_per_segment: usize) {
-    use sci_form::alpha::periodic_linear::BandStructureAdapterConfig;
+    use sci_form::alpha::periodic_linear::kpath_standard;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
-    let path = BandStructureAdapterConfig::default().path;
-    let (distance, points) = interpolate_path(&path, n_points_per_segment);
+    let path = kpath_standard(n_points_per_segment);
     let chart = ChartPayload {
         title: "K-Point Path".to_string(),
         series: vec![
             ChartSeries {
                 series_id: "k_x".into(),
                 label: "k_x".into(),
-                x: distance.clone(),
-                y: points.iter().map(|k| k[0]).collect(),
+                x: path.distance.clone(),
+                y: path.points.iter().map(|k| k[0]).collect(),
                 x_unit: "1/B".into(),
                 y_unit: "1/B".into(),
             },
             ChartSeries {
                 series_id: "k_y".into(),
                 label: "k_y".into(),
-                x: distance.clone(),
-                y: points.iter().map(|k| k[1]).collect(),
+                x: path.distance.clone(),
+                y: path.points.iter().map(|k| k[1]).collect(),
                 x_unit: "1/B".into(),
                 y_unit: "1/B".into(),
             },
             ChartSeries {
                 series_id: "k_z".into(),
                 label: "k_z".into(),
-                x: distance,
-                y: points.iter().map(|k| k[2]).collect(),
+                x: path.distance,
+                y: path.points.iter().map(|k| k[2]).collect(),
                 x_unit: "1/B".into(),
                 y_unit: "1/B".into(),
             },
@@ -1114,17 +981,18 @@ pub fn cmd_fermi_surface_chart(
     n_kx: usize,
     n_ky: usize,
 ) {
+    use sci_form::alpha::periodic_linear::fermi_surface_from_bands;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let parsed = parse_blocks(blocks);
     let refs = as_core_refs(&parsed);
-    let (contour_x, contour_y, fermi) = fermi_contour(&refs, fermi_energy_ev, n_kx, n_ky);
+    let surface = fermi_surface_from_bands(&refs, fermi_energy_ev, n_kx, n_ky);
     let chart = ChartPayload {
         title: "Fermi Surface".to_string(),
         series: vec![ChartSeries {
             series_id: "fermi_contour".into(),
-            label: format!("E_F = {fermi:.4} eV"),
-            x: contour_x,
-            y: contour_y,
+            label: format!("E_F = {:.4} eV", surface.fermi_energy_ev),
+            x: surface.contour_x,
+            y: surface.contour_y,
             x_unit: "1/B".into(),
             y_unit: "1/B".into(),
         }],
