@@ -79,6 +79,11 @@ case "$TARGET" in
     if command -v cargo-deb >/dev/null 2>&1; then
       cargo deb -p sci-form-cli --no-build --no-strip "${TFLAG[@]}" --output "$OUT/"
     else echo "cargo-deb not installed: skipping .deb"; fi
+    # The rpm assets point at target/release/ (relative paths do not get the
+    # --target rewrite); make the cross-built binary available there too.
+    if [ ! -f "target/release/$EXE" ]; then
+      mkdir -p target/release && cp "$BIN" "target/release/$EXE"
+    fi
     if command -v cargo-generate-rpm >/dev/null 2>&1; then
       cargo generate-rpm -p crates/cli "${TFLAG[@]}" -o "$OUT/"
     else echo "cargo-generate-rpm not installed: skipping .rpm"; fi
