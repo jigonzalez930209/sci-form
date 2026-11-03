@@ -40,8 +40,8 @@
 //! | EDL | `edl` | GC/GCS/Helmholtz analytic 2e-14 (F86) |
 //! | k-mesh/Bloch | `kmesh` | ASE meshes + chain bands 4.4e-16 (F88; KPM/RandNLA adapters stay alpha) |
 //! | Chart payloads | `render_bridge` | JSON Schema + pack round-trip (F90; domain builders stay alpha) |
-//! | Riemannian PSD | `riemannian` | Projection/optimizer vs scipy (F94; Frobenius proxy documented) |
-//! | CPM | `cpm` | Constant-potential electrochemistry vs LAMMPS `electrode/conp` (F95) |
+//! | Riemannian PSD | `riemannian` | Projection/optimizer vs scipy (F94; Frobenius proxy documented); tetrahedron Gram recovery 6.0e-9 (`tests/beta_benchmarks.rs`) |
+//! | CPM | `cpm` | Constant-potential electrochemistry vs LAMMPS `electrode/conp` (F95); two-site closed form 1.3e-15 (`tests/beta_benchmarks.rs`) |
 //! | MMFF94 parameters | `forcefield::mmff94_params` | Real published parameter tables (F100) |
 //!
 //! The promotion criteria below follow the validation culture of the repo:
@@ -83,6 +83,10 @@
 //! numpy eigh (`tests/beta_kpm_validation.rs`). Fixes aplicados: factor 2
 //! en coeficientes FD y degeneración de espín 2 en Mulliken.
 //!
+//! **Benchmark vs ruta estable (2026-10-23)**: `tests/beta_benchmarks.rs`
+//! compara la DOS KPM con diagonalización exacta (DOS integrada 40.17/40,
+//! corrimiento del centro 1e-4, correlación 0.86 con el kernel Jackson).
+//!
 //! ### EXP-202: Multi-Basin Hopping (MBH)
 //!
 //! **Feature flag:** `beta-mbh`
@@ -105,6 +109,11 @@
 //! **Validación externa (2026-10-14, F92)**: stretches diatómicos vs forma
 //! cerrada SI 1.3e-5 (valida el factor 108.59) y estructura de bloques en
 //! benceno (`tests/beta_mbh_validation.rs`). Gap: ±2 cm⁻¹ experimental.
+//!
+//! **Benchmark vs ruta estable (2026-10-23)**: frecuencias MBH vs Hessiano
+//! analítico proyectado en `tests/beta_benchmarks.rs`, desviación máxima
+//! 2.6 % (los modos casi nulos quedan dominados por el ruido de diferencias
+//! finitas, ~5 cm⁻¹).
 //!
 //! ### EXP-203: Randomized Numerical Linear Algebra (RandNLA)
 //!
@@ -130,6 +139,10 @@
 //! producción exacta con fallback (`tests/beta_randnla_validation.rs`).
 //! El criterio 2 sigue sin cumplirse.
 //!
+//! **Benchmark vs ruta estable (2026-10-23)**: Nyström vs SVD exacta en
+//! `tests/beta_benchmarks.rs`; el error de reconstrucción queda ≤ 2× el mejor
+//! rank-k y decrece al aumentar el rango.
+//!
 //! ### EXP-204: Spectral Dimensionality Reduction (SDR) — PROMOVIDO (`src/sdr`)
 //!
 //! **Feature flag:** `alpha-sdr`
@@ -152,6 +165,10 @@
 //! **Validación externa (2026-10-14, F83)**: proyecciones exactas vs numpy,
 //! embeds exactos 7e-15 (mejor que CVXPY/SCS 1e-8), caso ruidoso dentro de
 //! 3× del óptimo (`tests/alpha_sdr_validation.rs`).
+//!
+//! **Benchmark vs ruta estable (2026-10-23)**: SDR vs MDS clásico sobre
+//! distancias exactas en `tests/beta_benchmarks.rs`; error máximo de par
+//! 6.7e-16 frente a 2.2e-16 del MDS, sin quedar por encima del oráculo.
 //!
 //! ### EXP-205a: Conformal Geometric Algebra (CGA) — PROMOVIDO (`src/cga`)
 //!
@@ -203,6 +220,10 @@
 //! CI-NEB (barrera 1.6e-3, TS 0.028; `tests/alpha_gsm_validation.rs`).
 //! Fix: reparametrización por arco cada iteración.
 //!
+//! **Benchmark vs ruta estable (2026-10-23)**: cinco pozos dobles analíticos
+//! `V(x) = (x² − a²)²` en `tests/beta_benchmarks.rs`; la barrera y la posición
+//! del TS coinciden con la solución exacta (error relativo de barrera 0).
+//!
 //! ### EXP-205c: Constant Potential Method (CPM) — PROMOVIDO (`src/cpm`)
 //!
 //! **Feature flag:** `beta-cpm` (alias; the core module is unconditional)
@@ -226,6 +247,10 @@
 //!
 //! **Nota 2026-10-13**: CPM promovido a core (`src/cpm`, F95 vs LAMMPS
 //! `electrode/conp`); `beta::cpm` sobrevive como re-export compatible.
+//!
+//! **Benchmark vs ruta estable (2026-10-23)**: cargas de dos sitios vs la
+//! solución cerrada del sistema lineal de CPM en `tests/beta_benchmarks.rs`
+//! (1.3e-15) y residual de estacionariedad < 1e-10.
 //!
 //! ### EXP-206: Alpha-tier subsystems
 //!

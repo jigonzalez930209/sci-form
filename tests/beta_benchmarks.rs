@@ -9,6 +9,12 @@
 //!   (exact SVD).
 //! * `beta-mbh`: Mobile Block Hessian frequencies vs the full numerical
 //!   Hessian.
+//! * `beta-cpm`: constant-potential charges vs the closed-form two-site
+//!   linear response.
+//! * `beta-riemannian`: PSD metric optimization vs the exact Gram matrix of a
+//!   known point set.
+//! * `alpha-sdr`: SDR embedding vs classical MDS on exact distances.
+//! * `alpha-gsm`: growing-string barriers vs the analytic double-well MEP.
 //!
 //! These gates back the "benchmarking frente a rutas estables" and
 //! "validación cuantitativa por submódulo" backlog items.
@@ -395,6 +401,217 @@ mod mbh_vs_full_hessian {
         assert!(
             worst < 0.05,
             "MBH deviation {worst:.3} (mbh {mbh_freqs:?}, projected {reference:?})"
+        );
+    }
+}
+
+#[cfg(feature = "beta-cpm")]
+mod cpm_vs_analytic_two_site {
+    use sci_form::cpm::{compute_cpm_charges, CpmConfig};
+
+    /// Closed-form solution of the two-site CPM linear system
+    /// `[η_0 J; J η_1] q = μ − χ`.
+    fn two_site_reference(mu: f64, dielectric: f64, distance: f64) -> [f64; 2] {
+        let chi = [7.17, 8.30]; // H, O
+        let eta = [6.43, 6.08]; // H, O
+        let j = 14.3996 / (dielectric * distance);
+        let det = eta[0] * eta[1] - j * j;
+        let rhs = [mu - chi[0], mu - chi[1]];
+        [
+            (rhs[0] * eta[1] - j * rhs[1]) / det,
+            (eta[0] * rhs[1] - j * rhs[0]) / det,
+        ]
+    }
+
+    #[test]
+    fn cpm_charges_match_two_site_closed_form() {
+        let elements = [1u8, 8];
+        let positions = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]];
+        let mu = -3.0;
+        let dielectric = 2.0;
+        let config = CpmConfig {
+            mu_ev: mu,
+            dielectric,
+            ..CpmConfig::default()
+        };
+        let result = compute_cpm_charges(&elements, &positions, &config);
+        let reference = two_site_reference(mu, dielectric, 1.0);
+
+        let worst = result
+            .charges
+            .iter()
+            .zip(reference.iter())
+            .map(|(q, r)| (q - r).abs())
+            .fold(0.0_f64, f64::max);
+        eprintln!(
+            "CPM two-site: q = {:?}, reference {:?}, worst {:.3e}",
+            result.charges, reference, worst
+        );
+        assert!(worst < 1e-10, "CPM charge deviation {worst:.3e}");
+        assert!(
+            result.converged,
+            "direct solve should satisfy residual gate"
+        );
+
+        // The returned charges satisfy the stationarity equations.
+        let j = 14.3996 / dielectric;
+        let residual = [
+            7.17 + 6.43 * result.charges[0] + j * result.charges[1] - mu,
+            8.30 + 6.08 * result.charges[1] + j * result.charges[0] - mu,
+        ];
+        assert!(
+            residual.iter().all(|r| r.abs() < 1e-10),
+            "CPM stationarity residual {residual:?}"
+        );
+    }
+}
+
+#[cfg(feature = "beta-riemannian")]
+mod riemannian_vs_exact_gram {
+    use nalgebra::DMatrix;
+    use sci_form::riemannian::{DistanceConstraint, RiemannianLbfgs};
+
+    fn distance(a: [f64; 3], b: [f64; 3]) -> f64 {
+        ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+    }
+
+    #[test]
+    fn riemannian_recovers_known_gram_distances() {
+        // Non-coplanar tetrahedron: every pair distance is fixed exactly.
+        let points = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ];
+        let mut constraints = Vec::new();
+        for i in 0..points.len() {
+            for j in (i + 1)..points.len() {
+                let d = distance(points[i], points[j]);
+                constraints.push(DistanceConstraint {
+                    i,
+                    j,
+                    lower: d,
+                    upper: d,
+                });
+            }
+        }
+
+        let optimizer = RiemannianLbfgs::new(Default::default());
+        let result =
+            optimizer.optimize(&DMatrix::identity(points.len(), points.len()), &constraints);
+
+        let mut worst = 0.0_f64;
+        for c in &constraints {
+            let squared = result.metric_matrix[(c.i, c.i)] + result.metric_matrix[(c.j, c.j)]
+                - 2.0 * result.metric_matrix[(c.i, c.j)];
+            let got = squared.max(0.0).sqrt();
+            worst = worst.max((got - c.lower).abs());
+        }
+        eprintln!(
+            "Riemannian tetrahedron: objective {:.3e}, max violation {:.3e}, worst pair {:.3e}",
+            result.objective, result.max_violation, worst
+        );
+        assert!(worst < 1e-3, "recovered distance deviation {worst:.3e}");
+        assert!(
+            result.max_violation < 1e-3,
+            "optimizer violation {:.3e}",
+            result.max_violation
+        );
+    }
+}
+
+#[cfg(feature = "alpha-sdr")]
+mod sdr_vs_classical_mds {
+    use sci_form::sdr::{extract_coordinates, sdr_embed, warm_start_gram, SdrConfig};
+
+    fn distance(a: [f64; 3], b: [f64; 3]) -> f64 {
+        ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
+    }
+
+    fn max_pair_error(coords: &[f64], pairs: &[(usize, usize, f64)]) -> f64 {
+        pairs
+            .iter()
+            .map(|&(i, j, target)| {
+                let got = distance(
+                    [coords[i * 3], coords[i * 3 + 1], coords[i * 3 + 2]],
+                    [coords[j * 3], coords[j * 3 + 1], coords[j * 3 + 2]],
+                );
+                (got - target).abs()
+            })
+            .fold(0.0_f64, f64::max)
+    }
+
+    #[test]
+    fn sdr_matches_classical_mds_on_exact_distances() {
+        let points = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ];
+        let mut pairs = Vec::new();
+        for i in 0..points.len() {
+            for j in (i + 1)..points.len() {
+                pairs.push((i, j, distance(points[i], points[j])));
+            }
+        }
+
+        let sdr = sdr_embed(points.len(), &pairs, &SdrConfig::default());
+        let classical = extract_coordinates(&warm_start_gram(points.len(), &pairs));
+        let classical_error = max_pair_error(&classical, &pairs);
+        let sdr_error = max_pair_error(&sdr.coords, &pairs);
+
+        eprintln!(
+            "SDR vs classical MDS: max distance error {:.3e} vs {:.3e} ({} iterations)",
+            sdr_error, classical_error, sdr.convergence.iterations
+        );
+        assert!(sdr_error < 1e-3, "SDR distance error {sdr_error:.3e}");
+        assert!(
+            sdr_error <= classical_error + 1e-6,
+            "SDR {sdr_error:.3e} worse than classical MDS {classical_error:.3e}"
+        );
+    }
+}
+
+#[cfg(feature = "alpha-gsm")]
+mod gsm_vs_analytic_mep {
+    use sci_form::alpha::gsm::{find_transition_state, GsmConfig};
+
+    #[test]
+    fn gsm_barrier_matches_analytic_double_well() {
+        // V(x) = (x² − a²)²: minima at ±a (E=0), exact TS at x=0 (E=a⁴).
+        let config = GsmConfig {
+            max_nodes: 21,
+            step_size: 0.005,
+            max_iter: 1000,
+            ..GsmConfig::default()
+        };
+        let mut worst_rel = 0.0_f64;
+        for a in [0.8_f64, 1.0, 1.2, 1.5, 2.0] {
+            let potential = |p: &[f64]| {
+                let x = p[0];
+                (x * x - a * a).powi(2)
+            };
+            let result =
+                find_transition_state(&[-a, 0.0, 0.0], &[a, 0.0, 0.0], &potential, &config);
+            let exact_barrier = a.powi(4);
+            let rel = (result.activation_energy - exact_barrier).abs() / exact_barrier;
+            worst_rel = worst_rel.max(rel);
+            eprintln!(
+                "GSM a={a}: barrier {:.6} (exact {:.6}, rel {:.3e}), TS x={:.4}",
+                result.activation_energy, exact_barrier, rel, result.ts_coords[0]
+            );
+            assert!(
+                (result.ts_coords[0]).abs() < 0.05,
+                "a={a}: TS x {:.4}",
+                result.ts_coords[0]
+            );
+            assert!(rel < 0.05, "a={a}: barrier relative error {rel:.3e}");
+        }
+        assert!(
+            worst_rel < 0.05,
+            "worst GSM barrier relative error {worst_rel:.3e}"
         );
     }
 }

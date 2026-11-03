@@ -460,6 +460,226 @@ pub fn build_bloch_hamiltonian(
     h_k
 }
 
+/// A sampled high-symmetry k-path.
+///
+/// `points` are fractional reciprocal coordinates; `distance` is the
+/// cumulative distance in the same fractional units. `vertices` records the
+/// index of each high-symmetry point so plotting code can place tick labels.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct KPathStandard {
+    /// Cumulative path distance (fractional reciprocal units).
+    pub distance: Vec<f64>,
+    /// Sampled fractional k-points.
+    pub points: Vec<[f64; 3]>,
+    /// `(label, index into points)` for each high-symmetry vertex.
+    pub vertices: Vec<(String, usize)>,
+}
+
+/// Interpolate the default high-symmetry path (`Γ → X → M → Γ`).
+///
+/// Each segment contributes `n_points_per_segment` intervals; the first
+/// segment includes its start point and subsequent segments skip the duplicate
+/// vertex. A non-zero value is enforced, so a request of `0` behaves like `1`.
+pub fn kpath_standard(n_points_per_segment: usize) -> KPathStandard {
+    let path = BandStructureAdapterConfig::default().path;
+    kpath_from_path(&path, n_points_per_segment)
+}
+
+/// Interpolate an arbitrary high-symmetry k-path.
+///
+/// Shared by [`kpath_standard`] and the language bindings.
+pub fn kpath_from_path(path: &[([f64; 3], String)], n_points_per_segment: usize) -> KPathStandard {
+    let n = n_points_per_segment.max(1);
+    let mut distance = Vec::new();
+    let mut points = Vec::new();
+    let mut accumulated = 0.0_f64;
+    let mut previous: Option<[f64; 3]> = None;
+
+    for index in 0..path.len().saturating_sub(1) {
+        let start = path[index].0;
+        let end = path[index + 1].0;
+        for step in 0..=n {
+            if index > 0 && step == 0 {
+                continue;
+            }
+            let t = step as f64 / n as f64;
+            let mut k = [0.0_f64; 3];
+            for axis in 0..3 {
+                k[axis] = start[axis] + t * (end[axis] - start[axis]);
+            }
+            if let Some(prev) = previous {
+                accumulated += ((k[0] - prev[0]).powi(2)
+                    + (k[1] - prev[1]).powi(2)
+                    + (k[2] - prev[2]).powi(2))
+                .sqrt();
+            }
+            previous = Some(k);
+            distance.push(accumulated);
+            points.push(k);
+        }
+    }
+
+    // Each segment contributes `n` new points, so vertex `i` sits at `i * n`.
+    let vertices = if points.is_empty() {
+        Vec::new()
+    } else {
+        path.iter()
+            .enumerate()
+            .map(|(index, (_, label))| (label.clone(), index * n))
+            .collect()
+    };
+
+    KPathStandard {
+        distance,
+        points,
+        vertices,
+    }
+}
+
+/// A Fermi-surface contour sampled in the `kz = 0` plane.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct FermiSurfaceContour {
+    /// Contour kx coordinates (fractional reciprocal units).
+    pub contour_x: Vec<f64>,
+    /// Contour ky coordinates (fractional reciprocal units).
+    pub contour_y: Vec<f64>,
+    /// Fermi energy used for the contour (eV).
+    pub fermi_energy_ev: f64,
+    /// Band index whose crossing with the Fermi level was traced.
+    pub band_index: usize,
+    /// Number of kx samples in the mesh.
+    pub n_kx: usize,
+    /// Number of ky samples in the mesh.
+    pub n_ky: usize,
+}
+
+fn symmetric_eigenvalues(matrix: &DMatrix<f64>) -> Vec<f64> {
+    if matrix.nrows() == 0 {
+        return Vec::new();
+    }
+    nalgebra::SymmetricEigen::new(matrix.clone())
+        .eigenvalues
+        .iter()
+        .copied()
+        .collect()
+}
+
+/// Trace the Fermi-surface contour of real-space operator blocks in the
+/// `kz = 0` plane.
+///
+/// The band is evaluated on a regular `n_kx × n_ky` mesh and the crossings
+/// with `fermi_energy_ev` are located by bisection along `kx`. When
+/// `fermi_energy_ev` is `None`, the median of all sampled eigenvalues is used.
+/// Dimensions below 2 are clamped to 2.
+pub fn fermi_surface_from_bands(
+    blocks: &[(&DMatrix<f64>, [i32; 3])],
+    fermi_energy_ev: Option<f64>,
+    n_kx: usize,
+    n_ky: usize,
+) -> FermiSurfaceContour {
+    let n_kx = n_kx.max(2);
+    let n_ky = n_ky.max(2);
+    let kx_values: Vec<f64> = (0..n_kx).map(|i| -0.5 + i as f64 / n_kx as f64).collect();
+    let ky_values: Vec<f64> = (0..n_ky).map(|j| -0.5 + j as f64 / n_ky as f64).collect();
+
+    // Sample the band structure on the 2D mesh.
+    let mut samples: Vec<Vec<Vec<f64>>> = Vec::with_capacity(n_ky);
+    let mut all_energies: Vec<f64> = Vec::new();
+    for &ky in &ky_values {
+        let mut row = Vec::with_capacity(n_kx);
+        for &kx in &kx_values {
+            let hamiltonian = build_bloch_hamiltonian(blocks, [kx, ky, 0.0]);
+            let eigenvalues = symmetric_eigenvalues(&hamiltonian);
+            all_energies.extend(eigenvalues.iter().copied());
+            row.push(eigenvalues);
+        }
+        samples.push(row);
+    }
+
+    // Fermi energy: supplied by the caller or estimated as the median of the
+    // sampled eigenvalues.
+    let fermi = match fermi_energy_ev {
+        Some(value) => value,
+        None => {
+            let mut sorted = all_energies;
+            sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            if sorted.is_empty() {
+                0.0
+            } else {
+                sorted[sorted.len() / 2]
+            }
+        }
+    };
+
+    // The band that crosses the Fermi energy is the first unoccupied band at
+    // the first sampled k-point.
+    let band_index = samples
+        .first()
+        .and_then(|row| row.first())
+        .map(|energies| {
+            energies
+                .iter()
+                .filter(|&&e| e < fermi)
+                .count()
+                .min(energies.len().saturating_sub(1))
+        })
+        .unwrap_or(0);
+
+    let mut contour_x = Vec::new();
+    let mut contour_y = Vec::new();
+    for (j, &ky) in ky_values.iter().enumerate() {
+        for i in 0..n_kx.saturating_sub(1) {
+            let e0 = samples[j][i].get(band_index).copied().unwrap_or(f64::NAN);
+            let e1 = samples[j][i + 1]
+                .get(band_index)
+                .copied()
+                .unwrap_or(f64::NAN);
+            if !e0.is_finite() || !e1.is_finite() {
+                continue;
+            }
+            let f0 = e0 - fermi;
+            let f1 = e1 - fermi;
+            if f0 == 0.0 {
+                contour_x.push(kx_values[i]);
+                contour_y.push(ky);
+                continue;
+            }
+            if f0 * f1 > 0.0 {
+                continue;
+            }
+            // Bisect on the linearly interpolated band energy.
+            let span = kx_values[i + 1] - kx_values[i];
+            let energy_at = |x: f64| -> f64 {
+                if span == 0.0 {
+                    e0
+                } else {
+                    e0 + (x - kx_values[i]) / span * (e1 - e0)
+                }
+            };
+            let (mut lo, mut hi) = (kx_values[i], kx_values[i + 1]);
+            for _ in 0..60 {
+                let mid = 0.5 * (lo + hi);
+                if (energy_at(mid) - fermi) * f0 <= 0.0 {
+                    hi = mid;
+                } else {
+                    lo = mid;
+                }
+            }
+            contour_x.push(0.5 * (lo + hi));
+            contour_y.push(ky);
+        }
+    }
+
+    FermiSurfaceContour {
+        contour_x,
+        contour_y,
+        fermi_energy_ev: fermi,
+        band_index,
+        n_kx,
+        n_ky,
+    }
+}
+
 /// Build periodic Hamiltonian and overlap matrices for a set of k-points using real-space matrices.
 ///
 /// Returns (hamiltonians, overlaps) for each k-point in the mesh.
@@ -826,5 +1046,41 @@ mod tests {
                 elapsed
             );
         }
+    }
+
+    #[test]
+    fn kpath_standard_samples_default_path() {
+        let path = kpath_standard(10);
+        // Three segments of ten intervals, sharing their endpoints.
+        assert_eq!(path.points.len(), 3 * 10 + 1);
+        assert_eq!(path.distance.len(), path.points.len());
+        assert_eq!(path.points.first().copied(), Some([0.0, 0.0, 0.0]));
+        assert_eq!(path.points.last().copied(), Some([0.0, 0.0, 0.0]));
+        assert_eq!(path.distance[0], 0.0);
+        assert!(path.distance.windows(2).all(|w| w[1] >= w[0]));
+        assert_eq!(
+            path.vertices,
+            vec![
+                ("\u{0393}".to_string(), 0),
+                ("X".to_string(), 10),
+                ("M".to_string(), 20),
+                ("\u{0393}".to_string(), 30),
+            ]
+        );
+    }
+
+    #[test]
+    fn fermi_surface_from_bands_traces_flat_band() {
+        use nalgebra::DMatrix;
+        let h = DMatrix::<f64>::zeros(1, 1);
+        let blocks: Vec<(&DMatrix<f64>, [i32; 3])> = vec![(&h, [0, 0, 0])];
+
+        let contour = fermi_surface_from_bands(&blocks, Some(0.0), 4, 3);
+        assert_eq!(contour.n_kx, 4);
+        assert_eq!(contour.n_ky, 3);
+        assert_eq!(contour.fermi_energy_ev, 0.0);
+        // f0 == 0 along every kx interval except the last sample of each row.
+        assert_eq!(contour.contour_x.len(), 3 * 3);
+        assert_eq!(contour.contour_y.len(), contour.contour_x.len());
     }
 }
