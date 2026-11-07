@@ -132,7 +132,7 @@ fn eht_surface_energy(elements: &[u8], positions: &[[f64; 3]]) -> Result<f64, St
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```
 /// use sci_form::eht::gradients::compute_eht_gradient;
 ///
 /// fn main() -> Result<(), String> {

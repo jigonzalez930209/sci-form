@@ -1023,6 +1023,14 @@ pub fn get_system_method_plan(elements: &[u8]) -> SystemMethodPlan {
 }
 
 /// Generate a 3D conformer from a SMILES string.
+///
+/// # Examples
+///
+/// ```
+/// let result = sci_form::embed("CCO", 42);
+/// assert!(result.error.is_none());
+/// assert_eq!(result.coords.len(), 3 * result.num_atoms);
+/// ```
 pub fn embed(smiles: &str, seed: u64) -> ConformerResult {
     #[cfg(not(target_arch = "wasm32"))]
     let start = std::time::Instant::now();
@@ -1220,6 +1228,14 @@ pub fn embed_diverse(
 ///
 /// Returns `Err` with a human-readable message when the SMILES string is
 /// syntactically invalid or uses a feature the parser does not support.
+///
+/// # Examples
+///
+/// ```
+/// let mol = sci_form::parse("c1ccccc1").unwrap();
+/// assert_eq!(mol.graph.node_count(), 12); // six carbons + six hydrogens
+/// assert!(sci_form::parse("Q").is_err()); // Q is not an element
+/// ```
 pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
     graph::Molecule::from_smiles(smiles)
 }
@@ -1816,6 +1832,14 @@ pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
 ///
 /// Returns `Err` when the SMILES string cannot be parsed, or when `coords`
 /// does not have exactly `3 × n_atoms` entries.
+///
+/// # Examples
+///
+/// ```
+/// let conformer = sci_form::embed("CCO", 42);
+/// let energy = sci_form::compute_uff_energy("CCO", &conformer.coords).unwrap();
+/// assert!(energy.is_finite());
+/// ```
 pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
@@ -1926,6 +1950,15 @@ pub fn compute_mmff94_energy_breakdown(
 /// Returns `Err` when the geometry fails validation (mismatched element and
 /// position counts, empty input, non-finite coordinates), when an element has
 /// no PM3 parameter set, or when the SCF cycle does not converge.
+///
+/// # Examples
+///
+/// ```
+/// let water = [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
+/// let result = sci_form::compute_pm3(&[8, 1, 1], &water).unwrap();
+/// assert!(result.total_energy.is_finite());
+/// assert!(result.heat_of_formation.is_finite());
+/// ```
 pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Result, String> {
     validation::validate_geometry(elements, positions)?;
     pm3::solve_pm3(elements, positions)
@@ -1998,6 +2031,15 @@ pub fn compute_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn2
 ///
 /// Returns `Err` when the geometry fails validation (mismatched element/position counts, empty
 /// input, non-finite coordinates) or when the GFN2-xTB SCC cycle fails to converge.
+///
+/// # Examples
+///
+/// ```
+/// let water = [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
+/// let result = sci_form::compute_xtb(&[8, 1, 1], &water).unwrap();
+/// assert!(result.total_energy.is_finite());
+/// assert!(result.gap >= 0.0);
+/// ```
 pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
     validation::validate_geometry(elements, positions)?;
     let gfn2 = xtb::gfn2::solve_gfn2(elements, positions)?;

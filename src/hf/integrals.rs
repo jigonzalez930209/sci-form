@@ -18,7 +18,7 @@ use super::basis::BasisSet;
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```
 /// use sci_form::hf::basis::build_sto3g_basis;
 /// use sci_form::hf::integrals::{compute_eris, get_eri};
 ///

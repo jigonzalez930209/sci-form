@@ -54,6 +54,11 @@ crate-type = ["rlib"]
 # The target is therefore gated behind this never-enabled feature so the
 # exhaustive CI gate stays green.  Delete the `[[test]]` section above (and
 # the `internal-debug-scratch` feature) once the scratch harness compiles.
+[[bench]]
+name = "core"
+path = "benches/core.rs"
+harness = false
+
 [[test]]
 name = "debug"
 path = "tests/debug.rs"
@@ -124,6 +129,7 @@ wgpu = { version = "0.19", optional = true }
 [dev-dependencies]
 rayon = "1.10"
 approx = "0.5"
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
 
 [profile.release]
 opt-level = 3

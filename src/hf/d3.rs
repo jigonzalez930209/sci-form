@@ -299,7 +299,7 @@ impl D3Params {
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```
 /// use sci_form::hf::d3::compute_d3_energy;
 ///
 /// let energy = compute_d3_energy(&[1, 1], &[[0.0, 0.0, 0.0], [0.0, 0.0, 1.4]]);
