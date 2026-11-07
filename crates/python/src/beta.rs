@@ -286,6 +286,7 @@ mod randnla_py {
             max_error,
             seed: 42,
             fallback_enabled: true,
+            power_iterations: 2,
         };
         let (hamiltonian, overlap, n_electrons) = build_eht_matrices(&elements, &positions);
         let (eigenvalues, _, info) = solve_eht_randnla(&hamiltonian, &overlap, &config);

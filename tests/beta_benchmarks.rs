@@ -756,9 +756,9 @@ mod sdr_vs_butina {
 
         let rmsd = compute_rmsd_matrix(&conformers);
         let mut pairs = Vec::new();
-        for i in 0..conformers.len() {
-            for j in (i + 1)..conformers.len() {
-                pairs.push((i, j, rmsd[i][j]));
+        for (i, row) in rmsd.iter().enumerate() {
+            for (j, &distance) in row.iter().enumerate().skip(i + 1) {
+                pairs.push((i, j, distance));
             }
         }
         let sdr = sdr_embed(

@@ -255,6 +255,7 @@ mod randnla_tests {
             seed: 702,
             fallback_enabled: false,
             max_error: 1.0,
+            power_iterations: 2,
         };
         let (e_rand, _, info) = solve_eht_randnla(&h, &s, &config);
 
@@ -291,6 +292,7 @@ mod randnla_tests {
             seed: 802,
             fallback_enabled: false,
             max_error: 1.0,
+            power_iterations: 2,
         };
         let (e_rand, _, _) = solve_eht_randnla(&h, &s, &config);
 

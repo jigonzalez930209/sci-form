@@ -260,15 +260,18 @@ test('An unknown method is an error that lists the supported ones', () => {
 });
 
 test('Periodic KPM DOS and RandNLA adapters', () => {
+  const zero = [[0.0, -1.0], [-1.0, 0.0]];
+  const hop = [[-0.5, 0.0], [0.0, -0.5]];
+  const overlap = [[0.1, 0.0], [0.0, 0.1]];
   const hBlocks = [
-    { matrix: [[0.0]], translation: [0, 0, 0] },
-    { matrix: [[-1.0]], translation: [1, 0, 0] },
-    { matrix: [[-1.0]], translation: [-1, 0, 0] },
+    { matrix: zero, translation: [0, 0, 0] },
+    { matrix: hop, translation: [1, 0, 0] },
+    { matrix: hop, translation: [-1, 0, 0] },
   ];
   const sBlocks = [
-    { matrix: [[1.0]], translation: [0, 0, 0] },
-    { matrix: [[0.2]], translation: [1, 0, 0] },
-    { matrix: [[0.2]], translation: [-1, 0, 0] },
+    { matrix: [[1.0, 0.0], [0.0, 1.0]], translation: [0, 0, 0] },
+    { matrix: overlap, translation: [1, 0, 0] },
+    { matrix: overlap, translation: [-1, 0, 0] },
   ];
   const grid = JSON.stringify([2, 1, 1]);
   const dos = JSON.parse(

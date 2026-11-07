@@ -640,15 +640,18 @@ def test_periodic_molecule_and_hapticity():
 
 def test_periodic_kpm_and_randnla_adapters():
     # One-orbital chain: H(t=0)=-0.0, H(±1)=-1.0; S(t=0)=1, S(±1)=0.2.
+    zero = [[0.0, -1.0], [-1.0, 0.0]]
+    hop = [[-0.5, 0.0], [0.0, -0.5]]
+    overlap = [[0.1, 0.0], [0.0, 0.1]]
     h_blocks = [
-        {"matrix": [[0.0]], "translation": [0, 0, 0]},
-        {"matrix": [[-1.0]], "translation": [1, 0, 0]},
-        {"matrix": [[-1.0]], "translation": [-1, 0, 0]},
+        {"matrix": zero, "translation": [0, 0, 0]},
+        {"matrix": hop, "translation": [1, 0, 0]},
+        {"matrix": hop, "translation": [-1, 0, 0]},
     ]
     s_blocks = [
-        {"matrix": [[1.0]], "translation": [0, 0, 0]},
-        {"matrix": [[0.2]], "translation": [1, 0, 0]},
-        {"matrix": [[0.2]], "translation": [-1, 0, 0]},
+        {"matrix": [[1.0, 0.0], [0.0, 1.0]], "translation": [0, 0, 0]},
+        {"matrix": overlap, "translation": [1, 0, 0]},
+        {"matrix": overlap, "translation": [-1, 0, 0]},
     ]
     dos = json.loads(
         sci_form.compute_periodic_dos(
