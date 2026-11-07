@@ -186,7 +186,7 @@ The line search uses the following strategy:
 
 ## 3. MMFF94 Force Field
 
-The **Merck Molecular Force Field 94 (MMFF94)** is used for post-embedding energy refinement and geometry optimization of organic drug-like molecules. sci-form implements the full four-term MMFF94 energy function with analytical gradients.
+The **Merck Molecular Force Field 94 (MMFF94)** is used for post-embedding energy refinement and geometry optimization of organic drug-like molecules. sci-form implements the **valence + dispersion** subset with analytical gradients: quartic bond stretching, cubic angle bending, three-term Fourier torsion and Halgren buffered 14-7 van der Waals. The electrostatic, stretch-bend and out-of-plane terms of the published MMFF94 energy function are not implemented, so `compute_mmff94_energy` is not the complete MMFF94 energy; the published parameter tables and the atom typing are real (validated against RDKit's `Params.cpp`).
 
 ### Atom Types
 
@@ -312,7 +312,7 @@ let max_err = validate_gradients(&term, &coords, 1e-5);
 assert!(max_err < 1e-4, "gradient error: {max_err}");
 ```
 
-This is used in the test suite to verify correctness of all four term types.
+The test suite verifies these four implemented term types against RDKit/OpenMM-derived references; it does not claim coverage of the missing electrostatic, stretch-bend or out-of-plane terms.
 
 ### References
 

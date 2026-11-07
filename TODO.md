@@ -230,10 +230,33 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Límites de escalado documentados (plan §14.3: tiempos por método y memoria ERI O(N⁴))
 
 ### 18. Experimental Tracks Pendientes de Validación para Promoción
+- [x] **RandNLA subspace iterations** (2026-11-07): `NystromApprox::from_matrix_with_power_iterations` + `RandNlaConfig::power_iterations` (default 2, re-ortogonalizado). Con 384 iteraciones el rank-N/4 de F93 baja de ~0.13 a 3.8e-4 (<1e-3, criterio 2 del fixture). Quedan abiertos el backend opcional EHT/SCF y el speedup N>500.
+- [x] **GSM vs NEB en 5+ reacciones** (2026-11-07): cinco pozos curvos con MEP parabólico y barrera exacta `a⁴`; GSM y NEB discreto a ≤0.8 % y con la analítica. Se corrigió el refinamiento del saddle (20 pasos fijos → 200 con `step_size`), que dejaba las barreras ~12 % altas.
+- [x] **SDR vs Butina con métrica definida** (2026-11-07): ARI entre el k-means del embedding SDR (matriz de RMSD Kabsch) y Butina en 30 conformeros de tres formas = 1.0, también contra la verdad sintética (`tests/beta_benchmarks.rs`).
+- [x] **Adaptadores periódicos KPM/RandNLA en Python/WASM** (2026-11-07): ya existían en ambos bindings; se añadieron tests de integración con bloques reales (DOS de cadena 1-orbital y solve RandNLA en malla 2×1×1).
+- [ ] **ReaxFF**: el parser de `ffield` solo cubre la tabla de pares C/H/O transcrita; falta el parser completo (atom/bond/angle/torsion/hbond) y los gradientes analíticos (hoy diferencias centrales, 6·N energías).
+- [ ] **NMR HOSE**: sigue bloqueado por la base externa (NMRShiftDB2/SDBS, licencia CC-BY-SA) y falta validar ³J contra un set experimental (el gate F54 usa la calculadora HLA de referencia).
 - [x] Validación cuantitativa por submódulo (beta): `tests/beta_benchmarks.rs` con benchmarks feature-gated frente a referencias exactas — KPM DOS vs diagonalización (DOS integrada 40.17/40, centro 1e-4, corr 0.86 con el kernel Jackson), Nyström vs SVD exacta (error ≤ 2× el mejor rank-k y decreciente), MBH vs Hessiano analítico proyectado (desviación máxima 2.6 %, modos casi nulos con ruido de diferencias finitas ~5 cm⁻¹), CPM vs forma cerrada de dos sitios (1.3e-15), Riemannian vs Gram exacto de un tetraedro (violación 6.0e-9), SDR vs MDS clásico (6.7e-16) y GSM vs MEP analítico de cinco pozos dobles (error relativo de barrera 0). Queda evidencia parcial en E1/E2/E4/E5/E6/E7/E9/E11; los criterios de promoción viven en `src/experimental_status.rs`
-- [x] Benchmarking frente a rutas estables: KPM vs diagonalización, Nyström vs SVD exacta, MBH vs Hessiano analítico, CPM vs forma cerrada, Riemannian vs Gram exacto, SDR vs MDS clásico y GSM vs MEP analítico implementados y verdes en `tests/beta_benchmarks.rs` (feature-gated). Sigue pendiente GSM vs NEB en 5+ reacciones (F82 cubre Müller–Brown) y SDR vs Butina (métrica de comparación de clusters sin definir)
+- [x] Benchmarking frente a rutas estables: KPM vs diagonalización, Nyström vs SVD exacta, MBH vs Hessiano analítico, CPM vs forma cerrada, Riemannian vs Gram exacto, SDR vs MDS clásico y GSM vs MEP analítico implementados y verdes en `tests/beta_benchmarks.rs` (feature-gated). **Cerrados 2026-11-07**: GSM vs NEB en 5 pozos curvos (≤0.8 %) y SDR vs Butina con ARI = 1.0
 - [x] Criterios claros de promoción experimental → producción (`src/experimental_status.rs`, actualizado con la evidencia actual)
 - [x] Tests de integración para beta: `tests/beta_benchmarks.rs` cubre kpm/randnla/mbh/cpm/riemannian/sdr/gsm contra rutas estables (no solo smoke tests) con gates cuantitativos documentados
+
+---
+
+## Deuda 1.1 — estado (2026-11-07)
+
+- [x] **wgpu convergido**: nativo y WASM usan wgpu 29; `src/gpu/context.rs` portado; lockfile sin el árbol duplicado; CI compila el camino nativo.
+- [x] **Paridad GPU real**: `tests/gpu_parity.rs` con 8 gates GPU↔CPU sobre AMD Radeon 680M/RADV (ERI s-only 2.1e-6 a.u., Fock 4.9e-7, orbital 6.5e-7, densidad 4.2e-4, ESP 1.7e-6, EEQ 6.5e-4 e, CPM 3.5e-7 e). Se salta sin adaptador; `SCIFORM_REQUIRE_GPU=1` lo convierte en fallo.
+- [x] **Contrato ERI GPU corregido**: el kernel solo evalúa `(ss|ss)`; las bases con p/d/f se rechazan explícitamente en vez de devolver integrales erróneas.
+- [x] **Benchmarks**: `benches/core.rs` + criterion 0.5 + `benches/README.md`; `cargo bench --bench core` y `cargo test --release --bench core -- --test`.
+- [x] **RUSTSEC-2024-0436**: nalgebra 0.35 (simba 0.10) elimina `paste`; `deny.toml` sin ignores.
+- [x] **Doctests ejecutables**: 28 (+1 ignored) frente a 15 al cierre de 1.0; ejemplos nuevos en cargas, SASA, dipolo, órdenes de enlace, RMSD, MMFF94, GFN1/GFN2.
+- [ ] **Enum de error tipado**: diseño aditivo listo, migración de firmas planificada para 1.2 (rompe SemVer menor).
+- [ ] **Gradientes PM3/xTB analíticos**: proyecto de investigación; hoy diferencias centrales exactas (6·N SCF).
+- [ ] **ERI density fitting/Cholesky**: el tensor CPU sigue siendo M⁴ `f64`; el camino GPU ya está tileado.
+- [ ] **MMFF94 completo**: faltan electrostática, stretch-bend y out-of-plane; la documentación ya no dice "full".
+- [ ] **4 stubs GPU de CPU**: `alpha/kinetics/gpu.rs`, `alpha/periodic_linear/gpu.rs`, `alpha/render_bridge/gpu.rs`, `edl/gpu.rs`; documentados, sin kernel WGSL.
+- [ ] **sTDA vs TD-SCF**: gap de método documentado; no se promete paridad.
 
 ---
 
@@ -242,16 +265,16 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 | Track | Módulo | Estado |
 |-------|--------|--------|
 | E1 CGA | `cga` | Promovido a core (F81); huecos de refine/materials documentados |
-| E2 RandNLA | `beta::rand_nla` | Implementado; Nyström vs SVD exacta cuantificado, gap rank-N/4 documentado |
+| E2 RandNLA | `beta::rand_nla` | Implementado; Nyström vs SVD exacta cuantificado; power iterations cumplen <1e-3 en rank-N/4 (3.8e-4) a coste alto; backend EHT/SCF y speedup N>500 pendientes |
 | E3 Riemannian | `riemannian` | Promovido a core (F94); benchmark vs Gram exacto (6.0e-9) |
 | E4 KPM | `beta::kpm` | Implementado; DOS vs diagonalización validada; falta escala N>100 |
 | E5 EEQ Dynamic | `charges_eeq` | Implementado, parcialmente integrado |
 | E6 ALPB | `solvation_alpb` | Promovido a core; SASA unificada con GB |
 | E7 D4 Dispersion | `dispersion` | Promovido a core; cobertura de tablas hasta Z=118 documentada |
-| E8 SDR Embedding | `sdr` | Promovido a core (F83); benchmark vs MDS clásico (6.7e-16) |
+| E8 SDR Embedding | `sdr` | Promovido a core (F83); benchmark vs MDS clásico (6.7e-16); SDR vs Butina ARI = 1.0 |
 | E9 MBH | `beta::mbh` | Implementado; frecuencias vs Hessiano proyectado (2.6 %) |
 | E10 CPM | `cpm` | Promovido a core (F95); benchmark de dos sitios (1.3e-15) |
-| E11 GSM | `alpha::gsm` | Implementado; MEP analítico en 5 pozos dobles exacto; falta NEB en 5+ reacciones |
+| E11 GSM | `alpha::gsm` | Implementado; MEP analítico en 5 pozos dobles exacto; GSM vs NEB en 5 pozos curvos a ≤0.8 % |
 
 ---
 

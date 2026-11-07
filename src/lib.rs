@@ -1251,6 +1251,14 @@ pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
 /// # Errors
 ///
 /// Returns `Err` if the SMILES string cannot be parsed.
+///
+/// # Examples
+///
+/// ```
+/// let charges = sci_form::compute_charges("CCO").unwrap();
+/// assert_eq!(charges.charges.len(), 9); // C2H6O
+/// assert!(charges.total_charge.abs() < 1e-6);
+/// ```
 pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
@@ -1306,6 +1314,14 @@ pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult,
 ///
 /// Returns `Err` when the element list and the coordinate array are
 /// inconsistent (mismatched lengths, empty input, non-finite coordinates).
+///
+/// # Examples
+///
+/// ```
+/// let water = sci_form::embed("O", 42);
+/// let sasa = sci_form::compute_sasa(&water.elements, &water.coords, None).unwrap();
+/// assert!(sasa.total_sasa > 0.0);
+/// ```
 pub fn compute_sasa(
     elements: &[u8],
     coords_flat: &[f64],
@@ -1366,6 +1382,15 @@ pub fn compute_population(
 }
 
 /// Compute molecular dipole moment (Debye) from atomic elements and positions.
+///
+/// # Examples
+///
+/// ```
+/// let water = [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
+/// let dipole = sci_form::compute_dipole(&[8, 1, 1], &water).unwrap();
+/// assert!(dipole.magnitude > 0.0);
+/// assert_eq!(dipole.unit, "Debye");
+/// ```
 pub fn compute_dipole(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1471,6 +1496,20 @@ pub fn compute_uv_vis_spectrum(
 /// The returned bond orders are dimensionless indices in roughly the 0-3
 /// range (1 = single, 2 = double, 3 = triple), derived from EHT density
 /// matrix elements rather than from a correlated wave function.
+///
+/// # Examples
+///
+/// ```
+/// let ethanol = sci_form::embed("CCO", 42);
+/// let positions: Vec<[f64; 3]> = ethanol
+///     .coords
+///     .chunks_exact(3)
+///     .map(|p| [p[0], p[1], p[2]])
+///     .collect();
+/// let orders = sci_form::compute_bond_orders(&ethanol.elements, &positions).unwrap();
+/// assert_eq!(orders.num_atoms, 9);
+/// assert!(!orders.bonds.is_empty());
+/// ```
 pub fn compute_bond_orders(
     elements: &[u8],
     positions: &[[f64; 3]],
@@ -1819,6 +1858,14 @@ pub fn compute_dos(
 }
 
 /// Compute RMSD between two coordinate sets after Kabsch alignment.
+///
+/// # Examples
+///
+/// ```
+/// let a = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+/// let b = [0.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+/// assert!(sci_form::compute_rmsd(&a, &b) < 1e-12);
+/// ```
 pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
     alignment::compute_rmsd(coords, reference)
 }
@@ -1869,6 +1916,14 @@ pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
 ///
 /// Returns `Err` when the SMILES string cannot be parsed, or when `coords`
 /// does not have exactly `3 × n_atoms` entries.
+///
+/// # Examples
+///
+/// ```
+/// let conformer = sci_form::embed("CCO", 42);
+/// let energy = sci_form::compute_mmff94_energy("CCO", &conformer.coords).unwrap();
+/// assert!(energy.is_finite());
+/// ```
 pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
@@ -1991,6 +2046,14 @@ pub fn compute_pm3_gradient(
 ///
 /// Returns `Err` when the geometry is invalid, when an element has no GFN1
 /// parameter set, or when the SCC cycle does not converge.
+///
+/// # Examples
+///
+/// ```
+/// let water = [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
+/// let result = sci_form::compute_gfn1(&[8, 1, 1], &water).unwrap();
+/// assert!(result.total_energy.is_finite());
+/// ```
 pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1Result, String> {
     xtb::gfn1::solve_gfn1(elements, positions)
 }
@@ -2010,6 +2073,14 @@ pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1
 ///
 /// Returns `Err` when the geometry is invalid, when an element has no GFN2
 /// parameter set, or when the SCC cycle does not converge.
+///
+/// # Examples
+///
+/// ```
+/// let water = [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
+/// let result = sci_form::compute_gfn2(&[8, 1, 1], &water).unwrap();
+/// assert!(result.total_energy.is_finite());
+/// ```
 pub fn compute_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn2Result, String> {
     xtb::gfn2::solve_gfn2(elements, positions)
 }

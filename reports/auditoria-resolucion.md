@@ -186,11 +186,40 @@ Estas no son "problemas de la auditoría" sino limitaciones con nombre propio, a
 | sTDA con término de intercambio (`StdaConfig::ax`); queda el gap de método del modelo monopolar frente a TD-SCF | `src/spectroscopy/stda_uvvis.rs` | ~9.7 eV vs TD-SCF, diferencia de método |
 | `EHT` con paridad de energía/overlap y de parámetros metálicos (F86/F86b) | `src/eht/` | S 7.5e-13 · H 1.4e-11 eV · E 1.25e-11 eV · HOMO/gap ~1e-12 eV |
 | `NPA/NBO` simplificado | `src/population/npa.rs` | usa Z nuclear en vez de valencia |
-| `KPM`/`RandNLA` no cumplen criterios de promoción | `src/beta/{kpm,rand_nla}/` | 1e-3 en rank N/4 no alcanzado (~0.13) |
+| `KPM`/`RandNLA` no cumplen todos los criterios de promoción | `src/beta/{kpm,rand_nla}/` | RandNLA: single-shot ~0.13; con power iterations el rank N/4 baja a 3.8e-4 (<1e-3), pero faltan el backend EHT/SCF y el speedup N>500. KPM: sin backend disperso ni benchmark >2000 átomos |
+| `GSM` sin comparación NEB multicaso | `src/alpha/gsm/` | **Cerrado 2026-11-07**: 5 pozos curvos, GSM vs NEB y vs barrera analítica ≤0.8 % |
+| `SDR` sin métrica frente a Butina | `src/sdr/`, `src/clustering.rs` | **Cerrado 2026-11-07**: ARI = 1.0 entre k-means del embedding SDR y Butina en 30 conformeros |
+| `ReaxFF` sin parser completo de `ffield` ni gradientes analíticos | `src/forcefield/reaxff/` | parser limitado a la tabla de pares C/H/O transcrita; gradiente por diferencias centrales (6·N energías) |
+| `NMR` HOSE sin base externa y ³J sin set experimental | `src/nmr/` | HOSE bloqueado por NMRShiftDB2/SDBS (licencia CC-BY-SA); F54 valida contra la calculadora HLA, no contra medidas |
 | `MBH` ±2 cm⁻¹ experimental | `src/beta/mbh/` | 1.3e-5 contra forma cerrada SI |
-| GPU sin comparación externa | `src/gpu/` | solo GPU↔CPU propio |
+| GPU sin comparación externa | `src/gpu/` | gate GPU↔CPU real en `tests/gpu_parity.rs`; no existe una implementación GPU de referencia para comparar contra ella |
 | MMFF94 sin electrostática/stretch-bend/oop | `src/forcefield/mmff94.rs` | es la parte de valencia + dispersión |
 | ALPB/GB sin paridad de radio de Born contra tblite | — | la API de tblite no expone radios |
+
+---
+
+### 5.1 Estado de la deuda 1.1 (2026-11-07)
+
+**Cerrado en esta ronda**
+
+| Ítem | Evidencia |
+|---|---|
+| Dos majors de wgpu (0.19 nativo / 29 WASM) | `src/gpu/context.rs` portado a wgpu 29; nativo, workspace y WASM compilan; el lockfile ya no lleva `wgpu 0.19`, `naga 0.19` ni el árbol duplicado. `cargo deny` pasa con 2 avisos de duplicado ajenos (`hashbrown`/`foldhash`). |
+| GPU sin paridad | `tests/gpu_parity.rs`: 8 gates reales GPU↔CPU (vector add, ERI s-only, Fock, gamma, orbital/density grids, ESP, EEQ, CPM) sobre AMD Radeon 680M/RADV. Peor diferencia: densidad 4.2e-4, EEQ 6.5e-4 e; el resto ≤2.1e-6. Se ejecuta con `SCIFORM_REQUIRE_GPU=1` para que un adaptador ausente sea fallo. |
+| Infraestructura de benchmarks | `benches/core.rs` + `[[bench]] core` con criterion 0.5 (parse, embed, UFF/MMFF94, EHT/PM3/GFN2); `benches/README.md` documenta los grupos. |
+| RUSTSEC-2024-0436 (`paste`) | nalgebra 0.35 → simba 0.10 elimina `paste`; `deny.toml` ya no tiene ignores. |
+| Doctests ejecutables | De 15 a **28 ejecutables** (+1 ignored) en el conjunto por defecto: se convirtieron ejemplos `no_run` de ERIs/D3/gradiente EHT y se añadieron ejemplos a `parse`, `embed`, cargas, SASA, dipolo, órdenes de enlace, RMSD, UFF, MMFF94, PM3, GFN1, GFN2 y xTB. |
+
+**Abierto y planificado (no es un bug de correctitud)**
+
+| Ítem | Estado y ruta |
+|---|---|
+| Enum de error tipado | La API pública sigue devolviendo `String` en ~200 firmas. Un enum `#[non_exhaustive]` aditivo (`SciFormError::{Parse, Validation, Geometry, Numerical, Unsupported}`) es compatible, pero migrar todas las firmas rompe SemVer menor; se planifica para 1.2 con `From<String>` de transición. |
+| Gradientes PM3/xTB analíticos | Hoy son diferencias centrales exactas (6·N SCF). Derivar NDDO/GFN2 completo es un proyecto de investigación; los gates F42/F44 miden exactitud, no coste. Ruta: gradiente NDDO (Pulay + correcciones de pares) y GFN2 (multipolos + D4). |
+| ERI O(N⁴) / 12.8 GB con M=200 | El camino GPU ya usa tiles con presupuesto de memoria, pero el tensor CPU sigue siendo M⁴ `f64`. Ruta: density fitting con base auxiliar o Cholesky parcial; requiere contrato de precisión y fixtures nuevos. |
+| sTDA vs TD-SCF | Gap de método del modelo monopolar (~9.7 eV en el caso documentado), no un bug de implementación. Se mantiene documentado; no se promete paridad TD-DFT. |
+| MMFF94 incompleto | Faltan electrostática, stretch-bend y out-of-plane. Las tablas y el tipado son reales; la documentación ahora dice explícitamente "valence + dispersion". Implementar los tres términos requiere cargas parciales MMFF94 y validación contra RDKit/OpenMM. |
+| 4 módulos GPU que son stubs de CPU | `alpha/kinetics/gpu.rs`, `alpha/periodic_linear/gpu.rs`, `alpha/render_bridge/gpu.rs` y `edl/gpu.rs` siguen siendo wrappers CPU documentados; no hay kernel WGSL. Se mantienen porque su contrato es "misma API con o sin GPU" y los tests verifican la paridad CPU↔CPU, no un offload real. |
 
 ---
 

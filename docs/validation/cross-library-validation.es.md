@@ -936,7 +936,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: misma pareja reactivo/producto y mismo backend (UFF/PM3/xTB) → comparar nodos de la cuerda (RMSD ≤ 0.05 Å por nodo), energía de la barrera, geometría del TS (RMSD) y verificar que el TS es un punto estacionario (‖g‖ ≤ 0.01 eV/Å); comparar con barreras DFT de Transition1x.
 - Datasets: Transition1x (figshare/Zenodo), set de reacciones curado del repo (`tests/reaction_battery.rs`), ejemplos pyGSM (SN2, H-transfer).
 - Procedimiento: `tests/experimental/test_gsm.rs` (existe), `scripts/compare_reaction_layers.py` (existe), CLI `gsm-*`; nuevo `scripts/compare_gsm_pygsm.py`.
-- Estado en el repo: `src/alpha/gsm/{string,saddle,backend}.rs`, `alpha-kinetics` (GSM+MBH+HTST). **Validado 2026-10-14 (F82)**: `oracle_gsm.py` (ASE CI-NEB/FIRE en Müller-Brown, TS −40.66) + gate `tests/alpha_gsm_validation.rs` 2/2 (barrera 1.6e-3, TS 0.028). Fix: reparametrización por arco (sin ella la barrera colapsaba). pyGSM/Transition1x no corridos.
+- Estado en el repo: `src/alpha/gsm/{string,saddle,backend}.rs`, `alpha-kinetics` (GSM+MBH+HTST). **Validado 2026-10-14 (F82)**: `oracle_gsm.py` (ASE CI-NEB/FIRE en Müller-Brown, TS −40.66) + gate `tests/alpha_gsm_validation.rs` 3/3 (barrera 1.6e-3, TS 0.028). Fix: reparametrización por arco (sin ella la barrera colapsaba). **GSM vs NEB (2026-11-07)**: cinco pozos curvos con MEP parabólico y barrera exacta `a⁴`; GSM y un NEB discreto coinciden a ≤0.8 % y con la analítica. También se corrigió el refinamiento del saddle (20 pasos fijos → 200 pasos con `step_size`), que dejaba las barreras curvas ~12 % altas. pyGSM/Transition1x no corridos.
 - Criterio: barrera ± 1 kcal/mol vs pyGSM con el mismo backend; ‖g‖_TS ≤ 0.01 eV/Å; camino sin discontinuidades (distancia entre nodos monótona).
 
 **A7 (F83) · SDR: embedding por relajación semidefinida (`alpha::sdr::{sdr_embed, project_psd, alternating_projections, svt_step}`)**
@@ -944,7 +944,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: mismas tripletas (i,j,d) → comparar matriz de Gram óptima y coordenadas finales (RMSD ≤ 1e-3 Å tras Kabsch); violación de restricciones ≤ 1e-3 Å; comportamiento con restricciones inconsistentes (infactible → residual acotado).
 - Datasets: grafos de distancia de moléculas GDB-20 (bounds → distancias), ejemplos de SFSDP en los papers.
 - Procedimiento: `tests/experimental/test_sdr.rs` (existe) + `scripts/compare_sdr_cvxpy.py`.
-- Estado en el repo: `src/alpha/sdr/{embedding,projections}.rs`, bindings Python/WASM. **Validado 2026-10-14 (F83)**: `oracle_sdr.py` (numpy + CVXPY/SCS) + gate `tests/alpha_sdr_validation.rs` 3/3 (proyecciones exactas, embeds exactos 7e-15, ruidoso dentro de 3× del óptimo). **Promovido 2026-10-14**: `alpha::sdr` → `src/sdr`. Fix: umbral de polvo PSD en el conteo.
+- Estado en el repo: `src/alpha/sdr/{embedding,projections}.rs`, bindings Python/WASM. **Validado 2026-10-14 (F83)**: `oracle_sdr.py` (numpy + CVXPY/SCS) + gate `tests/alpha_sdr_validation.rs` 3/3 (proyecciones exactas, embeds exactos 7e-15, ruidoso dentro de 3× del óptimo). **Promovido 2026-10-14**: `alpha::sdr` → `src/sdr`. Fix: umbral de polvo PSD en el conteo. **SDR vs Butina (2026-11-07)**: métrica definida = Adjusted Rand Index entre el k-means del embedding SDR (matriz de RMSD Kabsch) y las etiquetas de Butina en 30 conformeros de tres formas; ARI = 1.0 (`tests/beta_benchmarks.rs`).
 - Criterio: violación máx ≤ 1e-3 Å; RMSD vs CVXPY ≤ 0.01 Å; coste O(N·k) documentado.
 
 **A8 (F84) · Dynamics-live (`dynamics_live::*`, feature `alpha-dynamics-live`)**
@@ -1026,7 +1026,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: mismo H,S → comparar los k autovalores más bajos (rel ≤ 1e-3), residuo de la Nyström (`frobenius_error`/`relative_error` declarados vs medidos), y la bandera de fallback (debe activarse cuando el residuo > tolerancia); repetir con varias semillas (error estable).
 - Datasets: Hamiltonianos EHT de GDB-20 (1k), modelos TB; sin descarga externa.
 - Procedimiento: `tests/experimental/test_randnla.rs` (existe), CLI `solve-periodic-randnla`, bindings `eht_randnla`.
-- Estado en el repo: `src/beta/rand_nla/*`, tests existentes; API con `max_error`. **Validado 2026-10-14 (F93)**: `oracle_randnla.py` (numpy/scipy, overlaps) + gate `tests/beta_randnla_validation.rs` 3/3 (caracterización ~0.13 — gap: 1e-3 exige power iterations; régimen válido 3.9e-3; producción exacta incl. fallback en N=96).
+- Estado en el repo: `src/beta/rand_nla/*`, tests existentes; API con `max_error`. **Validado 2026-10-14 (F93)**: `oracle_randnla.py` (numpy/scipy, overlaps) + gate `tests/beta_randnla_validation.rs` 4/4. Single-shot rank-N/4 ~0.13; **subspace iterations (2026-11-07)** bajan el rank-N/4 a 3.8e-4 con 384 iteraciones (criterio <1e-3 cumplido en el fixture); régimen válido 3.9e-3; producción exacta incl. fallback en N=96. Quedan abiertos el backend opcional EHT/SCF y el speedup N>500.
 - Criterio: autovalores ≤ 1e-3 rel; error reportado ≥ error real (no mentir en la cota); fallback correcto y determinista con semilla.
 
 **B4 (F94) · Geometría Riemanniana del cono PSD (`beta::riemannian::{psd_distance, psd_projection, riemannian_gradient, psd_retraction}`)**
@@ -2034,10 +2034,11 @@ pybinding no instalable (ruedas ausentes) → numpy en su lugar.
   y finite-T 2.6e-2. **Fixes**: factor 2 espurio en k≥1 de la expansión FD y
   factor 2 de espín ausente en Mulliken (Tr daba N en vez de N/2 estados).
   Queda gateado (pybinding ausente; T=0 en metales sufre Gibbs).
-- **F93 RandNLA**: `oracle_randnla.py` (overlaps, eigh/sqrtm). Gate 3/3.
-  **Gap cuantificado**: single-shot rank-N/4 da ~0.13, no 1e-3 (faltan power
-  iterations); régimen casi-identidad 3.9e-3; producción exacta (N=96 ejerce
-  el fallback). Queda gateado.
+- **F93 RandNLA**: `oracle_randnla.py` (overlaps, eigh/sqrtm). Gate 4/4.
+  Single-shot rank-N/4 ~0.13; las **subspace iterations** añadidas el
+  2026-11-07 lo bajan a 3.8e-4 (criterio <1e-3), a coste de 384 iteraciones;
+  régimen casi-identidad 3.9e-3; producción exacta (N=96 ejerce el fallback).
+  Queda gateado por el backend EHT/SCF y el speedup N>500.
 - **F94 Riemann**: `oracle_riemannian.py` (eigh-clip, Frobenius, L-BFGS-B).
   Gate 4/4: proyección 8.2e-12 (round-off entre eigensolvers), distancia
   2.2e-16, optimizador factible como scipy. **Gap**: `psd_distance` es el
