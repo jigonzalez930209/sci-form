@@ -137,3 +137,117 @@ fn f82_ts_matches_ase_neb() {
     assert!(d_ts <= fix.ts_location_tolerance, "location {d_ts:.4}");
     assert!(d_e <= fix.barrier_tolerance_rel, "ts energy {d_e:.3e}");
 }
+
+// ── Five curved double wells: GSM vs a discrete NEB reference ──────────────
+//
+// V(x,y) = (x² − a²)² + ½·(y − c·x²)² has minima at (±a, c·a²), a saddle at
+// the origin and an exact barrier a⁴. The MEP is the parabola y = c·x², so a
+// straight-line interpolation is intentionally wrong and the path optimizer
+// has to bend towards y=0 at the saddle.
+#[cfg(feature = "alpha-gsm")]
+mod gsm_vs_neb_five_reactions {
+    use super::*;
+
+    fn curved_well(a: f64, c: f64, p: &[f64]) -> f64 {
+        let (x, y) = (p[0], p[1]);
+        (x * x - a * a).powi(2) + 0.5 * (y - c * x * x).powi(2)
+    }
+
+    fn gradient(a: f64, c: f64, p: &[f64]) -> [f64; 2] {
+        let h = 1e-6;
+        let ex = curved_well(a, c, &[p[0] + h, p[1]]);
+        let emx = curved_well(a, c, &[p[0] - h, p[1]]);
+        let ey = curved_well(a, c, &[p[0], p[1] + h]);
+        let emy = curved_well(a, c, &[p[0], p[1] - h]);
+        [(ex - emx) / (2.0 * h), (ey - emy) / (2.0 * h)]
+    }
+
+    /// Minimal discrete NEB: fixed endpoints, spring coupling along the
+    /// tangent, gradient descent on the perpendicular force.
+    fn neb_barrier(a: f64, c: f64, n_images: usize, step: f64, iters: usize) -> f64 {
+        let start = [-a, c * a * a];
+        let end = [a, c * a * a];
+        let mut images: Vec<[f64; 2]> = (0..n_images)
+            .map(|i| {
+                let t = i as f64 / (n_images - 1) as f64;
+                [
+                    start[0] + t * (end[0] - start[0]),
+                    start[1] + t * (end[1] - start[1]),
+                ]
+            })
+            .collect();
+        let spring = 0.1;
+        for _ in 0..iters {
+            let old = images.clone();
+            for i in 1..n_images - 1 {
+                let prev = old[i - 1];
+                let next = old[i + 1];
+                let mut tangent = [next[0] - prev[0], next[1] - prev[1]];
+                let norm = (tangent[0] * tangent[0] + tangent[1] * tangent[1]).sqrt();
+                if norm < 1e-12 {
+                    continue;
+                }
+                tangent = [tangent[0] / norm, tangent[1] / norm];
+                let g = gradient(a, c, &old[i]);
+                let g_perp = [
+                    g[0] - (g[0] * tangent[0] + g[1] * tangent[1]) * tangent[0],
+                    g[1] - (g[0] * tangent[0] + g[1] * tangent[1]) * tangent[1],
+                ];
+                let d_prev = ((old[i][0] - prev[0]).powi(2) + (old[i][1] - prev[1]).powi(2)).sqrt();
+                let d_next = ((next[0] - old[i][0]).powi(2) + (next[1] - old[i][1]).powi(2)).sqrt();
+                let spring_force = spring * (d_next - d_prev);
+                images[i][0] -= step * (g_perp[0] - spring_force * tangent[0]);
+                images[i][1] -= step * (g_perp[1] - spring_force * tangent[1]);
+            }
+        }
+        let e0 = curved_well(a, c, &start);
+        images
+            .iter()
+            .map(|p| curved_well(a, c, p))
+            .fold(f64::NEG_INFINITY, f64::max)
+            - e0
+    }
+
+    #[test]
+    fn gsm_matches_neb_on_five_curved_wells() {
+        let config = GsmConfig {
+            max_nodes: 41,
+            step_size: 0.01,
+            max_iter: 5000,
+            ..GsmConfig::default()
+        };
+        let mut worst_barrier = 0.0f64;
+        let mut worst_gsm_vs_neb = 0.0f64;
+        for (idx, &a) in [0.8f64, 1.0, 1.2, 1.5, 2.0].iter().enumerate() {
+            let c = 0.5;
+            let start = [-a, c * a * a];
+            let end = [a, c * a * a];
+            let potential = |p: &[f64]| curved_well(a, c, p);
+            let gsm = find_transition_state(&start, &end, &potential, &config);
+            let neb = neb_barrier(a, c, 21, 0.002, 4000);
+            let exact = a.powi(4);
+            let gsm_err = (gsm.activation_energy - exact).abs() / exact;
+            let neb_err = (neb - exact).abs() / exact;
+            let cross = (gsm.activation_energy - neb).abs() / exact;
+            eprintln!(
+                "GSM/NEB #{idx} a={a}: GSM {:.5} NEB {:.5} exact {:.5} (gsm err {:.2e}, neb err {:.2e}, cross {:.2e})",
+                gsm.activation_energy, neb, exact, gsm_err, neb_err, cross
+            );
+            worst_barrier = worst_barrier.max(gsm_err).max(neb_err);
+            worst_gsm_vs_neb = worst_gsm_vs_neb.max(cross);
+            assert!(
+                (gsm.ts_coords[0]).abs() < 0.15 * a,
+                "a={a}: GSM TS x={}",
+                gsm.ts_coords[0]
+            );
+        }
+        assert!(
+            worst_barrier < 0.05,
+            "worst analytic barrier error {worst_barrier:.3e}"
+        );
+        assert!(
+            worst_gsm_vs_neb < 0.05,
+            "worst GSM/NEB cross-check {worst_gsm_vs_neb:.3e}"
+        );
+    }
+}

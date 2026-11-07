@@ -14,6 +14,7 @@ is caught here rather than by a user.
 
 from __future__ import annotations
 
+import json
 import math
 
 import pytest
@@ -635,6 +636,42 @@ def test_periodic_molecule_and_hapticity():
         [26] + [6] * 10, [0.0, 0.0, 0.0] + [i * 1.2 for i in range(1, 11)]
     )
     assert analysis.n_interactions >= 0
+
+
+def test_periodic_kpm_and_randnla_adapters():
+    # One-orbital chain: H(t=0)=-0.0, H(±1)=-1.0; S(t=0)=1, S(±1)=0.2.
+    h_blocks = [
+        {"matrix": [[0.0]], "translation": [0, 0, 0]},
+        {"matrix": [[-1.0]], "translation": [1, 0, 0]},
+        {"matrix": [[-1.0]], "translation": [-1, 0, 0]},
+    ]
+    s_blocks = [
+        {"matrix": [[1.0]], "translation": [0, 0, 0]},
+        {"matrix": [[0.2]], "translation": [1, 0, 0]},
+        {"matrix": [[0.2]], "translation": [-1, 0, 0]},
+    ]
+    dos = json.loads(
+        sci_form.compute_periodic_dos(
+            json.dumps(h_blocks), [2, 1, 1], "monkhorst-pack", 64, -3.0, 3.0, 128
+        )
+    )
+    assert dos["n_kpoints"] == 2
+    assert len(dos["total_dos"]) == 128
+    assert all(finite(value) for value in dos["total_dos"])
+
+    result = json.loads(
+        sci_form.solve_periodic_randnla(
+            json.dumps(h_blocks),
+            json.dumps(s_blocks),
+            2,
+            [2, 1, 1],
+            "monkhorst-pack",
+            1,
+        )
+    )
+    assert result["n_kpoints"] == 2
+    assert len(result["kpoint_results"]) == 2
+    assert finite(result["band_gap_ev"])
 
 
 def test_optimize_framework():

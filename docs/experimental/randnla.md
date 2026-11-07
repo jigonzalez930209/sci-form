@@ -71,9 +71,15 @@ If the error exceeds 0.1%, the module falls back to exact diagonalization and re
 
 External gate `tests/beta_randnla_validation.rs --features beta-randnla` vs
 `scripts/validation/oracle_randnla.py` (numpy/scipy, overlap spectra):
-characterization rank-N/4 ~0.13 (quantified gap: 1e-3 needs power
-iterations), near-identity regime 3.9e-3 with fallback OFF, default config
-exact incl. exercised fallback at N=96.
+single-shot rank-N/4 ~0.13, near-identity regime 3.9e-3 with fallback OFF,
+default config exact incl. exercised fallback at N=96.
+
+**Subspace iterations (2026-11-07):** `NystromApprox::from_matrix_with_power_iterations`
+and `RandNlaConfig::power_iterations` add re-orthonormalised power iterations.
+With 384 iterations the same rank-N/4 sketches reach 3.8e-4 (F93a-bis), so
+the <1e-3 accuracy criterion is met for the fixture. The cost is high; wiring
+the randomized path into the EHT/SCF solver and the N>500 speedup are still
+open, so the track stays beta.
 
 ## Tests
 

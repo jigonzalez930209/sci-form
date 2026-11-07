@@ -141,8 +141,8 @@ pub fn find_transition_state(
         &path.nodes[ts_idx],
         energy_fn,
         (prev, next),
-        20,
-        config.step_size * 0.1,
+        200,
+        config.step_size,
         config.fd_step,
     );
 

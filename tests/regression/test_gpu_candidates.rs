@@ -1756,6 +1756,7 @@ mod gpu_candidate_randnla {
                 seed: 42,
                 max_error: 1e-3,
                 fallback_enabled: true,
+                power_iterations: 2,
             };
 
             let t0 = Instant::now();

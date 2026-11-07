@@ -134,10 +134,17 @@
 //! 2. Show <1% error in eigenvalues for rank = N/4
 //! 3. Demonstrate speedup for N>500 basis functions
 //!
-//! **Validación externa (2026-10-14, F93)**: caracterización rank-N/4 ~0.13
-//! (gap cuantificado: 1e-3 exige power iterations), régimen válido 3.9e-3,
-//! producción exacta con fallback (`tests/beta_randnla_validation.rs`).
-//! El criterio 2 sigue sin cumplirse.
+//! **Validación externa (2026-10-14, F93)**: caracterización single-shot
+//! rank-N/4 ~0.13, régimen válido 3.9e-3, producción exacta con fallback
+//! (`tests/beta_randnla_validation.rs`).
+//!
+//! **Subspace iterations (2026-11-07)**: `NystromApprox` gana
+//! `from_matrix_with_power_iterations` y `RandNlaConfig::power_iterations`
+//! (default 2; re-ortogonaliza cada iteración). Con 384 iteraciones el rank
+//! N/4 de F93 baja a 3.8e-4, así que el **criterio 2 (<1e-3) queda cumplido**
+//! para el fixture; el coste es alto y los criterios 1 (integrarlo como
+//! backend opcional del solver EHT/SCF, no solo la función suelta) y 3
+//! (speedup N>500) siguen abiertos.
 //!
 //! **Benchmark vs ruta estable (2026-10-23)**: Nyström vs SVD exacta en
 //! `tests/beta_benchmarks.rs`; el error de reconstrucción queda ≤ 2× el mejor
@@ -169,6 +176,12 @@
 //! **Benchmark vs ruta estable (2026-10-23)**: SDR vs MDS clásico sobre
 //! distancias exactas en `tests/beta_benchmarks.rs`; error máximo de par
 //! 6.7e-16 frente a 2.2e-16 del MDS, sin quedar por encima del oráculo.
+//!
+//! **SDR vs Butina (2026-11-07)**: el criterio 3 se mide con el Adjusted Rand
+//! Index entre el k-means del embedding SDR (sobre la matriz de RMSD Kabsch)
+//! y las etiquetas de Butina en 30 conformeros de tres formas distintas:
+//! ARI = 1.0, también contra la verdad sintética (`tests/beta_benchmarks.rs`).
+//! La banda de kernel adaptativa (criterio 2) sigue abierta.
 //!
 //! ### EXP-205a: Conformal Geometric Algebra (CGA) — PROMOVIDO (`src/cga`)
 //!
@@ -204,9 +217,11 @@
 //! reactant and product geometries. Identifies transition states.
 //!
 //! **Current limitations:**
-//! - No gradient source (needs coupled PES evaluation)
+//! - No analytic Hessian; the saddle refinement is gradient-only
 //! - String convergence criteria incomplete
-//! - Saddle point refinement not validated
+//! - Saddle point refinement was under-stepped (fixed 20 steps at 0.1×
+//!   `step_size`; now 200 steps at `step_size`, which brings the curved-well
+//!   barriers from ~12 % high to ≤0.8 %)
 //!
 //! **Status update:** gradient coupling is implemented — `alpha::gsm::backend`
 //! drives the string with UFF, MMFF94, PM3, xTB, GFN1, GFN2 and HF-3c.
@@ -223,6 +238,12 @@
 //! **Benchmark vs ruta estable (2026-10-23)**: cinco pozos dobles analíticos
 //! `V(x) = (x² − a²)²` en `tests/beta_benchmarks.rs`; la barrera y la posición
 //! del TS coinciden con la solución exacta (error relativo de barrera 0).
+//!
+//! **GSM vs NEB en 5+ reacciones (2026-11-07)**: `tests/alpha_gsm_validation.rs`
+//! añade cinco pozos curvos `V(x,y) = (x²−a²)² + ½(y−c x²)²`, cuyo MEP es la
+//! parábola `y = c x²` y cuya barrera exacta es `a⁴`. GSM y un NEB discreto
+//! (referencia en el test) coinciden con la barrera analítica a ≤0.8 % y entre
+//! sí a ≤0.8 %; el criterio 3 queda cubierto para cinco reacciones.
 //!
 //! ### EXP-205c: Constant Potential Method (CPM) — PROMOVIDO (`src/cpm`)
 //!

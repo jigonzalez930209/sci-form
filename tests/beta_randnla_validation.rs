@@ -67,9 +67,18 @@ fn mat(n: usize, rows: &[Vec<f64>]) -> DMatrix<f64> {
 }
 
 fn sketch_approx(s: &DMatrix<f64>, n: usize, k: usize) -> NystromApprox {
+    sketch_approx_with_power(s, n, k, 0)
+}
+
+fn sketch_approx_with_power(
+    s: &DMatrix<f64>,
+    n: usize,
+    k: usize,
+    power_iterations: usize,
+) -> NystromApprox {
     let mut rng = StdRng::seed_from_u64(42);
     let sketch = GaussianSketch::new(&mut rng, n, k);
-    NystromApprox::from_matrix(s, &sketch)
+    NystromApprox::from_matrix_with_power_iterations(s, &sketch, power_iterations)
 }
 
 /// F93a: characterization — top-k on realistic overlaps at rank N/4.
@@ -99,6 +108,28 @@ fn f93_characterization_rank_quarter() {
     }
 }
 
+/// F93a-bis: the promotion criterion (rank N/4, <1e-3) is reachable with
+/// subspace (power) iterations on the same sketches used by F93a.
+#[test]
+fn f93_power_iterations_meet_promotion_criterion() {
+    let fix = load();
+    for c in &fix.characterization {
+        let s = mat(c.n, &c.matrix);
+        let approx = sketch_approx_with_power(&s, c.n, c.k, 384);
+        let (evals, _) = approx.eigendecompose();
+        let mut got: Vec<f64> = evals.iter().copied().collect();
+        got.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        let worst = got[..c.k]
+            .iter()
+            .zip(&c.top_eigenvalues)
+            .fold(0.0f64, |m, (&g, &w)| {
+                m.max((g - w).abs() / w.abs().max(1e-300))
+            });
+        println!("F93a-bis N={} k={}: top-k worst {:.3e}", c.n, c.k, worst);
+        assert!(worst < 1e-3, "N={} k={}: {worst:.3e} >= 1e-3", c.n, c.k);
+    }
+}
+
 /// F93b: randomized path (fallback OFF) in the near-identity regime.
 #[test]
 fn f93_valid_regime_randomized() {
@@ -124,6 +155,7 @@ fn f93_valid_regime_randomized() {
             seed: 42,
             max_error: 1.0,
             fallback_enabled: false,
+            power_iterations: 2,
         };
         let (energies, _, info) = solve_eht_randnla(&h, &s, &cfg);
         assert!(!info.used_fallback);

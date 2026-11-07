@@ -33,6 +33,15 @@ pub struct RandNlaConfig {
     pub max_error: f64,
     /// Whether to fall back to exact diag on high error.
     pub fallback_enabled: bool,
+    /// Subspace-iteration count for the Nyström sketch (0 = single-shot).
+    /// Two iterations recover most of the top-k accuracy at 4 extra
+    /// matrix-matrix products.
+    #[serde(default = "default_power_iterations")]
+    pub power_iterations: usize,
+}
+
+fn default_power_iterations() -> usize {
+    2
 }
 
 impl Default for RandNlaConfig {
@@ -42,6 +51,7 @@ impl Default for RandNlaConfig {
             seed: 42,
             max_error: 0.001, // 0.1%
             fallback_enabled: true,
+            power_iterations: default_power_iterations(),
         }
     }
 }
@@ -81,7 +91,8 @@ pub fn solve_eht_randnla(
 
     // Step 1: Nyström approximation of S
     let sketch = GaussianSketch::new(&mut rng, n, k);
-    let nystrom = NystromApprox::from_matrix(s, &sketch);
+    let nystrom =
+        NystromApprox::from_matrix_with_power_iterations(s, &sketch, config.power_iterations);
 
     // Step 2: Compute S^{-1/2} via low-rank factorization
     let s_inv_sqrt = nystrom.inverse_sqrt();
@@ -284,6 +295,7 @@ mod tests {
             seed: 42,
             max_error: 1.0, // disable fallback
             fallback_enabled: false,
+            power_iterations: 2,
         };
         let (e_rand, _, info) = solve_eht_randnla(&h, &s, &config_rand);
 
@@ -327,6 +339,7 @@ mod tests {
             seed: 42,
             max_error: 0.001,
             fallback_enabled: true,
+            power_iterations: 2,
         };
         let (_, _, info) = solve_eht_randnla(&h, &s, &config);
         // With k=3 and n=10, likely falls back

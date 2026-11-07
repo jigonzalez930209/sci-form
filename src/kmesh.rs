@@ -203,6 +203,13 @@ pub struct PeriodicRandNlaAdapterConfig {
     pub max_error: f64,
     /// Whether exact fallback is allowed.
     pub fallback_enabled: bool,
+    /// Subspace-iteration count for the Nyström sketch (0 = single-shot).
+    #[serde(default = "default_randnla_power_iterations")]
+    pub power_iterations: usize,
+}
+
+fn default_randnla_power_iterations() -> usize {
+    2
 }
 
 impl Default for PeriodicRandNlaAdapterConfig {
@@ -213,6 +220,7 @@ impl Default for PeriodicRandNlaAdapterConfig {
             seed: 42,
             max_error: 1e-3,
             fallback_enabled: true,
+            power_iterations: default_randnla_power_iterations(),
         }
     }
 }

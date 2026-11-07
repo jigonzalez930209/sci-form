@@ -135,6 +135,7 @@ pub fn solve_periodic_randnla(
         seed: config.seed,
         max_error: config.max_error,
         fallback_enabled: config.fallback_enabled,
+        power_iterations: config.power_iterations,
     };
 
     let mut kpoint_results = Vec::with_capacity(kmesh.points.len());

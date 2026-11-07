@@ -70,18 +70,52 @@ impl NystromApprox {
     /// 1. Y = S Ω
     /// 2. QR decomposition: Y = Q R
     /// 3. B = Q^T S Q
+    ///
+    /// This is the single-shot variant (zero power iterations), kept for
+    /// callers that need the cheapest sketch.
     pub fn from_matrix(s: &DMatrix<f64>, sketch: &GaussianSketch) -> Self {
+        Self::from_matrix_with_power_iterations(s, sketch, 0)
+    }
+
+    /// Build a Nyström approximation with `power_iterations` subspace
+    /// iterations.
+    ///
+    /// Each iteration replaces `Y` by `S (S Y)`, i.e. applies `S^{2q+1}` to
+    /// the sketch. For a clustered spectrum (overlap matrices are close to
+    /// the identity) this sharpens the captured invariant subspace and
+    /// reduces the top-k eigenvector error; the cost is `2q` extra
+    /// matrix-matrix products. `power_iterations = 0` reproduces
+    /// [`Self::from_matrix`].
+    pub fn from_matrix_with_power_iterations(
+        s: &DMatrix<f64>,
+        sketch: &GaussianSketch,
+        power_iterations: usize,
+    ) -> Self {
         let n = s.nrows();
         let k = sketch.k;
 
-        // Y = S * Ω
-        let y = s * &sketch.omega;
+        // Y = S * Ω. Each power iteration applies S² and re-orthonormalises
+        // immediately: without the QR the columns of S^{2q+1}Ω collapse onto
+        // the dominant eigenvector and the sketch rank is lost to rounding.
+        let mut y = s * &sketch.omega;
+        if power_iterations > 0 {
+            let qr = y.qr();
+            y = qr.q().columns(0, k.min(qr.q().ncols())).into_owned();
+            for _ in 0..power_iterations {
+                y = s * (s * y);
+                let qr = y.qr();
+                y = qr.q().columns(0, k.min(qr.q().ncols())).into_owned();
+            }
+        }
 
-        // Thin QR: Y = Q R
-        let qr = y.clone().qr();
-        let q = qr.q();
-        // Keep only k columns
-        let q = q.columns(0, k.min(q.ncols())).into_owned();
+        // Thin QR: Y = Q R. With power iterations the columns are already
+        // orthonormal, so the QR is only needed for the single-shot path.
+        let q = if power_iterations > 0 {
+            y
+        } else {
+            let qr = y.qr();
+            qr.q().columns(0, k.min(qr.q().ncols())).into_owned()
+        };
         let actual_k = q.ncols();
 
         // B = Q^T S Q (k × k)

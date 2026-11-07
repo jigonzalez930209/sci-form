@@ -615,3 +615,184 @@ mod gsm_vs_analytic_mep {
         );
     }
 }
+
+#[cfg(feature = "alpha-sdr")]
+mod sdr_vs_butina {
+    use sci_form::clustering::{butina_cluster, compute_rmsd_matrix};
+    use sci_form::sdr::{sdr_embed, SdrConfig};
+
+    /// Adjusted Rand Index between two cluster labelings.
+    fn adjusted_rand_index(a: &[usize], b: &[usize]) -> f64 {
+        use std::collections::HashMap;
+        let n = a.len();
+        assert_eq!(n, b.len());
+        let mut table: HashMap<(usize, usize), usize> = HashMap::new();
+        let mut row: HashMap<usize, usize> = HashMap::new();
+        let mut col: HashMap<usize, usize> = HashMap::new();
+        for (&x, &y) in a.iter().zip(b) {
+            *table.entry((x, y)).or_default() += 1;
+            *row.entry(x).or_default() += 1;
+            *col.entry(y).or_default() += 1;
+        }
+        let comb2 = |x: usize| (x * x.saturating_sub(1)) as f64 / 2.0;
+        let sum_ij: f64 = table.values().map(|&v| comb2(v)).sum();
+        let sum_i: f64 = row.values().map(|&v| comb2(v)).sum();
+        let sum_j: f64 = col.values().map(|&v| comb2(v)).sum();
+        let total = comb2(n);
+        let expected = sum_i * sum_j / total.max(1e-300);
+        let max_index = 0.5 * (sum_i + sum_j);
+        (sum_ij - expected) / (max_index - expected).max(1e-300)
+    }
+
+    /// Deterministic Lloyd k-means with explicit initial centers.
+    fn kmeans(points: &[[f64; 3]], k: usize, init: &[usize], max_iter: usize) -> Vec<usize> {
+        let mut centers: Vec<[f64; 3]> = init.iter().map(|&i| points[i]).collect();
+        let mut labels = vec![0usize; points.len()];
+        for _ in 0..max_iter {
+            let mut changed = false;
+            for (i, p) in points.iter().enumerate() {
+                let mut best = 0usize;
+                let mut best_d = f64::INFINITY;
+                for (c, center) in centers.iter().enumerate() {
+                    let d = (0..3).map(|d| (p[d] - center[d]).powi(2)).sum::<f64>();
+                    if d < best_d {
+                        best_d = d;
+                        best = c;
+                    }
+                }
+                if labels[i] != best {
+                    labels[i] = best;
+                    changed = true;
+                }
+            }
+            let mut sums = vec![[0.0f64; 3]; k];
+            let mut counts = vec![0usize; k];
+            for (p, &label) in points.iter().zip(&labels) {
+                for d in 0..3 {
+                    sums[label][d] += p[d];
+                }
+                counts[label] += 1;
+            }
+            for c in 0..k {
+                if counts[c] > 0 {
+                    for d in 0..3 {
+                        centers[c][d] = sums[c][d] / counts[c] as f64;
+                    }
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        labels
+    }
+
+    fn rotate(p: [f64; 3], ax: f64, ay: f64, az: f64) -> [f64; 3] {
+        let (sx, cx) = ax.sin_cos();
+        let (sy, cy) = ay.sin_cos();
+        let (sz, cz) = az.sin_cos();
+        let (x, y, z) = (p[0], p[1], p[2]);
+        let (y, z) = (cx * y - sx * z, sx * y + cx * z);
+        let (x, z) = (cy * x + sy * z, -sy * x + cy * z);
+        [cz * x - sz * y, sz * x + cz * y, z]
+    }
+
+    #[test]
+    fn sdr_kmeans_agrees_with_butina_on_conformer_shapes() {
+        // Ten rotated/noisy copies of three distinct shapes (line, circle,
+        // helix). Both methods see the same Kabsch-RMSD geometry: Butina
+        // clusters the raw conformers and SDR embeds the pairwise RMSD
+        // matrix, so the comparison isolates the clustering/embedding step.
+        let m = 8usize;
+        let shapes: Vec<Vec<[f64; 3]>> = vec![
+            (0..m)
+                .map(|i| [-0.2 + 0.4 * i as f64 / (m - 1) as f64, 0.0, 0.0])
+                .collect(),
+            (0..m)
+                .map(|i| {
+                    let t = std::f64::consts::TAU * i as f64 / m as f64;
+                    [0.2 * t.cos(), 0.2 * t.sin(), 0.0]
+                })
+                .collect(),
+            (0..m)
+                .map(|i| {
+                    let t = std::f64::consts::TAU * i as f64 / m as f64;
+                    [
+                        0.2 * t.cos(),
+                        0.2 * t.sin(),
+                        -0.2 + 0.4 * i as f64 / (m - 1) as f64,
+                    ]
+                })
+                .collect(),
+        ];
+        let per_group = 10usize;
+        let mut conformers: Vec<Vec<f64>> = Vec::new();
+        let mut expected: Vec<usize> = Vec::new();
+        for (g, shape) in shapes.iter().enumerate() {
+            for c in 0..per_group {
+                let ax = 0.17 * c as f64 + 0.11 * g as f64;
+                let ay = 0.23 * c as f64;
+                let az = 0.31 * c as f64;
+                let mut flat = Vec::with_capacity(3 * m);
+                for (i, p) in shape.iter().enumerate() {
+                    let q = rotate(*p, ax, ay, az);
+                    // Deterministic sub-Å noise so the clusters are not exact
+                    // duplicates (mirrors a conformer ensemble).
+                    let noise = 0.01 * ((i as f64 + c as f64).sin());
+                    flat.extend_from_slice(&[q[0] + noise, q[1] - noise, q[2] + 0.5 * noise]);
+                }
+                conformers.push(flat);
+                expected.push(g);
+            }
+        }
+
+        let butina = butina_cluster(&conformers, 0.08);
+        assert_eq!(
+            butina.n_clusters,
+            shapes.len(),
+            "Butina found {} clusters",
+            butina.n_clusters
+        );
+
+        let rmsd = compute_rmsd_matrix(&conformers);
+        let mut pairs = Vec::new();
+        for i in 0..conformers.len() {
+            for j in (i + 1)..conformers.len() {
+                pairs.push((i, j, rmsd[i][j]));
+            }
+        }
+        let sdr = sdr_embed(
+            conformers.len(),
+            &pairs,
+            &SdrConfig {
+                max_iter: 500,
+                tol: 1e-10,
+                ..SdrConfig::default()
+            },
+        );
+        assert!(sdr.convergence.converged);
+        let embedded: Vec<[f64; 3]> = (0..conformers.len())
+            .map(|i| {
+                [
+                    sdr.coords[3 * i],
+                    sdr.coords[3 * i + 1],
+                    sdr.coords[3 * i + 2],
+                ]
+            })
+            .collect();
+        let init = [0usize, per_group, 2 * per_group];
+        let labels = kmeans(&embedded, butina.n_clusters, &init, 200);
+        let ari = adjusted_rand_index(&butina.assignments, &labels);
+        let ari_expected = adjusted_rand_index(&expected, &labels);
+        eprintln!(
+            "SDR vs Butina: {} conformers, {} clusters, ARI(Butina) = {:.4}, ARI(truth) = {:.4}, SDR max distance error {:.3e}",
+            conformers.len(),
+            butina.n_clusters,
+            ari,
+            ari_expected,
+            sdr.max_distance_error
+        );
+        assert!(ari >= 0.9, "SDR/Butina ARI {ari:.4} < 0.9");
+        assert!(ari_expected >= 0.9, "SDR/truth ARI {ari_expected:.4} < 0.9");
+    }
+}

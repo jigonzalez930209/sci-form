@@ -259,6 +259,37 @@ test('An unknown method is an error that lists the supported ones', () => {
   }
 });
 
+test('Periodic KPM DOS and RandNLA adapters', () => {
+  const hBlocks = [
+    { matrix: [[0.0]], translation: [0, 0, 0] },
+    { matrix: [[-1.0]], translation: [1, 0, 0] },
+    { matrix: [[-1.0]], translation: [-1, 0, 0] },
+  ];
+  const sBlocks = [
+    { matrix: [[1.0]], translation: [0, 0, 0] },
+    { matrix: [[0.2]], translation: [1, 0, 0] },
+    { matrix: [[0.2]], translation: [-1, 0, 0] },
+  ];
+  const grid = JSON.stringify([2, 1, 1]);
+  const dos = JSON.parse(
+    wasm.compute_periodic_dos(
+      JSON.stringify(hBlocks), grid, 'monkhorst-pack', 64, -3.0, 3.0, 128, undefined,
+    ),
+  );
+  assert(dos.n_kpoints === 2, `n_kpoints = ${dos.n_kpoints}`);
+  assert(dos.total_dos.length === 128, `DOS points = ${dos.total_dos.length}`);
+  assert(dos.total_dos.every(Number.isFinite), 'DOS must be finite');
+
+  const result = JSON.parse(
+    wasm.solve_periodic_randnla(
+      JSON.stringify(hBlocks), JSON.stringify(sBlocks), 2, grid, 'monkhorst-pack', 1,
+    ),
+  );
+  assert(result.n_kpoints === 2, `n_kpoints = ${result.n_kpoints}`);
+  assert(result.kpoint_results.length === 2, 'one result per k-point');
+  assert(Number.isFinite(result.band_gap_ev), `gap = ${result.band_gap_ev}`);
+});
+
 test('A misspelled line shape is an error, not a silent Lorentzian', () => {
   const elements = JSON.stringify([8, 1, 1]);
   const coords = JSON.stringify([0, 0, 0.1173, 0, 0.7572, -0.4692, 0, -0.7572, -0.4692]);

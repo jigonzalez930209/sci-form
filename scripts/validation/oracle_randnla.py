@@ -67,9 +67,10 @@ def main() -> int:
         "ficha": "F93",
         "oracle": "oracle_randnla.py (numpy eigh + scipy sqrtm/eigh, seed 42)",
         "note": ("single-shot rank-N/4 sketches resolve clustered spectra to ~1e-1, "
-                 "not 1e-3; 1e-3 needs power iterations/oversampling (promotion criterion, "
-                 "not met). Randomized path gated at 5e-3 in the near-identity regime; "
-                 "default config (fallback) gated exact."),
+                 "not 1e-3; re-orthonormalised subspace iterations reach 3.8e-4 at 384 "
+                 "iterations (F93a-bis), so the accuracy criterion is met at a high cost. "
+                 "Randomized path gated at 5e-3 in the near-identity regime; default "
+                 "config (fallback) gated exact."),
         "characterization_tolerance_rel": 0.5,
         "valid_regime_tolerance": 5e-3,
         "inv_sqrt_tolerance_rel": 1e-2,
