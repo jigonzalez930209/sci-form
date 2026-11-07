@@ -6,6 +6,49 @@ the summary below records the substantive work that landed in each release line.
 Future releases should append new sections here so this file remains the maintained,
 human-written changelog for the repository.
 
+## Unreleased (1.1 line) - 2026-11-07
+
+### Validation
+
+- Re-ran the whole external campaign against pinned references (RDKit
+  2026.09.1, PySCF 2.14.0, tblite 0.7.0, dftd4 4.3.0, xtb 6.7.1,
+  multicharge 0.6.0, MOPAC 23.2.5, LAMMPS 29Aug2024_update2, ASE 3.29.0,
+  pormake 0.2.3): 36/36 oracle scripts and 117/117 Rust validation tests
+  pass; `reports/validation/summary.json` holds 127 rows, 120 PASS and 7
+  provenance/method-gap rows, 0 FAIL. Python 3.14.4 is the oracle runtime.
+  The PySCF AO->MO fixture now canonicalises degenerate MO subspaces.
+
+### Dependencies and GPU
+
+- nalgebra 0.35 (simba 0.10) removes the unmaintained `paste` crate;
+  RUSTSEC-2024-0436 is closed and `deny.toml` has no advisory ignores.
+  Workspace MSRV is 1.89.
+- Native `src/gpu/` and the WASM runtime now share wgpu 29. The duplicated
+  naga/ash/wgpu-core trees are gone. `tests/gpu_parity.rs` adds eight real
+  GPU-vs-CPU gates (ERI, Fock, gamma, orbital/density grids, ESP, EEQ, CPM)
+  and skips cleanly without an adapter (`SCIFORM_REQUIRE_GPU=1` makes that a
+  failure). The ERI kernel now rejects p/d/f bases instead of returning
+  silently wrong (ss|ss)-only integrals.
+
+### Performance and docs
+
+- Criterion infrastructure (`benches/core.rs`, `[[bench]] core`).
+- Runnable doctests rise from 15 to 28 (+1 ignored).
+- The MMFF94 page no longer claims the full energy: the implementation is
+  the valence + dispersion subset.
+
+### Experimental tracks
+
+- RandNLA gains re-orthonormalised subspace iterations; the F93 rank-N/4
+  top-k error drops from ~0.13 to 3.8e-4 (<1e-3) at 384 iterations.
+- GSM now refines the saddle with 200 steps at `step_size`; five curved
+  double wells match the analytic barrier and a discrete NEB within 0.8 %.
+- SDR vs Butina is measured with the Adjusted Rand Index (1.0 on 30
+  conformers from three shapes).
+- Python and WASM integration tests cover the periodic KPM/RandNLA
+  adapters. ReaxFF's full ffield parser/analytic gradients and the NMR
+  HOSE/3J experimental set remain open.
+
 ## v1.0.0 - 2026-11-03
 
 The first stable release. v1.0.0 closes **three exhaustive audits** (100 findings
@@ -343,7 +386,8 @@ part of the tagged 1.0.0 build.
 ### Known limitations
 
 - The 1.0 API returns a `Result` from the functions that can fail, but the
-  error type is still `String`. A typed error enum is planned for 1.1.
+  error type is still `String`. A typed error enum is planned for 2.0
+  because changing the public `Result` signatures is a breaking change.
 - The ERI tensor is stored as a full M⁴ `Vec<f64>` (12.8 GB at M = 200).
   There is no packed, Cholesky or density-fitting path yet.
 - The conformer minimiser rebuilds the force field on every MD step.

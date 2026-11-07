@@ -221,6 +221,9 @@ Estas no son "problemas de la auditoría" sino limitaciones con nombre propio, a
 | MMFF94 incompleto | Faltan electrostática, stretch-bend y out-of-plane. Las tablas y el tipado son reales; la documentación ahora dice explícitamente "valence + dispersion". Implementar los tres términos requiere cargas parciales MMFF94 y validación contra RDKit/OpenMM. |
 | 4 módulos GPU que son stubs de CPU | `alpha/kinetics/gpu.rs`, `alpha/periodic_linear/gpu.rs`, `alpha/render_bridge/gpu.rs` y `edl/gpu.rs` siguen siendo wrappers CPU documentados; no hay kernel WGSL. Se mantienen porque su contrato es "misma API con o sin GPU" y los tests verifican la paridad CPU↔CPU, no un offload real. |
 
+El detalle de la ronda, la paridad GPU medida y la revisión experimental
+están en `reports/1.1-experimental-2026-11-07.es.md`.
+
 ---
 
 ## 6. Cómo reproducir la verificación
