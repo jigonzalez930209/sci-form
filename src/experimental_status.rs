@@ -86,6 +86,10 @@
 //! **Benchmark vs ruta estable (2026-10-23)**: `tests/beta_benchmarks.rs`
 //! compara la DOS KPM con diagonalización exacta (DOS integrada 40.17/40,
 //! corrimiento del centro 1e-4, correlación 0.86 con el kernel Jackson).
+//! **Escala (2026-11-07)**: `tests/beta_kpm_validation.rs` añade cadenas
+//! desordenadas de N=200 y N=500; la DOS integrada coincide a <1e-6 relativo
+//! y la energía de Fermi a <0.1 eV. Los criterios 1 (ventaja >2000 átomos) y
+//! 3 (matriz dispersa) siguen abiertos.
 //!
 //! ### EXP-202: Multi-Basin Hopping (MBH)
 //!

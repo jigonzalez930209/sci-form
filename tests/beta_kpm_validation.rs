@@ -200,3 +200,102 @@ fn f91_mulliken_matches_projector() {
     assert!((gk[0] - 1.0).abs() < 1e-15);
     assert!(gk[499] < gk[1]);
 }
+
+/// F91d: KPM remains accurate at the scales where it is meant to compete
+/// with diagonalization. The reference is the exact spectrum of the same
+/// disordered Hückel chain; the gate checks the integrated DOS and the
+/// half-filling Fermi energy (spectral accuracy within 0.1 eV).
+#[test]
+fn f91_kpm_scale_matches_diagonalization() {
+    use nalgebra::SymmetricEigen;
+
+    fn disordered_chain(n: usize) -> DMatrix<f64> {
+        let mut h = DMatrix::zeros(n, n);
+        for i in 0..n {
+            h[(i, i)] = 0.25 * ((i as f64) * 0.37).sin();
+            if i + 1 < n {
+                h[(i, i + 1)] = -1.0;
+                h[(i + 1, i)] = -1.0;
+            }
+        }
+        h
+    }
+
+    fn gaussian_dos(energies: &[f64], grid: &[f64], sigma: f64) -> Vec<f64> {
+        grid.iter()
+            .map(|&e| {
+                energies
+                    .iter()
+                    .map(|&eps| (-((e - eps) / sigma).powi(2)).exp())
+                    .sum::<f64>()
+                    / (sigma * std::f64::consts::PI.sqrt())
+            })
+            .collect()
+    }
+
+    for n in [200usize, 500] {
+        let h = disordered_chain(n);
+        let eigen = SymmetricEigen::new(h.clone());
+        let mut eigenvalues: Vec<f64> = eigen.eigenvalues.iter().copied().collect();
+        eigenvalues.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let lo = eigenvalues[0] - 0.5;
+        let hi = eigenvalues[n - 1] + 0.5;
+        let n_points = 800usize;
+        let grid: Vec<f64> = (0..n_points)
+            .map(|i| lo + (hi - lo) * i as f64 / (n_points - 1) as f64)
+            .collect();
+
+        let config = KpmConfig {
+            order: 400,
+            n_vectors: 0,
+            seed: 42,
+            temperature: 0.0,
+        };
+        let kpm = compute_kpm_dos(&h, &config, lo, hi, n_points);
+        let dx = (hi - lo) / (n_points - 1) as f64;
+        let integral: f64 = kpm.total_dos.iter().sum::<f64>() * dx;
+        let integral_err = (integral - n as f64).abs() / n as f64;
+
+        // Fermi energy at half filling: linear interpolation of the
+        // cumulative KPM DOS, compared with the exact median eigenvalue.
+        let target = n as f64 / 2.0;
+        let mut cum = 0.0;
+        let mut e_fermi = f64::NAN;
+        for i in 1..n_points {
+            let step = 0.5 * (kpm.total_dos[i - 1] + kpm.total_dos[i]) * dx;
+            if cum + step >= target {
+                let frac = (target - cum) / step.max(1e-300);
+                e_fermi = grid[i - 1] + frac * dx;
+                break;
+            }
+            cum += step;
+        }
+        let exact_fermi = 0.5 * (eigenvalues[n / 2 - 1] + eigenvalues[n / 2]);
+
+        // L2 shape vs a Gaussian-broadened exact DOS at the KPM resolution.
+        let sigma = (hi - lo) / config.order as f64;
+        let reference = gaussian_dos(&eigenvalues, &grid, sigma);
+        let num: f64 = kpm
+            .total_dos
+            .iter()
+            .zip(&reference)
+            .map(|(&g, &w)| (g - w).powi(2))
+            .sum();
+        let den: f64 = reference.iter().map(|&w| w * w).sum();
+        let l2 = (num / den.max(1e-300)).sqrt();
+
+        eprintln!(
+            "F91d N={n}: integral {integral:.2}/{n} (err {integral_err:.2e}), \
+             E_F {e_fermi:.4} vs {exact_fermi:.4} eV, L2 {l2:.3e}"
+        );
+        assert!(
+            integral_err <= 0.02,
+            "N={n}: integrated DOS error {integral_err:.3e}"
+        );
+        assert!(
+            (e_fermi - exact_fermi).abs() <= 0.1,
+            "N={n}: E_F {e_fermi:.4} vs {exact_fermi:.4}"
+        );
+        assert!(l2 <= 0.25, "N={n}: DOS L2 {l2:.3e}");
+    }
+}
