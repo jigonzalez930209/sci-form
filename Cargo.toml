@@ -8,10 +8,10 @@ edition = "2021"
 # MSRV. Two floors meet here:
 #   * the dependency graph: indexmap 2.13 requires 1.82;
 #   * the crate's own code: `u64::is_multiple_of` (used for the electron
-#     parity checks) was stabilised in 1.87.
+#     parity checks) was stabilised in 1.87; nalgebra 0.35 needs 1.89.
 # The higher one wins. Verified with `cargo +1.87 check --workspace
 # --all-targets`.
-rust-version = "1.87"
+rust-version = "1.89"
 authors = ["Sci-Form Team"]
 description = "High-performance 3D molecular conformer generation using ETKDG distance geometry"
 license = "MIT"
@@ -115,9 +115,9 @@ flate2 = "1.1"
 petgraph = "0.6.4"
 # The "rand" feature of nalgebra is not used by this crate: dropping it keeps
 # `rand_distr` out of the dependency graph of every downstream build.
-# (`simba` and the unmaintained `paste` it pulls in are *mandatory*
-# dependencies of nalgebra 0.32, so they cannot be removed — see deny.toml.)
-nalgebra = { version = "0.32", default-features = false, features = ["std", "macros"] }
+# (nalgebra 0.35's simba no longer pulls in the unmaintained `paste` crate,
+# which closes RUSTSEC-2024-0436.)
+nalgebra = { version = "0.35", default-features = false, features = ["std", "macros"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rand = "0.8.8"

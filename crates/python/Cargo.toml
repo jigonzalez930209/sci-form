@@ -3,7 +3,7 @@ name = "sci-form-python"
 version = "1.0.0"
 edition = "2021"
 # MSRV — same floor as the core crate (see the root Cargo.toml).
-rust-version = "1.87"
+rust-version = "1.89"
 description = "Python bindings for sci-form 3D conformer generation"
 license = "MIT"
 repository = "https://github.com/jigonzalez930209/sci-form"
@@ -66,5 +66,5 @@ beta-cpm = ["sci-form-core/beta-cpm"]
 sci-form-core = { path = "../..", package = "sci-form", version = "1.0.0", default-features = false }
 pyo3 = { version = "0.26", features = ["extension-module", "serde", "abi3-py38"] }
 rayon = "1.10"
-nalgebra = "0.32"
+nalgebra = "0.35"
 serde_json = "1.0"

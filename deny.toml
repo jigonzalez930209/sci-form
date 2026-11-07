@@ -4,10 +4,9 @@
 # Enforced in CI by the `audit` job in .github/workflows/ci.yml.
 #
 # Policy:
-#   * advisories — every advisory is an error. The single exception is
-#     RUSTSEC-2024-0436 (`paste` is unmaintained), which is a transitive
-#     dependency of `simba` -> `nalgebra` and has no safe upgrade; it is
-#     explicitly ignored below with the reason recorded.
+#   * advisories — every advisory is an error. The nalgebra 0.35 upgrade
+#     dropped `simba`'s `paste` dependency, so RUSTSEC-2024-0436 no longer
+#     appears in the graph and there are no ignore entries.
 #   * licenses  — only permissive, OSI-approved licences are allowed.
 #   * bans      — duplicate versions are warned about (not denied) so a new
 #     duplicate is visible in the CI log instead of passing unnoticed.
@@ -33,18 +32,7 @@ targets = [
 
 [advisories]
 version = 2
-ignore = [
-    # `paste` is archived upstream and has no safe upgrade. It is pulled in by
-    # `simba`, which is pulled in by `nalgebra` (a direct dependency of
-    # sci-form). The fork `pastey` is not a drop-in replacement for
-    # simba's usage, and nalgebra 0.33 (which drops simba) is not released
-    # yet, so the advisory cannot be cleared without dropping nalgebra.
-    #
-    # Risk accepted: `paste` only expands `macro_rules!` at compile time; it
-    # performs no I/O and executes no unsafe code. Re-check when nalgebra
-    # releases a version without `simba`.
-    { id = "RUSTSEC-2024-0436", reason = "unmaintained transitive dep of nalgebra via simba; no safe upgrade available" },
-]
+ignore = []
 
 [licenses]
 version = 2
