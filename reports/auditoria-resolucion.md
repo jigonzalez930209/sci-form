@@ -219,7 +219,7 @@ Estas no son "problemas de la auditoría" sino limitaciones con nombre propio, a
 | ERI O(N⁴) / 12.8 GB con M=200 | El camino GPU ya usa tiles con presupuesto de memoria, pero el tensor CPU sigue siendo M⁴ `f64`. Ruta: density fitting con base auxiliar o Cholesky parcial; requiere contrato de precisión y fixtures nuevos. |
 | sTDA vs TD-SCF | Gap de método del modelo monopolar (~9.7 eV en el caso documentado), no un bug de implementación. Se mantiene documentado; no se promete paridad TD-DFT. |
 | MMFF94 incompleto | Faltan electrostática, stretch-bend y out-of-plane. Las tablas y el tipado son reales; la documentación ahora dice explícitamente "valence + dispersion". Implementar los tres términos requiere cargas parciales MMFF94 y validación contra RDKit/OpenMM. |
-| 4 módulos GPU que son stubs de CPU | `alpha/kinetics/gpu.rs`, `alpha/periodic_linear/gpu.rs`, `alpha/render_bridge/gpu.rs` y `edl/gpu.rs` siguen siendo wrappers CPU documentados; no hay kernel WGSL. Se mantienen porque su contrato es "misma API con o sin GPU" y los tests verifican la paridad CPU↔CPU, no un offload real. |
+| 2 módulos GPU que son stubs de CPU | `alpha/render_bridge/gpu.rs` y `edl/gpu.rs` siguen siendo wrappers CPU documentados. `alpha/kinetics/gpu.rs` (HTST) y `alpha/periodic_linear/gpu.rs` (Bloch H(k)/S(k)) ya tienen kernels WGSL reales. |
 
 El detalle de la ronda, la paridad GPU medida y la revisión experimental
 están en `reports/1.1-experimental-2026-11-07.es.md`.

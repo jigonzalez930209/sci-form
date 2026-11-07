@@ -366,3 +366,81 @@ fn cpm_charges_match_cpu() {
     eprintln!("CPM 2-site max |Δq| = {charge_diff:e}");
     assert!(charge_diff < 1e-5, "CPM charge mismatch: {charge_diff:e}");
 }
+
+#[cfg(feature = "alpha-kinetics")]
+#[test]
+fn htst_sweep_matches_cpu() {
+    use sci_form::alpha::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
+
+    let Some(ctx) = gpu_context("HTST sweep") else {
+        return;
+    };
+    let step = ElementaryStep {
+        step_id: "parity".into(),
+        activation_free_energy_ev: 0.65,
+        reaction_free_energy_ev: -0.20,
+        prefactor_s_inv: None,
+    };
+    let temperatures: Vec<f64> = (0..320).map(|i| 280.0 + 1.5 * i as f64).collect();
+    let cpu = evaluate_htst_temperature_sweep(&step, &temperatures, 1.0).expect("CPU HTST");
+    let gpu =
+        sci_form::alpha::kinetics::gpu::evaluate_htst_sweep_gpu(&ctx, &step, &temperatures, 1.0)
+            .expect("GPU HTST");
+    assert_eq!(cpu.len(), gpu.len());
+    let mut worst = 0.0f64;
+    for (c, g) in cpu.iter().zip(&gpu) {
+        for (a, b) in [
+            (c.forward_rate_s_inv, g.forward_rate_s_inv),
+            (c.reverse_rate_s_inv, g.reverse_rate_s_inv),
+            (c.equilibrium_constant, g.equilibrium_constant),
+        ] {
+            worst = worst.max((a - b).abs() / a.abs().max(1e-300));
+        }
+    }
+    eprintln!("HTST sweep max relative |Δ| = {worst:e}");
+    assert!(worst < 1e-4, "HTST sweep mismatch: {worst:e}");
+}
+
+#[cfg(feature = "alpha-periodic-linear")]
+#[test]
+fn periodic_bloch_assembly_matches_cpu() {
+    use nalgebra::DMatrix;
+    use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshCentering, KMeshConfig};
+
+    let Some(ctx) = gpu_context("periodic Bloch assembly") else {
+        return;
+    };
+    let h0 = DMatrix::from_row_slice(2, 2, &[2.0, 0.1, 0.1, 1.5]);
+    let h1 = DMatrix::from_row_slice(2, 2, &[0.2, -0.05, 0.15, 0.3]);
+    let s0 = DMatrix::identity(2, 2);
+    let s1 = DMatrix::from_row_slice(2, 2, &[0.1, 0.0, 0.0, 0.1]);
+    let h_blocks: Vec<(&DMatrix<f64>, [i32; 3])> = vec![(&h0, [0, 0, 0]), (&h1, [1, 0, 0])];
+    let s_blocks: Vec<(&DMatrix<f64>, [i32; 3])> = vec![(&s0, [0, 0, 0]), (&s1, [1, 0, 0])];
+    let mesh = monkhorst_pack_mesh(&KMeshConfig {
+        grid: [5, 4, 4],
+        centering: KMeshCentering::MonkhorstPack,
+    })
+    .expect("mesh");
+    assert!(mesh.points.len() >= 64);
+
+    let (h_cpu, s_cpu) =
+        sci_form::alpha::periodic_linear::assemble_periodic_operators(&h_blocks, &s_blocks, &mesh);
+    let (h_gpu, s_gpu) = sci_form::alpha::periodic_linear::gpu::assemble_periodic_operators_gpu(
+        &ctx, &h_blocks, &s_blocks, &mesh,
+    );
+    assert_eq!(h_gpu.len(), h_cpu.len());
+    assert_eq!(s_gpu.len(), s_cpu.len());
+    let mut worst = 0.0f64;
+    for (g, c) in h_gpu.iter().zip(&h_cpu).chain(s_gpu.iter().zip(&s_cpu)) {
+        for i in 0..g.nrows() {
+            for j in 0..g.ncols() {
+                worst = worst.max((g[(i, j)] - c[(i, j)]).abs());
+            }
+        }
+    }
+    eprintln!(
+        "Periodic Bloch max |Δ| = {worst:e} ({} k-points)",
+        mesh.points.len()
+    );
+    assert!(worst < 1e-4, "periodic Bloch mismatch: {worst:e}");
+}

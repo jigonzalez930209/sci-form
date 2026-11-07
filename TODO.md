@@ -230,12 +230,13 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] Límites de escalado documentados (plan §14.3: tiempos por método y memoria ERI O(N⁴))
 
 ### 18. Experimental Tracks Pendientes de Validación para Promoción
+- [x] **KPM a escala** (2026-11-07): gate N=200 y N=500 vs diagonalización exacta; DOS integrada <1e-6 relativo y E_F a <0.1 eV. Faltan matriz dispersa y benchmark >2000 átomos para los criterios 1 y 3.
 - [x] **RandNLA subspace iterations** (2026-11-07): `NystromApprox::from_matrix_with_power_iterations` + `RandNlaConfig::power_iterations` (default 2, re-ortogonalizado). Con 384 iteraciones el rank-N/4 de F93 baja de ~0.13 a 3.8e-4 (<1e-3, criterio 2 del fixture). Quedan abiertos el backend opcional EHT/SCF y el speedup N>500.
 - [x] **GSM vs NEB en 5+ reacciones** (2026-11-07): cinco pozos curvos con MEP parabólico y barrera exacta `a⁴`; GSM y NEB discreto a ≤0.8 % y con la analítica. Se corrigió el refinamiento del saddle (20 pasos fijos → 200 con `step_size`), que dejaba las barreras ~12 % altas.
 - [x] **SDR vs Butina con métrica definida** (2026-11-07): ARI entre el k-means del embedding SDR (matriz de RMSD Kabsch) y Butina en 30 conformeros de tres formas = 1.0, también contra la verdad sintética (`tests/beta_benchmarks.rs`).
 - [x] **Adaptadores periódicos KPM/RandNLA en Python/WASM** (2026-11-07): ya existían en ambos bindings; se añadieron tests de integración con bloques reales (DOS de cadena 1-orbital y solve RandNLA en malla 2×1×1).
 - [ ] **ReaxFF**: el parser de `ffield` solo cubre la tabla de pares C/H/O transcrita; falta el parser completo (atom/bond/angle/torsion/hbond) y los gradientes analíticos (hoy diferencias centrales, 6·N energías).
-- [ ] **NMR HOSE**: sigue bloqueado por la base externa (NMRShiftDB2/SDBS, licencia CC-BY-SA) y falta validar ³J contra un set experimental (el gate F54 usa la calculadora HLA de referencia).
+- [ ] **NMR HOSE**: sigue bloqueado por la base externa (NMRShiftDB2/SDBS, licencia CC-BY-SA). Se añadió un ancla experimental de ³J para benceno (7.54 Hz vs 8.06 del modelo); falta el set completo y los parámetros Karplus sp2.
 - [x] Validación cuantitativa por submódulo (beta): `tests/beta_benchmarks.rs` con benchmarks feature-gated frente a referencias exactas — KPM DOS vs diagonalización (DOS integrada 40.17/40, centro 1e-4, corr 0.86 con el kernel Jackson), Nyström vs SVD exacta (error ≤ 2× el mejor rank-k y decreciente), MBH vs Hessiano analítico proyectado (desviación máxima 2.6 %, modos casi nulos con ruido de diferencias finitas ~5 cm⁻¹), CPM vs forma cerrada de dos sitios (1.3e-15), Riemannian vs Gram exacto de un tetraedro (violación 6.0e-9), SDR vs MDS clásico (6.7e-16) y GSM vs MEP analítico de cinco pozos dobles (error relativo de barrera 0). Queda evidencia parcial en E1/E2/E4/E5/E6/E7/E9/E11; los criterios de promoción viven en `src/experimental_status.rs`
 - [x] Benchmarking frente a rutas estables: KPM vs diagonalización, Nyström vs SVD exacta, MBH vs Hessiano analítico, CPM vs forma cerrada, Riemannian vs Gram exacto, SDR vs MDS clásico y GSM vs MEP analítico implementados y verdes en `tests/beta_benchmarks.rs` (feature-gated). **Cerrados 2026-11-07**: GSM vs NEB en 5 pozos curvos (≤0.8 %) y SDR vs Butina con ARI = 1.0
 - [x] Criterios claros de promoción experimental → producción (`src/experimental_status.rs`, actualizado con la evidencia actual)
@@ -255,7 +256,9 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] **Gradientes PM3/xTB analíticos**: proyecto de investigación; hoy diferencias centrales exactas (6·N SCF).
 - [ ] **ERI density fitting/Cholesky**: el tensor CPU sigue siendo M⁴ `f64`; el camino GPU ya está tileado.
 - [ ] **MMFF94 completo**: faltan electrostática, stretch-bend y out-of-plane; la documentación ya no dice "full".
-- [ ] **4 stubs GPU de CPU**: `alpha/kinetics/gpu.rs`, `alpha/periodic_linear/gpu.rs`, `alpha/render_bridge/gpu.rs`, `edl/gpu.rs`; documentados, sin kernel WGSL.
+- [x] **HTST GPU real** (2026-11-07): `alpha/kinetics/gpu.rs` evalúa el barrido Eyring/Arrhenius en WGSL; 320 temperaturas a 6e-6 relativo vs CPU.
+- [x] **Bloch periódico GPU real** (2026-11-07): `alpha/periodic_linear/gpu.rs` ensambla H(k)/S(k) en WGSL; 80 k-points a 5.8e-8 vs CPU.
+- [ ] **2 stubs GPU de CPU**: `alpha/render_bridge/gpu.rs` y `edl/gpu.rs`; documentados, sin kernel WGSL.
 - [ ] **sTDA vs TD-SCF**: gap de método documentado; no se promete paridad.
 
 ---
