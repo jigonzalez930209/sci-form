@@ -9,8 +9,10 @@
 //! `beta-randnla` feature flag (alias: `experimental-randnla`). The
 //! validation gate is `tests/beta_randnla_validation.rs` (F93): the
 //! rank-N/4 approximation error is characterised against the exact
-//! solution. The "<1 % error at rank = N/4" promotion criterion is **not**
-//! yet met; see [`crate::experimental_status`].
+//! solution. The accuracy criterion is met with subspace iterations at a
+//! high cost; the optional EHT backend is exposed as
+//! [`crate::eht::solve_eht_randnla`], while the N>500 speedup remains open.
+//! See [`crate::experimental_status`].
 //!
 //! # Units
 //!

@@ -205,6 +205,87 @@ pub fn solve_eht(
     })
 }
 
+/// Solve the EHT generalized eigenproblem with the randomized Nyström
+/// backend.
+///
+/// This is the optional EHT backend promised by the RandNLA promotion
+/// criteria: the Hamiltonian and overlap matrices are assembled exactly as in
+/// [`solve_eht`], then the generalized eigenproblem is solved by
+/// [`crate::beta::rand_nla::solve_eht_randnla`]. The returned [`EhtResult`]
+/// carries the usual orbital metadata and the [`RandNlaInfo`] records the
+/// sketch rank, residual and whether the exact fallback fired.
+///
+/// The feature must be enabled (`beta-randnla`); callers that do not need the
+/// randomized path should keep using [`solve_eht`].
+///
+/// # Errors
+///
+/// Same as [`solve_eht`], plus any error from the geometry/EHT basis setup.
+#[cfg(feature = "beta-randnla")]
+pub fn solve_eht_randnla(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    k: Option<f64>,
+    config: &crate::beta::rand_nla::RandNlaConfig,
+) -> Result<(EhtResult, crate::beta::rand_nla::RandNlaInfo), String> {
+    use super::basis::build_basis;
+    use super::hamiltonian::build_hamiltonian;
+    use super::overlap::build_overlap_matrix;
+    use crate::beta::rand_nla::solve_eht_randnla as solve_randnla;
+
+    crate::validation::validate_geometry(elements, positions)?;
+
+    let support = analyze_eht_support(elements);
+    if !support.unsupported_elements.is_empty() {
+        return Err(support.warnings.join(" "));
+    }
+
+    let basis = build_basis(elements, positions);
+    if basis.is_empty() {
+        return Err("No valence orbitals found for given elements".to_string());
+    }
+
+    let s = build_overlap_matrix(&basis);
+    let h = build_hamiltonian(&basis, &s, k);
+    let (energies, c, info) = solve_randnla(&h, &s, config);
+
+    let n_electrons = count_valence_electrons(elements);
+    let n_orbitals = basis.len();
+    let n_occupied = n_electrons.div_ceil(2);
+    let homo_idx = if n_occupied > 0 && n_occupied <= n_orbitals {
+        n_occupied - 1
+    } else if n_orbitals > 0 {
+        0
+    } else {
+        return Err("No orbitals in EHT basis".to_string());
+    };
+    let lumo_idx = if n_occupied < n_orbitals {
+        n_occupied
+    } else {
+        homo_idx
+    };
+    let homo_energy = energies[homo_idx];
+    let lumo_energy = energies[lumo_idx];
+    let coefficients: Vec<Vec<f64>> = (0..n_orbitals)
+        .map(|row| (0..n_orbitals).map(|col| c[(row, col)]).collect())
+        .collect();
+
+    Ok((
+        EhtResult {
+            energies: energies.iter().copied().collect(),
+            coefficients,
+            n_electrons,
+            homo_index: homo_idx,
+            lumo_index: lumo_idx,
+            homo_energy,
+            lumo_energy,
+            gap: lumo_energy - homo_energy,
+            support,
+        },
+        info,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

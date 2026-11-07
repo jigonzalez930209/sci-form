@@ -77,9 +77,13 @@ default config exact incl. exercised fallback at N=96.
 **Subspace iterations (2026-11-07):** `NystromApprox::from_matrix_with_power_iterations`
 and `RandNlaConfig::power_iterations` add re-orthonormalised power iterations.
 With 384 iterations the same rank-N/4 sketches reach 3.8e-4 (F93a-bis), so
-the <1e-3 accuracy criterion is met for the fixture. The cost is high; wiring
-the randomized path into the EHT/SCF solver and the N>500 speedup are still
-open, so the track stays beta.
+the <1e-3 accuracy criterion is met for the fixture.
+
+**EHT backend (2026-11-07):** `eht::solve_eht_randnla` assembles the EHT
+Hamiltonian/overlap exactly as `solve_eht` and routes the generalized
+eigenproblem through the randomized solver, returning the usual `EhtResult`
+plus the rank/residual/fallback metadata. The N>500 speedup is still open, so
+the track stays beta.
 
 ## Tests
 

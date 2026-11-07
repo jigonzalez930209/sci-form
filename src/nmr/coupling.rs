@@ -158,6 +158,26 @@ pub fn hla_coupling(phi_rad: f64, substituents: &[(f64, f64)]) -> f64 {
 
 /// Get Karplus parameters based on the coupled pathway atoms.
 /// Returns pathway-specific parameters for H-X-Y-H coupling.
+fn get_karplus_params_for_bond(
+    x_elem: u8,
+    y_elem: u8,
+    order: crate::graph::BondOrder,
+) -> KarplusParams {
+    use crate::graph::BondOrder;
+    // Ethylene-like H-C=C-H: cis (φ=0) ≈ 11.7 Hz and trans (φ=180) ≈ 19.0 Hz.
+    // Fitting those two anchors with the usual cos²/cos form gives
+    // a=15.35, b=−3.65, c=0. Aromatic C-C keeps the generic H-C-C-H set,
+    // which reproduces the benzene ortho coupling (8.06 vs 7.54 Hz).
+    if matches!(order, BondOrder::Double) && matches!((x_elem, y_elem), (6, 6)) {
+        return KarplusParams {
+            a: 15.35,
+            b: -3.65,
+            c: 0.0,
+        };
+    }
+    get_karplus_params(x_elem, y_elem)
+}
+
 fn get_karplus_params(x_elem: u8, y_elem: u8) -> KarplusParams {
     match (x_elem, y_elem) {
         // H-C-C-H: Standard Altona & Sundaralingam (1972)
@@ -288,11 +308,11 @@ pub fn predict_j_couplings(mol: &crate::graph::Molecule, positions: &[[f64; 3]])
                     n_bonds: 2,
                     coupling_type: "geminal_2J".to_string(),
                 });
-            } else if mol.graph.find_edge(p1, p2).is_some() {
+            } else if let Some(bond) = mol.graph.find_edge(p1, p2) {
                 // ³J vicinal coupling (H-X-Y-H pathway)
                 let x_elem = mol.graph[p1].element;
                 let y_elem = mol.graph[p2].element;
-                let params = get_karplus_params(x_elem, y_elem);
+                let params = get_karplus_params_for_bond(x_elem, y_elem, mol.graph[bond].order);
 
                 let j_hz = if has_3d {
                     let phi = dihedral_angle(

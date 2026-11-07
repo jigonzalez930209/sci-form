@@ -210,3 +210,66 @@ fn f93_production_default_exact() {
         assert!(worst <= fix.production_tolerance, "N={}: {worst:.3e}", c.n);
     }
 }
+
+/// F93d: the randomized backend is wired into the EHT solver.
+///
+/// The exact path (sketch rank = n) must reproduce `solve_eht`; the
+/// randomized path (rank n/2, fallback off) must stay within 0.1 eV for the
+/// frontier orbitals and gap on the test set.
+#[test]
+fn f93_eht_randnla_backend_matches_exact() {
+    use sci_form::beta::rand_nla::RandNlaConfig;
+    use sci_form::eht::{solve_eht, solve_eht_randnla};
+
+    for smiles in ["c1ccccc1", "c1ccc2ccccc2c1"] {
+        let conformer = sci_form::embed(smiles, 42);
+        assert!(conformer.error.is_none(), "{smiles}: embed failed");
+        let positions: Vec<[f64; 3]> = conformer
+            .coords
+            .chunks_exact(3)
+            .map(|p| [p[0], p[1], p[2]])
+            .collect();
+        let exact = solve_eht(&conformer.elements, &positions, None).expect("exact EHT");
+        let n = exact.energies.len();
+
+        let exact_cfg = RandNlaConfig {
+            sketch_size: Some(n),
+            seed: 42,
+            fallback_enabled: false,
+            ..Default::default()
+        };
+        let (same, info) =
+            solve_eht_randnla(&conformer.elements, &positions, None, &exact_cfg).expect("EHT");
+        assert!(!info.used_fallback);
+        let worst = same
+            .energies
+            .iter()
+            .zip(&exact.energies)
+            .fold(0.0f64, |m, (&a, &b)| m.max((a - b).abs()));
+        assert!(
+            worst < 1e-9,
+            "{smiles}: exact-rank difference {worst:.3e} eV"
+        );
+
+        let rand_cfg = RandNlaConfig {
+            sketch_size: Some(n.saturating_sub(1).max(2)),
+            seed: 42,
+            max_error: 10.0,
+            fallback_enabled: false,
+            power_iterations: 8,
+        };
+        let (rand, rand_info) =
+            solve_eht_randnla(&conformer.elements, &positions, None, &rand_cfg).expect("EHT");
+        assert!(!rand_info.used_fallback);
+        let dh = (rand.homo_energy - exact.homo_energy).abs();
+        let dl = (rand.lumo_energy - exact.lumo_energy).abs();
+        let dg = (rand.gap - exact.gap).abs();
+        println!(
+            "F93d {smiles} n={n} k={}: |dHOMO| {dh:.3e}, |dLUMO| {dl:.3e}, |dGAP| {dg:.3e}, resid {:.2e}",
+            rand_info.k, rand_info.residual_error
+        );
+        assert!(dh < 0.1, "{smiles}: HOMO {dh:.3e} eV");
+        assert!(dl < 0.1, "{smiles}: LUMO {dl:.3e} eV");
+        assert!(dg < 0.1, "{smiles}: gap {dg:.3e} eV");
+    }
+}

@@ -29,6 +29,8 @@ pub use params::{
     analyze_eht_support, is_transition_metal, support_level_for_element, EhtParams, EhtSupport,
     OrbitalDef, SupportLevel,
 };
+#[cfg(feature = "beta-randnla")]
+pub use solver::solve_eht_randnla;
 pub use solver::{solve_eht, EhtResult};
 #[cfg(feature = "parallel")]
 pub use volume::evaluate_orbital_on_grid_parallel;

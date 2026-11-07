@@ -146,9 +146,12 @@
 //! `from_matrix_with_power_iterations` y `RandNlaConfig::power_iterations`
 //! (default 2; re-ortogonaliza cada iteración). Con 384 iteraciones el rank
 //! N/4 de F93 baja a 3.8e-4, así que el **criterio 2 (<1e-3) queda cumplido**
-//! para el fixture; el coste es alto y los criterios 1 (integrarlo como
-//! backend opcional del solver EHT/SCF, no solo la función suelta) y 3
-//! (speedup N>500) siguen abiertos.
+//! para el fixture.
+//!
+//! **Backend EHT (2026-11-07)**: `eht::solve_eht_randnla` expone el solver
+//! aleatorizado como backend opcional (feature `beta-randnla`), con la misma
+//! geometría/basis EHT y metadatos de residuo/fallback. El criterio 1 queda
+//! cubierto; el **criterio 3 (speedup N>500)** sigue abierto.
 //!
 //! **Benchmark vs ruta estable (2026-10-23)**: Nyström vs SVD exacta en
 //! `tests/beta_benchmarks.rs`; el error de reconstrucción queda ≤ 2× el mejor
