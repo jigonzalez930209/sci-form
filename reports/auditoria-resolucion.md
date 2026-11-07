@@ -182,9 +182,9 @@ Estas no son "problemas de la auditoría" sino limitaciones con nombre propio, a
 |---|---|---|
 | Gradiente PM3 por diferencias centrales (6·N SCF) en lugar de analítico | `src/pm3/gradients.rs` | coste, no exactitud (el error anterior de 18.4 eV/Å está corregido) |
 | Gradiente xTB (GFN2) por diferencias centrales (6·N SCC) en lugar de analítico | `src/xtb/gradients.rs` | coste, no exactitud (el error anterior de 209–263 eV/Å está corregido) |
-| Gradiente KS-DFT: gate F80 solo cerrado (RKS); sin gate UKS | `src/dft/gradient.rs` | el supuesto «falta la respuesta XC» era un error de unidades del test |
-| sTDA sin término de intercambio | `src/spectroscopy/stda_uvvis.rs` | 16 eV vs TD-SCF (gap de método) |
-| `EHT` sin paridad de energía externa | `src/eht/` | solo la tabla de parámetros está verificada (F31) |
+| Gradiente KS-DFT: F80 cubre RKS y UKS (UKS añadido 2026-11-02) | `src/dft/gradient.rs` | el supuesto «falta la respuesta XC» era un error de unidades del test |
+| sTDA con término de intercambio (`StdaConfig::ax`); queda el gap de método del modelo monopolar frente a TD-SCF | `src/spectroscopy/stda_uvvis.rs` | ~9.7 eV vs TD-SCF, diferencia de método |
+| `EHT` con paridad de energía/overlap y de parámetros metálicos (F86/F86b) | `src/eht/` | S 7.5e-13 · H 1.4e-11 eV · E 1.25e-11 eV · HOMO/gap ~1e-12 eV |
 | `NPA/NBO` simplificado | `src/population/npa.rs` | usa Z nuclear en vez de valencia |
 | `KPM`/`RandNLA` no cumplen criterios de promoción | `src/beta/{kpm,rand_nla}/` | 1e-3 en rank N/4 no alcanzado (~0.13) |
 | `MBH` ±2 cm⁻¹ experimental | `src/beta/mbh/` | 1.3e-5 contra forma cerrada SI |

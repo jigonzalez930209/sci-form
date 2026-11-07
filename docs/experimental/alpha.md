@@ -686,10 +686,10 @@ console.log(`Packed chart: ${packed.n_columns} columns, ${packed.column_names.jo
 
 ```toml
 [dependencies]
-sci-form = { version = "0.15", features = ["alpha-dft", "alpha-reaxff", "alpha-mlff"] }
+sci-form = { version = "1.0", features = ["alpha-dft", "alpha-reaxff", "alpha-mlff"] }
 
 # All alpha modules:
-sci-form = { version = "0.15", features = [
+sci-form = { version = "1.0", features = [
     "alpha-dft", "alpha-reaxff", "alpha-mlff",
     "alpha-obara-saika", "alpha-cga", "alpha-gsm",
     "alpha-sdr", "alpha-dynamics-live", "alpha-imd",
@@ -698,7 +698,7 @@ sci-form = { version = "0.15", features = [
 ] }
 
 # Alpha + parallelization:
-sci-form = { version = "0.15", features = [
+sci-form = { version = "1.0", features = [
     "alpha-mlff", "alpha-reaxff", "parallel"
 ] }
 ```

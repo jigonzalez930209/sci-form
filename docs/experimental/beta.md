@@ -270,15 +270,15 @@ print(f"total charge: {result.total_charge:.4f} e")
 
 ```toml
 [dependencies]
-sci-form = { version = "0.15", features = ["beta-kpm", "beta-mbh"] }
+sci-form = { version = "1.0", features = ["beta-kpm", "beta-mbh"] }
 
 # All beta modules:
-sci-form = { version = "0.15", features = [
+sci-form = { version = "1.0", features = [
     "beta-kpm", "beta-mbh", "beta-randnla", "beta-riemannian", "beta-cpm"
 ] }
 
 # Beta + parallelization:
-sci-form = { version = "0.15", features = [
+sci-form = { version = "1.0", features = [
     "beta-kpm", "beta-randnla", "parallel"
 ] }
 ```

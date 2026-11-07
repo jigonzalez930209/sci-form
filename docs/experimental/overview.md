@@ -123,16 +123,16 @@ The older `experimental-*` feature flags remain available at their existing modu
 ```toml
 [dependencies]
 # Alpha modules
-sci-form = { version = "0.15", features = ["alpha-dft", "alpha-reaxff"] }
+sci-form = { version = "1.0", features = ["alpha-dft", "alpha-reaxff"] }
 
 # Beta modules
-sci-form = { version = "0.15", features = ["beta-kpm", "beta-randnla"] }
+sci-form = { version = "1.0", features = ["beta-kpm", "beta-randnla"] }
 
 # Legacy experimental
-sci-form = { version = "0.15", features = ["experimental-d4", "experimental-kpm"] }
+sci-form = { version = "1.0", features = ["experimental-d4", "experimental-kpm"] }
 
 # Everything + parallel
-sci-form = { version = "0.15", features = [
+sci-form = { version = "1.0", features = [
     "alpha-dft", "alpha-reaxff", "alpha-mlff",
     "beta-kpm", "beta-randnla",
     "experimental-d4",

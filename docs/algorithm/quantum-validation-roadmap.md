@@ -24,7 +24,7 @@ The following values were recovered from the existing regression suite on 2026-0
 
 Source: existing comprehensive table in [tests/regression/test_experimental_comparison.rs](https://github.com/jigonzalez930209/sci-form/blob/main/tests/regression/test_experimental_comparison.rs).
 
-| Molecule | PM3 gap (eV) | xTB gap (eV, current `solve_xtb` = GFN0 SCC) | STO-3G HF reference energy (Ha) |
+| Molecule | PM3 gap (eV) | legacy xTB gap (eV, historical `solve_xtb` = GFN0 SCC) | STO-3G HF reference energy (Ha) |
 |----------|--------------|----------------------------------------------|----------------------------------|
 | H2 | 44.054 | 18.980 | -1.1175 |
 | H2O | 1.839 | 25.579 | -74.9659 |
@@ -38,7 +38,7 @@ Source: existing comprehensive table in [tests/regression/test_experimental_comp
 What this table tells us:
 
 - The repo already exposes a reproducible compact comparison surface for PM3 and the current xTB path.
-- The current `xTB` regression output is GFN0-style SCC from `solve_xtb`, not GFN1 or GFN2.
+- The 2026-03-24 snapshot used the now-legacy `solve_xtb` path (GFN0-style SCC), not GFN1 or GFN2. The current public surface is GFN2 (`compute_xtb`), gated against tblite by F45.
 - These values are useful for trend monitoring, but they are not directly comparable to STO-3G HF total energies because they are different observables.
 - **Nota (2026-10-13)**: `solve_xtb` dejó de ser el solver público de xTB — `compute_xtb` y `compute_xtb_gradient`-consumers ya usan GFN2, y el Hessiano/DOS/mesh migraron a `solve_gfn2`; `solve_xtb` ya no lo usa ningún backend (2026-11-03: NEB/MD `"xtb"` = GFN2); queda como API legacy. La tabla de arriba es un snapshot histórico (2026-03-24) del módulo `legacy_vs_experimental_*`, que sigue ejercitando deliberadamente el camino legacy.
 
@@ -93,7 +93,7 @@ Do not force a single 1% rule onto every observable.
 
 - Reference source: official xTB/CREST outputs or published benchmark sets, not experiment alone.
 - Primary observables: conformer energetics, charges, dipoles, gradients, and structural preferences.
-- Current data note: the existing regression table is already producing GFN0-style gaps through `solve_xtb`; this is enough to establish a first compact regression baseline before introducing external benchmark corpora.
+- Current data note: the 2026-03-24 regression table used the legacy `solve_xtb` path; the current baseline is GFN2-xTB, validated against tblite by F45. The checked-in artefact is `reports/validation/summary.json` (127 fichas).
 - Suggested benchmark families: S66/S66x8, WATER27, HAL59, ICONF, MOR41, and a small metal-organic subset already supported by the parameter table.
 - Suggested thresholds:
   - conformer energy ranking: correct ordering on benchmark subsets
@@ -119,7 +119,7 @@ Do not force a single 1% rule onto every observable.
   - halogen-bond cases: chlorinated / brominated / iodinated probes
   - transition-metal cases: the supported metal subset already present in the xTB parameter table
 - Store the reference observable for each molecule: energy, geometry, charge distribution, dipole, and gradient norm when available.
-- Immediate action: promote the current compact gap table above into a checked-in baseline artifact so the project stops depending on console output as the only source of truth.
+- Done (2026-11-07): the compact gap table above is historical; the live baseline is `reports/validation/summary.json` (127 fichas, 120 passing and 7 provenance-only).
 
 ### Phase 2: Separate the models cleanly
 

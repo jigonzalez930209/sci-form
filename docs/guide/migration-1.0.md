@@ -1,8 +1,8 @@
 # Migrating from 0.15.x to 1.0.0
 
-`sci-form` 1.0.0 is the first stable release. It closes two exhaustive audits
+`sci-form` 1.0.0 is the first stable release. It closes three exhaustive audits
 (100 findings in [`reports/auditoria-total.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/auditoria-total.md),
-59 blockers in [`reports/v1.0-blockers.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/v1.0-blockers.md)).
+88 blockers in [`reports/v1.0-blockers.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/v1.0-blockers.md)).
 
 Almost everything in this guide is **additive**: the deprecated names still
 work, they just warn. The genuinely breaking changes are the ones where a

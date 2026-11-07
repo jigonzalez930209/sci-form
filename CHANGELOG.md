@@ -6,9 +6,63 @@ the summary below records the substantive work that landed in each release line.
 Future releases should append new sections here so this file remains the maintained,
 human-written changelog for the repository.
 
-## Unreleased
+## v1.0.0 - 2026-11-03
+
+The first stable release. v1.0.0 closes **three exhaustive audits** (100 findings
+in `reports/auditoria-total.md`, 88 findings in `reports/v1.0-blockers.md`) and
+raises the floor on everything that matters for a chemistry library: the crate
+no longer panics on user input, its results are reproducible bit-for-bit
+regardless of the machine's core count, every public item is documented, and
+the published artefact is 13 MB smaller.
+
+**Upgrade guide:** [`docs/guide/migration-1.0.md`](docs/guide/migration-1.0.md)
+lists every breaking change. The short version: the functions that can fail
+now return a `Result` instead of panicking, and the canonical name of every
+capability is the Rust root name in all four surfaces.
+
+### Security and robustness
+
+- **The library no longer panics on user input.** 164 panicking sites in the
+  library code were classified; the 39 reachable from a malformed molecule, a
+  degenerate geometry or an unsupported element were eliminated.
+  - A new shared validator (`src/validation.rs`) rejects a length mismatch
+    between the elements and the coordinates, a non-finite coordinate and an
+    empty system with one actionable message, and it guards every public
+    entry point that takes a geometry.
+  - The same validator family now also checks the parameters that reach a
+    kernel: a partial-charge vector of the wrong length, a non-finite charge,
+    a dielectric constant outside `ε >= 1.0` and a negative probe radius.
+  - All 30 `partial_cmp(...).unwrap()` sites became `unwrap_or(Ordering::Equal)`.
+    A single NaN coordinate used to panic the whole library.
+  - `Molecule::from_smiles("[")` returns an error instead of panicking, and
+    the SMILES parse errors now carry the position and the offending fragment
+    instead of a bare `Expected ')'`.
+  - `compute_uhf` validates the charge and the multiplicity against the real
+    electron count instead of casting a negative `i32` to `usize`.
+  - The GFN0 public helpers, `solve_gfn0`, the PM3 faithful solver, the DOS,
+    the orbital mesh and the ESP grid validate their parameters. A zero
+    spacing or a zero point count used to return an EMPTY result in release
+    builds — a debug-only panic let CI stay green while the published crate
+    returned garbage.
+  - `GasteigerConfig` rejects `max_iter = 0` and a non-positive damping; those
+    used to yield all-zero charges while reporting `converged = true`.
+  - `embed_batch` clamps the thread count (`1 << 20` used to hang forever) and
+    propagates the pool-creation error.
+  - The SMARTS parser returns parse errors instead of `panic!`.
+- **The WASM error encoder produced invalid JSON.** serde_json embeds the
+  offending value in quotes, so `{"error":"invalid type: string "abc"…"}` did
+  not parse and `JSON.parse()` threw instead of showing the error. Every WASM
+  error path was affected. It now builds the payload with serde_json, and a
+  test parses the output back.
+- **A panic inside a PyO3 function is a `PanicException`**, which inherits from
+  `BaseException` and is therefore NOT caught by `except Exception:`. With the
+  panics removed from the core, the Python surface now raises ordinary
+  exceptions.
 
 ### Fixed
+
+These are the fixes that landed after the 2026-10-22 audit freeze; they are
+part of the tagged 1.0.0 build.
 
 - **`pm3-gradient` / `xtb-gradient` (and the NEB/MD `pm3` / `xtb` backends) returned
   wrong forces.** The hand-written Hellmann-Feynman/Pulay expressions
@@ -73,61 +127,6 @@ human-written changelog for the repository.
 - The `topology_data.rs` clippy `approx_constant` error and the stale
   `full_pipeline_ethanol_rearrangement` frame count (a single product has a
   single departure frame).
-
-## v1.0.0 - 2026-10-22
-
-The first stable release. v1.0.0 closes **three exhaustive audits** (100 findings
-in `reports/auditoria-total.md`, 88 findings in `reports/v1.0-blockers.md`) and
-raises the floor on everything that matters for a chemistry library: the crate
-no longer panics on user input, its results are reproducible bit-for-bit
-regardless of the machine's core count, every public item is documented, and
-the published artefact is 13 MB smaller.
-
-**Upgrade guide:** [`docs/guide/migration-1.0.md`](docs/guide/migration-1.0.md)
-lists every breaking change. The short version: the functions that can fail
-now return a `Result` instead of panicking, and the canonical name of every
-capability is the Rust root name in all four surfaces.
-
-### Security and robustness
-
-- **The library no longer panics on user input.** 164 panicking sites in the
-  library code were classified; the 39 reachable from a malformed molecule, a
-  degenerate geometry or an unsupported element were eliminated.
-  - A new shared validator (`src/validation.rs`) rejects a length mismatch
-    between the elements and the coordinates, a non-finite coordinate and an
-    empty system with one actionable message, and it guards every public
-    entry point that takes a geometry.
-  - The same validator family now also checks the parameters that reach a
-    kernel: a partial-charge vector of the wrong length, a non-finite charge,
-    a dielectric constant outside `ε >= 1.0` and a negative probe radius.
-  - All 30 `partial_cmp(...).unwrap()` sites became `unwrap_or(Ordering::Equal)`.
-    A single NaN coordinate used to panic the whole library.
-  - `Molecule::from_smiles("[")` returns an error instead of panicking, and
-    the SMILES parse errors now carry the position and the offending fragment
-    instead of a bare `Expected ')'`.
-  - `compute_uhf` validates the charge and the multiplicity against the real
-    electron count instead of casting a negative `i32` to `usize`.
-  - The GFN0 public helpers, `solve_gfn0`, the PM3 faithful solver, the DOS,
-    the orbital mesh and the ESP grid validate their parameters. A zero
-    spacing or a zero point count used to return an EMPTY result in release
-    builds — a debug-only panic let CI stay green while the published crate
-    returned garbage.
-  - `GasteigerConfig` rejects `max_iter = 0` and a non-positive damping; those
-    used to yield all-zero charges while reporting `converged = true`.
-  - `embed_batch` clamps the thread count (`1 << 20` used to hang forever) and
-    propagates the pool-creation error.
-  - The SMARTS parser returns parse errors instead of `panic!`.
-- **The WASM error encoder produced invalid JSON.** serde_json embeds the
-  offending value in quotes, so `{"error":"invalid type: string "abc"…"}` did
-  not parse and `JSON.parse()` threw instead of showing the error. Every WASM
-  error path was affected. It now builds the payload with serde_json, and a
-  test parses the output back.
-- **A panic inside a PyO3 function is a `PanicException`**, which inherits from
-  `BaseException` and is therefore NOT caught by `except Exception:`. With the
-  panics removed from the core, the Python surface now raises ordinary
-  exceptions.
-
-### Fixed
 
 - **A misspelled method name silently changed the result.** The method names
   were parsed by every binding with its own `match`, and the copies had

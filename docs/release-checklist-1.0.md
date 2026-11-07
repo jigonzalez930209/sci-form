@@ -14,8 +14,8 @@ Legend: `[x]` done, `[ ]` pending.
       every feature flag on.
 - [x] `cargo clippy --workspace --all-targets --features "<all>" -- -D warnings`
       is clean (0 warnings).
-- [x] `cargo test --lib --release` → 891 passed, 0 failed, 0 ignored
-      (1023 passed with the CI feature set).
+- [x] `cargo test --lib --release` → 890 passed, 0 failed, 0 ignored
+      (1022 passed with the CI feature set).
 - [x] `cargo test --doc --release` → 17 passed, 0 failed, 1 ignored.
 - [x] `cargo test --workspace --exclude sci-form-python --all-targets --release
       --features "<CI feature set>"` → 1962 passed, 0 failed, 78 ignored
@@ -156,16 +156,24 @@ scripts/release.sh 1.0.0
 
 ## Post-release
 
-These four items require the published artefacts and cannot be verified from a
-local checkout; they stay unchecked until the tag is pushed and the registries
-have the release.
+These four items could only be verified once the tag was pushed and the
+registries had the release. Verified on 2026-11-07:
 
-- [ ] Tag the release notes from `CHANGELOG.md`.
-- [ ] Verify `cargo install sci-form-cli` and `pip install sciforma` and
-      `npm install sci-form-wasm` from a clean environment.
-- [ ] Verify `https://docs.rs/sci-form/1.0.0` builds without warnings.
-- [ ] Open the 1.1 milestone for the typed error enum (the error type is
-      still `String`).
+- [x] Tag the release notes from `CHANGELOG.md`. The GitHub Release `v1.0.0`
+      carries a release body, and the changelog entry is now dated
+      `2026-11-03` with the final-build fixes folded into it.
+- [x] Verify `cargo install sci-form-cli` and `pip install sciforma` and
+      `npm install sci-form-wasm` from a clean environment. Verified against
+      the published 1.0.0 artefacts: the CLI installs with
+      `cargo install --locked sci-form-cli --version 1.0.0`, the Python wheel
+      reports `1.0.0`, and the npm package embeds ethanol with 9 atoms.
+- [x] Verify `https://docs.rs/sci-form/1.0.0` builds without warnings. Build
+      #5141712 succeeded; the only log warning is docs.rs' own
+      "target filter specified, but no targets matched" no-op, not a rustdoc
+      warning.
+- [x] Open the 1.1 milestone for the typed error enum (the error type is
+      still `String`). Opened as milestone #1:
+      <https://github.com/jigonzalez930209/sci-form/milestone/1>.
 
 ## Known limitations carried into 1.0
 
