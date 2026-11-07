@@ -265,20 +265,20 @@ impl GpuContext {
             compatible_surface: None,
             force_fallback_adapter: false,
         }))
-        .ok_or_else(|| "No GPU adapter found".to_string())?;
+        .map_err(|err| format!("No GPU adapter found: {err}"))?;
 
         let adapter_info = adapter.get_info();
         let limits = adapter.limits();
         let required_limits = wgpu::Limits::default().using_resolution(limits.clone());
 
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("sci-form gpu"),
-                required_features: wgpu::Features::empty(),
-                required_limits,
-            },
-            None,
-        ))
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("sci-form gpu"),
+            required_features: wgpu::Features::empty(),
+            required_limits,
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
+            memory_hints: wgpu::MemoryHints::Performance,
+            trace: wgpu::Trace::Off,
+        }))
         .map_err(|err| format!("Failed to create wgpu device: {err}"))?;
 
         Ok(Self {
@@ -499,8 +499,8 @@ impl GpuContext {
                         let pipeline_layout = runtime.device.create_pipeline_layout(
                             &wgpu::PipelineLayoutDescriptor {
                                 label: Some(&format!("{} pipeline", descriptor.label)),
-                                bind_group_layouts: &[&bind_group_layout],
-                                push_constant_ranges: &[],
+                                bind_group_layouts: &[Some(&bind_group_layout)],
+                                immediate_size: 0,
                             },
                         );
                         let pipeline = runtime.device.create_compute_pipeline(
@@ -508,7 +508,9 @@ impl GpuContext {
                                 label: Some(&descriptor.label),
                                 layout: Some(&pipeline_layout),
                                 module: &shader,
-                                entry_point: &descriptor.entry_point,
+                                entry_point: Some(&descriptor.entry_point),
+                                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                                cache: None,
                             },
                         );
 
@@ -575,7 +577,10 @@ impl GpuContext {
             }
 
             runtime.queue.submit(Some(encoder.finish()));
-            runtime.device.poll(wgpu::Maintain::Wait);
+            runtime
+                .device
+                .poll(wgpu::PollType::wait_indefinitely())
+                .map_err(|err| format!("GPU poll failed: {err}"))?;
 
             let mut outputs = Vec::with_capacity(staging_buffers.len());
             for staging in staging_buffers {
@@ -584,7 +589,10 @@ impl GpuContext {
                 slice.map_async(wgpu::MapMode::Read, move |result| {
                     let _ = sender.send(result);
                 });
-                runtime.device.poll(wgpu::Maintain::Wait);
+                runtime
+                    .device
+                    .poll(wgpu::PollType::wait_indefinitely())
+                    .map_err(|err| format!("GPU poll failed: {err}"))?;
                 receiver
                     .recv()
                     .map_err(|_| "GPU readback channel error".to_string())?

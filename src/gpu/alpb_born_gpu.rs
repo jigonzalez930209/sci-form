@@ -23,8 +23,10 @@
 //! algebraic approximation, and it does **not** apply the OBC `−0.009 Å`
 //! offset of the intrinsic radius nor the adaptive radius cap used by
 //! [`crate::solvation_alpb::compute_born_radii`]. The GPU radii therefore
-//! differ slightly from the CPU ones and may exceed 100 Å where the CPU
-//! implementation clamps.
+//! differ from the CPU ones by up to O(10 Å) where the CPU implementation
+//! clamps, as measured on benzene. This module is a GPU candidate, not a
+//! numerically equivalent accelerator; use the CPU path for production
+//! solvation energies.
 
 use super::context::{
     bytes_to_f64_vec_from_f32, ceil_div_u32, f32_slice_to_bytes, pack_uniform_values,

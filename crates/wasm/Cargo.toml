@@ -2,9 +2,9 @@
 name = "sci-form-wasm"
 version = "1.0.0"
 edition = "2021"
-# MSRV — same floor as the core crate (see the root Cargo.toml).
-# NOTE: the `experimental-gpu` feature pulls in wgpu 29, whose own MSRV is
-# 1.87; the crate without that feature builds on 1.82.
+# MSRV — same floor as the core crate (see the root Cargo.toml). wgpu 29
+# (shared with the native GPU path) needs 1.87; the workspace floor is 1.89
+# because of nalgebra 0.35.
 rust-version = "1.89"
 description = "WASM/TypeScript bindings for high-performance 3D molecular conformer generation"
 license = "MIT"

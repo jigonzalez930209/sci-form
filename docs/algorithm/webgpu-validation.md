@@ -63,7 +63,7 @@ The two input reports still have to come from somewhere else, because the harnes
 
 ## Where the WebGPU path is actually covered
 
-The WebGPU compute path is covered on the **Rust side**, by the GPU-vs-CPU gates in `src/gpu/` and by the timing benchmarks in `tests/regression/test_gpu_candidates.rs`. Those run in CI (the `cargo test --lib` unit battery and the `regression` gate) and they are the gates that keep the GPU and CPU implementations consistent.
+The WebGPU compute path is covered on the **Rust side**, by the GPU-vs-CPU gates in `src/gpu/`, by the timing benchmarks in `tests/regression/test_gpu_candidates.rs`, and by the hard parity gate in `tests/gpu_parity.rs`. CI only *compiles* the native GPU feature; the tests run in `scripts/release-check.sh` on the maintainer machine. On a machine without an adapter the parity tests skip unless `SCIFORM_REQUIRE_GPU=1` is set.
 
 Concretely, the checks that exist today are:
 
@@ -75,8 +75,41 @@ Concretely, the checks that exist today are:
 | `test_cpu_fallback_creation`, `test_best_available_never_panics` | `src/gpu/context.rs` | A missing or broken adapter falls back to CPU instead of panicking |
 | `test_with_report_falls_back_to_cpu` | `src/gpu/mmff94_gpu.rs` | The activation report records the CPU fallback |
 | `bench_*` | `tests/regression/test_gpu_candidates.rs` | Timing of the GPU candidate paths against their CPU baselines (ESP grid, orbital grid, density grid, Fock build, isosurface, sTDA, …) |
+| `*_matches_cpu` | `tests/gpu_parity.rs` | Hard parity assertions on a real adapter: vector add, s-only ERI, Fock build, gamma matrix, orbital/density grids, ESP grid, EEQ and CPM |
 
-Important caveat, stated so it is not over-read: **CI machines have no GPU**. Those gates therefore execute the CPU-fallback branches and check the fallback contract, the kernel arithmetic reproduced on the host, and the shader registry — not a real GPU↔CPU numerical comparison on real hardware.
+Important caveat, stated so it is not over-read: **CI machines have no GPU**. CI only compiles the native feature; the parity assertions run on real hardware in the release gate (or on a dedicated GPU runner with `SCIFORM_REQUIRE_GPU=1`). Without an adapter they skip and therefore verify only the CPU-fallback contract.
+
+### Measured parity (native wgpu 29, AMD Radeon 680M / RADV, 2026-11-07)
+
+`SCIFORM_REQUIRE_GPU=1 cargo test --release --features experimental-gpu --test gpu_parity`
+runs eight real-device comparisons on the maintainer machine:
+
+| Kernel | Reference | Max abs difference | Gate |
+|---|---|---|---|
+| vector add | CPU f32 | 0 | 1e-5 |
+| ERI, 20-atom H chain (s-only) | CPU STO-3G | 2.1e-6 a.u. | 5e-3 |
+| Fock build (H₂O) | CPU G(P) | 4.9e-7 | 5e-3 |
+| gamma matrix (H₂O) | CPU SCC-DFTB | 2.1e-8 | 1e-5 |
+| orbital grid (H₂O HOMO) | CPU ψ(r) | 6.5e-7 | 5e-4 |
+| density grid (H₂O) | CPU ρ(r) | 4.2e-4 | 1e-3 |
+| ESP grid (H₂O) | CPU point-charge ESP | 1.7e-6 Ha/e | 1e-4 |
+| EEQ charges (benzene) | CPU EEQ2019 | 6.5e-4 e | 1e-3 |
+| CPM charges (2-site) | CPU CPM | 3.5e-7 e | 1e-5 |
+
+Two candidate kernels are deliberately **not** in the parity gate because they are
+different models, not implementations of the same one:
+
+- `d4_dispersion_gpu` uses a screened C6/C8 pair model instead of the production
+  D4 reference-weighting engine; on benzene the two-body energies differ by
+  ~1.5e-2 Hartree.
+- `alpb_born_gpu` uses a simplified descreening integral and omits the OBC offset
+  and adaptive cap; on benzene the Born radii differ by up to ~8 Å.
+
+They remain available as GPU candidates and now say so in their module docs; the CPU
+implementations are the reference for production numbers.
+
+The ERI kernel is **s-only**. It rejects p/d/f bases before dispatch instead of
+returning silently wrong integrals, and callers keep the CPU path.
 
 ## The WASM WebGPU layer that the harness used to exercise
 

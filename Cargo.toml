@@ -124,7 +124,7 @@ rand = "0.8.8"
 rayon = { version = "1.10", optional = true }
 bytemuck = { version = "1.21", features = ["derive"], optional = true }
 pollster = { version = "0.3", optional = true }
-wgpu = { version = "0.19", optional = true }
+wgpu = { version = "29", optional = true }
 
 [dev-dependencies]
 rayon = "1.10"

@@ -11,14 +11,10 @@
 #   * bans      — duplicate versions are warned about (not denied) so a new
 #     duplicate is visible in the CI log instead of passing unnoticed.
 #
-# Known dependency skew (not visible to the `bans` check, which analyses one
-# target at a time and therefore never sees both majors in the same graph):
-# `Cargo.lock` carries `wgpu 0.19.4` (native GPU path, src/gpu/) and
-# `wgpu 29.0.0` (WASM crate), with the duplicated naga / ash / bit-set /
-# bit-vec / wgpu-core / wgpu-hal trees that come with them. The two majors are
-# API-incompatible, so converging them is a source migration of the whole
-# src/gpu/ tree and not a lockfile change — see the comment in
-# `crates/wasm/Cargo.toml` and blocker B-H2 in reports/v1.0-blockers.md.
+# The native (`src/gpu/`) and WASM (`crates/wasm/src/webgpu.rs`) paths now use
+# the same wgpu 29 major, so the duplicated naga / ash / wgpu-core / wgpu-hal
+# trees are gone. The remaining duplicate warnings (`hashbrown`, `foldhash`)
+# come from unrelated transitive dependencies and are reported, not denied.
 
 [graph]
 # The audit covers the default feature set of every workspace member plus the

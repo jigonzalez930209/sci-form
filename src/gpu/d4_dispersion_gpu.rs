@@ -10,6 +10,16 @@
 //! is computed on the GPU — the optional three-body ATM term is always taken
 //! from the CPU implementation.
 //!
+//! # Scope and numerical parity
+//!
+//! This kernel evaluates a screened C6/C8 pair model with the CN-scaled
+//! `dynamic_c6` coefficients exposed by [`crate::dispersion`]. It is **not**
+//! the production D4 engine: the CPU path adds charge-dependent reference
+//! weighting and EEQ2019 charges from [`crate::xtb::d4`]. On benzene the two
+//! paths differ by ~1.5e-2 Hartree in the two-body term, so this module is a
+//! GPU candidate, not a drop-in accelerator. Use the CPU path when D4 parity
+//! with dftd4 matters.
+//!
 //! # Units
 //!
 //! `positions` are in **Å** (the shader converts them to **Bohr**), `c6` and

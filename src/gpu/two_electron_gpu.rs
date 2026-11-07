@@ -6,6 +6,14 @@
 //!
 //! For STO-3G basis sets (max 3 primitives/function), this provides significant
 //! speedup over CPU for molecules with > ~10 basis functions.
+//!
+//! # Scope
+//!
+//! The WGSL kernel evaluates the `(ss|ss)` Gaussian product. Basis functions
+//! with non-zero angular momentum need the Cartesian angular factors, which
+//! the kernel does not implement yet; such bases are rejected with an explicit
+//! error so callers fall back to the CPU reference instead of receiving
+//! silently wrong integrals.
 
 use super::context::{
     ComputeBindingDescriptor, ComputeBindingKind, ComputeDispatchDescriptor, GpuContext,
@@ -108,6 +116,8 @@ fn enumerate_unique_quartets(n: usize) -> (usize, Vec<u8>) {
 ///
 /// - `"Basis too small for GPU dispatch"` when the basis has fewer than the
 ///   minimum number of functions for a GPU dispatch.
+/// - `"GPU ERI supports only s-type basis functions"` when any function has
+///   non-zero angular momentum; use the CPU path for p/d/f bases.
 /// - `"No output from ERI kernel"` when the dispatch returned no read-back
 ///   payload.
 /// - `"ERI tile output size mismatch: expected {n}, got {m}"` when a tile
@@ -172,6 +182,8 @@ fn unpack_quartet(
 ///
 /// - `"Basis too small for GPU dispatch"` when the basis has fewer than the
 ///   minimum number of functions for a GPU dispatch.
+/// - `"GPU ERI supports only s-type basis functions"` when any function has
+///   non-zero angular momentum; use the CPU path for p/d/f bases.
 /// - `"No output from ERI kernel"` when the dispatch returned no read-back
 ///   payload.
 /// - `"ERI tile output size mismatch: expected {n}, got {m}"` when a tile
@@ -186,6 +198,20 @@ pub fn compute_eris_gpu_tiled(
 
     if n < GPU_DISPATCH_THRESHOLD {
         return Err("Basis too small for GPU dispatch".to_string());
+    }
+
+    // The WGSL kernel evaluates the (ss|ss) Gaussian product only: it does
+    // not apply the Cartesian angular factors of p/d/f functions. Refuse such
+    // bases instead of returning silently wrong integrals; callers keep the
+    // CPU path as the reference implementation.
+    if basis
+        .functions
+        .iter()
+        .any(|function| function.angular != [0, 0, 0])
+    {
+        return Err(
+            "GPU ERI supports only s-type basis functions; use the CPU path for p/d/f".to_string(),
+        );
     }
 
     let (basis_bytes, prim_bytes) = pack_basis_eri(basis);
@@ -532,5 +558,22 @@ mod tests {
         let basis = crate::scf::basis::BasisSet::sto3g(&[1], &[[0.0, 0.0, 0.0]]);
         let result = compute_eris_gpu(&ctx, &basis);
         assert!(result.is_err()); // Too small for GPU
+    }
+
+    #[test]
+    fn test_eri_rejects_non_s_basis_before_dispatch() {
+        // Water STO-3G contains p functions; the s-only kernel must refuse it
+        // instead of returning wrong integrals. The guard runs before any
+        // GPU call, so a CPU-fallback context is enough here.
+        let ctx = GpuContext::cpu_fallback();
+        let basis = crate::scf::basis::BasisSet::sto3g(
+            &[8, 1, 1],
+            &[[0.0, 0.0, 0.0], [1.43, 1.11, 0.0], [-1.43, 1.11, 0.0]],
+        );
+        let error = compute_eris_gpu(&ctx, &basis).expect_err("p basis must be rejected");
+        assert!(
+            error.contains("s-type"),
+            "unexpected error for p basis: {error}"
+        );
     }
 }

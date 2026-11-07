@@ -57,6 +57,10 @@ jobs:
           shared-key: build
       - name: Build the library with every feature
         run: cargo build --release --features "${RUST_EXPERIMENTAL_FEATURES}"
+      # The native GPU path shares wgpu 29 with the WASM crate; compiling it
+      # here keeps the two runtimes from drifting apart again (blocker B-H2).
+      - name: Build the native GPU path (compile-only)
+        run: cargo check --release --features experimental-gpu
       - name: Build the CLI
         run: cargo build --release -p sci-form-cli
 
