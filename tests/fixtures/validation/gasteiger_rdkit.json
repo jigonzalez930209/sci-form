@@ -2,7 +2,7 @@
  "reference": "RDKit 2026.09.1",
  "n_iter": 6,
  "tolerance": 0.02,
- "generated": "2026-10-12",
+ "generated": "2026-11-07",
  "cases": [
   {
    "smiles": "C",

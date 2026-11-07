@@ -2,7 +2,7 @@
  "reference": "ASE 3.29.0",
  "calculator": "ase.calculators.lj.LennardJones",
  "energy_shifted_at_cutoff": true,
- "generated": "2026-10-21",
+ "generated": "2026-11-07",
  "cases": [
   {
    "name": "bcc-a1.25",

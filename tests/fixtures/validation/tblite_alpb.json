@@ -2,7 +2,7 @@
  "reference": "tblite 0.7.0",
  "solvent_dielectric": 78.5,
  "born_model": "still",
- "generated": "2026-10-21",
+ "generated": "2026-11-07",
  "cases": [
   {
    "name": "water",

@@ -21,7 +21,7 @@ per-ficha gates `tests/{alpha,beta}_*_validation.rs`, see Ficha column).
 | `uff_labels_rdkit.json` | F17 | `oracle_rdkit.py labels` | RDKit `getAtomLabel` UFF types (298 molecules, 33 641 labels) |
 | `pyscf_scf.json` | F36/F37/F23/F26 | `oracle_pyscf.py` | PySCF RHF/STO-3G: S/T/V, ERIs (4 molecules/13 074), E_tot, MO energies, Mulliken (11 molecules) |
 | `pyscf_uhf.json` | F38 | `oracle_pyscf.py uhf` | PySCF UHF/ROHF: E_tot y ⟨S²⟩ con conjetura `hcore` y por defecto (8 casos abiertos) |
-| `pyscf_ao2mo.json` | F39 | `oracle_pyscf.py ao2mo` | PySCF `ao2mo.full`: C, ERIs AO y MO (3 moléculas/13 058 MO ERIs) |
+| `pyscf_ao2mo.json` | F39 | `oracle_pyscf.py ao2mo` | PySCF `ao2mo.full`: C, ERIs AO y MO (3 moléculas/13 058 MO ERIs); la base MO se canonicaliza por subespacios degenerados para que el fixture sea reproducible |
 | `tblite_gfn.json` | F44/F45 | `oracle_tblite.py` | tblite GFN1/GFN2-xTB: E, HOMO/LUMO (18 moléculas, geometrías ETKDG+MMFF) |
 | `mopac_pm3.json` | F42 | `oracle_pm3.py` (rama MOPAC, binario 23.2.5) | MOPAC PM3 1SCF ΔHf (24 moléculas, seed 42); las 24 a <0.02 kcal/mol |
 | `uks_tblite.json` | F44-UKS/F45-UKS | `oracle_uks_tblite.py` | tblite 0.7.0 GFN1/GFN2 `uhf` (OH/CH₃/NO/O₂/H₂O; ¡posiciones tblite-Python en bohr!) |

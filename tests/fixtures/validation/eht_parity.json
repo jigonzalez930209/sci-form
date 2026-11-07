@@ -2,7 +2,7 @@
  "ficha": "F86-EHT",
  "oracle": "oracle_eht.py (independent numpy Extended H\u00fcckel Theory)",
  "reference": "independent numpy implementation of EHT (STO-nG overlap, Wolfsberg-Helmholtz Hamiltonian, generalized eigenproblem); parameters read from sci-form's src/eht/params.rs (transcribed from Hoffmann 1960 / Alvarez 1993)",
- "generated": "2026-10-21",
+ "generated": "2026-11-07",
  "conventions": {
   "k_wolfsberg_helmholtz": 1.75,
   "angstrom_to_bohr": 1.8897259885789233,

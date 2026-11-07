@@ -2,7 +2,7 @@
  "reference": "RDKit 2026.09.1",
  "tolerance": 0.01,
  "skipped_aromaticity_reperception": 0,
- "generated": "2026-10-12",
+ "generated": "2026-11-07",
  "cases": [
   {
    "smiles": "C",

@@ -2,7 +2,7 @@
  "ficha": "F87-EEQ2019",
  "oracle": "oracle_eeq2019.py (independent numpy implementation of EEQ2019)",
  "reference": "independent numpy/scipy implementation of the published EEQ2019 equations (Grimme et al., JCTC 2019); element parameters read from sci-form's src/charges_eeq/eeq2019_data.rs (generated from grimme-lab/multicharge eeq2019.f90 + dftd4 Pyykko radii)",
- "generated": "2026-10-21",
+ "generated": "2026-11-07",
  "conventions": {
   "cn_kcn": 7.5,
   "cn_max": 8.0,

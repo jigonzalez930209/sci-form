@@ -1,7 +1,7 @@
 {
  "reference": "PySCF 2.14.0",
  "basis": "sto-3g",
- "generated": "2026-10-21",
+ "generated": "2026-11-07",
  "config": {
   "occ_window_ev": 20.0,
   "virt_window_ev": 20.0,

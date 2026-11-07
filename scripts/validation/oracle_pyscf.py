@@ -391,6 +391,54 @@ def run_uhf() -> Report:
 AO2MO_MOLECULES = [m for m in MOLECULES if m["name"] in ("H2O", "CH4", "NH3")]
 
 
+def canonicalize_mo_basis(c: np.ndarray, mo_energy: np.ndarray, tol: float = 1e-8) -> np.ndarray:
+    """Return a deterministic orthonormal basis for the same MO subspaces.
+
+    LAPACK is free to rotate the MOs inside a degenerate subspace (the T2 set
+    of CH4/NH3, for example) and to choose the sign of every vector.  Both
+    choices change the raw coefficient matrix between runs while leaving the
+    physical observables unchanged.  Group the columns by orbital energy and
+    rebuild a canonical basis for each group by projecting the standard basis
+    vectors onto the subspace and Gram-Schmidt; then fix the sign of every
+    column.  The projector ``V Vᵀ`` depends only on the subspace, so the
+    result does not depend on the basis LAPACK happened to return.
+    """
+    c = np.array(c, dtype=float, copy=True)
+    n, m = c.shape
+    order = np.argsort(mo_energy, kind="stable")
+    groups: list[list[int]] = []
+    for j in order:
+        if groups and abs(mo_energy[j] - mo_energy[groups[-1][0]]) <= tol:
+            groups[-1].append(j)
+        else:
+            groups.append([j])
+
+    out = np.empty_like(c)
+    for group in groups:
+        if len(group) == 1:
+            out[:, group[0]] = c[:, group[0]]
+            continue
+        v = c[:, group]
+        basis: list[np.ndarray] = []
+        for i in range(n):
+            # P e_i with P = V Vᵀ.
+            w = v @ v[i, :]
+            for b in basis:
+                w = w - b * float(b @ w)
+            norm = float(np.linalg.norm(w))
+            if norm > 1e-8:
+                basis.append(w / norm)
+            if len(basis) == len(group):
+                break
+        out[:, group] = np.column_stack(basis)
+
+    for j in range(m):
+        col = out[:, j]
+        if col[np.argmax(np.abs(col))] < 0.0:
+            out[:, j] = -col
+    return out
+
+
 def run_ao2mo() -> Report:
     from pyscf import ao2mo as pyscf_ao2mo
 
@@ -407,7 +455,9 @@ def run_ao2mo() -> Report:
         mf = pyscf_scf.RHF(mol)
         mf.conv_tol = 1e-12
         mf.kernel()
-        c = np.asarray(mf.mo_coeff)
+        c = canonicalize_mo_basis(
+            np.asarray(mf.mo_coeff), np.asarray(mf.mo_energy)
+        )
         ao_eri = mol.intor("int2e")
         mo_eri = pyscf_ao2mo.full(mol, c, compact=False)
         cases.append(

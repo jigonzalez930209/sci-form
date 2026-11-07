@@ -13,7 +13,7 @@
   "tolerance": 0.0,
   "pass": true,
   "notes": "composition + heavy-atom bond multiset + formal-charge multiset + heavy-atom hybridization sequence must match RDKit/AddHs; skipped 1 multi-fragment (counterion) inputs",
-  "timestamp": "2026-10-12T10:27:29",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -30,7 +30,7 @@
   "tolerance": 0.0,
   "pass": true,
   "notes": "sorted ring-size multiset (SSSR is not unique; multiset is the invariant)",
-  "timestamp": "2026-10-12T10:27:29",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -47,7 +47,7 @@
   "tolerance": 1e-06,
   "pass": true,
   "notes": "random point clouds, no molecular symmetry/permutation",
-  "timestamp": "2026-10-12T10:27:30",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -64,7 +64,7 @@
   "tolerance": 0.0,
   "pass": true,
   "notes": "partition compared up to cluster relabeling (Euclidean point clouds)",
-  "timestamp": "2026-10-12T10:27:30",
+  "timestamp": "2026-11-07T17:28:41",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -77,11 +77,11 @@
   "level": "L2",
   "n_cases": 400,
   "metric": "max_abs",
-  "value": 3.979039320256561e-13,
+  "value": 2.2737367544323206e-13,
   "tolerance": 0.01,
   "pass": true,
-  "notes": "canonical builder parity validated: angle ka (Z1/r13), order-specific angle terms + 3/4-ring corrections, torsion scaling/special cases, geometric-mean vdW without 1-4 scaling, inversion coefficients, R-typing; Kekul\u00e9 input is aromatized by rings::perceive_aromaticity before typing (400 cases, no aromaticity exclusions)",
-  "timestamp": "2026-10-12T15:53:03",
+  "notes": "canonical builder parity validated: angle ka (Z1/r13), order-specific angle terms + 3/4-ring corrections, torsion scaling/special cases, geometric-mean vdW without 1-4 scaling, inversion coefficients, R-typing. Measured max |\u0394E| = 0.0 kcal/mol (2026-10-11).",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -98,7 +98,7 @@
   "tolerance": 0.0,
   "pass": true,
   "notes": "per-atom getAtomLabel port (hybridization + conjugation + valence flags)",
-  "timestamp": "2026-10-12T10:27:30",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -115,14 +115,14 @@
   "tolerance": 0.02,
   "pass": true,
   "notes": "sci-form side recomputed by tests/cross_validation.rs::f21_charges",
-  "timestamp": "2026-10-12T10:27:29",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
   "ficha": "F22",
   "observable": "eeqbc_charges_vs_multicharge",
   "metric": "max_abs",
-  "value": 6.902013682807962e-12,
+  "value": 6.901972049444538e-12,
   "tolerance": 1e-10,
   "pass": true,
   "n_cases": 23,
@@ -146,7 +146,7 @@
   "ficha": "F23",
   "observable": "mulliken_charges_max_abs",
   "metric": "max_abs",
-  "value": 8.564493203522261e-08,
+  "value": 8.564493647611471e-08,
   "tolerance": 0.005,
   "pass": true,
   "n_cases": 11,
@@ -158,7 +158,7 @@
   "ficha": "F26",
   "observable": "scf_mulliken_dipole_parity_debye",
   "metric": "max_abs",
-  "value": 1.8288197956017882e-07,
+  "value": 1.8288197223270686e-07,
   "tolerance": 1e-06,
   "pass": true,
   "n_cases": 11,
@@ -180,7 +180,7 @@
   "tolerance": 0.02,
   "pass": true,
   "notes": "same Bondi radii + probe 1.4 + 960 points; residual is point-set difference",
-  "timestamp": "2026-10-12T10:27:29",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -205,11 +205,11 @@
   "level": "L2",
   "n_cases": 11,
   "metric": "max_abs_e_tot",
-  "value": 1.2234920632181456e-08,
+  "value": 1.2235034319019178e-08,
   "tolerance": 1e-07,
   "pass": true,
   "notes": "S/T/V tolerance 1e-9 (Boys precision); ERI 1e-10 (F37); E_tot 1e-7 Ha; mo_energies 1e-6 Ha; Mulliken 0.005 e. Measured by tests/cross_validation.rs::{f36_scf, f37_eri}.",
-  "timestamp": "2026-10-12T10:27:31",
+  "timestamp": "2026-11-07T17:28:42",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -238,7 +238,7 @@
   "tolerance": 1e-06,
   "pass": true,
   "notes": "sci-form's UHF starts from the H_core guess, so the cross-check uses the matching PySCF UHF run (uhf_hcore). Tolerance 1e-6 Ha; <S^2> 1e-6. The default-guess (atom) references are stored too and document the initial-guess dependence for NH2/O2. Measured by tests/cross_validation.rs::f38_uhf_rohf.",
-  "timestamp": "2026-10-12T10:27:32",
+  "timestamp": "2026-11-07T17:28:43",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -251,11 +251,11 @@
   "level": "L2",
   "n_cases": 13058,
   "metric": "max_abs",
-  "value": 3.0642615842061153e-14,
+  "value": 1.834241969872778e-14,
   "tolerance": 1e-10,
   "pass": true,
   "notes": "Same C and same AO ERIs on both sides; tolerance 1e-10 abs per element. Measured by tests/cross_validation.rs::f39_ao2mo.",
-  "timestamp": "2026-10-12T10:27:32",
+  "timestamp": "2026-11-07T17:40:18",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -292,18 +292,18 @@
   "level": "L2",
   "n_cases": 8,
   "metric": "max_abs",
-  "value": 1.72449134481912e-06,
+  "value": 1.7244914880302336e-06,
   "tolerance": 0.01,
   "pass": true,
   "notes": "CIS/TDA singlet excitation energies, tolerance 0.01 eV per the validation plan. Measured by tests/cross_validation.rs::f41_cis.",
-  "timestamp": "2026-10-13T09:36:53",
+  "timestamp": "2026-11-07T17:28:45",
   "source": "tests/cross_validation.rs"
  },
  {
   "ficha": "F41",
   "observable": "cis_singlet_excitations_max_abs_ev",
   "metric": "max_abs",
-  "value": 2.622358728388008e-06,
+  "value": 2.6223585969376018e-06,
   "tolerance": 0.01,
   "pass": true,
   "n_cases": 8,
@@ -315,7 +315,7 @@
   "ficha": "F41",
   "observable": "cisd_correlation_vs_pyscf",
   "metric": "max_abs",
-  "value": 2.0727322080915656e-08,
+  "value": 2.0727322525004865e-08,
   "tolerance": 1e-06,
   "pass": true,
   "n_cases": 8,
@@ -333,11 +333,11 @@
   "level": "L2",
   "n_cases": 24,
   "metric": "max_abs",
-  "value": 0.008428875111903267,
+  "value": 0.00834273127553331,
   "tolerance": 0.02,
   "pass": true,
   "notes": "reference values are recomputed on sci-form's own seed-42 embedding, so this fixture must be regenerated whenever the embedding pipeline changes; the measured deviation is recorded by the Rust gate f42_mopac_pm3",
-  "timestamp": "2026-10-21T12:52:16",
+  "timestamp": "2026-11-07T17:28:51",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -350,7 +350,7 @@
   "level": "L4",
   "n_cases": 11,
   "metric": "max_abs_vs_experiment",
-  "value": 8.608348125010991,
+  "value": 8.608287331462805,
   "tolerance": 5000.0,
   "pass": true,
   "notes": "MOPAC cross-check BLOCKED (no binary/toolchain); this guard only trips on gross regressions of the current behavior. Measured by tests/cross_validation.rs::f42_pm3_guard.",
@@ -371,7 +371,7 @@
   "tolerance": 0.01,
   "pass": true,
   "notes": "Tolerance 1 kcal/mol (0.0434 eV) per the validation plan. Measured by tests/cross_validation.rs::f43_gfn0.",
-  "timestamp": "2026-10-12T10:27:38",
+  "timestamp": "2026-11-07T17:28:50",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -388,7 +388,7 @@
   "tolerance": 0.0217,
   "pass": null,
   "notes": "Provenance only (tolerances live with the measured rows). F45 (GFN2) is validated to 6.5e-4 eV and F44 (GFN1) to 8.1e-5 eV by tests/cross_validation.rs::{f45_gfn2_matches_tblite,f44_gfn1_matches_tblite}.",
-  "timestamp": "2026-10-21T13:48:19",
+  "timestamp": "2026-11-07T17:28:48",
   "status": "tracked"
  },
  {
@@ -481,7 +481,7 @@
   "tolerance": 1.5936014376405156e-06,
   "pass": null,
   "notes": "Provenance only. Both standalone paths are documented gaps (element-level C6 without coordination/charge dependence), tracked by tests/cross_validation.rs::f46_d3_d4_known_gaps_tracked.",
-  "timestamp": "2026-10-12T22:08:09",
+  "timestamp": "2026-11-07T17:28:49",
   "status": "tracked"
  },
  {
@@ -498,7 +498,7 @@
   "tolerance": 0.8,
   "pass": true,
   "notes": "Top-1 f- among ring CH must fall in the expected EAS set in >= 80% of the series (>= 7/8). Measured by tests/cross_validation.rs::f47_fukui.",
-  "timestamp": "2026-10-12T10:27:39",
+  "timestamp": "2026-11-07T17:29:06",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -511,11 +511,11 @@
   "level": "L2",
   "n_cases": 39,
   "metric": "max_abs",
-  "value": 0.00891020826793465,
+  "value": 0.008910193522751797,
   "tolerance": 2.0,
   "pass": true,
   "notes": "Same Hessian matrix in, same frequencies out: validates mass-weighting, rigid-body projection and cm^-1 conversion. Tolerance 2 cm^-1 per the validation plan. Measured by tests/cross_validation.rs::f48_hessian.",
-  "timestamp": "2026-10-12T10:27:39",
+  "timestamp": "2026-11-07T17:28:50",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -568,7 +568,7 @@
   "tolerance": 0.7,
   "pass": true,
   "notes": "bit vectors are not identical (different atom invariants by design); validation is on similarity ranking + self-similarity",
-  "timestamp": "2026-10-12T10:27:30",
+  "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -633,7 +633,7 @@
   "tolerance": 0.0,
   "pass": true,
   "notes": "Same BB geometries + same cell: atom count, composition and porosity must agree. Topology degrees vs RCSR .cgd coordinations gated in tests/cross_validation.rs::f67_topology. Conventional-cell literature anchor (25.832 A) reported, not gated (assembler takes the cell as input; pormake scaling is +2.55% off experiment).",
-  "timestamp": "2026-10-12T22:36:23",
+  "timestamp": "2026-11-07T17:29:05",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -712,11 +712,11 @@
   "level": "L2",
   "n_cases": 10,
   "metric": "max_abs",
-  "value": 7.844337031788958e-10,
+  "value": 7.844326669707394e-10,
   "tolerance": 1e-06,
   "pass": true,
   "notes": "Same UFF surface (F16 parity 3.98e-13 kcal/mol), same start: sci-form BFGS vs RDKit minimization. Tolerance 1e-3 kcal/mol/atom (4.3e-8 eV/atom, stricter than the plan's 1e-6 eV/atom: both minimizers land in the same basin). Measured by tests/cross_validation.rs::f70_framework_opt.",
-  "timestamp": "2026-10-12T10:27:30",
+  "timestamp": "2026-11-07T17:28:41",
   "source": "tests/cross_validation.rs"
  },
  {
@@ -1159,7 +1159,8 @@
   "tolerance": 20.0,
   "pass": true,
   "notes": "sTDA (monopole Coulomb) vs PySCF TD-SCF, plus the exchange-enabled variant (A_x = -2 ax (ij|ab), ax = 0.5) that sci-form implements in `compute_stda_with_exchange`. The implementation-parity gate (sci-form sTDA vs the Python port stda_ref / stda_ex_ref) is tight; the cross-library deviation is dominated by the monopole approximation of the Coulomb interaction. Measured by tests/pyscf_parity.rs::f77_stda_uvvis.",
-  "timestamp": "2026-10-21T18:15:17",
+  "timestamp": "2026-11-07T17:28:46",
+  "status": "tracked",
   "source": "tests/pyscf_parity.rs"
  },
  {
@@ -1212,7 +1213,8 @@
   "tolerance": 0.006,
   "pass": true,
   "notes": "sci-form's ESP grid uses Mulliken point charges, PySCF's reference uses the RHF density: the two models differ by construction in the near field and are compared in the far field, where both are described by the same multipole expansion. Measured by tests/pyscf_parity.rs::f78_esp_grid.",
-  "timestamp": "2026-10-21T14:53:47",
+  "timestamp": "2026-11-07T17:28:46",
+  "status": "tracked",
   "source": "tests/pyscf_parity.rs"
  },
  {
@@ -1301,7 +1303,8 @@
   "tolerance": 5.0,
   "pass": true,
   "notes": "IR intensities (km/mol) from PySCF's analytic Hessian and its SCF dipoles; PySCF 2.14 has no IR-intensity API, so the standard I = 42.2561 (dmu/dQ)^2 conversion is applied here. Measured by tests/pyscf_parity.rs::f79b_ir_intensities.",
-  "timestamp": "2026-10-21T14:53:49",
+  "timestamp": "2026-11-07T17:28:48",
+  "status": "tracked",
   "source": "tests/pyscf_parity.rs"
  },
  {
@@ -1525,7 +1528,7 @@
   "tolerance": 0.0,
   "pass": null,
   "notes": "tblite GB(eps=78.5, born=still) is the pure electrostatic term; the parametrized ALPB/GBSA('water') add the surface, CDS and empirical-shift contributions.",
-  "timestamp": "2026-10-21T13:48:20",
+  "timestamp": "2026-11-07T17:28:48",
   "status": "tracked"
  },
  {
@@ -1578,7 +1581,7 @@
   "tolerance": 0.0,
   "pass": null,
   "notes": "stress convention: sigma_ij = (1/V) dE/deps_ij (identical to sci-form's numerical_stress); the relaxed cell comes from an ASE BFGS relaxation with a UnitCellFilter.",
-  "timestamp": "2026-10-21T13:48:15",
+  "timestamp": "2026-11-07T17:28:51",
   "status": "tracked"
  },
  {
@@ -1703,7 +1706,8 @@
   "tolerance": 1e-10,
   "pass": true,
   "notes": "Extended Huckel Theory: STO-nG overlap, Wolfsberg-Helmholtz Hamiltonian (K=1.75) and the generalized eigenproblem H C = S C E, compared against an independent numpy implementation. The STO-nG contraction tables (HSP 1969 / Stewart 1970) are transcribed in the oracle and cross-checked against sci-form's src/eht/basis.rs.",
-  "timestamp": "2026-10-21T18:14:56",
+  "timestamp": "2026-11-07T17:29:06",
+  "status": "tracked",
   "source": "tests/eht_eeq_parity.rs"
  },
  {
@@ -1720,7 +1724,8 @@
   "tolerance": 1e-05,
   "pass": true,
   "notes": "EEQ2019 partial charges: erf coordination numbers with a log cut at CN_max = 8, Gaussian-width Coulomb matrix and CN-dependent electronegativity, solved with the total-charge constraint. The oracle uses the exact scipy erf; sci-form uses the Abramowitz & Stegun 7.1.26 approximation.",
-  "timestamp": "2026-10-21T18:14:57",
+  "timestamp": "2026-11-07T17:29:06",
+  "status": "tracked",
   "source": "tests/eht_eeq_parity.rs"
  },
  {

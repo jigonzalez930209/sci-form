@@ -2,7 +2,7 @@
  "reference": "FreeSASA python-bindings (Shrake-Rupley, radii=sci-form Bondi table)",
  "probe_radius": 1.4,
  "tolerance": 0.02,
- "generated": "2026-10-12",
+ "generated": "2026-11-07",
  "cases": [
   {
    "smiles": "C",

@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-14",
+ "generated": "2026-11-07",
  "python": "3.14.4",
  "references": [
   {
@@ -84,6 +84,21 @@
    "version": "1.6.0",
    "used_by": [
     "F46 (D3 gap)"
+   ]
+  },
+  {
+   "tool": "multicharge",
+   "version": "0.6.0 (CLI, meson/ninja build)",
+   "used_by": [
+    "F22 (EEQ-BC charges)"
+   ]
+  },
+  {
+   "tool": "LAMMPS",
+   "version": "29Aug2024_update2 (REAXFF/QEQ/ELECTRODE)",
+   "used_by": [
+    "F78 (ReaxFF C-H/O-H pulls)",
+    "F95 (CPM electrode charges)"
    ]
   },
   {
@@ -185,7 +200,7 @@
   }
  ],
  "pending": [
-  "ORCA (F40/F50/F52), LAMMPS (F78/F95), pyGSM/pysisyphus (F82/F89)",
-  "pymatgen/spglib (F64-F69 aux), Zeo++ binary (superseded by pyzeo for F68), geomstats/pymanopt (F94), pybinding (F34/F88/F91)"
+  "ORCA (F40/F50/F52), pyGSM/pysisyphus (F82/F89)",
+  "Zeo++ binary (superseded by pyzeo for F68), geomstats/pymanopt (F94), pybinding (F34/F88/F91)"
  ]
 }

@@ -2,7 +2,7 @@
  "reference": "RDKit 2026.09.1",
  "radius": 2,
  "n_bits": 2048,
- "generated": "2026-10-12",
+ "generated": "2026-11-07",
  "cases": [
   {
    "smiles": "C",

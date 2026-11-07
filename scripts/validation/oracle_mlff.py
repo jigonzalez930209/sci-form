@@ -107,6 +107,17 @@ def forward(aev: np.ndarray, layers: list[dict]) -> float:
 
 
 def main() -> int:
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import AllChem
+    except ImportError:
+        print(
+            "RDKit is not available; recomputing from the geometries already "
+            "stored in the fixture (equivalent to --from-fixture).",
+            file=sys.stderr,
+        )
+        return regenerate_from_fixture()
+
     rng = np.random.default_rng(42)
     rw = np.random.default_rng(43)
     mols = []
