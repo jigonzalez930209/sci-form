@@ -21,14 +21,14 @@ pub mod spectrum;
 #[cfg(feature = "parallel")]
 pub use coupling::ensemble_averaged_j_couplings_parallel;
 pub use coupling::{ensemble_averaged_j_couplings, predict_j_couplings, JCoupling, KarplusParams};
-pub use hose::{HoseCode, HoseShiftLookup};
+pub use hose::{HoseCode, HoseDatabase, HoseDatabaseEntry, HoseShiftLookup};
 pub use nucleus::NmrNucleus;
 pub use second_order::{
     ab_reference, strong_coupling_note, ExactLine, SpinSystem, StrongCouplingPair,
     STRONG_COUPLING_RATIO,
 };
 pub use shifts::{
-    predict_chemical_shifts, predict_chemical_shifts_for_nucleus, ChemicalShift, NmrShiftResult,
-    NucleusShiftSeries,
+    predict_chemical_shifts, predict_chemical_shifts_for_nucleus,
+    predict_chemical_shifts_with_hose_database, ChemicalShift, NmrShiftResult, NucleusShiftSeries,
 };
 pub use spectrum::{compute_nmr_spectrum, NmrPeak, NmrSpectrum, PeakIntegration};

@@ -316,6 +316,226 @@ pub fn predict_shift_from_hose(hose_code: &HoseCode, nucleus: u8) -> Option<Hose
     None
 }
 
+// ─── External HOSE database (NMRShiftDB2 / SDBS exports) ────────────────────
+
+/// One entry of an external HOSE→shift database.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HoseDatabaseEntry {
+    /// Full HOSE code string, e.g. `C/H,H,H,C`.
+    pub hose: String,
+    /// Element (atomic number) the shift refers to.
+    pub element: u8,
+    /// Chemical shift in ppm.
+    pub shift_ppm: f64,
+    /// Optional number of experimental records behind this entry.
+    #[serde(default)]
+    pub count: usize,
+}
+
+/// External HOSE→chemical-shift database.
+///
+/// The crate does not bundle NMRShiftDB2 or SDBS data (their licenses require
+/// separate review).  This type reads a database exported by the user and
+/// performs exact longest-prefix lookup; the built-in tables remain the
+/// default when no external database is supplied.
+///
+/// Supported formats:
+///
+/// * JSON: either an array of [`HoseDatabaseEntry`] or an object with an
+///   `entries` array.
+/// * CSV/TSV: `hose,element,shift_ppm[,count]`, with `#` comment lines and an
+///   optional header.  `element` can be an atomic number or a symbol.
+#[derive(Debug, Clone, Default)]
+pub struct HoseDatabase {
+    entries: Vec<HoseDatabaseEntry>,
+}
+
+impl HoseDatabase {
+    /// Create an empty database.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Number of stored records.
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// True when no record has been loaded.
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
+    /// Add one record.
+    pub fn push(&mut self, entry: HoseDatabaseEntry) {
+        self.entries.push(entry);
+    }
+
+    /// Load a database from a JSON or CSV/TSV file.
+    ///
+    /// The format is selected from the file extension; unknown extensions are
+    /// tried as JSON first and then as CSV.
+    pub fn from_path(path: impl AsRef<std::path::Path>) -> Result<Self, String> {
+        let path = path.as_ref();
+        let text = std::fs::read_to_string(path)
+            .map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+        match path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref()
+        {
+            Some("json") => Self::from_json(&text),
+            Some("csv") | Some("tsv") => Self::from_csv(&text),
+            _ => Self::from_json(&text).or_else(|_| Self::from_csv(&text)),
+        }
+    }
+
+    /// Parse the JSON export format.
+    pub fn from_json(text: &str) -> Result<Self, String> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Payload {
+            Array(Vec<HoseDatabaseEntry>),
+            Wrapped { entries: Vec<HoseDatabaseEntry> },
+        }
+        let payload: Payload =
+            serde_json::from_str(text).map_err(|error| format!("invalid HOSE JSON: {error}"))?;
+        let entries = match payload {
+            Payload::Array(entries) => entries,
+            Payload::Wrapped { entries } => entries,
+        };
+        Ok(Self { entries })
+    }
+
+    /// Parse a CSV/TSV export (`hose,element,shift_ppm[,count]`).
+    pub fn from_csv(text: &str) -> Result<Self, String> {
+        let mut entries = Vec::new();
+        for line in text.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let tab_separated = line.contains('\t');
+            let fields: Vec<&str> = if tab_separated {
+                line.split('\t').map(str::trim).collect()
+            } else {
+                // HOSE codes themselves contain commas, so parse the numeric
+                // tail from the right and keep the remaining fields as the code.
+                line.split(',').map(str::trim).collect()
+            };
+            if fields.len() < 3 || fields[0].eq_ignore_ascii_case("hose") {
+                continue;
+            }
+
+            let (hose, element_field, shift_field, count_field) = if tab_separated {
+                (
+                    fields[0].to_string(),
+                    fields[1],
+                    fields[2],
+                    fields.get(3).copied(),
+                )
+            } else {
+                let last = fields.len() - 1;
+                let last_is_count = fields.len() >= 4
+                    && fields[last].parse::<usize>().is_ok()
+                    && fields[last - 1].parse::<f64>().is_ok();
+                if last_is_count {
+                    (
+                        fields[..last - 2].join(","),
+                        fields[last - 2],
+                        fields[last - 1],
+                        Some(fields[last]),
+                    )
+                } else {
+                    (
+                        fields[..last - 1].join(","),
+                        fields[last - 1],
+                        fields[last],
+                        None,
+                    )
+                }
+            };
+
+            let element = parse_element(element_field)?;
+            let shift_ppm: f64 = shift_field
+                .parse()
+                .map_err(|error| format!("invalid shift '{shift_field}': {error}"))?;
+            let count = count_field
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(1);
+            entries.push(HoseDatabaseEntry {
+                hose,
+                element,
+                shift_ppm,
+                count,
+            });
+        }
+        Ok(Self { entries })
+    }
+
+    /// Look up a HOSE code, trying the full code and then successively shorter
+    /// sphere prefixes.  Returns the most specific match.
+    pub fn lookup(&self, hose_code: &HoseCode, nucleus: u8) -> Option<HoseShiftLookup> {
+        for radius in (1..=hose_code.spheres.len().saturating_sub(1)).rev() {
+            let prefix = if radius == 0 {
+                hose_code.spheres[0].clone()
+            } else {
+                format!(
+                    "{}/{}",
+                    hose_code.spheres[0],
+                    hose_code.spheres[1..=radius].join("/")
+                )
+            };
+            if let Some(entry) = self
+                .entries
+                .iter()
+                .find(|entry| entry.element == nucleus && entry.hose == prefix)
+            {
+                return Some(HoseShiftLookup {
+                    atom_index: hose_code.atom_index,
+                    element: nucleus,
+                    shift_ppm: entry.shift_ppm,
+                    matched_hose: entry.hose.clone(),
+                    match_radius: radius,
+                    confidence: 0.5 + 0.1 * radius as f64,
+                });
+            }
+        }
+        None
+    }
+}
+
+fn parse_element(value: &str) -> Result<u8, String> {
+    if let Ok(z) = value.parse::<u8>() {
+        return Ok(z);
+    }
+    match value {
+        "H" => Ok(1),
+        "C" => Ok(6),
+        "N" => Ok(7),
+        "O" => Ok(8),
+        "F" => Ok(9),
+        "Si" => Ok(14),
+        "P" => Ok(15),
+        "S" => Ok(16),
+        "Cl" => Ok(17),
+        "Se" => Ok(34),
+        "Br" => Ok(35),
+        "I" => Ok(53),
+        _ => Err(format!("unknown element symbol '{value}'")),
+    }
+}
+
+/// Predict a shift from an external HOSE database.
+pub fn predict_shift_from_database(
+    hose_code: &HoseCode,
+    nucleus: u8,
+    database: &HoseDatabase,
+) -> Option<HoseShiftLookup> {
+    database.lookup(hose_code, nucleus)
+}
+
 /// Fuzzy matching: check if the sphere-1 fragment of the HOSE code
 /// matches the sphere-1 fragment of the database pattern.
 fn fuzzy_hose_match(hose: &str, pattern: &str) -> bool {
@@ -386,5 +606,40 @@ mod tests {
         for (c1, c2) in codes1.iter().zip(codes2.iter()) {
             assert_eq!(c1.full_code, c2.full_code);
         }
+    }
+
+    #[test]
+    fn external_hose_database_json_and_prefix_fallback() {
+        let mol = Molecule::from_smiles("CCO").unwrap();
+        let codes = generate_hose_codes(&mol, 3);
+        let carbon = codes.iter().find(|code| code.element == 6).unwrap();
+        let full = carbon.full_code.clone();
+        let json = format!(r#"[{{"hose":"{full}","element":6,"shift_ppm":42.0,"count":3}}]"#);
+        let db = HoseDatabase::from_json(&json).unwrap();
+        assert_eq!(db.len(), 1);
+        let hit = db.lookup(carbon, 6).expect("exact HOSE match");
+        assert_eq!(hit.shift_ppm, 42.0);
+        assert_eq!(hit.match_radius, 3);
+
+        // A database entry at sphere 1 must still match through the fallback.
+        let sphere1 = format!("{}/{}", carbon.spheres[0], carbon.spheres[1]);
+        let db = HoseDatabase::from_json(&format!(
+            r#"[{{"hose":"{sphere1}","element":6,"shift_ppm":17.5}}]"#
+        ))
+        .unwrap();
+        let hit = db.lookup(carbon, 6).expect("sphere-1 fallback");
+        assert_eq!(hit.shift_ppm, 17.5);
+        assert_eq!(hit.match_radius, 1);
+    }
+
+    #[test]
+    fn external_hose_database_csv() {
+        let csv = "# NMRShiftDB2 export\nhose,element,shift_ppm,count\nC/H,H,H,C,1,0.9,10\nC/*C,*C,H,C,7.27,25\n";
+        let db = HoseDatabase::from_csv(csv).unwrap();
+        assert_eq!(db.len(), 2);
+        assert_eq!(db.entries[0].element, 1);
+        assert_eq!(db.entries[0].shift_ppm, 0.9);
+        assert_eq!(db.entries[1].element, 6);
+        assert_eq!(db.entries[1].count, 25);
     }
 }

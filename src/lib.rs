@@ -2252,6 +2252,25 @@ pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String> {
     Ok(nmr::predict_chemical_shifts(&mol))
 }
 
+/// Predict NMR chemical shifts using an external HOSE database.
+///
+/// The caller supplies a [`nmr::HoseDatabase`] loaded from an NMRShiftDB2,
+/// SDBS or equivalent export; matching ¹H/¹³C environments override the
+/// built-in additivity values.  The database data is not bundled.
+///
+/// # Errors
+///
+/// Returns `Err` if the SMILES string cannot be parsed.
+pub fn predict_nmr_shifts_with_hose_database(
+    smiles: &str,
+    database: &nmr::HoseDatabase,
+) -> Result<nmr::NmrShiftResult, String> {
+    let mol = graph::Molecule::from_smiles(smiles)?;
+    Ok(nmr::predict_chemical_shifts_with_hose_database(
+        &mol, database,
+    ))
+}
+
 /// Predict chemical shifts for a specific NMR nucleus from SMILES.
 pub fn predict_nmr_shifts_for_nucleus(
     smiles: &str,

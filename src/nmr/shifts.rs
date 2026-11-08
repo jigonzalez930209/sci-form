@@ -6,6 +6,7 @@
 //! - Ring current effects for aromatic systems
 //! - Functional group corrections
 
+use super::hose::{generate_hose_codes, HoseDatabase};
 use super::nucleus::NmrNucleus;
 use crate::graph::{BondOrder, Hybridization, Molecule};
 use petgraph::graph::NodeIndex;
@@ -1113,6 +1114,48 @@ pub fn predict_chemical_shifts(mol: &Molecule) -> NmrShiftResult {
     }
 }
 
+/// Predict chemical shifts using an external HOSE database where it has a
+/// matching environment.
+///
+/// The built-in additivity model fills every atom first; ¹H and ¹³C shifts
+/// with a database hit are then replaced by the longest-prefix HOSE value.
+/// Notes in the result record how many shifts were overridden.  The external
+/// database is optional because NMRShiftDB2/SDBS data is not bundled.
+pub fn predict_chemical_shifts_with_hose_database(
+    mol: &Molecule,
+    database: &HoseDatabase,
+) -> NmrShiftResult {
+    let mut result = predict_chemical_shifts(mol);
+    if database.is_empty() {
+        result
+            .notes
+            .push("External HOSE database is empty; built-in shifts kept.".to_string());
+        return result;
+    }
+
+    let perceived = crate::rings::perceived_aromaticity(mol);
+    let mol: &Molecule = perceived.as_ref().unwrap_or(mol);
+    let codes = generate_hose_codes(mol, 5);
+    let mut replaced = 0usize;
+
+    for shift in result.h_shifts.iter_mut().chain(result.c_shifts.iter_mut()) {
+        if let Some(code) = codes.get(shift.atom_index) {
+            if let Some(hit) = database.lookup(code, shift.element) {
+                shift.shift_ppm = hit.shift_ppm;
+                shift.environment = format!("HOSE:{}", hit.matched_hose);
+                shift.confidence = hit.confidence;
+                replaced += 1;
+            }
+        }
+    }
+
+    result.notes.push(format!(
+        "External HOSE database overrode {replaced} of {} ¹H/¹³C shifts.",
+        result.h_shifts.len() + result.c_shifts.len()
+    ));
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1232,5 +1275,31 @@ mod tests {
             .collect();
         // This may or may not detect depending on SMILES parsing, so just verify count
         assert!(!result.h_shifts.is_empty());
+    }
+
+    #[test]
+    fn external_hose_database_overrides_matching_shifts() {
+        use super::super::hose::{generate_hose_codes, HoseDatabase, HoseDatabaseEntry};
+
+        let mol = Molecule::from_smiles("CCO").unwrap();
+        let codes = generate_hose_codes(&mol, 5);
+        let target = codes.iter().find(|code| code.element == 1).unwrap();
+        let mut database = HoseDatabase::new();
+        database.push(HoseDatabaseEntry {
+            hose: target.full_code.clone(),
+            element: 1,
+            shift_ppm: 4.321,
+            count: 1,
+        });
+
+        let result = predict_chemical_shifts_with_hose_database(&mol, &database);
+        let shifted = result
+            .h_shifts
+            .iter()
+            .find(|shift| shift.atom_index == target.atom_index)
+            .unwrap();
+        assert!((shifted.shift_ppm - 4.321).abs() < 1e-12);
+        assert!(shifted.environment.starts_with("HOSE:"));
+        assert!(result.notes.iter().any(|note| note.contains("overrode")));
     }
 }
