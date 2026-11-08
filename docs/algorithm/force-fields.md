@@ -186,7 +186,7 @@ The line search uses the following strategy:
 
 ## 3. MMFF94 Force Field
 
-The **Merck Molecular Force Field 94 (MMFF94)** is used for post-embedding energy refinement and geometry optimization of organic drug-like molecules. sci-form implements the **valence + dispersion** subset with analytical gradients: quartic bond stretching, cubic angle bending, three-term Fourier torsion and Halgren buffered 14-7 van der Waals. The electrostatic, stretch-bend and out-of-plane terms of the published MMFF94 energy function are not implemented, so `compute_mmff94_energy` is not the complete MMFF94 energy; the published parameter tables and the atom typing are real (validated against RDKit's `Params.cpp`).
+The **Merck Molecular Force Field 94 (MMFF94)** is used for post-embedding energy refinement and geometry optimization of organic drug-like molecules. sci-form implements the **complete** MMFF94 energy expression with analytical gradients: quartic bond stretching, cubic angle bending, stretch-bend coupling, out-of-plane bending, three-term Fourier torsion, Halgren buffered 14-7 van der Waals and buffered Coulomb electrostatics with MMFF94 partial charges. `compute_mmff94_energy` reproduces RDKit's `MMFFGetMoleculeForceField().CalcEnergy()` to better than `1e-8 kcal/mol` on the validation corpus; the published parameter tables, the atom typing and the partial-charge tables are all real (validated against RDKit's `Params.cpp`).
 
 ### Atom Types
 

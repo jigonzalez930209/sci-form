@@ -258,7 +258,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] **Enum de error tipado**: diseño aditivo listo, migración de firmas planificada para 1.2 (rompe SemVer menor).
 - [ ] **Gradientes PM3/xTB analíticos**: proyecto de investigación; hoy diferencias centrales exactas (6·N SCF).
 - [ ] **ERI density fitting/Cholesky**: el tensor CPU sigue siendo M⁴ `f64`; el camino GPU ya está tileado.
-- [ ] **MMFF94 completo**: faltan electrostática, stretch-bend y out-of-plane; la documentación ya no dice "full".
+- [x] **MMFF94 completo** (2026-11-08): cargas parciales PBCI/BCI, stretch-bend, out-of-plane y Coulomb amortiguado. El fixture independiente reproduce RDKit `MMFFGetMoleculeForceField` a <2e-11 kcal/mol en 7 moléculas; tipos y cargas coinciden exactamente. Tablas extra generadas desde `Params.cpp` (117/117 OOP, 282 stretch-bend, 30 DFSB, 99 PBCI, 498 BCI).
 - [x] **HTST GPU real** (2026-11-07): `alpha/kinetics/gpu.rs` evalúa el barrido Eyring/Arrhenius en WGSL; 320 temperaturas a 6e-6 relativo vs CPU.
 - [x] **Bloch periódico GPU real** (2026-11-07): `alpha/periodic_linear/gpu.rs` ensambla H(k)/S(k) en WGSL; 80 k-points a 5.8e-8 vs CPU.
 - [x] **EDL GPU real** (2026-11-07): `edl/gpu.rs` evalúa Helmholtz/GC/GCS en WGSL; scan a 1.1e-7 relativo y perfiles a 2.0e-6 vs CPU.

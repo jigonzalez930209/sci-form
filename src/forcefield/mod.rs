@@ -45,11 +45,11 @@
 //!
 //! # Caveats
 //!
-//! The **MMFF94** implementation covers bond stretching, angle bending,
-//! torsion and van der Waals only. MMFF94's electrostatic, stretch–bend and
-//! out-of-plane bending terms are *not* implemented, so the energies reported
-//! here are the MMFF94 *valence + dispersion* part of the total, not the
-//! complete MMFF94 energy.
+//! The **MMFF94** implementation covers the complete energy expression:
+//! bond stretching, angle bending, stretch–bend coupling, out-of-plane
+//! bending, torsions, buffered 14–7 van der Waals and buffered Coulomb
+//! electrostatics with MMFF partial charges.  It reproduces RDKit's full
+//! `MMFFGetMoleculeForceField().CalcEnergy()` on the validation corpus.
 //!
 //! The **UFF** implementation uses a geometric-mean van der Waals combination
 //! with no 1-4 scaling, and builds torsions only for non-terminal,
@@ -65,6 +65,7 @@ pub mod etkdg_lite;
 pub mod gradients;
 pub mod minimizer;
 pub mod mmff94;
+pub mod mmff94_extra_params;
 pub mod mmff94_params;
 pub mod params;
 pub mod reaxff;

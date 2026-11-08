@@ -44,21 +44,44 @@ struct MoleculeFixture {
     name: String,
     smiles: String,
     elements: Vec<u8>,
-    #[allow(dead_code)]
     mmff94_types: Vec<u8>,
     #[allow(dead_code)]
     bonds: Vec<Vec<serde_json::Value>>,
     coords: Vec<f64>,
     counts: Counts,
     energy: BTreeMap<String, f64>,
+    partial_charges: Vec<f64>,
 }
 
 #[derive(Debug, Deserialize)]
 struct Counts {
     bonds: usize,
     angles: usize,
+    #[serde(default)]
+    stretch_bend: usize,
+    #[serde(default)]
+    oop: usize,
     torsions: usize,
     vdw_pairs: usize,
+    #[serde(default)]
+    electrostatic_pairs: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct RdkitLibFixture {
+    // Kept for the record; the test does not branch on the RDKit version.
+    #[allow(dead_code)]
+    rdkit_version: String,
+    molecules: Vec<RdkitLibMolecule>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RdkitLibMolecule {
+    name: String,
+    energy: f64,
+    partial_charges: Vec<f64>,
+    #[allow(dead_code)]
+    mmff94_types: Vec<u8>,
 }
 
 fn load() -> Fixture {
@@ -70,6 +93,18 @@ fn load() -> Fixture {
         )
     });
     serde_json::from_str(&data).expect("invalid fixture JSON")
+}
+
+fn load_rdkit_lib() -> RdkitLibFixture {
+    let path = fixture_path("mmff94_rdkit_lib.json");
+    let data = std::fs::read_to_string(&path).unwrap_or_else(|err| {
+        panic!(
+            "missing fixture {} ({err}); run \
+             `python scripts/validation/oracle_mmff94_rdkit.py`",
+            path.display()
+        )
+    });
+    serde_json::from_str(&data).expect("invalid RDKit fixture JSON")
 }
 
 /// Energy parity between the Rust MMFF94 implementation and the independent
@@ -108,6 +143,32 @@ fn mmff94_energy_matches_independent_reference() {
         let energy = sci_form::compute_mmff94_energy(&mol.smiles, &mol.coords)
             .unwrap_or_else(|e| panic!("{}: MMFF94 energy failed: {e}", mol.name));
 
+        // The official atom typing must agree with the reference.
+        let assigned: Vec<u8> = (0..parsed.graph.node_count())
+            .map(|i| {
+                sci_form::forcefield::mmff94::mmff94_official_type(
+                    sci_form::forcefield::mmff94::assign_mmff94_type_smarts(&parsed, i),
+                )
+            })
+            .collect();
+        assert_eq!(
+            assigned, mol.mmff94_types,
+            "{}: MMFF94 atom types differ from the reference",
+            mol.name
+        );
+
+        // The partial charges must reproduce the published PBCI/BCI result.
+        let charges = sci_form::forcefield::mmff94::mmff94_partial_charges(&parsed);
+        assert_eq!(charges.len(), mol.partial_charges.len());
+        for (i, (got, want)) in charges.iter().zip(&mol.partial_charges).enumerate() {
+            let dev = (got - want).abs();
+            assert!(
+                dev < 1.0e-9,
+                "{}: partial charge {i} deviation {dev:.3e} (rust {got:.9} vs reference {want:.9})",
+                mol.name
+            );
+        }
+
         let expected_total = mol.energy["total"];
         let dev = (energy - expected_total).abs();
         println!(
@@ -145,7 +206,10 @@ fn mmff94_energy_matches_independent_reference() {
         }
         for (kind, _) in &breakdown {
             assert!(
-                matches!(kind.as_str(), "bond" | "angle" | "torsion" | "vdw"),
+                matches!(
+                    kind.as_str(),
+                    "bond" | "angle" | "stretch_bend" | "oop" | "torsion" | "vdw" | "electrostatic"
+                ),
                 "{}: unexpected term kind {kind}",
                 mol.name
             );
@@ -155,6 +219,49 @@ fn mmff94_energy_matches_independent_reference() {
             "{}: expected at least a bond and an angle term",
             mol.name
         );
+    }
+}
+
+/// Full-energy parity against RDKit's own MMFF94 implementation.
+///
+/// The oracle fixture checks each term against the published equations; this
+/// test closes the loop with the reference library, using the same coordinates
+/// and the same atom typing.
+#[test]
+fn mmff94_full_energy_matches_rdkit_library() {
+    const TOL: f64 = 1.0e-6;
+    let oracle = load();
+    let reference = load_rdkit_lib();
+    assert_eq!(oracle.molecules.len(), reference.molecules.len());
+
+    for (mol, rdkit) in oracle.molecules.iter().zip(&reference.molecules) {
+        assert_eq!(mol.name, rdkit.name);
+        let energy = sci_form::compute_mmff94_energy(&mol.smiles, &mol.coords)
+            .unwrap_or_else(|e| panic!("{}: MMFF94 energy failed: {e}", mol.name));
+        let dev = (energy - rdkit.energy).abs();
+        println!(
+            "{:<16} rust = {:>16.8}  RDKit = {:>16.8}  |dev| = {:.3e} kcal/mol",
+            mol.name, energy, rdkit.energy, dev
+        );
+        assert!(
+            dev < TOL,
+            "{}: full MMFF94 energy deviation {dev:.6} kcal/mol exceeds {TOL} \
+             (rust {energy:.9} vs RDKit {:.9})",
+            mol.name,
+            rdkit.energy
+        );
+
+        let parsed = sci_form::graph::Molecule::from_smiles(&mol.smiles).unwrap();
+        let charges = sci_form::forcefield::mmff94::mmff94_partial_charges(&parsed);
+        for (i, (got, want)) in charges.iter().zip(&rdkit.partial_charges).enumerate() {
+            let dev = (got - want).abs();
+            assert!(
+                dev < 1.0e-9,
+                "{}: RDKit partial charge {i} deviation {dev:.3e} \
+                 (rust {got:.9} vs RDKit {want:.9})",
+                mol.name
+            );
+        }
     }
 }
 
@@ -185,6 +292,18 @@ fn mmff94_term_counts_match_reference() {
             mol.name
         );
         assert_eq!(
+            counts.get("stretch_bend").copied().unwrap_or(0),
+            mol.counts.stretch_bend,
+            "{}: stretch-bend term count",
+            mol.name
+        );
+        assert_eq!(
+            counts.get("oop").copied().unwrap_or(0),
+            mol.counts.oop,
+            "{}: out-of-plane term count",
+            mol.name
+        );
+        assert_eq!(
             counts.get("torsion").copied().unwrap_or(0),
             mol.counts.torsions,
             "{}: torsion term count",
@@ -194,6 +313,12 @@ fn mmff94_term_counts_match_reference() {
             counts.get("vdw").copied().unwrap_or(0),
             mol.counts.vdw_pairs,
             "{}: vdW term count",
+            mol.name
+        );
+        assert_eq!(
+            counts.get("electrostatic").copied().unwrap_or(0),
+            mol.counts.electrostatic_pairs,
+            "{}: electrostatic term count",
             mol.name
         );
     }
@@ -268,7 +393,7 @@ fn mmff94_published_parameters_are_used() {
 fn mmff94_gradients_match_finite_differences() {
     use sci_form::forcefield::mmff94::{
         validate_gradients, Mmff94AngleBend, Mmff94BondStretch, Mmff94BufferedVanDerWaals,
-        Mmff94Torsion,
+        Mmff94Electrostatic, Mmff94OutOfPlane, Mmff94StretchBend, Mmff94Torsion,
     };
 
     // bond stretch
@@ -341,6 +466,55 @@ fn mmff94_gradients_match_finite_differences() {
     let coords = vec![0.0, 0.0, 0.0, 3.9, 0.1, 0.0];
     let err = validate_gradients(&vdw, &coords, 1e-5);
     assert!(err < 1e-4, "vdW gradient error: {err}");
+
+    // stretch–bend
+    let stretch_bend = Mmff94StretchBend {
+        atom_i: 0,
+        atom_j: 1,
+        atom_k: 2,
+        kba_ijk: 0.206,
+        kba_kji: 0.197,
+        r0_ij: 1.4,
+        r0_jk: 1.5,
+        theta0_deg: 109.45,
+    };
+    let coords = vec![
+        -0.6, 0.8, 0.0, //
+        0.0, 0.0, 0.0, //
+        0.9, 0.4, 0.3, //
+    ];
+    let err = validate_gradients(&stretch_bend, &coords, 1e-5);
+    assert!(err < 1e-4, "stretch-bend gradient error: {err}");
+
+    // out-of-plane
+    let oop = Mmff94OutOfPlane {
+        atom_i: 0,
+        atom_j: 1,
+        atom_k: 2,
+        atom_l: 3,
+        koop: 0.035,
+    };
+    let coords = vec![
+        1.0, 0.0, 0.0, //
+        0.0, 0.0, 0.0, //
+        0.0, 1.0, 0.0, //
+        0.3, 0.2, 0.5, //
+    ];
+    let err = validate_gradients(&oop, &coords, 1e-5);
+    assert!(err < 1e-4, "out-of-plane gradient error: {err}");
+
+    // buffered Coulomb (1-4 and ordinary)
+    for one_four in [false, true] {
+        let elec = Mmff94Electrostatic {
+            atom_i: 0,
+            atom_j: 1,
+            charge_product: 0.28 * -0.68,
+            one_four,
+        };
+        let coords = vec![0.0, 0.0, 0.0, 2.9, 0.3, 0.1];
+        let err = validate_gradients(&elec, &coords, 1e-5);
+        assert!(err < 1e-4, "electrostatic gradient error: {err}");
+    }
 }
 
 /// The total MMFF94 gradient must be consistent with a finite-difference

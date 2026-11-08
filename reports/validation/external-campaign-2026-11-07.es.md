@@ -162,3 +162,24 @@ problemas reales eran de infraestructura (import ausente en el oráculo MLFF y
 LAMMPS Debian sin REAXFF), no del código de `sci-form`. Los fixtures
 regenerados y el lock de versiones quedan como evidencia reproducible de la
 campaña.
+
+
+## Anexo 2026-11-08 — MMFF94 completo (F100)
+
+Se cerró el término que faltaba del bloque MMFF94. La implementación cubre ahora
+la expresión completa de Halgren 1996: stretch, angle, stretch-bend,
+out-of-plane, torsión, van der Waals 14-7 amortiguado y Coulomb amortiguado con
+cargas parciales PBCI/BCI.
+
+- Fixture independiente: `tests/fixtures/validation/mmff94_rdkit.json`
+  (oráculo Python, término a término, 7 moléculas).
+- Fixture de la biblioteca de referencia:
+  `tests/fixtures/validation/mmff94_rdkit_lib.json` (RDKit 2026.09.1,
+  `MMFFGetMoleculeForceField().CalcEnergy()` y cargas parciales).
+- Gate Rust: `tests/mmff94_validation.rs` (6 tests).
+- Desviación máxima de energía total frente a RDKit: **2.8e-11 kcal/mol**.
+- Desviación máxima de carga parcial: **0** (tipos y cargas idénticos).
+- Términos y conteos por molécula verificados contra la enumeración de RDKit.
+- Tablas extra generadas por `scripts/validation/gen_mmff94_extra_params.py`:
+  117 OOP (MMFF94) + 117 OOP (MMFF94s), 282 stretch-bend, 30 DFSB, 99 PBCI y
+  498 incrementos de carga de enlace.

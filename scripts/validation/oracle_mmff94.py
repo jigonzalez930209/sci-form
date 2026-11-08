@@ -227,6 +227,51 @@ class Tables:
             self.vdw[int(row[0])] = (float(row[1]), float(row[2]), float(row[3]),
                                      float(row[4]), row[5])
 
+        # out-of-plane parameters (both variants)
+        def _oop(blob: str) -> dict[tuple[int, int, int, int], float]:
+            out = {}
+            for row in _rows(blob):
+                if len(row) >= 5 and row[0].isdigit() and row[1].isdigit():
+                    i, j, k, l = (int(row[0]), int(row[1]), int(row[2]), int(row[3]))
+                    i, k, l = sorted((i, k, l))
+                    out[(i, j, k, l)] = float(row[4])
+            return out
+
+        self.oop = _oop(_cpp_string(src, "defaultMMFFOop"))
+        self.oop_s = _oop(_cpp_string(src, "defaultMMFFsOop"))
+
+        # stretch-bend parameters, stored with canonical (i <= k) wings
+        self.stbn: dict[tuple[int, int, int, int], tuple[float, float]] = {}
+        for row in _rows(_cpp_string(src, "defaultMMFFStbn")):
+            if len(row) >= 6 and all(x.isdigit() for x in row[:4]):
+                st, i, j, k = (int(row[0]), int(row[1]), int(row[2]), int(row[3]))
+                a, b = float(row[4]), float(row[5])
+                if i > k:
+                    i, k, a, b = k, i, b, a
+                self.stbn[(st, i, j, k)] = (a, b)
+
+        # default stretch-bend parameters by periodic-table rows
+        self.dfsb: dict[tuple[int, int, int], tuple[float, float]] = {}
+        for row in _rows(_cpp_string(src, "defaultMMFFDfsb")):
+            if len(row) >= 5 and all(x.isdigit() for x in row[:3]):
+                i, j, k = int(row[0]), int(row[1]), int(row[2])
+                a, b = float(row[3]), float(row[4])
+                if i > k:
+                    i, k, a, b = k, i, b, a
+                self.dfsb[(i, j, k)] = (a, b)
+
+        # partial bond-charge increments / formal-charge adjustments
+        self.pbci: dict[int, tuple[float, float]] = {}
+        for row in _rows(_cpp_string(src, "defaultMMFFPBCI")):
+            if len(row) >= 4 and row[1].isdigit():
+                self.pbci[int(row[1])] = (float(row[2]), float(row[3]))
+
+        # bond-charge increments
+        self.chg: dict[tuple[int, int, int], float] = {}
+        for row in _rows(_cpp_string(src, "defaultMMFFChg")):
+            if len(row) >= 4 and all(x.isdigit() for x in row[:3]):
+                self.chg[(int(row[0]), int(row[1]), int(row[2]))] = float(row[3])
+
     # ── lookups ──
 
     def eq_level(self, atom_type: int, level: int) -> int:
@@ -305,6 +350,21 @@ class Tables:
             r_ij *= darad
             eps *= daeps
         return r_ij, eps
+
+
+
+def stretch_bend_type(angle_type: int, bond_type_1: int, bond_type_2: int) -> int:
+    if angle_type == 1:
+        return 1 if (bond_type_1 or bond_type_1 == bond_type_2) else 2
+    if angle_type == 2:
+        return 3
+    if angle_type == 4:
+        return 4
+    if angle_type == 3:
+        return 5
+    if angle_type == 5:
+        return 6 if (bond_type_1 or bond_type_1 == bond_type_2) else 7
+    return 0
 
 
 # ── periodic table helpers ───────────────────────────────────────────────────
@@ -688,6 +748,100 @@ class Resolver:
         return (v1, v2, v3)
 
 
+    # ── out-of-plane / stretch-bend / charges ──
+
+    def relation(self, i: int, j: int) -> int:
+        d = self.mol.topological_distance(i, j)
+        return d if d <= 4 else 4
+
+    def oop_param(self, i: int, j: int, k: int, l: int, mmffs: bool = False):
+        table = self.t.oop_s if mmffs else self.t.oop
+        central = self.mol.atoms[j].type
+        for level in range(4):
+            wings = sorted((self.t.eq_level(self.mol.atoms[i].type, level),
+                            self.t.eq_level(self.mol.atoms[k].type, level),
+                            self.t.eq_level(self.mol.atoms[l].type, level)))
+            hit = table.get((wings[0], central, wings[1], wings[2]))
+            if hit is not None:
+                return hit
+        return None
+
+    def stretch_bend_params(self, i: int, j: int, k: int):
+        if self.t.prop_of(self.mol.atoms[j].type, "linh"):
+            return None
+        bt_ij = self.bond_type(i, j)
+        bt_jk = self.bond_type(j, k)
+        r0_ij = self.bond_params(i, j)[1]
+        r0_jk = self.bond_params(j, k)[1]
+        angle_type = self.angle_type(i, j, k)
+        theta0 = self.angle_params(i, j, k)[1]
+        ti = self.mol.atoms[i].type
+        tk = self.mol.atoms[k].type
+        first = bt_ij if ti <= tk else bt_jk
+        second = bt_jk if ti < tk else bt_ij
+        st_type = stretch_bend_type(angle_type, first, second)
+        hit = self.t.stbn.get((st_type, min(ti, tk), self.mol.atoms[j].type, max(ti, tk)))
+        if hit is not None:
+            a, b = hit
+            swap = ti > tk or (ti == tk and bt_ij < bt_jk)
+        else:
+            rows = (periodic_table_row(self.mol.atoms[i].element),
+                    periodic_table_row(self.mol.atoms[j].element),
+                    periodic_table_row(self.mol.atoms[k].element))
+            a, b = self.t.dfsb.get((min(rows[0], rows[2]), rows[1], max(rows[0], rows[2])),
+                                   (0.0, 0.0))
+            swap = rows[0] > rows[2]
+        if swap:
+            a, b = b, a
+        if abs(a) < 1e-10 and abs(b) < 1e-10:
+            return None
+        return a, b, r0_ij, r0_jk, theta0
+
+    def partial_charges(self) -> list[float]:
+        """MMFF94 partial charges (MMFF.V eq. 15).
+
+        The fixture molecules are neutral and contain none of the special
+        charged atom types, so the formal-charge array is zero; the bond-charge
+        increments still produce the correct nonzero partial charges.
+        """
+        n = self.mol.n
+        fchg = [0.0] * n
+        q = [0.0] * n
+        for idx in range(n):
+            atom_type = self.mol.atoms[idx].type
+            pbci, fcadj = self.t.pbci.get(atom_type, (0.0, 0.0))
+            m = self.t.prop_of(atom_type, "crd")
+            q0 = fchg[idx]
+            if abs(fcadj) < 1e-10:
+                for nbr in self.mol.neighbors(idx):
+                    if fchg[nbr] < 0.0:
+                        q0 += fchg[nbr] / (2.0 * self.mol.degree(nbr))
+            if atom_type == 62:
+                for nbr in self.mol.neighbors(idx):
+                    if fchg[nbr] > 0.0:
+                        q0 -= fchg[nbr] / 2.0
+            sum_partial = 0.0
+            sum_formal = 0.0
+            for nbr in self.mol.neighbors(idx):
+                bt = self.bond_type(idx, nbr)
+                nbr_type = self.mol.atoms[nbr].type
+                if atom_type <= nbr_type:
+                    key = (bt, atom_type, nbr_type)
+                    sign = -1.0
+                else:
+                    key = (bt, nbr_type, atom_type)
+                    sign = 1.0
+                bci = self.t.chg.get(key)
+                if bci is not None:
+                    sum_partial += sign * bci
+                else:
+                    sum_partial += pbci - self.t.pbci.get(nbr_type, (0.0, 0.0))[0]
+                sum_formal += fchg[nbr]
+            q[idx] = (1.0 - m * fcadj) * q0 + fcadj * sum_formal + sum_partial
+        return q
+
+
+
 # ── energy expressions ───────────────────────────────────────────────────────
 
 
@@ -765,6 +919,35 @@ def torsion_cos_phi(p1, p2, p3, p4) -> float:
     return max(-1.0, min(1.0, c))
 
 
+def oop_chi(p1, p2, p3, p4) -> float:
+    rji = _unit(_sub(p1, p2))
+    rjk = _unit(_sub(p3, p2))
+    rjl = _unit(_sub(p4, p2))
+    n = _unit(_cross(rji, rjk))
+    s = max(-1.0, min(1.0, _dot(n, rjl)))
+    return RAD2DEG * math.asin(s)
+
+
+def oop_energy(chi: float, koop: float) -> float:
+    return 0.5 * MDYNE_A_TO_KCAL_MOL * DEG2RAD * DEG2RAD * koop * chi * chi
+
+
+def stretch_bend_energy(kba_ijk: float, kba_kji: float, r0_ij: float, r0_jk: float,
+                        theta0_deg: float, coords, i: int, j: int, k: int) -> float:
+    p1 = coords[3 * i:3 * i + 3]
+    p2 = coords[3 * j:3 * j + 3]
+    p3 = coords[3 * k:3 * k + 3]
+    dr_ij = distance(coords, i, j) - r0_ij
+    dr_jk = distance(coords, j, k) - r0_jk
+    dt = angle_degrees(p1, p2, p3) - theta0_deg
+    return MDYNE_A_TO_KCAL_MOL * DEG2RAD * dt * (kba_ijk * dr_ij + kba_kji * dr_jk)
+
+
+def electrostatic_energy(dist: float, charge_product: float, is_1_4: bool) -> float:
+    scale = 0.75 if is_1_4 else 1.0
+    return 332.0716 * charge_product * scale / (dist + 0.05)
+
+
 def distance(coords, a, b) -> float:
     pa = coords[3 * a: 3 * a + 3]
     pb = coords[3 * b: 3 * b + 3]
@@ -782,6 +965,7 @@ def enumerate_terms(mol: Molecule, resolver: Resolver):
         bonds.append((b.i, b.j, kb, r0))
 
     angles = []
+    stretch_bends = []
     for j in range(mol.n):
         if mol.degree(j) == 1:
             continue
@@ -792,6 +976,21 @@ def enumerate_terms(mol: Molecule, resolver: Resolver):
                 ka, theta0 = resolver.angle_params(i, j, k)
                 linear = resolver.t.prop_of(mol.atoms[j].type, "linh") > 0
                 angles.append((i, j, k, ka, theta0, linear))
+                sb = resolver.stretch_bend_params(i, j, k)
+                if sb is not None:
+                    stretch_bends.append((i, j, k) + sb)
+
+    oop = []
+    for j in range(mol.n):
+        nbrs = mol.neighbors(j)
+        if len(nbrs) != 3:
+            continue
+        i, k, l = nbrs
+        koop = resolver.oop_param(i, j, k, l)
+        if koop is None:
+            continue
+        for a, b, c in ((i, k, l), (i, l, k), (l, k, i)):
+            oop.append((a, j, b, c, koop))
 
     torsions = []
     for b in mol.bonds:
@@ -813,17 +1012,22 @@ def enumerate_terms(mol: Molecule, resolver: Resolver):
                 torsions.append((i, j, k, l, v1, v2, v3))
 
     vdw = []
+    elec = []
+    charges = resolver.partial_charges()
     for i in range(mol.n):
         for j in range(i + 1, mol.n):
-            if mol.topological_distance(i, j) < 3:
+            relation = resolver.relation(i, j)
+            if relation < 3:
                 continue
             r_star, eps = resolver.t.vdw_pair(mol.atoms[i].type, mol.atoms[j].type)
             vdw.append((i, j, r_star, eps))
-    return bonds, angles, torsions, vdw
+            if abs(charges[i]) >= 1e-10 and abs(charges[j]) >= 1e-10:
+                elec.append((i, j, charges[i] * charges[j], relation == 3))
+    return bonds, angles, stretch_bends, oop, torsions, vdw, elec
 
 
 def energy_breakdown(mol: Molecule, resolver: Resolver):
-    bonds, angles, torsions, vdw = enumerate_terms(mol, resolver)
+    bonds, angles, stretch_bends, oop, torsions, vdw, elec = enumerate_terms(mol, resolver)
     coords = mol.coords
     e_bond = sum(bond_energy(kb, r0, distance(coords, i, j)) for (i, j, kb, r0) in bonds)
     e_angle = 0.0
@@ -831,19 +1035,39 @@ def energy_breakdown(mol: Molecule, resolver: Resolver):
         theta = angle_degrees(coords[3 * i: 3 * i + 3], coords[3 * j: 3 * j + 3],
                                coords[3 * k: 3 * k + 3])
         e_angle += angle_energy(ka, theta0, theta, linear)
+    e_sb = sum(stretch_bend_energy(a, b, r0_ij, r0_jk, theta0, coords, i, j, k)
+               for (i, j, k, a, b, r0_ij, r0_jk, theta0) in stretch_bends)
+    e_oop = 0.0
+    for (i, j, k, l, koop) in oop:
+        chi = oop_chi(coords[3 * i:3 * i + 3], coords[3 * j:3 * j + 3],
+                      coords[3 * k:3 * k + 3], coords[3 * l:3 * l + 3])
+        e_oop += oop_energy(chi, koop)
     e_tor = 0.0
     for (i, j, k, l, v1, v2, v3) in torsions:
-        c = torsion_cos_phi(coords[3 * i: 3 * i + 3], coords[3 * j: 3 * j + 3],
-                            coords[3 * k: 3 * k + 3], coords[3 * l: 3 * l + 3])
+        c = torsion_cos_phi(coords[3 * i:3 * i + 3], coords[3 * j:3 * j + 3],
+                            coords[3 * k:3 * k + 3], coords[3 * l:3 * l + 3])
         e_tor += torsion_energy(v1, v2, v3, c)
     e_vdw = sum(vdw_energy(distance(coords, i, j), rs, eps) for (i, j, rs, eps) in vdw)
+    e_elec = sum(electrostatic_energy(distance(coords, i, j), qq, is14)
+                 for (i, j, qq, is14) in elec)
     return {
         "bond": e_bond,
         "angle": e_angle,
+        "stretch_bend": e_sb,
+        "oop": e_oop,
         "torsion": e_tor,
         "vdw": e_vdw,
-        "total": e_bond + e_angle + e_tor + e_vdw,
-    }, {"bonds": len(bonds), "angles": len(angles), "torsions": len(torsions), "vdw_pairs": len(vdw)}
+        "electrostatic": e_elec,
+        "total": e_bond + e_angle + e_sb + e_oop + e_tor + e_vdw + e_elec,
+    }, {
+        "bonds": len(bonds),
+        "angles": len(angles),
+        "stretch_bend": len(stretch_bends),
+        "oop": len(oop),
+        "torsions": len(torsions),
+        "vdw_pairs": len(vdw),
+        "electrostatic_pairs": len(elec),
+    }
 
 
 # ── geometry construction ────────────────────────────────────────────────────
@@ -1005,14 +1229,14 @@ def benzene():
 
 
 def water():
-    # O type 6 (OR); H type 21 (HOR)
-    atoms = [Atom(8, 6), Atom(1, 21), Atom(1, 21)]
+    # O type 70 (OH2); H type 31 (HOH), matching RDKit's water typing.
+    atoms = [Atom(8, 70), Atom(1, 31), Atom(1, 31)]
     bonds = [Bond(0, 1, "single"), Bond(0, 2, "single")]
     r_oh = 0.958
     coords = [[0.0, 0.0, 0.0]]
-    h1 = place_angle(coords[0], (1.0, 0.0, 0.0), 104.5, r_oh, plane_normal=(0.0, 0.0, 1.0))
+    h1 = place_angle(coords[0], (1.0, 0.0, 0.0), 52.25, r_oh, plane_normal=(0.0, 0.0, 1.0))
     coords.append(h1)
-    coords.append(place_angle(coords[0], (1.0, 0.0, 0.0), 104.5, r_oh,
+    coords.append(place_angle(coords[0], (1.0, 0.0, 0.0), 52.25, r_oh,
                               plane_normal=(0.0, 0.0, -1.0)))
     return Molecule("water", "O", atoms, bonds, flatten(coords))
 
@@ -1028,8 +1252,7 @@ def methylamine():
     coords = [[0.0, 0.0, 0.0], [r_cn, 0.0, 0.0]]
     for d in tetra3(_unit(_sub(coords[1], coords[0])), r_ch):
         coords.append([coords[0][q] + d[q] for q in range(3)])
-    for d in tetra2(_unit(_sub(coords[0], coords[1])),
-                    _unit(_sub(coords[1], coords[0])), r_nh):
+    for d in tetra3(_unit(_sub(coords[0], coords[1])), r_nh)[:2]:
         coords.append([coords[1][q] + d[q] for q in range(3)])
     return Molecule("methylamine", "CN", atoms, bonds, flatten(coords))
 
@@ -1060,9 +1283,10 @@ def main() -> int:
         "upstream_sha256": sha,
         "units": "kcal/mol",
         "notes": [
-            "Energy = bond stretch + angle bend + torsion + van der Waals (buffered 14-7).",
-            "Electrostatic, stretch-bend and out-of-plane terms are not part of the "
-            "Rust implementation under test and are therefore not included here.",
+            "Energy = bond stretch + angle bend + stretch-bend + out-of-plane + "
+            "torsion + buffered 14-7 van der Waals + buffered Coulomb.",
+            "Partial charges follow MMFF.V eq. 15 with the published PBCI/BCI tables; "
+            "electrostatics use a constant dielectric and the 0.75 factor on 1-4 pairs.",
             "Cubic bend constant: -0.4 rad^-1 (RDKit value); Halgren 1996 rounds "
             "this to -0.007 deg^-1.",
         ],
@@ -1082,6 +1306,7 @@ def main() -> int:
             "coords": [round(c, 12) for c in mol.coords],
             "counts": counts,
             "energy": {k: v for k, v in energies.items()},
+            "partial_charges": resolver.partial_charges(),
         })
         print("%-14s total = %14.8f  %s" % (mol.name, energies["total"], counts))
 

@@ -1739,5 +1739,41 @@
   "source": "tests/eht_eeq_parity.rs",
   "reference": {},
   "level": "L2"
+ },
+ {
+  "ficha": "F100",
+  "reference": {
+   "tool": "RDKit 2026.09.1 MMFF94 (MMFFGetMoleculeForceField)"
+  },
+  "units": "kcal/mol",
+  "level": "L2",
+  "n_cases": 7,
+  "timestamp": "2026-11-08T12:00:00",
+  "status": "tracked",
+  "source": "tests/mmff94_validation.rs",
+  "observable": "mmff94_full_energy_max_abs",
+  "metric": "max_abs",
+  "value": 2.806e-11,
+  "tolerance": 1e-06,
+  "pass": true,
+  "notes": "Full MMFF94 energy (bond, angle, stretch-bend, out-of-plane, torsion, vdW, electrostatic) vs RDKit on 7 molecules using the same coordinates; the independent oracle also matches every term."
+ },
+ {
+  "ficha": "F100",
+  "reference": {
+   "tool": "RDKit 2026.09.1 MMFF94 (MMFFGetMoleculeForceField)"
+  },
+  "units": "kcal/mol",
+  "level": "L2",
+  "n_cases": 7,
+  "timestamp": "2026-11-08T12:00:00",
+  "status": "tracked",
+  "source": "tests/mmff94_validation.rs",
+  "observable": "mmff94_partial_charge_max_abs",
+  "metric": "max_abs",
+  "value": 0.0,
+  "tolerance": 1e-09,
+  "pass": true,
+  "notes": "MMFF94 partial charges from the published PBCI/BCI tables vs RDKit; atom types also match exactly."
  }
 ]

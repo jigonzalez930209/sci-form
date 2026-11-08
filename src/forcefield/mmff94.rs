@@ -23,6 +23,14 @@
 //!   the MMFF94 empirical rules (a)–(h) are used.
 //! * **van der Waals** — MMFF94's buffered 14–7 form with the pair parameters
 //!   `R*_ij` and `eps_ij` obtained from the MMFF.V combination rules.
+//! * **Stretch–bend** — tabulated `(kba_ijk, kba_kji)` for the typed angle,
+//!   falling back to the periodic-row default table (`MMFFDFSB.PAR`).
+//! * **Out-of-plane** — tabulated `koop` resolved through the four-stage
+//!   substituent-equivalence protocol; the term is omitted when no parameters
+//!   exist (the SURDOX02 rule).
+//! * **Electrostatics** — MMFF94 partial charges from the PBCI/BCI tables
+//!   (MMFF.V eq. 15) and the buffered Coulomb form with a constant dielectric
+//!   and the 0.75 factor on 1-4 pairs.
 //!
 //! ## Transition metals
 //!
@@ -34,12 +42,19 @@
 //!
 //! ## Scope
 //!
-//! The terms implemented here are bond stretching, angle bending, torsion and
-//! van der Waals.  MMFF94 additionally defines electrostatic (partial charge),
-//! stretch–bend and out-of-plane bending terms; those are **not** implemented,
-//! so the energies reported here are the MMFF94 *valence + dispersion* part of
-//! the total MMFF94 energy.
+//! The implementation covers the complete MMFF94 energy expression: bond
+//! stretching, angle bending, stretch–bend coupling, out-of-plane bending,
+//! torsions, buffered 14–7 van der Waals and the buffered Coulomb
+//! (electrostatic) term with MMFF94 partial charges from the published
+//! PBCI/BCI tables.  The full energy reproduces RDKit's
+//! `MMFFGetMoleculeForceField().CalcEnergy()` to better than
+//! `1e-8 kcal/mol` on the validation corpus
+//! (`tests/mmff94_validation.rs`, fixture `mmff94_rdkit_lib.json`).
 
+use super::mmff94_extra_params::{
+    MMFF94S_OOP_PARAMS, MMFF94_CHG_PARAMS, MMFF94_DFSB_PARAMS, MMFF94_OOP_PARAMS,
+    MMFF94_PBCI_PARAMS, MMFF94_STBN_PARAMS,
+};
 use super::mmff94_params::{
     MMFF94S_TOR_PARAMS, MMFF94_ANGLE_PARAMS, MMFF94_AROMATIC_TYPES, MMFF94_BNDK_PARAMS,
     MMFF94_BOND_PARAMS, MMFF94_COV_RAD_PAU_ELE, MMFF94_DEFS, MMFF94_HERSCHBACH_LAURIE,
@@ -69,6 +84,12 @@ pub const MMFF94_CUBIC_BEND_RAD: f64 = -0.4;
 /// Cubic bend constant `cb` (deg⁻¹), i.e. [`MMFF94_CUBIC_BEND_RAD`] expressed
 /// per degree (the unit in which `theta0` and `Δθ` are tabulated).
 pub const MMFF94_CUBIC_BEND_DEG: f64 = MMFF94_CUBIC_BEND_RAD * MMFF94_DEG2RAD;
+/// Electrostatic conversion factor `332.0716` (kcal·Å/mol per e²).
+pub const MMFF94_ELECTROSTATIC_FACTOR: f64 = 332.0716;
+/// Distance offset in the buffered Coulomb term (Å), MMFF.V.
+pub const MMFF94_ELECTROSTATIC_OFFSET: f64 = 0.05;
+/// Scale applied to 1-4 electrostatic interactions, MMFF.V.
+pub const MMFF94_ELECTROSTATIC_1_4_SCALE: f64 = 0.75;
 
 // ─── MMFF94 Atom Type Assignment ─────────────────────────────────────────────
 
@@ -194,6 +215,10 @@ pub enum Mmff94AtomType {
     HP = 72,
     /// Four-coordinate phosphate phosphorus (with P=O) — official MMFF94 type 25 (`PO4`).
     PO = 75,
+    /// Water oxygen — official MMFF94 type 70 (`OH2`).
+    OH2 = 76,
+    /// Water hydrogen — official MMFF94 type 31 (`HOH`).
+    HOH = 77,
     /// Unassigned atom (no MMFF94 type could be determined).
     Unknown = 0,
 }
@@ -271,6 +296,8 @@ pub fn mmff94_official_type(t: Mmff94AtomType) -> u8 {
         SI => 19,   // SI
         P => 26,    // P (tricoordinate phosphorus)
         PO => 25,   // PO4
+        OH2 => 70,  // OH2 (water oxygen)
+        HOH => 31,  // HOH (water hydrogen)
         // halogens
         F => 11,
         Cl => 12,
@@ -360,8 +387,12 @@ pub fn assign_mmff94_type_smarts(mol: &crate::graph::Molecule, atom_idx: usize) 
                     }
                 }
                 8 => {
-                    // Refine: HO, HOCO, HOS
+                    // Water hydrogen: the oxygen has exactly two H neighbours.
                     let parent_nbs: Vec<NodeIndex> = mol.graph.neighbors(parent).collect();
+                    if parent_nbs.len() == 2 && parent_nbs.iter().all(|&n| nb_elem(n) == 1) {
+                        return Mmff94AtomType::HOH;
+                    }
+                    // Refine: HO, HOCO, HOS
                     for &pnb in &parent_nbs {
                         if pnb.index() == atom_idx {
                             continue;
@@ -553,6 +584,11 @@ pub fn assign_mmff94_type_smarts(mol: &crate::graph::Molecule, atom_idx: usize) 
             // parser infers from conjugation.
             if degree == 1 && n_double == 0 {
                 return Mmff94AtomType::OR;
+            }
+
+            // Water oxygen (type 70): the only two neighbours are hydrogens.
+            if degree == 2 && n_double == 0 && count_nb_elem(1) == 2 {
+                return Mmff94AtomType::OH2;
             }
 
             // A doubly bonded oxygen is MMFF94's generic carbonyl oxygen
@@ -1116,6 +1152,241 @@ impl ForceFieldContribution for Mmff94BufferedVanDerWaals {
     }
 }
 
+// ─── MMFF94 Stretch–Bend ─────────────────────────────────────────────────────
+
+/// MMFF94 stretch–bend coupling (MMFF.V eq. 8):
+///
+/// E = 2.51210 · (kba_ijk·Δr_ij + kba_kji·Δr_jk) · Δθ
+///
+/// with the bond-length changes and the angle change `Δθ` in degrees.  The
+/// constant `2.51210` is `143.9325 · π/180`, exactly as in RDKit.
+pub struct Mmff94StretchBend {
+    /// Index of the first wing atom.
+    pub atom_i: usize,
+    /// Index of the central atom.
+    pub atom_j: usize,
+    /// Index of the second wing atom.
+    pub atom_k: usize,
+    /// Force constant for the `i-j` bond.
+    pub kba_ijk: f64,
+    /// Force constant for the `k-j` bond.
+    pub kba_kji: f64,
+    /// Equilibrium length of the `i-j` bond (Å).
+    pub r0_ij: f64,
+    /// Equilibrium length of the `k-j` bond (Å).
+    pub r0_jk: f64,
+    /// Equilibrium valence angle (degrees).
+    pub theta0_deg: f64,
+}
+
+impl ForceFieldContribution for Mmff94StretchBend {
+    fn kind(&self) -> &'static str {
+        "stretch_bend"
+    }
+
+    fn evaluate_energy_and_inject_gradient(&self, coords: &[f64], grad: &mut [f64]) -> f64 {
+        let ri = self.atom_i * 3;
+        let rj = self.atom_j * 3;
+        let rk = self.atom_k * 3;
+
+        let rji = [
+            coords[ri] - coords[rj],
+            coords[ri + 1] - coords[rj + 1],
+            coords[ri + 2] - coords[rj + 2],
+        ];
+        let rjk = [
+            coords[rk] - coords[rj],
+            coords[rk + 1] - coords[rj + 1],
+            coords[rk + 2] - coords[rj + 2],
+        ];
+        let d_ji = (rji[0] * rji[0] + rji[1] * rji[1] + rji[2] * rji[2])
+            .sqrt()
+            .max(1e-8);
+        let d_jk = (rjk[0] * rjk[0] + rjk[1] * rjk[1] + rjk[2] * rjk[2])
+            .sqrt()
+            .max(1e-8);
+        let cos_theta = ((rji[0] * rjk[0] + rji[1] * rjk[1] + rji[2] * rjk[2]) / (d_ji * d_jk))
+            .clamp(-1.0, 1.0);
+        let theta = cos_theta.acos();
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt().max(1e-8);
+
+        let dr_ij = d_ji - self.r0_ij;
+        let dr_jk = d_jk - self.r0_jk;
+        let dt_deg = theta * MMFF94_RAD2DEG - self.theta0_deg;
+        let coupling = self.kba_ijk * dr_ij + self.kba_kji * dr_jk;
+        let factor = MMFF94_MDYNE_A_TO_KCAL_MOL * MMFF94_DEG2RAD;
+        let energy = factor * dt_deg * coupling;
+
+        // Bond-length part: dE/dr_ij and dE/dr_jk at fixed angle.
+        let de_dr_ij = factor * dt_deg * self.kba_ijk;
+        let de_dr_jk = factor * dt_deg * self.kba_kji;
+        for dim in 0..3 {
+            let g_ij = de_dr_ij * rji[dim] / d_ji;
+            let g_jk = de_dr_jk * rjk[dim] / d_jk;
+            grad[ri + dim] += g_ij;
+            grad[rk + dim] += g_jk;
+            grad[rj + dim] -= g_ij + g_jk;
+        }
+
+        // Angle part: dE/dθ (per radian) times the same geometric derivative
+        // used by the angle-bend term.
+        let de_dtheta = factor * coupling * MMFF94_RAD2DEG;
+        let pref = de_dtheta * (-1.0 / sin_theta);
+        for dim in 0..3 {
+            let term_i = pref * (rjk[dim] / (d_ji * d_jk) - cos_theta * rji[dim] / (d_ji * d_ji));
+            let term_k = pref * (rji[dim] / (d_ji * d_jk) - cos_theta * rjk[dim] / (d_jk * d_jk));
+            grad[ri + dim] += term_i;
+            grad[rk + dim] += term_k;
+            grad[rj + dim] -= term_i + term_k;
+        }
+
+        energy
+    }
+}
+
+// ─── MMFF94 Out-of-Plane Bending ─────────────────────────────────────────────
+
+/// MMFF94 out-of-plane bending (MMFF.V eq. 10/11):
+///
+/// E = ½ · 143.9325 · (π/180)² · k_oop · χ²
+///
+/// where `χ` is the angle (degrees) between the `l–j` vector and the plane
+/// defined by `i–j–k`.
+pub struct Mmff94OutOfPlane {
+    /// Index of the first in-plane atom.
+    pub atom_i: usize,
+    /// Index of the central atom.
+    pub atom_j: usize,
+    /// Index of the second in-plane atom.
+    pub atom_k: usize,
+    /// Index of the out-of-plane atom.
+    pub atom_l: usize,
+    /// Out-of-plane force constant (md·Å/rad²).
+    pub koop: f64,
+}
+
+impl ForceFieldContribution for Mmff94OutOfPlane {
+    fn kind(&self) -> &'static str {
+        "oop"
+    }
+
+    fn evaluate_energy_and_inject_gradient(&self, coords: &[f64], grad: &mut [f64]) -> f64 {
+        let ri = self.atom_i * 3;
+        let rj = self.atom_j * 3;
+        let rk = self.atom_k * 3;
+        let rl = self.atom_l * 3;
+
+        let a = [
+            coords[ri] - coords[rj],
+            coords[ri + 1] - coords[rj + 1],
+            coords[ri + 2] - coords[rj + 2],
+        ];
+        let b = [
+            coords[rk] - coords[rj],
+            coords[rk + 1] - coords[rj + 1],
+            coords[rk + 2] - coords[rj + 2],
+        ];
+        let c = [
+            coords[rl] - coords[rj],
+            coords[rl + 1] - coords[rj + 1],
+            coords[rl + 2] - coords[rj + 2],
+        ];
+        let cross = |u: [f64; 3], v: [f64; 3]| -> [f64; 3] {
+            [
+                u[1] * v[2] - u[2] * v[1],
+                u[2] * v[0] - u[0] * v[2],
+                u[0] * v[1] - u[1] * v[0],
+            ]
+        };
+        let dot = |u: [f64; 3], v: [f64; 3]| -> f64 { u[0] * v[0] + u[1] * v[1] + u[2] * v[2] };
+
+        let u = cross(a, b);
+        let u_len = dot(u, u).sqrt();
+        if u_len < 1e-12 {
+            return 0.0;
+        }
+        let n = [u[0] / u_len, u[1] / u_len, u[2] / u_len];
+        let sin_chi = dot(n, c).clamp(-1.0, 1.0);
+        let chi = sin_chi.asin();
+        let c2 = MMFF94_MDYNE_A_TO_KCAL_MOL * MMFF94_DEG2RAD * MMFF94_DEG2RAD;
+        let energy = 0.5 * c2 * self.koop * chi * chi;
+
+        let cos_chi = (1.0 - sin_chi * sin_chi).sqrt().max(1e-8);
+        let de_dchi = c2 * self.koop * chi;
+        // dχ/dc = n / cos χ; dχ/da and dχ/db follow from the normalized
+        // cross-product derivative.
+        let w = [
+            (c[0] - sin_chi * n[0]) / (u_len * cos_chi),
+            (c[1] - sin_chi * n[1]) / (u_len * cos_chi),
+            (c[2] - sin_chi * n[2]) / (u_len * cos_chi),
+        ];
+        let g_a = cross(b, w);
+        let g_b = cross(w, a);
+        let g_c = [n[0] / cos_chi, n[1] / cos_chi, n[2] / cos_chi];
+        for dim in 0..3 {
+            let ga = de_dchi * g_a[dim];
+            let gb = de_dchi * g_b[dim];
+            let gc = de_dchi * g_c[dim];
+            grad[ri + dim] += ga;
+            grad[rk + dim] += gb;
+            grad[rl + dim] += gc;
+            grad[rj + dim] -= ga + gb + gc;
+        }
+
+        energy
+    }
+}
+
+// ─── MMFF94 Electrostatics ───────────────────────────────────────────────────
+
+/// MMFF94 buffered Coulomb interaction (MMFF.V eq. 13):
+///
+/// E = 332.0716 · q_i·q_j / (R_ij + 0.05)
+///
+/// with the 0.75 scale applied to 1-4 pairs and a constant dielectric (`D=1`
+/// by default, matching RDKit's default `CONSTANT` model).
+pub struct Mmff94Electrostatic {
+    /// Index of the first atom.
+    pub atom_i: usize,
+    /// Index of the second atom.
+    pub atom_j: usize,
+    /// Product of the two MMFF partial charges `q_i·q_j`.
+    pub charge_product: f64,
+    /// True when the pair is separated by exactly three bonds (1-4).
+    pub one_four: bool,
+}
+
+impl ForceFieldContribution for Mmff94Electrostatic {
+    fn kind(&self) -> &'static str {
+        "electrostatic"
+    }
+
+    fn evaluate_energy_and_inject_gradient(&self, coords: &[f64], grad: &mut [f64]) -> f64 {
+        let ri = self.atom_i * 3;
+        let rj = self.atom_j * 3;
+        let dx = coords[ri] - coords[rj];
+        let dy = coords[ri + 1] - coords[rj + 1];
+        let dz = coords[ri + 2] - coords[rj + 2];
+        let dist = (dx * dx + dy * dy + dz * dz).sqrt().max(1e-8);
+        let scale = if self.one_four {
+            MMFF94_ELECTROSTATIC_1_4_SCALE
+        } else {
+            1.0
+        };
+        let denom = dist + MMFF94_ELECTROSTATIC_OFFSET;
+        let energy = MMFF94_ELECTROSTATIC_FACTOR * self.charge_product * scale / denom;
+        let de_dr = -MMFF94_ELECTROSTATIC_FACTOR * self.charge_product * scale / (denom * denom);
+        let pref = de_dr / dist;
+        grad[ri] += pref * dx;
+        grad[ri + 1] += pref * dy;
+        grad[ri + 2] += pref * dz;
+        grad[rj] -= pref * dx;
+        grad[rj + 1] -= pref * dy;
+        grad[rj + 2] -= pref * dz;
+        energy
+    }
+}
+
 // ─── Gradient Validation ─────────────────────────────────────────────────────
 
 /// Validate analytical gradients against numerical (central-difference) gradients.
@@ -1264,6 +1535,83 @@ fn lookup_cov_rad_pau_ele(z: u8) -> Option<&'static super::mmff94_params::Mmff94
         .map(|idx| &MMFF94_COV_RAD_PAU_ELE[idx])
 }
 
+/// Tabulated stretch–bend parameters for a typed angle.  Wings are stored
+/// canonically with `i_type <= k_type`.
+fn lookup_stbn(
+    st_type: u8,
+    i: u8,
+    j: u8,
+    k: u8,
+) -> Option<&'static super::mmff94_extra_params::Mmff94StbnParam> {
+    let (a, b) = if i <= k { (i, k) } else { (k, i) };
+    MMFF94_STBN_PARAMS
+        .binary_search_by(|p| (p.st_type, p.i_type, p.j_type, p.k_type).cmp(&(st_type, a, j, b)))
+        .ok()
+        .map(|idx| &MMFF94_STBN_PARAMS[idx])
+}
+
+/// Default stretch–bend parameters keyed by periodic-table rows.
+fn lookup_dfsb(
+    row_i: u8,
+    row_j: u8,
+    row_k: u8,
+) -> Option<&'static super::mmff94_extra_params::Mmff94DfsbParam> {
+    let (a, b) = if row_i <= row_k {
+        (row_i, row_k)
+    } else {
+        (row_k, row_i)
+    };
+    MMFF94_DFSB_PARAMS
+        .binary_search_by(|p| (p.row_i, p.row_j, p.row_k).cmp(&(a, row_j, b)))
+        .ok()
+        .map(|idx| &MMFF94_DFSB_PARAMS[idx])
+}
+
+/// Out-of-plane parameters, resolved through the four equivalence levels of
+/// MMFF.V (the three substituents are sorted before the lookup).
+fn lookup_oop(
+    table: &'static [super::mmff94_extra_params::Mmff94OopParam],
+    i: u8,
+    j: u8,
+    k: u8,
+    l: u8,
+) -> Option<&'static super::mmff94_extra_params::Mmff94OopParam> {
+    for level in 0..4 {
+        let mut wings = [
+            mmff94_eq_level(i, level),
+            mmff94_eq_level(k, level),
+            mmff94_eq_level(l, level),
+        ];
+        wings.sort_unstable();
+        let key = (wings[0], j, wings[1], wings[2]);
+        if let Ok(idx) =
+            table.binary_search_by(|p| (p.i_type, p.j_type, p.k_type, p.l_type).cmp(&key))
+        {
+            return Some(&table[idx]);
+        }
+    }
+    None
+}
+
+/// Partial bond-charge increment and formal-charge adjustment for a type.
+fn lookup_pbci(atom_type: u8) -> Option<&'static super::mmff94_extra_params::Mmff94PbciParam> {
+    MMFF94_PBCI_PARAMS
+        .binary_search_by(|p| p.atom_type.cmp(&atom_type))
+        .ok()
+        .map(|idx| &MMFF94_PBCI_PARAMS[idx])
+}
+
+/// Bond-charge increment lookup with RDKit's sign convention: the table is
+/// keyed by the smaller atom type, and the returned sign flips when the atom
+/// order was reversed.
+fn lookup_chg(bond_type: u8, i: u8, j: u8) -> Option<(f64, f64)> {
+    let (a, b, sign) = if i <= j { (i, j, -1.0) } else { (j, i, 1.0) };
+    MMFF94_CHG_PARAMS
+        .binary_search_by(|p| (p.bond_type, p.i_type, p.j_type).cmp(&(bond_type, a, b)))
+        .ok()
+        .map(|idx| (sign, MMFF94_CHG_PARAMS[idx].bci))
+}
+
 /// Periodic-table row used by MMFF's Badger's rule (0 for H, 1 for He, ...).
 fn mmff94_periodic_table_row(atomic_num: u8) -> u8 {
     match atomic_num {
@@ -1298,6 +1646,8 @@ struct Mmff94Context<'a> {
     types: &'a [u8],
     /// Torsion parameter table (MMFF94 or MMFF94s).
     torsion_table: &'static [super::mmff94_params::Mmff94TorParam],
+    /// Out-of-plane parameter table (MMFF94 or MMFF94s).
+    oop_table: &'static [super::mmff94_extra_params::Mmff94OopParam],
 }
 
 impl<'a> Mmff94Context<'a> {
@@ -1306,6 +1656,10 @@ impl<'a> Mmff94Context<'a> {
             mol,
             types,
             torsion_table: variant.torsion_table(),
+            oop_table: match variant {
+                Mmff94Variant::Mmff94 => MMFF94_OOP_PARAMS,
+                Mmff94Variant::Mmff94s => MMFF94S_OOP_PARAMS,
+            },
         }
     }
 
@@ -1856,6 +2210,348 @@ impl<'a> Mmff94Context<'a> {
         }
         (r_ij, eps)
     }
+
+    /// Topological relation between two atoms: `1` for 1-2 (bonded), `2` for
+    /// 1-3, `3` for 1-4 and `4` for anything farther apart.
+    fn relation(&self, i: usize, j: usize) -> u8 {
+        if self.bonded(i, j) {
+            return 1;
+        }
+        let nbr_i: HashSet<usize> = self.neighbors(i).into_iter().collect();
+        if self.neighbors(j).iter().any(|n| nbr_i.contains(n)) {
+            return 2;
+        }
+        for a in &nbr_i {
+            for b in self.neighbors(*a) {
+                if b != i && b != j && self.bonded(b, j) {
+                    return 3;
+                }
+            }
+        }
+        4
+    }
+
+    /// Stretch–bend parameters for angle `i-j-k`:
+    /// `(kba_ijk, kba_kji, r0_ij, r0_jk, theta0_deg)`.
+    fn stretch_bend_params(
+        &self,
+        i: usize,
+        j: usize,
+        k: usize,
+    ) -> Option<(f64, f64, f64, f64, f64)> {
+        if mmff94_prop(self.types[j]).linh != 0 {
+            return None;
+        }
+        let bond_type_ij = self.bond_type(i, j);
+        let bond_type_jk = self.bond_type(j, k);
+        let r0_ij = self.bond_params(i, j).1;
+        let r0_jk = self.bond_params(j, k).1;
+        let theta0 = self.angle_params(i, j, k).1;
+        let angle_type = self.angle_type(i, j, k);
+
+        // RDKit's wing/bond-type ordering for the stretch-bend type.
+        let ti = self.types[i];
+        let tk = self.types[k];
+        let first_bond = if ti <= tk { bond_type_ij } else { bond_type_jk };
+        let second_bond = if ti < tk { bond_type_jk } else { bond_type_ij };
+        let st_type = stretch_bend_type(angle_type, first_bond, second_bond);
+
+        let (mut kba_ijk, mut kba_kji, swap) =
+            if let Some(p) = lookup_stbn(st_type, ti, self.types[j], tk) {
+                let swap = ti > tk || (ti == tk && bond_type_ij < bond_type_jk);
+                (p.kba_ijk, p.kba_kji, swap)
+            } else {
+                let row_i = mmff94_periodic_table_row(self.element(i));
+                let row_j = mmff94_periodic_table_row(self.element(j));
+                let row_k = mmff94_periodic_table_row(self.element(k));
+                let p = lookup_dfsb(row_i, row_j, row_k)?;
+                (p.kba_ijk, p.kba_kji, row_i > row_k)
+            };
+        if swap {
+            std::mem::swap(&mut kba_ijk, &mut kba_kji);
+        }
+        if kba_ijk.abs() < 1e-10 && kba_kji.abs() < 1e-10 {
+            return None;
+        }
+        Some((kba_ijk, kba_kji, r0_ij, r0_jk, theta0))
+    }
+
+    /// Out-of-plane force constant for `i-j-k/l`, if the type quadruple has
+    /// parameters.  RDKit excludes the term when no parameters are found.
+    fn oop_params(&self, i: usize, j: usize, k: usize, l: usize) -> Option<f64> {
+        lookup_oop(
+            self.oop_table,
+            self.types[i],
+            self.types[j],
+            self.types[k],
+            self.types[l],
+        )
+        .map(|p| p.koop)
+    }
+}
+
+/// Stretch–bend type from the angle type and the two bond types (MMFF.V).
+fn stretch_bend_type(angle_type: u8, bond_type_1: u8, bond_type_2: u8) -> u8 {
+    match angle_type {
+        1 => {
+            if bond_type_1 != 0 || bond_type_1 == bond_type_2 {
+                1
+            } else {
+                2
+            }
+        }
+        2 => 3,
+        4 => 4,
+        3 => 5,
+        5 => {
+            if bond_type_1 != 0 || bond_type_1 == bond_type_2 {
+                6
+            } else {
+                7
+            }
+        }
+        _ => 0,
+    }
+}
+
+/// Find one simple cycle of exactly `target_len` atoms containing `start`.
+fn find_cycle_containing(
+    mol: &crate::graph::Molecule,
+    start: usize,
+    target_len: usize,
+) -> Option<Vec<usize>> {
+    fn dfs(
+        mol: &crate::graph::Molecule,
+        start: usize,
+        current: usize,
+        target_len: usize,
+        path: &mut Vec<usize>,
+        visited: &mut [bool],
+    ) -> bool {
+        for nb in mol
+            .graph
+            .neighbors(petgraph::graph::NodeIndex::new(current))
+        {
+            let nb = nb.index();
+            if nb == start {
+                if path.len() == target_len {
+                    return true;
+                }
+                continue;
+            }
+            if path.len() >= target_len || visited[nb] {
+                continue;
+            }
+            visited[nb] = true;
+            path.push(nb);
+            if dfs(mol, start, nb, target_len, path, visited) {
+                return true;
+            }
+            path.pop();
+            visited[nb] = false;
+        }
+        false
+    }
+
+    let n = mol.graph.node_count();
+    let mut visited = vec![false; n];
+    visited[start] = true;
+    let mut path = vec![start];
+    if dfs(mol, start, start, target_len, &mut path, &mut visited) {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// MMFF formal charges used by the partial-charge expression (MMFF.V eq. 15).
+///
+/// This follows RDKit's `computeMMFFCharges`: the special atom types get the
+/// formal charge prescribed by MMFF, while every other type defaults to zero.
+fn mmff94_formal_charges(ctx: &Mmff94Context<'_>) -> Vec<f64> {
+    let n = ctx.n();
+    let mut fchg = vec![0.0f64; n];
+    for idx in 0..n {
+        let atom_type = ctx.types[idx];
+        match atom_type {
+            32 | 72 => {
+                // O2CM / SM: charge shared across terminal O/S atoms.
+                'neighbors: for nbr in ctx.neighbors(idx) {
+                    let nbr_type = ctx.types[nbr];
+                    let mut n_sec = 0usize;
+                    let mut n_term = 0usize;
+                    for nbr2 in ctx.neighbors(nbr) {
+                        let z = ctx.element(nbr2);
+                        if z == 7
+                            && ctx.neighbors(nbr2).len() == 2
+                            && !mmff94_is_aromatic_type(ctx.types[nbr2])
+                        {
+                            n_sec += 1;
+                        }
+                        if (z == 8 || z == 16) && ctx.neighbors(nbr2).len() == 1 {
+                            n_term += 1;
+                        }
+                    }
+                    if ctx.element(nbr) == 16 && n_term == 2 && n_sec == 1 {
+                        n_sec = 0;
+                    }
+                    if ctx.element(nbr) == 6 && n_term > 0 {
+                        fchg[idx] = if n_term == 1 {
+                            -1.0
+                        } else {
+                            -((n_term - 1) as f64) / (n_term as f64)
+                        };
+                        break 'neighbors;
+                    }
+                    if nbr_type == 45 && n_term == 3 {
+                        fchg[idx] = -1.0 / 3.0;
+                        break 'neighbors;
+                    }
+                    if nbr_type == 25 && n_term > 0 {
+                        fchg[idx] = if n_term == 1 {
+                            0.0
+                        } else {
+                            -((n_term - 1) as f64) / (n_term as f64)
+                        };
+                        break 'neighbors;
+                    }
+                    if nbr_type == 18 && n_term > 0 {
+                        let total = n_sec + n_term;
+                        fchg[idx] = if total == 2 {
+                            0.0
+                        } else {
+                            -((total as f64) - 2.0) / (n_term as f64)
+                        };
+                        break 'neighbors;
+                    }
+                    if nbr_type == 73 && n_term > 0 {
+                        fchg[idx] = if n_term == 1 {
+                            0.0
+                        } else {
+                            -((n_term - 1) as f64) / (n_term as f64)
+                        };
+                        break 'neighbors;
+                    }
+                    if nbr_type == 77 && n_term > 0 {
+                        fchg[idx] = -1.0 / (n_term as f64);
+                        break 'neighbors;
+                    }
+                }
+            }
+            76 => {
+                // N5M: share the anionic charge over the N5M atoms in the ring.
+                if let Some(ring) = find_cycle_containing(ctx.mol, idx, 5) {
+                    let count = ring.iter().filter(|&&a| ctx.types[a] == 76).count();
+                    if count > 0 {
+                        fchg[idx] = -1.0 / (count as f64);
+                    }
+                }
+            }
+            55 | 56 | 81 => {
+                // N5A+/N5B+/N5+: share the formal charge over the conjugated
+                // system connected through types 57/80.
+                let mut marked = vec![false; n];
+                marked[idx] = true;
+                let mut total =
+                    ctx.mol.graph[petgraph::graph::NodeIndex::new(idx)].formal_charge as f64;
+                let mut n_conj = 1usize;
+                let mut changed = true;
+                while changed {
+                    changed = false;
+                    for i in 0..n {
+                        if !marked[i] {
+                            continue;
+                        }
+                        for nbr in ctx.neighbors(i) {
+                            let t = ctx.types[nbr];
+                            if t != 57 && t != 80 {
+                                continue;
+                            }
+                            for nbr2 in ctx.neighbors(nbr) {
+                                let t2 = ctx.types[nbr2];
+                                if (t2 == 55 || t2 == 56 || t2 == 81) && !marked[nbr2] {
+                                    marked[nbr2] = true;
+                                    total += ctx.mol.graph[petgraph::graph::NodeIndex::new(nbr2)]
+                                        .formal_charge
+                                        as f64;
+                                    n_conj += 1;
+                                    changed = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                fchg[idx] = total / (n_conj as f64);
+            }
+            61 if ctx.neighbors(idx).iter().any(|&nb| ctx.types[nb] == 42) => {
+                // Positive nitrogen doubly bonded to N (diazonium).
+                fchg[idx] = 1.0;
+            }
+            34 | 49 | 51 | 54 | 58 | 92 | 93 | 94 | 97 => fchg[idx] = 1.0,
+            87 | 95 | 96 | 98 | 99 => fchg[idx] = 2.0,
+            88 => fchg[idx] = 3.0,
+            35 | 62 | 89 | 90 | 91 => fchg[idx] = -1.0,
+            _ => {}
+        }
+    }
+    fchg
+}
+
+/// MMFF94 partial charges (MMFF.V eq. 15) for a typed molecule.
+fn mmff94_partial_charges_typed(ctx: &Mmff94Context<'_>) -> Vec<f64> {
+    let n = ctx.n();
+    let fchg = mmff94_formal_charges(ctx);
+    let mut q = vec![0.0f64; n];
+    for idx in 0..n {
+        let atom_type = ctx.types[idx];
+        let pbci = lookup_pbci(atom_type).copied();
+        let (pbci_i, fcadj) = match pbci {
+            Some(p) => (p.pbci, p.fcadj),
+            None => (0.0, 0.0),
+        };
+        let m = mmff94_prop(atom_type).crd as f64;
+        let v = fcadj;
+        let mut q0 = fchg[idx];
+        if v.abs() < 1e-10 {
+            for nbr in ctx.neighbors(idx) {
+                if fchg[nbr] < 0.0 {
+                    q0 += fchg[nbr] / (2.0 * ctx.neighbors(nbr).len() as f64);
+                }
+            }
+        }
+        if atom_type == 62 {
+            for nbr in ctx.neighbors(idx) {
+                if fchg[nbr] > 0.0 {
+                    q0 -= fchg[nbr] / 2.0;
+                }
+            }
+        }
+        let mut sum_partial = 0.0;
+        let mut sum_formal = 0.0;
+        for nbr in ctx.neighbors(idx) {
+            let bond_type = ctx.bond_type(idx, nbr);
+            if let Some((sign, bci)) = lookup_chg(bond_type, atom_type, ctx.types[nbr]) {
+                sum_partial += sign * bci;
+            } else {
+                let nbr_pbci = lookup_pbci(ctx.types[nbr]).map(|p| p.pbci).unwrap_or(0.0);
+                sum_partial += pbci_i - nbr_pbci;
+            }
+            sum_formal += fchg[nbr];
+        }
+        q[idx] = (1.0 - m * v) * q0 + v * sum_formal + sum_partial;
+    }
+    q
+}
+
+/// MMFF94 partial charges (e) for every atom, using the same atom typing as
+/// the energy terms.
+pub fn mmff94_partial_charges(mol: &crate::graph::Molecule) -> Vec<f64> {
+    let types: Vec<u8> = assign_all_mmff94_types(mol)
+        .iter()
+        .map(|t| mmff94_official_type(*t))
+        .collect();
+    let ctx = Mmff94Context::new(mol, &types, Mmff94Variant::Mmff94);
+    mmff94_partial_charges_typed(&ctx)
 }
 
 // ─── MMFF94 Builder (assemble terms for a molecule) ──────────────────────────
@@ -2079,6 +2775,43 @@ impl Mmff94Builder {
                         theta0_deg: theta0,
                         linear,
                     }));
+
+                    // ── stretch–bend coupling for the same angle ──
+                    if let Some((kba_ijk, kba_kji, r0_ij, r0_jk, theta0_sb)) =
+                        ctx.stretch_bend_params(i, j, k)
+                    {
+                        terms.push(Box::new(Mmff94StretchBend {
+                            atom_i: i,
+                            atom_j: j,
+                            atom_k: k,
+                            kba_ijk,
+                            kba_kji,
+                            r0_ij,
+                            r0_jk,
+                            theta0_deg: theta0_sb,
+                        }));
+                    }
+                }
+            }
+        }
+
+        // ── out-of-plane bending: central atom with exactly three neighbours ──
+        for j in 0..n {
+            let nbrs = ctx.neighbors(j);
+            if nbrs.len() != 3 {
+                continue;
+            }
+            let [i, k, l] = [nbrs[0], nbrs[1], nbrs[2]];
+            if let Some(koop) = ctx.oop_params(i, j, k, l) {
+                // RDKit adds the three equivalent out-of-plane angles.
+                for (a, b, c) in [(i, k, l), (i, l, k), (l, k, i)] {
+                    terms.push(Box::new(Mmff94OutOfPlane {
+                        atom_i: a,
+                        atom_j: j,
+                        atom_k: b,
+                        atom_l: c,
+                        koop,
+                    }));
                 }
             }
         }
@@ -2117,8 +2850,9 @@ impl Mmff94Builder {
             }
         }
 
-        // ── van der Waals: every pair that is not 1-2 or 1-3 bonded ──
+        // ── van der Waals and electrostatics: every pair that is not 1-2 or 1-3 ──
         let fragments = connected_components(mol);
+        let charges = mmff94_partial_charges_typed(&ctx);
         for i in 0..n {
             let nbrs_i: HashSet<usize> = ctx.neighbors(i).into_iter().collect();
             for j in (i + 1)..n {
@@ -2139,6 +2873,16 @@ impl Mmff94Builder {
                     radius_star: r_star,
                     epsilon_depth: eps,
                 }));
+
+                // MMFF94 electrostatics (constant dielectric, 0.75 on 1-4).
+                if charges[i].abs() >= 1e-10 && charges[j].abs() >= 1e-10 {
+                    terms.push(Box::new(Mmff94Electrostatic {
+                        atom_i: i,
+                        atom_j: j,
+                        charge_product: charges[i] * charges[j],
+                        one_four: ctx.relation(i, j) == 3,
+                    }));
+                }
             }
         }
 

@@ -1,0 +1,169 @@
+{
+  "description": "Full MMFF94 energies and partial charges computed by RDKit MMFFGetMoleculeForceField/MMFFGetMoleculeProperties on the coordinates of mmff94_rdkit.json.",
+  "rdkit_version": "2026.09.1",
+  "variant": "MMFF94",
+  "molecules": [
+    {
+      "name": "methane",
+      "energy": 0.03308055816957742,
+      "partial_charges": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mmff94_types": [
+        1,
+        5,
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "name": "ethanol",
+      "energy": 2.9572096563303054,
+      "partial_charges": [
+        0.0,
+        0.28,
+        -0.68,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.4
+      ],
+      "mmff94_types": [
+        1,
+        1,
+        6,
+        5,
+        5,
+        5,
+        5,
+        5,
+        21
+      ]
+    },
+    {
+      "name": "acetic_acid",
+      "energy": -21.23990909652325,
+      "partial_charges": [
+        0.061,
+        0.6589999999999999,
+        -0.57,
+        -0.65,
+        0.0,
+        0.0,
+        0.0,
+        0.5
+      ],
+      "mmff94_types": [
+        1,
+        3,
+        7,
+        6,
+        5,
+        5,
+        5,
+        24
+      ]
+    },
+    {
+      "name": "dimethyl_ether",
+      "energy": 10.289696580531224,
+      "partial_charges": [
+        0.28,
+        -0.56,
+        0.28,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "mmff94_types": [
+        1,
+        6,
+        1,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "name": "benzene",
+      "energy": 16.31321214407025,
+      "partial_charges": [
+        -0.15,
+        -0.15,
+        -0.15,
+        -0.15,
+        -0.15,
+        -0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.15
+      ],
+      "mmff94_types": [
+        37,
+        37,
+        37,
+        37,
+        37,
+        37,
+        5,
+        5,
+        5,
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "name": "water",
+      "energy": 0.13815264476556008,
+      "partial_charges": [
+        -0.86,
+        0.43,
+        0.43
+      ],
+      "mmff94_types": [
+        70,
+        31,
+        31
+      ]
+    },
+    {
+      "name": "methylamine",
+      "energy": -1.3411099500946857,
+      "partial_charges": [
+        0.27,
+        -0.99,
+        0.0,
+        0.0,
+        0.0,
+        0.36,
+        0.36
+      ],
+      "mmff94_types": [
+        1,
+        8,
+        5,
+        5,
+        5,
+        23,
+        23
+      ]
+    }
+  ]
+}

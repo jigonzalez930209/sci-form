@@ -16,7 +16,8 @@
     "corpus 3D (tblite/dftd4 oracles)",
     "F70 (uff-opt)",
     "F79 (ETKDG)",
-    "F84 (UFF CalcGrad)"
+    "F84 (UFF CalcGrad)",
+    "F100 (MMFF94 full energy/charges)"
    ]
   },
   {

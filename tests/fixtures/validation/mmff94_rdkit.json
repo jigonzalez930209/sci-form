@@ -4,8 +4,8 @@
   "upstream_sha256": "9e6c21cf735e1fefe9083d04c00b61d2f2eb105297a3c8d1e8ecb3f40fa16700",
   "units": "kcal/mol",
   "notes": [
-    "Energy = bond stretch + angle bend + torsion + van der Waals (buffered 14-7).",
-    "Electrostatic, stretch-bend and out-of-plane terms are not part of the Rust implementation under test and are therefore not included here.",
+    "Energy = bond stretch + angle bend + stretch-bend + out-of-plane + torsion + buffered 14-7 van der Waals + buffered Coulomb.",
+    "Partial charges follow MMFF.V eq. 15 with the published PBCI/BCI tables; electrostatics use a constant dielectric and the 0.75 factor on 1-4 pairs.",
     "Cubic bend constant: -0.4 rad^-1 (RDKit value); Halgren 1996 rounds this to -0.007 deg^-1."
   ],
   "molecules": [
@@ -68,16 +68,29 @@
       "counts": {
         "bonds": 4,
         "angles": 6,
+        "stretch_bend": 6,
+        "oop": 0,
         "torsions": 0,
-        "vdw_pairs": 0
+        "vdw_pairs": 0,
+        "electrostatic_pairs": 0
       },
       "energy": {
         "bond": 0.01242202669916661,
         "angle": 0.027264875325824365,
+        "stretch_bend": -0.006606343857582521,
+        "oop": 0.0,
         "torsion": 0.0,
         "vdw": 0,
-        "total": 0.03968690202499098
-      }
+        "electrostatic": 0,
+        "total": 0.03308055816740846
+      },
+      "partial_charges": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
     },
     {
       "name": "ethanol",
@@ -178,16 +191,33 @@
       "counts": {
         "bonds": 8,
         "angles": 13,
+        "stretch_bend": 13,
+        "oop": 0,
         "torsions": 12,
-        "vdw_pairs": 15
+        "vdw_pairs": 15,
+        "electrostatic_pairs": 0
       },
       "energy": {
         "bond": 0.21693095971158002,
         "angle": 0.1858516028626642,
+        "stretch_bend": -0.002536396286204673,
+        "oop": 0.0,
         "torsion": -0.505660205998931,
         "vdw": 3.0626236960440525,
-        "total": 2.9597460526193657
-      }
+        "electrostatic": 0,
+        "total": 2.957209656333161
+      },
+      "partial_charges": [
+        0.0,
+        0.28,
+        -0.68,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.4
+      ]
     },
     {
       "name": "acetic_acid",
@@ -278,16 +308,32 @@
       "counts": {
         "bonds": 7,
         "angles": 10,
+        "stretch_bend": 10,
+        "oop": 3,
         "torsions": 8,
-        "vdw_pairs": 11
+        "vdw_pairs": 11,
+        "electrostatic_pairs": 2
       },
       "energy": {
         "bond": 3.446703556842196,
         "angle": 0.5953949802424857,
+        "stretch_bend": -0.04093723073815228,
+        "oop": 0.0,
         "torsion": 0.5029999999999992,
         "vdw": 0.8779681842837604,
-        "total": 5.423066721368442
-      }
+        "electrostatic": -26.622038587164734,
+        "total": -21.239909096534447
+      },
+      "partial_charges": [
+        0.061,
+        0.6589999999999999,
+        -0.57,
+        -0.65,
+        0.0,
+        0.0,
+        0.0,
+        0.5
+      ]
     },
     {
       "name": "dimethyl_ether",
@@ -388,16 +434,33 @@
       "counts": {
         "bonds": 8,
         "angles": 13,
+        "stretch_bend": 13,
+        "oop": 0,
         "torsions": 6,
-        "vdw_pairs": 15
+        "vdw_pairs": 15,
+        "electrostatic_pairs": 0
       },
       "energy": {
         "bond": 0.149504831484008,
         "angle": 0.7605475989613895,
+        "stretch_bend": -0.1266713901124084,
+        "oop": 0.0,
         "torsion": 4.379999999999999,
         "vdw": 5.126315540165749,
-        "total": 10.416367970611145
-      }
+        "electrostatic": 0,
+        "total": 10.289696580498738
+      },
+      "partial_charges": [
+        0.28,
+        -0.56,
+        0.28,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
     },
     {
       "name": "benzene",
@@ -533,16 +596,36 @@
       "counts": {
         "bonds": 12,
         "angles": 18,
+        "stretch_bend": 18,
+        "oop": 18,
         "torsions": 24,
-        "vdw_pairs": 36
+        "vdw_pairs": 36,
+        "electrostatic_pairs": 36
       },
       "energy": {
         "bond": 1.2367475356113835,
         "angle": 0.04852773163231158,
+        "stretch_bend": -0.09112101797633732,
+        "oop": 0.0,
         "torsion": 0.0,
         "vdw": 12.023667341283472,
-        "total": 13.308942608527168
-      }
+        "electrostatic": 3.095390553519165,
+        "total": 16.313212144069993
+      },
+      "partial_charges": [
+        -0.15,
+        -0.15,
+        -0.15,
+        -0.15,
+        -0.15,
+        -0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.15,
+        0.15
+      ]
     },
     {
       "name": "water",
@@ -553,9 +636,9 @@
         1
       ],
       "mmff94_types": [
-        6,
-        21,
-        21
+        70,
+        31,
+        31
       ],
       "bonds": [
         [
@@ -573,26 +656,37 @@
         0.0,
         0.0,
         0.0,
-        -0.239864043884,
-        0.927485439482,
+        0.586504154273,
+        0.757480611647,
         0.0,
-        -0.239864043884,
-        -0.927485439482,
+        0.586504154273,
+        -0.757480611647,
         0.0
       ],
       "counts": {
         "bonds": 2,
         "angles": 1,
+        "stretch_bend": 1,
+        "oop": 0,
         "torsions": 0,
-        "vdw_pairs": 0
+        "vdw_pairs": 0,
+        "electrostatic_pairs": 0
       },
       "energy": {
-        "bond": 0.2261317901870352,
-        "angle": 16.334884726629497,
+        "bond": 0.140294715334138,
+        "angle": 0.003916200698459462,
+        "stretch_bend": -0.006058271259242599,
+        "oop": 0.0,
         "torsion": 0.0,
         "vdw": 0,
-        "total": 16.561016516816533
-      }
+        "electrostatic": 0,
+        "total": 0.13815264477335487
+      },
+      "partial_charges": [
+        -0.86,
+        0.43,
+        0.43
+      ]
     },
     {
       "name": "methylamine",
@@ -663,26 +757,41 @@
         -0.364333333333,
         0.892430762954,
         -0.515245141225,
-        1.474,
+        1.811333333333,
         0.0,
-        1.012,
-        1.474,
-        0.0,
-        -1.012
+        -0.954122750081,
+        1.811333333333,
+        -0.826294539899,
+        0.477061375041
       ],
       "counts": {
         "bonds": 6,
         "angles": 9,
+        "stretch_bend": 9,
+        "oop": 3,
         "torsions": 6,
-        "vdw_pairs": 6
+        "vdw_pairs": 6,
+        "electrostatic_pairs": 0
       },
       "energy": {
         "bond": 0.23130230559798504,
-        "angle": 48.343846754415644,
-        "torsion": -0.7049999999999998,
-        "vdw": 1.965785182284811,
-        "total": 49.83593424229844
-      }
+        "angle": 0.20220657753306653,
+        "stretch_bend": -0.061782323039727645,
+        "oop": 0.0,
+        "torsion": -1.7759999999999998,
+        "vdw": 0.06316348980642764,
+        "electrostatic": 0,
+        "total": -1.341109950102248
+      },
+      "partial_charges": [
+        0.27,
+        -0.99,
+        0.0,
+        0.0,
+        0.0,
+        0.36,
+        0.36
+      ]
     }
   ]
 }
