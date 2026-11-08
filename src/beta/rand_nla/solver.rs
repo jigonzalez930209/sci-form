@@ -346,4 +346,203 @@ mod tests {
         // (or succeeds — either way, residual should be reported)
         assert!(info.k == 3);
     }
+    #[test]
+    fn low_rank_path_scales_past_500_sites_and_keeps_lowest_states() {
+        use std::time::Instant;
+        let n = 600usize;
+        let mut h = DMatrix::zeros(n, n);
+        for i in 0..n {
+            h[(i, i)] = -10.0;
+            if i + 1 < n {
+                h[(i, i + 1)] = -4.0;
+                h[(i + 1, i)] = -4.0;
+            }
+        }
+        let s = DMatrix::identity(n, n);
+
+        let t_exact = Instant::now();
+        let exact = SymmetricEigen::new(h.clone());
+        let mut exact_low: Vec<f64> = exact.eigenvalues.iter().copied().collect();
+        exact_low.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let exact_time = t_exact.elapsed();
+
+        let config = RandNlaConfig {
+            sketch_size: Some(160),
+            seed: 42,
+            fallback_enabled: false,
+            power_iterations: 1,
+            ..Default::default()
+        };
+        let t_low = Instant::now();
+        let low = solve_eht_randnla_lowrank(&h, &s, &config, 4);
+        let low_time = t_low.elapsed();
+
+        let scale = exact_low[n - 1] - exact_low[0];
+        let worst = low
+            .eigenvalues
+            .iter()
+            .zip(exact_low.iter())
+            .fold(0.0f64, |m, (&a, &b)| m.max((a - b).abs() / scale));
+        println!(
+            "RandNLA low-rank N={n}: 4 lowest, worst {worst:.3e}, residual {:.2e}, \
+             exact {:.1} ms, low-rank {:.1} ms",
+            low.info.residual_error,
+            exact_time.as_secs_f64() * 1e3,
+            low_time.as_secs_f64() * 1e3
+        );
+        assert!(worst < 5e-3, "lowest-state error {worst:.3e}");
+        assert!(
+            low_time < exact_time,
+            "low-rank path ({:.1} ms) did not beat exact diagonalization ({:.1} ms)",
+            low_time.as_secs_f64() * 1e3,
+            exact_time.as_secs_f64() * 1e3
+        );
+    }
+}
+
+/// Low-rank randomized eigenpairs of the generalized problem `H C = S C E`.
+///
+/// Only the `n_eigen` algebraically lowest states are returned.  Unlike
+/// [`solve_eht_randnla`], this path never forms or diagonalizes the full
+/// `N × N` transformed Hamiltonian: it applies `S^{-1/2} H S^{-1/2}` to a
+/// sketch block (`O(N² k)`), projects onto the resulting `k`-dimensional
+/// subspace and diagonalizes only the small matrix.  For `N > 500` and
+/// `k << N` this is the path that actually beats the exact `O(N³)` solve.
+#[derive(Debug, Clone)]
+pub struct RandNlaLowRank {
+    /// Lowest eigenvalues, ascending.
+    pub eigenvalues: DVector<f64>,
+    /// Corresponding eigenvectors in the original basis (`N × n_eigen`).
+    pub eigenvectors: DMatrix<f64>,
+    /// Metadata (sketch rank, residual, fallback flag).
+    pub info: RandNlaInfo,
+}
+
+/// Solve for the lowest `n_eigen` generalized eigenpairs with a randomized
+/// range finder.
+///
+/// `config.sketch_size` controls the projection rank; when absent it defaults
+/// to `2 * n_eigen + 8` (oversampled).  The returned eigenvectors are
+/// `S`-orthonormal to the accuracy of the sketch.
+pub fn solve_eht_randnla_lowrank(
+    h: &DMatrix<f64>,
+    s: &DMatrix<f64>,
+    config: &RandNlaConfig,
+    n_eigen: usize,
+) -> RandNlaLowRank {
+    let n = h.nrows();
+    let n_eigen = n_eigen.clamp(1, n);
+    let k = config
+        .sketch_size
+        .unwrap_or_else(|| (2 * n_eigen + 8).min(n));
+    let k = k.clamp(n_eigen, n);
+
+    let mut rng = StdRng::seed_from_u64(config.seed);
+    let sketch = GaussianSketch::new(&mut rng, n, k);
+    let nystrom =
+        NystromApprox::from_matrix_with_power_iterations(s, &sketch, config.power_iterations);
+    let s_inv_sqrt = nystrom.inverse_sqrt();
+    let identity_overlap = s.iter().enumerate().all(|(index, value)| {
+        let row = index / n;
+        let column = index % n;
+        (*value - if row == column { 1.0 } else { 0.0 }).abs() < 1e-12
+    });
+
+    let apply = |x: &DMatrix<f64>| -> DMatrix<f64> {
+        // H' x = S^{-1/2} H S^{-1/2} x, without forming H'.
+        if identity_overlap {
+            h * x
+        } else {
+            &s_inv_sqrt * (h * (&s_inv_sqrt * x))
+        }
+    };
+
+    // Block Lanczos with full reorthogonalization.  Unlike a plain range
+    // finder, this converges to the *extremal* (lowest) eigenvalues instead
+    // of the dominant magnitude, which is what EHT needs.
+    let basis_size = k.min(n);
+    let mut basis = DMatrix::zeros(n, basis_size);
+    let mut alpha = vec![0.0f64; basis_size];
+    let mut beta = vec![0.0f64; basis_size.saturating_sub(1)];
+    let mut start_vector = DVector::zeros(n);
+    for i in 0..n {
+        start_vector[i] = sketch.omega[(i, 0)];
+    }
+    let start_norm = start_vector.norm().max(1e-300);
+    let mut q = start_vector / start_norm;
+    let mut q_prev = DVector::zeros(n);
+    let mut used = 0usize;
+    for j in 0..basis_size {
+        basis.set_column(j, &q);
+        let q_matrix = DMatrix::from_column_slice(n, 1, q.as_slice());
+        let mut w = apply(&q_matrix).column(0).into_owned();
+        if j > 0 {
+            w -= beta[j - 1] * &q_prev;
+        }
+        alpha[j] = q.dot(&w);
+        w -= alpha[j] * &q;
+        // Full reorthogonalization (twice) keeps the Lanczos basis stable
+        // even when several eigenvalues are close.
+        for _ in 0..2 {
+            for i in 0..=j {
+                let column = basis.column(i);
+                w -= column.dot(&w) * column;
+            }
+        }
+        used = j + 1;
+        if j + 1 == basis_size {
+            break;
+        }
+        let norm = w.norm();
+        if norm < 1e-11 {
+            break;
+        }
+        beta[j] = norm;
+        q_prev = q;
+        q = w / norm;
+    }
+
+    let m = used;
+    let mut tridiagonal = DMatrix::zeros(m, m);
+    for i in 0..m {
+        tridiagonal[(i, i)] = alpha[i];
+        if i + 1 < m {
+            tridiagonal[(i, i + 1)] = beta[i];
+            tridiagonal[(i + 1, i)] = beta[i];
+        }
+    }
+    let eigen = SymmetricEigen::new(tridiagonal);
+    let mut order: Vec<usize> = (0..m).collect();
+    order.sort_by(|&a, &b| {
+        eigen.eigenvalues[a]
+            .partial_cmp(&eigen.eigenvalues[b])
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    let take = n_eigen.min(m);
+    let mut eigenvalues = DVector::zeros(take);
+    let mut eigenvectors = DMatrix::zeros(n, take);
+    for (column, &index) in order.iter().take(take).enumerate() {
+        eigenvalues[column] = eigen.eigenvalues[index];
+        let direction = &basis * eigen.eigenvectors.column(index);
+        let direction = if identity_overlap {
+            direction
+        } else {
+            &s_inv_sqrt * direction
+        };
+        for row in 0..n {
+            eigenvectors[(row, column)] = direction[row];
+        }
+    }
+
+    let residual = compute_residual(h, s, &eigenvalues, &eigenvectors);
+    RandNlaLowRank {
+        eigenvalues,
+        eigenvectors,
+        info: RandNlaInfo {
+            k: m,
+            residual_error: residual,
+            used_fallback: false,
+        },
+    }
 }

@@ -233,7 +233,8 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] **KPM a escala** (2026-11-07): gate N=200 y N=500 vs diagonalización exacta; DOS integrada <1e-6 relativo y E_F a <0.1 eV.
 - [x] **KPM disperso** (2026-11-07): CSR propio (`SparseMatrix`) + `compute_kpm_dos_sparse`; cadena de 5000 sitios en 0.22 s con 32 vectores/400 términos. **Promovido a core**; `beta-kpm` queda como alias.
 - [x] **RandNLA subspace iterations** (2026-11-07): `NystromApprox::from_matrix_with_power_iterations` + `RandNlaConfig::power_iterations` (default 2, re-ortogonalizado). Con 384 iteraciones el rank-N/4 de F93 baja de ~0.13 a 3.8e-4 (<1e-3, criterio 2 del fixture).
-- [x] **RandNLA backend EHT** (2026-11-07): `eht::solve_eht_randnla` expone el solver aleatorizado como backend opcional con metadatos de residuo/fallback; queda el speedup N>500.
+- [x] **RandNLA backend EHT** (2026-11-07): `eht::solve_eht_randnla` expone el solver aleatorizado como backend opcional con metadatos de residuo/fallback.
+- [x] **RandNLA N>500** (2026-11-08): `solve_eht_randnla_lowrank` sustituye la diagonalización N×N por Nyström + Lanczos reortogonalizado. En N=600/k=160 los 4 estados más bajos dan error 9.6e-4 y ~80 ms frente a ~143 ms exactos.
 - [x] **GSM vs NEB en 5+ reacciones** (2026-11-07): cinco pozos curvos con MEP parabólico y barrera exacta `a⁴`; GSM y NEB discreto a ≤0.8 % y con la analítica. Se corrigió el refinamiento del saddle (20 pasos fijos → 200 con `step_size`), que dejaba las barreras ~12 % altas.
 - [x] **SDR vs Butina con métrica definida** (2026-11-07): ARI entre el k-means del embedding SDR (matriz de RMSD Kabsch) y Butina en 30 conformeros de tres formas = 1.0, también contra la verdad sintética (`tests/beta_benchmarks.rs`).
 - [x] **Adaptadores periódicos KPM/RandNLA en Python/WASM** (2026-11-07): ya existían en ambos bindings; se añadieron tests de integración con bloques reales (DOS de cadena 1-orbital y solve RandNLA en malla 2×1×1).
@@ -272,7 +273,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 | Track | Módulo | Estado |
 |-------|--------|--------|
 | E1 CGA | `cga` | Promovido a core (F81); huecos de refine/materials documentados |
-| E2 RandNLA | `beta::rand_nla` | Implementado; Nyström vs SVD exacta cuantificado; power iterations cumplen <1e-3 en rank-N/4 (3.8e-4) a coste alto; backend EHT/SCF y speedup N>500 pendientes |
+| E2 RandNLA | `beta::rand_nla` | Nyström + power iterations (3.8e-4 en rank-N/4); backend EHT y **camino low-rank N>500** (N=600: 9.6e-4 en 4 estados, ~80 ms vs ~143 ms) |
 | E3 Riemannian | `riemannian` | Promovido a core (F94); benchmark vs Gram exacto (6.0e-9) |
 | E4 KPM | `kpm` (`beta::kpm` alias) | **Promovido a core**; DOS vs diagonalización, CSR disperso y N=5000 en 0.22 s |
 | E5 EEQ Dynamic | `charges_eeq` | Implementado, parcialmente integrado |

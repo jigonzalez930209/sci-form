@@ -18,6 +18,8 @@ pub mod params;
 pub mod solver;
 pub mod volume;
 
+#[cfg(feature = "beta-randnla")]
+pub use crate::beta::rand_nla::solve_eht_randnla_lowrank;
 pub use basis::{AtomicOrbital, GaussianPrimitive, SlaterOrbital};
 pub use hamiltonian::build_hamiltonian;
 pub use marching_cubes::{

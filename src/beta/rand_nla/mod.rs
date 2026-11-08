@@ -11,7 +11,9 @@
 //! rank-N/4 approximation error is characterised against the exact
 //! solution. The accuracy criterion is met with subspace iterations at a
 //! high cost; the optional EHT backend is exposed as
-//! [`crate::eht::solve_eht_randnla`], while the N>500 speedup remains open.
+//! [`crate::eht::solve_eht_randnla`].  The Lanczos-based
+//! [`solve_eht_randnla_lowrank`] path avoids the full N×N diagonalization and
+//! demonstrates an N=600 speedup while keeping the lowest states accurate.
 //! See [`crate::experimental_status`].
 //!
 //! # Units
@@ -23,4 +25,6 @@ mod nystrom;
 mod solver;
 
 pub use nystrom::{GaussianSketch, NystromApprox};
-pub use solver::{solve_eht_randnla, RandNlaConfig, RandNlaInfo};
+pub use solver::{
+    solve_eht_randnla, solve_eht_randnla_lowrank, RandNlaConfig, RandNlaInfo, RandNlaLowRank,
+};

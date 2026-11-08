@@ -131,7 +131,16 @@
 //! **Backend EHT (2026-11-07)**: `eht::solve_eht_randnla` expone el solver
 //! aleatorizado como backend opcional (feature `beta-randnla`), con la misma
 //! geometría/basis EHT y metadatos de residuo/fallback. El criterio 1 queda
-//! cubierto; el **criterio 3 (speedup N>500)** sigue abierto.
+//! cubierto.
+//!
+//! **Camino N>500 (2026-11-08)**: `solve_eht_randnla_lowrank` evita formar y
+//! diagonalizar el Hamiltoniano transformado N×N; usa Nyström para
+//! `S^{-1/2}` y Lanczos con reortogonalización completa sobre un arranque
+//! aleatorio. En N=600 (cadena, k=160) los 4 estados más bajos tienen error
+//! relativo 9.6e-4 y el tiempo baja a ~80 ms frente a ~143 ms de la
+//! diagonalización exacta. El **criterio 3 (speedup N>500)** queda cumplido
+//! para el estado más bajo; las excitaciones altas siguen requiriendo la
+//! ruta exacta o un bloque mayor.
 //!
 //! **Benchmark vs ruta estable (2026-10-23)**: Nyström vs SVD exacta en
 //! `tests/beta_benchmarks.rs`; el error de reconstrucción queda ≤ 2× el mejor
