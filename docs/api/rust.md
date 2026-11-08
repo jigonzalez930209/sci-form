@@ -1,8 +1,23 @@
 # Rust API
 
 > **Errors (2.0):** the root-level functions in this page return
-> `Result<_, SciFormError>`; the legacy `String` signatures shown below are
-> converted at the crate boundary. See the `error` module for the variants.
+> `Result<_, SciFormError>`. The `String` in the legacy signatures below is
+> kept only for module-level helpers that have not migrated yet; at the crate
+> boundary they convert with `From<String>`. Match on the enum instead of
+> substrings:
+>
+> ```rust
+> use sci_form::{parse, SciFormError};
+>
+> match parse(smiles) {
+>     Ok(mol) => { /* ... */ }
+>     Err(error) if error.is_parse() => eprintln!("bad SMILES: {error}"),
+>     Err(error) => eprintln!("engine failure: {error}"),
+> }
+> ```
+>
+> Variants: `Parse`, `Validation`, `Geometry`, `Numerical`, `Unsupported`,
+> `Other`. See `sci_form::error` and `tests/typed_errors.rs`.
 
 ## Crate: `sci-form`
 
@@ -132,7 +147,7 @@ println!("{} atoms at ({:.2}, {:.2}, {:.2})",
 ### `embed_batch`
 
 ```rust
-pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Result<Vec<ConformerResult>, String>
+pub fn embed_batch(smiles_list: &[&str], config: &ConformerConfig) -> Result<Vec<ConformerResult>, SciFormError>
 ```
 
 Batch-generate conformers. With `parallel` feature uses rayon; `config.num_threads = 0` auto-detects CPU count.
@@ -153,10 +168,10 @@ for r in &results {
 ### `parse`
 
 ```rust
-pub fn parse(smiles: &str) -> Result<graph::Molecule, String>
+pub fn parse(smiles: &str) -> Result<graph::Molecule, SciFormError>
 ```
 
-Parse SMILES into a molecular graph without generating 3D coordinates. Returns `Ok(Molecule)` or `Err(msg)`.
+Parse SMILES into a molecular graph without generating 3D coordinates. Returns `Ok(Molecule)` or `Err(SciFormError)`; use `error.is_parse()` to distinguish malformed input.
 
 ---
 
@@ -165,7 +180,7 @@ Parse SMILES into a molecular graph without generating 3D coordinates. Returns `
 ### `compute_charges`
 
 ```rust
-pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, String>
+pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, SciFormError>
 ```
 
 Compute Gasteiger-Marsili partial charges using default settings (6 iterations).
@@ -192,7 +207,7 @@ println!("O charge: {:.4}", result.charges[2]); // ~-0.38
 pub fn compute_charges_configured(
     smiles: &str,
     config: &charges::gasteiger::GasteigerConfig,
-) -> Result<charges::gasteiger::ChargeResult, String>
+) -> Result<charges::gasteiger::ChargeResult, SciFormError>
 ```
 
 Compute Gasteiger-Marsili charges with fine-grained control.
@@ -232,7 +247,7 @@ pub fn compute_sasa(
     elements: &[u8],
     coords_flat: &[f64],
     probe_radius: Option<f64>,
-) -> Result<surface::sasa::SasaResult, String>
+) -> Result<surface::sasa::SasaResult, SciFormError>
 ```
 
 Shrake-Rupley SASA computation using a Fibonacci sphere (`DEFAULT_NUM_POINTS = 960` points per
@@ -268,7 +283,7 @@ println!("SASA: {:.2} Å²", sasa.total_sasa);
 pub fn compute_population(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<population::PopulationResult, String>
+) -> Result<population::PopulationResult, SciFormError>
 ```
 
 Runs EHT then computes Mulliken and Löwdin population analysis.
@@ -308,7 +323,7 @@ println!("HOMO: {:?} eV, Gap: {:?} eV", pop.homo_energy, pop.gap);
 pub fn compute_dipole(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<dipole::DipoleResult, String>
+) -> Result<dipole::DipoleResult, SciFormError>
 ```
 
 Runs EHT then computes the molecular dipole moment.
@@ -334,7 +349,7 @@ pub fn compute_esp_grid(
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
-) -> Result<esp::EspGrid, String>
+) -> Result<esp::EspGrid, SciFormError>
 ```
 
 `compute_esp` is the historical alias of this function.
@@ -385,7 +400,7 @@ pub fn compute_dos(
     e_min: f64,
     e_max: f64,
     n_points: usize,
-) -> Result<dos::DosResult, String>
+) -> Result<dos::DosResult, SciFormError>
 ```
 
 Runs EHT to get orbital energies, then computes DOS and per-atom PDOS with Gaussian smearing $\sigma$.
@@ -448,20 +463,25 @@ let result = align_quaternion(&mobile, &reference).unwrap();
 ### `compute_uff_energy`
 
 ```rust
-pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String>
+pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, SciFormError>
 ```
 
 Evaluate the UFF force field energy (kcal/mol) for a molecule at the given coordinates.
 
-**Advanced — MMFF94:**
+**MMFF94 (complete energy):**
 
 ```rust
-use sci_form::forcefield::mmff94::Mmff94Builder;
+use sci_form::forcefield::mmff94::{Mmff94Builder, Mmff94Variant};
 
 let mol = sci_form::parse("CCO").unwrap();
-let mmff = Mmff94Builder::build(&mol);
-let energy = mmff.total_energy(&coords);
+let terms = Mmff94Builder::build_typed(&mol, Mmff94Variant::Mmff94);
+let (energy, gradient) = Mmff94Builder::total_energy(&terms, &coords);
 ```
+
+The MMFF94 implementation includes stretch, bend, stretch-bend, out-of-plane,
+torsion, buffered 14-7 van der Waals and buffered Coulomb electrostatics with
+PBCI/BCI partial charges. It matches RDKit's full MMFF energy to
+<3e-11 kcal/mol on the validation corpus.
 
 ---
 
@@ -545,7 +565,7 @@ pub fn compute_stda_uvvis(
     e_max: f64,
     n_points: usize,
     broadening: reactivity::BroadeningType,
-) -> Result<reactivity::StdaUvVisSpectrum, String>
+) -> Result<reactivity::StdaUvVisSpectrum, SciFormError>
 ```
 
 Compute a UV-Vis absorption spectrum via the simplified Tamm-Dancoff approximation (sTDA) on EHT MO transitions.
@@ -581,7 +601,7 @@ pub fn compute_vibrational_analysis(
     positions: &[[f64; 3]],
     method: &str,
     step_size: Option<f64>,
-) -> Result<ir::VibrationalAnalysis, String>
+) -> Result<ir::VibrationalAnalysis, SciFormError>
 ```
 
 Compute a numerical Hessian ($6N$ energy evaluations with mass-aware step size) and diagonalize to obtain vibrational frequencies, normal modes, IR intensities, ZPVE, and thermochemistry. Translation/rotation modes are projected out automatically.
@@ -652,7 +672,7 @@ pub fn compute_ir_spectrum_broadened(
     wn_max: f64,
     n_points: usize,
     broadening: &str,
-) -> Result<ir::IrSpectrum, String>
+) -> Result<ir::IrSpectrum, SciFormError>
 ```
 
 Generate a broadened IR spectrum from an existing `VibrationalAnalysis` with full control over parameters.
@@ -679,7 +699,7 @@ println!("{} peaks labelled", spec.peaks.len());
 ### `predict_nmr_shifts`
 
 ```rust
-pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String>
+pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, SciFormError>
 ```
 
 Predict ¹H and ¹³C chemical shifts from SMILES using HOSE code environment matching.
@@ -703,7 +723,7 @@ for h in &shifts.h_shifts {
 pub fn predict_nmr_shifts_for_nucleus(
     smiles: &str,
     nucleus: &str,
-) -> Result<Vec<nmr::ChemicalShift>, String>
+) -> Result<Vec<nmr::ChemicalShift>, SciFormError>
 ```
 
 Predict shifts for one specific nucleus. This is the direct entry point for the expanded registry, including nuclei such as `2H`, `35Cl`, `79Br`, `195Pt`, and `207Pb`.
@@ -726,7 +746,7 @@ pub fn compute_giao_nmr(
     elements: &[u8],
     positions: &[[f64; 3]],
     nucleus: &str,
-) -> Result<GiaoNmrResult, String>
+) -> Result<GiaoNmrResult, SciFormError>
 ```
 
 Run the high-level public GIAO route for one requested nucleus. This path builds a `MolecularSystem`, runs the public RHF SCF loop, constructs the STO-3G basis mapping, and returns isotope-specific shieldings and chemical shifts.
@@ -754,7 +774,7 @@ pub fn compute_giao_nmr_configured(
     positions: &[[f64; 3]],
     nucleus: &str,
     config: &GiaoNmrConfig,
-) -> Result<GiaoNmrResult, String>
+) -> Result<GiaoNmrResult, SciFormError>
 ```
 
 Configured variant of the high-level GIAO API.
@@ -771,7 +791,7 @@ Set `allow_basis_fallback=true` only for screening-level experiments on elements
 pub fn predict_nmr_couplings(
     smiles: &str,
     positions: &[[f64; 3]],
-) -> Result<Vec<nmr::JCoupling>, String>
+) -> Result<Vec<nmr::JCoupling>, SciFormError>
 ```
 
 Predict $^2$J, $^3$J, and $^4$J H–H coupling constants. Pass 3D positions for Karplus dihedral-angle evaluation; pass `&[]` for topology-based free-rotation averages.
@@ -790,7 +810,7 @@ pub fn compute_ensemble_j_couplings(
     conformer_coords: &[Vec<f64>],
     energies_kcal: &[f64],
     temperature_k: f64,
-) -> Result<Vec<nmr::JCoupling>, String>
+) -> Result<Vec<nmr::JCoupling>, SciFormError>
 ```
 
 Boltzmann-average ³J couplings over a conformer ensemble.
@@ -822,7 +842,7 @@ pub fn compute_nmr_spectrum(
     ppm_min: f64,
     ppm_max: f64,
     n_points: usize,
-) -> Result<nmr::NmrSpectrum, String>
+) -> Result<nmr::NmrSpectrum, SciFormError>
 ```
 
 Full NMR spectrum pipeline: SMILES → nucleus-specific shifts → couplings → multiplet splitting → Lorentzian broadening.
@@ -841,7 +861,7 @@ println!("{} ¹H multiplet lines in spectrum", spec.peaks.len());
 ### `compute_hose_codes`
 
 ```rust
-pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> Result<Vec<nmr::HoseCode>, String>
+pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> Result<Vec<nmr::HoseCode>, SciFormError>
 ```
 
 Generate HOSE code environment strings for all atoms in the molecule (breadth-first spherical atom environments).
@@ -863,7 +883,7 @@ for hose in &codes {
 pub fn analyze_stereo(
     smiles: &str,
     coords: &[f64],
-) -> Result<stereo::StereoAnalysis, String>
+) -> Result<stereo::StereoAnalysis, SciFormError>
 ```
 
 Assign CIP priorities and determine R/S configuration at stereocenters and E/Z geometry at double bonds using 3D coordinates.
@@ -941,7 +961,7 @@ pub fn compute_gb_solvation(
     solvent_dielectric: Option<f64>,   // default: 78.5 (water), must be >= 1.0
     solute_dielectric: Option<f64>,    // default: 1.0, must be >= 1.0
     probe_radius: Option<f64>,         // default: 1.4 Å, must be >= 0.0
-) -> Result<solvation::GbSolvation, String>
+) -> Result<solvation::GbSolvation, SciFormError>
 ```
 
 Generalized Born + Surface Area (GB/SA) electrostatic solvation using the HCT pairwise descreening model for effective Born radii and the Still GB equation.
@@ -991,7 +1011,7 @@ println!("Total solvation: {:.2} kcal/mol", gb.total_energy_kcal_mol);
 ### `compute_sssr`
 
 ```rust
-pub fn compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, String>
+pub fn compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, SciFormError>
 ```
 
 Smallest Set of Smallest Rings using Horton's shortest-path algorithm with Hückel aromaticity perception.
@@ -1030,7 +1050,7 @@ pub fn compute_ecfp(
     smiles: &str,
     radius: usize,
     n_bits: usize,
-) -> Result<rings::ecfp::ECFPFingerprint, String>
+) -> Result<rings::ecfp::ECFPFingerprint, SciFormError>
 ```
 
 Extended-Connectivity Fingerprint (Morgan algorithm) with configurable radius and bit-vector size.
@@ -1312,8 +1332,9 @@ These capabilities are now available in every surface (Python, WASM and CLI).
 let uhf = sci_form::compute_uhf(&elements, &positions, 0, 2)?;   // doublet
 let rohf = sci_form::compute_rohf(&elements, &positions, 0, 2)?;
 
-// Energy gradients (eV/Å per atom): central differences (5e-4 Å) of the PM3 energy and of
-// the GFN2-xTB energy, i.e. of exactly what `compute_pm3` / `compute_xtb` return. 6·N SCF runs.
+// Energy gradients (eV/Å per atom): PM3 uses the stationary-density (Pulay-free)
+// form (fixed-density integral rebuilds, no SCF per displacement); xTB uses
+// warm-started central differences (5e-4 Å) of the GFN2 energy.
 let pm3_grad = sci_form::compute_pm3_gradient(&elements, &positions)?;
 let xtb_grad = sci_form::compute_xtb_gradient(&elements, &positions)?;
 

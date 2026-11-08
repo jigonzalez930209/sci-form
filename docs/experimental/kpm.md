@@ -1,6 +1,6 @@
 # E4: Kernel Polynomial Method (KPM)
 
-**Module:** `sci_form::beta::kpm` (gated; F91 validated, promotion pending)
+**Module:** `sci_form::kpm` (core since 2026-11-07; F91 validated; `sci_form::beta::kpm` is an alias)
 **Feature flag:** none — promoted to core on 2026-11-07. `beta-kpm` and
 `experimental-kpm` are retained as compatibility aliases, and
 `sci_form::beta::kpm` re-exports `sci_form::kpm`.
@@ -52,7 +52,7 @@ using $n_v$ random probe vectors $r_i$ with entries $\pm 1$.
 ## API
 
 ```rust
-use sci_form::beta::kpm::*;
+use sci_form::kpm::*;
 
 // Spectral bounds
 let (e_min, e_max) = estimate_spectral_bounds(&hamiltonian);

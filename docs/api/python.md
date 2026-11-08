@@ -750,9 +750,9 @@ spin contamination is zero by construction.
 def compute_pm3_gradient(elements: list[int], coords: list[float]) -> Pm3GradientResult
 ```
 
-PM3 energy gradient: central differences (step 5·10⁻⁴ Å) of the energy `compute_pm3` returns, so
+PM3 energy gradient: stationary-density (Pulay-free) differentiation of the energy `compute_pm3` returns (fixed-density integral rebuild, no SCF per displacement), so
 the two are consistent by construction. `Pm3GradientResult.gradients` is in **eV/Å** (one `[x, y, z]`
-per atom), `.energy` in **eV** and `.heat_of_formation` in **kcal/mol**. Cost: 6·N SCF runs. Raises
+per atom), `.energy` in **eV** and `.heat_of_formation` in **kcal/mol**. Cost: 6·N integral rebuilds plus one SCF. Raises
 `ValueError` for a malformed geometry, `NotConvergedError` / `RuntimeError` when the SCF fails at the
 reference or at any displaced geometry.
 
@@ -762,8 +762,8 @@ reference or at any displaced geometry.
 def compute_xtb_gradient(elements: list[int], coords: list[float]) -> XtbGradientResult
 ```
 
-xTB energy gradient: central differences (step 5·10⁻⁴ Å) of the GFN2-xTB energy, the one `compute_xtb`
-returns. `XtbGradientResult.gradients` is in **eV/Å** per atom and `.energy` in **eV**.
+xTB energy gradient: warm-started central differences (step 5·10⁻⁴ Å) of the GFN2-xTB energy, the one `compute_xtb`
+returns. Each displaced geometry is warm-started from the reference charges/multipoles. `XtbGradientResult.gradients` is in **eV/Å** per atom and `.energy` in **eV**.
 
 ### `compute_aevs_tm`
 
@@ -829,7 +829,7 @@ UFF energy with an aromaticity-informed correction. All energies in **kcal/mol**
 def compute_mmff94_energy(smiles: str, coords: list[float]) -> float
 ```
 
-MMFF94 force-field energy in **kcal/mol**.
+Complete MMFF94 force-field energy in **kcal/mol**: bond, angle, stretch-bend, out-of-plane, torsion, buffered 14-7 van der Waals and buffered Coulomb electrostatics with PBCI/BCI partial charges.
 
 > **Deprecated alias:** `mmff94_energy` → `compute_mmff94_energy`.
 
@@ -848,7 +848,7 @@ The values are in **kcal/mol** and sum to `compute_uff_energy`.
 def compute_mmff94_energy_breakdown(smiles: str, coords: list[float]) -> list[tuple[str, float]]
 ```
 
-The same split for MMFF94; the values sum to `compute_mmff94_energy`.
+The same split for MMFF94 (`bond`, `angle`, `stretch_bend`, `oop`, `torsion`, `vdw`, `electrostatic`); the values sum to `compute_mmff94_energy`.
 
 ### `compute_empirical_pka`
 

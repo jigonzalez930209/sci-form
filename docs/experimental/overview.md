@@ -46,7 +46,7 @@ Validated methods gated by `beta-*` feature flags. API is stable within minor ve
 |----|--------|-------------|-------------|
 | B1 | `kpm` (`beta::kpm` alias) | core | Kernel Polynomial Method — O(N) DOS (promoted 2026-11-07) |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian |
-| B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) |
+| B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT + low-rank Lanczos for N>500 |
 | B4 | `riemannian` (core, F94) | — | Riemannian PSD cone geometry |
 | B5 | `cpm` (core, F95) | — | Constant Potential Method |
 
@@ -75,9 +75,9 @@ The older `experimental-*` feature flags remain available at their existing modu
 | Track | Module | Feature Flag | Description |
 |-------|--------|-------------|-------------|
 | E1 | `cga` | `experimental-cga` | Conformal Geometric Algebra G(4,1) |
-| E2 | `rand_nla` | `experimental-randnla` | Randomized NLA for O(N log N) EHT |
+| E2 | `rand_nla` | `experimental-randnla` | Randomized NLA for O(N²k) EHT, low-rank N>500 path |
 | E3 | `riemannian` | `experimental-riemannian` | Riemannian L-BFGS for ETKDG |
-| E4 | `kpm` | `experimental-kpm` | Kernel Polynomial Method — O(N) DOS |
+| E4 | `kpm` | core (`experimental-kpm` alias) | Kernel Polynomial Method — O(N) DOS |
 | E5 | `eeq` | `experimental-eeq` | Dynamic EEQ Charge Model |
 | E6 | `alpb` | `experimental-alpb` | Analytical Linearized Poisson-Boltzmann |
 | E7 | `d4` | `experimental-d4` | DFT-D4 Dispersion Correction |
@@ -125,8 +125,8 @@ The older `experimental-*` feature flags remain available at their existing modu
 # Alpha modules
 sci-form = { version = "1.0", features = ["alpha-dft", "alpha-reaxff"] }
 
-# Beta modules
-sci-form = { version = "1.0", features = ["beta-kpm", "beta-randnla"] }
+# Beta modules (KPM is core since 2026-11-07; beta-kpm is a compatibility alias)
+sci-form = { version = "1.0", features = ["beta-randnla"] }
 
 # Legacy experimental
 sci-form = { version = "1.0", features = ["experimental-d4", "experimental-kpm"] }
@@ -134,7 +134,7 @@ sci-form = { version = "1.0", features = ["experimental-d4", "experimental-kpm"]
 # Everything + parallel
 sci-form = { version = "1.0", features = [
     "alpha-dft", "alpha-reaxff", "alpha-mlff",
-    "beta-kpm", "beta-randnla",
+    "beta-randnla",
     "experimental-d4",
     "parallel"
 ] }

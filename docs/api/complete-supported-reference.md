@@ -72,7 +72,7 @@ Energies are always total system energies unless the field name says otherwise.
 
 ### Surface rules
 
-- Rust returns native structs and `Result<_, String>` where appropriate
+- Rust returns native structs and `Result<_, SciFormError>` from the root API; module-level legacy helpers may still return `String` and convert at the boundary
 - Python returns PyO3 wrapper classes with attribute access, and exposes `__all__` and `__version__`
 - WASM uses JSON strings for structured inputs/outputs, with typed-array fast paths for selected operations; a failure is always the JSON payload `{"error": "<message>"}`
 - CLI exposes a subset of stable workflows as commands
@@ -158,21 +158,21 @@ Practical note:
 |------|--------|--------------------------|------|-----|---------|-------------------|
 | `compute_uff_energy` | `compute_uff_energy` | `uff_energy` | `compute_uff_energy` | `uff` | UFF energy evaluation | Universal Force Field |
 | `compute_uff_energy_with_aromatic_heuristics` | `compute_uff_energy_with_aromatic_heuristics` | `uff_energy_with_aromatic_heuristics` | `compute_uff_energy_with_aromatic_heuristics` | – | UFF with aromaticity-informed correction | UFF + aromatic post-correction |
-| `compute_mmff94_energy` | `compute_mmff94_energy` | `mmff94_energy` | `compute_mmff94_energy` | – | MMFF94 energy evaluation | Halgren MMFF94 |
+| `compute_mmff94_energy` | `compute_mmff94_energy` | `mmff94_energy` | `compute_mmff94_energy` | – | Complete MMFF94 energy evaluation | Halgren MMFF94: stretch, bend, stretch-bend, OOP, torsion, vdW, Coulomb |
 | `compute_empirical_pka` | `compute_empirical_pka` | `empirical_pka` | `compute_empirical_pka` | – | Estimate acidic/basic pKa sites | Graph environment + charge heuristics |
 | `compute_uff_energy_breakdown` | `compute_uff_energy_breakdown` | – | `compute_uff_energy_breakdown` | `uff-breakdown` | UFF energy split by term type | Bond/angle/torsion/vdw decomposition |
-| `compute_mmff94_energy_breakdown` | `compute_mmff94_energy_breakdown` | – | `compute_mmff94_energy_breakdown` | `mmff94-breakdown` | MMFF94 energy split by term type | Bond/angle/torsion/vdw decomposition |
+| `compute_mmff94_energy_breakdown` | `compute_mmff94_energy_breakdown` | – | `compute_mmff94_energy_breakdown` | `mmff94-breakdown` | MMFF94 energy split by term type | bond/angle/stretch_bend/oop/torsion/vdw/electrostatic |
 
 ### 5. Semiempirical, Tight-Binding, Ab Initio, and Neural Potentials
 
 | Rust | Python | Deprecated Python alias | WASM | CLI | Purpose | Algorithmic basis |
 |------|--------|--------------------------|------|-----|---------|-------------------|
 | `compute_pm3` | `compute_pm3` | `pm3_calculate` | `compute_pm3` | `pm3` | PM3 semiempirical SCF | NDDO PM3 |
-| `compute_pm3_gradient` | `compute_pm3_gradient` | – | `compute_pm3_gradient` | `pm3-gradient` | PM3 gradients | Central differences of the PM3 energy (consistent with `compute_pm3`) |
+| `compute_pm3_gradient` | `compute_pm3_gradient` | – | `compute_pm3_gradient` | `pm3-gradient` | PM3 gradients | Stationary-density (Pulay-free): fixed-density integral rebuilds, no SCF per displacement |
 | `compute_xtb` | `compute_xtb` | `xtb_calculate` | `compute_xtb` | `xtb` | GFN2-xTB tight-binding (identical to `compute_gfn2`) | SCC tight-binding with multipole electrostatics and D4 |
 | `compute_gfn1` | `compute_gfn1` | `gfn1_calculate` | `compute_gfn1` | `gfn1` | GFN1-xTB workflow with shell charges and D3-style dispersion | Shell-resolved SCC tight-binding |
 | `compute_gfn2` | `compute_gfn2` | `gfn2_calculate` | `compute_gfn2` | `gfn2` | GFN2-xTB workflow with multipoles, D4-style dispersion, and XB correction | Multipole SCC tight-binding |
-| `compute_xtb_gradient` | `compute_xtb_gradient` | – | `compute_xtb_gradient` | `xtb-gradient` | xTB gradients | Central differences of the GFN2-xTB energy (consistent with `compute_xtb`) |
+| `compute_xtb_gradient` | `compute_xtb_gradient` | – | `compute_xtb_gradient` | `xtb-gradient` | xTB gradients | Warm-started central differences of the GFN2-xTB energy (consistent with `compute_xtb`) |
 | `compute_hf3c` | `compute_hf3c` | `hf3c_calculate` | `compute_hf3c` / `compute_hf3c_custom` | `hf3c` | HF-3c quantum workflow | HF + D3 + gCP + SRB |
 | `compute_ani` | `compute_ani` | `ani_calculate` | `compute_ani` | `ani` | ANI neural potential using available test/default models | Atomic environment vectors + feed-forward NN |
 | `compute_ani_with_models` | – | – | – | – | ANI with explicit models/config (Rust only: the ANI networks are Rust objects) | Same ANI formalism with custom weights |
@@ -197,6 +197,7 @@ Practical note:
 | `ir::assign_peaks` | `assign_peaks` | – | `assign_peaks` | `assign-peaks` | Assign IR peaks to functional groups | Group-frequency tables |
 | `predict_nmr_shifts` | `predict_nmr_shifts` | `nmr_shifts` | `predict_nmr_shifts` | – | Chemical shift prediction | HOSE/environment heuristics |
 | `predict_nmr_shifts_for_nucleus` | `predict_nmr_shifts_for_nucleus` | `nmr_shifts_for_nucleus` | `predict_nmr_shifts_for_nucleus` | – | Shifts for one requested nucleus | HOSE/environment heuristics |
+| `predict_nmr_shifts_with_hose_database` | – | – | – | – | Shifts with an external NMRShiftDB2/SDBS HOSE database | Longest-prefix HOSE lookup overrides 1H/13C |
 | `predict_nmr_couplings` | `predict_nmr_couplings` | `nmr_couplings` | `predict_nmr_couplings` | – | J-coupling prediction | Karplus + topological heuristics |
 | `compute_ensemble_j_couplings` | `compute_ensemble_j_couplings` | – | `compute_ensemble_j_couplings` | `ensemble-j-couplings` | Boltzmann-averaged J-couplings across conformers | Ensemble averaging |
 | `compute_nmr_spectrum` | `compute_nmr_spectrum` | `nmr_spectrum` | `compute_nmr_spectrum` / `compute_nmr_spectrum_with_coords` | – | Full synthetic NMR spectrum | Shift prediction + coupling model + line broadening |

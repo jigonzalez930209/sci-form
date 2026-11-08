@@ -1,5 +1,12 @@
 # v1.0.0 release checklist
 
+> **Historical document.** This checklist records the 1.0.0 release gate. The
+> 1.1 follow-up (2026-11-08) closed MMFF94, ReaxFF analytical gradients, typed
+> root-API errors, ERI Cholesky and the RandNLA N>500 path; see
+> `reports/1.1-experimental-2026-11-07.es.md` and `CHANGELOG.md`. Items below
+> that mention `String` errors, M⁴-only ERI storage or central-difference
+> ReaxFF gradients describe the 1.0.0 state, not the current one.
+
 Everything that must be true before `sci-form` 1.0.0 is published to
 crates.io, PyPI and npm.
 

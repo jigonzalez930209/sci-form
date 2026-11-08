@@ -80,27 +80,49 @@ numbers, and why the fallback was taken.
 
 ## 3. Gradients
 
-### Definition
+### PM3: stationary-density (Pulay-free) gradient
 
-For a geometry `R` with `N` atoms and the energy `E(R)` that the matching
-`compute_*` call reports,
+At a converged SCF density the electronic energy is stationary with respect to
+the density, so the Pulay terms vanish. The molecular gradient is the
+derivative of
 
 ```
-∂E/∂x_k ≈ ( E(R + h·e_k) − E(R − h·e_k) ) / 2h ,      h = 5·10⁻⁴ Å ,   k = 1 … 3N
+E(P, R) = ½ Tr[P (H(R) + G(P, R))] + E_nuc(R)
 ```
+
+at fixed `P`. `compute_pm3_gradient` therefore:
+
+1. runs `solve_pm3` once to obtain the converged density;
+2. for each Cartesian component, rebuilds `H`, `G(P)` and `E_nuc` at
+   `R ± h·e_k` **without running an SCF**;
+3. forms `(E(P,R+h·e_k) − E(P,R−h·e_k))/2h`, `h = 5·10⁻⁴ Å`.
+
+The remaining integral derivatives are evaluated by central differences of the
+fixed-density energy. The expensive SCF is not repeated, and the result
+matches the full central difference of `solve_pm3` to better than
+`1·10⁻³ eV/Å`. The legacy NDDO path (`Z > 17`) keeps the full central
+difference because it does not expose a stationary density.
+
+### xTB: warm-started central differences
+
+GFN2-xTB does not expose a fixed-state energy evaluator, so
+`compute_xtb_gradient` still differentiates `solve_gfn2` by central
+differences. Each displaced geometry is warm-started from the reference shell
+charges and atomic multipoles (`Gfn2Result::warm_start`), so the SCC converges
+in a few iterations instead of from a zero state. The energy is identical to a
+cold SCC run; only the iteration count drops.
 
 <SvgDiagram src="/svg/gradient-central-difference.svg" alt="Animated: one atom is displaced by plus and minus h, two SCF runs give E plus and E minus, and their difference over 2h is the gradient component" />
 
-* `compute_pm3_gradient` differentiates the `solve_pm3` total energy (eV).
-* `compute_xtb_gradient` differentiates the `solve_gfn2` total energy (eV).
 * The `3N` coordinates are independent, so they run on the rayon pool when the
-  `parallel` feature is on. Each component is computed alone and collected in
-  order, so the result does not depend on the number of threads.
-* Truncation error is `O(h²·E‴) ≈ 5·10⁻⁶ eV/Å`; the SCF is smooth enough (see
+  `parallel` feature is on. Each component is collected in order, so the result
+  does not depend on the number of threads.
+* Truncation error is `O(h²·E‴) ≈ 5·10⁻⁶ eV/Å`; the SCC is smooth enough (see
   §2) that the noise term `ε/2h` is smaller than that.
-* **Cost:** `6N` SCF runs plus one for the reference energy.
+* **Cost:** PM3 `6N` integral rebuilds + one SCF; xTB `6N` warm SCC solves +
+  one reference solve.
 
-### Why not an analytic gradient
+### Why the remaining derivative is still numerical
 
 Until 1.0 the repository carried hand-written Hellmann-Feynman/Pulay
 expressions. They differentiated the *legacy* simplified models, not the
@@ -112,10 +134,10 @@ agree with those energies however carefully they were written:
 | PM3 max \|Δg\| against the numerical derivative of `solve_pm3` | 18.4 eV/Å | 1.1·10⁻⁵ eV/Å (tolerance 1·10⁻⁴) |
 | xTB max \|Δg\| against the numerical derivative of the xTB energy | 209–263 eV/Å (of a different, simplified model) | 4.8·10⁻⁵ eV/Å (tolerance 1·10⁻⁴) |
 
-A complete analytic NDDO gradient (derivatives of the rotated two-centre
-integrals) or a GFN2 gradient (multipole electrostatics, D4) is future work.
-When it lands it will replace the finite difference behind the same function
-signature.
+The symbolic NDDO derivative (rotated two-centre integrals) and the GFN2
+derivative (multipole electrostatics, D4) remain research work. When they land
+they will replace the fixed-density / warm-start steps behind the same
+function signature.
 
 ### Behaviour you should know about
 
@@ -129,10 +151,10 @@ signature.
   SCF error (for example an odd electron count). Use `compute_uhf` / `compute_rohf` for
   open-shell energies; they have no gradient.
 * **Errors.** An SCF failure at the reference geometry or at any displaced
-  geometry is returned unchanged (`Err(String)` in Rust; in Python `ValueError` for a malformed
-  geometry, `NotConvergedError` for a non-convergent SCF and `RuntimeError`
-  for any other engine failure; an `{"error": ...}` JSON payload in WASM; a
-  non-zero exit code in the CLI).
+  geometry is returned unchanged (`Err(SciFormError)` in Rust; in Python
+  `ValueError` for a malformed geometry, `NotConvergedError` for a
+  non-convergent SCF and `RuntimeError` for any other engine failure; an
+  `{"error": ...}` JSON payload in WASM; a non-zero exit code in the CLI).
 * **Translational invariance.** The net force over all atoms is below
   `1·10⁻³ eV/Å` in the unit tests.
 
@@ -149,10 +171,10 @@ The semi-analytical Hessian used to be the cheap alternative to
 is no longer true, so prefer `compute_numerical_hessian` (or the `ir`
 functions, which use it).
 
-NEB, MD and reaction dynamics call the gradient once per image per iteration;
-with PM3 or `xtb` each call now costs `6N+1` SCF runs, the same order as the
-`gfn1`/`gfn2`/`hf3c` backends have always cost. Use `uff` or `mmff94` for
-exploratory paths and `gfn2` or `pm3` for the final refinement.
+NEB, MD and reaction dynamics call the gradient once per image per iteration.
+With PM3 the call costs `6N` integral rebuilds plus one SCF; with `xtb` it
+costs `6N` warm SCC solves plus one reference solve. Use `uff` or `mmff94`
+for exploratory paths and `gfn2` or `pm3` for the final refinement.
 
 ## 5. API
 

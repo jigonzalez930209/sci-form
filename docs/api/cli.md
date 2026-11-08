@@ -1143,7 +1143,7 @@ sci-form rohf <ELEMENTS_JSON> <COORDS_JSON> --charge 0 --multiplicity 2
 
 ### `pm3-gradient`, `xtb-gradient`
 
-Energy gradients in **eV/Å** per atom. They are central differences (5·10⁻⁴ Å) of
+Energy gradients in **eV/Å** per atom. PM3 uses stationary-density (Pulay-free) differentiation; xTB uses warm-started central differences (5·10⁻⁴ Å) of
 the energy that the matching command returns: `pm3-gradient` differentiates the
 `pm3` total energy and `xtb-gradient` the `xtb` total energy (which is GFN2-xTB).
 Cost: `6·N` SCF runs. See [PM3 and xTB gradients](/algorithm/semiempirical-gradients).
@@ -1174,8 +1174,9 @@ is in kcal/mol.
 
 ### `uff-breakdown`, `mmff94-breakdown`
 
-The force-field energy split by term type, in **kcal/mol**. The values sum to
-the corresponding total energy.
+The force-field energy split by term type, in **kcal/mol**. MMFF94 terms are
+`bond`, `angle`, `stretch_bend`, `oop`, `torsion`, `vdw` and `electrostatic`.
+The values sum to the corresponding total energy.
 
 ```
 sci-form uff-breakdown    <SMILES> <COORDS_JSON>
@@ -1673,8 +1674,9 @@ $ sci-form simplified-neb-path "CCO" "$COORDS" "$COORDS" --n-images 2 --n-iter 2
 Single-point energy and energy + gradient with any NEB-capable backend.
 
 `neb-energy` evaluates the energy only (one SCF for `pm3`/`xtb`). `neb-gradient`
-returns the analytic gradient for `uff`/`mmff94` and a central-difference
-gradient of the same energy for `pm3`, `xtb`, `gfn1`, `gfn2` and `hf3c`. `xtb` is
+returns the analytic gradient for `uff`/`mmff94`, the stationary-density
+gradient for `pm3`, and warm-started central differences for `xtb`, `gfn1`,
+`gfn2` and `hf3c`. `xtb` is
 GFN2, the same model as the `xtb` command and as `gfn2`; see
 [Reaction backends](/guide/reaction-backends). For ethanol `neb-energy` returns
 −14379.2 kcal/mol for `pm3`, −7146.0 for `xtb`/`gfn2` and 6.99 for `uff`; the absolute zero differs between methods.

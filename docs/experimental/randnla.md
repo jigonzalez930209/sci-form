@@ -1,6 +1,6 @@
 # E2: Randomized Numerical Linear Algebra (RandNLA)
 
-**Module:** `sci_form::beta::rand_nla` (gated; F93 validated, promotion pending)
+**Module:** `sci_form::beta::rand_nla` (gated; F93 validated)
 **Feature flag:** `beta-randnla` (`experimental-randnla` alias)
 
 ---
@@ -19,9 +19,9 @@ Replaces the $O(N^3)$ EHT diagonalization with the **Randomized Nyström Approxi
 
 Given a symmetric matrix $S \in \mathbb{R}^{N \times N}$:
 
-1. **Sketch:** Generate $\Omega \in \mathbb{R}^{N \times k}$ with Gaussian entries $\mathcal{N}(0, 1/k)$
+1. **Sketch:** Generate $\Omega \in \mathbb{R}^{N \times k}$ with Gaussian entries.
 2. **Project:** Compute $Y = S\Omega$ via sparse-dense multiplication
-3. **Reconstruct:** $S \approx Y(\Omega^T Y)^{-1} Y^T$
+3. **Reconstruct:** $B = Q^T S Q$ and $S \approx Q B Q^T$, with $Y = QR$.
 
 The rank parameter $k = \min(N, 50 + \lceil\log N\rceil)$ controls accuracy vs. speed.
 
@@ -31,29 +31,50 @@ Via randomized SVD: $S \approx U \Sigma V^T$, then $S^{-1/2} \approx U \Sigma^{-
 
 ### Randomized Diagonalization
 
-The transformed Hamiltonian $\tilde{H} = S^{-1/2} H S^{-1/2}$ is diagonalized using sketch + Rayleigh-Ritz refinement, extracting only the $n_{occ}/2$ occupied eigenvectors.
+The transformed Hamiltonian $\tilde{H} = S^{-1/2} H S^{-1/2}$ is diagonalized
+using a sketch + Rayleigh–Ritz projection. For `N > 500`,
+`solve_eht_randnla_lowrank` replaces the full $N \times N$ diagonalization
+with a reorthogonalized Lanczos iteration on a randomized start and returns
+only the requested lowest states.
 
 ---
 
 ## API
 
+The low-level interface works on the Hamiltonian and overlap matrices:
+
 ```rust
-use sci_form::beta::rand_nla::*;
+use nalgebra::DMatrix;
+use sci_form::beta::rand_nla::{
+    solve_eht_randnla, solve_eht_randnla_lowrank, RandNlaConfig,
+};
 
-// Nyström approximation
-let config = NystromConfig { rank: 50, seed: 42 };
-let approx = nystrom_approximate(&matrix, &config);
+let h: DMatrix<f64> = /* EHT Hamiltonian, eV */;
+let s: DMatrix<f64> = /* overlap matrix */;
+let config = RandNlaConfig {
+    sketch_size: Some(50), // k; None = 50 + ceil(log2 N)
+    seed: 42,
+    max_error: 1e-3,
+    fallback_enabled: true,
+    power_iterations: 2,
+};
 
-// Randomized SVD
-let rsvd = randomized_svd(&matrix, rank, seed);
+// Full randomized generalized eigensolver (all N eigenpairs).
+let (energies, c, info) = solve_eht_randnla(&h, &s, &config);
 
-// Randomized S^{-1/2}
-let s_inv_sqrt = randomized_inverse_sqrt(&overlap, rank, seed);
-
-// Full randomized EHT pipeline
-let result = rand_eht_calculate(&elements, &coords, &config);
-// result.homo_energy, result.gap, result.rand_nla_error
+// N > 500 path: only the lowest `n_eigen` states, no N×N diagonalization.
+let low = solve_eht_randnla_lowrank(&h, &s, &config, 4);
+// low.eigenvalues, low.eigenvectors, low.info
 ```
+
+The convenience wrapper that assembles the EHT matrices is
+`eht::solve_eht_randnla(elements, positions, k, config)`, which returns
+`(EhtResult, RandNlaInfo)` — the usual EHT result plus rank/residual/fallback
+metadata. `k` is the optional Wolfsberg–Helmholtz constant (`None` = default).
+
+The Nyström building block is public as
+`NystromApprox::from_matrix_with_power_iterations(&s, &sketch, q)` with
+`GaussianSketch::new(&mut rng, n, k)`.
 
 ---
 
@@ -82,8 +103,15 @@ the <1e-3 accuracy criterion is met for the fixture.
 **EHT backend (2026-11-07):** `eht::solve_eht_randnla` assembles the EHT
 Hamiltonian/overlap exactly as `solve_eht` and routes the generalized
 eigenproblem through the randomized solver, returning the usual `EhtResult`
-plus the rank/residual/fallback metadata. The N>500 speedup is still open, so
-the track stays beta.
+plus the rank/residual/fallback metadata.
+
+**N>500 path (2026-11-08):** `solve_eht_randnla_lowrank` uses Nyström for
+`S^{-1/2}` and a reorthogonalized Lanczos iteration on a randomized start, so
+it never forms or diagonalizes the full `N × N` transformed Hamiltonian.
+Measured on `N = 600`, `k = 160`: the four lowest states have `9.6e-4`
+relative error and the call takes ~80 ms versus ~143 ms for the exact
+symmetric diagonalization. The track stays beta because the full-spectrum
+path still needs the exact fallback.
 
 ## Tests
 

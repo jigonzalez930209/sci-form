@@ -23,12 +23,12 @@ A **HOSE code** encodes the spherical chemical environment around each atom by p
 Example for the **carbonyl carbon** in acetone (CH₃COCH₃):
 
 ```
-C-6;C;=O,C/C,C//H,H,H,H,H,H/
+C/C,=O/C,C/H,H,H,H,H,H
 ```
 
-Reading: central C → sphere 1 has C=O and C–C → sphere 2 has C and C → sphere 3 has H×3 and H×3.
+Reading: central C → sphere 1 has a single-bonded C and a double-bonded O → sphere 2 has two C atoms → sphere 3 has the six methyl hydrogens. The implementation uses the bond symbols `=`, `#`, `*` and element symbols, with each sphere sorted for determinism.
 
-The resulting string is matched against a reference database of >10,000 shifts to find similar chemical environments and predict the shift by analogy.
+The built-in tables cover common organic environments. For larger coverage, `nmr::HoseDatabase` loads an external JSON/CSV/TSV export from NMRShiftDB2 or SDBS and `predict_chemical_shifts_with_hose_database` replaces ¹H/¹³C values on a longest-prefix match. The database data is not bundled (CC-BY-SA review is external).
 
 ### Chemical Shift Prediction
 
@@ -312,4 +312,4 @@ console.log(`Most intense peak at δ ${ppm.toFixed(2)} ppm`);
 - Solvent and temperature effects are not modeled.
 - Expanded heteronuclear support is screening-level relative inference; quadrupolar linewidths and isotope abundances are not modeled quantitatively.
 - Metals outside the named isotopes use the NMR catalog (Y, Tc, lanthanides except Ce, Hf, Ta, Re, Os, Ir, and actinides through Am). Cerium emits no shift: every natural isotope has spin 0.
-- For HOSE code matching, rare environments with no database match fall back to hybridization-based defaults.
+- For HOSE code matching, the built-in table covers common environments; without an external `HoseDatabase`, rare environments fall back to hybridization-based defaults.

@@ -195,17 +195,20 @@ MMFF94 assigns each heavy atom a chemical context type used to look up force con
 | Type | Description |
 |------|-------------|
 | `HC`   | Hydrogen bonded to carbon |
-| `CSp`  | sp³ carbon |
-| `CSp2` | sp² carbon (non-aromatic) |
+| `CR`   | Alkyl (sp³) carbon |
+| `CSp2` | Vinyl / generic sp² carbon |
+| `CSp`  | Acetylenic (sp) carbon |
+| `CO`   | Carbonyl carbon |
 | `CB`   | Aromatic carbon |
-| `CR`   | sp³ carbon in ring |
-| `NR`   | sp³ nitrogen in ring |
-| `N2`   | sp² nitrogen |
+| `NR`   | Amine (sp³) nitrogen |
+| `N2`   | Imine (sp²) nitrogen |
+| `NC`   | Cyano / isocyano nitrogen |
 | `NAm`  | Amide nitrogen |
-| `NR2`  | Aromatic nitrogen |
-| `NC`   | Nitrile nitrogen |
-| `OR`   | sp³ oxygen |
-| `O2`   | sp² oxygen |
+| `NR2`  | Aromatic (pyridine-like) nitrogen |
+| `OR`   | Alcohol / ether oxygen |
+| `O2`   | Carbonyl oxygen |
+| `OH2`  | Water oxygen |
+| `HOH`  | Water hydrogen |
 | `F`    | Fluorine |
 | `P`    | Phosphorus |
 | `S`    | Sulfur |
@@ -215,9 +218,9 @@ MMFF94 assigns each heavy atom a chemical context type used to look up force con
 
 ### Energy Function
 
-<SvgDiagram src="/svg/mmff94-energy-terms.svg" alt="MMFF94 four energy terms" />
+<SvgDiagram src="/svg/mmff94-energy-terms.svg" alt="MMFF94 energy terms: bonded, out-of-plane, van der Waals and electrostatics" />
 
-$$E_{\text{MMFF94}} = E_s + E_\theta + E_\phi + E_\text{vdW}$$
+$$E_{\text{MMFF94}} = E_s + E_\theta + E_{sb} + E_{oop} + E_\phi + E_\text{vdW} + E_{qq}$$
 
 #### 1. Bond Stretching (Quartic Form)
 
@@ -244,7 +247,7 @@ $$E_\theta = 0.043844 \cdot \frac{1}{2} \cdot k_a \cdot \Delta\theta^2 \left[1 +
 where:
 - $\Delta\theta = \theta - \theta_0$ in **degrees**
 - $k_a$ is the angle force constant (md·Å/rad²)
-- $c_b = -0.014\ \text{deg}^{-1}$ is the **cubic bend constant**
+- $c_b = -0.006981317\ \text{deg}^{-1}$ is the **cubic bend constant** ($-0.4$ rad⁻¹, RDKit value)
 - The factor 0.043844 converts to kcal/mol
 
 The cubic term models the asymmetry of valence angle deformation near linearity.
@@ -285,21 +288,40 @@ The **1.07** and **0.07** buffer factors soften the repulsive wall relative to L
 
 $$\frac{\partial E_\text{vdW}}{\partial \mathbf{x}_i} = \varepsilon_{ij} \left[\frac{\partial (\text{rep})}{\partial R} \cdot \text{att} + \text{rep} \cdot \frac{\partial (\text{att})}{\partial R}\right] \frac{\mathbf{x}_i - \mathbf{x}_j}{R_{ij}}$$
 
+#### 5. Stretch–Bend Coupling
+
+$$E_{sb} = 2.51210\,(k_{ba}^{ijk}\Delta r_{ij} + k_{ba}^{kji}\Delta r_{jk})\,\Delta\theta$$
+
+with $\Delta\theta$ in degrees and the two force constants resolved from the typed angle (falling back to the periodic-row `MMFFDFSB.PAR` table).
+
+#### 6. Out-of-Plane Bending
+
+$$E_{oop} = \tfrac12\,143.9325\,(\pi/180)^2\,k_{oop}\,\chi^2$$
+
+where $\chi$ is the angle between the out-of-plane bond and the plane of the other three substituents. RDKit's SURDOX02 rule is reproduced: the term is skipped when the type quadruple has no parameters.
+
+#### 7. Buffered Coulomb Electrostatics
+
+$$E_{qq} = 332.0716\,\frac{q_i q_j}{R_{ij} + 0.05}$$
+
+with MMFF94 partial charges from the PBCI/BCI tables; 1-4 pairs carry the 0.75 scale and the default dielectric is constant (`D = 1`). The partial-charge expression is MMFF.V eq. 15 and includes the special formal-charge cases for charged atom types.
+
 ### Implementation: `Mmff94Builder`
 
-The `Mmff94Builder` constructs the force field from a parsed molecule:
+The builder constructs the typed force field from a parsed molecule:
 
 ```rust
-use sci_form::forcefield::mmff94::Mmff94Builder;
+use sci_form::forcefield::mmff94::{Mmff94Builder, Mmff94Variant};
 
 let mol = sci_form::parse("CCO")?;
-let mut builder = Mmff94Builder::new(&mol);
-builder.build();  // Assigns atom types and creates all energy terms
-
-// Evaluate energy + inject gradients
-let mut grad = vec![0.0; mol.atoms.len() * 3];
-let energy = builder.total_energy(&coords, &mut grad);
+let terms = Mmff94Builder::build_typed(&mol, Mmff94Variant::Mmff94);
+let (energy, gradient) = Mmff94Builder::total_energy(&terms, &coords);
 ```
+
+`compute_mmff94_energy` and `compute_mmff94_energy_breakdown` are the simpler
+root-level entry points. The full-energy gate against RDKit lives in
+`tests/mmff94_validation.rs` (fixtures `mmff94_rdkit.json` and
+`mmff94_rdkit_lib.json`).
 
 ### Gradient Validation
 

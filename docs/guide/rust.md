@@ -93,7 +93,7 @@ for r in &results {
 
 Requires the `parallel` feature for multi-threaded execution. Without it, molecules are processed sequentially.
 
-### `parse(smiles) → Result<Molecule, String>`
+### `parse(smiles) → Result<Molecule, SciFormError>`
 
 Parse a SMILES string into a molecular graph without generating 3D coordinates.
 

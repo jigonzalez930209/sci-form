@@ -34,8 +34,39 @@ human-written changelog for the repository.
 
 - Criterion infrastructure (`benches/core.rs`, `[[bench]] core`).
 - Runnable doctests rise from 15 to 28 (+1 ignored).
-- The MMFF94 page no longer claims the full energy: the implementation is
-  the valence + dispersion subset.
+- MMFF94 now implements the **complete** energy expression (stretch-bend,
+  out-of-plane and buffered Coulomb electrostatics with PBCI/BCI charges) and
+  matches RDKit to <3e-11 kcal/mol on the validation corpus.
+
+### 2026-11-08 — 1.1 follow-up
+
+- **MMFF94 complete**: stretch-bend, out-of-plane and buffered Coulomb
+  electrostatics with MMFF partial charges. Seven-molecule RDKit parity:
+  max energy deviation 2.8e-11 kcal/mol, partial charges exact. F100 added.
+- **ReaxFF analytical gradients**: bond-order scaling, bond/angle,
+  over/under-coordination, vdW, Coulomb and EEM charge response
+  (`dq = -A^-1 dA q`); gate against central differences on H2, water,
+  methane and CH3O.
+- **RandNLA N>500**: `solve_eht_randnla_lowrank` (Nyström + reorthogonalized
+  Lanczos). N=600, k=160: four lowest states at 9.6e-4 relative error,
+  ~80 ms vs ~143 ms exact.
+- **ERI Cholesky**: `hf::integrals::CholeskyEris` reconstructs the packed ERI
+  tensor from a thresholded pivoted Cholesky factor; benzene STO-3G rank
+  237/666, ratio 0.714, max error 9.9e-7 Ha.
+- **Typed errors**: `SciFormError` (Parse, Validation, Geometry, Numerical,
+  Unsupported, Other) with `Display`/`Error`/`Deref<str>`/`From<String>`;
+  the 65 root-level functions in `src/lib.rs` now return it.
+- **NMR HOSE**: `HoseDatabase` reads JSON/CSV/TSV exports from
+  NMRShiftDB2/SDBS and overrides 1H/13C shifts on a longest-prefix match.
+  No database data is bundled (CC-BY-SA review remains external).
+- **PM3/xTB gradient cost**: PM3 uses the stationary-density (Pulay-free)
+  form (no SCF per displacement); xTB warm-starts each displaced SCC from
+  the reference charges/multipoles. Symbolic NDDO/GFN2 derivatives remain
+  research work.
+- **KPM promoted to core** (`src/kpm`, `beta-kpm` compatibility alias).
+- **ReaxFF ffield parser**: all standard sections (general, atoms, bonds,
+  off-diagonal, angles, torsions, hydrogen bonds).
+- Gate: `scripts/release-check.sh` green.
 
 ### Experimental tracks
 

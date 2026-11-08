@@ -63,8 +63,8 @@ See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 1.0**](docs/guide/migr
 - **Isolated `experimental_2` namespace** — next-generation Roothaan-Hall RHF engine without affecting stable APIs
 - **Analytical Gaussian integrals** — overlap, kinetic, nuclear attraction, core Hamiltonian, and two-electron ERIs
 - **SCF with DIIS + parallel ERI** — deterministic RHF/STO-3G workflow with rayon acceleration for the expensive $O(N^4)$ step
-- **Experimental spectroscopy stack** — prototype sTDA UV-Vis, GIAO-like NMR shielding, and semi-numerical IR/Hessian workflows
-- **GPU-oriented architecture** — WGSL shader stubs, orbital grid evaluation, and marching-cubes rendering pipeline prepared for future `wgpu` enablement
+- **Spectroscopy stack** — sTDA UV-Vis, GIAO-like NMR shielding and semi-numerical IR/Hessian workflows, gated against external references
+- **GPU architecture** — real WGSL kernels for ERI, Fock, gamma, orbital/density grids, ESP, EEQ, CPM, HTST, periodic Bloch and EDL, with 11 GPU↔CPU parity gates
 
 ### Electrostatics & Surface
 - **Electrostatic Potential (ESP)** — Coulomb grid from Mulliken charges, color mapping (red/white/blue), `.cube` export
@@ -80,7 +80,7 @@ See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 1.0**](docs/guide/migr
 
 ### Force Fields
 - **UFF** — Universal Force Field for 50+ element types (including transition metals Ti–Zn, Pd, Pt, Au)
-- **MMFF94** — Merck force field (stretch, bend, torsion, van der Waals, electrostatics via 14-7 potential)
+- **MMFF94** — Merck force field, complete energy: stretch, bend, stretch-bend, out-of-plane, torsion, buffered 14-7 van der Waals and buffered Coulomb electrostatics with PBCI/BCI partial charges
 - **BFGS / L-BFGS minimizers** — dense BFGS for small molecules, L-BFGS for large systems
 
 ### Molecular Alignment
@@ -308,18 +308,18 @@ The repository now includes an isolated experimental quantum-chemistry stack und
 
 | Phase | Status | Scope |
 |------|--------|-------|
-| Phase 1 | Complete | GPU infrastructure scaffolding, aligned types, CPU fallback, WGSL interface stubs |
+| Phase 1 | Complete | GPU infrastructure, aligned types, CPU fallback, real WGSL compute kernels |
 | Phase 2 | Complete | Gaussian basis, overlap/kinetic/nuclear/core matrices, ERIs, validation helpers |
 | Phase 3 | Complete | RHF SCF loop, Löwdin orthogonalization, DIIS, Mulliken analysis, gradients, optimizer, parallel ERI |
-| Phase 4 | Prototype complete | Experimental sTDA UV-Vis, GIAO-style NMR shielding, Hessian/IR workflows |
-| Phase 5 | Prototype complete | Orbital grid evaluation, marching cubes, isosurface generation, GPU-ready rendering path |
+| Phase 4 | Complete (gated) | sTDA UV-Vis, GIAO-style NMR shielding, Hessian/IR workflows |
+| Phase 5 | Complete | Orbital grid evaluation, marching cubes, isosurface generation, GPU mesh path |
 
 ### Current Practical Status
 
 - Stable production APIs remain unchanged; the experimental work is isolated behind `experimental_*` feature flags
 - Real acceleration today is CPU parallelism via rayon in the ERI build path
 - GPU execution is available through the `experimental-gpu` feature (wgpu/Vulkan with a CPU fallback); the numerical paths stay gated against the CPU reference
-- The cross-library validation campaign gates the quantum-chemistry stack against external references (RDKit, PySCF, tblite, xtb, dftd4/s-dftd3, multicharge, pormake, YAeHMOP, MOPAC, LAMMPS, scipy, ASE, clifford, CVXPY, jsonschema): 38 active tests in `tests/cross_validation.rs`, all green (the release-profile Rust suite is green: 1022 library tests with the CI feature set as of 2026-11-07). Completed 2026-10-13: PM3 exact on 24/24 MOPAC molecules, unrestricted GFN1/GFN2 (UKS) vs tblite `uhf`, torsional/inversion barriers vs literature, CPM vs LAMMPS `electrode/conp`, ReaxFF bond orders vs LAMMPS `reaxff`. Completed 2026-10-14 (second campaign, 44 gates in `tests/{alpha,beta}_*_validation.rs`): KS-DFT vs PySCF, BP symmetry functions, Boys/ERI vs libcint, CGA motors vs clifford, GSM string vs ASE CI-NEB, SDR vs CVXPY, live-dynamics UFF forces vs RDKit, IMD steering, EDL analytics, HTST/microkinetics, periodic meshes/Bloch, chart schemas, KPM/Mulliken, MBH harmonics, randomized Nyström, PSD Riemannian optimizer
+- The cross-library validation campaign gates the quantum-chemistry stack against external references (RDKit, PySCF, tblite, xtb, dftd4/s-dftd3, multicharge, pormake, YAeHMOP, MOPAC, LAMMPS, scipy, ASE, clifford, CVXPY, jsonschema): 38 active tests in `tests/cross_validation.rs`, all green (the release-profile Rust suite is green: 1038 library tests with the CI feature set as of 2026-11-08). Completed 2026-10-13: PM3 exact on 24/24 MOPAC molecules, unrestricted GFN1/GFN2 (UKS) vs tblite `uhf`, torsional/inversion barriers vs literature, CPM vs LAMMPS `electrode/conp`, ReaxFF bond orders vs LAMMPS `reaxff`. Completed 2026-10-14 (second campaign, 44 gates in `tests/{alpha,beta}_*_validation.rs`): KS-DFT vs PySCF, BP symmetry functions, Boys/ERI vs libcint, CGA motors vs clifford, GSM string vs ASE CI-NEB, SDR vs CVXPY, live-dynamics UFF forces vs RDKit, IMD steering, EDL analytics, HTST/microkinetics, periodic meshes/Bloch, chart schemas, KPM/Mulliken, MBH harmonics, randomized Nyström, PSD Riemannian optimizer. The 1.1 follow-up adds dedicated gates for complete MMFF94 vs RDKit (F100, <3e-11 kcal/mol), ReaxFF analytical gradients, ERI Cholesky, typed root-API errors and the RandNLA N>500 low-rank path.
 - Known documented limitations: PM3 convergence on long alkanes, CISD excited states are not size-consistent, transition-metal EHT parameters are validated against the literature table but not against experiment, HLA J-couplings cover C/S/N/Cl substituents in the general form, CPM electrode response is within 2.5x of LAMMPS (point-charge hardness vs Gaussian self-energy), ReaxFF total energies exclude H2O shapes (EEM polarity inverts at short range) and use LJ instead of Morse+f13 nonbonded
 - Promoted to the library core (2026-10-13/14): `cpm` (F95), `forcefield::reaxff` (F78), `scf::{obara_saika,screening}` (F80), `cga` (F81), `sdr` (F83), `imd` (F85), `edl` (F86), `kmesh` (F88 base), `render_bridge` (F90 base), `riemannian` (F94); `alpha::`/`beta::` paths and feature flags remain as compatible aliases
 
@@ -398,7 +398,7 @@ More detailed coverage notes live in [TESTING.md](TESTING.md), and the broader p
 | `sci_form::compute_rmsd` | RMSD after Kabsch alignment |
 | `sci_form::compute_pm3` | PM3/PM3(tm) semi-empirical SCF |
 | `sci_form::compute_xtb` | xTB tight binding — runs GFN2-xTB (same numbers as `compute_gfn2`) |
-| `sci_form::compute_pm3_gradient` / `compute_xtb_gradient` | Energy gradients (eV/Å), central differences of the energy the matching `compute_*` returns |
+| `sci_form::compute_pm3_gradient` / `compute_xtb_gradient` | Energy gradients (eV/Å): PM3 stationary-density (Pulay-free, no SCF per displacement), xTB warm-started central differences |
 | `sci_form::compute_uhf` | Unrestricted Hartree-Fock SCF |
 | `sci_form::compute_rohf` | Restricted open-shell Hartree-Fock SCF |
 | `sci_form::compute_uff_energy` | UFF force field energy evaluation |

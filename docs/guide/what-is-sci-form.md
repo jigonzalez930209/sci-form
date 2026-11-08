@@ -257,8 +257,8 @@ Evaluate strain energy and optimize molecular geometry:
 ### MMFF94 (Merck Molecular Force Field)
 
 - **Coverage:** Main-group organic chemistry, parameterized from QM
-- **Energy terms:** Quartic bond stretch, cubic angle bend, 3-term torsion (Fourier), Halgren 14-7 vdW
-- **Accuracy:** ~0.08 Å RMSD vs experiment on small molecules
+- **Energy terms:** Quartic bond stretch, cubic angle bend, stretch-bend, out-of-plane, 3-term torsion (Fourier), Halgren 14-7 vdW and buffered Coulomb electrostatics with MMFF partial charges
+- **Accuracy:** ~0.08 Å RMSD vs experiment on small molecules; the full energy matches RDKit to <1e-8 kcal/mol on the validation corpus
 
 → [Force Fields Algorithm](/algorithm/force-fields)
 

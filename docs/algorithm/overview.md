@@ -110,7 +110,7 @@ Color-mapped (red = negative, white = zero, blue = positive). Gaussian Cube expo
 ### Force Fields
 
 - **UFF** — Universal Force Field, 50+ element types (including transition metals)
-- **MMFF94** — Merck Molecular Force Field: quartic stretch, cubic bend, 3-term Fourier torsion, Halgren 14-7 vdW
+- **MMFF94** — Merck Molecular Force Field, complete energy: quartic stretch, cubic bend, stretch-bend, out-of-plane, 3-term Fourier torsion, Halgren 14-7 vdW and buffered Coulomb electrostatics
 
 → Details: [Force Fields](/algorithm/force-fields), [Strain Energy](/algorithm/strain-energy)
 

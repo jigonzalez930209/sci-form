@@ -21,6 +21,13 @@ The foundation of the NMR module is an ultra-fast topological analyzer inspired 
 
 ## Phase 2: Static Database Compilation (WASM-Friendly)
 
+> **Status 2026-11-08:** the runtime loader is implemented
+> (`nmr::HoseDatabase`, JSON/CSV/TSV, longest-prefix lookup and the
+> `predict_chemical_shifts_with_hose_database` override). The NMRShiftDB2/SDBS
+> data is *not* bundled because its CC-BY-SA review is external; users can
+> supply their own export. The pre-compiled `phf` table below remains the
+> optional next step for a self-contained WASM bundle.
+
 Since a heavy relational database cannot be bundled in the WASM/CLI binary, we use a pre-compiled static lookup system.
 
 ### 2.1 Pre-processing Pipeline (External Script)

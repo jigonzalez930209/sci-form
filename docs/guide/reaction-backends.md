@@ -35,8 +35,8 @@ Available backends are grouped by role:
 | Backend name | Energy | Gradient (NEB, MD, reaction dynamics) |
 |---|---|---|
 | `uff`, `mmff94` | classical force field | analytic |
-| `pm3` | MOPAC-parity PM3 for `Z ≤ 17`, legacy NDDO otherwise | central differences of the PM3 energy (`6N` SCF runs) |
-| `xtb` (legacy `gfn0`) | GFN2 (`solve_gfn2`) on every surface, identical to `gfn2` | central differences of the GFN2 energy (GSM evaluates energies only) |
+| `pm3` | MOPAC-parity PM3 for `Z ≤ 17`, legacy NDDO otherwise | stationary-density gradient: fixed-density integral rebuilds, no SCF per displacement |
+| `xtb` (legacy `gfn0`) | GFN2 (`solve_gfn2`) on every surface, identical to `gfn2` | warm-started central differences of the GFN2 energy (GSM evaluates energies only) |
 | `gfn1`, `gfn2` | `solve_gfn1`, `solve_gfn2` | central differences |
 | `hf3c` | HF-3c | central differences |
 

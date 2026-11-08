@@ -29,7 +29,7 @@ crashes on a malformed molecule is not a library you can ship.
 
 ### Functions that now return a `Result`
 
-These used to panic on bad input. They now return `Result<_, String>`.
+These used to panic on bad input. They now return `Result<_, String>` in the 1.0 API; the 1.1 root API returns `Result<_, SciFormError>` (see the note at the top).
 
 | Function | Before | After |
 |---|---|---|

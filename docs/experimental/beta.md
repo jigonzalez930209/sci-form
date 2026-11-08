@@ -12,7 +12,7 @@
 |----|--------|-------------|-------------|
 | B1 | `kpm` (`beta::kpm` alias) | core | Kernel Polynomial Method — O(N) DOS (promoted 2026-11-07) |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian vibrational analysis |
-| B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) diagonalization |
+| B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT + low-rank Lanczos path for N>500 |
 | B4 | `riemannian` (core, F94) | — | Riemannian geometry on the PSD cone |
 | B5 | `cpm` (core, F95) | — | Constant Potential Method charge equilibration |
 
@@ -23,7 +23,7 @@
 > Promoted to core on 2026-11-07. Use `sci_form::kpm`; the old
 > `sci_form::beta::kpm` path remains as an alias.
 
-**Module:** `sci_form::beta::kpm` (gated; F91 validated 2026-10-14: moments 3.5e-15, DOS 1.7e-14, Mulliken; pybinding gap)
+**Module:** `sci_form::kpm` (core since 2026-11-07; F91 validated: moments 3.5e-15, DOS 1.7e-14, Mulliken; sparse CSR 5000 sites)
 
 Computes the density of states (DOS) and stochastic Mulliken charges using a **Chebyshev polynomial expansion** of the Hamiltonian. Avoids diagonalization entirely, achieving $O(N)$ cost for sparse systems.
 
@@ -36,7 +36,7 @@ where $\mu_k = \frac{1}{n_v}\sum_v r_v^T T_k(\tilde{H}) r_v$ are stochastic mome
 ### Rust
 
 ```rust
-use sci_form::beta::kpm::{compute_kpm_dos, compute_kpm_mulliken, KpmConfig};
+use sci_form::kpm::{compute_kpm_dos, compute_kpm_mulliken, KpmConfig};
 
 let config = KpmConfig {
     order: 200,
@@ -131,7 +131,7 @@ print(f"ZPE: {result.zero_point_energy:.4f} Ha")
 
 ## B3 — Randomized Nyström EHT (`beta-randnla`)
 
-**Module:** `sci_form::beta::rand_nla` (gated; F93 validated 2026-10-14: valid regime 3.9e-3, production exact; 1e-3 gap)
+**Module:** `sci_form::beta::rand_nla` (gated; F93 validated 2026-10-14; low-rank N>500 path added 2026-11-08)
 
 Approximates the EHT eigenvalue problem using a **randomized Nyström sketch**: projects the $N \times N$ Hamiltonian onto a $k$-dimensional random subspace before computing eigenvalues. Cost drops from $O(N^3)$ (full diag) to $O(N k^2)$ — enabling EHT for systems of thousands of atoms.
 
@@ -142,19 +142,29 @@ where $Ω \in \mathbb{R}^{N \times k}$ is a random Gaussian sketch matrix.
 ### Rust
 
 ```rust
-use sci_form::beta::rand_nla::{solve_eht_randnla, RandNlaConfig};
-
-let config = RandNlaConfig {
-    sketch_dim: 50,    // k — rank of approximation
-    n_power_iter: 2,   // power iteration for better accuracy
-    seed: 42,
-    ..Default::default()
+use sci_form::beta::rand_nla::{
+    solve_eht_randnla, solve_eht_randnla_lowrank, RandNlaConfig,
 };
 
-let result = solve_eht_randnla(&elements, &positions, &config)?;
-// result.orbital_energies, result.homo_energy, result.lumo_energy, result.gap
-// result.sketch_dim, result.n_basis
+let config = RandNlaConfig {
+    sketch_size: Some(50), // k; None = 50 + ceil(log2 N)
+    seed: 42,
+    max_error: 1e-3,
+    fallback_enabled: true,
+    power_iterations: 2,
+};
+
+// Full spectrum (N × N generalized eigensolver).
+let (energies, c, info) = solve_eht_randnla(&h, &s, &config);
+// info.k, info.residual_error, info.used_fallback
+
+// N > 500: lowest states only, no N × N diagonalization.
+let low = solve_eht_randnla_lowrank(&h, &s, &config, 4);
+// low.eigenvalues, low.eigenvectors, low.info
 ```
+
+The convenience wrapper `eht::solve_eht_randnla(elements, positions, k, &config)`
+assembles the EHT matrices and returns `(EhtResult, RandNlaInfo)`.
 
 ### WASM / TypeScript
 
@@ -162,16 +172,16 @@ let result = solve_eht_randnla(&elements, &positions, &config)?;
 import { beta_solve_eht_randnla } from 'sci-form-wasm/beta';
 
 const result = JSON.parse(beta_solve_eht_randnla(elements_json, coords_json, config_json));
-// { orbital_energies, homo_energy, lumo_energy, gap, sketch_dim, n_basis }
+// { orbital_energies, homo_index, homo_energy, lumo_energy, gap, k, residual_error, used_fallback }
 ```
 
 ### Python
 
 ```python
-from sci_form.beta import eht_randnla
+from sci_form.beta import beta_solve_eht_randnla
 
-result = eht_randnla(elements, coords, sketch_dim=50)
-print(f"RandNLA gap: {result.gap:.3f} eV  (k={result.sketch_dim}/{result.n_basis})")
+result = beta_solve_eht_randnla(elements, coords, sketch_size=50)
+print(f"RandNLA gap: {result.gap:.3f} eV  (k={result.k})")
 ```
 
 ---
@@ -273,11 +283,12 @@ print(f"total charge: {result.total_charge:.4f} e")
 
 ```toml
 [dependencies]
-sci-form = { version = "1.0", features = ["beta-kpm", "beta-mbh"] }
+# KPM is core since 2026-11-07; beta-kpm still resolves as an alias.
+sci-form = { version = "1.0", features = ["beta-mbh"] }
 
 # All beta modules:
 sci-form = { version = "1.0", features = [
-    "beta-kpm", "beta-mbh", "beta-randnla", "beta-riemannian", "beta-cpm"
+    "beta-mbh", "beta-randnla", "beta-riemannian", "beta-cpm"
 ] }
 
 # Beta + parallelization:

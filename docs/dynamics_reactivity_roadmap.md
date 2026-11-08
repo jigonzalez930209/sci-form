@@ -264,7 +264,7 @@ still require fixed topology.
 |------|--------|---------------|------------|
 | 5.3a | 🔶 Per-pair σ table transcribed from `ffield.reax.cho` (C/H/O); full file parser pending | `src/forcefield/reaxff/params.rs` | — |
 | 5.3b | ✅ Validated vs LAMMPS `reaxff` (F78): BO ≤0.0085, CH₄ shape; gate `f78` in `tests/alpha_reaxff_validation.rs` | `tests/alpha_reaxff_validation.rs` | 5.1d, 5.2c |
-| 5.3c | 🔶 Numerical (central-difference) gradients; analytical pending | `src/forcefield/reaxff/gradients.rs` | 5.1d, 5.2c |
+| 5.3c | ✅ Analytical gradients (BO scaling, bond/angle, over/under, vdW, Coulomb, EEM charge response) | `src/forcefield/reaxff/analytic.rs` | 5.1d, 5.2c |
 | 5.3d | Wire into Velocity Verlet loop: reactive MD simulation | `src/dynamics.rs` | 5.3c, Task 4 |
 | 5.3e | WASM export: `compute_reaxff_energy`, `simulate_reactive_md` | `crates/wasm/src/` | 5.3d |
 

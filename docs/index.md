@@ -43,7 +43,7 @@ features:
     details: "ANI Neural Network exact replication for energies/forces. Plus 17 descriptors, LogP, solubility, Lipinski Ro5."
   - icon: 🧲
     title: Force Fields
-    details: "UFF (50+ elements + TM) and MMFF94 (Halgren 14-7 vdW, quartic/cubic bends, Fourier torsions)."
+    details: "UFF (50+ elements + TM) and complete MMFF94 (stretch-bend, out-of-plane, buffered 14-7 vdW, electrostatics), validated against RDKit."
   - icon: 📐
     title: Molecular Alignment
     details: "Kabsch SVD and quaternion-based Coutsias 2004. RMSD after optimal superposition."

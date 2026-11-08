@@ -339,7 +339,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: tipado de átomos MMFF (código numérico por átomo) sobre el corpus → comparación exacta; energía total y por términos sobre la misma geometría; gradiente; y optimización (comparar mínimos). Nota: usar la misma versión de MMFF (MMFF94 vs MMFF94s).
 - Datasets: `data/chembl_10k_practical.smi` (tipado masivo), GDB-20 (energías), y la **MMFF94 Validation Suite** de Halgren (distribuida con RDKit/Open Babel en `Data/MMFF94_dative.sdf`; ~200 moléculas con energías por término) si está disponible en la distribución instalada.
 - Procedimiento: `scripts/compare_mmff94_rdkit.py` → fixture con tipado + descomposición; test `test_mmff94_cross`.
-- Estado en el repo: `src/forcefield/mmff94.rs` + `atom_typer.rs`; `tests/regression/test_gradient_check.rs`; `compute_mmff94_energy` público.
+- Estado en el repo: `src/forcefield/mmff94.rs` + `atom_typer.rs` + `mmff94_extra_params.rs`; `tests/mmff94_validation.rs` (6 tests); `compute_mmff94_energy` público. **Cerrado 2026-11-08 (F100)**: energía MMFF94 completa (stretch-bend, out-of-plane, Coulomb amortiguado) y cargas PBCI/BCI; paridad con RDKit `<3e-11 kcal/mol` en 7 moléculas y cargas exactas. La energía completa y las cargas están gateadas; no se usa base auxiliar.
 - Criterio: 100 % de coincidencia de tipos MMFF en ≥ 99 % de moléculas; energía ≤ 0.01 kcal/mol; términos ± 0.005 kcal/mol.
 
 **F18 · Optimizadores y minimización restringida (`optimization::*`, `bounds_ff::lbfgs/bfgs`, `minimize_bfgs_rdkit`, `optimize_with_constraints`)**
@@ -1026,7 +1026,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Test equivalente: mismo H,S → comparar los k autovalores más bajos (rel ≤ 1e-3), residuo de la Nyström (`frobenius_error`/`relative_error` declarados vs medidos), y la bandera de fallback (debe activarse cuando el residuo > tolerancia); repetir con varias semillas (error estable).
 - Datasets: Hamiltonianos EHT de GDB-20 (1k), modelos TB; sin descarga externa.
 - Procedimiento: `tests/experimental/test_randnla.rs` (existe), CLI `solve-periodic-randnla`, bindings `eht_randnla`.
-- Estado en el repo: `src/beta/rand_nla/*`, tests existentes; API con `max_error`. **Validado 2026-10-14 (F93)**: `oracle_randnla.py` (numpy/scipy, overlaps) + gate `tests/beta_randnla_validation.rs` 4/4. Single-shot rank-N/4 ~0.13; **subspace iterations (2026-11-07)** bajan el rank-N/4 a 3.8e-4 con 384 iteraciones (criterio <1e-3 cumplido en el fixture); régimen válido 3.9e-3; producción exacta incl. fallback en N=96. Quedan abiertos el backend opcional EHT/SCF y el speedup N>500.
+- Estado en el repo: `src/beta/rand_nla/*`, tests existentes; API con `max_error`. **Validado 2026-10-14 (F93)**: `oracle_randnla.py` (numpy/scipy, overlaps) + gate `tests/beta_randnla_validation.rs` 5/5. Single-shot rank-N/4 ~0.13; **subspace iterations (2026-11-07)** bajan el rank-N/4 a 3.8e-4 con 384 iteraciones (criterio <1e-3 cumplido en el fixture); régimen válido 3.9e-3; producción exacta incl. fallback en N=96. **Backend EHT y camino N>500 cerrados (2026-11-08)**: `solve_eht_randnla_lowrank` (Nyström + Lanczos reortogonalizado) da N=600, k=160, 4 estados con error 9.6e-4 y ~80 ms frente a ~143 ms exactos.
 - Criterio: autovalores ≤ 1e-3 rel; error reportado ≥ error real (no mentir en la cota); fallback correcto y determinista con semilla.
 
 **B4 (F94) · Geometría Riemanniana del cono PSD (`beta::riemannian::{psd_distance, psd_projection, riemannian_gradient, psd_retraction}`)**
@@ -1903,7 +1903,7 @@ detrás de su feature alpha/beta.
 | Versiones de referencia | `validation/refs.lock.json` |
 | Tests de validación cruzada | `tests/cross_validation.rs` (38 tests activos: F01, F05, F13, F14, F16, F17, F21, F22-EEQBC, F26, F28, F31-EHT, F36–F39, F41 (CIS+CISD), F42 (24/24), F43–F49, F44-UKS, F45-UKS, F54-HLA, F59, F67, F68, F70) |
 | Tests de validación de materiales | `tests/validation_gates.rs` (4 tests activos: F64 grupos espaciales, F65 CIF, F66 minimum-image, F69 XRD de polvo) |
-| Tests de validación MMFF94 | `tests/mmff94_validation.rs` (5 tests activos) |
+| Tests de validación MMFF94 | `tests/mmff94_validation.rs` (6 tests activos) |
 | Reporte | `reports/validation/summary.json` |
 
 ---
@@ -2034,11 +2034,12 @@ pybinding no instalable (ruedas ausentes) → numpy en su lugar.
   y finite-T 2.6e-2. **Fixes**: factor 2 espurio en k≥1 de la expansión FD y
   factor 2 de espín ausente en Mulliken (Tr daba N en vez de N/2 estados).
   Queda gateado (pybinding ausente; T=0 en metales sufre Gibbs).
-- **F93 RandNLA**: `oracle_randnla.py` (overlaps, eigh/sqrtm). Gate 4/4.
+- **F93 RandNLA**: `oracle_randnla.py` (overlaps, eigh/sqrtm). Gate 5/5.
   Single-shot rank-N/4 ~0.13; las **subspace iterations** añadidas el
   2026-11-07 lo bajan a 3.8e-4 (criterio <1e-3), a coste de 384 iteraciones;
   régimen casi-identidad 3.9e-3; producción exacta (N=96 ejerce el fallback).
-  Queda gateado por el backend EHT/SCF y el speedup N>500.
+  **Backend EHT (2026-11-07) y camino low-rank N>500 (2026-11-08) cerrados**:
+  N=600, k=160, 4 estados con error 9.6e-4 y ~80 ms frente a ~143 ms exactos.
 - **F94 Riemann**: `oracle_riemannian.py` (eigh-clip, Frobenius, L-BFGS-B).
   Gate 4/4: proyección 8.2e-12 (round-off entre eigensolvers), distancia
   2.2e-16, optimizador factible como scipy. **Gap**: `psd_distance` es el

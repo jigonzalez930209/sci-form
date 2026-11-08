@@ -681,7 +681,7 @@ function compute_pm3_gradient(elements: string, coords_flat: string): string
 function compute_xtb_gradient(elements: string, coords_flat: string): string
 ```
 
-Energy gradients in **eV/Å** per atom: central differences (5·10⁻⁴ Å) of the PM3 energy and of the GFN2-xTB energy. `compute_pm3_gradient` returns `{gradients: [[x, y, z], ...], energy, heat_of_formation}` (`energy` in eV, `heat_of_formation` in kcal/mol); `compute_xtb_gradient` returns `{gradients, energy}` (eV). Cost: 6·N SCF runs. On failure the payload is `{"error": "..."}`.
+Energy gradients in **eV/Å** per atom. PM3 uses the stationary-density (Pulay-free) form: fixed-density integral rebuilds, no SCF per displaced coordinate. xTB uses warm-started central differences (5·10⁻⁴ Å) of the GFN2-xTB energy. `compute_pm3_gradient` returns `{gradients: [[x, y, z], ...], energy, heat_of_formation}` (`energy` in eV, `heat_of_formation` in kcal/mol); `compute_xtb_gradient` returns `{gradients, energy}` (eV). On failure the payload is `{"error": "..."}`.
 
 ## Force fields
 
@@ -707,7 +707,7 @@ Returns the raw energy, the aromatic correction and the corrected energy, all in
 function compute_mmff94_energy(smiles: string, coords: string): string
 ```
 
-`{"energy": 3.058318, "unit": "kcal/mol"}`.
+`{"energy": 3.058318, "unit": "kcal/mol"}` — complete MMFF94 energy (bond, angle, stretch-bend, out-of-plane, torsion, vdW, electrostatics).
 
 ### `compute_empirical_pka`
 
@@ -727,7 +727,8 @@ function compute_uff_energy_breakdown(smiles: string, coords_flat: string): stri
 function compute_mmff94_energy_breakdown(smiles: string, coords_flat: string): string
 ```
 
-The force-field energy split by term type, in **kcal/mol**:
+The force-field energy split by term type, in **kcal/mol** (MMFF94 terms are
+`bond`, `angle`, `stretch_bend`, `oop`, `torsion`, `vdw`, `electrostatic`):
 
 ```json
 { "terms": [{ "term": "bond", "energy": -12.3 }, { "term": "vdw", "energy": 4.1 }],
