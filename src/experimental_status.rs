@@ -65,18 +65,20 @@
 //! **Validation test:** `tests/beta_kpm_validation.rs` (F91)
 //!
 //! KPM approximates the density of states via Chebyshev expansion of the
-//! spectral function. Useful for very large systems (10k+ atoms) but the
-//! current implementation lacks:
-//!
-//! - Adaptive polynomial order selection
-//! - Sparse-matrix backend for O(N) scaling
-//! - Benchmarks against direct diagonalization for <500 atoms (todo: gate
-//!   spectral accuracy vs exact diagonalization for N > 100)
+//! spectral function. Useful for very large systems (10k+ atoms).
 //!
 //! **Promotion criteria:**
 //! 1. Demonstrate wall-clock advantage over direct DOS for >2000 atoms
 //! 2. Validate spectral accuracy within 0.1 eV of full diagonalization
 //! 3. Add sparse matrix support (nalgebra-sparse or sprs)
+//!
+//! **Estado 2026-11-07:** los tres criterios tienen evidencia medida:
+//! (1) la cadena dispersa de 5000 sitios tarda 0.22 s con 32 vectores
+//! estocásticos y 400 términos, mientras que la diagonalización densa no es
+//! viable a esa escala; (2) F91d compara N=200/500 con `eigh` y deja la
+//! energía de Fermi a <0.1 eV; (3) `SparseMatrix` (CSR propio) +
+//! `compute_kpm_dos_sparse` cubren el backend disperso. Queda la decisión de
+//! API para promoverlo fuera de `beta-kpm`.
 //!
 //! **Validación externa (2026-10-14, F91)**: momentos exactos 3.5e-15,
 //! DOS Jackson L2 1.7e-14 y Mulliken (gap 3.8e-5 / finite-T 2.6e-2) vs

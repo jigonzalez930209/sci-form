@@ -299,3 +299,84 @@ fn f91_kpm_scale_matches_diagonalization() {
         assert!(l2 <= 0.25, "N={n}: DOS L2 {l2:.3e}");
     }
 }
+
+/// F91e: sparse CSR KPM matches the dense path and scales past the dense
+/// matrix limit. The 5000-site chain has O(N) non-zeros; the dense matrix
+/// would need 200 MB and a dense Chebyshev recursion.
+#[test]
+fn f91_sparse_kpm_matches_dense_and_scales() {
+    use sci_form::beta::kpm::{compute_kpm_dos_sparse, SparseMatrix};
+    use std::time::Instant;
+
+    fn chain(n: usize) -> SparseMatrix {
+        let mut triplets = Vec::with_capacity(3 * n);
+        for i in 0..n {
+            triplets.push((i, i, 0.25 * ((i as f64) * 0.37).sin()));
+            if i + 1 < n {
+                triplets.push((i, i + 1, -1.0));
+                triplets.push((i + 1, i, -1.0));
+            }
+        }
+        SparseMatrix::from_triplets(n, &triplets)
+    }
+
+    let sparse = chain(200);
+    let mut dense = DMatrix::zeros(200, 200);
+    for i in 0..200 {
+        for k in sparse.row_offsets[i]..sparse.row_offsets[i + 1] {
+            dense[(i, sparse.col_indices[k])] = sparse.values[k];
+        }
+    }
+    let config = KpmConfig {
+        order: 200,
+        n_vectors: 0,
+        seed: 42,
+        temperature: 0.0,
+    };
+    let lo = -2.5;
+    let hi = 2.5;
+    let n_points = 400;
+    let dense_result = compute_kpm_dos(&dense, &config, lo, hi, n_points);
+    let sparse_result = compute_kpm_dos_sparse(&sparse, &config, lo, hi, n_points);
+    let num: f64 = dense_result
+        .total_dos
+        .iter()
+        .zip(&sparse_result.total_dos)
+        .map(|(a, b)| (a - b).powi(2))
+        .sum();
+    let den: f64 = dense_result
+        .total_dos
+        .iter()
+        .map(|v| v * v)
+        .sum::<f64>()
+        .max(1e-300);
+    let l2 = (num / den).sqrt();
+    eprintln!("F91e sparse vs dense N=200: L2 {l2:.3e}");
+    assert!(l2 < 1e-10, "sparse/dense L2 {l2:.3e}");
+
+    let big = chain(5000);
+    let big_config = KpmConfig {
+        order: 400,
+        n_vectors: 32,
+        seed: 42,
+        temperature: 0.0,
+    };
+    let started = Instant::now();
+    let big_result = compute_kpm_dos_sparse(&big, &big_config, -3.0, 3.0, 600);
+    let elapsed = started.elapsed().as_secs_f64();
+    let dx = 6.0 / 599.0;
+    let integral: f64 = big_result.total_dos.iter().sum::<f64>() * dx;
+    eprintln!(
+        "F91e sparse N=5000: {:?} nnz={}, elapsed {:.2}s, integral {:.1}",
+        big.nnz(),
+        big.nnz(),
+        elapsed,
+        integral
+    );
+    assert!(elapsed < 30.0, "sparse KPM took {elapsed:.1}s");
+    assert!(
+        (integral - 5000.0).abs() / 5000.0 < 0.05,
+        "integrated DOS {integral}"
+    );
+    assert!(big_result.total_dos.iter().all(|v| v.is_finite()));
+}
