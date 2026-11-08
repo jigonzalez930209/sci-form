@@ -1,4 +1,8 @@
-# Rust API Reference
+# Rust API
+
+> **Errors (2.0):** the root-level functions in this page return
+> `Result<_, SciFormError>`; the legacy `String` signatures shown below are
+> converted at the crate boundary. See the `error` module for the variants.
 
 ## Crate: `sci-form`
 

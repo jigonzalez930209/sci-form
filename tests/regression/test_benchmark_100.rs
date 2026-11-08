@@ -264,7 +264,7 @@ fn run_pm3(elements: &[u8], positions: &[[f64; 3]]) -> MethodResult {
             error: None,
         },
         Ok(Err(e)) => MethodResult {
-            error: Some(e),
+            error: Some(e.to_string()),
             time_ms: t0.elapsed().as_secs_f64() * 1000.0,
             backend,
             used_gpu,
@@ -299,7 +299,7 @@ fn run_gfn0(elements: &[u8], positions: &[[f64; 3]]) -> MethodResult {
             error: None,
         },
         Ok(Err(e)) => MethodResult {
-            error: Some(e),
+            error: Some(e.to_string()),
             time_ms: t0.elapsed().as_secs_f64() * 1000.0,
             backend,
             used_gpu,
@@ -334,7 +334,7 @@ fn run_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> MethodResult {
             error: None,
         },
         Ok(Err(e)) => MethodResult {
-            error: Some(e),
+            error: Some(e.to_string()),
             time_ms: t0.elapsed().as_secs_f64() * 1000.0,
             backend,
             used_gpu,
@@ -369,7 +369,7 @@ fn run_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> MethodResult {
             error: None,
         },
         Ok(Err(e)) => MethodResult {
-            error: Some(e),
+            error: Some(e.to_string()),
             time_ms: t0.elapsed().as_secs_f64() * 1000.0,
             backend,
             used_gpu,
@@ -424,7 +424,7 @@ fn run_hf3c(elements: &[u8], positions: &[[f64; 3]]) -> MethodResult {
             }
         }
         Ok(Err(e)) => MethodResult {
-            error: Some(e),
+            error: Some(e.to_string()),
             time_ms: t0.elapsed().as_secs_f64() * 1000.0,
             backend,
             used_gpu,

@@ -238,7 +238,7 @@ fn a_c2_flat_coordinate_helper_reports_the_documented_message() {
     let err = sci_form::compute_sasa(&[1, 1, 1], &[0.0; 8], None)
         .expect_err("a length mismatch must be rejected");
     assert_eq!(
-        err,
+        err.to_string(),
         "coords has 8 values but 3 atoms require 9 (3 atoms x 3 coordinates)"
     );
 }

@@ -186,6 +186,8 @@ pub mod dispersion;
 /// 4. [`distgeom::validation`] checks tetrahedral centres, chiral volumes and planarity.
 pub mod distgeom;
 pub mod dos;
+pub mod error;
+pub use error::SciFormError;
 /// Molecular dynamics: velocity-Verlet integrators, thermostats and NEB paths.
 ///
 /// Energies are in kcal/mol, times in femtoseconds (fs), temperatures in kelvin (K), masses in
@@ -1134,7 +1136,7 @@ pub fn embed(smiles: &str, seed: u64) -> ConformerResult {
 pub fn embed_batch(
     smiles_list: &[&str],
     config: &ConformerConfig,
-) -> Result<Vec<ConformerResult>, String> {
+) -> Result<Vec<ConformerResult>, SciFormError> {
     use rayon::prelude::*;
 
     if config.num_threads > 0 {
@@ -1170,7 +1172,7 @@ pub fn embed_batch(
 pub fn embed_batch(
     smiles_list: &[&str],
     config: &ConformerConfig,
-) -> Result<Vec<ConformerResult>, String> {
+) -> Result<Vec<ConformerResult>, SciFormError> {
     Ok(smiles_list
         .iter()
         .map(|smi| embed(smi, config.seed))
@@ -1237,8 +1239,8 @@ pub fn embed_diverse(
 /// assert_eq!(mol.graph.node_count(), 12); // six carbons + six hydrogens
 /// assert!(sci_form::parse("Q").is_err()); // Q is not an element
 /// ```
-pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
-    graph::Molecule::from_smiles(smiles)
+pub fn parse(smiles: &str) -> Result<graph::Molecule, SciFormError> {
+    graph::Molecule::from_smiles(smiles).map_err(SciFormError::from)
 }
 
 /// Compute Gasteiger-Marsili partial charges from a SMILES string.
@@ -1260,7 +1262,7 @@ pub fn parse(smiles: &str) -> Result<graph::Molecule, String> {
 /// assert_eq!(charges.charges.len(), 9); // C2H6O
 /// assert!(charges.total_charge.abs() < 1e-6);
 /// ```
-pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, String> {
+pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
@@ -1301,6 +1303,7 @@ pub fn compute_charges(smiles: &str) -> Result<charges::gasteiger::ChargeResult,
         Some(&modes),
         &charges::gasteiger::GasteigerConfig::default(),
     )
+    .map_err(SciFormError::from)
 }
 
 /// Compute solvent-accessible surface area from SMILES + 3D coordinates.
@@ -1327,7 +1330,7 @@ pub fn compute_sasa(
     elements: &[u8],
     coords_flat: &[f64],
     probe_radius: Option<f64>,
-) -> Result<surface::sasa::SasaResult, String> {
+) -> Result<surface::sasa::SasaResult, SciFormError> {
     validation::validate_flat_geometry(elements, coords_flat)?;
     let positions: Vec<[f64; 3]> = coords_flat
         .chunks_exact(3)
@@ -1370,7 +1373,7 @@ pub fn compute_sasa(
 pub fn compute_population(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<population::PopulationResult, String> {
+) -> Result<population::PopulationResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(population::compute_population_with_orbitals(
@@ -1395,7 +1398,7 @@ pub fn compute_population(
 pub fn compute_dipole(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<dipole::DipoleResult, String> {
+) -> Result<dipole::DipoleResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(dipole::compute_dipole_from_eht(
@@ -1414,7 +1417,7 @@ pub fn compute_dipole(
 pub fn compute_frontier_descriptors(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<reactivity::FrontierDescriptors, String> {
+) -> Result<reactivity::FrontierDescriptors, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(reactivity::compute_frontier_descriptors(
@@ -1431,7 +1434,7 @@ pub fn compute_frontier_descriptors(
 pub fn compute_fukui_descriptors(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<reactivity::FukuiDescriptors, String> {
+) -> Result<reactivity::FukuiDescriptors, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(reactivity::compute_fukui_descriptors(
@@ -1448,7 +1451,7 @@ pub fn compute_fukui_descriptors(
 pub fn compute_reactivity_ranking(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<reactivity::ReactivityRanking, String> {
+) -> Result<reactivity::ReactivityRanking, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     let fukui = reactivity::compute_fukui_descriptors(elements, positions, &eht_result);
@@ -1480,7 +1483,7 @@ pub fn compute_uv_vis_spectrum(
     e_min: f64,
     e_max: f64,
     n_points: usize,
-) -> Result<reactivity::UvVisSpectrum, String> {
+) -> Result<reactivity::UvVisSpectrum, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(reactivity::compute_uv_vis_like_spectrum(
@@ -1514,7 +1517,7 @@ pub fn compute_uv_vis_spectrum(
 pub fn compute_bond_orders(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<population::BondOrderResult, String> {
+) -> Result<population::BondOrderResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let eht_result = eht::solve_eht(elements, positions, None)?;
     Ok(population::compute_bond_orders(
@@ -1538,7 +1541,7 @@ pub fn compute_topology(
 /// # Errors
 ///
 /// Returns `Err` when the SMILES string cannot be parsed.
-pub fn analyze_graph_features(smiles: &str) -> Result<GraphFeatureAnalysis, String> {
+pub fn analyze_graph_features(smiles: &str) -> Result<GraphFeatureAnalysis, SciFormError> {
     use petgraph::visit::EdgeRef;
 
     let mol = parse(smiles)?;
@@ -1600,7 +1603,7 @@ pub fn compute_eht_or_uff_fallback(
     elements: &[u8],
     positions: &[[f64; 3]],
     allow_experimental_eht: bool,
-) -> Result<ElectronicWorkflowResult, String> {
+) -> Result<ElectronicWorkflowResult, SciFormError> {
     let support = eht_support(elements);
     let should_fallback = match support.level {
         eht::SupportLevel::Unsupported => true,
@@ -1689,7 +1692,7 @@ pub fn compare_methods(
                     warnings: meta.warnings,
                     limitations: meta.limitations,
                     payload: None,
-                    error: Some(err),
+                    error: Some(err.to_string()),
                 }),
             }
         }
@@ -1757,7 +1760,7 @@ pub fn compare_methods(
                     warnings: meta.warnings,
                     limitations: meta.limitations,
                     payload: None,
-                    error: Some(err),
+                    error: Some(err.to_string()),
                 }),
             }
         }
@@ -1775,7 +1778,7 @@ pub fn compute_esp(
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
-) -> Result<esp::EspGrid, String> {
+) -> Result<esp::EspGrid, SciFormError> {
     compute_esp_with_config(
         elements,
         positions,
@@ -1793,7 +1796,7 @@ pub fn compute_esp_with_config(
     elements: &[u8],
     positions: &[[f64; 3]],
     config: esp::EspGridConfig,
-) -> Result<esp::EspGrid, String> {
+) -> Result<esp::EspGrid, SciFormError> {
     config.validate()?;
     let pop = compute_population(elements, positions)?;
     let (grid, _report) = gpu::esp_grid_gpu::compute_esp_grid_with_report(
@@ -1823,7 +1826,7 @@ pub fn compute_dos(
     e_min: f64,
     e_max: f64,
     n_points: usize,
-) -> Result<dos::DosResult, String> {
+) -> Result<dos::DosResult, SciFormError> {
     let eht_result = eht::solve_eht(elements, positions, None)?;
     let flat: Vec<f64> = positions.iter().flat_map(|p| p.iter().copied()).collect();
 
@@ -1840,6 +1843,7 @@ pub fn compute_dos(
             e_max,
             n_points,
         )
+        .map_err(SciFormError::from)
     }
 
     #[cfg(not(feature = "parallel"))]
@@ -1855,6 +1859,7 @@ pub fn compute_dos(
             e_max,
             n_points,
         )
+        .map_err(SciFormError::from)
     }
 }
 
@@ -1888,11 +1893,15 @@ pub fn compute_rmsd(coords: &[f64], reference: &[f64]) -> f64 {
 /// let energy = sci_form::compute_uff_energy("CCO", &conformer.coords).unwrap();
 /// assert!(energy.is_finite());
 /// ```
-pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
+pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     if coords.len() != n * 3 {
-        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+        return Err(SciFormError::geometry(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n
+        )));
     }
     let ff = forcefield::builder::build_uff_force_field(&mol);
     let mut gradient = vec![0.0f64; n * 3];
@@ -1926,11 +1935,15 @@ pub fn compute_uff_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
 /// let energy = sci_form::compute_mmff94_energy("CCO", &conformer.coords).unwrap();
 /// assert!(energy.is_finite());
 /// ```
-pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String> {
+pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     if coords.len() != n * 3 {
-        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+        return Err(SciFormError::geometry(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n
+        )));
     }
     let terms = forcefield::mmff94::Mmff94Builder::build_typed(
         &mol,
@@ -1948,11 +1961,15 @@ pub fn compute_mmff94_energy(smiles: &str, coords: &[f64]) -> Result<f64, String
 pub fn compute_uff_energy_breakdown(
     smiles: &str,
     coords: &[f64],
-) -> Result<Vec<(String, f64)>, String> {
+) -> Result<Vec<(String, f64)>, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     if coords.len() != n * 3 {
-        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+        return Err(SciFormError::geometry(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n
+        )));
     }
     let ff = forcefield::builder::build_uff_force_field(&mol);
     Ok(ff
@@ -1968,11 +1985,15 @@ pub fn compute_uff_energy_breakdown(
 pub fn compute_mmff94_energy_breakdown(
     smiles: &str,
     coords: &[f64],
-) -> Result<Vec<(String, f64)>, String> {
+) -> Result<Vec<(String, f64)>, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     if coords.len() != n * 3 {
-        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+        return Err(SciFormError::geometry(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n
+        )));
     }
     let terms = forcefield::mmff94::Mmff94Builder::build_typed(
         &mol,
@@ -2016,9 +2037,12 @@ pub fn compute_mmff94_energy_breakdown(
 /// assert!(result.total_energy.is_finite());
 /// assert!(result.heat_of_formation.is_finite());
 /// ```
-pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Result, String> {
+pub fn compute_pm3(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<pm3::Pm3Result, SciFormError> {
     validation::validate_geometry(elements, positions)?;
-    pm3::solve_pm3(elements, positions)
+    pm3::solve_pm3(elements, positions).map_err(SciFormError::from)
 }
 
 /// Compute PM3 energy gradients.
@@ -2028,9 +2052,9 @@ pub fn compute_pm3(elements: &[u8], positions: &[[f64; 3]]) -> Result<pm3::Pm3Re
 pub fn compute_pm3_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<pm3::Pm3GradientResult, String> {
+) -> Result<pm3::Pm3GradientResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
-    pm3::compute_pm3_gradient(elements, positions)
+    pm3::compute_pm3_gradient(elements, positions).map_err(SciFormError::from)
 }
 
 /// Compute a GFN1-xTB single point (electrical structure + total energy).
@@ -2056,8 +2080,11 @@ pub fn compute_pm3_gradient(
 /// let result = sci_form::compute_gfn1(&[8, 1, 1], &water).unwrap();
 /// assert!(result.total_energy.is_finite());
 /// ```
-pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1Result, String> {
-    xtb::gfn1::solve_gfn1(elements, positions)
+pub fn compute_gfn1(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<xtb::Gfn1Result, SciFormError> {
+    xtb::gfn1::solve_gfn1(elements, positions).map_err(SciFormError::from)
 }
 
 /// Compute a GFN2-xTB single point (electrical structure + total energy).
@@ -2083,8 +2110,11 @@ pub fn compute_gfn1(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn1
 /// let result = sci_form::compute_gfn2(&[8, 1, 1], &water).unwrap();
 /// assert!(result.total_energy.is_finite());
 /// ```
-pub fn compute_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn2Result, String> {
-    xtb::gfn2::solve_gfn2(elements, positions)
+pub fn compute_gfn2(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<xtb::Gfn2Result, SciFormError> {
+    xtb::gfn2::solve_gfn2(elements, positions).map_err(SciFormError::from)
 }
 
 /// Compute a generic xTB single point (electrical structure + total energy).
@@ -2113,9 +2143,12 @@ pub fn compute_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::Gfn2
 /// assert!(result.total_energy.is_finite());
 /// assert!(result.gap >= 0.0);
 /// ```
-pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbResult, String> {
+pub fn compute_xtb(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<xtb::XtbResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
-    let gfn2 = xtb::gfn2::solve_gfn2(elements, positions)?;
+    let gfn2 = xtb::gfn2::solve_gfn2(elements, positions).map_err(SciFormError::from)?;
     Ok(xtb::XtbResult {
         orbital_energies: gfn2.orbital_energies,
         electronic_energy: gfn2.electronic_energy,
@@ -2140,9 +2173,9 @@ pub fn compute_xtb(elements: &[u8], positions: &[[f64; 3]]) -> Result<xtb::XtbRe
 pub fn compute_xtb_gradient(
     elements: &[u8],
     positions: &[[f64; 3]],
-) -> Result<xtb::XtbGradientResult, String> {
+) -> Result<xtb::XtbGradientResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
-    xtb::compute_xtb_gradient(elements, positions)
+    xtb::compute_xtb_gradient(elements, positions).map_err(SciFormError::from)
 }
 
 // ─── Spectroscopy API (Track D) ─────────────────────────────────────────────
@@ -2164,11 +2197,12 @@ pub fn compute_stda_uvvis(
     e_max: f64,
     n_points: usize,
     broadening: reactivity::BroadeningType,
-) -> Result<reactivity::StdaUvVisSpectrum, String> {
+) -> Result<reactivity::StdaUvVisSpectrum, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     reactivity::compute_stda_uvvis_spectrum(
         elements, positions, sigma, e_min, e_max, n_points, broadening,
     )
+    .map_err(SciFormError::from)
 }
 
 /// Fluorescence spectrum from the same sTDA singlets as UV-Vis absorption.
@@ -2180,9 +2214,10 @@ pub fn compute_fluorescence(
     elements: &[u8],
     positions: &[[f64; 3]],
     config: spectroscopy::FluorescenceConfig,
-) -> Result<spectroscopy::FluorescenceSpectrum, String> {
+) -> Result<spectroscopy::FluorescenceSpectrum, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     spectroscopy::compute_fluorescence_spectrum(elements, positions, &config)
+        .map_err(SciFormError::from)
 }
 
 /// Perform vibrational analysis via numerical Hessian.
@@ -2196,17 +2231,17 @@ pub fn compute_vibrational_analysis(
     positions: &[[f64; 3]],
     method: &str,
     step_size: Option<f64>,
-) -> Result<ir::VibrationalAnalysis, String> {
+) -> Result<ir::VibrationalAnalysis, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     let hessian_method: ir::HessianMethod =
         match method.to_ascii_lowercase().as_str() {
-            "uff" => return Err(
-                "UFF vibrational analysis requires SMILES; use compute_vibrational_analysis_uff"
-                    .to_string(),
-            ),
+            "uff" => return Err(SciFormError::validation(
+                "UFF vibrational analysis requires SMILES; use compute_vibrational_analysis_uff",
+            )),
             other => other.parse()?,
         };
     ir::compute_vibrational_analysis(elements, positions, hessian_method, step_size)
+        .map_err(SciFormError::from)
 }
 
 /// Perform vibrational analysis using UFF analytical Hessian.
@@ -2218,9 +2253,10 @@ pub fn compute_vibrational_analysis_uff(
     elements: &[u8],
     positions: &[[f64; 3]],
     step_size: Option<f64>,
-) -> Result<ir::VibrationalAnalysis, String> {
+) -> Result<ir::VibrationalAnalysis, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     ir::vibrations::compute_vibrational_analysis_uff(smiles, elements, positions, step_size)
+        .map_err(SciFormError::from)
 }
 
 /// Generate a Lorentzian-broadened IR spectrum from vibrational analysis.
@@ -2247,7 +2283,7 @@ pub fn compute_ir_spectrum(
 /// # Errors
 ///
 /// Returns `Err` if the SMILES string cannot be parsed.
-pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String> {
+pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(nmr::predict_chemical_shifts(&mol))
 }
@@ -2264,7 +2300,7 @@ pub fn predict_nmr_shifts(smiles: &str) -> Result<nmr::NmrShiftResult, String> {
 pub fn predict_nmr_shifts_with_hose_database(
     smiles: &str,
     database: &nmr::HoseDatabase,
-) -> Result<nmr::NmrShiftResult, String> {
+) -> Result<nmr::NmrShiftResult, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(nmr::predict_chemical_shifts_with_hose_database(
         &mol, database,
@@ -2275,7 +2311,7 @@ pub fn predict_nmr_shifts_with_hose_database(
 pub fn predict_nmr_shifts_for_nucleus(
     smiles: &str,
     nucleus: &str,
-) -> Result<Vec<nmr::ChemicalShift>, String> {
+) -> Result<Vec<nmr::ChemicalShift>, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let nucleus = parse_nmr_nucleus(nucleus)?;
     Ok(nmr::predict_chemical_shifts_for_nucleus(&mol, nucleus))
@@ -2288,7 +2324,7 @@ pub fn predict_nmr_shifts_for_nucleus(
 pub fn predict_nmr_couplings(
     smiles: &str,
     positions: &[[f64; 3]],
-) -> Result<Vec<nmr::JCoupling>, String> {
+) -> Result<Vec<nmr::JCoupling>, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     if !positions.is_empty() {
         let elements: Vec<u8> = (0..mol.graph.node_count())
@@ -2299,8 +2335,8 @@ pub fn predict_nmr_couplings(
     Ok(nmr::predict_j_couplings(&mol, positions))
 }
 
-fn parse_nmr_nucleus(nucleus: &str) -> Result<nmr::NmrNucleus, String> {
-    nmr::NmrNucleus::parse(nucleus)
+fn parse_nmr_nucleus(nucleus: &str) -> Result<nmr::NmrNucleus, SciFormError> {
+    nmr::NmrNucleus::parse(nucleus).map_err(SciFormError::from)
 }
 
 struct GiaoNmrPreflight {
@@ -2339,19 +2375,23 @@ fn preflight_giao_nmr(
     positions: &[[f64; 3]],
     nucleus: &str,
     config: &GiaoNmrConfig,
-) -> Result<GiaoNmrPreflight, String> {
+) -> Result<GiaoNmrPreflight, SciFormError> {
     if elements.is_empty() {
-        return Err("GIAO NMR requires at least one atom.".to_string());
+        return Err(SciFormError::validation(
+            "GIAO NMR requires at least one atom.",
+        ));
     }
     validation::validate_geometry(elements, positions)?;
     if config.max_scf_iterations == 0 {
-        return Err("GIAO NMR requires max_scf_iterations > 0.".to_string());
+        return Err(SciFormError::validation(
+            "GIAO NMR requires max_scf_iterations > 0.",
+        ));
     }
     if config.multiplicity != 1 {
-        return Err(format!(
+        return Err(SciFormError::validation(format!(
             "The public GIAO NMR API currently supports singlet closed-shell systems only; got multiplicity {}.",
             config.multiplicity
-        ));
+        )));
     }
 
     let parsed_nucleus = parse_nmr_nucleus(nucleus)?;
@@ -2359,10 +2399,10 @@ fn preflight_giao_nmr(
         .iter()
         .any(|&z| z == parsed_nucleus.atomic_number())
     {
-        return Err(format!(
+        return Err(SciFormError::validation(format!(
             "Requested nucleus {} is not present in the provided element list.",
             parsed_nucleus.canonical()
-        ));
+        )));
     }
 
     let system = scf::types::MolecularSystem::from_angstrom(
@@ -2372,10 +2412,10 @@ fn preflight_giao_nmr(
         config.multiplicity,
     );
     if !system.n_electrons().is_multiple_of(2) {
-        return Err(format!(
+        return Err(SciFormError::validation(format!(
             "The public GIAO NMR API currently supports even-electron closed-shell systems only; got {} electrons.",
             system.n_electrons()
-        ));
+        )));
     }
 
     let fallback_elements: Vec<u8> = elements
@@ -2385,22 +2425,22 @@ fn preflight_giao_nmr(
         .collect();
 
     if !config.allow_basis_fallback && !fallback_elements.is_empty() {
-        return Err(format!(
+        return Err(SciFormError::validation(format!(
             "The public GIAO NMR SCF route only has explicit STO-3G basis data for {}. This system includes fallback-only elements: {}. Re-run with GiaoNmrConfig.allow_basis_fallback=true for a screening-only attempt.",
             format_element_set(EXPLICIT_GIAO_STO3G_ELEMENTS),
             format_element_set(&fallback_elements)
-        ));
+        )));
     }
 
     let basis = scf::basis::BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
     let n_occupied = system.n_electrons() / 2;
     if n_occupied > basis.n_basis {
-        return Err(format!(
+        return Err(SciFormError::validation(format!(
             "GIAO NMR preflight failed for {}: STO-3G supplies {} basis functions for {} occupied orbitals. This usually means one or more elements only have the hydrogen-like fallback basis in the current SCF path.",
             parsed_nucleus.canonical(),
             basis.n_basis,
             n_occupied
-        ));
+        )));
     }
 
     Ok(GiaoNmrPreflight {
@@ -2416,7 +2456,7 @@ pub fn compute_giao_nmr(
     elements: &[u8],
     positions: &[[f64; 3]],
     nucleus: &str,
-) -> Result<GiaoNmrResult, String> {
+) -> Result<GiaoNmrResult, SciFormError> {
     compute_giao_nmr_configured(elements, positions, nucleus, &GiaoNmrConfig::default())
 }
 
@@ -2426,7 +2466,7 @@ pub fn compute_giao_nmr_configured(
     positions: &[[f64; 3]],
     nucleus: &str,
     config: &GiaoNmrConfig,
-) -> Result<GiaoNmrResult, String> {
+) -> Result<GiaoNmrResult, SciFormError> {
     let request = preflight_giao_nmr(elements, positions, nucleus, config)?;
 
     let scf_config = scf::scf_loop::ScfConfig {
@@ -2445,10 +2485,10 @@ pub fn compute_giao_nmr_configured(
         &request.basis.function_to_atom,
     );
     if shieldings.is_empty() {
-        return Err(format!(
+        return Err(SciFormError::validation(format!(
             "Requested nucleus {} is not present in the provided element list.",
             request.nucleus.canonical()
-        ));
+        )));
     }
 
     let entries: Vec<GiaoNmrEntry> = shieldings
@@ -2532,7 +2572,7 @@ pub fn compute_nmr_spectrum(
     ppm_min: f64,
     ppm_max: f64,
     n_points: usize,
-) -> Result<nmr::NmrSpectrum, String> {
+) -> Result<nmr::NmrSpectrum, SciFormError> {
     compute_nmr_spectrum_with_coords(smiles, &[], nucleus, gamma, ppm_min, ppm_max, n_points)
 }
 
@@ -2546,7 +2586,7 @@ pub fn compute_nmr_spectrum_with_coords(
     ppm_min: f64,
     ppm_max: f64,
     n_points: usize,
-) -> Result<nmr::NmrSpectrum, String> {
+) -> Result<nmr::NmrSpectrum, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     if !positions.is_empty() {
         let elements: Vec<u8> = (0..mol.graph.node_count())
@@ -2572,7 +2612,10 @@ pub fn compute_nmr_spectrum_with_coords(
 /// # Errors
 ///
 /// Returns `Err` if the SMILES string cannot be parsed.
-pub fn compute_hose_codes(smiles: &str, max_radius: usize) -> Result<Vec<nmr::HoseCode>, String> {
+pub fn compute_hose_codes(
+    smiles: &str,
+    max_radius: usize,
+) -> Result<Vec<nmr::HoseCode>, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(nmr::hose::generate_hose_codes(&mol, max_radius))
 }
@@ -2596,9 +2639,10 @@ pub fn compute_orbital_mesh(
     spacing: f64,
     padding: f64,
     isovalue: f32,
-) -> Result<mesh::OrbitalMeshResult, String> {
+) -> Result<mesh::OrbitalMeshResult, SciFormError> {
     let m: mesh::MeshMethod = method.parse()?;
     mesh::compute_orbital_mesh(elements, positions, m, mo_index, spacing, padding, isovalue)
+        .map_err(SciFormError::from)
 }
 
 /// Compute molecular descriptors for ML property prediction.
@@ -2655,7 +2699,7 @@ pub fn compute_tpsa(elements: &[u8], bonds: &[(usize, usize, u8)]) -> f64 {
 /// # Errors
 ///
 /// Returns `Err` when the SMILES string cannot be parsed.
-pub fn compute_tpsa_from_smiles(smiles: &str) -> Result<f64, String> {
+pub fn compute_tpsa_from_smiles(smiles: &str) -> Result<f64, SciFormError> {
     let (elements, bonds) = elements_and_bonds(smiles)?;
     Ok(ml::compute_tpsa(&elements, &bonds))
 }
@@ -2666,7 +2710,7 @@ pub fn compute_tpsa_from_smiles(smiles: &str) -> Result<f64, String> {
 /// 4 = aromatic.
 type ElementsAndBonds = (Vec<u8>, Vec<(usize, usize, u8)>);
 
-fn elements_and_bonds(smiles: &str) -> Result<ElementsAndBonds, String> {
+fn elements_and_bonds(smiles: &str) -> Result<ElementsAndBonds, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
@@ -2697,7 +2741,7 @@ fn elements_and_bonds(smiles: &str) -> Result<ElementsAndBonds, String> {
 /// # Errors
 ///
 /// Returns `Err` when the SMILES string cannot be parsed.
-pub fn predict_ensemble_from_smiles(smiles: &str) -> Result<ml::EnsembleResult, String> {
+pub fn predict_ensemble_from_smiles(smiles: &str) -> Result<ml::EnsembleResult, SciFormError> {
     let (elements, bonds) = elements_and_bonds(smiles)?;
     Ok(predict_ensemble(&elements, &bonds, &[], &[]))
 }
@@ -2722,8 +2766,9 @@ pub fn compute_md_trajectory(
     n_steps: usize,
     dt_fs: f64,
     seed: u64,
-) -> Result<dynamics::MdTrajectory, String> {
+) -> Result<dynamics::MdTrajectory, SciFormError> {
     dynamics::simulate_velocity_verlet_uff(smiles, coords, n_steps, dt_fs, seed, None)
+        .map_err(SciFormError::from)
 }
 
 /// Run short exploratory molecular dynamics with Velocity Verlet + Berendsen NVT thermostat.
@@ -2741,7 +2786,7 @@ pub fn compute_md_trajectory_nvt(
     seed: u64,
     target_temp_k: f64,
     thermostat_tau_fs: f64,
-) -> Result<dynamics::MdTrajectory, String> {
+) -> Result<dynamics::MdTrajectory, SciFormError> {
     dynamics::simulate_velocity_verlet_uff(
         smiles,
         coords,
@@ -2750,6 +2795,7 @@ pub fn compute_md_trajectory_nvt(
         seed,
         Some((target_temp_k, thermostat_tau_fs)),
     )
+    .map_err(SciFormError::from)
 }
 
 /// Build a simplified NEB path between two geometries.
@@ -2769,7 +2815,7 @@ pub fn compute_simplified_neb_path(
     n_iter: usize,
     spring_k: f64,
     step_size: f64,
-) -> Result<dynamics::NebPathResult, String> {
+) -> Result<dynamics::NebPathResult, SciFormError> {
     dynamics::compute_simplified_neb_path(
         smiles,
         start_coords,
@@ -2779,6 +2825,7 @@ pub fn compute_simplified_neb_path(
         spring_k,
         step_size,
     )
+    .map_err(SciFormError::from)
 }
 
 /// Build a simplified NEB path using a configurable energy backend.
@@ -2793,7 +2840,7 @@ pub fn compute_simplified_neb_path_configurable(
     spring_k: f64,
     step_size: f64,
     method: &str,
-) -> Result<dynamics::NebPathResult, String> {
+) -> Result<dynamics::NebPathResult, SciFormError> {
     dynamics::compute_simplified_neb_path_configurable(
         smiles,
         start_coords,
@@ -2804,6 +2851,7 @@ pub fn compute_simplified_neb_path_configurable(
         step_size,
         method,
     )
+    .map_err(SciFormError::from)
 }
 
 /// Compute single-point energy (kcal/mol) with any NEB-capable backend.
@@ -2815,8 +2863,12 @@ pub fn compute_simplified_neb_path_configurable(
 /// Returns `Err` when the method name is not recognised, when the SMILES
 /// string cannot be parsed, when the coordinate array does not match the atom
 /// count, or when the selected backend fails.
-pub fn neb_backend_energy_kcal(method: &str, smiles: &str, coords: &[f64]) -> Result<f64, String> {
-    dynamics::neb_backend_energy_kcal(method, smiles, coords)
+pub fn neb_backend_energy_kcal(
+    method: &str,
+    smiles: &str,
+    coords: &[f64],
+) -> Result<f64, SciFormError> {
+    dynamics::neb_backend_energy_kcal(method, smiles, coords).map_err(SciFormError::from)
 }
 
 /// Compute energy (kcal/mol) and gradient (kcal/mol/Å) with any NEB-capable backend.
@@ -2826,8 +2878,8 @@ pub fn neb_backend_energy_and_gradient(
     method: &str,
     smiles: &str,
     coords: &[f64],
-) -> Result<(f64, Vec<f64>), String> {
-    dynamics::neb_backend_energy_and_gradient(method, smiles, coords)
+) -> Result<(f64, Vec<f64>), SciFormError> {
+    dynamics::neb_backend_energy_and_gradient(method, smiles, coords).map_err(SciFormError::from)
 }
 
 /// Compute a full reaction dynamics path: embed reactant + product fragments,
@@ -2840,8 +2892,9 @@ pub fn compute_reaction_dynamics(
     product_smiles: &[&str],
     method: &str,
     config: &dynamics::ReactionDynamicsConfig,
-) -> Result<dynamics::ReactionDynamicsResult, String> {
+) -> Result<dynamics::ReactionDynamicsResult, SciFormError> {
     dynamics::compute_reaction_dynamics(reactant_smiles, product_smiles, method, config)
+        .map_err(SciFormError::from)
 }
 
 fn coords_flat_to_matrix_f32(coords: &[f64], n_atoms: usize) -> nalgebra::DMatrix<f32> {
@@ -2877,12 +2930,12 @@ pub fn search_conformers_with_uff(
     n_samples: usize,
     seed: u64,
     rmsd_threshold: f64,
-) -> Result<ConformerSearchResult, String> {
+) -> Result<ConformerSearchResult, SciFormError> {
     if n_samples == 0 {
-        return Err("n_samples must be > 0".to_string());
+        return Err(SciFormError::validation("n_samples must be > 0"));
     }
     if rmsd_threshold <= 0.0 {
-        return Err("rmsd_threshold must be > 0".to_string());
+        return Err(SciFormError::validation("rmsd_threshold must be > 0"));
     }
 
     let mol = graph::Molecule::from_smiles(smiles)?;
@@ -2927,7 +2980,9 @@ pub fn search_conformers_with_uff(
     }
 
     if generated.is_empty() {
-        return Err("failed to generate any valid conformers".to_string());
+        return Err(SciFormError::numerical(
+            "failed to generate any valid conformers",
+        ));
     }
 
     generated.sort_by(|a, b| {
@@ -2987,11 +3042,15 @@ pub fn search_conformers_with_uff(
 pub fn compute_uff_energy_with_aromatic_heuristics(
     smiles: &str,
     coords: &[f64],
-) -> Result<reactivity::UffHeuristicEnergy, String> {
+) -> Result<reactivity::UffHeuristicEnergy, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     if coords.len() != n * 3 {
-        return Err(format!("coords length {} != 3 * atoms {}", coords.len(), n));
+        return Err(SciFormError::geometry(format!(
+            "coords length {} != 3 * atoms {}",
+            coords.len(),
+            n
+        )));
     }
 
     let ff = forcefield::builder::build_uff_force_field(&mol);
@@ -3010,7 +3069,7 @@ pub fn compute_uff_energy_with_aromatic_heuristics(
 ///
 /// Returns `Err` when the SMILES string cannot be parsed or when the
 /// Gasteiger charge calculation fails.
-pub fn compute_empirical_pka(smiles: &str) -> Result<reactivity::EmpiricalPkaResult, String> {
+pub fn compute_empirical_pka(smiles: &str) -> Result<reactivity::EmpiricalPkaResult, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let charges = compute_charges(smiles)?;
     Ok(reactivity::estimate_empirical_pka(&mol, &charges.charges))
@@ -3072,8 +3131,8 @@ pub fn assemble_framework_with_linkers(
 ///
 /// Returns `Err` when the CIF text cannot be parsed, when the cell parameters
 /// are missing or inconsistent, or when the atom-site loop is malformed.
-pub fn parse_cif(input: &str) -> Result<materials::CifStructure, String> {
-    materials::cif::parse_cif(input)
+pub fn parse_cif(input: &str) -> Result<materials::CifStructure, SciFormError> {
+    materials::cif::parse_cif(input).map_err(SciFormError::from)
 }
 
 /// Write a crystal structure to CIF format string.
@@ -3096,10 +3155,10 @@ pub fn compute_uhf(
     positions: &[[f64; 3]],
     charge: i32,
     multiplicity: u32,
-) -> Result<scf::uhf::UhfResult, String> {
+) -> Result<scf::uhf::UhfResult, SciFormError> {
     let system =
         scf::types::MolecularSystem::try_from_angstrom(elements, positions, charge, multiplicity)?;
-    scf::uhf::run_uhf_parallel(&system)
+    scf::uhf::run_uhf_parallel(&system).map_err(SciFormError::from)
 }
 
 /// Run a Restricted Open-shell Hartree-Fock (ROHF) calculation.
@@ -3116,10 +3175,10 @@ pub fn compute_rohf(
     positions: &[[f64; 3]],
     charge: i32,
     multiplicity: u32,
-) -> Result<scf::uhf::UhfResult, String> {
+) -> Result<scf::uhf::UhfResult, SciFormError> {
     let system =
         scf::types::MolecularSystem::try_from_angstrom(elements, positions, charge, multiplicity)?;
-    scf::uhf::run_rohf(&system)
+    scf::uhf::run_rohf(&system).map_err(SciFormError::from)
 }
 
 /// Run UHF/ROHF with full configuration control.
@@ -3129,10 +3188,10 @@ pub fn compute_uhf_configured(
     charge: i32,
     multiplicity: u32,
     config: &scf::uhf::UhfConfig,
-) -> Result<scf::uhf::UhfResult, String> {
+) -> Result<scf::uhf::UhfResult, SciFormError> {
     let system =
         scf::types::MolecularSystem::try_from_angstrom(elements, positions, charge, multiplicity)?;
-    scf::uhf::run_uhf(&system, config)
+    scf::uhf::run_uhf(&system, config).map_err(SciFormError::from)
 }
 
 /// Run a complete HF-3c calculation (Hartree-Fock with D3, gCP, SRB corrections).
@@ -3146,9 +3205,9 @@ pub fn compute_hf3c(
     elements: &[u8],
     positions: &[[f64; 3]],
     config: &hf::HfConfig,
-) -> Result<hf::Hf3cResult, String> {
+) -> Result<hf::Hf3cResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
-    hf::solve_hf3c(elements, positions, config)
+    hf::solve_hf3c(elements, positions, config).map_err(SciFormError::from)
 }
 
 /// Compute ANI neural-network potential energy (and optionally forces).
@@ -3165,9 +3224,12 @@ pub fn compute_hf3c(
 ///
 /// Returns `Err` when the geometry fails validation or when an element has
 /// no ANI network.
-pub fn compute_ani(elements: &[u8], positions: &[[f64; 3]]) -> Result<ani::AniResult, String> {
+pub fn compute_ani(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+) -> Result<ani::AniResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
-    ani::api::compute_ani_test(elements, positions)
+    ani::api::compute_ani_test(elements, positions).map_err(SciFormError::from)
 }
 
 /// Compute ANI neural-network potential energy with custom config and pre-loaded models.
@@ -3181,9 +3243,9 @@ pub fn compute_ani_with_models(
     positions: &[[f64; 3]],
     config: &ani::AniConfig,
     models: &std::collections::HashMap<u8, ani::nn::FeedForwardNet>,
-) -> Result<ani::AniResult, String> {
+) -> Result<ani::AniResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
-    ani::compute_ani(elements, positions, config, models)
+    ani::compute_ani(elements, positions, config, models).map_err(SciFormError::from)
 }
 
 /// Compute ESP grid and return full result with values, origin, spacing and dimensions.
@@ -3194,7 +3256,7 @@ pub fn compute_esp_grid(
     positions: &[[f64; 3]],
     spacing: f64,
     padding: f64,
-) -> Result<esp::EspGrid, String> {
+) -> Result<esp::EspGrid, SciFormError> {
     compute_esp(elements, positions, spacing, padding)
 }
 
@@ -3208,7 +3270,7 @@ pub fn compute_esp_grid(
 /// # Errors
 ///
 /// Returns `Err` when the SMILES string cannot be parsed.
-pub fn to_canonical_smiles(smiles: &str) -> Result<String, String> {
+pub fn to_canonical_smiles(smiles: &str) -> Result<String, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(canonical_smiles::to_canonical_smiles(&mol))
 }
@@ -3224,7 +3286,10 @@ pub fn to_canonical_smiles(smiles: &str) -> Result<String, String> {
 /// # Errors
 ///
 /// Returns `Err` when the SMILES string cannot be parsed.
-pub fn analyze_stereo(smiles: &str, coords: &[f64]) -> Result<stereo::StereoAnalysis, String> {
+pub fn analyze_stereo(
+    smiles: &str,
+    coords: &[f64],
+) -> Result<stereo::StereoAnalysis, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let positions: Vec<[f64; 3]> = coords.chunks(3).map(|c| [c[0], c[1], c[2]]).collect();
     Ok(stereo::analyze_stereo(&mol, &positions))
@@ -3246,8 +3311,9 @@ pub fn compute_nonpolar_solvation(
     elements: &[u8],
     positions: &[[f64; 3]],
     probe_radius: Option<f64>,
-) -> Result<solvation::NonPolarSolvation, String> {
+) -> Result<solvation::NonPolarSolvation, SciFormError> {
     solvation::compute_nonpolar_solvation(elements, positions, probe_radius)
+        .map_err(SciFormError::from)
 }
 
 /// Compute Generalized Born (Still-HCT) electrostatic + non-polar solvation.
@@ -3269,7 +3335,7 @@ pub fn compute_gb_solvation(
     solvent_dielectric: Option<f64>,
     solute_dielectric: Option<f64>,
     probe_radius: Option<f64>,
-) -> Result<solvation::GbSolvation, String> {
+) -> Result<solvation::GbSolvation, SciFormError> {
     solvation::compute_gb_solvation(
         elements,
         positions,
@@ -3278,6 +3344,7 @@ pub fn compute_gb_solvation(
         solute_dielectric,
         probe_radius,
     )
+    .map_err(SciFormError::from)
 }
 
 /// Compute ALPB (Analytical Linearized Poisson-Boltzmann) solvation energy.
@@ -3297,8 +3364,9 @@ pub fn compute_alpb_solvation(
     positions: &[[f64; 3]],
     charges: &[f64],
     config: solvation_alpb::AlpbConfig,
-) -> Result<solvation_alpb::AlpbResult, String> {
+) -> Result<solvation_alpb::AlpbResult, SciFormError> {
     solvation_alpb::compute_alpb_solvation(elements, positions, charges, &config)
+        .map_err(SciFormError::from)
 }
 
 // ─── Clustering API ──────────────────────────────────────────────────────────
@@ -3322,7 +3390,7 @@ pub fn compute_rmsd_matrix(conformers: &[Vec<f64>]) -> Vec<Vec<f64>> {
 /// # Errors
 ///
 /// Returns `Err` when the SMILES string cannot be parsed.
-pub fn compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, String> {
+pub fn compute_sssr(smiles: &str) -> Result<rings::sssr::SssrResult, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(rings::sssr::compute_sssr(&mol))
 }
@@ -3332,7 +3400,7 @@ pub fn compute_ecfp(
     smiles: &str,
     radius: usize,
     n_bits: usize,
-) -> Result<rings::ecfp::ECFPFingerprint, String> {
+) -> Result<rings::ecfp::ECFPFingerprint, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     Ok(rings::ecfp::compute_ecfp(&mol, radius, n_bits))
 }
@@ -3342,7 +3410,7 @@ pub fn compute_ecfp_batch(
     smiles_list: &[&str],
     radius: usize,
     n_bits: usize,
-) -> Result<Vec<rings::ecfp::ECFPFingerprint>, String> {
+) -> Result<Vec<rings::ecfp::ECFPFingerprint>, SciFormError> {
     let mols: Result<Vec<_>, _> = smiles_list
         .iter()
         .map(|s| graph::Molecule::from_smiles(s))
@@ -3369,7 +3437,7 @@ pub fn compute_tanimoto(
 pub fn compute_charges_configured(
     smiles: &str,
     config: &charges::gasteiger::GasteigerConfig,
-) -> Result<charges::gasteiger::ChargeResult, String> {
+) -> Result<charges::gasteiger::ChargeResult, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let n = mol.graph.node_count();
     let elements: Vec<u8> = (0..n)
@@ -3410,6 +3478,7 @@ pub fn compute_charges_configured(
         Some(&modes),
         config,
     )
+    .map_err(SciFormError::from)
 }
 
 // ─── NMR Enhanced API ────────────────────────────────────────────────────────
@@ -3420,7 +3489,7 @@ pub fn compute_ensemble_j_couplings(
     conformer_coords: &[Vec<f64>],
     energies_kcal: &[f64],
     temperature_k: f64,
-) -> Result<Vec<nmr::JCoupling>, String> {
+) -> Result<Vec<nmr::JCoupling>, SciFormError> {
     let mol = graph::Molecule::from_smiles(smiles)?;
     let positions: Vec<Vec<[f64; 3]>> = conformer_coords
         .iter()
@@ -3450,7 +3519,7 @@ pub fn compute_ir_spectrum_broadened(
     wn_max: f64,
     n_points: usize,
     broadening: &str,
-) -> Result<ir::IrSpectrum, String> {
+) -> Result<ir::IrSpectrum, SciFormError> {
     let bt: ir::BroadeningType = broadening.parse()?;
     Ok(ir::vibrations::compute_ir_spectrum_with_broadening(
         analysis, gamma, wn_min, wn_max, n_points, bt,

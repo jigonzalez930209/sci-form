@@ -255,7 +255,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [x] **Benchmarks**: `benches/core.rs` + criterion 0.5 + `benches/README.md`; `cargo bench --bench core` y `cargo test --release --bench core -- --test`.
 - [x] **RUSTSEC-2024-0436**: nalgebra 0.35 (simba 0.10) elimina `paste`; `deny.toml` sin ignores.
 - [x] **Doctests ejecutables**: 28 (+1 ignored) frente a 15 al cierre de 1.0; ejemplos nuevos en cargas, SASA, dipolo, órdenes de enlace, RMSD, MMFF94, GFN1/GFN2.
-- [ ] **Enum de error tipado**: diseño aditivo listo, migración de firmas planificada para 1.2 (rompe SemVer menor).
+- [x] **Enum de error tipado** (2026-11-08): `SciFormError` (`Parse`, `Validation`, `Geometry`, `Numerical`, `Unsupported`, `Other`) con `Display`, `Error`, `Deref<str>`, `AsRef<str>` y `From<String>` de transición. La API raíz (`src/lib.rs`, 65 funciones) ya devuelve `Result<_, SciFormError>`; los módulos internos siguen en `String` y se convierten en la frontera. Gate `tests/typed_errors.rs`.
 - [ ] **Gradientes PM3/xTB analíticos**: proyecto de investigación; hoy diferencias centrales exactas (6·N SCF).
 - [ ] **ERI density fitting/Cholesky**: el tensor CPU sigue siendo M⁴ `f64`; el camino GPU ya está tileado.
 - [x] **MMFF94 completo** (2026-11-08): cargas parciales PBCI/BCI, stretch-bend, out-of-plane y Coulomb amortiguado. El fixture independiente reproduce RDKit `MMFFGetMoleculeForceField` a <2e-11 kcal/mol en 7 moléculas; tipos y cargas coinciden exactamente. Tablas extra generadas desde `Params.cpp` (117/117 OOP, 282 stretch-bend, 30 DFSB, 99 PBCI, 498 BCI).
