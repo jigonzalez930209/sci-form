@@ -1,16 +1,17 @@
 //! Energy gradients for PM3.
 //!
-//! The gradient is the central-difference derivative of the **same** energy
-//! that [`solve_pm3`] reports (the MOPAC-parity solver for
-//! `Z ≤ 17`, the legacy NDDO path otherwise), so gradient and energy describe
-//! one potential-energy surface by construction.
+//! For the MOPAC-parity solver (`Z ≤ 17`) the gradient uses the
+//! **stationary-density** (Pulay-free) form: at a converged SCF density the
+//! derivative of the density vanishes, so differentiating
+//! `E = ½ Tr[P (H + G(P))] + E_nuc` at fixed `P` gives the molecular gradient.
+//! The remaining integral derivatives are evaluated by central differences of
+//! the fixed-density energy, which rebuilds the integrals but never runs an
+//! SCF.  The legacy NDDO path (`Z > 17`) keeps the full central-difference
+//! gradient of [`solve_pm3`].
 //!
 //! Before v1.0 this module held a hand-written Hellmann-Feynman/Pulay
-//! expression for the *legacy* simplified NDDO model. That model is not the
-//! one `solve_pm3` evaluates, and the expression disagreed with the energy by
-//! up to 18 eV/Å (H₂O₂). A full analytic NDDO gradient (derivatives of the
-//! rotated two-centre integrals) is future work; until then the gradient
-//! costs `6·N` SCF evaluations.
+//! expression for the *legacy* simplified NDDO model; that model is not the
+//! one `solve_pm3` evaluates, so it was removed.
 
 use serde::{Deserialize, Serialize};
 
@@ -45,9 +46,20 @@ pub fn compute_pm3_gradient(
     positions: &[[f64; 3]],
 ) -> Result<Pm3GradientResult, String> {
     let reference = solve_pm3(elements, positions)?;
-    let gradients = central_difference_gradient(positions, DEFAULT_STEP_ANGSTROM, |p| {
-        solve_pm3(elements, p).map(|r| r.total_energy)
-    })?;
+    // Stationary-density path for the faithful MOPAC-parity solver: no SCF
+    // per displaced coordinate, only the integral rebuild at fixed P.
+    let density = super::faithful::solve(elements, positions)
+        .ok()
+        .map(|result| result.density);
+    let gradients = if let Some(density) = density {
+        central_difference_gradient(positions, DEFAULT_STEP_ANGSTROM, |p| {
+            super::faithful::fixed_density_energy(elements, p, &density)
+        })?
+    } else {
+        central_difference_gradient(positions, DEFAULT_STEP_ANGSTROM, |p| {
+            solve_pm3(elements, p).map(|r| r.total_energy)
+        })?
+    };
     Ok(Pm3GradientResult {
         gradients,
         energy: reference.total_energy,

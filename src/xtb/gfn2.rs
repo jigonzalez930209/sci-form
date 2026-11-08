@@ -103,6 +103,17 @@ pub(crate) fn get_fermi_filling(emo: &[f64], nel: f64, kt: f64) -> (Vec<f64>, f6
     (focc, ts)
 }
 
+/// SCC state used to warm-start a nearby GFN2-xTB geometry.
+#[derive(Debug, Clone)]
+pub struct Gfn2WarmStart {
+    /// Shell-level charge differences.
+    pub shell_charges: Vec<f64>,
+    /// Atomic dipole moments (internal units).
+    pub atomic_dipoles: Vec<[f64; 3]>,
+    /// Atomic traceless quadrupoles (internal units).
+    pub atomic_quadrupoles: Vec<[f64; 6]>,
+}
+
 /// GFN2-xTB calculation result.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Gfn2Result {
@@ -137,10 +148,30 @@ pub struct Gfn2Result {
     pub atomic_dipoles: Vec<[f64; 3]>,
     /// Atomic quadrupole moment traces.
     pub atomic_quadrupoles: Vec<f64>,
+    /// Shell-level SCC charges (internal state, not serialised).
+    #[serde(skip)]
+    pub shell_charges: Vec<f64>,
+    /// Atomic dipole moments in internal units (not serialised).
+    #[serde(skip)]
+    pub atomic_dipoles_raw: Vec<[f64; 3]>,
+    /// Atomic traceless quadrupoles in internal units (not serialised).
+    #[serde(skip)]
+    pub atomic_quadrupoles_raw: Vec<[f64; 6]>,
     /// SCC iterations.
     pub scc_iterations: usize,
     /// Whether the SCC converged.
     pub converged: bool,
+}
+
+impl Gfn2Result {
+    /// Extract the SCC state for a warm start at a nearby geometry.
+    pub fn warm_start(&self) -> Gfn2WarmStart {
+        Gfn2WarmStart {
+            shell_charges: self.shell_charges.clone(),
+            atomic_dipoles: self.atomic_dipoles_raw.clone(),
+            atomic_quadrupoles: self.atomic_quadrupoles_raw.clone(),
+        }
+    }
 }
 
 /// Build basis map using GFN2 shell structure: (atom_idx, shell_idx, l, m).
@@ -178,6 +209,27 @@ pub(crate) fn build_gfn2_basis_map(elements: &[u8]) -> Vec<(usize, usize, u8, u8
 /// molecules this function accepts, because the parameter lookup is
 /// validated before the calculation starts.
 pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result, String> {
+    solve_gfn2_inner(elements, positions, None)
+}
+
+/// GFN2-xTB with an initial SCC state (warm start).
+///
+/// The converged energy is the same as [`solve_gfn2`]; starting from the
+/// state of a nearby geometry reduces the number of SCC iterations, which is
+/// what the displaced-gradient loop needs.
+pub fn solve_gfn2_warm(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    initial: &Gfn2WarmStart,
+) -> Result<Gfn2Result, String> {
+    solve_gfn2_inner(elements, positions, Some(initial))
+}
+
+fn solve_gfn2_inner(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    initial: Option<&Gfn2WarmStart>,
+) -> Result<Gfn2Result, String> {
     crate::validation::validate_geometry(elements, positions)?;
     for &z in elements {
         if gfn2_params::get_gfn2_params(z).is_none() {
@@ -637,7 +689,9 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     }
 
     let max_iter = 250;
-    let mut sh_charges = vec![0.0f64; n_shells]; // shell-level Δq
+    let mut sh_charges = initial
+        .map(|state| state.shell_charges.clone())
+        .unwrap_or_else(|| vec![0.0f64; n_shells]); // shell-level Δq
     let mut atom_charges = vec![0.0f64; n_atoms]; // atom-level (for output)
     let mut orbital_energies = vec![0.0f64; n_basis];
     let mut coefficients = DMatrix::zeros(n_basis, n_basis);
@@ -648,9 +702,13 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
     let mut e_d4_2body_ha = 0.0f64;
     let mut sh_shifts = vec![0.0f64; n_shells];
     // AES multipole moments (per atom)
-    let mut dpat = vec![[0.0f64; 3]; n_atoms]; // atomic dipole moments
-    let mut qpat = vec![[0.0f64; 6]; n_atoms]; // atomic traceless quadrupoles
-                                               // AES multipole potentials (per atom)
+    let mut dpat = initial
+        .map(|state| state.atomic_dipoles.clone())
+        .unwrap_or_else(|| vec![[0.0f64; 3]; n_atoms]); // atomic dipole moments
+    let mut qpat = initial
+        .map(|state| state.atomic_quadrupoles.clone())
+        .unwrap_or_else(|| vec![[0.0f64; 6]; n_atoms]); // atomic traceless quadrupoles
+                                                        // AES multipole potentials (per atom)
     let mut vdp = vec![[0.0f64; 3]; n_atoms]; // dipole potential
     let mut vqp = vec![[0.0f64; 6]; n_atoms]; // quadrupole potential
     let mut vat_mp = vec![0.0f64; n_atoms]; // charge potential from multipoles
@@ -1110,8 +1168,11 @@ pub fn solve_gfn2(elements: &[u8], positions: &[[f64; 3]]) -> Result<Gfn2Result,
         lumo_energy,
         gap,
         mulliken_charges: atom_charges,
-        atomic_dipoles: dpat,
+        atomic_dipoles: dpat.clone(),
         atomic_quadrupoles: qpat.iter().map(|q| q[0] + q[2] + q[5]).collect(),
+        shell_charges: sh_charges,
+        atomic_dipoles_raw: dpat,
+        atomic_quadrupoles_raw: qpat,
         scc_iterations: scc_iter,
         converged,
     })

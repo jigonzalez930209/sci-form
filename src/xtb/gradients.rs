@@ -4,15 +4,16 @@
 //! the central-difference derivative of the GFN2 total energy: gradient and
 //! energy describe one potential-energy surface by construction.
 //!
-//! Before v1.0 this module differentiated [`solve_xtb`](super::solve_xtb), a
-//! simplified legacy GFN0-like model that the public API no longer reports,
-//! and the hand-written expression disagreed with even that model's energy by
-//! 200–260 eV/Å. An analytic GFN2 gradient (multipole electrostatics and D4)
-//! is future work; until then the gradient costs `6·N` SCC evaluations.
+//! Each displaced geometry is warm-started from the converged shell charges
+//! and atomic multipoles of the reference point, so the SCC converges in a
+//! few iterations instead of from a zero state.  The energy (and therefore the
+//! gradient) is unchanged; the cost drops from `6·N` cold SCC solves to
+//! `6·N` warm SCC solves.  A fully analytic GFN2 gradient (multipole
+//! electrostatics and D4) remains future work.
 
 use serde::{Deserialize, Serialize};
 
-use super::gfn2::solve_gfn2;
+use super::gfn2::{solve_gfn2, solve_gfn2_warm};
 use crate::fd_gradient::{central_difference_gradient, DEFAULT_STEP_ANGSTROM};
 
 /// Result of xTB gradient computation.
@@ -40,8 +41,11 @@ pub fn compute_xtb_gradient(
     positions: &[[f64; 3]],
 ) -> Result<XtbGradientResult, String> {
     let reference = solve_gfn2(elements, positions)?;
+    let warm = reference.warm_start();
     let gradients = central_difference_gradient(positions, DEFAULT_STEP_ANGSTROM, |p| {
-        solve_gfn2(elements, p).map(|r| r.total_energy)
+        solve_gfn2_warm(elements, p, &warm)
+            .or_else(|_| solve_gfn2(elements, p))
+            .map(|r| r.total_energy)
     })?;
     Ok(XtbGradientResult {
         gradients,

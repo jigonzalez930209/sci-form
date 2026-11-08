@@ -1444,6 +1444,128 @@ fn build_g_matrix(
 /// Returns `Err` if the geometry is invalid, if an element has no PM3
 /// parameters, if an element has `Z > 17` (the faithful port currently
 /// covers only the sp-block elements), or if the electron count is odd
+/// Evaluate the PM3 energy at a fixed density matrix.
+///
+/// This rebuilds the one- and two-electron integrals and the core-core
+/// repulsion for the supplied geometry but does **not** run the SCF.  It is
+/// the stationary-density part of the analytic gradient:
+///
+/// `E = ½ Tr[P (H + G(P))] + E_nuc`
+///
+/// At a converged SCF density the derivative of `P` vanishes (Pulay terms are
+/// zero), so differentiating this expression gives the molecular gradient.
+pub fn fixed_density_energy(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    density: &DMatrix<f64>,
+) -> Result<f64, String> {
+    crate::validation::validate_geometry(elements, positions)?;
+    let n_atoms = elements.len();
+    let params: Vec<&Pm3Params> = elements
+        .iter()
+        .map(|&z| {
+            get_pm3_params(z).ok_or_else(|| format!("PM3 parameters not available for Z={z}"))
+        })
+        .collect::<Result<_, _>>()?;
+    for &z in elements {
+        if z > 17 {
+            return Err(format!(
+                "faithful PM3 currently covers Z <= 17 (got Z={z}); the generic Slater-overlap path is pending"
+            ));
+        }
+    }
+    let derived: Vec<Pm3Derived> = params.iter().map(|p| Pm3Derived::new(p)).collect();
+    let basis = basis_layout(elements);
+    let n_basis = basis.len();
+    if density.nrows() != n_basis || density.ncols() != n_basis {
+        return Err(format!(
+            "density shape {}x{} does not match {} basis functions",
+            density.nrows(),
+            density.ncols(),
+            n_basis
+        ));
+    }
+
+    let s_mat = overlap_matrix(elements, positions);
+    let mut h_core = DMatrix::zeros(n_basis, n_basis);
+    for (idx, (atom, orb)) in basis.iter().enumerate() {
+        let p = params[*atom];
+        h_core[(idx, idx)] = if *orb == 0 { p.uss } else { p.upp };
+    }
+    let mut blocks: Vec<PairBlock> = Vec::new();
+    let mut e_nuc = 0.0;
+    for a in 0..n_atoms {
+        for b in (a + 1)..n_atoms {
+            let (ww, e1b, e2a, enuc) = two_center_block(
+                params[a],
+                params[b],
+                &derived[a],
+                &derived[b],
+                &positions[a],
+                &positions[b],
+            );
+            e_nuc += enuc;
+            blocks.push(PairBlock { a, b, ww });
+            for (i1, &(atom_i, orb_i)) in basis.iter().enumerate() {
+                if atom_i == a {
+                    for (j1, &(atom_j, orb_j)) in basis.iter().enumerate() {
+                        if atom_j == a {
+                            let (r, c) = if orb_i >= orb_j {
+                                (orb_i, orb_j)
+                            } else {
+                                (orb_j, orb_i)
+                            };
+                            h_core[(i1, j1)] += e1b[r][c];
+                        }
+                    }
+                } else if atom_i == b {
+                    for (j1, &(atom_j, orb_j)) in basis.iter().enumerate() {
+                        if atom_j == b {
+                            let (r, c) = if orb_i >= orb_j {
+                                (orb_i, orb_j)
+                            } else {
+                                (orb_j, orb_i)
+                            };
+                            h_core[(i1, j1)] += e2a[r][c];
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for i in 0..n_basis {
+        for j in (i + 1)..n_basis {
+            let (ai, oi) = basis[i];
+            let (aj, oj) = basis[j];
+            if ai == aj {
+                continue;
+            }
+            let bi = if oi == 0 {
+                params[ai].beta_s
+            } else {
+                params[ai].beta_p
+            };
+            let bj = if oj == 0 {
+                params[aj].beta_s
+            } else {
+                params[aj].beta_p
+            };
+            let h = 0.5 * (bi + bj) * s_mat[(i, j)];
+            h_core[(i, j)] = h;
+            h_core[(j, i)] = h;
+        }
+    }
+
+    let g = build_g_matrix(&params, &basis, &blocks, density);
+    let mut e_elec = 0.0;
+    for i in 0..n_basis {
+        for j in 0..n_basis {
+            e_elec += 0.5 * density[(i, j)] * (h_core[(i, j)] + h_core[(i, j)] + g[(i, j)]);
+        }
+    }
+    Ok(e_elec + e_nuc)
+}
+
 /// (the NDDO SCF implemented here is closed-shell).
 pub fn solve(elements: &[u8], positions: &[[f64; 3]]) -> Result<FaithfulResult, String> {
     crate::validation::validate_geometry(elements, positions)?;

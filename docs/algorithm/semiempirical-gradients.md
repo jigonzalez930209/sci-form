@@ -12,8 +12,8 @@ they were attached to.
 
 | Public name | Where | Energy surface | Gradient |
 |---|---|---|---|
-| `pm3`, `compute_pm3`, `pm3_calculate` | all four surfaces | MOPAC-parity PM3 (`pm3::faithful`) when every element has `Z ≤ 17` and the SCF accepts the molecule; the legacy NDDO path for `Z > 17` and as a **recorded** fallback (`notes`) | `compute_pm3_gradient` — central differences of that energy |
-| `xtb`, `compute_xtb`, `xtb_calculate` | all four surfaces | **GFN2-xTB** (`solve_gfn2`) repackaged as `XtbResult`; numerically identical to `gfn2` | `compute_xtb_gradient` — central differences of that energy |
+| `pm3`, `compute_pm3`, `pm3_calculate` | all four surfaces | MOPAC-parity PM3 (`pm3::faithful`) when every element has `Z ≤ 17` and the SCF accepts the molecule; the legacy NDDO path for `Z > 17` and as a **recorded** fallback (`notes`) | `compute_pm3_gradient` — stationary-density (Pulay-free) gradient: fixed-density integral rebuild, no SCF per displacement |
+| `xtb`, `compute_xtb`, `xtb_calculate` | all four surfaces | **GFN2-xTB** (`solve_gfn2`) repackaged as `XtbResult`; numerically identical to `gfn2` | `compute_xtb_gradient` — warm-started central differences (same energy, fewer SCC iterations) |
 | `gfn1`, `gfn2` | all four surfaces | `solve_gfn1`, `solve_gfn2` | none public; NEB/MD use finite differences |
 | `"xtb"` (legacy spellings `"gfn0"`, `"gfn0-xtb"`) in **NEB, MD and reaction dynamics** | `NebBackend::Gfn2`, `MdBackend::Xtb` | **GFN2** (`solve_gfn2`) — the same surface as `compute_xtb` | central differences of that energy |
 | `"xtb"` / `"gfn0"` in **GSM** | `GsmEnergyBackend::Xtb` | `compute_xtb`, i.e. **GFN2** | — (GSM evaluates energies) |
