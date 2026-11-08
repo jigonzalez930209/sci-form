@@ -231,7 +231,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ### 18. Experimental Tracks Pendientes de Validación para Promoción
 - [x] **KPM a escala** (2026-11-07): gate N=200 y N=500 vs diagonalización exacta; DOS integrada <1e-6 relativo y E_F a <0.1 eV.
-- [x] **KPM disperso** (2026-11-07): CSR propio (`SparseMatrix`) + `compute_kpm_dos_sparse`; cadena de 5000 sitios en 0.22 s con 32 vectores/400 términos. Los tres criterios de promoción están cubiertos; falta decidir la promoción de API.
+- [x] **KPM disperso** (2026-11-07): CSR propio (`SparseMatrix`) + `compute_kpm_dos_sparse`; cadena de 5000 sitios en 0.22 s con 32 vectores/400 términos. **Promovido a core**; `beta-kpm` queda como alias.
 - [x] **RandNLA subspace iterations** (2026-11-07): `NystromApprox::from_matrix_with_power_iterations` + `RandNlaConfig::power_iterations` (default 2, re-ortogonalizado). Con 384 iteraciones el rank-N/4 de F93 baja de ~0.13 a 3.8e-4 (<1e-3, criterio 2 del fixture).
 - [x] **RandNLA backend EHT** (2026-11-07): `eht::solve_eht_randnla` expone el solver aleatorizado como backend opcional con metadatos de residuo/fallback; queda el speedup N>500.
 - [x] **GSM vs NEB en 5+ reacciones** (2026-11-07): cinco pozos curvos con MEP parabólico y barrera exacta `a⁴`; GSM y NEB discreto a ≤0.8 % y con la analítica. Se corrigió el refinamiento del saddle (20 pasos fijos → 200 con `step_size`), que dejaba las barreras ~12 % altas.
@@ -274,7 +274,7 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 | E1 CGA | `cga` | Promovido a core (F81); huecos de refine/materials documentados |
 | E2 RandNLA | `beta::rand_nla` | Implementado; Nyström vs SVD exacta cuantificado; power iterations cumplen <1e-3 en rank-N/4 (3.8e-4) a coste alto; backend EHT/SCF y speedup N>500 pendientes |
 | E3 Riemannian | `riemannian` | Promovido a core (F94); benchmark vs Gram exacto (6.0e-9) |
-| E4 KPM | `beta::kpm` | Implementado; DOS vs diagonalización, CSR disperso y N=5000 en 0.22 s; criterios técnicos cubiertos, promoción de API pendiente |
+| E4 KPM | `kpm` (`beta::kpm` alias) | **Promovido a core**; DOS vs diagonalización, CSR disperso y N=5000 en 0.22 s |
 | E5 EEQ Dynamic | `charges_eeq` | Implementado, parcialmente integrado |
 | E6 ALPB | `solvation_alpb` | Promovido a core; SASA unificada con GB |
 | E7 D4 Dispersion | `dispersion` | Promovido a core; cobertura de tablas hasta Z=118 documentada |
