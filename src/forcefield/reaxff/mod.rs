@@ -10,14 +10,17 @@
 //! - [`energy`] — Bonded energy terms as functions of continuous BO
 //! - [`nonbonded`] — van der Waals + shielded Coulomb
 //! - [`eem`] — Electronegativity Equalization Method for charges
-//! - [`params`] — ReaxFF parameter parsing (`ffield.reax.cho` pair table)
-//! - [`gradients`] — Numerical (central-difference) gradients
+//! - [`params`] — transcribed C/H/O pair parameters used by the energy model
+//! - [`ffield`] — full `ffield.reax.*` parser (general/atom/bond/off-diagonal/
+//!   angle/torsion/hydrogen-bond sections)
+//! - [`gradients`] — numerical (central-difference) gradients
 //!
 //! `alpha-reaxff` survives as a no-op feature alias.
 
 pub mod bond_order;
 pub mod eem;
 pub mod energy;
+pub mod ffield;
 pub mod gradients;
 pub mod nonbonded;
 pub mod params;
@@ -25,5 +28,6 @@ pub mod taper;
 
 pub use bond_order::compute_bond_orders;
 pub use energy::ReaxffEnergy;
+pub use ffield::{Ffield, FfieldAtom, FfieldRecord};
 pub use gradients::compute_reaxff_gradient;
 pub use params::ReaxffParams;
