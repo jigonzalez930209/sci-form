@@ -444,3 +444,59 @@ fn periodic_bloch_assembly_matches_cpu() {
     );
     assert!(worst < 1e-4, "periodic Bloch mismatch: {worst:e}");
 }
+
+#[test]
+fn edl_profiles_match_cpu() {
+    use sci_form::edl::{compute_edl_profile, scan_edl_capacitance, EdlConfig, EdlModel};
+
+    let Some(ctx) = gpu_context("EDL profiles") else {
+        return;
+    };
+    let config = EdlConfig {
+        model: EdlModel::GouyChapmanStern,
+        ionic_strength_m: 0.1,
+        numerics: sci_form::edl::EdlNumerics {
+            n_points: 64,
+            extent_angstrom: 10.0,
+        },
+        ..Default::default()
+    };
+    let values: Vec<f64> = (0..40).map(|i| -0.2 + 0.4 * i as f64 / 39.0).collect();
+    let cpu_scan = scan_edl_capacitance(-0.2, 0.2, 40, &config).expect("CPU scan");
+    let gpu_scan = sci_form::edl::gpu::scan_edl_capacitance_gpu(&ctx, -0.2, 0.2, 40, &config)
+        .expect("GPU scan");
+    let mut worst = 0.0f64;
+    for (c, g) in cpu_scan.iter().zip(&gpu_scan) {
+        worst = worst.max((c.1 - g.1).abs() / c.1.abs().max(1e-30));
+    }
+    eprintln!("EDL scan max relative |ΔC| = {worst:e}");
+    assert!(worst < 1e-3, "EDL capacitance mismatch: {worst:e}");
+
+    let cpu_profiles: Vec<_> = values
+        .iter()
+        .map(|&v| compute_edl_profile(v, &config).expect("CPU profile"))
+        .collect();
+    let gpu_profiles =
+        sci_form::edl::gpu::compute_edl_profiles_gpu(&ctx, &values, &config).expect("GPU profiles");
+    assert_eq!(cpu_profiles.len(), gpu_profiles.len());
+    let mut worst_profile = 0.0f64;
+    for (c, g) in cpu_profiles.iter().zip(&gpu_profiles) {
+        for (a, b) in [
+            (&c.electrostatic_potential_v, &g.electrostatic_potential_v),
+            (&c.field_strength_v_per_m, &g.field_strength_v_per_m),
+            (&c.charge_density_c_per_m3, &g.charge_density_c_per_m3),
+            (&c.ion_density_relative, &g.ion_density_relative),
+            (&c.dielectric_profile, &g.dielectric_profile),
+        ] {
+            let scale = a.iter().fold(0.0f64, |m, v| m.max(v.abs())).max(1e-30);
+            for (x, y) in a.iter().zip(b) {
+                worst_profile = worst_profile.max((x - y).abs() / scale);
+            }
+        }
+    }
+    eprintln!("EDL profile max relative |Δ| = {worst_profile:e}");
+    assert!(
+        worst_profile < 1e-3,
+        "EDL profile mismatch: {worst_profile:e}"
+    );
+}

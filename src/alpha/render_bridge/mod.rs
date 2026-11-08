@@ -16,6 +16,11 @@ pub mod gpu;
 
 pub use crate::render_bridge::*;
 
+#[cfg(any(
+    feature = "alpha-kinetics",
+    feature = "alpha-edl",
+    feature = "alpha-periodic-linear"
+))]
 use crate::transport::arrow::RecordBatch;
 
 #[cfg(feature = "alpha-kinetics")]

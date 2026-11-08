@@ -3,11 +3,12 @@
 //! Offloads large chart packing workloads to GPU compute when processing
 //! many chart payloads simultaneously. Falls back to CPU for small batches.
 //!
-//! NOTE: this is currently a **CPU fallback only** — the WGSL kernel it
-//! advertises does not exist yet, so the "GPU" path executes exactly the same
-//! CPU code and the parity test compares CPU against CPU. The audit
-//! (reports/auditoria-total.md, P2-32) flagged this; it is kept as a stable
-//! call site for the kernel to be added.
+//! **CPU by design.** Packing is a memory-bound copy of the chart arrays into
+//! `RecordBatch` columns; a GPU round-trip would add two host↔device copies
+//! and a dispatch for no arithmetic. The function keeps the GPU-compatible
+//! call site so a future batch format that needs a device-side transform can
+//! be added without changing callers, but the CPU implementation is the
+//! intended one.
 //!
 //! # Stability tier
 //!
@@ -24,15 +25,11 @@ const GPU_RENDER_THRESHOLD: usize = 16;
 
 /// GPU-accelerated batch chart packing.
 ///
-/// Strategy: packing charts into RecordBatch is mostly memory-copy work;
-/// GPU benefit comes from parallel column construction for very large payloads.
-/// Current implementation: CPU fallback.
+/// Packing is a memory-bound copy, so this intentionally runs on the CPU; the
+/// GPU context is accepted only to keep the call site uniform with the other
+/// accelerated entry points.
 pub fn pack_charts_gpu(ctx: &GpuContext, charts: &[ChartPayload]) -> Vec<RecordBatch> {
-    if !ctx.capabilities.gpu_available || charts.len() < GPU_RENDER_THRESHOLD {
-        return charts.iter().map(pack_chart_payload).collect();
-    }
-
-    // GPU path: currently CPU fallback.
+    let _ = (ctx, GPU_RENDER_THRESHOLD);
     charts.iter().map(pack_chart_payload).collect()
 }
 

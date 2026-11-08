@@ -97,6 +97,8 @@ runs eight real-device comparisons on the maintainer machine:
 | CPM charges (2-site) | CPU CPM | 3.5e-7 e | 1e-5 |
 | HTST temperature sweep (320 points) | CPU Eyring/Arrhenius | 6.0e-6 relative | 1e-4 |
 | periodic Bloch H(k)/S(k) (80 k-points) | CPU Bloch sum | 5.8e-8 | 1e-4 |
+| EDL scan (40 biases, GCS) | CPU Gouy-Chapman-Stern | 1.1e-7 relative | 1e-3 |
+| EDL profiles (40 biases, 64 points) | CPU profiles | 2.0e-6 relative | 1e-3 |
 
 Two candidate kernels are deliberately **not** in the parity gate because they are
 different models, not implementations of the same one:
@@ -110,9 +112,10 @@ different models, not implementations of the same one:
 They remain available as GPU candidates and now say so in their module docs; the CPU
 implementations are the reference for production numbers.
 
-The HTST temperature sweep (`src/alpha/kinetics/gpu.rs`) and the periodic Bloch
-assembly (`src/alpha/periodic_linear/gpu.rs`) are real WGSL kernels, so the
-"GPU stub" count is down to two: EDL scans and chart packing.
+The HTST sweep (`src/alpha/kinetics/gpu.rs`), the periodic Bloch assembly
+(`src/alpha/periodic_linear/gpu.rs`) and the EDL scan/profiles
+(`src/edl/gpu.rs`) are real WGSL kernels. Chart packing remains CPU by design:
+it is a memory-bound copy, and a GPU round-trip would be slower.
 
 The ERI kernel is **s-only**. It rejects p/d/f bases before dispatch instead of
 returning silently wrong integrals, and callers keep the CPU path.

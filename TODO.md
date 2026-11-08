@@ -259,7 +259,8 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 - [ ] **MMFF94 completo**: faltan electrostática, stretch-bend y out-of-plane; la documentación ya no dice "full".
 - [x] **HTST GPU real** (2026-11-07): `alpha/kinetics/gpu.rs` evalúa el barrido Eyring/Arrhenius en WGSL; 320 temperaturas a 6e-6 relativo vs CPU.
 - [x] **Bloch periódico GPU real** (2026-11-07): `alpha/periodic_linear/gpu.rs` ensambla H(k)/S(k) en WGSL; 80 k-points a 5.8e-8 vs CPU.
-- [ ] **2 stubs GPU de CPU**: `alpha/render_bridge/gpu.rs` y `edl/gpu.rs`; documentados, sin kernel WGSL.
+- [x] **EDL GPU real** (2026-11-07): `edl/gpu.rs` evalúa Helmholtz/GC/GCS en WGSL; scan a 1.1e-7 relativo y perfiles a 2.0e-6 vs CPU.
+- [x] **Stubs GPU cerrados**: `render_bridge/gpu.rs` es CPU por diseño (empaquetado memory-bound); no quedan stubs numéricos.
 - [ ] **sTDA vs TD-SCF**: gap de método documentado; no se promete paridad.
 
 ---

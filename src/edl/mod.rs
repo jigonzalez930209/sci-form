@@ -78,7 +78,7 @@ pub enum EdlBackend {
     /// Deterministic CPU reference path.
     #[default]
     CpuReference,
-    /// Placeholder for future GPU-accelerated scans.
+    /// GPU-accelerated profile/scan kernel.
     GpuAccelerated,
 }
 
