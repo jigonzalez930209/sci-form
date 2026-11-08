@@ -13,10 +13,12 @@
 //! - [`params`] — transcribed C/H/O pair parameters used by the energy model
 //! - [`ffield`] — full `ffield.reax.*` parser (general/atom/bond/off-diagonal/
 //!   angle/torsion/hydrogen-bond sections)
-//! - [`gradients`] — numerical (central-difference) gradients
+//! - [`analytic`] — analytical gradients for every energy term
+//! - [`gradients`] — public energy/gradient entry point (analytical)
 //!
 //! `alpha-reaxff` survives as a no-op feature alias.
 
+pub mod analytic;
 pub mod bond_order;
 pub mod eem;
 pub mod energy;

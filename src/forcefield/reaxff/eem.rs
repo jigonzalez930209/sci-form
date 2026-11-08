@@ -16,6 +16,16 @@ pub struct EemAtomParams {
     pub gamma: f64,
 }
 
+/// Solution of the augmented EEM system.
+pub struct EemSolution {
+    /// Atomic partial charges (e).
+    pub charges: Vec<f64>,
+    /// Inverse of the `(n+1) × (n+1)` augmented system.
+    pub inverse: DMatrix<f64>,
+    /// Full solution vector `[q; μ]` (the last entry is the Lagrange multiplier).
+    pub augmented: DVector<f64>,
+}
+
 /// Solve EEM equations to equilibrate charges.
 ///
 /// Minimizes E_charge = Σ_i (χ_i q_i + ½ η_i q_i²) + Σ_{i<j} q_i q_j / r_ij(shielded)
@@ -27,9 +37,26 @@ pub fn solve_eem(
     atom_params: &[EemAtomParams],
     total_charge: f64,
 ) -> Result<Vec<f64>, String> {
+    Ok(solve_eem_with_inverse(positions_flat, atom_params, total_charge)?.charges)
+}
+
+/// Solve EEM and also return the inverse of the augmented system matrix.
+///
+/// The inverse is used by the analytical ReaxFF gradient: differentiating
+/// `A q = b` gives `dq = -A⁻¹ (dA) q`, so one factorization per geometry is
+/// enough for every Cartesian displacement.
+pub fn solve_eem_with_inverse(
+    positions_flat: &[f64],
+    atom_params: &[EemAtomParams],
+    total_charge: f64,
+) -> Result<EemSolution, String> {
     let n = atom_params.len();
     if n == 0 {
-        return Ok(vec![]);
+        return Ok(EemSolution {
+            charges: vec![],
+            inverse: DMatrix::zeros(0, 0),
+            augmented: DVector::zeros(0),
+        });
     }
 
     // Build the (n+1) × (n+1) system: [J λ; 1 0] [q; μ] = [-χ; Q]
@@ -71,10 +98,18 @@ pub fn solve_eem(
     b[n] = total_charge;
 
     // Solve via LU decomposition
-    let solution = a.lu().solve(&b).ok_or("EEM linear system is singular")?;
+    let inverse = a
+        .clone()
+        .try_inverse()
+        .ok_or("EEM linear system is singular")?;
+    let solution = &inverse * &b;
 
     let charges: Vec<f64> = solution.rows(0, n).iter().copied().collect();
-    Ok(charges)
+    Ok(EemSolution {
+        charges,
+        inverse,
+        augmented: solution,
+    })
 }
 
 /// Default EEM parameters for common elements.

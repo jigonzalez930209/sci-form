@@ -195,6 +195,56 @@ fn reaxff_gradient_newtons_third_law() {
     }
 }
 
+/// Analytical gradients must agree with central differences on molecules that
+/// exercise bonds, angles, over-coordination and EEM charges.
+#[test]
+fn reaxff_analytic_gradient_matches_numerical() {
+    use sci_form::forcefield::reaxff::gradients::compute_reaxff_gradient_numerical;
+
+    let params = ReaxffParams::default_chon();
+    let systems: &[(&[u8], &[f64])] = &[
+        (&[1, 1], &[0.0, 0.0, 0.0, 0.74, 0.0, 0.0]),
+        (
+            &[8, 1, 1],
+            &[0.0, 0.0, 0.0, 0.958, 0.0, 0.0, -0.24, 0.927, 0.0],
+        ),
+        (
+            &[6, 1, 1, 1, 1],
+            &[
+                0.0, 0.0, 0.0, 0.629, 0.629, 0.629, 0.629, -0.629, -0.629, -0.629, 0.629, -0.629,
+                -0.629, -0.629, 0.629,
+            ],
+        ),
+        (
+            &[6, 1, 1, 1, 8],
+            &[
+                0.0, 0.0, 0.0, 1.09, 0.0, 0.0, -0.36, 1.03, 0.0, -0.36, -0.52, 0.89, 1.43, -0.10,
+                1.02,
+            ],
+        ),
+    ];
+
+    for (elements, positions) in systems {
+        let (e_analytic, g_analytic) =
+            compute_reaxff_gradient(positions, elements, &params).unwrap();
+        let (e_numeric, g_numeric) =
+            compute_reaxff_gradient_numerical(positions, elements, &params).unwrap();
+        assert!(
+            (e_analytic - e_numeric).abs() < 1e-8,
+            "energy mismatch for {elements:?}: {e_analytic} vs {e_numeric}"
+        );
+        let worst = g_analytic
+            .iter()
+            .zip(&g_numeric)
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0f64, f64::max);
+        assert!(
+            worst < 1e-4,
+            "gradient mismatch for {elements:?}: max |Δg| = {worst:.3e}"
+        );
+    }
+}
+
 /// Equilibrium distance should be close to local energy minimum:
 /// displacing slightly should raise energy in both directions.
 #[test]

@@ -87,7 +87,7 @@ print(f"gap: {result.gap:.3f} eV")
 
 **Module:** `sci_form::forcefield::reaxff` (core since 2026-10-13, F78; `alpha::reaxff` re-export)
 
-Bond-order-based reactive force field for bond breaking and formation. Includes EEM charge equilibration and central-difference gradients (parallelized with the `parallel` feature).
+Bond-order-based reactive force field for bond breaking and formation. Includes EEM charge equilibration and analytical gradients for every term (bond orders, bond/angle, over/under-coordination, vdW, Coulomb and the EEM charge response).
 
 ### Rust
 
@@ -121,7 +121,7 @@ breakdown = reaxff_energy(elements, coords)       # detailed energy components
 
 ### Parallelization
 
-The central-difference gradient loop is parallelized under `features = ["parallel"]`. Each coordinate displacement pair runs on its own rayon thread — scales linearly with CPU cores for large systems.
+The analytical gradient avoids the 6·N energy evaluations of central differences and uses the cached EEM inverse for the charge response.
 
 ---
 

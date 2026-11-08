@@ -1,19 +1,31 @@
-//! Analytical gradients for ReaxFF energy terms.
+//! Public ReaxFF energy/gradient entry point.
 //!
-//! Uses numerical differentiation (central differences) for robustness
-//! during alpha development. Will be replaced with analytical gradients
-//! once the energy terms are validated.
+//! The gradient is analytical (see [`super::analytic`]); the central-difference
+//! implementation is retained as
+//! [`compute_reaxff_gradient_numerical`] for independent comparison.
 
 use super::bond_order::compute_bond_orders_pairs;
 use super::eem::{default_eem_params, solve_eem};
 use super::energy::compute_bonded_energy;
 use super::params::ReaxffParams;
 
-/// Compute ReaxFF energy and gradient (numerical, central differences).
+/// Compute ReaxFF energy and analytical gradient.
 ///
 /// Returns (total_energy_kcal_mol, gradient_flat) where gradient is
 /// ∂E/∂r for each coordinate [gx0,gy0,gz0,...].
 pub fn compute_reaxff_gradient(
+    positions_flat: &[f64],
+    elements: &[u8],
+    params: &ReaxffParams,
+) -> Result<(f64, Vec<f64>), String> {
+    super::analytic::compute_reaxff_gradient_analytic(positions_flat, elements, params)
+}
+
+/// Compute ReaxFF energy and a central-difference gradient.
+///
+/// Kept as an independent reference for the analytical implementation and for
+/// debugging; it is not used by the public API.
+pub fn compute_reaxff_gradient_numerical(
     positions_flat: &[f64],
     elements: &[u8],
     params: &ReaxffParams,
@@ -168,5 +180,30 @@ mod tests {
                 grad[3 + d]
             );
         }
+    }
+
+    #[test]
+    fn analytic_gradient_matches_central_differences() {
+        let params = ReaxffParams::default_chon();
+        let positions = [
+            0.0, 0.0, 0.0, 1.09, 0.0, 0.0, -0.36, 1.03, 0.0, -0.36, -0.52, 0.89, 1.43, -0.10, 1.02,
+        ];
+        let elements = [6u8, 1, 1, 1, 8];
+        let (e_analytic, g_analytic) =
+            compute_reaxff_gradient(&positions, &elements, &params).unwrap();
+        let (e_numeric, g_numeric) =
+            compute_reaxff_gradient_numerical(&positions, &elements, &params).unwrap();
+        assert!(
+            (e_analytic - e_numeric).abs() < 1e-9,
+            "energy mismatch: {e_analytic} vs {e_numeric}"
+        );
+        let mut worst = 0.0f64;
+        for (a, b) in g_analytic.iter().zip(&g_numeric) {
+            worst = worst.max((a - b).abs());
+        }
+        assert!(
+            worst < 1e-4,
+            "analytic gradient deviates from central differences by {worst:.3e}"
+        );
     }
 }
