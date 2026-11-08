@@ -10,13 +10,14 @@
 //!
 //! # Stability tier
 //!
-//! **Beta** — tested tier. Gated behind the `beta-kpm` feature flag. The
-//! validation gate is `tests/beta_kpm_validation.rs` (F91): the Chebyshev
-//! moments are compared against exact values, the DOS against
+//! **Core** — promoted from `beta-kpm` on 2026-11-07 after clearing the
+//! three technical criteria: sparse CSR support, <0.1 eV spectral accuracy
+//! against exact diagonalization, and a 5000-site scale demonstration. The
+//! old `sci_form::beta::kpm` path is kept as an alias.
+//!
+//! Validation gate: `tests/beta_kpm_validation.rs` (F91) compares the
+//! Chebyshev moments against exact values, the DOS against
 //! `numpy.linalg.eigh`, and the sparse CSR path against the dense path.
-//! The three promotion criteria (sparse support, <0.1 eV accuracy and
-//! more than 2000 sites) have measured evidence; the API promotion decision is
-//! tracked in [`crate::experimental_status`].
 //!
 //! # Units
 //!

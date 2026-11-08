@@ -1,9 +1,8 @@
 //! Integration tests for Track E4: Kernel Polynomial Method (KPM)
 
-#[cfg(feature = "beta-kpm")]
 mod kpm_tests {
     use nalgebra::{DMatrix, SymmetricEigen};
-    use sci_form::beta::kpm::*;
+    use sci_form::kpm::*;
 
     fn huckel_chain(n: usize, alpha: f64, beta: f64) -> DMatrix<f64> {
         let mut h = DMatrix::zeros(n, n);

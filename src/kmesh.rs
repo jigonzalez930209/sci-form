@@ -3,7 +3,7 @@
 //! Monkhorst-Pack/Gamma k-meshes, Bloch-phase factors, periodic operator
 //! assembly, Brillouin-zone integration, and the EHT band-structure adapter
 //! validated vs ASE and analytic tight-binding chains. The KPM/RandNLA
-//! adapters live in `crate::alpha::periodic_linear` (need `beta-kpm` /
+//! adapters live in `crate::alpha::periodic_linear` (need `kpm` /
 //! `beta-randnla`, still gated); the rest is core.
 
 use nalgebra::DMatrix;

@@ -1577,7 +1577,6 @@ mod gpu_candidate_d4 {
     }
 }
 
-#[cfg(feature = "beta-kpm")]
 mod gpu_candidate_kpm {
     use super::*;
     use nalgebra::DMatrix;
@@ -1595,8 +1594,8 @@ mod gpu_candidate_kpm {
                 }
             }
 
-            let (e_min, e_max) = sci_form::beta::kpm::estimate_spectral_bounds(&h);
-            let config = sci_form::beta::kpm::KpmConfig {
+            let (e_min, e_max) = sci_form::kpm::estimate_spectral_bounds(&h);
+            let config = sci_form::kpm::KpmConfig {
                 order: 48,
                 n_vectors: 16,
                 seed: 42,
@@ -1604,7 +1603,7 @@ mod gpu_candidate_kpm {
             };
 
             let t0 = Instant::now();
-            let _dos = sci_form::beta::kpm::compute_kpm_dos(&h, &config, e_min, e_max, 96);
+            let _dos = sci_form::kpm::compute_kpm_dos(&h, &config, e_min, e_max, 96);
             let elapsed = t0.elapsed();
 
             eprintln!("\n=== KPM DOS (N={}, order={}) ===", n, config.order);

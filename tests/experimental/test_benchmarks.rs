@@ -142,10 +142,9 @@ mod bench_randnla_vs_eht {
 // B2 — EHT Exact vs. KPM (E4): DOS comparison, Mulliken charges
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "beta-kpm")]
 mod bench_kpm_vs_eht {
-    use sci_form::beta::kpm::*;
     use sci_form::eht::solve_eht;
+    use sci_form::kpm::*;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {

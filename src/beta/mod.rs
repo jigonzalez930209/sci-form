@@ -11,7 +11,8 @@
 //!
 //! | Module | Purpose | Promotion criteria |
 //! |--------|---------|-------------------|
-//! | KPM | Kernel Polynomial Method (O(N) DOS) | Wall-clock advantage >2000 atoms, 0.1 eV accuracy |
+//! | KPM | Kernel Polynomial Method (O(N) DOS) | **Promoted to core** (`crate::kpm`); `beta::kpm` is an alias |
+
 //! | MBH | Multi-Basin Hopping (global optimization) | Integrate with UFF/MMFF94, reproduce known minima |
 //! | CPM | Continuous Phase Methods (crystal surfaces) | Validate vs DFT reference, integrate with materials |
 //! | RandNLA | Randomized NLA (fast eigensolvers) | Wire into EHT/SCF, <1% error at rank=N/4 |
@@ -32,8 +33,8 @@
 //! - **RandNLA**: Random projection and Nyström → parallel GPU
 //! - **CPM**: Phase-field PDE solver → grid-parallel compute
 
-#[cfg(feature = "beta-kpm")]
-pub mod kpm;
+/// Backwards-compatible path for the promoted core KPM module.
+pub use crate::kpm;
 
 #[cfg(feature = "beta-mbh")]
 pub mod mbh;

@@ -44,7 +44,7 @@ Validated methods gated by `beta-*` feature flags. API is stable within minor ve
 
 | ID | Module | Feature flag | Description |
 |----|--------|-------------|-------------|
-| B1 | `beta::kpm` | `beta-kpm` | Kernel Polynomial Method — O(N) DOS |
+| B1 | `kpm` (`beta::kpm` alias) | core | Kernel Polynomial Method — O(N) DOS (promoted 2026-11-07) |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian |
 | B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) |
 | B4 | `riemannian` (core, F94) | — | Riemannian PSD cone geometry |

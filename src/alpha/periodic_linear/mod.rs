@@ -7,7 +7,7 @@
 //!
 //! **Alpha** — early research tier. Gated behind the
 //! `alpha-periodic-linear` feature flag (alias: `experimental-periodic-linear`,
-//! which requires the `beta-kpm` and `beta-randnla` solvers). The validation
+//! which requires the core `kpm` solver and the `beta-randnla` solver). The validation
 //! gate is `tests/alpha_periodic_validation.rs` (F88): the k-mesh and band
 //! structure are compared against ASE. Promotion criteria are listed in
 //! [`crate::experimental_status`].
@@ -52,14 +52,14 @@ pub fn compute_periodic_kpm_dos_from_operators(
         return Err("number of operators must match the number of k-points".into());
     }
 
-    let beta_config = crate::beta::kpm::KpmConfig {
+    let beta_config = crate::kpm::KpmConfig {
         order: config.order,
         n_vectors: config.n_vectors,
         seed: config.seed,
         temperature: config.temperature_k,
     };
 
-    let first = crate::beta::kpm::compute_kpm_dos(
+    let first = crate::kpm::compute_kpm_dos(
         &operators[0],
         &beta_config,
         config.e_min_ev,
@@ -70,7 +70,7 @@ pub fn compute_periodic_kpm_dos_from_operators(
     let mut total_dos = vec![0.0; first.total_dos.len()];
 
     for (operator, point) in operators.iter().zip(&kmesh.points) {
-        let result = crate::beta::kpm::compute_kpm_dos(
+        let result = crate::kpm::compute_kpm_dos(
             operator,
             &beta_config,
             config.e_min_ev,

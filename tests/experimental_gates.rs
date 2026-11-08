@@ -33,7 +33,6 @@ mod test_cga;
 #[path = "experimental/test_gsm.rs"]
 mod test_gsm;
 
-#[cfg(feature = "beta-kpm")]
 #[path = "experimental/test_kpm.rs"]
 mod test_kpm;
 

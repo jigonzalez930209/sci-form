@@ -1,7 +1,9 @@
 # E4: Kernel Polynomial Method (KPM)
 
 **Module:** `sci_form::beta::kpm` (gated; F91 validated, promotion pending)
-**Feature flag:** `beta-kpm` (`experimental-kpm` alias)
+**Feature flag:** none — promoted to core on 2026-11-07. `beta-kpm` and
+`experimental-kpm` are retained as compatibility aliases, and
+`sci_form::beta::kpm` re-exports `sci_form::kpm`.
 
 ---
 
@@ -101,7 +103,7 @@ let mulliken = compute_kpm_mulliken(&hamiltonian, &overlap, n_electrons, &config
 
 ## Validation (F91, 2026-10-14)
 
-External gate `tests/beta_kpm_validation.rs --features beta-kpm` vs
+External gate `tests/beta_kpm_validation.rs` vs
 `scripts/validation/oracle_kpm.py` (numpy eigh, GOE + gapped spectra):
 exact moments 3.5e-15, Jackson DOS L2 1.7e-14 (σ=πa/M with Gershgorin `a`;
 Gaussian shape 0.054 irreducible), Mulliken gapped 3.8e-5 / finite-T
@@ -111,7 +113,7 @@ Gap: T=0 on gapless spectra (Gibbs); pybinding uninstallable.
 ## Tests
 
 ```bash
-cargo test --features "beta-cpm beta-kpm" --test experimental_gates -- test_kpm
+cargo test --test experimental_gates -- test_kpm
 ```
 
 9 integration tests (`tests/experimental/test_kpm.rs`) covering: spectral bounds estimation, Chebyshev recursion stability, Jackson kernel positivity, DOS peak detection, band gap identification, and Mulliken charge conservation.

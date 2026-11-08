@@ -101,6 +101,7 @@ alpha-render-bridge = ["experimental-kpm", "experimental-gsm", "experimental-gpu
 alpha-reaction-dynamics = []
 # Beta — tested, approaching core readiness
 # (beta-cpm/F95 and beta-riemannian/F94 core since 2026-10; kept as aliases)
+# KPM is core since 2026-11-07; the feature is retained as a compatibility alias.
 beta-kpm = []
 beta-mbh = []
 beta-cpm = []

@@ -16,11 +16,10 @@ use pyo3::prelude::*;
 
 // ─── B1: KPM ─────────────────────────────────────────────────────────────────
 
-#[cfg(feature = "beta-kpm")]
 mod kpm_py {
     use nalgebra::DMatrix;
     use pyo3::prelude::*;
-    use sci_form_core::beta::kpm::{compute_kpm_dos, compute_kpm_mulliken, KpmConfig};
+    use sci_form_core::kpm::{compute_kpm_dos, compute_kpm_mulliken, KpmConfig};
 
     fn build_eht_matrices(
         elements: &[u8],
@@ -443,7 +442,6 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     m.setattr("__package__", "sci_form")?;
     m.add("__doc__", "Beta-tier experimental modules for sci_form.\n\nThese APIs have passed validation but may still change before stable release.")?;
 
-    #[cfg(feature = "beta-kpm")]
     kpm_py::register(&m)?;
     #[cfg(feature = "beta-mbh")]
     mbh_py::register(&m)?;

@@ -7,10 +7,8 @@
 //! (bounds-independent, 1e-9), Jackson DOS curve vs Gaussian-broadened
 //! exact DOS (L2 ≤ 5%), Mulliken charges vs projector reference.
 
-#![cfg(feature = "beta-kpm")]
-
 use nalgebra::DMatrix;
-use sci_form::beta::kpm::{
+use sci_form::kpm::{
     compute_kpm_dos, compute_kpm_mulliken, jackson_kernel, ChebyshevExpansion, KpmConfig,
 };
 
@@ -305,7 +303,7 @@ fn f91_kpm_scale_matches_diagonalization() {
 /// would need 200 MB and a dense Chebyshev recursion.
 #[test]
 fn f91_sparse_kpm_matches_dense_and_scales() {
-    use sci_form::beta::kpm::{compute_kpm_dos_sparse, SparseMatrix};
+    use sci_form::kpm::{compute_kpm_dos_sparse, SparseMatrix};
     use std::time::Instant;
 
     fn chain(n: usize) -> SparseMatrix {

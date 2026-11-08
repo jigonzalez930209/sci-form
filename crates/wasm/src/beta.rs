@@ -47,14 +47,13 @@ fn build_eht_matrices(
 /// { "energies": [...], "total_dos": [...], "e_min": -30.0, "e_max": 5.0,
 ///   "order": 100 }
 /// ```
-#[cfg(feature = "beta-kpm")]
 #[wasm_bindgen]
 pub fn beta_compute_kpm_dos(
     elements_json: &str,
     coords_flat_json: &str,
     config_json: &str,
 ) -> String {
-    use sci_form::beta::kpm::{compute_kpm_dos, KpmConfig};
+    use sci_form::kpm::{compute_kpm_dos, KpmConfig};
 
     let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
         Ok(v) => v,
@@ -105,10 +104,9 @@ pub fn beta_compute_kpm_dos(
 /// Compute EHT Mulliken populations using KPM (O(N) stochastic trace).
 ///
 /// Returns JSON: `{ "mulliken_charges": [...], "orbital_populations": [...] }`
-#[cfg(feature = "beta-kpm")]
 #[wasm_bindgen]
 pub fn beta_compute_kpm_mulliken(elements_json: &str, coords_flat_json: &str) -> String {
-    use sci_form::beta::kpm::{compute_kpm_mulliken, KpmConfig};
+    use sci_form::kpm::{compute_kpm_mulliken, KpmConfig};
 
     let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
         Ok(v) => v,

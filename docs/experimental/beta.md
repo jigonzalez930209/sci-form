@@ -10,7 +10,7 @@
 
 | ID | Module | Feature flag | Description |
 |----|--------|-------------|-------------|
-| B1 | `beta::kpm` | `beta-kpm` | Kernel Polynomial Method — O(N) DOS |
+| B1 | `kpm` (`beta::kpm` alias) | core | Kernel Polynomial Method — O(N) DOS (promoted 2026-11-07) |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian vibrational analysis |
 | B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT — O(N k²) diagonalization |
 | B4 | `riemannian` (core, F94) | — | Riemannian geometry on the PSD cone |
@@ -18,7 +18,10 @@
 
 ---
 
-## B1 — Kernel Polynomial Method (`beta-kpm`)
+## B1 — Kernel Polynomial Method (core `kpm`, `beta-kpm` alias)
+
+> Promoted to core on 2026-11-07. Use `sci_form::kpm`; the old
+> `sci_form::beta::kpm` path remains as an alias.
 
 **Module:** `sci_form::beta::kpm` (gated; F91 validated 2026-10-14: moments 3.5e-15, DOS 1.7e-14, Mulliken; pybinding gap)
 

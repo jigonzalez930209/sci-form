@@ -5,7 +5,7 @@
 //!
 //! # Stability tier
 //!
-//! **Beta** — gated behind the `beta-kpm` feature flag; the validation gate
+//! **Core** — promoted from `beta-kpm` on 2026-11-07; the validation gate
 //! is `tests/beta_kpm_validation.rs` (F91).
 //!
 //! # Units

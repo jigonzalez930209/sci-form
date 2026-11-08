@@ -19,10 +19,9 @@
 //! These gates back the "benchmarking frente a rutas estables" and
 //! "validación cuantitativa por submódulo" backlog items.
 
-#[cfg(feature = "beta-kpm")]
 mod kpm_vs_diagonalization {
     use nalgebra::{DMatrix, SymmetricEigen};
-    use sci_form::beta::kpm::{compute_kpm_dos, KpmConfig};
+    use sci_form::kpm::{compute_kpm_dos, KpmConfig};
 
     fn huckel_chain(n: usize, alpha: f64, beta: f64) -> DMatrix<f64> {
         let mut h = DMatrix::zeros(n, n);

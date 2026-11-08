@@ -115,7 +115,8 @@
 //! | `parallel` | rayon-parallel batch APIs (default **on**) |
 //! | `experimental-gpu`, `experimental-gpu-rendering` | the `gpu` compute / mesh rendering backends |
 //! | `alpha-cga`, `alpha-gsm`, `alpha-sdr`, `alpha-edl`, `alpha-periodic-linear`, `alpha-kinetics`, `alpha-render-bridge`, `alpha-reaction-dynamics` | the `alpha` research modules |
-//! | `beta-kpm`, `beta-mbh`, `beta-cpm`, `beta-randnla`, `beta-riemannian` | the `beta` modules |
+//! | `beta-mbh`, `beta-cpm`, `beta-randnla`, `beta-riemannian` | the `beta` modules |
+//! | `beta-kpm` | legacy alias only: KPM is now core (`kpm`) |
 //! | `alpha-dft` | the `dft` module |
 //! | `alpha-dynamics-live` | the `dynamics_live` module |
 //! | `alpha-mlff` | the `mlff` re-export module |
@@ -208,6 +209,7 @@ pub mod hf;
 pub mod imd;
 pub mod ir;
 pub mod kmesh;
+pub mod kpm;
 pub mod materials;
 pub mod mesh;
 pub mod method;
@@ -260,7 +262,6 @@ pub mod xtb;
 pub mod alpha;
 
 #[cfg(any(
-    feature = "beta-kpm",
     feature = "beta-mbh",
     feature = "beta-cpm",
     feature = "beta-randnla",
