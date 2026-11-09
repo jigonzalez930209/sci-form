@@ -129,7 +129,7 @@ aliases of `predict_ml_properties` and `compute_ml_descriptors`).
 function version(): string
 ```
 
-Returns `"sci-form 1.0.0"`.
+Returns `"sci-form 2.0.0"`.
 
 ### `alpha_modules_info` / `beta_modules_info`
 

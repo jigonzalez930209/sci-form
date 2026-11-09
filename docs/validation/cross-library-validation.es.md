@@ -8,7 +8,7 @@
 >
 > **Fecha de redacción:** 2026-10-11 · **Versión auditada:** `sci-form 0.15.2` (`Cargo.toml`)
 >
-> **Estado actual (2026-11-07):** la campaña sigue vigente sobre `sci-form 1.0.0`.
+> **Estado actual (2026-11-09):** la campaña sigue vigente sobre `sci-form 2.0.0`.
 > Los 38 gates de `tests/cross_validation.rs` y las 44 fichas alpha/beta están
 > verdes. Los recuentos `739/739` y `827/827` de §14.4 son históricos de la
 > fecha de esa campaña; la suite actual es 1022/1022 con el feature set de CI.
@@ -2150,7 +2150,7 @@ externa; los gated van muy por debajo:
 ---
 
 *Documento histórico iniciado con `sci-form 0.15.2` (2026-10-11); actualizado a
-`sci-form 1.0.0` el 2026-11-07. Mantener sincronizado con `TESTING.md`
+`sci-form 2.0.0` el 2026-11-09. Mantener sincronizado con `TESTING.md`
 (comandos y suites existentes), `docs/algorithm/quantum-validation-roadmap.md` (estado de los
 métodos semi-empíricos) y `docs/algorithm/validation.md` (checks geométricos internos).*
 

@@ -6,7 +6,7 @@ the summary below records the substantive work that landed in each release line.
 Future releases should append new sections here so this file remains the maintained,
 human-written changelog for the repository.
 
-## v2.0.0 - 2026-11-08
+## v2.0.0 - 2026-11-09
 
 ### Breaking changes
 

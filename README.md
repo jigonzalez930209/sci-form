@@ -501,7 +501,7 @@ Use the provided bump script. It updates all version strings, commits, tags, and
 ./scripts/bump_version.sh
 
 # Set a specific version
-./scripts/bump_version.sh 1.1.0
+./scripts/bump_version.sh 2.0.1
 ```
 
 This updates versions in:

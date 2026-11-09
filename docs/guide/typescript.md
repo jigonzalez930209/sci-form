@@ -172,7 +172,7 @@ Returns the canonical SMILES as a plain string, e.g. `"BrC(Cl)(F)I"`.
 
 ```typescript
 import { version } from 'sci-form-wasm';
-console.log(version()); // "sci-form 1.0.0"
+console.log(version()); // "sci-form 2.0.0"
 ```
 
 ## Browser usage

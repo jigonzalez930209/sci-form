@@ -92,8 +92,8 @@ for atom in info.atoms:
 ### `version() → str`
 
 ```python
-print(sci_form.version())         # "sci-form 1.0.0"
-print(sci_form.__version__)       # "1.0.0"
+print(sci_form.version())         # "sci-form 2.0.0"
+print(sci_form.__version__)       # "2.0.0"
 ```
 
 ## ConformerResult

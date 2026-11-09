@@ -298,7 +298,7 @@ sci-form info
 
 ```bash
 $ sci-form info
-sci-form 1.0.0
+sci-form 2.0.0
 Features: ETKDG distance geometry, CSD torsion patterns, SMARTS matching
   EHT, PM3, xTB, GFN1, GFN2, HF-3c, ANI, Gasteiger charges, SASA, ESP,
    DOS, MMFF94, UFF, stereochemistry, solvation, SSSR, ECFP, Tanimoto, cell, MOF assembly

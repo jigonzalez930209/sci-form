@@ -9,8 +9,8 @@ pip install sciforma
 ```python
 import sci_form
 
-print(sci_form.__version__)   # "1.0.0"
-print(sci_form.version())      # "sci-form 1.0.0"
+print(sci_form.__version__)   # "2.0.0"
+print(sci_form.version())      # "sci-form 2.0.0"
 ```
 
 ---
@@ -126,8 +126,8 @@ message, and a NaN is never returned.
 
 | Name | Type | Description |
 |---|---|---|
-| `sci_form.__version__` | `str` | Crate version, e.g. `"1.0.0"` |
-| `version` | `str` | `"sci-form 1.0.0"` (also available as `sci_form.version()`) |
+| `sci_form.__version__` | `str` | Crate version, e.g. `"2.0.0"` |
+| `version` | `str` | `"sci-form 2.0.0"` (also available as `sci_form.version()`) |
 | `sci_form.NotConvergedError` | exception | Subclass of `RuntimeError` |
 
 ---
