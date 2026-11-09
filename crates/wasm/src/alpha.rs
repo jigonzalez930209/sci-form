@@ -775,7 +775,7 @@ pub fn alpha_modules_info() -> String {
 // ─── RENDER BRIDGE (charts / trajectories / transport) ─────────────────────
 //
 // Thin JSON wrappers over the Rust chart generators in
-// `sci_form::alpha::render_bridge`. Each one is gated on the feature that
+// `sci_form::render_bridge`. Each one is gated on the feature that
 // provides its input type, mirroring the Rust-side `cfg`s.
 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
@@ -788,7 +788,7 @@ pub fn alpha_render_edl_profile_chart(profile_json: &str) -> String {
     use sci_form::alpha::edl::EdlProfileResult;
     match serde_json::from_str::<EdlProfileResult>(profile_json) {
         Ok(profile) => {
-            let chart = sci_form::alpha::render_bridge::edl_profile_chart(&profile);
+            let chart = sci_form::render_bridge::edl_profile_chart(&profile);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
         Err(e) => json_error(&bad_json("'EdlProfileResult'", profile_json, &e)),
@@ -805,7 +805,7 @@ pub fn alpha_render_capacitance_scan_chart(scan_json: &str) -> String {
     use sci_form::alpha::edl::CpmEdlScanResult;
     match serde_json::from_str::<CpmEdlScanResult>(scan_json) {
         Ok(scan) => {
-            let chart = sci_form::alpha::render_bridge::capacitance_scan_chart(&scan);
+            let chart = sci_form::render_bridge::capacitance_scan_chart(&scan);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
         Err(e) => json_error(&bad_json("'CpmEdlScanResult'", scan_json, &e)),
@@ -822,7 +822,7 @@ pub fn alpha_render_periodic_dos_chart(dos_json: &str) -> String {
     use sci_form::periodic_linear::PeriodicKpmDosResult;
     match serde_json::from_str::<PeriodicKpmDosResult>(dos_json) {
         Ok(dos) => {
-            let chart = sci_form::alpha::render_bridge::periodic_dos_chart(&dos);
+            let chart = sci_form::render_bridge::periodic_dos_chart(&dos);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
         Err(e) => json_error(&bad_json("'PeriodicKpmDosResult'", dos_json, &e)),
@@ -839,7 +839,7 @@ pub fn alpha_render_band_structure_chart(bs_json: &str) -> String {
     use sci_form::periodic_linear::BandStructureAdapterResult;
     match serde_json::from_str::<BandStructureAdapterResult>(bs_json) {
         Ok(bs) => {
-            let chart = sci_form::alpha::render_bridge::band_structure_chart(&bs);
+            let chart = sci_form::render_bridge::band_structure_chart(&bs);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
         Err(e) => json_error(&bad_json("'BandStructureAdapterResult'", bs_json, &e)),
@@ -856,7 +856,7 @@ pub fn alpha_render_microkinetic_population_chart(trace_json: &str) -> String {
     use sci_form::kinetics::MicrokineticTrace;
     match serde_json::from_str::<MicrokineticTrace>(trace_json) {
         Ok(trace) => {
-            let chart = sci_form::alpha::render_bridge::microkinetic_population_chart(&trace);
+            let chart = sci_form::render_bridge::microkinetic_population_chart(&trace);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
         Err(e) => json_error(&bad_json("'MicrokineticTrace'", trace_json, &e)),
@@ -873,7 +873,7 @@ pub fn alpha_render_arrhenius_chart(results_json: &str) -> String {
     use sci_form::kinetics::ElementaryRateResult;
     match serde_json::from_str::<Vec<ElementaryRateResult>>(results_json) {
         Ok(results) => {
-            let chart = sci_form::alpha::render_bridge::arrhenius_chart(&results);
+            let chart = sci_form::render_bridge::arrhenius_chart(&results);
             serde_json::to_string(&chart).unwrap_or_else(|e| json_error(&e.to_string()))
         }
         Err(e) => json_error(&bad_json("'ElementaryRateResult'", results_json, &e)),
@@ -896,7 +896,7 @@ pub fn alpha_render_gsm_path_trajectory(coords_json: &str, energies_json: &str) 
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'energies'", energies_json, &e)),
     };
-    let frames = sci_form::alpha::render_bridge::gsm_path_trajectory(&coords, &energies);
+    let frames = sci_form::render_bridge::gsm_path_trajectory(&coords, &energies);
     serde_json::to_string(&frames).unwrap_or_else(|e| json_error(&e.to_string()))
 }
 
@@ -907,10 +907,10 @@ pub fn alpha_render_gsm_path_trajectory(coords_json: &str, energies_json: &str) 
 /// @param chart_json  JSON `ChartPayload`
 /// @returns JSON packed batch
 pub fn alpha_render_pack_chart_payload(chart_json: &str) -> String {
-    use sci_form::alpha::render_bridge::ChartPayload;
+    use sci_form::render_bridge::ChartPayload;
     match serde_json::from_str::<ChartPayload>(chart_json) {
         Ok(chart) => {
-            let batch = sci_form::alpha::render_bridge::pack_chart_payload(&chart);
+            let batch = sci_form::render_bridge::pack_chart_payload(&chart);
             serde_json::to_string(&batch).unwrap_or_else(|e| json_error(&e.to_string()))
         }
         Err(e) => json_error(&bad_json("'ChartPayload'", chart_json, &e)),
@@ -925,9 +925,9 @@ pub fn alpha_render_pack_chart_payload(chart_json: &str) -> String {
 /// @param tol  Comparison tolerance
 /// @returns `true` when the round trip is lossless within `tol`
 pub fn alpha_render_verify_chart_round_trip(chart_json: &str, tol: f64) -> bool {
-    use sci_form::alpha::render_bridge::ChartPayload;
+    use sci_form::render_bridge::ChartPayload;
     match serde_json::from_str::<ChartPayload>(chart_json) {
-        Ok(chart) => sci_form::alpha::render_bridge::verify_chart_round_trip(&chart, tol),
+        Ok(chart) => sci_form::render_bridge::verify_chart_round_trip(&chart, tol),
         Err(_) => false,
     }
 }

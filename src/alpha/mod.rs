@@ -15,7 +15,7 @@
 //! | EDL | Electrochemical double layer | core `crate::edl`; `alpha::edl` alias |
 //! | PeriodicLinear | Periodic adapters (KPM/RandNLA) | core `crate::periodic_linear`; alias |
 //! | Kinetics | HTST and microkinetic networks | core `crate::kinetics`; alias |
-//! | RenderBridge | Chart builders | core payloads + gated domain builders |
+//! | RenderBridge | Chart builders | core `crate::render_bridge`; `alpha::render_bridge` alias |
 //! | ReactionDynamics | Full 3D reaction path | gated; self-consistency only |
 //!
 //! ## Usage

@@ -36,7 +36,7 @@ pub fn pack_charts_gpu(ctx: &GpuContext, charts: &[ChartPayload]) -> Vec<RecordB
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alpha::render_bridge::ChartSeries;
+    use crate::render_bridge::ChartSeries;
 
     #[test]
     fn gpu_pack_falls_back_to_cpu() {

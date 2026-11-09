@@ -22,7 +22,7 @@
 | A10 | `edl` (core, F86) | — | Electrochemical double-layer models |
 | A11 | `periodic_linear` (core) | `alpha-periodic-linear` alias | Periodic k-mesh, Bloch-phase, and linear-scaling spectral contracts |
 | A12 | `kinetics` (core) | `alpha-kinetics` alias | HTST and microkinetic contracts with CPU reference rates |
-| A13 | `render_bridge` (core base, F90) | — | Chart/trajectory payloads (domain builders stay alpha) |
+| A13 | `render_bridge` (core, F90) | `alpha-render-bridge` alias | Chart/trajectory payloads and domain builders |
 | A14 | `alpha::reaction_dynamics` | `alpha-reaction-dynamics` (**Rust core only**) | 3D reaction path: approach frames, CI-NEB images and departure frames |
 
 ---
@@ -603,7 +603,7 @@ sci-form htst-rate --activation 0.45 --reaction -0.10 --temperature 298.15
 ---
 
 ## A13 — Render Bridge (`alpha-render-bridge`)
-**Module:** base in `sci_form::render_bridge` (core, F90) + domain builders gated in alpha
+**Module:** `sci_form::render_bridge` (core since 2026-11-08, F90); `alpha::render_bridge` alias
 
 Defines solver-agnostic payloads for charts, traces, and trajectory visualizations. Shared chart generator for EDL profiles, band structures, microkinetic population traces, Arrhenius plots, and capacitance scans. Converts computed results into Arrow RecordBatch format for transport to web frontends or Jupyter notebooks.
 

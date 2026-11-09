@@ -98,7 +98,7 @@ alpha-imd = []
 alpha-edl = ["experimental-cpm", "experimental-eeq", "experimental-alpb"]
 alpha-periodic-linear = []
 alpha-kinetics = ["beta-mbh"]
-alpha-render-bridge = ["experimental-gpu-rendering"]
+alpha-render-bridge = []
 alpha-reaction-dynamics = []
 # Beta — tested, approaching core readiness
 # (beta-cpm/F95 and beta-riemannian/F94 core since 2026-10; kept as aliases)

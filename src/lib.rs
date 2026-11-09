@@ -114,7 +114,8 @@
 //! |---|---|
 //! | `parallel` | rayon-parallel batch APIs (default **on**) |
 //! | `experimental-gpu`, `experimental-gpu-rendering` | the `gpu` compute / mesh rendering backends |
-//! | `alpha-cga`, `alpha-sdr`, `alpha-edl`, `alpha-render-bridge`, `alpha-reaction-dynamics` | legacy aliases / remaining `alpha` modules |
+//! | `alpha-cga`, `alpha-sdr`, `alpha-edl`, `alpha-render-bridge` | legacy aliases only: those modules are core |
+//! | `alpha-reaction-dynamics` | the remaining gated reaction-dynamics module |
 //! | `alpha-gsm`, `alpha-kinetics`, `alpha-periodic-linear`, `alpha-dynamics-live` | compatibility aliases only: GSM, kinetics, periodic-linear adapters and `dynamics_live` are core |
 //! | `beta-mbh` | the remaining gated beta module (Multi-Basin Hopping) |
 //! | `beta-cpm`, `beta-riemannian` | legacy aliases only: CPM and Riemannian are core |

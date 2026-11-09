@@ -39,7 +39,7 @@
 //! | IMD steering | `imd` | Harmonic E/F analytic 1.1e-13 (F85) |
 //! | EDL | `edl` | GC/GCS/Helmholtz analytic 2e-14 (F86) |
 //! | k-mesh/Bloch | `kmesh` | ASE meshes + chain bands 4.4e-16 (F88); periodic KPM/RandNLA adapters live in core `periodic_linear` |
-//! | Chart payloads | `render_bridge` | JSON Schema + pack round-trip (F90; domain builders stay alpha) |
+//! | Chart payloads/builders | `render_bridge` | JSON Schema + pack round-trip (F90); EDL/kinetics/periodic/GSM domain builders are core |
 //! | Riemannian PSD | `riemannian` | Projection/optimizer vs scipy (F94; Frobenius proxy documented); tetrahedron Gram recovery 6.0e-9 (`tests/beta_benchmarks.rs`) |
 //! | CPM | `cpm` | Constant-potential electrochemistry vs LAMMPS `electrode/conp` (F95); two-site closed form 1.3e-15 (`tests/beta_benchmarks.rs`) |
 //! | ReaxFF | `forcefield::reaxff` | Bond orders vs LAMMPS (F78) + analytical gradients (2026-11-08) |
@@ -286,7 +286,6 @@
 //! | Kohn–Sham DFT | `alpha-dft` | `src/dft/` | `tests/alpha_dft_pyscf.rs` (F77) | E ≤ 1 mHa vs PySCF; `coulomb_energy` is still 0.0 and the ECP path is unfitted |
 //! | ML force field | `alpha-mlff` | `src/ml/{mlff,symmetry_functions}.rs` | `tests/alpha_mlff_validation.rs` (F79) | AEV vs a numpy BP oracle; no trained weights, no MD17/SPICE benchmark |
 //! | Reaction dynamics | `alpha-reaction-dynamics` | `src/alpha/reaction_dynamics/` | `tests/alpha_reaction_dynamics_3d.rs` | self-consistency only; no ASE NEB parity |
-//! | Render-bridge builders | `alpha-render-bridge` | `src/alpha/render_bridge/` | `tests/alpha_render_validation.rs` (F90) | JSON Schema 2020-12 |
 //!
 //! ### EXP-207: GPU acceleration
 //!

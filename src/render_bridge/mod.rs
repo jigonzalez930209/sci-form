@@ -11,6 +11,13 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod builders;
+
+#[cfg(feature = "experimental-gpu")]
+pub mod gpu;
+
+pub use builders::*;
+
 use crate::transport::arrow::RecordBatch;
 /// One XY series payload for charts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

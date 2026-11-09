@@ -523,7 +523,7 @@ fn integrated_charge_c_per_m2(profile: &sci_form::alpha::edl::EdlProfileResult) 
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-edl"))]
 pub fn cmd_edl_chart(surface_potential_v: f64, ionic_strength_m: f64) {
     use sci_form::alpha::edl::*;
-    use sci_form::alpha::render_bridge::edl_profile_chart;
+    use sci_form::render_bridge::edl_profile_chart;
     let config = EdlConfig {
         model: EdlModel::GouyChapman,
         ionic_strength_m,
@@ -640,8 +640,8 @@ pub fn cmd_thermal_prop_chart(
     reaction_free_energy_ev: f64,
     temperatures_str: &str,
 ) {
-    use sci_form::alpha::render_bridge::arrhenius_chart;
     use sci_form::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
+    use sci_form::render_bridge::arrhenius_chart;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let temperatures: Vec<f64> = serde_json::from_str(temperatures_str).unwrap_or_else(|e| {
         eprintln!("Failed to parse temperatures: {}", e);
@@ -740,8 +740,8 @@ pub fn cmd_band_structure_chart(
     lattice: &str,
     n_kpoints_per_segment: usize,
 ) {
-    use sci_form::alpha::render_bridge::band_structure_chart;
     use sci_form::periodic_linear::*;
+    use sci_form::render_bridge::band_structure_chart;
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let lattice_values: Vec<f64> = serde_json::from_str(lattice).unwrap_or_else(|e| {
         crate::format::fail(crate::format::bad_json("'lattice'", lattice, &e));
@@ -778,10 +778,10 @@ pub fn cmd_band_structure_chart(
 /// Generate a DOS chart.
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 pub fn cmd_dos_chart(energies_str: &str, dos_str: &str) {
-    use sci_form::alpha::render_bridge::periodic_dos_chart;
     use sci_form::periodic_linear::{
         PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
     };
+    use sci_form::render_bridge::periodic_dos_chart;
     let energies: Vec<f64> = serde_json::from_str(energies_str).unwrap_or_else(|e| {
         eprintln!("Failed to parse energies: {}", e);
         std::process::exit(1);

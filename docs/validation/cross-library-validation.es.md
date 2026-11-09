@@ -995,7 +995,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/alpha/reaction_dynamics/*` (11 archivos), CLI `neb-*`, `simplified-neb-path`.
 - Criterio: barrera ± 1 kcal/mol vs ASE NEB con el mismo motor; camino sin discontinuidades; IRC asimétrico correcto; sitios reactivos = mapeo SMIRKS en 100 %.
 
-**A14 (F90) · Puente de render/charts (`alpha::render_bridge::*`, CLI `*-chart`, `validate_chart_schema`)**
+**A14 (F90) · Puente de render/charts (`render_bridge::*`, CLI `*-chart`, `validate_chart_schema`)**
 - Referencia probada: **JSON Schema** (draft 2020-12) para validar payloads y **Vega-Lite/Plotly** como consumidores de referencia; los charts del repo se validan contra su propio esquema versionado.
 - Test equivalente: round-trip `chart_to_json → chart_from_json` bit-exacto; validación contra el esquema (`ajv` o `jsonschema`); comparación de payloads GPU vs CPU; verificación de los campos temporales/etiquetas.
 - Datasets: `tests/regression/test_gpu_candidates.rs` y `tests/integration/compare_webgpu_reports.js` para los charts GPU; sin descargas externas.

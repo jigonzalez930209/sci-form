@@ -1481,7 +1481,7 @@ mod alpha_edl_chart_py {
         ionic_strength_m: f64,
     ) -> PyResult<ChartPayloadPy> {
         use sci_form_core::alpha::edl::*;
-        use sci_form_core::alpha::render_bridge::edl_profile_chart;
+        use sci_form_core::render_bridge::edl_profile_chart;
         let config = EdlConfig {
             model: EdlModel::GouyChapman,
             ionic_strength_m,
@@ -1636,8 +1636,8 @@ mod alpha_kinetics_chart_py {
         prefactor_s_inv: Option<f64>,
         step_id: &str,
     ) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::render_bridge::arrhenius_chart as core_arrhenius_chart;
         use sci_form_core::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
+        use sci_form_core::render_bridge::arrhenius_chart as core_arrhenius_chart;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let step = ElementaryStep {
             step_id: step_id.to_string(),
@@ -1759,8 +1759,8 @@ mod alpha_periodic_chart_py {
         lattice: Vec<f64>,
         n_kpoints_per_segment: usize,
     ) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::render_bridge::band_structure_chart as build_chart;
         use sci_form_core::periodic_linear::*;
+        use sci_form_core::render_bridge::band_structure_chart as build_chart;
         if !coords.len().is_multiple_of(3) {
             return Err(crate::errors::value_error(
                 "coords length must be a multiple of three",
@@ -1785,10 +1785,10 @@ mod alpha_periodic_chart_py {
     #[pyfunction]
     #[pyo3(signature = (energies, dos_values))]
     pub fn compute_dos_chart(energies: Vec<f64>, dos_values: Vec<f64>) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::render_bridge::periodic_dos_chart as build_chart;
         use sci_form_core::periodic_linear::{
             PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
         };
+        use sci_form_core::render_bridge::periodic_dos_chart as build_chart;
         let dos_result = PeriodicKpmDosResult {
             energies_ev: energies,
             total_dos: dos_values,

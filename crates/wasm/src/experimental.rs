@@ -1501,7 +1501,7 @@ pub fn compute_gcs_profile(
 #[wasm_bindgen]
 pub fn compute_edl_chart(surface_potential_v: f64, ionic_strength_m: f64) -> String {
     use sci_form::alpha::edl::*;
-    use sci_form::alpha::render_bridge::edl_profile_chart;
+    use sci_form::render_bridge::edl_profile_chart;
     let config = EdlConfig {
         model: EdlModel::GouyChapman,
         ionic_strength_m,
@@ -1639,8 +1639,8 @@ pub fn compute_thermal_prop_chart(
     reaction_free_energy_ev: f64,
     temperatures_json: &str,
 ) -> String {
-    use sci_form::alpha::render_bridge::arrhenius_chart;
     use sci_form::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
+    use sci_form::render_bridge::arrhenius_chart;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let temperatures: Vec<f64> = match serde_json::from_str(temperatures_json) {
         Ok(v) => v,
@@ -1744,8 +1744,8 @@ pub fn compute_band_structure_chart(
     lattice_json: &str,
     n_kpoints_per_segment: usize,
 ) -> String {
-    use sci_form::alpha::render_bridge::band_structure_chart;
     use sci_form::periodic_linear::*;
+    use sci_form::render_bridge::band_structure_chart;
     let elements: Vec<u8> = match serde_json::from_str(elements_json) {
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'elements'", elements_json, &e)),
@@ -1781,10 +1781,10 @@ pub fn compute_band_structure_chart(
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 #[wasm_bindgen]
 pub fn compute_dos_chart(energies_json: &str, dos_json: &str) -> String {
-    use sci_form::alpha::render_bridge::periodic_dos_chart;
     use sci_form::periodic_linear::{
         PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
     };
+    use sci_form::render_bridge::periodic_dos_chart;
     let energies: Vec<f64> = match serde_json::from_str(energies_json) {
         Ok(v) => v,
         Err(e) => return json_error(&e.to_string()),

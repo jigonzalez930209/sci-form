@@ -1,35 +1,15 @@
-//! Alpha render-bridge domain builders (EDL/kinetics/periodic/GSM charts).
+//! Render-bridge domain builders (EDL/kinetics/periodic/GSM charts).
 //!
-//! Generic payloads live in core [`crate::render_bridge`] (re-exported below).
-//!
-//! # Stability tier
-//!
-//! **Alpha** — early research tier. Gated behind the `alpha-render-bridge`
-//! feature flag (alias: `experimental-render-bridge`, which requires
-//! `experimental-kpm` and `experimental-gsm`). The validation gate is
-//! `tests/alpha_render_validation.rs` (F90): the payloads are checked against
-//! JSON Schema 2020-12 and the packing round-trip. Promotion criteria are
-//! listed in [`crate::experimental_status`].
+//! Generic payloads live in the parent module; these builders turn solver
+//! results into [`ChartPayload`](super::ChartPayload) and Arrow-style batches.
+//! Core since 2026-11-08 (F90: JSON Schema 2020-12 + packing round-trip).
 
-#[cfg(feature = "experimental-gpu")]
-pub mod gpu;
-
-pub use crate::render_bridge::*;
-
-#[cfg(any(
-    feature = "alpha-kinetics",
-    feature = "alpha-edl",
-    feature = "alpha-periodic-linear"
-))]
+use super::*;
+use crate::edl::{CpmEdlScanResult, EdlProfileResult};
+use crate::kinetics::{ElementaryRateResult, MicrokineticTrace};
+use crate::kmesh::{BandStructureAdapterResult, PeriodicKpmDosResult};
 use crate::transport::arrow::RecordBatch;
 
-#[cfg(feature = "alpha-edl")]
-use crate::edl::{CpmEdlScanResult, EdlProfileResult};
-#[cfg(feature = "alpha-kinetics")]
-use crate::kinetics::{ElementaryRateResult, MicrokineticTrace};
-#[cfg(feature = "alpha-periodic-linear")]
-use crate::kmesh::{BandStructureAdapterResult, PeriodicKpmDosResult};
-#[cfg(feature = "alpha-edl")]
 /// Convert an EDL profile into a standard chart payload.
 pub fn edl_profile_chart(profile: &EdlProfileResult) -> ChartPayload {
     ChartPayload {
@@ -55,7 +35,6 @@ pub fn edl_profile_chart(profile: &EdlProfileResult) -> ChartPayload {
     }
 }
 
-#[cfg(feature = "alpha-periodic-linear")]
 /// Convert a periodic DOS result into a standard chart payload.
 pub fn periodic_dos_chart(result: &PeriodicKpmDosResult) -> ChartPayload {
     ChartPayload {
@@ -71,7 +50,6 @@ pub fn periodic_dos_chart(result: &PeriodicKpmDosResult) -> ChartPayload {
     }
 }
 
-#[cfg(feature = "alpha-kinetics")]
 /// Convert a microkinetic trace into one series per species.
 pub fn microkinetic_population_chart(trace: &MicrokineticTrace) -> ChartPayload {
     let Some(first_frame) = trace.frames.first() else {
@@ -111,7 +89,6 @@ pub fn microkinetic_population_chart(trace: &MicrokineticTrace) -> ChartPayload 
     }
 }
 
-#[cfg(feature = "alpha-edl")]
 /// Convert a CPM capacitance scan into a chart payload.
 pub fn capacitance_scan_chart(scan: &CpmEdlScanResult) -> ChartPayload {
     ChartPayload {
@@ -137,7 +114,6 @@ pub fn capacitance_scan_chart(scan: &CpmEdlScanResult) -> ChartPayload {
     }
 }
 
-#[cfg(feature = "alpha-kinetics")]
 /// Convert HTST temperature sweep results into an Arrhenius chart.
 pub fn arrhenius_chart(results: &[ElementaryRateResult]) -> ChartPayload {
     let x: Vec<f64> = results
@@ -159,7 +135,6 @@ pub fn arrhenius_chart(results: &[ElementaryRateResult]) -> ChartPayload {
     }
 }
 
-#[cfg(feature = "alpha-periodic-linear")]
 /// Convert a band-structure result into a multi-series chart (one series per band).
 pub fn band_structure_chart(bs: &BandStructureAdapterResult) -> ChartPayload {
     let mut series = Vec::with_capacity(bs.n_bands.min(20)); // limit to 20 bands for display
@@ -229,7 +204,6 @@ pub fn build_full_render_payload(
 
 // ── Transport pack helpers ──────────────────────────────────────────────────
 
-#[cfg(feature = "alpha-edl")]
 /// Pack an EDL profile into an Arrow-style `RecordBatch` for typed-array transport.
 pub fn pack_edl_profile(profile: &EdlProfileResult) -> RecordBatch {
     let n = profile.distance_axis_angstrom.len();
@@ -252,7 +226,6 @@ pub fn pack_edl_profile(profile: &EdlProfileResult) -> RecordBatch {
     batch
 }
 
-#[cfg(feature = "alpha-periodic-linear")]
 /// Pack periodic KPM DOS into a `RecordBatch`.
 pub fn pack_periodic_dos(result: &PeriodicKpmDosResult) -> RecordBatch {
     let n = result.energies_ev.len();
@@ -262,7 +235,6 @@ pub fn pack_periodic_dos(result: &PeriodicKpmDosResult) -> RecordBatch {
     batch
 }
 
-#[cfg(feature = "alpha-kinetics")]
 /// Pack an Arrhenius temperature sweep into a `RecordBatch`.
 pub fn pack_arrhenius(results: &[ElementaryRateResult]) -> RecordBatch {
     let n = results.len();
@@ -285,7 +257,6 @@ pub fn pack_arrhenius(results: &[ElementaryRateResult]) -> RecordBatch {
     batch
 }
 
-#[cfg(feature = "alpha-kinetics")]
 /// Pack a microkinetic trace into a `RecordBatch` (time column + one per species).
 pub fn pack_microkinetic_trace(trace: &MicrokineticTrace) -> RecordBatch {
     let n = trace.frames.len();
@@ -316,10 +287,8 @@ pub fn pack_microkinetic_trace(trace: &MicrokineticTrace) -> RecordBatch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "alpha-kinetics")]
     use crate::kinetics::{MicrokineticFrame, SpeciesPopulation};
 
-    #[cfg(feature = "alpha-kinetics")]
     #[test]
     fn microkinetic_chart_emits_one_series_per_species() {
         let chart = microkinetic_population_chart(&MicrokineticTrace {
@@ -358,7 +327,6 @@ mod tests {
         assert_eq!(chart.series[0].x.len(), 2);
     }
 
-    #[cfg(feature = "alpha-kinetics")]
     #[test]
     fn arrhenius_chart_produces_linear_plot() {
         use crate::kinetics::{ElementaryRateResult, ThermodynamicState};
@@ -397,7 +365,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "alpha-kinetics")]
     #[test]
     fn gsm_path_trajectory_correct_frame_count() {
         let coords = vec![
@@ -467,7 +434,6 @@ mod tests {
         assert_eq!(batch.float_columns.len(), 4);
     }
 
-    #[cfg(feature = "alpha-edl")]
     #[test]
     fn edl_profile_packs_to_record_batch() {
         use crate::edl::{CapacitanceBreakdown, EdlBackend, EdlProfileResult};
@@ -496,7 +462,6 @@ mod tests {
         assert_eq!(batch.float_columns[0].values.len(), 3);
     }
 
-    #[cfg(feature = "alpha-kinetics")]
     #[test]
     fn arrhenius_packs_to_record_batch() {
         use crate::kinetics::{ElementaryRateResult, ThermodynamicState};
@@ -528,7 +493,6 @@ mod tests {
         assert_eq!(batch.float_columns[0].values.len(), 2);
     }
 
-    #[cfg(feature = "alpha-kinetics")]
     #[test]
     fn microkinetic_trace_packs_to_record_batch() {
         let trace = MicrokineticTrace {
