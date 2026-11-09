@@ -1,0 +1,104 @@
+name: Publish PyPI
+
+# Repair/backfill workflow for a release whose PyPI job failed after the
+# crates.io/npm publishes succeeded. Builds manylinux wheels (the original
+# release job produced a raw `linux_x86_64` wheel, which PyPI rejects) and
+# uploads the existing tag to PyPI.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or commit to publish (defaults to v2.0.0)
+        required: true
+        default: v2.0.0
+      publish:
+        description: Actually upload to PyPI
+        type: boolean
+        default: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PYTHON_BINDING_FEATURES: >-
+    parallel
+    alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
+    alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
+    alpha-render-bridge
+    beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  wheels:
+    name: Wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pypi-${{ matrix.os }}
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: crates/python
+          args: --release --out ../../target/wheels --features "${{ env.PYTHON_BINDING_FEATURES }}"
+          manylinux: auto
+      - uses: actions/upload-artifact@v6
+        with:
+          name: pypi-wheel-${{ matrix.os }}
+          path: target/wheels/*.whl
+          if-no-files-found: error
+
+  sdist:
+    name: Source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          working-directory: crates/python
+          args: --out ../../target/wheels
+      - uses: actions/upload-artifact@v6
+        with:
+          name: pypi-sdist
+          path: target/wheels/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: [wheels, sdist]
+    runs-on: ubuntu-latest
+    if: ${{ inputs.publish }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: pypi-*
+          path: dist
+          merge-multiple: true
+      - name: List distributions
+        run: ls -l dist
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: dist

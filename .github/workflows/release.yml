@@ -200,12 +200,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: python-${{ matrix.os }}
-      - run: pip install maturin
-      - name: Build the wheel
-        run: cd crates/python && maturin build --release --features "${PYTHON_BINDING_FEATURES}"
+      - name: Build the wheel (manylinux on Linux)
+        uses: PyO3/maturin-action@v1
+        with:
+          working-directory: crates/python
+          args: --release --out ../../target/wheels --features "${{ env.PYTHON_BINDING_FEATURES }}"
+          manylinux: auto
       - name: Build the sdist
         if: matrix.os == 'ubuntu-latest'
-        run: cd crates/python && maturin sdist --out ../../target/wheels
+        run: |
+          pip install maturin
+          cd crates/python && maturin sdist --out ../../target/wheels
       - uses: actions/upload-artifact@v6
         with:
           name: python-${{ matrix.os }}
