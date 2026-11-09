@@ -12,7 +12,7 @@ sci-form organises pre-production algorithms into three tiers based on maturity:
 
 ## [Alpha Modules →](./alpha)
 
-The alpha tier now mixes compatibility aliases for promoted methods with the remaining gated research modules (DFT, MLFF, reaction dynamics, render builders).
+The alpha tier now mixes compatibility aliases for promoted methods with the remaining gated research modules (DFT, MLFF, reaction dynamics).
 
 | ID | Module | Feature flag | Description |
 |----|--------|-------------|-------------|
@@ -21,9 +21,9 @@ The alpha tier now mixes compatibility aliases for promoted methods with the rem
 | A3 | `alpha::mlff` | `alpha-mlff` | Neural network FF with AEV descriptors |
 | A4 | `scf::obara_saika` (core, F80) | — | Obara-Saika ERIs + Boys function |
 | A5 | `cga` (core, F81) | — | CGA motor algebra dihedral refinement |
-| A6 | `gsm` | `alpha-gsm` | Growing String Method |
+| A6 | `gsm` (core) | `alpha-gsm` alias | Growing String Method |
 | A7 | `sdr` (core, F83) | — | Semidefinite relaxation embedding |
-| A8 | `alpha::dynamics` | `alpha-dynamics-live` | Live interactive MD |
+| A8 | `dynamics_live` (core) | `alpha-dynamics-live` alias | Live interactive MD |
 | A9 | `imd` (core, F85) | — | IMD steering forces |
 
 ```typescript
