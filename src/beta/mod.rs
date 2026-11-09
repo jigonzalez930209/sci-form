@@ -19,7 +19,7 @@
 //! Core modules need no feature flag; MBH keeps `beta-mbh`:
 //! ```toml
 //! [dependencies]
-//! sci-form = { version = "1.1", features = ["beta-mbh"] }
+//! sci-form = { version = "2.0", features = ["beta-mbh"] }
 //! ```
 
 /// Backwards-compatible path for the promoted core KPM module.

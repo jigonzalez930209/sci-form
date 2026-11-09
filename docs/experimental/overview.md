@@ -123,16 +123,16 @@ The older `experimental-*` feature flags remain available at their existing modu
 ```toml
 [dependencies]
 # Alpha modules
-sci-form = { version = "1.1", features = ["alpha-dft", "alpha-mlff"] }
+sci-form = { version = "2.0", features = ["alpha-dft", "alpha-mlff"] }
 
 # Beta modules (KPM is core since 2026-11-07; beta-kpm is a compatibility alias)
-sci-form = { version = "1.1", features = ["beta-mbh"] }
+sci-form = { version = "2.0", features = ["beta-mbh"] }
 
 # Legacy experimental
-sci-form = { version = "1.1", features = ["alpha-reaction-dynamics"] }
+sci-form = { version = "2.0", features = ["alpha-reaction-dynamics"] }
 
 # Everything + parallel
-sci-form = { version = "1.1", features = [
+sci-form = { version = "2.0", features = [
     "alpha-dft", "alpha-mlff", "alpha-reaction-dynamics",
     "beta-mbh",
     "parallel"

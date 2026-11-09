@@ -2,7 +2,7 @@
 
 **Alpha** now contains a few remaining research modules plus compatibility aliases for methods that have been promoted to core. The promoted paths stay available under their historical `alpha-*` flags.
 
-> Only the remaining research modules (DFT, MLFF, reaction dynamics, render builders) require an explicit opt-in. GSM, kinetics, periodic-linear adapters and live MD are core.
+> Only the remaining research modules (DFT, MLFF, reaction dynamics) require an explicit opt-in. GSM, kinetics, periodic-linear adapters, live MD and the render-bridge builders are core.
 
 ---
 
@@ -686,16 +686,16 @@ console.log(`Packed chart: ${packed.n_columns} columns, ${packed.column_names.jo
 
 ```toml
 [dependencies]
-sci-form = { version = "1.1", features = ["alpha-dft", "alpha-mlff"] }
+sci-form = { version = "2.0", features = ["alpha-dft", "alpha-mlff"] }
 
 # All still-gated alpha modules:
-sci-form = { version = "1.1", features = [
+sci-form = { version = "2.0", features = [
     "alpha-dft", "alpha-mlff", "alpha-render-bridge",
     "alpha-reaction-dynamics"
 ] }
 
 # Alpha + parallelization:
-sci-form = { version = "1.1", features = ["alpha-mlff", "parallel"] }
+sci-form = { version = "2.0", features = ["alpha-mlff", "parallel"] }
 ```
 
 ### WASM / npm

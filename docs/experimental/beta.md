@@ -284,13 +284,13 @@ print(f"total charge: {result.total_charge:.4f} e")
 ```toml
 [dependencies]
 # KPM is core since 2026-11-07; beta-kpm still resolves as an alias.
-sci-form = { version = "1.1", features = ["beta-mbh"] }
+sci-form = { version = "2.0", features = ["beta-mbh"] }
 
 # All still-gated beta modules:
-sci-form = { version = "1.1", features = ["beta-mbh"] }
+sci-form = { version = "2.0", features = ["beta-mbh"] }
 
 # Beta + parallelization:
-sci-form = { version = "1.1", features = ["beta-mbh", "parallel"] }
+sci-form = { version = "2.0", features = ["beta-mbh", "parallel"] }
 ```
 
 ### WASM / npm

@@ -721,7 +721,7 @@ pub fn alpha_sdr_embed(distance_pairs_json: &str, n_atoms: usize, config_json: &
 ///
 /// Returns JSON: `{ "alpha_modules": ["dft", "reaxff", …],
 ///                   "stability": "alpha — experimental, …",
-///                   "version": "1.0.0" }`
+///                   "version": "2.0.0" }`
 #[wasm_bindgen]
 pub fn alpha_modules_info() -> String {
     let mut modules: Vec<&str> = Vec::new();

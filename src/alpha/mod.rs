@@ -2,8 +2,7 @@
 //!
 //! Most of the original alpha tier has been promoted to core after its
 //! cross-library gates passed. The paths below remain available as aliases;
-//! the remaining gated research modules are DFT, MLFF, reaction dynamics and
-//! the render-bridge domain builders.
+//! the remaining gated research modules are DFT, MLFF and reaction dynamics.
 //!
 //! ## Modules
 //!
@@ -24,7 +23,7 @@
 //! historical flag:
 //! ```toml
 //! [dependencies]
-//! sci-form = { version = "1.1", features = ["alpha-cga"] }
+//! sci-form = { version = "2.0", features = ["alpha-cga"] }
 //! ```
 
 #[cfg(feature = "alpha-cga")]

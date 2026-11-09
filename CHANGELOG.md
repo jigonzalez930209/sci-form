@@ -6,7 +6,14 @@ the summary below records the substantive work that landed in each release line.
 Future releases should append new sections here so this file remains the maintained,
 human-written changelog for the repository.
 
-## Unreleased (1.1 line) - 2026-11-07
+## v2.0.0 - 2026-11-08
+
+### Breaking changes
+
+- The root Rust API now returns `Result<_, SciFormError>` instead of
+  `Result<_, String>`. The enum implements `Display`, `Error`, `Deref<str>`,
+  `AsRef<str>` and `From<String>`; callers that pattern-match `Err(String)`
+  must switch to the variants or compare `error.to_string()`.
 
 ### Validation
 
@@ -14,7 +21,7 @@ human-written changelog for the repository.
   2026.09.1, PySCF 2.14.0, tblite 0.7.0, dftd4 4.3.0, xtb 6.7.1,
   multicharge 0.6.0, MOPAC 23.2.5, LAMMPS 29Aug2024_update2, ASE 3.29.0,
   pormake 0.2.3): 36/36 oracle scripts and 117/117 Rust validation tests
-  pass; `reports/validation/summary.json` holds 127 rows, 120 PASS and 7
+  pass; `reports/validation/summary.json` holds 129 rows, 122 PASS and 7
   provenance/method-gap rows, 0 FAIL. Python 3.14.4 is the oracle runtime.
   The PySCF AO->MO fixture now canonicalises degenerate MO subspaces.
 
@@ -24,8 +31,8 @@ human-written changelog for the repository.
   RUSTSEC-2024-0436 is closed and `deny.toml` has no advisory ignores.
   Workspace MSRV is 1.89.
 - Native `src/gpu/` and the WASM runtime now share wgpu 29. The duplicated
-  naga/ash/wgpu-core trees are gone. `tests/gpu_parity.rs` adds eight real
-  GPU-vs-CPU gates (ERI, Fock, gamma, orbital/density grids, ESP, EEQ, CPM)
+  naga/ash/wgpu-core trees are gone. `tests/gpu_parity.rs` adds eleven real
+  GPU-vs-CPU gates (ERI, Fock, gamma, orbital/density grids, ESP, EEQ, CPM, HTST, Bloch, EDL)
   and skips cleanly without an adapter (`SCIFORM_REQUIRE_GPU=1` makes that a
   failure). The ERI kernel now rejects p/d/f bases instead of returning
   silently wrong (ss|ss)-only integrals.
@@ -64,6 +71,11 @@ human-written changelog for the repository.
   the reference charges/multipoles. Symbolic NDDO/GFN2 derivatives remain
   research work.
 - **KPM promoted to core** (`src/kpm`, `beta-kpm` compatibility alias).
+- **Promotion sweep**: GSM, kinetics/HTST, periodic-linear adapters, live MD
+  and RandNLA moved to core (`src/gsm`, `src/kinetics`, `src/periodic_linear`,
+  `src/dynamics_live`, `src/rand_nla`). Render-bridge domain builders moved to
+  `src/render_bridge/builders.rs`. Historical `alpha-*`/`beta-*` features and
+  paths remain as compatibility aliases.
 - **ReaxFF ffield parser**: all standard sections (general, atoms, bonds,
   off-diagonal, angles, torsions, hydrogen bonds).
 - Gate: `scripts/release-check.sh` green.

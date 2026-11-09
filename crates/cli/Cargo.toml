@@ -1,6 +1,6 @@
 [package]
 name = "sci-form-cli"
-version = "1.0.0"
+version = "2.0.0"
 edition = "2021"
 # MSRV — same floor as the core crate (see the root Cargo.toml).
 rust-version = "1.89"
@@ -47,7 +47,7 @@ alpha-kinetics = ["sci-form/alpha-kinetics"]
 alpha-render-bridge = ["sci-form/alpha-render-bridge"]
 
 [dependencies]
-sci-form = { path = "../..", version = "1.0.0", default-features = false }
+sci-form = { path = "../..", version = "2.0.0", default-features = false }
 clap = { version = "4", features = ["derive", "wrap_help"] }
 clap_complete = "4"
 rayon = "1.10"

@@ -25,9 +25,9 @@
 [dependencies]
 sci-form = "1.0"
 # For parallel batch processing:
-sci-form = { version = "1.0", features = ["parallel"] }
+sci-form = { version = "2.0", features = ["parallel"] }
 # GPU acceleration:
-sci-form = { version = "1.0", features = ["experimental-gpu"] }
+sci-form = { version = "2.0", features = ["experimental-gpu"] }
 ```
 
 ---

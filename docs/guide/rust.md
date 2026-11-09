@@ -13,14 +13,14 @@ For parallel batch processing, enable the `parallel` feature:
 
 ```toml
 [dependencies]
-sci-form = { version = "1.0", features = ["parallel"] }
+sci-form = { version = "2.0", features = ["parallel"] }
 ```
 
 For GPU acceleration (experimental):
 
 ```toml
 [dependencies]
-sci-form = { version = "1.0", features = ["experimental-gpu"] }
+sci-form = { version = "2.0", features = ["experimental-gpu"] }
 ```
 
 ## Core Types
@@ -105,7 +105,7 @@ println!("Atoms: {}, Bonds: {}", mol.graph.node_count(), mol.graph.edge_count())
 ### `version() → String`
 
 ```rust
-println!("{}", sci_form::version()); // "sci-form 1.0.0"
+println!("{}", sci_form::version()); // "sci-form 2.0.0"
 ```
 
 ## Working with Coordinates

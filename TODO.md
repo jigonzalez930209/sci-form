@@ -268,6 +268,16 @@ El detalle está en `docs/algorithm/ks-dft.md`.
 
 ---
 
+## Promociones a core (2026-11-08)
+
+- [x] **RandNLA** (`src/rand_nla`): criterios F93 + backend EHT + N>500.
+- [x] **GSM** (`src/gsm`): F82 vs ASE CI-NEB + cinco pozos curvos.
+- [x] **Kinetics/HTST** (`src/kinetics`): F87 vs Eyring/scipy; adaptador MBH gated por `beta-mbh`.
+- [x] **Periodic-linear** (`src/periodic_linear`): F88 k-mesh/Bloch + adaptadores KPM/RandNLA.
+- [x] **Live MD** (`src/dynamics_live`): F84 fuerzas vs RDKit, NVE/Berendsen.
+- [x] **Render-bridge builders** (`src/render_bridge/builders.rs`): F90 schema + round-trip.
+- [ ] Siguen gated: MBH (sin mínimos globales), DFT (`coulomb_energy=0`, ECP), MLFF (sin pesos entrenados), reaction dynamics (sin paridad NEB).
+
 ## Tracks Experimentales (Resumen de Estado)
 
 | Track | Módulo | Estado |

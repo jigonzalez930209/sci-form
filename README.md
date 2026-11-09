@@ -13,7 +13,7 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 
 See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 1.0**](docs/guide/migration-1.0.md) · [Release checklist](docs/release-checklist-1.0.md) · [TESTING.md](TESTING.md) · [Roadmap: dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
 
-> **Status: 1.0.0 — the first stable release.**
+> **Status: 2.0.0 — complete MMFF94, typed errors and promoted core modules.**
 > The library no longer panics on malformed input, the force-field results are
 > bit-for-bit reproducible regardless of the machine's core count, and every
 > public item is documented. Read the [migration guide](docs/guide/migration-1.0.md)
@@ -110,7 +110,7 @@ See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 1.0**](docs/guide/migr
 [dependencies]
 sci-form = "1.0"
 # For parallel batch + ESP:
-sci-form = { version = "1.0", features = ["parallel"] }
+sci-form = { version = "2.0", features = ["parallel"] }
 ```
 
 ```rust
@@ -497,7 +497,7 @@ cargo clippy --all-targets -- -D warnings
 Use the provided bump script. It updates all version strings, commits, tags, and pushes:
 
 ```bash
-# Auto-increment patch (1.0.0 → 1.0.1)
+# Auto-increment patch (2.0.0 → 2.0.1)
 ./scripts/bump_version.sh
 
 # Set a specific version
