@@ -8,8 +8,6 @@
 //! Berendsen thermostat approach. (LAMMPS has no UFF; trajectory-vs-
 //! engine comparison is documented out of reach.)
 
-#![cfg(feature = "alpha-dynamics-live")]
-
 use sci_form::dynamics::MdBackend;
 use sci_form::dynamics_live::state::LiveMolecularSystem;
 

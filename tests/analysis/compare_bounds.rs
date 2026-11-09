@@ -59,8 +59,10 @@ fn test_compare_bounds_matrix() {
     let float_data = &data[data_start..];
 
     let rdkit_bounds: Vec<f64> = float_data
-        .chunks_exact(8)
-        .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .map(|chunk| f64::from_le_bytes(*chunk))
         .collect();
 
     assert_eq!(rdkit_bounds.len(), n * n, "Size mismatch");

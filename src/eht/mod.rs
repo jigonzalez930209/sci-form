@@ -18,8 +18,7 @@ pub mod params;
 pub mod solver;
 pub mod volume;
 
-#[cfg(feature = "beta-randnla")]
-pub use crate::beta::rand_nla::solve_eht_randnla_lowrank;
+pub use crate::rand_nla::solve_eht_randnla_lowrank;
 pub use basis::{AtomicOrbital, GaussianPrimitive, SlaterOrbital};
 pub use hamiltonian::build_hamiltonian;
 pub use marching_cubes::{
@@ -31,7 +30,6 @@ pub use params::{
     analyze_eht_support, is_transition_metal, support_level_for_element, EhtParams, EhtSupport,
     OrbitalDef, SupportLevel,
 };
-#[cfg(feature = "beta-randnla")]
 pub use solver::solve_eht_randnla;
 pub use solver::{solve_eht, EhtResult};
 #[cfg(feature = "parallel")]

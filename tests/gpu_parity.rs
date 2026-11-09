@@ -51,7 +51,9 @@ fn benzene() -> (Vec<u8>, Vec<[f64; 3]>) {
     assert!(conformer.error.is_none(), "embed failed");
     let positions = conformer
         .coords
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|p| [p[0], p[1], p[2]])
         .collect();
     (conformer.elements, positions)
@@ -370,7 +372,7 @@ fn cpm_charges_match_cpu() {
 #[cfg(feature = "alpha-kinetics")]
 #[test]
 fn htst_sweep_matches_cpu() {
-    use sci_form::alpha::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
+    use sci_form::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
 
     let Some(ctx) = gpu_context("HTST sweep") else {
         return;
@@ -383,9 +385,8 @@ fn htst_sweep_matches_cpu() {
     };
     let temperatures: Vec<f64> = (0..320).map(|i| 280.0 + 1.5 * i as f64).collect();
     let cpu = evaluate_htst_temperature_sweep(&step, &temperatures, 1.0).expect("CPU HTST");
-    let gpu =
-        sci_form::alpha::kinetics::gpu::evaluate_htst_sweep_gpu(&ctx, &step, &temperatures, 1.0)
-            .expect("GPU HTST");
+    let gpu = sci_form::kinetics::gpu::evaluate_htst_sweep_gpu(&ctx, &step, &temperatures, 1.0)
+        .expect("GPU HTST");
     assert_eq!(cpu.len(), gpu.len());
     let mut worst = 0.0f64;
     for (c, g) in cpu.iter().zip(&gpu) {
@@ -405,7 +406,7 @@ fn htst_sweep_matches_cpu() {
 #[test]
 fn periodic_bloch_assembly_matches_cpu() {
     use nalgebra::DMatrix;
-    use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshCentering, KMeshConfig};
+    use sci_form::periodic_linear::{monkhorst_pack_mesh, KMeshCentering, KMeshConfig};
 
     let Some(ctx) = gpu_context("periodic Bloch assembly") else {
         return;
@@ -424,8 +425,8 @@ fn periodic_bloch_assembly_matches_cpu() {
     assert!(mesh.points.len() >= 64);
 
     let (h_cpu, s_cpu) =
-        sci_form::alpha::periodic_linear::assemble_periodic_operators(&h_blocks, &s_blocks, &mesh);
-    let (h_gpu, s_gpu) = sci_form::alpha::periodic_linear::gpu::assemble_periodic_operators_gpu(
+        sci_form::periodic_linear::assemble_periodic_operators(&h_blocks, &s_blocks, &mesh);
+    let (h_gpu, s_gpu) = sci_form::periodic_linear::gpu::assemble_periodic_operators_gpu(
         &ctx, &h_blocks, &s_blocks, &mesh,
     );
     assert_eq!(h_gpu.len(), h_cpu.len());

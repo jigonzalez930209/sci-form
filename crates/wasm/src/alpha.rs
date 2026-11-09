@@ -527,7 +527,7 @@ pub fn alpha_gsm_interpolate(reactant_json: &str, product_json: &str, t: f64) ->
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'product'", product_json, &e)),
     };
-    let node = sci_form::alpha::gsm::interpolate_node(&reactant, &product, t);
+    let node = sci_form::gsm::interpolate_node(&reactant, &product, t);
     serde_json::json!({ "coords": node }).to_string()
 }
 
@@ -535,7 +535,7 @@ pub fn alpha_gsm_interpolate(reactant_json: &str, product_json: &str, t: f64) ->
 #[cfg(feature = "alpha-gsm")]
 #[wasm_bindgen]
 pub fn alpha_gsm_backend_plan(smiles: &str) -> String {
-    match sci_form::alpha::gsm::plan_gsm_backends_for_smiles(smiles) {
+    match sci_form::gsm::plan_gsm_backends_for_smiles(smiles) {
         Ok(plan) => serde_json::to_string(&plan).unwrap_or_else(|e| json_error(&e.to_string())),
         Err(e) => json_error(&e),
     }
@@ -555,7 +555,7 @@ pub fn alpha_gsm_compare_backends(
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'coords'", coords_flat_json, &e)),
     };
-    let methods: Vec<sci_form::alpha::gsm::GsmEnergyBackend> =
+    let methods: Vec<sci_form::gsm::GsmEnergyBackend> =
         if methods_json.trim().is_empty() || methods_json == "null" {
             Vec::new()
         } else {
@@ -565,7 +565,7 @@ pub fn alpha_gsm_compare_backends(
             };
             let mut parsed = Vec::with_capacity(raw_methods.len());
             for method in raw_methods {
-                match method.parse::<sci_form::alpha::gsm::GsmEnergyBackend>() {
+                match method.parse::<sci_form::gsm::GsmEnergyBackend>() {
                     Ok(value) => parsed.push(value),
                     Err(err) => return json_error(&err),
                 }
@@ -573,7 +573,7 @@ pub fn alpha_gsm_compare_backends(
             parsed
         };
 
-    match sci_form::alpha::gsm::compare_gsm_backends(smiles, &coords, &methods) {
+    match sci_form::gsm::compare_gsm_backends(smiles, &coords, &methods) {
         Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| json_error(&e.to_string())),
         Err(e) => json_error(&e),
     }
@@ -623,9 +623,9 @@ pub fn alpha_gsm_find_ts_with_method(
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'product'", product_coords_json, &e)),
     };
-    let config: sci_form::alpha::gsm::GsmConfig =
+    let config: sci_form::gsm::GsmConfig =
         if config_json.trim().is_empty() || config_json == "null" || config_json == "{}" {
-            sci_form::alpha::gsm::GsmConfig::default()
+            sci_form::gsm::GsmConfig::default()
         } else {
             match serde_json::from_str(config_json) {
                 Ok(c) => c,
@@ -633,11 +633,11 @@ pub fn alpha_gsm_find_ts_with_method(
             }
         };
 
-    let backend: sci_form::alpha::gsm::GsmEnergyBackend = match method.parse() {
+    let backend: sci_form::gsm::GsmEnergyBackend = match method.parse() {
         Ok(value) => value,
         Err(err) => return json_error(&err),
     };
-    let r = match sci_form::alpha::gsm::find_transition_state_with_backend(
+    let r = match sci_form::gsm::find_transition_state_with_backend(
         smiles, &reactant, &product, backend, &config,
     ) {
         Ok(result) => result,
@@ -819,7 +819,7 @@ pub fn alpha_render_capacitance_scan_chart(scan_json: &str) -> String {
 /// @param dos_json  JSON `PeriodicKpmDosResult`
 /// @returns JSON chart payload
 pub fn alpha_render_periodic_dos_chart(dos_json: &str) -> String {
-    use sci_form::alpha::periodic_linear::PeriodicKpmDosResult;
+    use sci_form::periodic_linear::PeriodicKpmDosResult;
     match serde_json::from_str::<PeriodicKpmDosResult>(dos_json) {
         Ok(dos) => {
             let chart = sci_form::alpha::render_bridge::periodic_dos_chart(&dos);
@@ -836,7 +836,7 @@ pub fn alpha_render_periodic_dos_chart(dos_json: &str) -> String {
 /// @param bs_json  JSON `BandStructureAdapterResult`
 /// @returns JSON chart payload
 pub fn alpha_render_band_structure_chart(bs_json: &str) -> String {
-    use sci_form::alpha::periodic_linear::BandStructureAdapterResult;
+    use sci_form::periodic_linear::BandStructureAdapterResult;
     match serde_json::from_str::<BandStructureAdapterResult>(bs_json) {
         Ok(bs) => {
             let chart = sci_form::alpha::render_bridge::band_structure_chart(&bs);
@@ -853,7 +853,7 @@ pub fn alpha_render_band_structure_chart(bs_json: &str) -> String {
 /// @param trace_json  JSON `MicrokineticTrace`
 /// @returns JSON chart payload
 pub fn alpha_render_microkinetic_population_chart(trace_json: &str) -> String {
-    use sci_form::alpha::kinetics::MicrokineticTrace;
+    use sci_form::kinetics::MicrokineticTrace;
     match serde_json::from_str::<MicrokineticTrace>(trace_json) {
         Ok(trace) => {
             let chart = sci_form::alpha::render_bridge::microkinetic_population_chart(&trace);
@@ -870,7 +870,7 @@ pub fn alpha_render_microkinetic_population_chart(trace_json: &str) -> String {
 /// @param results_json  JSON array of `ElementaryRateResult`
 /// @returns JSON chart payload
 pub fn alpha_render_arrhenius_chart(results_json: &str) -> String {
-    use sci_form::alpha::kinetics::ElementaryRateResult;
+    use sci_form::kinetics::ElementaryRateResult;
     match serde_json::from_str::<Vec<ElementaryRateResult>>(results_json) {
         Ok(results) => {
             let chart = sci_form::alpha::render_bridge::arrhenius_chart(&results);
@@ -941,7 +941,7 @@ pub fn alpha_render_verify_chart_round_trip(chart_json: &str, tol: f64) -> bool 
 /// @param config_json  JSON `KMeshConfig` or `"{}"`
 /// @returns JSON k-mesh
 pub fn alpha_periodic_monkhorst_pack(config_json: &str) -> String {
-    use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
+    use sci_form::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
     match serde_json::from_str::<KMeshConfig>(config_json) {
         Ok(config) => match monkhorst_pack_mesh(&config) {
             Ok(mesh) => serde_json::to_string(&mesh).unwrap_or_else(|e| json_error(&e.to_string())),
@@ -959,7 +959,7 @@ pub fn alpha_periodic_monkhorst_pack(config_json: &str) -> String {
 /// @param translation_json  JSON `[tx, ty, tz]`
 /// @returns JSON Bloch phase
 pub fn alpha_periodic_bloch_phase(k_fractional_json: &str, translation_json: &str) -> String {
-    use sci_form::alpha::periodic_linear::bloch_phase;
+    use sci_form::periodic_linear::bloch_phase;
     let k: [f64; 3] = match serde_json::from_str(k_fractional_json) {
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'k-point'", k_fractional_json, &e)),
@@ -980,7 +980,7 @@ pub fn alpha_periodic_bloch_phase(k_fractional_json: &str, translation_json: &st
 /// @param weights_json  JSON array of k-point weights
 /// @returns the weighted integral
 pub fn alpha_periodic_bz_integrate_scalar(values_json: &str, weights_json: &str) -> f64 {
-    use sci_form::alpha::periodic_linear::bz_integrate_scalar;
+    use sci_form::periodic_linear::bz_integrate_scalar;
     let values: Vec<f64> = serde_json::from_str(values_json).unwrap_or_default();
     let weights: Vec<f64> = serde_json::from_str(weights_json).unwrap_or_default();
     bz_integrate_scalar(&values, &weights)
@@ -994,7 +994,7 @@ pub fn alpha_periodic_bz_integrate_scalar(values_json: &str, weights_json: &str)
 /// @param weights_json  JSON array of k-point weights
 /// @returns JSON `[x, y, z]` integral
 pub fn alpha_periodic_bz_integrate_vector(vectors_json: &str, weights_json: &str) -> String {
-    use sci_form::alpha::periodic_linear::bz_integrate_vector;
+    use sci_form::periodic_linear::bz_integrate_vector;
     let vectors: Vec<Vec<f64>> = serde_json::from_str(vectors_json).unwrap_or_default();
     let weights: Vec<f64> = serde_json::from_str(weights_json).unwrap_or_default();
     serde_json::to_string(&bz_integrate_vector(&vectors, &weights))
@@ -1009,7 +1009,7 @@ pub fn alpha_periodic_bz_integrate_vector(vectors_json: &str, weights_json: &str
 /// @param tol  Tolerance
 /// @returns `true` when the weights are normalised within `tol`
 pub fn alpha_periodic_validate_kmesh_weights(kmesh_json: &str, tol: f64) -> bool {
-    use sci_form::alpha::periodic_linear::{validate_kmesh_weights, KMesh};
+    use sci_form::periodic_linear::{validate_kmesh_weights, KMesh};
     match serde_json::from_str::<KMesh>(kmesh_json) {
         Ok(mesh) => validate_kmesh_weights(&mesh, tol),
         Err(_) => false,
@@ -1059,7 +1059,7 @@ pub fn alpha_periodic_validate_electron_count(
     fermi_energy_ev: f64,
     expected_electrons: f64,
 ) -> f64 {
-    use sci_form::alpha::periodic_linear::{validate_electron_count, PeriodicKpmDosResult};
+    use sci_form::periodic_linear::{validate_electron_count, PeriodicKpmDosResult};
     match serde_json::from_str::<PeriodicKpmDosResult>(dos_json) {
         Ok(dos) => validate_electron_count(&dos, fermi_energy_ev, expected_electrons),
         Err(_) => f64::NAN,
@@ -1133,7 +1133,7 @@ fn parse_real_space_blocks(blocks_json: &str) -> Result<Vec<RealSpaceBlock>, Str
 /// @param n_points_per_segment  Intervals per high-symmetry segment (≥ 1)
 /// @returns JSON `KPathStandard`
 pub fn alpha_periodic_kpath_standard(n_points_per_segment: usize) -> String {
-    use sci_form::alpha::periodic_linear::kpath_standard;
+    use sci_form::periodic_linear::kpath_standard;
     serde_json::to_string(&kpath_standard(n_points_per_segment))
         .unwrap_or_else(|e| json_error(&e.to_string()))
 }
@@ -1153,7 +1153,7 @@ pub fn alpha_periodic_fermi_surface_from_bands(
     n_kx: usize,
     n_ky: usize,
 ) -> String {
-    use sci_form::alpha::periodic_linear::fermi_surface_from_bands;
+    use sci_form::periodic_linear::fermi_surface_from_bands;
     let blocks = match parse_real_space_blocks(blocks_json) {
         Ok(blocks) => blocks,
         Err(e) => return json_error(&e),

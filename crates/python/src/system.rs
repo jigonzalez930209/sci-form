@@ -3,7 +3,12 @@
 use pyo3::prelude::*;
 
 pub(crate) fn coords_to_positions(coords: &[f64]) -> Vec<[f64; 3]> {
-    coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+    coords
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect()
 }
 
 /// Perceive covalent bonds from 3D coordinates using covalent radii.

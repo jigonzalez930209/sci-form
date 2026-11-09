@@ -1,7 +1,7 @@
 # E11: Growing String Method (GSM)
 
-**Module:** `sci_form::alpha::gsm` (gated; F82 validated, promotion pending)
-**Feature flag:** `alpha-gsm` (`experimental-gsm` alias)
+**Module:** `sci_form::gsm` (core since 2026-11-08; F82 validated)
+**Feature flag:** none — `alpha-gsm` and `experimental-gsm` are compatibility aliases; `sci_form::alpha::gsm` re-exports the core module.
 
 ---
 
@@ -39,7 +39,7 @@ At each iteration, new nodes are added along the string:
 ## API
 
 ```rust
-use sci_form::alpha::gsm::*;
+use sci_form::gsm::*;
 
 // Interpolate between two geometries
 let midpoint = interpolate_node(&reactant, &product, 0.5);
@@ -110,7 +110,7 @@ The transition state result includes:
 
 ## Validation (F82, 2026-10-14)
 
-External gate `tests/alpha_gsm_validation.rs --features alpha-gsm` vs
+External gate `tests/alpha_gsm_validation.rs` vs
 `scripts/validation/oracle_gsm.py` (ASE CI-NEB/FIRE on Müller-Brown,
 TS −40.66 textbook): barrier 1.6e-3, TS location 0.028. Fix: arc-length
 reparametrization every iteration (without it nodes slide into the minima
@@ -119,7 +119,7 @@ and the barrier collapses to 0.02). pyGSM/Transition1x not run.
 ## Tests
 
 ```bash
-cargo test --features "beta-cpm alpha-gsm" --test experimental_gates -- test_gsm
+cargo test --test experimental_gates -- test_gsm
 ```
 
 8 integration tests (`tests/experimental/test_gsm.rs`) covering: linear interpolation, quarter-point interpolation, string growth, transition state finding on a double-well potential, path ordering, energy evaluation counting, symmetric barrier detection, and saddle point refinement.

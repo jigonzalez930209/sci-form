@@ -1,7 +1,7 @@
 # E2: Randomized Numerical Linear Algebra (RandNLA)
 
-**Module:** `sci_form::beta::rand_nla` (gated; F93 validated)
-**Feature flag:** `beta-randnla` (`experimental-randnla` alias)
+**Module:** `sci_form::rand_nla` (core since 2026-11-08; F93 validated)
+**Feature flag:** none — `beta-randnla` and `experimental-randnla` are compatibility aliases; `sci_form::beta::rand_nla` re-exports the core module.
 
 ---
 
@@ -45,7 +45,7 @@ The low-level interface works on the Hamiltonian and overlap matrices:
 
 ```rust
 use nalgebra::DMatrix;
-use sci_form::beta::rand_nla::{
+use sci_form::rand_nla::{
     solve_eht_randnla, solve_eht_randnla_lowrank, RandNlaConfig,
 };
 
@@ -90,7 +90,7 @@ If the error exceeds 0.1%, the module falls back to exact diagonalization and re
 
 ## Validation (F93, 2026-10-14)
 
-External gate `tests/beta_randnla_validation.rs --features beta-randnla` vs
+External gate `tests/beta_randnla_validation.rs` vs
 `scripts/validation/oracle_randnla.py` (numpy/scipy, overlap spectra):
 single-shot rank-N/4 ~0.13, near-identity regime 3.9e-3 with fallback OFF,
 default config exact incl. exercised fallback at N=96.
@@ -116,7 +116,7 @@ path still needs the exact fallback.
 ## Tests
 
 ```bash
-cargo test --features "beta-cpm beta-randnla" --test experimental_gates -- test_randnla
+cargo test --test experimental_gates -- test_randnla
 ```
 
 8 integration tests (`tests/experimental/test_randnla.rs`) covering: sketch matrix statistics, Nyström reconstruction error, randomized SVD accuracy, and EHT eigenvalue comparison against exact diagonalization for benzene and naphthalene.

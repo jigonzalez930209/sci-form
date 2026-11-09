@@ -8,8 +8,6 @@
 //! - Neighbor list consistency with direct distance calculation
 //! - PBC minimum image convention correctness
 
-#![cfg(feature = "alpha-dynamics-live")]
-
 use sci_form::dynamics::MdBackend;
 use sci_form::dynamics_live::langevin::{langevin_b_step, langevin_baoa_step, LangevinConfig};
 use sci_form::dynamics_live::neighbor_list::NeighborList;

@@ -45,7 +45,12 @@ fn compute_nonpolar_solvation(
     probe_radius: f64,
 ) -> PyResult<NonPolarSolvationPy> {
     crate::errors::check_coords_len(&coords, elements.len())?;
-    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let positions: Vec<[f64; 3]> = coords
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
     let r = sci_form_core::compute_nonpolar_solvation(&elements, &positions, Some(probe_radius))
         .map_err(value_error)?;
     Ok(NonPolarSolvationPy {
@@ -69,7 +74,12 @@ fn compute_gb_solvation(
 ) -> PyResult<GbSolvationPy> {
     crate::errors::check_coords_len(&coords, elements.len())?;
     crate::errors::check_charges_len(&charges, elements.len())?;
-    let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let positions: Vec<[f64; 3]> = coords
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
     let r = sci_form_core::compute_gb_solvation(
         &elements,
         &positions,

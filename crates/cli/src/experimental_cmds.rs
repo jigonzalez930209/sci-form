@@ -15,14 +15,14 @@ fn parse_flat_coords_json(coords: &str) -> Vec<f64> {
 ///
 /// `None` means "not given": every available backend is used (blocker C-M5).
 #[cfg(feature = "alpha-gsm")]
-fn parse_gsm_methods_json(methods: Option<&str>) -> Vec<sci_form::alpha::gsm::GsmEnergyBackend> {
+fn parse_gsm_methods_json(methods: Option<&str>) -> Vec<sci_form::gsm::GsmEnergyBackend> {
     let raw_methods: Vec<String> =
         crate::format::parse_string_list(methods, "'methods'").unwrap_or_default();
     raw_methods
         .into_iter()
         .map(|method| {
             method
-                .parse::<sci_form::alpha::gsm::GsmEnergyBackend>()
+                .parse::<sci_form::gsm::GsmEnergyBackend>()
                 .unwrap_or_else(|e| {
                     crate::format::fail(&e);
                 })
@@ -215,7 +215,7 @@ pub fn cmd_htst_rate(
     reaction_free_energy_ev: f64,
     temperature_k: f64,
 ) {
-    use sci_form::alpha::kinetics::*;
+    use sci_form::kinetics::*;
     let step = ElementaryStep {
         step_id: "cli".into(),
         activation_free_energy_ev,
@@ -249,7 +249,7 @@ pub fn cmd_htst_rate(
 /// Show available GSM backends for a molecule.
 #[cfg(feature = "alpha-gsm")]
 pub fn cmd_gsm_backend_plan(smiles: &str) {
-    match sci_form::alpha::gsm::plan_gsm_backends_for_smiles(smiles) {
+    match sci_form::gsm::plan_gsm_backends_for_smiles(smiles) {
         Ok(plan) => println!("{}", serde_json::to_string_pretty(&plan).unwrap()),
         Err(e) => {
             eprintln!("GSM backend plan error: {}", e);
@@ -263,7 +263,7 @@ pub fn cmd_gsm_backend_plan(smiles: &str) {
 pub fn cmd_gsm_compare_backends(smiles: &str, coords: &str, methods: Option<&str>) {
     let flat = parse_flat_coords_json(coords);
     let parsed_methods = parse_gsm_methods_json(methods);
-    match sci_form::alpha::gsm::compare_gsm_backends(smiles, &flat, &parsed_methods) {
+    match sci_form::gsm::compare_gsm_backends(smiles, &flat, &parsed_methods) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
         Err(e) => {
             eprintln!("GSM backend comparison error: {}", e);
@@ -343,7 +343,7 @@ pub fn cmd_neb_gradient(smiles: &str, coords: &str, method: &str) {
 /// Generate and print a k-mesh.
 #[cfg(feature = "alpha-periodic-linear")]
 pub fn cmd_kmesh(grid: [usize; 3], centering: &str) {
-    use sci_form::alpha::periodic_linear::*;
+    use sci_form::periodic_linear::*;
     let c = match centering {
         "monkhorst-pack" | "mp" => KMeshCentering::MonkhorstPack,
         "gamma" | "gamma-centered" => KMeshCentering::GammaCentered,
@@ -640,8 +640,8 @@ pub fn cmd_thermal_prop_chart(
     reaction_free_energy_ev: f64,
     temperatures_str: &str,
 ) {
-    use sci_form::alpha::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
     use sci_form::alpha::render_bridge::arrhenius_chart;
+    use sci_form::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let temperatures: Vec<f64> = serde_json::from_str(temperatures_str).unwrap_or_else(|e| {
         eprintln!("Failed to parse temperatures: {}", e);
@@ -686,7 +686,7 @@ pub fn cmd_thermal_prop_chart(
 /// Generate a phase portrait chart from a solved microkinetic network.
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
 pub fn cmd_phase_portrait_chart(network: Option<&str>, n_steps: usize) {
-    use sci_form::alpha::kinetics::solve_microkinetic_network;
+    use sci_form::kinetics::solve_microkinetic_network;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let config = microkinetic_config(network, n_steps);
     if config.species.len() < 2 {
@@ -740,8 +740,8 @@ pub fn cmd_band_structure_chart(
     lattice: &str,
     n_kpoints_per_segment: usize,
 ) {
-    use sci_form::alpha::periodic_linear::*;
     use sci_form::alpha::render_bridge::band_structure_chart;
+    use sci_form::periodic_linear::*;
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let lattice_values: Vec<f64> = serde_json::from_str(lattice).unwrap_or_else(|e| {
         crate::format::fail(crate::format::bad_json("'lattice'", lattice, &e));
@@ -751,7 +751,7 @@ pub fn cmd_band_structure_chart(
         std::process::exit(1);
     }
     let mut lattice_matrix = [[0.0_f64; 3]; 3];
-    for (row, chunk) in lattice_values.chunks_exact(3).enumerate() {
+    for (row, chunk) in lattice_values.as_chunks::<3>().0.iter().enumerate() {
         lattice_matrix[row] = [chunk[0], chunk[1], chunk[2]];
     }
     let n_electrons = match sci_form::eht::solve_eht(&elems, &positions, None) {
@@ -778,10 +778,10 @@ pub fn cmd_band_structure_chart(
 /// Generate a DOS chart.
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 pub fn cmd_dos_chart(energies_str: &str, dos_str: &str) {
-    use sci_form::alpha::periodic_linear::{
+    use sci_form::alpha::render_bridge::periodic_dos_chart;
+    use sci_form::periodic_linear::{
         PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
     };
-    use sci_form::alpha::render_bridge::periodic_dos_chart;
     let energies: Vec<f64> = serde_json::from_str(energies_str).unwrap_or_else(|e| {
         eprintln!("Failed to parse energies: {}", e);
         std::process::exit(1);
@@ -938,7 +938,7 @@ fn symmetric_eigenvalues(matrix: &nalgebra::DMatrix<f64>) -> Vec<f64> {
 /// Generate a k-point path chart from the core high-symmetry path.
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 pub fn cmd_kpoint_path_chart(n_points_per_segment: usize) {
-    use sci_form::alpha::periodic_linear::kpath_standard;
+    use sci_form::periodic_linear::kpath_standard;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let path = kpath_standard(n_points_per_segment);
     let chart = ChartPayload {
@@ -981,7 +981,7 @@ pub fn cmd_fermi_surface_chart(
     n_kx: usize,
     n_ky: usize,
 ) {
-    use sci_form::alpha::periodic_linear::fermi_surface_from_bands;
+    use sci_form::periodic_linear::fermi_surface_from_bands;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let parsed = parse_blocks(blocks);
     let refs = as_core_refs(&parsed);
@@ -1009,8 +1009,8 @@ fn gsm_path(
     reactant: &[f64],
     product: &[f64],
     method: &str,
-) -> sci_form::alpha::gsm::GsmResult {
-    use sci_form::alpha::gsm::{find_transition_state_with_backend, GsmConfig, GsmEnergyBackend};
+) -> sci_form::gsm::GsmResult {
+    use sci_form::gsm::{find_transition_state_with_backend, GsmConfig, GsmEnergyBackend};
     let backend: GsmEnergyBackend = match method.parse() {
         Ok(backend) => backend,
         Err(_) => {
@@ -1138,7 +1138,7 @@ pub fn cmd_compute_periodic_dos(
     n_points: usize,
     fermi_energy_ev: Option<f64>,
 ) {
-    use sci_form::alpha::periodic_linear::*;
+    use sci_form::periodic_linear::*;
     let blocks = parse_blocks(hamiltonian_blocks);
     let centering = parse_centering(centering);
     let kmesh_config = KMeshConfig { grid, centering };
@@ -1195,7 +1195,7 @@ pub fn cmd_solve_periodic_randnla(
     centering: &str,
     sketch_size: Option<usize>,
 ) {
-    use sci_form::alpha::periodic_linear::*;
+    use sci_form::periodic_linear::*;
     let hamiltonian_blocks = parse_blocks(hamiltonian_blocks);
     let overlap_blocks = parse_blocks(overlap_blocks);
     let centering = parse_centering(centering);
@@ -1216,7 +1216,7 @@ pub fn cmd_solve_periodic_randnla(
         sketch_size,
         ..Default::default()
     };
-    match sci_form::alpha::periodic_linear::solve_periodic_randnla(
+    match sci_form::periodic_linear::solve_periodic_randnla(
         &hamiltonians,
         &overlaps,
         n_electrons,
@@ -1288,7 +1288,7 @@ pub fn cmd_assemble_periodic_operators(
     grid: [usize; 3],
     centering: &str,
 ) {
-    use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
+    use sci_form::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
     let hamiltonian_blocks = parse_blocks(hamiltonian_blocks);
     // `--overlap-blocks` omitted means "no overlap operator" (blocker C-M5).
     let overlap_blocks = match overlap_blocks {
@@ -1348,8 +1348,8 @@ pub fn cmd_validate_electron_count(n_electrons: usize, n_bands: usize, n_kpoints
 fn microkinetic_config(
     network: Option<&str>,
     n_steps: usize,
-) -> sci_form::alpha::kinetics::MicrokineticNetworkConfig {
-    use sci_form::alpha::kinetics::{ElementaryStep, MicrokineticNetworkConfig};
+) -> sci_form::kinetics::MicrokineticNetworkConfig {
+    use sci_form::kinetics::{ElementaryStep, MicrokineticNetworkConfig};
     if let Some(spec) = network {
         let text = if std::path::Path::new(spec).is_file() {
             std::fs::read_to_string(spec).unwrap_or_else(|e| {
@@ -1384,7 +1384,7 @@ fn microkinetic_config(
             initial_populations: vec![1.0, 0.0],
             total_time_s: 1e-3,
             n_frames: n_steps.max(2),
-            state: sci_form::alpha::kinetics::ThermodynamicState {
+            state: sci_form::kinetics::ThermodynamicState {
                 temperature_k: 298.15,
                 pressure_bar: 1.0,
             },
@@ -1395,9 +1395,9 @@ fn microkinetic_config(
 #[cfg(feature = "alpha-kinetics")]
 pub fn cmd_extract_kinetics_diagnostics(network: Option<&str>) {
     let config = microkinetic_config(network, 20);
-    match sci_form::alpha::kinetics::solve_microkinetic_network(&config) {
+    match sci_form::kinetics::solve_microkinetic_network(&config) {
         Ok(trace) => {
-            let diag = sci_form::alpha::kinetics::extract_kinetics_diagnostics(&trace);
+            let diag = sci_form::kinetics::extract_kinetics_diagnostics(&trace);
             println!(
                 "{}",
                 serde_json::to_value(&diag).unwrap_or_else(|_| serde_json::json!({}))
@@ -1413,9 +1413,9 @@ pub fn cmd_extract_kinetics_diagnostics(network: Option<&str>) {
 #[cfg(feature = "alpha-kinetics")]
 pub fn cmd_solve_microkinetic_network(network: Option<&str>, n_steps: usize) {
     let config = microkinetic_config(network, n_steps);
-    match sci_form::alpha::kinetics::solve_microkinetic_network(&config) {
+    match sci_form::kinetics::solve_microkinetic_network(&config) {
         Ok(trace) => {
-            let diag = sci_form::alpha::kinetics::extract_kinetics_diagnostics(&trace);
+            let diag = sci_form::kinetics::extract_kinetics_diagnostics(&trace);
             let last = trace.frames.last();
             println!(
                 "{}",
@@ -1440,9 +1440,9 @@ pub fn cmd_solve_microkinetic_network(network: Option<&str>, n_steps: usize) {
 #[cfg(feature = "alpha-kinetics")]
 pub fn cmd_solve_microkinetic_steady_state(network: Option<&str>, n_steps: usize, tol: f64) {
     let config = microkinetic_config(network, n_steps);
-    match sci_form::alpha::kinetics::solve_microkinetic_steady_state(&config, tol) {
+    match sci_form::kinetics::solve_microkinetic_steady_state(&config, tol) {
         Ok(trace) => {
-            let diag = sci_form::alpha::kinetics::extract_kinetics_diagnostics(&trace);
+            let diag = sci_form::kinetics::extract_kinetics_diagnostics(&trace);
             let last = trace.frames.last();
             println!(
                 "{}",
@@ -1479,24 +1479,24 @@ pub fn cmd_analyze_gsm_mbh_htst_step(
 ) {
     let reactant = parse_flat_coords_json(reactant_coords);
     let product = parse_flat_coords_json(product_coords);
-    let backend: sci_form::alpha::gsm::GsmEnergyBackend = method.parse().unwrap_or_else(|e| {
+    let backend: sci_form::gsm::GsmEnergyBackend = method.parse().unwrap_or_else(|e| {
         eprintln!("{}", e);
         std::process::exit(1);
     });
-    let config = sci_form::alpha::kinetics::HtstAdapterConfig {
+    let config = sci_form::kinetics::HtstAdapterConfig {
         step_id: step_id.to_string(),
-        state: sci_form::alpha::kinetics::ThermodynamicState {
+        state: sci_form::kinetics::ThermodynamicState {
             temperature_k,
             pressure_bar,
         },
-        gsm: sci_form::alpha::gsm::GsmConfig {
+        gsm: sci_form::gsm::GsmConfig {
             max_nodes: n_nodes,
             ..Default::default()
         },
         mbh_fd_step,
     };
 
-    match sci_form::alpha::kinetics::analyze_gsm_mbh_htst_step_with_backend(
+    match sci_form::kinetics::analyze_gsm_mbh_htst_step_with_backend(
         smiles, &reactant, &product, backend, &config,
     ) {
         Ok(result) => {

@@ -109,7 +109,12 @@ pub(crate) fn parse_elements_and_positions(
         ));
     }
 
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let positions: Vec<[f64; 3]> = flat
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
     Ok((elems, positions))
 }
 

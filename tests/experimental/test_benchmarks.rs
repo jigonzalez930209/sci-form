@@ -9,10 +9,9 @@
 // B1 — EHT Exact vs. RandNLA (E2): Eigenvalue accuracy
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "beta-randnla")]
 mod bench_randnla_vs_eht {
-    use sci_form::beta::rand_nla::*;
     use sci_form::eht::solve_eht;
+    use sci_form::rand_nla::*;
     use std::time::Instant;
 
     fn water() -> (Vec<u8>, Vec<[f64; 3]>) {
@@ -1311,9 +1310,8 @@ mod bench_cpm_electrochemistry {
 // B11 — GSM Reaction Path (E11): Transition state search
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "alpha-gsm")]
 mod bench_gsm_reaction_path {
-    use sci_form::alpha::gsm::*;
+    use sci_form::gsm::*;
 
     /// Simple harmonic bond energy for H2: E = k*(d - d0)^2
     fn h2_energy(coords: &[f64]) -> f64 {

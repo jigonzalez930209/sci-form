@@ -8,9 +8,7 @@
 //! (MB units treated as kcal/mol; the energy closure is the adapter,
 //! the path search is what is gated.)
 
-#![cfg(feature = "alpha-gsm")]
-
-use sci_form::alpha::gsm::{find_transition_state, grow_string, interpolate_node, GsmConfig};
+use sci_form::gsm::{find_transition_state, grow_string, interpolate_node, GsmConfig};
 
 #[derive(serde::Deserialize)]
 struct Minimum {
@@ -144,7 +142,6 @@ fn f82_ts_matches_ase_neb() {
 // the origin and an exact barrier a⁴. The MEP is the parabola y = c·x², so a
 // straight-line interpolation is intentionally wrong and the path optimizer
 // has to bend towards y=0 at the saddle.
-#[cfg(feature = "alpha-gsm")]
 mod gsm_vs_neb_five_reactions {
     use super::*;
 

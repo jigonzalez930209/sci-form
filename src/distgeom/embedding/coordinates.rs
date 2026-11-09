@@ -528,7 +528,7 @@ pub fn compute_initial_coords_rdkit<R: DistGeomRng>(
         if std::env::var("DEBUG_EMBED").is_ok() {
             eprintln!(
                 "    zero_eigs={}, eigenvalues: {:?}",
-                zero_eigs, &eigenvalues
+                zero_eigs, eigenvalues
             );
         }
         return None;

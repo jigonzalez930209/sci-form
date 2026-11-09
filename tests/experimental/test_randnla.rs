@@ -3,9 +3,8 @@
 //! Validates Nyström approximation, randomized solver, and accuracy
 //! compared to exact diagonalization.
 
-#[cfg(feature = "beta-randnla")]
 mod randnla_tests {
-    use sci_form::beta::rand_nla::*;
+    use sci_form::rand_nla::*;
 
     use nalgebra::{DMatrix, DVector, SymmetricEigen};
     use rand::rngs::StdRng;

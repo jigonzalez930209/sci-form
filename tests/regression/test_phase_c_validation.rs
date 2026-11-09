@@ -703,7 +703,9 @@ fn test_embed_then_population_pipeline() {
 
     let positions: Vec<[f64; 3]> = result
         .coords
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2]])
         .collect();
     let pop = sci_form::compute_population(&result.elements, &positions).unwrap();

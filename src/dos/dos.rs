@@ -176,7 +176,9 @@ pub fn compute_pdos(
     crate::validation::validate_flat_geometry(elements, positions)?;
     let n_atoms = elements.len();
     let pos_arr: Vec<[f64; 3]> = positions
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2]])
         .collect();
     let basis: Vec<AtomicOrbital> = build_basis(elements, &pos_arr);
@@ -277,7 +279,9 @@ pub fn compute_pdos_parallel(
     crate::validation::validate_flat_geometry(elements, positions)?;
     let n_atoms = elements.len();
     let pos_arr: Vec<[f64; 3]> = positions
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2]])
         .collect();
     let basis: Vec<AtomicOrbital> = build_basis(elements, &pos_arr);

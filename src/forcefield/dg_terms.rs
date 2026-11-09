@@ -136,19 +136,15 @@ impl ForceFieldContribution for ChiralViolation {
         ];
         let vol = v1[0] * v2xv3[0] + v1[1] * v2xv3[1] + v1[2] * v2xv3[2];
 
-        let pre_factor;
-        let energy;
-        if vol < self.lower_vol {
+        let (pre_factor, energy) = if vol < self.lower_vol {
             let diff = vol - self.lower_vol;
-            energy = self.weight * diff * diff;
-            pre_factor = 2.0 * self.weight * diff;
+            (2.0 * self.weight * diff, self.weight * diff * diff)
         } else if vol > self.upper_vol {
             let diff = vol - self.upper_vol;
-            energy = self.weight * diff * diff;
-            pre_factor = 2.0 * self.weight * diff;
+            (2.0 * self.weight * diff, self.weight * diff * diff)
         } else {
             return 0.0;
-        }
+        };
 
         // dV/dpos1 = v2 x v3
         grad[i] += pre_factor * v2xv3[0];

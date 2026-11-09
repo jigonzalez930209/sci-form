@@ -114,11 +114,12 @@
 //! |---|---|
 //! | `parallel` | rayon-parallel batch APIs (default **on**) |
 //! | `experimental-gpu`, `experimental-gpu-rendering` | the `gpu` compute / mesh rendering backends |
-//! | `alpha-cga`, `alpha-gsm`, `alpha-sdr`, `alpha-edl`, `alpha-periodic-linear`, `alpha-kinetics`, `alpha-render-bridge`, `alpha-reaction-dynamics` | the `alpha` research modules |
-//! | `beta-mbh`, `beta-cpm`, `beta-randnla`, `beta-riemannian` | the `beta` modules |
-//! | `beta-kpm` | legacy alias only: KPM is now core (`kpm`) |
+//! | `alpha-cga`, `alpha-sdr`, `alpha-edl`, `alpha-render-bridge`, `alpha-reaction-dynamics` | legacy aliases / remaining `alpha` modules |
+//! | `alpha-gsm`, `alpha-kinetics`, `alpha-periodic-linear`, `alpha-dynamics-live` | compatibility aliases only: GSM, kinetics, periodic-linear adapters and `dynamics_live` are core |
+//! | `beta-mbh` | the remaining gated beta module (Multi-Basin Hopping) |
+//! | `beta-cpm`, `beta-riemannian` | legacy aliases only: CPM and Riemannian are core |
+//! | `beta-kpm`, `beta-randnla` | legacy aliases only: KPM and RandNLA are core |
 //! | `alpha-dft` | the `dft` module |
-//! | `alpha-dynamics-live` | the `dynamics_live` module |
 //! | `alpha-mlff` | the `mlff` re-export module |
 //!
 //! The legacy `experimental-*` flags (e.g. `experimental-riemannian`) are kept as no-op
@@ -207,9 +208,11 @@ pub mod fixture_io;
 pub mod forcefield;
 pub mod gpu;
 pub mod graph;
+pub mod gsm;
 pub mod hf;
 pub mod imd;
 pub mod ir;
+pub mod kinetics;
 pub mod kmesh;
 pub mod kpm;
 pub mod materials;
@@ -219,9 +222,11 @@ pub mod ml;
 pub mod nmr;
 pub mod optimization;
 pub mod periodic;
+pub mod periodic_linear;
 pub mod pm3;
 pub mod population;
 pub mod potentials;
+pub mod rand_nla;
 pub mod reactivity;
 pub mod render_bridge;
 pub mod riemannian;
@@ -273,7 +278,6 @@ pub mod beta;
 
 // ─── ALPHA modules (feature-gated) ──────────────────────────────────────────
 
-#[cfg(feature = "alpha-dynamics-live")]
 pub mod dynamics_live;
 
 #[cfg(feature = "alpha-dft")]
@@ -1333,7 +1337,9 @@ pub fn compute_sasa(
 ) -> Result<surface::sasa::SasaResult, SciFormError> {
     validation::validate_flat_geometry(elements, coords_flat)?;
     let positions: Vec<[f64; 3]> = coords_flat
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| [c[0], c[1], c[2]])
         .collect();
 

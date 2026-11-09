@@ -217,19 +217,18 @@ pub fn analytical_grad_distance_constraint(
 ) {
     let diff = p1 - p2;
     let d2 = diff.norm_squared();
-    let pre;
-    if d2 < min_len * min_len {
+    let pre = if d2 < min_len * min_len {
         let d = d2.sqrt().max(1e-8);
         // dE/dr = k * (d - minLen), where d < minLen so this is negative
         // dE/dx_i = dE/dr * (x_i - x_j) / d = k * (1 - minLen/d) * (x_i - x_j)
-        pre = k * (d - min_len) / d;
+        k * (d - min_len) / d
     } else if d2 > max_len * max_len {
         let d = d2.sqrt().max(1e-8);
         // dE/dr = k * (d - maxLen), where d > maxLen so this is positive
-        pre = k * (d - max_len) / d;
+        k * (d - max_len) / d
     } else {
         return; // within bounds, zero gradient
-    }
+    };
     grad[(idx1, 0)] += pre * diff[0];
     grad[(idx1, 1)] += pre * diff[1];
     grad[(idx1, 2)] += pre * diff[2];

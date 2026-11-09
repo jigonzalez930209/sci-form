@@ -192,8 +192,12 @@ pub fn optimize_framework(
     let elements: Vec<u8> = (0..n)
         .map(|i| mol.graph[sci_form::graph::NodeIndex::new(i)].element)
         .collect();
-    let initial_positions: Vec<[f64; 3]> =
-        flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let initial_positions: Vec<[f64; 3]> = flat
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
 
     let opt_method: sci_form::materials::geometry_opt::OptMethod = match method.parse() {
         Ok(m) => m,

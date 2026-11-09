@@ -142,7 +142,12 @@ pub fn parse_elems_coords(elements: &str, coords: &str) -> (Vec<u8>, Vec<f64>, V
     let flat: Vec<f64> = serde_json::from_str(coords).unwrap_or_else(|e| {
         fail(bad_json("'coords'", coords, &e));
     });
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let positions: Vec<[f64; 3]> = flat
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
     (elems, flat, positions)
 }
 

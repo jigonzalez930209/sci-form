@@ -225,7 +225,9 @@ mod f86_eht {
         for case in &fixture.cases {
             let positions: Vec<[f64; 3]> = case
                 .coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2]])
                 .collect();
             assert_eq!(
@@ -592,7 +594,9 @@ mod f87_eeq2019 {
         for case in &fixture.cases {
             let positions_bohr: Vec<[f64; 3]> = case
                 .coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| {
                     [
                         c[0] * 1.8897259886,

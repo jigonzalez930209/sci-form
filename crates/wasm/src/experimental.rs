@@ -930,7 +930,7 @@ pub fn compute_htst_rate(
     reaction_free_energy_ev: f64,
     temperature_k: f64,
 ) -> String {
-    use sci_form::alpha::kinetics::*;
+    use sci_form::kinetics::*;
     let step = ElementaryStep {
         step_id: "wasm".into(),
         activation_free_energy_ev,
@@ -964,7 +964,7 @@ pub fn compute_htst_sweep(
     reaction_free_energy_ev: f64,
     temperatures_json: &str,
 ) -> String {
-    use sci_form::alpha::kinetics::*;
+    use sci_form::kinetics::*;
     let temperatures: Vec<f64> = match serde_json::from_str(temperatures_json) {
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'temperatures'", temperatures_json, &e)),
@@ -1002,7 +1002,7 @@ pub fn compute_htst_sweep(
 #[cfg(feature = "alpha-periodic-linear")]
 #[wasm_bindgen]
 pub fn compute_kmesh(grid_json: &str, centering: &str) -> String {
-    use sci_form::alpha::periodic_linear::*;
+    use sci_form::periodic_linear::*;
     let grid: [usize; 3] = match serde_json::from_str(grid_json) {
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'grid'", grid_json, &e)),
@@ -1141,7 +1141,12 @@ fn symmetric_eigenvalues(matrix: &nalgebra::DMatrix<f64>) -> Vec<f64> {
 /// Convert a flat coordinate array into Cartesian positions.
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 fn positions_from_flat(coords: &[f64]) -> Vec<[f64; 3]> {
-    coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+    coords
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect()
 }
 
 /// Parse the nine lattice-vector components into a 3×3 lattice.
@@ -1151,7 +1156,7 @@ fn parse_lattice(values: &[f64]) -> Result<[[f64; 3]; 3], String> {
         return Err("lattice needs exactly nine components".into());
     }
     let mut lattice = [[0.0_f64; 3]; 3];
-    for (row, chunk) in values.chunks_exact(3).enumerate() {
+    for (row, chunk) in values.as_chunks::<3>().0.iter().enumerate() {
         lattice[row] = [chunk[0], chunk[1], chunk[2]];
     }
     Ok(lattice)
@@ -1294,10 +1299,8 @@ fn fermi_contour(
 fn network_config(
     network_json: &str,
     n_steps: usize,
-) -> Result<sci_form::alpha::kinetics::MicrokineticNetworkConfig, String> {
-    use sci_form::alpha::kinetics::{
-        ElementaryStep, MicrokineticNetworkConfig, ThermodynamicState,
-    };
+) -> Result<sci_form::kinetics::MicrokineticNetworkConfig, String> {
+    use sci_form::kinetics::{ElementaryStep, MicrokineticNetworkConfig, ThermodynamicState};
     let trimmed = network_json.trim();
     if !trimmed.is_empty() && trimmed != "null" {
         let mut config: MicrokineticNetworkConfig = serde_json::from_str(trimmed)
@@ -1636,8 +1639,8 @@ pub fn compute_thermal_prop_chart(
     reaction_free_energy_ev: f64,
     temperatures_json: &str,
 ) -> String {
-    use sci_form::alpha::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
     use sci_form::alpha::render_bridge::arrhenius_chart;
+    use sci_form::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let temperatures: Vec<f64> = match serde_json::from_str(temperatures_json) {
         Ok(v) => v,
@@ -1683,7 +1686,7 @@ pub fn compute_thermal_prop_chart(
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-kinetics"))]
 #[wasm_bindgen]
 pub fn compute_phase_portrait_chart(network_json: &str, n_steps: usize) -> String {
-    use sci_form::alpha::kinetics::solve_microkinetic_network;
+    use sci_form::kinetics::solve_microkinetic_network;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let config = match network_config(network_json, n_steps) {
         Ok(config) => config,
@@ -1741,8 +1744,8 @@ pub fn compute_band_structure_chart(
     lattice_json: &str,
     n_kpoints_per_segment: usize,
 ) -> String {
-    use sci_form::alpha::periodic_linear::*;
     use sci_form::alpha::render_bridge::band_structure_chart;
+    use sci_form::periodic_linear::*;
     let elements: Vec<u8> = match serde_json::from_str(elements_json) {
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'elements'", elements_json, &e)),
@@ -1778,10 +1781,10 @@ pub fn compute_band_structure_chart(
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 #[wasm_bindgen]
 pub fn compute_dos_chart(energies_json: &str, dos_json: &str) -> String {
-    use sci_form::alpha::periodic_linear::{
+    use sci_form::alpha::render_bridge::periodic_dos_chart;
+    use sci_form::periodic_linear::{
         PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
     };
-    use sci_form::alpha::render_bridge::periodic_dos_chart;
     let energies: Vec<f64> = match serde_json::from_str(energies_json) {
         Ok(v) => v,
         Err(e) => return json_error(&e.to_string()),
@@ -1804,7 +1807,7 @@ pub fn compute_dos_chart(energies_json: &str, dos_json: &str) -> String {
 #[cfg(all(feature = "alpha-render-bridge", feature = "alpha-periodic-linear"))]
 #[wasm_bindgen]
 pub fn compute_kpoint_path_chart(n_points_per_segment: usize) -> String {
-    use sci_form::alpha::periodic_linear::BandStructureAdapterConfig;
+    use sci_form::periodic_linear::BandStructureAdapterConfig;
     use sci_form::render_bridge::{ChartPayload, ChartSeries};
     let path = BandStructureAdapterConfig::default().path;
     let (distance, points) = interpolate_path(&path, n_points_per_segment);
@@ -1983,8 +1986,8 @@ fn gsm_path(
     reactant: &[f64],
     product: &[f64],
     method: &str,
-) -> Result<sci_form::alpha::gsm::GsmResult, String> {
-    use sci_form::alpha::gsm::{find_transition_state_with_backend, GsmConfig, GsmEnergyBackend};
+) -> Result<sci_form::gsm::GsmResult, String> {
+    use sci_form::gsm::{find_transition_state_with_backend, GsmConfig, GsmEnergyBackend};
     let backend: GsmEnergyBackend = method
         .parse()
         .map_err(|e: String| format!("unknown GSM backend '{method}': {e}"))?;
@@ -2031,7 +2034,7 @@ pub fn compute_periodic_dos_wasm(
     n_points: usize,
     fermi_energy_ev: Option<f64>,
 ) -> String {
-    use sci_form::alpha::periodic_linear::*;
+    use sci_form::periodic_linear::*;
     let blocks = match parse_blocks(blocks_json) {
         Ok(blocks) => blocks,
         Err(e) => return json_error(&e),
@@ -2118,7 +2121,7 @@ pub fn solve_periodic_randnla_wasm(
     centering: &str,
     sketch_size: Option<usize>,
 ) -> String {
-    use sci_form::alpha::periodic_linear::*;
+    use sci_form::periodic_linear::*;
     let hamiltonian_blocks = match parse_blocks(hamiltonian_blocks_json) {
         Ok(blocks) => blocks,
         Err(e) => return json_error(&e),
@@ -2149,7 +2152,7 @@ pub fn solve_periodic_randnla_wasm(
         sketch_size,
         ..Default::default()
     };
-    match sci_form::alpha::periodic_linear::solve_periodic_randnla(
+    match sci_form::periodic_linear::solve_periodic_randnla(
         &hamiltonians,
         &overlaps,
         n_electrons,
@@ -2258,7 +2261,7 @@ pub fn assemble_periodic_operators_wasm(
     grid_json: &str,
     centering: &str,
 ) -> String {
-    use sci_form::alpha::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
+    use sci_form::periodic_linear::{monkhorst_pack_mesh, KMeshConfig};
     let hamiltonian_blocks = match parse_blocks(hamiltonian_blocks_json) {
         Ok(blocks) => blocks,
         Err(e) => return json_error(&e),
@@ -2454,7 +2457,7 @@ pub fn validate_kmesh_weights(weights_json: &str, tolerance: f64) -> String {
 #[cfg(feature = "alpha-kinetics")]
 #[wasm_bindgen]
 pub fn extract_kinetics_diagnostics_wasm(network_json: &str, n_steps: usize) -> String {
-    use sci_form::alpha::kinetics::*;
+    use sci_form::kinetics::*;
     let config = match network_config(network_json, n_steps) {
         Ok(config) => config,
         Err(e) => return json_error(&e),
@@ -2488,7 +2491,7 @@ pub fn extract_kinetics_diagnostics(network_json: &str, n_steps: usize) -> Strin
 #[cfg(feature = "alpha-kinetics")]
 #[wasm_bindgen]
 pub fn solve_microkinetic_network_wasm(network_json: &str, n_steps: usize) -> String {
-    use sci_form::alpha::kinetics::*;
+    use sci_form::kinetics::*;
     let config = match network_config(network_json, n_steps) {
         Ok(config) => config,
         Err(e) => return json_error(&e),
@@ -2530,7 +2533,7 @@ pub fn solve_microkinetic_steady_state_wasm(
     n_steps: usize,
     tol: f64,
 ) -> String {
-    use sci_form::alpha::kinetics::*;
+    use sci_form::kinetics::*;
     let config = match network_config(network_json, n_steps) {
         Ok(config) => config,
         Err(e) => return json_error(&e),
@@ -2576,8 +2579,8 @@ pub fn analyze_gsm_mbh_htst_step_wasm(
     temperature_k: f64,
     pressure_bar: f64,
 ) -> String {
-    use sci_form::alpha::gsm::GsmEnergyBackend;
-    use sci_form::alpha::kinetics::*;
+    use sci_form::gsm::GsmEnergyBackend;
+    use sci_form::kinetics::*;
     let reactant: Vec<f64> = match serde_json::from_str(reactant_coords_json) {
         Ok(v) => v,
         Err(e) => return json_error(&bad_json("'reactant coords'", reactant_coords_json, &e)),

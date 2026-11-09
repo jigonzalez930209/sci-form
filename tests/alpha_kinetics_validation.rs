@@ -7,9 +7,7 @@
 //! mechanism/thermo I/O). Gates: rates (1e-12), traces (1e-4),
 //! steady-state equilibrium ratio == K.
 
-#![cfg(feature = "alpha-kinetics")]
-
-use sci_form::alpha::kinetics::{
+use sci_form::kinetics::{
     evaluate_htst_rate, solve_microkinetic_network, solve_microkinetic_steady_state,
     ElementaryStep, MicrokineticNetworkConfig, ThermodynamicState,
 };

@@ -211,7 +211,7 @@ pub fn solve_eht(
 /// This is the optional EHT backend promised by the RandNLA promotion
 /// criteria: the Hamiltonian and overlap matrices are assembled exactly as in
 /// [`solve_eht`], then the generalized eigenproblem is solved by
-/// [`crate::beta::rand_nla::solve_eht_randnla`]. The returned [`EhtResult`]
+/// [`crate::rand_nla::solve_eht_randnla`]. The returned [`EhtResult`]
 /// carries the usual orbital metadata and the [`RandNlaInfo`] records the
 /// sketch rank, residual and whether the exact fallback fired.
 ///
@@ -221,17 +221,16 @@ pub fn solve_eht(
 /// # Errors
 ///
 /// Same as [`solve_eht`], plus any error from the geometry/EHT basis setup.
-#[cfg(feature = "beta-randnla")]
 pub fn solve_eht_randnla(
     elements: &[u8],
     positions: &[[f64; 3]],
     k: Option<f64>,
-    config: &crate::beta::rand_nla::RandNlaConfig,
-) -> Result<(EhtResult, crate::beta::rand_nla::RandNlaInfo), String> {
+    config: &crate::rand_nla::RandNlaConfig,
+) -> Result<(EhtResult, crate::rand_nla::RandNlaInfo), String> {
     use super::basis::build_basis;
     use super::hamiltonian::build_hamiltonian;
     use super::overlap::build_overlap_matrix;
-    use crate::beta::rand_nla::solve_eht_randnla as solve_randnla;
+    use crate::rand_nla::solve_eht_randnla as solve_randnla;
 
     crate::validation::validate_geometry(elements, positions)?;
 

@@ -190,11 +190,10 @@ mod kpm_vs_diagonalization {
     }
 }
 
-#[cfg(feature = "beta-randnla")]
 mod nystrom_vs_exact_svd {
     use nalgebra::DMatrix;
     use rand::SeedableRng;
-    use sci_form::beta::rand_nla::{GaussianSketch, NystromApprox};
+    use sci_form::rand_nla::{GaussianSketch, NystromApprox};
 
     /// Low-rank-plus-noise symmetric matrix with known spectrum.
     fn low_rank_psd(n: usize, rank: usize, noise: f64, seed: u64) -> DMatrix<f64> {
@@ -573,9 +572,8 @@ mod sdr_vs_classical_mds {
     }
 }
 
-#[cfg(feature = "alpha-gsm")]
 mod gsm_vs_analytic_mep {
-    use sci_form::alpha::gsm::{find_transition_state, GsmConfig};
+    use sci_form::gsm::{find_transition_state, GsmConfig};
 
     #[test]
     fn gsm_barrier_matches_analytic_double_well() {

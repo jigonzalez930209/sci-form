@@ -1737,7 +1737,6 @@ mod gpu_candidate_cpm {
 //  RandNLA — Randomized Eigensolve — GPU Tier 2
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "beta-randnla")]
 mod gpu_candidate_randnla {
     use super::*;
 
@@ -1750,7 +1749,7 @@ mod gpu_candidate_randnla {
             let core =
                 sci_form::scf::core_matrices::CoreMatrices::build(&basis, &elements, &pos_bohr);
 
-            let config = sci_form::beta::rand_nla::RandNlaConfig {
+            let config = sci_form::rand_nla::RandNlaConfig {
                 sketch_size: Some(4),
                 seed: 42,
                 max_error: 1e-3,
@@ -1759,7 +1758,7 @@ mod gpu_candidate_randnla {
             };
 
             let t0 = Instant::now();
-            let (eigenvalues, _eigenvectors, info) = sci_form::beta::rand_nla::solve_eht_randnla(
+            let (eigenvalues, _eigenvectors, info) = sci_form::rand_nla::solve_eht_randnla(
                 &core.core_hamiltonian,
                 &core.overlap,
                 &config,
@@ -1963,7 +1962,6 @@ mod gpu_candidate_cga {
 //  GSM — Growing String Method — GPU Tier 3-4
 // ═══════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "alpha-gsm")]
 mod gpu_candidate_gsm {
     #[test]
     fn bench_gsm_methodology_note() {

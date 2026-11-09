@@ -1,8 +1,7 @@
 //! Integration tests for E11: Growing String Method
 
-#[cfg(feature = "alpha-gsm")]
 mod gsm_tests {
-    use sci_form::alpha::gsm::*;
+    use sci_form::gsm::*;
 
     fn double_well(coords: &[f64]) -> f64 {
         let x = coords[0];

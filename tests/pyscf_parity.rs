@@ -180,7 +180,9 @@ mod f79b_ir {
         for case in &fixture.cases {
             let positions: Vec<[f64; 3]> = case
                 .coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2]])
                 .collect();
             let system = MolecularSystem::from_angstrom(&case.elements, &positions, 0, 1);
@@ -369,7 +371,9 @@ mod f78_esp {
         for case in &fixture.cases {
             let positions: Vec<[f64; 3]> = case
                 .coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2]])
                 .collect();
 
@@ -671,7 +675,9 @@ mod f77_stda {
         for case in &fixture.cases {
             let positions_ang: Vec<[f64; 3]> = case
                 .coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2]])
                 .collect();
             let positions_bohr: Vec<[f64; 3]> = positions_ang

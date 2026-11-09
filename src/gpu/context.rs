@@ -741,8 +741,10 @@ pub fn f32_slice_to_bytes(values: &[f32]) -> Vec<u8> {
 /// `bytes.len() / 4`.
 pub fn bytes_to_f32_vec(bytes: &[u8]) -> Vec<f32> {
     bytes
-        .chunks_exact(4)
-        .map(|c| f32::from_ne_bytes(c.try_into().expect("4 bytes")))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|c| f32::from_ne_bytes(*c))
         .collect()
 }
 

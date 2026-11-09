@@ -983,7 +983,12 @@ mod pyscf_support {
     }
 
     pub fn positions_angstrom(coords: &[f64]) -> Vec<[f64; 3]> {
-        coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+        coords
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|c| [c[0], c[1], c[2]])
+            .collect()
     }
 
     pub fn positions_bohr(coords: &[f64]) -> Vec<[f64; 3]> {
@@ -1464,7 +1469,12 @@ mod gfn_support {
     }
 
     pub fn positions(coords: &[f64]) -> Vec<[f64; 3]> {
-        coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+        coords
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|c| [c[0], c[1], c[2]])
+            .collect()
     }
 }
 
@@ -2270,7 +2280,9 @@ mod f47_fukui {
         for case in &fixture.cases {
             let pos: Vec<[f64; 3]> = case
                 .coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2]])
                 .collect();
             let eht = sci_form::eht::solve_eht(&case.elements, &pos, None)
@@ -2375,7 +2387,9 @@ mod f42_pm3_guard {
         for case in &fixture.cases {
             let pos: Vec<[f64; 3]> = case
                 .coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|c| [c[0], c[1], c[2]])
                 .collect();
             let res = sci_form::pm3::solve_pm3(&case.elements, &pos)
@@ -2786,7 +2800,9 @@ mod f49_ir {
         let n = h2s.elements.len();
         let positions: Vec<[f64; 3]> = h2s
             .coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| [c[0], c[1], c[2]])
             .collect();
         let hessian = DMatrix::from_row_slice(
@@ -2836,7 +2852,9 @@ mod f49_ir {
         let nw = water.elements.len();
         let wpos: Vec<[f64; 3]> = water
             .coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| [c[0], c[1], c[2]])
             .collect();
         let whess = DMatrix::from_row_slice(
@@ -2963,7 +2981,9 @@ mod f70_framework_opt {
             let ff = sci_form::forcefield::builder::build_uff_force_field(&mol);
             let pos0: Vec<[f64; 3]> = case
                 .initial_coords
-                .chunks_exact(3)
+                .as_chunks::<3>()
+                .0
+                .iter()
                 .map(|w| [w[0], w[1], w[2]])
                 .collect();
 
@@ -2978,15 +2998,19 @@ mod f70_framework_opt {
                 case.e_initial
             );
 
-            let closure = move |_el: &[u8],
-                                pos: &[[f64; 3]]|
-                  -> Result<(f64, Vec<[f64; 3]>), String> {
-                let flat: Vec<f64> = pos.iter().flat_map(|p| p.iter().copied()).collect();
-                let mut g = vec![0.0; flat.len()];
-                let e = ff.compute_system_energy_and_gradients(&flat, &mut g);
-                let f: Vec<[f64; 3]> = g.chunks_exact(3).map(|w| [-w[0], -w[1], -w[2]]).collect();
-                Ok((e, f))
-            };
+            let closure =
+                move |_el: &[u8], pos: &[[f64; 3]]| -> Result<(f64, Vec<[f64; 3]>), String> {
+                    let flat: Vec<f64> = pos.iter().flat_map(|p| p.iter().copied()).collect();
+                    let mut g = vec![0.0; flat.len()];
+                    let e = ff.compute_system_energy_and_gradients(&flat, &mut g);
+                    let f: Vec<[f64; 3]> = g
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
+                        .map(|w| [-w[0], -w[1], -w[2]])
+                        .collect();
+                    Ok((e, f))
+                };
             let config = FrameworkOptConfig {
                 method: OptMethod::Bfgs,
                 max_iter: 2000,

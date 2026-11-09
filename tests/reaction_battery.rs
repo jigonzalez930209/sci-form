@@ -288,9 +288,8 @@ fn r5_sn2_model_21_frames_plus_kinetics() {
     }
     println!("\n  TS@frame{ts_idx}  Ea_fwd={ea_fwd:.4}  Ea_rev={ea_rev:.4}  ΔE={delta_e:.4}");
 
-    #[cfg(feature = "alpha-kinetics")]
     {
-        use sci_form::alpha::kinetics::{
+        use sci_form::kinetics::{
             evaluate_htst_rate, evaluate_htst_temperature_sweep, solve_microkinetic_network,
             ElementaryStep, MicrokineticNetworkConfig, ThermodynamicState,
         };
@@ -708,10 +707,9 @@ fn reactivity_fukui_descriptors_21_frames() {
 // ═══════════════════════════════════════════════════════════════════════════
 // GSM — 3 potenciales × 21 nodos, frame central = TS (necesita alpha-gsm)
 // ═══════════════════════════════════════════════════════════════════════════
-#[cfg(feature = "alpha-gsm")]
 #[test]
 fn gsm_three_reactions_21_nodes_mid_is_ts() {
-    use sci_form::alpha::gsm::{find_transition_state, GsmConfig};
+    use sci_form::gsm::{find_transition_state, GsmConfig};
 
     let cfg = GsmConfig {
         max_nodes: N,

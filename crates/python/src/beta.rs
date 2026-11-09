@@ -219,11 +219,10 @@ mod mbh_py {
 
 // ─── B3: RandNLA ─────────────────────────────────────────────────────────────
 
-#[cfg(feature = "beta-randnla")]
 mod randnla_py {
     use nalgebra::DMatrix;
     use pyo3::prelude::*;
-    use sci_form_core::beta::rand_nla::{solve_eht_randnla, RandNlaConfig};
+    use sci_form_core::rand_nla::{solve_eht_randnla, RandNlaConfig};
 
     fn build_eht_matrices(
         elements: &[u8],
@@ -445,7 +444,6 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     kpm_py::register(&m)?;
     #[cfg(feature = "beta-mbh")]
     mbh_py::register(&m)?;
-    #[cfg(feature = "beta-randnla")]
     randnla_py::register(&m)?;
     #[cfg(feature = "beta-riemannian")]
     riemannian_py::register(&m)?;

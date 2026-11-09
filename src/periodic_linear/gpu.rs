@@ -222,7 +222,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alpha::periodic_linear::{KMeshCentering, KMeshConfig};
+    use crate::periodic_linear::{KMeshCentering, KMeshConfig};
 
     #[test]
     fn gpu_assembly_falls_back_to_cpu() {
@@ -230,7 +230,7 @@ mod tests {
         let h = DMatrix::<f64>::identity(4, 4);
         let h_pairs: Vec<(&DMatrix<f64>, [i32; 3])> = vec![(&h, [0, 0, 0])];
         let s_pairs: Vec<(&DMatrix<f64>, [i32; 3])> = vec![(&h, [0, 0, 0])];
-        let mesh = crate::alpha::periodic_linear::monkhorst_pack_mesh(&KMeshConfig {
+        let mesh = crate::periodic_linear::monkhorst_pack_mesh(&KMeshConfig {
             grid: [3, 3, 3],
             centering: KMeshCentering::MonkhorstPack,
         })

@@ -1,37 +1,26 @@
-//! Beta-stage experimental modules — tested, approaching core readiness.
+//! Beta-tier compatibility aliases and the remaining gated modules.
 //!
-//! These modules have passed initial validation and demonstrate clear
-//! scientific value, but need additional work before core promotion:
-//! - More extensive numerical validation
-//! - Integration with existing core APIs
-//! - Performance benchmarks and optimization
-//! - Edge-case coverage
+//! KPM, CPM, RandNLA and Riemannian are core; `beta::*` paths and the
+//! `beta-*` feature flags remain as compatibility aliases. Multi-Basin
+//! Hopping (MBH) is the only module still gated as beta research.
 //!
 //! ## Modules
 //!
-//! | Module | Purpose | Promotion criteria |
-//! |--------|---------|-------------------|
-//! | KPM | Kernel Polynomial Method (O(N) DOS) | **Promoted to core** (`crate::kpm`); `beta::kpm` is an alias |
-
-//! | MBH | Multi-Basin Hopping (global optimization) | Integrate with UFF/MMFF94, reproduce known minima |
-//! | CPM | Continuous Phase Methods (crystal surfaces) | Validate vs DFT reference, integrate with materials |
-//! | RandNLA | Randomized NLA (fast eigensolvers) | Wire into EHT/SCF, <1% error at rank=N/4 |
-//! | Riemannian | Riemannian geometry optimization | Benchmark vs Cartesian L-BFGS, manifold constraints |
+//! | Module | Purpose | Status |
+//! |--------|---------|--------|
+//! | KPM | Kernel Polynomial Method | core `crate::kpm`; alias |
+//! | CPM | Constant Potential Method | core `crate::cpm`; alias |
+//! | RandNLA | Randomized eigensolvers | core `crate::rand_nla`; alias |
+//! | Riemannian | PSD manifold geometry | core `crate::riemannian`; alias |
+//! | MBH | Multi-Basin Hopping | gated (`beta-mbh`) |
 //!
 //! ## Usage
 //!
-//! Each module requires its own feature flag:
+//! Core modules need no feature flag; MBH keeps `beta-mbh`:
 //! ```toml
 //! [dependencies]
-//! sci-form = { version = "0.9", features = ["beta-kpm"] }
+//! sci-form = { version = "1.1", features = ["beta-mbh"] }
 //! ```
-//!
-//! ## GPU acceleration candidates
-//!
-//! Several beta modules are candidates for GPU acceleration:
-//! - **KPM**: Chebyshev matrix-vector products → compute shader
-//! - **RandNLA**: Random projection and Nyström → parallel GPU
-//! - **CPM**: Phase-field PDE solver → grid-parallel compute
 
 /// Backwards-compatible path for the promoted core KPM module.
 pub use crate::kpm;
@@ -42,8 +31,8 @@ pub mod mbh;
 #[cfg(feature = "beta-cpm")]
 pub mod cpm;
 
-#[cfg(feature = "beta-randnla")]
-pub mod rand_nla;
+/// Backwards-compatible path for the promoted core RandNLA module.
+pub use crate::rand_nla;
 
 #[cfg(feature = "beta-riemannian")]
 pub mod riemannian;

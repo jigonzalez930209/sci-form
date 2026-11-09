@@ -29,7 +29,6 @@ mod test_eeq;
 #[path = "experimental/test_cga.rs"]
 mod test_cga;
 
-#[cfg(feature = "alpha-gsm")]
 #[path = "experimental/test_gsm.rs"]
 mod test_gsm;
 
@@ -40,7 +39,6 @@ mod test_kpm;
 #[path = "experimental/test_mbh.rs"]
 mod test_mbh;
 
-#[cfg(feature = "beta-randnla")]
 #[path = "experimental/test_randnla.rs"]
 mod test_randnla;
 

@@ -22,7 +22,9 @@ fn benzene_ortho_3j_matches_experimental() {
     );
     let positions: Vec<[f64; 3]> = conformer
         .coords
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|p| [p[0], p[1], p[2]])
         .collect();
 
@@ -60,7 +62,9 @@ fn ethylene_cis_trans_3j_matches_experimental() {
     );
     let positions: Vec<[f64; 3]> = conformer
         .coords
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|p| [p[0], p[1], p[2]])
         .collect();
     let couplings = predict_nmr_couplings("C=C", &positions).expect("J-couplings");

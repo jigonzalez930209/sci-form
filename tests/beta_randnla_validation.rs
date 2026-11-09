@@ -9,11 +9,9 @@
 //! in the near-identity regime with fallback OFF (5e-3), default config
 //! with fallback ON (exact, 1e-6).
 
-#![cfg(feature = "beta-randnla")]
-
 use nalgebra::DMatrix;
 use rand::{rngs::StdRng, SeedableRng};
-use sci_form::beta::rand_nla::{solve_eht_randnla, GaussianSketch, NystromApprox, RandNlaConfig};
+use sci_form::rand_nla::{solve_eht_randnla, GaussianSketch, NystromApprox, RandNlaConfig};
 
 #[derive(serde::Deserialize)]
 struct CharCase {
@@ -218,15 +216,17 @@ fn f93_production_default_exact() {
 /// frontier orbitals and gap on the test set.
 #[test]
 fn f93_eht_randnla_backend_matches_exact() {
-    use sci_form::beta::rand_nla::RandNlaConfig;
     use sci_form::eht::{solve_eht, solve_eht_randnla};
+    use sci_form::rand_nla::RandNlaConfig;
 
     for smiles in ["c1ccccc1", "c1ccc2ccccc2c1"] {
         let conformer = sci_form::embed(smiles, 42);
         assert!(conformer.error.is_none(), "{smiles}: embed failed");
         let positions: Vec<[f64; 3]> = conformer
             .coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|p| [p[0], p[1], p[2]])
             .collect();
         let exact = solve_eht(&conformer.elements, &positions, None).expect("exact EHT");

@@ -1,30 +1,30 @@
-//! Alpha-stage experimental modules — early research, proof-of-concept.
+//! Alpha-tier compatibility aliases and remaining early-research modules.
 //!
-//! These modules are at the earliest stage of development. They demonstrate
-//! algorithmic feasibility but lack:
-//! - Production-quality validation
-//! - Integration with core APIs
-//! - Performance benchmarks against established methods
-//! - Comprehensive edge-case handling
+//! Most of the original alpha tier has been promoted to core after its
+//! cross-library gates passed. The paths below remain available as aliases;
+//! the remaining gated research modules are DFT, MLFF, reaction dynamics and
+//! the render-bridge domain builders.
 //!
 //! ## Modules
 //!
-//! | Module | Purpose | Promotion criteria |
-//! |--------|---------|-------------------|
-//! | CGA | Conformal Geometric Algebra for molecular geometry | Benchmark vs ETKDG, symmetry-constrained assembly |
-//! | GSM | Growing String Method for reaction pathways | Couple with PM3/xTB gradients, reproduce known barriers |
-//! | SDR | Spectral Dimensionality Reduction for chemical space | Validate SAR preservation, adaptive bandwidth |
-//! | EDL | Electrochemical double-layer contracts and compact-layer CPU reference | Couple CPM/EEQ/ALPB into validated interface scans |
-//! | PeriodicLinear | Periodic linear-scaling contracts, k-meshes, and Bloch helpers | k-mesh DOS and low-rank refinement on periodic operators |
-//! | Kinetics | HTST and microkinetic contracts with CPU rate references | Complete GSM -> MBH -> HTST and network validation |
-//! | RenderBridge | Browser- and GPU-ready rendering payload contracts | Typed-array/columnar export with round-trip benchmarks |
+//! | Module | Purpose | Status |
+//! |--------|---------|--------|
+//! | CGA | Conformal Geometric Algebra | core `crate::cga`; `alpha::cga` alias |
+//! | GSM | Growing String Method | core `crate::gsm`; `alpha::gsm` alias |
+//! | SDR | Spectral dimensionality reduction | core `crate::sdr`; `alpha::sdr` alias |
+//! | EDL | Electrochemical double layer | core `crate::edl`; `alpha::edl` alias |
+//! | PeriodicLinear | Periodic adapters (KPM/RandNLA) | core `crate::periodic_linear`; alias |
+//! | Kinetics | HTST and microkinetic networks | core `crate::kinetics`; alias |
+//! | RenderBridge | Chart builders | core payloads + gated domain builders |
+//! | ReactionDynamics | Full 3D reaction path | gated; self-consistency only |
 //!
 //! ## Usage
 //!
-//! Each module requires its own feature flag:
+//! Core modules need no feature flag. Compatibility aliases require their
+//! historical flag:
 //! ```toml
 //! [dependencies]
-//! sci-form = { version = "0.9", features = ["alpha-cga"] }
+//! sci-form = { version = "1.1", features = ["alpha-cga"] }
 //! ```
 
 #[cfg(feature = "alpha-cga")]
@@ -33,14 +33,17 @@ pub mod cga;
 #[cfg(feature = "alpha-edl")]
 pub mod edl;
 
+/// Backwards-compatible path for the promoted core GSM module.
 #[cfg(feature = "alpha-gsm")]
-pub mod gsm;
+pub use crate::gsm;
 
+/// Backwards-compatible path for the promoted core kinetics module.
 #[cfg(feature = "alpha-kinetics")]
-pub mod kinetics;
+pub use crate::kinetics;
 
+/// Backwards-compatible path for the promoted core periodic-linear module.
 #[cfg(feature = "alpha-periodic-linear")]
-pub mod periodic_linear;
+pub use crate::periodic_linear;
 
 #[cfg(feature = "alpha-render-bridge")]
 pub mod render_bridge;

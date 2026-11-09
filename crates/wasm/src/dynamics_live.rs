@@ -1,4 +1,4 @@
-//! **ALPHA** — Live interactive molecular dynamics WASM bindings.
+//! Live interactive molecular dynamics WASM bindings (core `dynamics_live`).
 //!
 //! Provides a persistent `LiveSimulation` handle that the browser can step
 //! frame-by-frame, query positions via a zero-copy pointer, and apply

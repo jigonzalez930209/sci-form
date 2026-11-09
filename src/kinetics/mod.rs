@@ -22,9 +22,12 @@
 pub mod gpu;
 
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "beta-mbh")]
 use std::cell::RefCell;
 
+#[cfg(feature = "beta-mbh")]
 const KCAL_MOL_TO_EV: f64 = 0.043_364_115_308_770_5;
+#[cfg(feature = "beta-mbh")]
 const SPEED_OF_LIGHT_CM_PER_S: f64 = 2.997_924_58e10;
 
 /// Boltzmann constant in eV/K.
@@ -114,7 +117,7 @@ pub struct HtstAdapterConfig {
     /// Thermodynamic state used for the final rate evaluation.
     pub state: ThermodynamicState,
     /// GSM transition-state search controls.
-    pub gsm: crate::alpha::gsm::GsmConfig,
+    pub gsm: crate::gsm::GsmConfig,
     /// Finite-difference step used by MBH at the TS geometry, in **Å**.
     pub mbh_fd_step: f64,
 }
@@ -124,7 +127,7 @@ impl Default for HtstAdapterConfig {
         Self {
             step_id: "elementary-step".into(),
             state: ThermodynamicState::default(),
-            gsm: crate::alpha::gsm::GsmConfig::default(),
+            gsm: crate::gsm::GsmConfig::default(),
             mbh_fd_step: 0.005,
         }
     }
@@ -532,6 +535,7 @@ pub fn solve_microkinetic_steady_state(
 /// - `"MBH finite-difference step must be positive"` when
 ///   `config.mbh_fd_step` is not positive.
 /// - Any error raised by the GSM transition-state search.
+#[cfg(feature = "beta-mbh")]
 pub fn analyze_gsm_mbh_htst_step(
     elements: &[u8],
     reactant: &[f64],
@@ -552,8 +556,7 @@ pub fn analyze_gsm_mbh_htst_step(
         return Err("MBH finite-difference step must be positive".into());
     }
 
-    let gsm_result =
-        crate::alpha::gsm::find_transition_state(reactant, product, energy_fn, &config.gsm);
+    let gsm_result = crate::gsm::find_transition_state(reactant, product, energy_fn, &config.gsm);
     let ts_positions = flat_coords_to_positions(&gsm_result.ts_coords)?;
     let mbh_result = crate::beta::mbh::compute_mbh_frequencies(
         elements,
@@ -615,16 +618,17 @@ pub fn analyze_gsm_mbh_htst_step(
 /// - `"flat coordinate array length must be a multiple of 3"` when the
 ///   reactant or product coordinate array is not a whole number of atoms.
 /// - Any error raised by the GSM backend during the single points.
+#[cfg(feature = "beta-mbh")]
 pub fn analyze_gsm_mbh_htst_step_with_backend(
     smiles: &str,
     reactant: &[f64],
     product: &[f64],
-    backend: crate::alpha::gsm::GsmEnergyBackend,
+    backend: crate::gsm::GsmEnergyBackend,
     config: &HtstAdapterConfig,
 ) -> Result<HtstAnalysisResult, String> {
-    let elements = crate::alpha::gsm::backend::elements_for_smiles(smiles)?;
-    let rings = crate::alpha::gsm::backend::rings_from_smiles(smiles)?;
-    let capability = crate::alpha::gsm::plan_gsm_backends(&elements)
+    let elements = crate::gsm::backend::elements_for_smiles(smiles)?;
+    let rings = crate::gsm::backend::rings_from_smiles(smiles)?;
+    let capability = crate::gsm::plan_gsm_backends(&elements)
         .into_iter()
         .find(|entry| entry.backend == backend)
         .ok_or_else(|| format!("unknown GSM backend '{}'", backend.as_str()))?;
@@ -647,7 +651,7 @@ pub fn analyze_gsm_mbh_htst_step_with_backend(
     let owned_elements = elements.clone();
     let first_error = RefCell::new(None::<String>);
     let energy_fn = |coords: &[f64]| -> f64 {
-        match crate::alpha::gsm::backend::evaluate_gsm_backend_energy_kcal(
+        match crate::gsm::backend::evaluate_gsm_backend_energy_kcal(
             &owned_smiles,
             &owned_elements,
             coords,
@@ -672,13 +676,16 @@ pub fn analyze_gsm_mbh_htst_step_with_backend(
     result
 }
 
+#[cfg(feature = "beta-mbh")]
 fn flat_coords_to_positions(coords: &[f64]) -> Result<Vec<[f64; 3]>, String> {
     if !coords.len().is_multiple_of(3) {
         return Err("flat coordinate array length must be a multiple of 3".into());
     }
 
     Ok(coords
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|chunk| [chunk[0], chunk[1], chunk[2]])
         .collect())
 }
@@ -760,6 +767,7 @@ mod tests {
         assert!(result.equilibrium_constant > 1.0);
     }
 
+    #[cfg(feature = "beta-mbh")]
     #[test]
     fn gsm_mbh_adapter_returns_rate_and_path() {
         let elements = [1u8];
@@ -778,7 +786,7 @@ mod tests {
             &energy_fn,
             &HtstAdapterConfig {
                 step_id: "double-well".into(),
-                gsm: crate::alpha::gsm::GsmConfig {
+                gsm: crate::gsm::GsmConfig {
                     max_nodes: 7,
                     max_iter: 20,
                     step_size: 0.02,

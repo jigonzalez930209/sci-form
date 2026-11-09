@@ -93,7 +93,9 @@ fn elements_and_positions(smiles: &str) -> (Vec<u8>, Vec<[f64; 3]>) {
     );
     let positions = conformer
         .coords
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|p| [p[0], p[1], p[2]])
         .collect();
     (conformer.elements, positions)

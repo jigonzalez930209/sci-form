@@ -28,7 +28,9 @@ pub(crate) struct ConformerResult {
 impl ConformerResult {
     fn get_positions(&self) -> Vec<(f64, f64, f64)> {
         self.coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| (c[0], c[1], c[2]))
             .collect()
     }

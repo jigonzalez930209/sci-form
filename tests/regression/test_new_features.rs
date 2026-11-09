@@ -15,7 +15,12 @@
 use sci_form::graph::Molecule;
 
 fn _positions_from_flat(coords: &[f64]) -> Vec<[f64; 3]> {
-    coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+    coords
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect()
 }
 
 // ─── SMARTS batch matching ────────────────────────────────────────────────────

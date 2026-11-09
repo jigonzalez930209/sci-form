@@ -130,7 +130,7 @@ pub fn solve_periodic_randnla(
     }
 
     let n_occupied = n_electrons.div_ceil(2);
-    let beta_config = crate::beta::rand_nla::RandNlaConfig {
+    let beta_config = crate::rand_nla::RandNlaConfig {
         sketch_size: config.sketch_size,
         seed: config.seed,
         max_error: config.max_error,
@@ -147,7 +147,7 @@ pub fn solve_periodic_randnla(
 
     for ((hamiltonian, overlap), point) in hamiltonians.iter().zip(overlaps).zip(&kmesh.points) {
         let (energies, _coefficients, info) =
-            crate::beta::rand_nla::solve_eht_randnla(hamiltonian, overlap, &beta_config);
+            crate::rand_nla::solve_eht_randnla(hamiltonian, overlap, &beta_config);
         if n_occupied == 0 || n_occupied >= energies.len() {
             return Err("n_electrons does not map to a valid occupied/unoccupied split".into());
         }

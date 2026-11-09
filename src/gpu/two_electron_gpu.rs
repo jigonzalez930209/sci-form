@@ -281,7 +281,7 @@ pub fn compute_eris_gpu_tiled(
             ));
         }
 
-        for (t, chunk) in bytes.chunks_exact(4).enumerate() {
+        for (t, chunk) in bytes.as_chunks::<4>().0.iter().enumerate() {
             let value = f32::from_ne_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) as f64;
             let base = (start + t) * 16;
             let read = |o: usize| {

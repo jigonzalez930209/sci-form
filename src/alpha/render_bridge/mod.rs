@@ -23,10 +23,10 @@ pub use crate::render_bridge::*;
 ))]
 use crate::transport::arrow::RecordBatch;
 
-#[cfg(feature = "alpha-kinetics")]
-use crate::alpha::kinetics::{ElementaryRateResult, MicrokineticTrace};
 #[cfg(feature = "alpha-edl")]
 use crate::edl::{CpmEdlScanResult, EdlProfileResult};
+#[cfg(feature = "alpha-kinetics")]
+use crate::kinetics::{ElementaryRateResult, MicrokineticTrace};
 #[cfg(feature = "alpha-periodic-linear")]
 use crate::kmesh::{BandStructureAdapterResult, PeriodicKpmDosResult};
 #[cfg(feature = "alpha-edl")]
@@ -317,7 +317,7 @@ pub fn pack_microkinetic_trace(trace: &MicrokineticTrace) -> RecordBatch {
 mod tests {
     use super::*;
     #[cfg(feature = "alpha-kinetics")]
-    use crate::alpha::kinetics::{MicrokineticFrame, SpeciesPopulation};
+    use crate::kinetics::{MicrokineticFrame, SpeciesPopulation};
 
     #[cfg(feature = "alpha-kinetics")]
     #[test]
@@ -361,7 +361,7 @@ mod tests {
     #[cfg(feature = "alpha-kinetics")]
     #[test]
     fn arrhenius_chart_produces_linear_plot() {
-        use crate::alpha::kinetics::{ElementaryRateResult, ThermodynamicState};
+        use crate::kinetics::{ElementaryRateResult, ThermodynamicState};
 
         let results: Vec<ElementaryRateResult> = (300..=600)
             .step_by(100)
@@ -499,7 +499,7 @@ mod tests {
     #[cfg(feature = "alpha-kinetics")]
     #[test]
     fn arrhenius_packs_to_record_batch() {
-        use crate::alpha::kinetics::{ElementaryRateResult, ThermodynamicState};
+        use crate::kinetics::{ElementaryRateResult, ThermodynamicState};
 
         let results: Vec<ElementaryRateResult> = vec![
             ElementaryRateResult {

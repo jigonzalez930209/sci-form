@@ -517,9 +517,19 @@ mod f80_uff {
 
         let mut grad = vec![0.0f64; coords.len()];
         let energy = ff.compute_system_energy_and_gradients(&coords, &mut grad);
-        let analytic: Vec<[f64; 3]> = grad.chunks_exact(3).map(|w| [w[0], w[1], w[2]]).collect();
+        let analytic: Vec<[f64; 3]> = grad
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|w| [w[0], w[1], w[2]])
+            .collect();
 
-        let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|w| [w[0], w[1], w[2]]).collect();
+        let positions: Vec<[f64; 3]> = coords
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|w| [w[0], w[1], w[2]])
+            .collect();
         let h = 1e-5;
         let numerical = numerical_gradient(&positions, h, |pos| {
             let flat: Vec<f64> = pos.iter().flat_map(|p| p.iter().copied()).collect();
@@ -568,9 +578,19 @@ mod f80_mmff94 {
         let terms = Mmff94Builder::build_typed(&mol, Mmff94Variant::Mmff94);
 
         let (energy, grad) = Mmff94Builder::total_energy(&terms, &coords);
-        let analytic: Vec<[f64; 3]> = grad.chunks_exact(3).map(|w| [w[0], w[1], w[2]]).collect();
+        let analytic: Vec<[f64; 3]> = grad
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|w| [w[0], w[1], w[2]])
+            .collect();
 
-        let positions: Vec<[f64; 3]> = coords.chunks_exact(3).map(|w| [w[0], w[1], w[2]]).collect();
+        let positions: Vec<[f64; 3]> = coords
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|w| [w[0], w[1], w[2]])
+            .collect();
         let h = 1e-5;
         let numerical = numerical_gradient(&positions, h, |pos| {
             let flat: Vec<f64> = pos.iter().flat_map(|p| p.iter().copied()).collect();

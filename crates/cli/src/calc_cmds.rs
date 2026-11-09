@@ -13,7 +13,12 @@ pub fn cmd_eht(elements: &str, coords: &str, k: Option<f64>) {
             elems.len() * 3
         ));
     }
-    let positions: Vec<[f64; 3]> = flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let positions: Vec<[f64; 3]> = flat
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
     // `--k` omitted means "engine default"; an explicit value must be
     // positive (blocker C-M5: no magic-number sentinel).
     let k_opt = match k {
@@ -821,8 +826,12 @@ pub fn cmd_optimize_framework(
     let elems: Vec<u8> = (0..n)
         .map(|i| mol.graph[sci_form::graph::NodeIndex::new(i)].element)
         .collect();
-    let initial_positions: Vec<[f64; 3]> =
-        flat.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+    let initial_positions: Vec<[f64; 3]> = flat
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect();
 
     let opt_method: sci_form::materials::geometry_opt::OptMethod = method
         .parse()

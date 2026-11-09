@@ -5,7 +5,9 @@ use sci_form::materials::{CoordinationGeometry, Sbu, Topology};
 
 fn positions_from_flat(coords: &[f64]) -> Vec<[f64; 3]> {
     coords
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|chunk| [chunk[0], chunk[1], chunk[2]])
         .collect()
 }

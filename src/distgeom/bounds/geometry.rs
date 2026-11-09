@@ -78,20 +78,14 @@ pub(super) fn check_amide14_dir(
     }
 
     // Check that the bond carbonyl_c—double_o is a double bond
-    if let Some(edge) = mol.graph.find_edge(carbonyl_c, double_o) {
-        if mol.graph[edge].order != crate::graph::BondOrder::Double {
-            return Option::None;
-        }
-    } else {
+    let edge = mol.graph.find_edge(carbonyl_c, double_o)?;
+    if mol.graph[edge].order != crate::graph::BondOrder::Double {
         return Option::None;
     }
 
     // Check that bond outer_atom—amide_n is single
-    if let Some(edge) = mol.graph.find_edge(outer_atom, amide_n) {
-        if mol.graph[edge].order != crate::graph::BondOrder::Single {
-            return Option::None;
-        }
-    } else {
+    let edge = mol.graph.find_edge(outer_atom, amide_n)?;
+    if mol.graph[edge].order != crate::graph::BondOrder::Single {
         return Option::None;
     }
 

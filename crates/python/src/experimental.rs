@@ -722,7 +722,7 @@ mod alpha_periodic_py {
     #[pyfunction]
     #[pyo3(signature = (grid, centering = "monkhorst-pack"))]
     pub fn compute_kmesh(grid: [usize; 3], centering: &str) -> PyResult<KMeshResultPy> {
-        use sci_form_core::alpha::periodic_linear::*;
+        use sci_form_core::periodic_linear::*;
         let c: KMeshCentering = centering.parse().map_err(crate::errors::value_error)?;
         let mesh = monkhorst_pack_mesh(&KMeshConfig { grid, centering: c })
             .map_err(crate::errors::engine_error)?;
@@ -739,7 +739,7 @@ mod alpha_periodic_py {
     /// `blocks_json` is a JSON array of real-space operator blocks; the Bloch
     /// Hamiltonians are assembled for every k-point of the requested mesh and
     /// the density of states is evaluated by
-    /// `sci_form_core::alpha::periodic_linear::compute_periodic_kpm_dos_from_operators`.
+    /// `sci_form_core::periodic_linear::compute_periodic_kpm_dos_from_operators`.
     #[pyfunction]
     #[pyo3(signature = (
         blocks_json,
@@ -762,7 +762,7 @@ mod alpha_periodic_py {
         n_points: usize,
         fermi_energy_ev: Option<f64>,
     ) -> PyResult<String> {
-        use sci_form_core::alpha::periodic_linear::*;
+        use sci_form_core::periodic_linear::*;
         let blocks = parse_blocks(blocks_json).map_err(crate::errors::value_error)?;
         let centering = parse_centering(centering).map_err(crate::errors::value_error)?;
         let kmesh_config = KMeshConfig { grid, centering };
@@ -800,7 +800,7 @@ mod alpha_periodic_py {
     /// `hamiltonian_blocks_json` and `overlap_blocks_json` are JSON arrays of
     /// real-space operator blocks; the k-point Hamiltonians/overlaps are
     /// assembled by `sci_form_core::kmesh::assemble_periodic_operators` and
-    /// solved by `sci_form_core::alpha::periodic_linear::solve_periodic_randnla`.
+    /// solved by `sci_form_core::periodic_linear::solve_periodic_randnla`.
     #[pyfunction]
     #[pyo3(signature = (
         hamiltonian_blocks_json,
@@ -819,7 +819,7 @@ mod alpha_periodic_py {
         centering: &str,
         sketch_size: Option<usize>,
     ) -> PyResult<String> {
-        use sci_form_core::alpha::periodic_linear::*;
+        use sci_form_core::periodic_linear::*;
         let hamiltonian_blocks =
             parse_blocks(hamiltonian_blocks_json).map_err(crate::errors::value_error)?;
         let overlap_blocks =
@@ -839,7 +839,7 @@ mod alpha_periodic_py {
             sketch_size,
             ..Default::default()
         };
-        let result = sci_form_core::alpha::periodic_linear::solve_periodic_randnla(
+        let result = sci_form_core::periodic_linear::solve_periodic_randnla(
             &hamiltonians,
             &overlaps,
             n_electrons,
@@ -1063,7 +1063,7 @@ mod alpha_kinetics_py {
         prefactor_s_inv: Option<f64>,
         step_id: &str,
     ) -> PyResult<HtstRateResultPy> {
-        use sci_form_core::alpha::kinetics::*;
+        use sci_form_core::kinetics::*;
         let step = ElementaryStep {
             step_id: step_id.to_string(),
             activation_free_energy_ev,
@@ -1099,7 +1099,7 @@ mod alpha_kinetics_py {
         prefactor_s_inv: Option<f64>,
         step_id: &str,
     ) -> PyResult<Vec<HtstRateResultPy>> {
-        use sci_form_core::alpha::kinetics::*;
+        use sci_form_core::kinetics::*;
         let step = ElementaryStep {
             step_id: step_id.to_string(),
             activation_free_energy_ev,
@@ -1129,7 +1129,7 @@ mod alpha_kinetics_py {
         network_json: Option<&str>,
         n_steps: usize,
     ) -> PyResult<String> {
-        use sci_form_core::alpha::kinetics::*;
+        use sci_form_core::kinetics::*;
         let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
         let trace = solve_microkinetic_network(&config).map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
@@ -1150,7 +1150,7 @@ mod alpha_kinetics_py {
         network_json: Option<&str>,
         n_steps: usize,
     ) -> PyResult<String> {
-        use sci_form_core::alpha::kinetics::*;
+        use sci_form_core::kinetics::*;
         let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
         let trace = solve_microkinetic_network(&config).map_err(crate::errors::engine_error)?;
         let diagnostics = extract_kinetics_diagnostics(&trace);
@@ -1176,7 +1176,7 @@ mod alpha_kinetics_py {
         n_steps: usize,
         tol: f64,
     ) -> PyResult<String> {
-        use sci_form_core::alpha::kinetics::*;
+        use sci_form_core::kinetics::*;
         let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
         let trace =
             solve_microkinetic_steady_state(&config, tol).map_err(crate::errors::engine_error)?;
@@ -1217,8 +1217,8 @@ mod alpha_kinetics_py {
         temperature_k: f64,
         pressure_bar: f64,
     ) -> PyResult<String> {
-        use sci_form_core::alpha::gsm::GsmEnergyBackend;
-        use sci_form_core::alpha::kinetics::*;
+        use sci_form_core::gsm::GsmEnergyBackend;
+        use sci_form_core::kinetics::*;
         let backend: GsmEnergyBackend = method.parse().map_err(|_e: String| {
             crate::errors::value_error(crate::errors::invalid_value(
                 "'method'",
@@ -1277,12 +1277,10 @@ mod alpha_kinetics_py {
 // ─── Shared: microkinetic network configuration ────────────────────────────
 
 /// Shared helper that turns an optional network JSON document into a
-/// [`sci_form_core::alpha::kinetics::MicrokineticNetworkConfig`].
+/// [`sci_form_core::kinetics::MicrokineticNetworkConfig`].
 #[cfg(feature = "alpha-kinetics")]
 mod kinetics_support {
-    use sci_form_core::alpha::kinetics::{
-        ElementaryStep, MicrokineticNetworkConfig, ThermodynamicState,
-    };
+    use sci_form_core::kinetics::{ElementaryStep, MicrokineticNetworkConfig, ThermodynamicState};
 
     /// Parse a network configuration, falling back to a built-in A ⇌ B demo.
     pub fn network_config(
@@ -1638,8 +1636,8 @@ mod alpha_kinetics_chart_py {
         prefactor_s_inv: Option<f64>,
         step_id: &str,
     ) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
         use sci_form_core::alpha::render_bridge::arrhenius_chart as core_arrhenius_chart;
+        use sci_form_core::kinetics::{evaluate_htst_temperature_sweep, ElementaryStep};
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let step = ElementaryStep {
             step_id: step_id.to_string(),
@@ -1685,7 +1683,7 @@ mod alpha_kinetics_chart_py {
         network_json: Option<&str>,
         n_steps: usize,
     ) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::kinetics::solve_microkinetic_network;
+        use sci_form_core::kinetics::solve_microkinetic_network;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let config = network_config(network_json, n_steps).map_err(crate::errors::value_error)?;
         let trace = solve_microkinetic_network(&config).map_err(crate::errors::engine_error)?;
@@ -1761,8 +1759,8 @@ mod alpha_periodic_chart_py {
         lattice: Vec<f64>,
         n_kpoints_per_segment: usize,
     ) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::periodic_linear::*;
         use sci_form_core::alpha::render_bridge::band_structure_chart as build_chart;
+        use sci_form_core::periodic_linear::*;
         if !coords.len().is_multiple_of(3) {
             return Err(crate::errors::value_error(
                 "coords length must be a multiple of three",
@@ -1787,10 +1785,10 @@ mod alpha_periodic_chart_py {
     #[pyfunction]
     #[pyo3(signature = (energies, dos_values))]
     pub fn compute_dos_chart(energies: Vec<f64>, dos_values: Vec<f64>) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::periodic_linear::{
+        use sci_form_core::alpha::render_bridge::periodic_dos_chart as build_chart;
+        use sci_form_core::periodic_linear::{
             PeriodicBandEdgeSummary, PeriodicKpmDosResult, PeriodicSpectralDiagnostics,
         };
-        use sci_form_core::alpha::render_bridge::periodic_dos_chart as build_chart;
         let dos_result = PeriodicKpmDosResult {
             energies_ev: energies,
             total_dos: dos_values,
@@ -1808,7 +1806,7 @@ mod alpha_periodic_chart_py {
     #[pyfunction]
     #[pyo3(signature = (n_points_per_segment = 20))]
     pub fn compute_kpoint_path_chart(n_points_per_segment: usize) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::periodic_linear::kpath_standard;
+        use sci_form_core::periodic_linear::kpath_standard;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let path = kpath_standard(n_points_per_segment);
         let chart = ChartPayload {
@@ -1856,7 +1854,7 @@ mod alpha_periodic_chart_py {
         n_kx: usize,
         n_ky: usize,
     ) -> PyResult<ChartPayloadPy> {
-        use sci_form_core::alpha::periodic_linear::fermi_surface_from_bands;
+        use sci_form_core::periodic_linear::fermi_surface_from_bands;
         use sci_form_core::render_bridge::{ChartPayload, ChartSeries};
         let blocks = parse_blocks(blocks_json).map_err(crate::errors::value_error)?;
         let refs = as_core_refs(&blocks);
@@ -1891,7 +1889,12 @@ mod alpha_periodic_chart_py {
 mod chart_support {
     /// Convert a flat coordinate array into Cartesian positions.
     pub fn positions_from_flat(coords: &[f64]) -> Vec<[f64; 3]> {
-        coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+        coords
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|c| [c[0], c[1], c[2]])
+            .collect()
     }
 
     /// Parse the nine lattice-vector components into a 3×3 lattice.
@@ -1900,7 +1903,7 @@ mod chart_support {
             return Err("lattice needs exactly nine components".into());
         }
         let mut lattice = [[0.0_f64; 3]; 3];
-        for (row, chunk) in values.chunks_exact(3).enumerate() {
+        for (row, chunk) in values.as_chunks::<3>().0.iter().enumerate() {
             lattice[row] = [chunk[0], chunk[1], chunk[2]];
         }
         Ok(lattice)
@@ -2008,10 +2011,8 @@ mod alpha_gsm_chart_py {
         reactant: &[f64],
         product: &[f64],
         method: &str,
-    ) -> Result<sci_form_core::alpha::gsm::GsmResult, String> {
-        use sci_form_core::alpha::gsm::{
-            find_transition_state_with_backend, GsmConfig, GsmEnergyBackend,
-        };
+    ) -> Result<sci_form_core::gsm::GsmResult, String> {
+        use sci_form_core::gsm::{find_transition_state_with_backend, GsmConfig, GsmEnergyBackend};
         let backend: GsmEnergyBackend = method.parse().map_err(|_e: String| {
             crate::errors::invalid_value(
                 "'method'",

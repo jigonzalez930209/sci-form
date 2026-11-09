@@ -216,14 +216,13 @@ pub fn beta_compute_mbh_frequencies(
 ///   "lumo_energy": 0.1, "gap": 0.6,
 ///   "k": 12, "residual_error": 0.0003, "used_fallback": false }
 /// ```
-#[cfg(feature = "beta-randnla")]
 #[wasm_bindgen]
 pub fn beta_solve_eht_randnla(
     elements_json: &str,
     coords_flat_json: &str,
     config_json: &str,
 ) -> String {
-    use sci_form::beta::rand_nla::{solve_eht_randnla, RandNlaConfig};
+    use sci_form::rand_nla::{solve_eht_randnla, RandNlaConfig};
 
     let (elems, positions) = match parse_elements_and_positions(elements_json, coords_flat_json) {
         Ok(v) => v,

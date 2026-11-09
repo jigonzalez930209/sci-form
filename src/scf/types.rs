@@ -70,7 +70,9 @@ impl MolecularSystem {
     ) -> Result<Self, String> {
         crate::validation::validate_flat_geometry(elements, coords_flat)?;
         let positions: Vec<[f64; 3]> = coords_flat
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| [c[0], c[1], c[2]])
             .collect();
         Self::try_from_angstrom(elements, &positions, charge, multiplicity)

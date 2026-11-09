@@ -498,7 +498,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/eht/{volume,marching_cubes}.rs`, `src/gpu/marching_cubes.rs`, `src/mesh.rs`.
 - Criterio: área/volumen ≤ 1 % vs scikit-image con el mismo umbral y resolución; normalización ≤ 1e-3.
 
-**F34 · Estructura de bandas y malla k (`eht::compute_band_structure`, `alpha::periodic_linear`, `monkhorst_pack_mesh`)**
+**F34 · Estructura de bandas y malla k (`eht::compute_band_structure`, `periodic_linear`, `monkhorst_pack_mesh`)**
 - Referencia probada: **pybinding** (tight-binding + band structure, BSD-2) para modelos analíticos; **pymatgen** (`BandStructure`, `Kpoints`) y **spglib** para pesos de malla y caminos k; casos analíticos 1D/2D (cadena de H, grafeno TB).
 - Test equivalente: (a) cadena 1D: dispersión analítica `E(k)=ε+2t·cos(ka)` ± 1e-6; (b) grafeno TB: Dirac en K; (c) intervalos/pesos de malla Monkhorst-Pack vs pymatgen; (d) Fermi level por conteo de electrones; (e) invariancia temporal/espacial (hermiticidad del Bloch).
 - Datasets: modelos publicados (Slater-Koster) y CIFs de COD para estructuras simples (NaCl, Si); la banda EHT de sistemas 1D con parámetros publicados.
@@ -931,12 +931,12 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/alpha/cga/*` (motor, multivector, conformer, materials), tests existentes. **Validado 2026-10-14 (F81)**: `oracle_cga.py` (Rodrigues + `clifford` Cl(4,1)) + gate `tests/alpha_cga_validation.rs` 2/2 (motores 3.4e-15, diedro 6.6e-15; ángulo ≡ −numpy mod 2π, convención espejo documentada). **Promovido 2026-10-14**: `alpha::cga` → `src/cga` (gaps de refine/materials documentados).
 - Criterio: ≤ 1e-12 en coords vs cuaternión (f64); preservación exacta de longitudes de enlace ≤ 1e-12.
 
-**A6 (F82) · Growing String Method (`alpha::gsm::{find_transition_state*, grow_string, interpolate_node, refine_saddle}`)**
+**A6 (F82) · Growing String Method (`gsm::{find_transition_state*, grow_string, interpolate_node, refine_saddle}`)**
 - Referencia probada: **pyGSM** (Zimmerman group, implementación de referencia del GSM, GPL) y **pysisyphus** (GSM/NEB/IRC, MIT); como verdad física, **Transition1x** (TS DFT de 10k reacciones) y barreras publicadas.
 - Test equivalente: misma pareja reactivo/producto y mismo backend (UFF/PM3/xTB) → comparar nodos de la cuerda (RMSD ≤ 0.05 Å por nodo), energía de la barrera, geometría del TS (RMSD) y verificar que el TS es un punto estacionario (‖g‖ ≤ 0.01 eV/Å); comparar con barreras DFT de Transition1x.
 - Datasets: Transition1x (figshare/Zenodo), set de reacciones curado del repo (`tests/reaction_battery.rs`), ejemplos pyGSM (SN2, H-transfer).
 - Procedimiento: `tests/experimental/test_gsm.rs` (existe), `scripts/compare_reaction_layers.py` (existe), CLI `gsm-*`; nuevo `scripts/compare_gsm_pygsm.py`.
-- Estado en el repo: `src/alpha/gsm/{string,saddle,backend}.rs`, `alpha-kinetics` (GSM+MBH+HTST). **Validado 2026-10-14 (F82)**: `oracle_gsm.py` (ASE CI-NEB/FIRE en Müller-Brown, TS −40.66) + gate `tests/alpha_gsm_validation.rs` 3/3 (barrera 1.6e-3, TS 0.028). Fix: reparametrización por arco (sin ella la barrera colapsaba). **GSM vs NEB (2026-11-07)**: cinco pozos curvos con MEP parabólico y barrera exacta `a⁴`; GSM y un NEB discreto coinciden a ≤0.8 % y con la analítica. También se corrigió el refinamiento del saddle (20 pasos fijos → 200 pasos con `step_size`), que dejaba las barreras curvas ~12 % altas. pyGSM/Transition1x no corridos.
+- Estado en el repo: `src/gsm/{string,saddle,backend}.rs` (core), `kinetics` (GSM+MBH+HTST). **Validado 2026-10-14 (F82)**: `oracle_gsm.py` (ASE CI-NEB/FIRE en Müller-Brown, TS −40.66) + gate `tests/alpha_gsm_validation.rs` 3/3 (barrera 1.6e-3, TS 0.028). Fix: reparametrización por arco (sin ella la barrera colapsaba). **GSM vs NEB (2026-11-07)**: cinco pozos curvos con MEP parabólico y barrera exacta `a⁴`; GSM y un NEB discreto coinciden a ≤0.8 % y con la analítica. También se corrigió el refinamiento del saddle (20 pasos fijos → 200 pasos con `step_size`), que dejaba las barreras curvas ~12 % altas. pyGSM/Transition1x no corridos.
 - Criterio: barrera ± 1 kcal/mol vs pyGSM con el mismo backend; ‖g‖_TS ≤ 0.01 eV/Å; camino sin discontinuidades (distancia entre nodos monótona).
 
 **A7 (F83) · SDR: embedding por relajación semidefinida (`alpha::sdr::{sdr_embed, project_psd, alternating_projections, svt_step}`)**
@@ -947,7 +947,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/alpha/sdr/{embedding,projections}.rs`, bindings Python/WASM. **Validado 2026-10-14 (F83)**: `oracle_sdr.py` (numpy + CVXPY/SCS) + gate `tests/alpha_sdr_validation.rs` 3/3 (proyecciones exactas, embeds exactos 7e-15, ruidoso dentro de 3× del óptimo). **Promovido 2026-10-14**: `alpha::sdr` → `src/sdr`. Fix: umbral de polvo PSD en el conteo. **SDR vs Butina (2026-11-07)**: métrica definida = Adjusted Rand Index entre el k-means del embedding SDR (matriz de RMSD Kabsch) y las etiquetas de Butina en 30 conformeros de tres formas; ARI = 1.0 (`tests/beta_benchmarks.rs`).
 - Criterio: violación máx ≤ 1e-3 Å; RMSD vs CVXPY ≤ 0.01 Å; coste O(N·k) documentado.
 
-**A8 (F84) · Dynamics-live (`dynamics_live::*`, feature `alpha-dynamics-live`)**
+**A8 (F84) · Dynamics-live (`dynamics_live::*`, core since 2026-11-08)**
 - Referencia probada: **OpenMM** (plataforma Reference determinista) y **LAMMPS**; caso analítico del oscilador armónico; ver F71/F72.
 - Test equivalente: paridad de un paso con el integrador clásico (L0); callbacks por frame; termostatado Berendsen; PBC (`wrap`, `minimum_image`) vs ASE.
 - Datasets: snapshots propios; Ar líquido LJ publicado para barostato.
@@ -971,7 +971,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/alpha/edl/*` (incluye GPU), docs `experimental/*` de EDL; CLI `edl-profile`, `edl-gcs`, `edl-helmholtz`, `capacitance-scan`. **Validado 2026-10-14 (F86)**: `oracle_edl.py` (Grahame/Stern cerrados, SI) + gate `tests/alpha_edl_validation.rs` 4/4 (peor 2.0e-14, tol 1e-9; scan par con mínimo en cero). **Promovido 2026-10-14**: `alpha::edl` → `src/edl`.
 - Criterio: fórmulas cerradas ≤ 1e-6; capacitancia = derivada numérica ± 1e-3; monotonías físicas correctas.
 
-**A11 (F87) · Cinética: HTST, redes microcinéticas y Arrhenius (`alpha::kinetics::*`)**
+**A11 (F87) · Cinética: HTST, redes microcinéticas y Arrhenius (`kinetics::*`)**
 - Referencia probada: **Eyring/TST** analítico (k = (k_BT/h)·exp(−ΔG‡/RT)); **Cantera** (integración de redes ODEs, referencia estándar) y **CatMAP** (microcinética/TST de superficies, referencia académica) con los mismos parámetros.
 - Test equivalente: mismas energías libres → comparar k(T) con Eyring (≤ 0.1 %); integrar red microcinética (estado estacionario y transitorio) y comparar concentraciones/TOF con Cantera/CatMAP (± 1 %); barrido de temperatura vs Arrhenius (pendiente = −Ea/R).
 - Datasets: barreras DFT de Transition1x (reacciones aisladas); energías de adsorción publicadas (CatMAP examples); datos de TOF de literatura.
@@ -979,7 +979,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/alpha/kinetics/*`, `src/alpha/render_bridge` (charts), CLI asociada. **Validado 2026-10-14 (F87)**: `oracle_kinetics.py` (Eyring CODATA + scipy solve_ivp) + gate `tests/alpha_kinetics_validation.rs` 3/3 (rates 1.9e-16, trazas, equilibrio 8e-16). Gap: Cantera (falta I/O de mecanismos).
 - Criterio: k(T) ≤ 0.1 % vs Eyring (mismos ΔG‡); red ≤ 1 % vs Cantera; conservación de masa en la red ≤ 1e-10.
 
-**A12 (F88) · Periódico lineal: Bloch, k-mesh, KPM periódico, RandNLA periódico (`alpha::periodic_linear::*`)**
+**A12 (F88) · Periódico lineal: Bloch, k-mesh, KPM periódico, RandNLA periódico (`periodic_linear::*`)**
 - Referencia probada: **pybinding** y **pymatgen** (ver F34) + modelos TB analíticos; **scipy** para autovalores exactos en cada punto k.
 - Test equivalente: cadena 1D/2D → dispersión analítica; hermeticidad del Hamiltoniano Bloch (H(k) = H†(k)); periodicidad H(k+G) = H(k); pesos `monkhorst_pack_mesh` vs pymatgen; KPM periódico vs diagonalización exacta (L2 ≤ 5 %).
 - Datasets: modelos TB publicados (SSH, grafeno, H-chain); CIFs simples de COD.
@@ -1021,7 +1021,7 @@ L3/L4 se usan para documentar precisión, no para bloquear release salvo desviac
 - Estado en el repo: `src/beta/mbh/*` (bloques, hessian), tests existentes. **Validado 2026-10-14 (F92)**: `oracle_mbh.py` (stretches diatómicos SI, valida el 108.59) + gate `tests/beta_mbh_validation.rs` 2/2 (stretch 1.3e-5, benceno 1 bloque 24/36 DOF). Gap: Ghysels ±2 cm⁻¹ experimental.
 - Criterio: modos flexibles ± 2 cm⁻¹ vs Hessiano completo; entrelazamiento correcto; speedup documentado y reproducible.
 
-**B3 (F93) · RandNLA: EHT aleatorizado (`beta::rand_nla::{solve_eht_randnla, Nystrom, inverse_sqrt, from_matrix}`)**
+**B3 (F93) · RandNLA: EHT aleatorizado (`rand_nla::{solve_eht_randnla, Nystrom, inverse_sqrt, from_matrix}`)**
 - Referencia probada: **scipy.sparse.linalg.eigsh** (Lanczos, referencia de autovalores de extremo) y **numpy.linalg.eigh** (exacto) para N pequeño; el marco de **Nyström aleatorizado** (Halko-Martinsson-Tropp 2011) y su análisis de error.
 - Test equivalente: mismo H,S → comparar los k autovalores más bajos (rel ≤ 1e-3), residuo de la Nyström (`frobenius_error`/`relative_error` declarados vs medidos), y la bandera de fallback (debe activarse cuando el residuo > tolerancia); repetir con varias semillas (error estable).
 - Datasets: Hamiltonianos EHT de GDB-20 (1k), modelos TB; sin descarga externa.

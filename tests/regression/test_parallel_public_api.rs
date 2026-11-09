@@ -11,7 +11,9 @@ mod parallel_public_api_tests {
 
     fn positions_from_flat(coords: &[f64]) -> Vec<[f64; 3]> {
         coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|chunk| [chunk[0], chunk[1], chunk[2]])
             .collect()
     }

@@ -38,12 +38,18 @@
 //! | SDR embedding | `sdr` | Projections + CVXPY embeds 7e-15 (F83) |
 //! | IMD steering | `imd` | Harmonic E/F analytic 1.1e-13 (F85) |
 //! | EDL | `edl` | GC/GCS/Helmholtz analytic 2e-14 (F86) |
-//! | k-mesh/Bloch | `kmesh` | ASE meshes + chain bands 4.4e-16 (F88; KPM/RandNLA adapters stay alpha) |
+//! | k-mesh/Bloch | `kmesh` | ASE meshes + chain bands 4.4e-16 (F88); periodic KPM/RandNLA adapters live in core `periodic_linear` |
 //! | Chart payloads | `render_bridge` | JSON Schema + pack round-trip (F90; domain builders stay alpha) |
 //! | Riemannian PSD | `riemannian` | Projection/optimizer vs scipy (F94; Frobenius proxy documented); tetrahedron Gram recovery 6.0e-9 (`tests/beta_benchmarks.rs`) |
 //! | CPM | `cpm` | Constant-potential electrochemistry vs LAMMPS `electrode/conp` (F95); two-site closed form 1.3e-15 (`tests/beta_benchmarks.rs`) |
+//! | ReaxFF | `forcefield::reaxff` | Bond orders vs LAMMPS (F78) + analytical gradients (2026-11-08) |
 //! | MMFF94 parameters | `forcefield::mmff94_params` | Real published parameter tables (F100) |
 //! | KPM | `kpm` | Chebyshev DOS/moments; exact moments vs numpy, sparse CSR 5000 sites in 0.22 s, E_F <0.1 eV vs diagonalization (F91) |
+//! | RandNLA | `rand_nla` | F93 3.8e-4 at rank-N/4; EHT backend; N=600 low-rank path at 9.6e-4 in ~80 ms vs ~143 ms |
+//! | GSM | `gsm` | F82 vs ASE CI-NEB (1.6e-3 barrier, 0.028 TS) + five curved wells ≤0.8 % |
+//! | Kinetics / HTST | `kinetics` | F87 Eyring 1.9e-16, traces vs scipy `solve_ivp`, equilibrium 8e-16 |
+//! | Periodic-linear adapters | `periodic_linear` | F88 k-mesh vs ASE, phases 3.6e-16, bands 4.4e-16; KPM/RandNLA adapters tested |
+//! | Live MD | `dynamics_live` | F84 forces vs RDKit UFF 3.6e-13, NVE drift 4.4e-4, reversibility 5.7e-17 |
 //!
 //! The promotion criteria below follow the validation culture of the repo:
 //! a module is promoted when a cross-library ficha (or a documented external
@@ -57,7 +63,7 @@
 //!
 //! ---
 //!
-//! ## Retained as Experimental
+//! ## Module ledger — promoted entries and retained research
 //!
 //! ### EXP-201: Kernel Polynomial Method (KPM) — PROMOVIDO (`src/kpm`)
 //!
@@ -99,10 +105,11 @@
 //! 2.6 % (los modos casi nulos quedan dominados por el ruido de diferencias
 //! finitas, ~5 cm⁻¹).
 //!
-//! ### EXP-203: Randomized Numerical Linear Algebra (RandNLA)
+//! ### EXP-203: Randomized Numerical Linear Algebra (RandNLA) — PROMOVIDO (`src/rand_nla`)
 //!
-//! **Feature flag:** `beta-randnla`
-//! **Location:** `src/beta/rand_nla/` (nystrom.rs, solver.rs)
+//! **Feature flag:** `beta-randnla` is retained as a compatibility alias; the
+//! module is now unconditional.
+//! **Location:** `src/rand_nla/` (nystrom.rs, solver.rs)
 //! **Validation test:** `tests/beta_randnla_validation.rs` (F93)
 //!
 //! Nyström approximation and randomized eigensolvers for large overlap/Fock
@@ -203,10 +210,11 @@
 //! `clifford` Cl(4,1), diedros 6.6e-15 (`tests/alpha_cga_validation.rs`).
 //! Convención de ángulo espejo documentada.
 //!
-//! ### EXP-205b: Growing String Method (GSM)
+//! ### EXP-205b: Growing String Method (GSM) — PROMOVIDO (`src/gsm`)
 //!
-//! **Feature flag:** `alpha-gsm`
-//! **Location:** `src/alpha/gsm/` (string.rs, saddle.rs, backend.rs)
+//! **Feature flag:** `alpha-gsm` is retained as a compatibility alias; the
+//! module is now unconditional.
+//! **Location:** `src/gsm/` (string.rs, saddle.rs, backend.rs)
 //! **Validation test:** `tests/alpha_gsm_validation.rs` (F82)
 //!
 //! Reaction path finding via growing string interpolation between
@@ -219,7 +227,7 @@
 //!   `step_size`; now 200 steps at `step_size`, which brings the curved-well
 //!   barriers from ~12 % high to ≤0.8 %)
 //!
-//! **Status update:** gradient coupling is implemented — `alpha::gsm::backend`
+//! **Status update:** gradient coupling is implemented — `gsm::backend`
 //! drives the string with UFF, MMFF94, PM3, xTB, GFN1, GFN2 and HF-3c.
 //!
 //! **Promotion criteria:**
@@ -269,22 +277,15 @@
 //! solución cerrada del sistema lineal de CPM en `tests/beta_benchmarks.rs`
 //! (1.3e-15) y residual de estacionariedad < 1e-10.
 //!
-//! ### EXP-206: Alpha-tier subsystems
+//! ### EXP-206: Remaining gated subsystems
 //!
 //! These remain gated and are NOT promoted:
 //!
 //! | Subsystem | Feature flag | Location | Validation test | Notes |
 //! |---|---|---|---|---|
 //! | Kohn–Sham DFT | `alpha-dft` | `src/dft/` | `tests/alpha_dft_pyscf.rs` (F77) | E ≤ 1 mHa vs PySCF; `coulomb_energy` is still 0.0 and the ECP path is unfitted |
-//! | ReaxFF | `alpha-reaxff` | `src/forcefield/reaxff/` | `tests/alpha_reaxff_validation.rs` (F78) | bond orders vs LAMMPS `reaxff` |
 //! | ML force field | `alpha-mlff` | `src/ml/{mlff,symmetry_functions}.rs` | `tests/alpha_mlff_validation.rs` (F79) | AEV vs a numpy BP oracle; no trained weights, no MD17/SPICE benchmark |
-//! | Obara–Saika ERI engine | `alpha-obara-saika` | `src/scf/obara_saika.rs` | `tests/alpha_obara_saika.rs` (F80) | Boys/ERI/Schwarz vs scipy + libcint (s-type shells only) |
-//! | Interactive MD | `alpha-imd` | `src/imd.rs` | `tests/alpha_imd_validation.rs` (F85) | steering forces vs an analytic oracle |
-//! | Live MD | `alpha-dynamics-live` | `src/dynamics_live/` | `tests/alpha_dynamics_validation.rs` (F84) | forces vs RDKit UFF; NVE drift and reversibility |
 //! | Reaction dynamics | `alpha-reaction-dynamics` | `src/alpha/reaction_dynamics/` | `tests/alpha_reaction_dynamics_3d.rs` | self-consistency only; no ASE NEB parity |
-//! | EDL adapters | `alpha-edl` | `src/edl/` | `tests/alpha_edl_validation.rs` (F86) | analytic electrochemistry |
-//! | Periodic adapters | `alpha-periodic-linear` | `src/alpha/periodic_linear/` | `tests/alpha_periodic_validation.rs` (F88) | k-mesh vs ASE |
-//! | Kinetics (HTST) | `alpha-kinetics` | `src/alpha/kinetics/` | `tests/alpha_kinetics_validation.rs` (F87) | Eyring + scipy `solve_ivp` |
 //! | Render-bridge builders | `alpha-render-bridge` | `src/alpha/render_bridge/` | `tests/alpha_render_validation.rs` (F90) | JSON Schema 2020-12 |
 //!
 //! ### EXP-207: GPU acceleration

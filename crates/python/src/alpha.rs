@@ -575,7 +575,7 @@ mod cga_py {
 #[cfg(feature = "alpha-gsm")]
 mod gsm_py {
     use pyo3::prelude::*;
-    use sci_form_core::alpha::gsm::{
+    use sci_form_core::gsm::{
         self, GsmBackendCapability, GsmBackendEvaluation, GsmConfig, GsmEnergyBackend,
     };
 

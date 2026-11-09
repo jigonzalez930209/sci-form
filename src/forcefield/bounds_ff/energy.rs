@@ -339,14 +339,13 @@ pub fn chiral_violation_gradient(
         let v2xv3 = v2.cross(&v3);
         let vol = v1.dot(&v2xv3);
 
-        let pre_factor;
-        if vol < c.lower_vol {
-            pre_factor = vol - c.lower_vol;
+        let pre_factor = if vol < c.lower_vol {
+            vol - c.lower_vol
         } else if vol > c.upper_vol {
-            pre_factor = vol - c.upper_vol;
+            vol - c.upper_vol
         } else {
             continue;
-        }
+        };
 
         // dV/dpos1 = v2 x v3
         grad[(idx1, 0)] += pre_factor * v2xv3.x;

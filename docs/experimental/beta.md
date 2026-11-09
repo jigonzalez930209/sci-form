@@ -1,8 +1,8 @@
 # Beta Modules
 
-**Beta** modules are more mature than alpha — the API is largely stable, algorithms are validated against reference implementations, and test coverage is solid. They are production-ready for non-critical use but may still change in response to feedback before promotion to stable.
+**Beta** now contains one remaining gated module (MBH) plus compatibility aliases for methods promoted to core. The promoted paths stay available under their historical `beta-*` flags.
 
-> Beta modules are gated by `beta-*` feature flags. No beta code is compiled without an explicit opt-in.
+> Only MBH requires an explicit opt-in. KPM, CPM, RandNLA and Riemannian are core.
 
 ---
 
@@ -12,7 +12,7 @@
 |----|--------|-------------|-------------|
 | B1 | `kpm` (`beta::kpm` alias) | core | Kernel Polynomial Method — O(N) DOS (promoted 2026-11-07) |
 | B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian vibrational analysis |
-| B3 | `beta::rand_nla` | `beta-randnla` | Randomized Nyström EHT + low-rank Lanczos path for N>500 |
+| B3 | `rand_nla` (core) | `beta-randnla` alias | Randomized Nyström EHT + low-rank Lanczos path for N>500 |
 | B4 | `riemannian` (core, F94) | — | Riemannian geometry on the PSD cone |
 | B5 | `cpm` (core, F95) | — | Constant Potential Method charge equilibration |
 
@@ -129,9 +129,9 @@ print(f"ZPE: {result.zero_point_energy:.4f} Ha")
 
 ---
 
-## B3 — Randomized Nyström EHT (`beta-randnla`)
+## B3 — Randomized Nyström EHT (core `rand_nla`, `beta-randnla` alias)
 
-**Module:** `sci_form::beta::rand_nla` (gated; F93 validated 2026-10-14; low-rank N>500 path added 2026-11-08)
+**Module:** `sci_form::rand_nla` (core since 2026-11-08; F93 validated; low-rank N>500 path added 2026-11-08)
 
 Approximates the EHT eigenvalue problem using a **randomized Nyström sketch**: projects the $N \times N$ Hamiltonian onto a $k$-dimensional random subspace before computing eigenvalues. Cost drops from $O(N^3)$ (full diag) to $O(N k^2)$ — enabling EHT for systems of thousands of atoms.
 
@@ -142,7 +142,7 @@ where $Ω \in \mathbb{R}^{N \times k}$ is a random Gaussian sketch matrix.
 ### Rust
 
 ```rust
-use sci_form::beta::rand_nla::{
+use sci_form::rand_nla::{
     solve_eht_randnla, solve_eht_randnla_lowrank, RandNlaConfig,
 };
 
@@ -284,17 +284,13 @@ print(f"total charge: {result.total_charge:.4f} e")
 ```toml
 [dependencies]
 # KPM is core since 2026-11-07; beta-kpm still resolves as an alias.
-sci-form = { version = "1.0", features = ["beta-mbh"] }
+sci-form = { version = "1.1", features = ["beta-mbh"] }
 
-# All beta modules:
-sci-form = { version = "1.0", features = [
-    "beta-mbh", "beta-randnla", "beta-riemannian", "beta-cpm"
-] }
+# All still-gated beta modules:
+sci-form = { version = "1.1", features = ["beta-mbh"] }
 
 # Beta + parallelization:
-sci-form = { version = "1.0", features = [
-    "beta-kpm", "beta-randnla", "parallel"
-] }
+sci-form = { version = "1.1", features = ["beta-mbh", "parallel"] }
 ```
 
 ### WASM / npm
@@ -329,7 +325,7 @@ result = beta.kpm_dos(elements, coords)
 ```bash
 pnpm wasm:build:all-beta
 # Equivalent to:
-bash crates/wasm/build.sh --web-only --web-features "beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm"
+bash crates/wasm/build.sh --web-only --web-features "beta-mbh"
 ```
 
 > Always build through `crates/wasm/build.sh` (directly or through the

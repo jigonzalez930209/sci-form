@@ -1,8 +1,8 @@
 # Alpha Modules
 
-**Alpha** modules expose new computational chemistry methods that are functionally correct but not yet production-ready. They may have rough APIs, limited element coverage, or missing edge-case handling. Breaking changes between minor versions are possible.
+**Alpha** now contains a few remaining research modules plus compatibility aliases for methods that have been promoted to core. The promoted paths stay available under their historical `alpha-*` flags.
 
-> Alpha modules are gated by `alpha-*` feature flags. No alpha code is compiled without an explicit opt-in.
+> Only the remaining research modules (DFT, MLFF, reaction dynamics, render builders) require an explicit opt-in. GSM, kinetics, periodic-linear adapters and live MD are core.
 
 ---
 
@@ -15,13 +15,13 @@
 | A3 | `alpha::mlff` | `alpha-mlff` | Neural network force field with AEV descriptors |
 | A4 | `scf::obara_saika` (core, F80) | — | Obara-Saika ERIs and Boys function |
 | A5 | `cga` (core, F81) | — | CGA motor algebra for dihedral refinement |
-| A6 | `alpha::gsm` | `alpha-gsm` | Growing String Method for reaction paths |
+| A6 | `gsm` (core) | `alpha-gsm` alias | Growing String Method for reaction paths |
 | A7 | `sdr` (core, F83) | — | Semidefinite relaxation embedding |
-| A8 | `alpha::dynamics` | `alpha-dynamics-live` | Live interactive molecular dynamics |
+| A8 | `dynamics_live` (core) | `alpha-dynamics-live` alias | Live interactive molecular dynamics |
 | A9 | `imd` (core, F85) | — | IMD steering forces |
 | A10 | `edl` (core, F86) | — | Electrochemical double-layer models |
-| A11 | `alpha::periodic_linear` | `alpha-periodic-linear` | Periodic k-mesh, Bloch-phase, and linear-scaling spectral contracts |
-| A12 | `alpha::kinetics` | `alpha-kinetics` | HTST and microkinetic contracts with CPU reference rates |
+| A11 | `periodic_linear` (core) | `alpha-periodic-linear` alias | Periodic k-mesh, Bloch-phase, and linear-scaling spectral contracts |
+| A12 | `kinetics` (core) | `alpha-kinetics` alias | HTST and microkinetic contracts with CPU reference rates |
 | A13 | `render_bridge` (core base, F90) | — | Chart/trajectory payloads (domain builders stay alpha) |
 | A14 | `alpha::reaction_dynamics` | `alpha-reaction-dynamics` (**Rust core only**) | 3D reaction path: approach frames, CI-NEB images and departure frames |
 
@@ -241,16 +241,16 @@ const rotated = JSON.parse(alpha_rotate_dihedral_cga(
 
 ---
 
-## A6 — Growing String Method (`alpha-gsm`)
+## A6 — Growing String Method (core `gsm`, `alpha-gsm` alias)
 
-**Module:** `sci_form::alpha::gsm` (gated; F82 validated 2026-10-14: MB barrier 1.6e-3 vs ASE; arc-length fix)
+**Module:** `sci_form::gsm` (core since 2026-11-08; F82 validated: MB barrier 1.6e-3 vs ASE; arc-length fix)
 
 Reaction path interpolation and transition-state search via the Growing String Method. Nodes are added from both reactant and product ends toward the transition state, using UFF/MMFF for node relaxation.
 
 ### Rust
 
 ```rust
-use sci_form::alpha::gsm::{find_transition_state, interpolate_node, GsmConfig};
+use sci_form::gsm::{find_transition_state, interpolate_node, GsmConfig};
 
 // Interpolate geometry at parameter t in [0,1]
 let interp = interpolate_node(&reactant_coords, &product_coords, 0.5);
@@ -308,9 +308,9 @@ const result = JSON.parse(alpha_sdr_embed(distance_pairs_json, n_atoms, config_j
 
 ---
 
-## A8 & A9 — Live MD and IMD Bridge (`alpha-dynamics-live`, `alpha-imd`)
+## A8 & A9 — Live MD and IMD Bridge (core `dynamics_live` + `imd`)
 
-**Module:** `sci_form::alpha::dynamics_live` (gated; F84 validated 2026-10-14: UFF forces 3.6e-13 vs RDKit; steering → `imd` core)
+**Module:** `sci_form::dynamics_live` (core since 2026-11-08; F84 validated: UFF forces 3.6e-13 vs RDKit; steering → `imd` core)
 
 **A8 (`alpha-dynamics-live`):** Real-time molecular dynamics integration (Verlet / velocity Verlet) with per-frame callbacks — suitable for interactive visualization or frame streaming to a WebSocket.
 
@@ -436,16 +436,16 @@ sci-form edl-scan --v-min -0.5 --v-max 0.5 --n-points 50 --model gcs
 
 ---
 
-## A11 — Periodic Linear-Scaling (`alpha-periodic-linear`)
+## A11 — Periodic Linear-Scaling (core `periodic_linear`)
 
-**Module:** base in `sci_form::kmesh` (core, F88) + KPM/RandNLA adapters gated in alpha
+**Module:** base in `sci_form::kmesh` (core, F88) + KPM/RandNLA adapters in core `periodic_linear`
 
 Defines reusable periodic spectral contracts and CPU reference reciprocal-space helpers. Supports Monkhorst-Pack and gamma-centered k-meshes, Bloch-phase factors, k-point integration, band structure, and density-of-states calculations. Integrates with future KPM and randomized low-rank adapters.
 
 ### Rust
 
 ```rust
-use sci_form::alpha::periodic_linear::*;
+use sci_form::periodic_linear::*;
 
 // Generate k-mesh
 let mesh_config = KMeshConfig {
@@ -513,16 +513,16 @@ sci-form kmesh --grid 4 4 4 --centering monkhorst-pack
 
 ---
 
-## A12 — Kinetics (`alpha-kinetics`)
+## A12 — Kinetics (core `kinetics`)
 
-**Module:** `sci_form::alpha::kinetics` (gated; F87 validated 2026-10-14: Eyring 1.9e-16, equilibrium 8e-16; Cantera gap)
+**Module:** `sci_form::kinetics` (core since 2026-11-08; F87 validated: Eyring 1.9e-16, equilibrium 8e-16; Cantera gap)
 
 Defines elementary-step, HTST, and microkinetic trace contracts for catalytic and surface-chemistry workflows. Computes transition-state-theory rates, temperature sweeps, and microkinetic steady-state solutions. Integrates with GSM and MBH for barrier estimation.
 
 ### Rust
 
 ```rust
-use sci_form::alpha::kinetics::*;
+use sci_form::kinetics::*;
 
 // Single temperature HTST rate
 let step = ElementaryStep {
@@ -612,7 +612,7 @@ Defines solver-agnostic payloads for charts, traces, and trajectory visualizatio
 ```rust
 use sci_form::render_bridge::*;
 use sci_form::edl::*;
-use sci_form::alpha::kinetics::*;
+use sci_form::kinetics::*;
 
 // EDL profile chart
 let profile = compute_gouy_chapman_profile(0.2, &EdlConfig::default())?;
@@ -686,21 +686,16 @@ console.log(`Packed chart: ${packed.n_columns} columns, ${packed.column_names.jo
 
 ```toml
 [dependencies]
-sci-form = { version = "1.0", features = ["alpha-dft", "alpha-reaxff", "alpha-mlff"] }
+sci-form = { version = "1.1", features = ["alpha-dft", "alpha-mlff"] }
 
-# All alpha modules:
-sci-form = { version = "1.0", features = [
-    "alpha-dft", "alpha-reaxff", "alpha-mlff",
-    "alpha-obara-saika", "alpha-cga", "alpha-gsm",
-    "alpha-sdr", "alpha-dynamics-live", "alpha-imd",
-    "alpha-edl", "alpha-periodic-linear", "alpha-kinetics",
-    "alpha-render-bridge"
+# All still-gated alpha modules:
+sci-form = { version = "1.1", features = [
+    "alpha-dft", "alpha-mlff", "alpha-render-bridge",
+    "alpha-reaction-dynamics"
 ] }
 
 # Alpha + parallelization:
-sci-form = { version = "1.0", features = [
-    "alpha-mlff", "alpha-reaxff", "parallel"
-] }
+sci-form = { version = "1.1", features = ["alpha-mlff", "parallel"] }
 ```
 
 ### WASM / npm
@@ -735,8 +730,8 @@ result = alpha.dft_calculate(elements, coords)
 ```bash
 pnpm wasm:build:all-alpha
 # Equivalent to:
-bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr alpha-dynamics-live alpha-imd"
-bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics alpha-render-bridge"
+bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-mlff alpha-reaction-dynamics"
+bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-mlff alpha-render-bridge alpha-reaction-dynamics"
 ```
 
 > Always build through `crates/wasm/build.sh` (directly or through the

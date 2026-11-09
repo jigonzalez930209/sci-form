@@ -84,7 +84,12 @@ fn record(
 
 /// Split a flat coordinate array into `[f64; 3]` positions.
 fn positions_from(coords: &[f64]) -> Vec<[f64; 3]> {
-    coords.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+    coords
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect()
 }
 
 /// Bond-order encoding used by the `ml::compute_descriptors` /
