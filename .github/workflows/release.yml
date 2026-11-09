@@ -11,6 +11,7 @@ env:
   # shorter list here would ship a wheel and an npm package with fewer
   # capabilities than the documentation promises. `scripts/check_feature_parity.py` fails the build if the two
   # workflows ever drift apart.
+  PYTHON_BINDING_FEATURES_CSV: "parallel,alpha-dft,alpha-reaxff,alpha-mlff,alpha-obara-saika,alpha-cga,alpha-gsm,alpha-sdr,alpha-dynamics-live,alpha-imd,alpha-edl,alpha-periodic-linear,alpha-kinetics,alpha-render-bridge,beta-kpm,beta-mbh,beta-randnla,beta-riemannian,beta-cpm"
   PYTHON_BINDING_FEATURES: >-
     parallel
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
@@ -204,7 +205,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           working-directory: crates/python
-          args: --release --out ../../target/wheels --features "${{ env.PYTHON_BINDING_FEATURES }}"
+          args: --release --out ../../target/wheels --features "${{ env.PYTHON_BINDING_FEATURES_CSV }}"
           manylinux: auto
       - name: Build the sdist
         if: matrix.os == 'ubuntu-latest'
