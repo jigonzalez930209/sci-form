@@ -228,6 +228,8 @@ pub mod mesh;
 pub mod method;
 pub mod ml;
 pub mod mlip;
+#[cfg(feature = "mlip-onnx")]
+pub mod mlip_onnx;
 pub mod mp2;
 pub mod nmr;
 pub mod nmr_all;

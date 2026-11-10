@@ -6,9 +6,9 @@ model weights have their own licences and training provenance. The registry and
 callback backend make the contract executable and testable without pretending
 that a random or test-weight model is a production potential.
 
-> **Status.** Contract and callback backend implemented in `feat/wave-b`. The
-> ONNX checkpoint adapter is the remaining piece; it needs a real exported model
-> and a licence review. See the [v2.x roadmap](/v2-roadmap).
+> **Status.** Contract, callback backend and the optional `mlip-onnx` adapter are
+> implemented in `feat/wave-c`. A real checkpoint is user-supplied; no weights
+> are bundled. See the [v2.x roadmap](/v2-roadmap).
 
 ## Contract
 
@@ -43,6 +43,7 @@ Every model carries a manifest:
   "elements": [1, 6, 7, 8, 9, 15, 16, 17],
   "cutoff_angstrom": 5.0,
   "license": "MIT",
+  "energy_unit": "ev",
   "supports_stress": false,
   "source": "sha256:..."
 }
@@ -77,7 +78,31 @@ let result = model.evaluate(&[8, 1, 1], &water, None)?;
 `MlipRegistry` stores named models and rejects duplicate names. The registry is
 deliberately small; it is a contract boundary, not a model zoo.
 
-## ONNX adapter contract
+## ONNX adapter
+
+Enable the optional dependency:
+
+```toml
+[dependencies]
+sci-form = { version = "2.0", features = ["mlip-onnx"] }
+```
+
+Load a user-supplied checkpoint:
+
+```rust
+use std::path::Path;
+use sci_form::mlip_onnx::MlipOnnx;
+
+let model = MlipOnnx::from_path(Path::new("model.onnx"), manifest)?;
+let result = sci_form::evaluate_mlip(&model, &elements, &positions, None)?;
+```
+
+The adapter is native-first and currently non-periodic. It requires exactly two
+inputs (`positions`, `atomic_numbers`) and two outputs (`energy`, `forces`). A
+checkpoint that returns stress or needs a cell is rejected explicitly rather
+than silently ignored.
+
+### ONNX adapter contract
 
 An ONNX checkpoint adapter must document:
 
@@ -107,6 +132,8 @@ to a different model.
 | Registry | Duplicate name | rejected |
 | Manifest | Empty elements / licence | rejected |
 | Stress | Model declares stress but returns none | rejected |
+| ONNX adapter | Missing checkpoint | explicit load error |
+| ONNX adapter | Wrong input count | explicit contract error |
 
 A production gate needs a real checkpoint and a reference trajectory
 (MD17/SPICE or a materials benchmark). That is why the adapter is not marked
@@ -114,8 +141,9 @@ promoted.
 
 ## Limitations
 
-- No ONNX runtime or model weights are included.
-- The callback backend is a contract test, not a universal potential.
+- No model weights are included; the caller supplies the checkpoint.
+- The ONNX adapter is behind `mlip-onnx`, native-first and non-periodic.
+- It supports exactly two inputs and two outputs; stress/PBC are follow-ups.
 - No neighbour list, PBC wrapping or stress validation beyond finiteness.
 - No training, fine-tuning or uncertainty calibration.
 - The registry is in-memory and not serializable.
@@ -124,9 +152,9 @@ promoted.
 
 ## Next steps
 
-1. Add an optional `tract-onnx` adapter behind a feature flag.
-2. Define a fixed ONNX metadata block and a conversion test.
-3. Add the neighbour list and PBC cell handling.
-4. Add stress and periodic benchmark cases.
-5. Add a model registry JSON manifest.
-6. Add Python, WASM and CLI wrappers.
+1. Add a real exported checkpoint and a conversion test.
+2. Add the neighbour list and PBC cell handling.
+3. Add stress and periodic benchmark cases.
+4. Add a model registry JSON manifest.
+5. Add Python, WASM and CLI wrappers.
+6. Benchmark against the model's native runtime on MD17/SPICE.

@@ -5,9 +5,10 @@ three-dimensional reference interaction site model (3D-RISM): a periodic-grid
 Ornstein–Zernike solver with the Kovalenko–Hirata closure and a 3D FFT. The
 solute–solvent potential and the solvent susceptibility are caller-supplied.
 
-> **Status.** Solver core implemented in `feat/wave-c`. A solvent force field,
-> the excess chemical potential and a hydration-free-energy benchmark are
-> follow-ups. See the [v2.x roadmap](/v2-roadmap).
+> **Status.** Solver core, two simple susceptibility models and the mean
+> interaction energy are implemented in `feat/wave-c`. A real solvent
+> parameterisation, the excess chemical potential and a hydration-free-energy
+> benchmark are follow-ups. See the [v2.x roadmap](/v2-roadmap).
 
 ## Equations
 
@@ -69,6 +70,27 @@ For an ideal-gas solvent, use a constant `χ = ρ_bulk` on every k point. A real
 solvent model must supply the Fourier-space susceptibility from its solvent
 correlation functions.
 
+### Solvent models
+
+`solvent_susceptibility_k` provides two test models:
+
+| Model | `χ(k)` |
+|---|---|
+| `IdealGas` | constant `ρ` |
+| `Gaussian { correlation_length_angstrom }` | `ρ exp(-k²ξ²/2)` |
+
+The Gaussian model is a numerical response for tests, not a parameterisation of
+water. A real SPC/E/TIP3P model must compute `χ(k)` from its solvent correlation
+functions.
+
+```rust
+use sci_form::rism::{RismSolventModel, solvent_susceptibility_k};
+
+let chi = solvent_susceptibility_k(&config, RismSolventModel::Gaussian {
+    correlation_length_angstrom: 3.0,
+})?;
+```
+
 ### Output
 
 | Field | Meaning |
@@ -78,6 +100,7 @@ correlation functions.
 | `iterations` | Picard iterations |
 | `converged` | Tolerance reached |
 | `mean_g`, `max_g` | Mean and contact-peak density |
+| `mean_interaction_energy_kcal_mol` | Mean solute–solvent interaction energy |
 | `shape` | Grid dimensions |
 
 ## Validation
@@ -87,6 +110,9 @@ correlation functions.
 | Ideal gas | Mean `g` | 1.0 ± 1e-8 |
 | Attractive solute | Contact peak | `max_g > 1` |
 | Non-cubic grid | 4 × 6 × 8 ideal gas | runs |
+| Ideal-gas χ | Constant density | constant |
+| Gaussian χ | Decay with k | decreasing |
+| Interaction energy | Finite for a test potential | finite |
 | Wrong array length | Grid size mismatch | rejected |
 
 These are solver-core tests. A solvent-model test and a hydration free-energy
@@ -94,9 +120,11 @@ comparison are still required.
 
 ## Limitations
 
-- No solvent force field or solvent susceptibility model is bundled; the caller
-  supplies `χ(k)`.
-- No excess chemical potential or solvation free energy yet.
+- No real solvent force field is bundled; the ideal-gas and Gaussian models are
+  test responses, not water.
+- `mean_interaction_energy_kcal_mol` is an interaction energy, not the excess
+  chemical potential or a solvation free energy.
+- No excess chemical potential or hydration free energy yet.
 - No long-range charge treatment or Ewald split; the solver assumes a supplied
   periodic susceptibility.
 - The FFT is a simple pure-Rust 3D transform; grid sizes are not optimized for
@@ -108,7 +136,7 @@ comparison are still required.
 
 ## Next steps
 
-1. Add a solvent model (SPC/E, TIP3P) that generates `χ(k)`.
+1. Add a real solvent model (SPC/E, TIP3P) that generates `χ(k)`.
 2. Add the excess chemical potential and hydration free energy.
 3. Add Ewald splitting for charged solutes.
 4. Add HNC and other closures.

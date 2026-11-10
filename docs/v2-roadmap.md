@@ -151,7 +151,7 @@ Wave B branch: `feat/wave-b`.
 | V2-03 | QM/MM | Mechanical embedding implemented | Electrostatic embedding, link atoms and gradients |
 | V2-04 | EPR | Isotropic hyperfine implemented | Anisotropic tensor, g-tensor and ORCA benchmark |
 | V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR estimators implemented | Soft-core MD, λ scheduler and experimental benchmark |
-| V2-13 | Universal MLIP | Contract, registry and callback backend | ONNX adapter, checkpoint and benchmark |
+| V2-13 | Universal MLIP | Contract, registry, callback and optional ONNX adapter | Real checkpoint and benchmark |
 | V2-14 | Active learning | Conformal calibration and acquisition implemented | Chemical coverage benchmark and bindings |
 
 Wave C branch: `feat/wave-c`.
@@ -161,7 +161,7 @@ Wave C branch: `feat/wave-c`.
 | V2-01 | Hybrid DFT | Restricted PBE0 exact exchange | Unrestricted/range-separated, gradient and parity |
 | V2-02 | RI-MP2 | Conventional MP2 implemented | RI, SCS/SOS, local correlation and parity |
 | V2-06 | XPS/XANES | Koopmans XPS implemented | ΔSCF, XANES and benchmarks |
-| V2-07 | 3D-RISM | 3D OZ/KH solver core | Solvent model, excess chemical potential and benchmark |
+| V2-07 | 3D-RISM | OZ/KH solver core + ideal-gas/Gaussian solvent models + interaction energy | Real solvent, excess chemical potential and benchmark |
 | V2-15 | All-nuclide NMR | Registry and multi-nucleus GIAO driver | SCF reuse, basis/ECP coverage, benchmarks |
 
 
@@ -784,7 +784,7 @@ edges; diagram of the core-hole pipeline.
 | Field | Value |
 |---|---|
 | Track | Solvation and statistical mechanics |
-| Status | 3D grid OZ/KH solver core implemented in `feat/wave-c`; solvent model/energy pending |
+| Status | 3D OZ/KH solver core, simple solvent models and interaction energy implemented; free energy pending |
 | Implementation | [algorithm/rism.md](/algorithm/rism) |
 | Target | v2.3 |
 | Effort | 10–14 person-weeks |
@@ -1318,7 +1318,7 @@ for known networks; diagram of the generate → refine → solve pipeline.
 | Field | Value |
 |---|---|
 | Track | Machine learning potentials |
-| Status | Model contract and callback backend implemented in `feat/wave-b`; ONNX adapter pending |
+| Status | Contract, callback backend and optional `mlip-onnx` adapter implemented; checkpoint pending |
 | Implementation | [algorithm/mlip.md](/algorithm/mlip) |
 | Target | v2.2 |
 | Effort | 6–10 person-weeks |

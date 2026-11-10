@@ -100,6 +100,7 @@ alpha-periodic-linear = []
 alpha-kinetics = ["beta-mbh"]
 alpha-render-bridge = []
 alpha-reaction-dynamics = []
+mlip-onnx = ["dep:tract-onnx"]
 # Beta — tested, approaching core readiness
 # (beta-cpm/F95 and beta-riemannian/F94 core since 2026-10; kept as aliases)
 # KPM is core since 2026-11-07; the feature is retained as a compatibility alias.
@@ -128,6 +129,7 @@ rayon = { version = "1.10", optional = true }
 bytemuck = { version = "1.21", features = ["derive"], optional = true }
 pollster = { version = "0.3", optional = true }
 wgpu = { version = "29", optional = true }
+tract-onnx = { version = "0.23.10", optional = true }
 
 [dev-dependencies]
 rayon = "1.10"

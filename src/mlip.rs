@@ -28,6 +28,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::SciFormError;
 
+/// Native energy unit of a model checkpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MlipEnergyUnit {
+    /// kcal/mol; the native contract unit.
+    #[default]
+    KcalMol,
+    /// electron-volt; the adapter converts at the boundary.
+    Ev,
+}
+
 /// Manifest that accompanies a model checkpoint.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MlipManifest {
@@ -41,6 +52,9 @@ pub struct MlipManifest {
     pub cutoff_angstrom: f64,
     /// Licence identifier or a short licence note.
     pub license: String,
+    /// Native energy unit of the checkpoint.
+    #[serde(default)]
+    pub energy_unit: MlipEnergyUnit,
     /// Whether the model returns a stress tensor.
     pub supports_stress: bool,
     /// Optional source or checkpoint hash.
@@ -280,6 +294,7 @@ mod tests {
             elements: vec![1, 8],
             cutoff_angstrom: 6.0,
             license: "test-only".into(),
+            energy_unit: MlipEnergyUnit::KcalMol,
             supports_stress: false,
             source: None,
         }

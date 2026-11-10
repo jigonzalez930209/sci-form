@@ -47,6 +47,19 @@ pub enum RismClosure {
     Kh,
 }
 
+/// Simple solvent susceptibility models for tests and demonstrations.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RismSolventModel {
+    /// Constant `χ(k) = ρ`; the ideal-gas limit.
+    IdealGas,
+    /// Gaussian response `χ(k) = ρ exp(-k²ξ²/2)`.
+    Gaussian {
+        /// Correlation length in Å.
+        correlation_length_angstrom: f64,
+    },
+}
+
 /// Solver configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RismConfig {
@@ -149,6 +162,8 @@ pub struct RismResult {
     pub mean_g: f64,
     /// Maximum `g` over the grid (contact peak proxy).
     pub max_g: f64,
+    /// Mean solute-solvent interaction energy in kcal/mol.
+    pub mean_interaction_energy_kcal_mol: f64,
     /// Grid dimensions.
     pub shape: [usize; 3],
     /// Notes and caveats.
@@ -248,6 +263,16 @@ pub fn solve_3d_rism(
     }
     let mean_g = g.iter().sum::<f64>() / n as f64;
     let max_g = g.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let cell_volume = config.box_length_angstrom.powi(3);
+    let cell_volume_per_point = cell_volume / n as f64;
+    let kbt_kcal_mol = 0.001_987_204_258_640_83 * config.temperature_k;
+    let mean_interaction_energy_kcal_mol = config.bulk_density_angstrom3
+        * kbt_kcal_mol
+        * cell_volume_per_point
+        * g.iter()
+            .zip(solute_beta_potential)
+            .map(|(density, beta_u)| density * beta_u)
+            .sum::<f64>();
 
     Ok(RismResult {
         g,
@@ -258,6 +283,7 @@ pub fn solve_3d_rism(
         converged,
         mean_g,
         max_g,
+        mean_interaction_energy_kcal_mol,
         shape: [config.nx, config.ny, config.nz],
         notes: vec![
             "3D-RISM core with the Kovalenko–Hirata closure.".to_string(),
@@ -267,6 +293,71 @@ pub fn solve_3d_rism(
                 .to_string(),
         ],
     })
+}
+
+/// Build a solvent susceptibility grid for a simple model.
+///
+/// The grid uses the same periodic k-vector convention as the solver. The
+/// Gaussian model is a numerical test response, not a parameterisation of a
+/// real solvent.
+pub fn solvent_susceptibility_k(
+    config: &RismConfig,
+    model: RismSolventModel,
+) -> Result<Vec<f64>, SciFormError> {
+    config.validate()?;
+    if let RismSolventModel::Gaussian {
+        correlation_length_angstrom,
+    } = model
+    {
+        if !correlation_length_angstrom.is_finite() || correlation_length_angstrom <= 0.0 {
+            return Err(SciFormError::validation(
+                "Gaussian solvent correlation length must be finite and > 0",
+            ));
+        }
+    }
+    let n = config.n_grid();
+    let mut values = Vec::with_capacity(n);
+    let two_pi_over_l = 2.0 * std::f64::consts::PI / config.box_length_angstrom;
+    for z in 0..config.nz {
+        for y in 0..config.ny {
+            for x in 0..config.nx {
+                let kx = two_pi_over_l
+                    * if x <= config.nx / 2 {
+                        x as f64
+                    } else {
+                        x as f64 - config.nx as f64
+                    };
+                let ky = two_pi_over_l
+                    * if y <= config.ny / 2 {
+                        y as f64
+                    } else {
+                        y as f64 - config.ny as f64
+                    };
+                let kz = two_pi_over_l
+                    * if z <= config.nz / 2 {
+                        z as f64
+                    } else {
+                        z as f64 - config.nz as f64
+                    };
+                let k2 = kx * kx + ky * ky + kz * kz;
+                let value = match model {
+                    RismSolventModel::IdealGas => config.bulk_density_angstrom3,
+                    RismSolventModel::Gaussian {
+                        correlation_length_angstrom,
+                    } => {
+                        config.bulk_density_angstrom3
+                            * (-0.5
+                                * k2
+                                * correlation_length_angstrom
+                                * correlation_length_angstrom)
+                                .exp()
+                    }
+                };
+                values.push(value);
+            }
+        }
+    }
+    Ok(values)
 }
 
 fn fft3d(data: &mut [Complex<f64>], config: &RismConfig, inverse: bool) {
@@ -405,6 +496,44 @@ mod tests {
         .unwrap();
         assert_eq!(result.shape, [4, 6, 8]);
         assert!((result.mean_g - 1.0).abs() < 1e-8);
+    }
+
+    #[test]
+    fn ideal_gas_susceptibility_is_constant() {
+        let config = RismConfig::default();
+        let values = solvent_susceptibility_k(&config, RismSolventModel::IdealGas).unwrap();
+        assert!(values
+            .iter()
+            .all(|value| (*value - config.bulk_density_angstrom3).abs() < 1e-15));
+    }
+
+    #[test]
+    fn gaussian_susceptibility_decays() {
+        let config = RismConfig::default();
+        let values = solvent_susceptibility_k(
+            &config,
+            RismSolventModel::Gaussian {
+                correlation_length_angstrom: 3.0,
+            },
+        )
+        .unwrap();
+        assert!(values[0] > values[values.len() - 1]);
+    }
+
+    #[test]
+    fn interaction_energy_is_finite() {
+        let config = RismConfig {
+            nx: 8,
+            ny: 8,
+            nz: 8,
+            max_iterations: 20,
+            ..RismConfig::default()
+        };
+        let n = config.n_grid();
+        let potential: Vec<f64> = (0..n).map(|index| -0.1 * (index % 5) as f64).collect();
+        let chi = solvent_susceptibility_k(&config, RismSolventModel::IdealGas).unwrap();
+        let result = solve_3d_rism(&potential, &chi, &config).unwrap();
+        assert!(result.mean_interaction_energy_kcal_mol.is_finite());
     }
 
     #[test]
