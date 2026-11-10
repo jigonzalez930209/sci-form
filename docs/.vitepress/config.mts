@@ -132,6 +132,7 @@ export default defineConfig({
             { text: 'Density of States', link: '/algorithm/density-of-states' },
             { text: 'Population Analysis', link: '/algorithm/population-analysis' },
             { text: 'Dipole Moments', link: '/algorithm/dipole-moments' },
+            { text: 'Redox & pKa', link: '/algorithm/redox-pka' },
             { text: 'Strain Energy', link: '/algorithm/strain-energy' },
             { text: 'Molecular Alignment', link: '/algorithm/molecular-alignment' },
           ],

@@ -831,7 +831,8 @@ hydration free energy and density; diagram of the solute–solvent grid.
 | Field | Value |
 |---|---|
 | Track | Electrochemistry and thermodynamics |
-| Status | Candidate — evaluation required |
+| Status | Prototype implemented in `feat/wave-a`; validation and bindings pending |
+| Implementation | [algorithm/redox-pka.md](/algorithm/redox-pka) |
 | Target | v2.1 |
 | Effort | 4–6 person-weeks |
 | Reuse | `alpb`, `xtb`, `dft`, `conformers`, `thermochemistry`, `empirical_pka` |

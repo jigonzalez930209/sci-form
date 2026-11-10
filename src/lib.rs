@@ -197,6 +197,7 @@ pub use error::SciFormError;
 pub mod dynamics;
 pub mod edl;
 pub mod eht;
+pub mod electrochemistry;
 pub mod esp;
 /// ETKDG internals: dihedral angles, torsion energy terms and their gradients.
 ///
@@ -3080,6 +3081,53 @@ pub fn compute_empirical_pka(smiles: &str) -> Result<reactivity::EmpiricalPkaRes
     let mol = graph::Molecule::from_smiles(smiles)?;
     let charges = compute_charges(smiles)?;
     Ok(reactivity::estimate_empirical_pka(&mol, &charges.charges))
+}
+
+/// Compute a solution pKa from an explicit acid/conjugate-base pair.
+///
+/// The workflow embeds both states, evaluates their conformers with GFN2-xTB
+/// and ALPB solvation, and applies the thermodynamic cycle
+/// `HA -> A- + H+`. The returned pKa is dimensionless; energies are in
+/// kcal/mol. The caller must supply the conjugate base because automatic
+/// protonation-site enumeration is a separate problem.
+///
+/// # Errors
+///
+/// Returns `Err` when either SMILES cannot be parsed, when a state has no
+/// evaluable conformer, or when the configuration is invalid.
+pub fn compute_pka(
+    acid_smiles: &str,
+    base_smiles: &str,
+    reference: Option<&electrochemistry::PkaReference>,
+    config: &electrochemistry::ElectrochemistryConfig,
+) -> Result<electrochemistry::PkaResult, SciFormError> {
+    electrochemistry::compute_pka(acid_smiles, base_smiles, reference, config)
+}
+
+/// Compute a redox potential from an explicit oxidised/reduced pair.
+///
+/// The reaction is `Ox + n e- -> Red`; the returned potential is in volt
+/// relative to the reference electrode configured in
+/// [`electrochemistry::ElectrochemistryConfig`] (SHE by default).
+///
+/// # Errors
+///
+/// Returns `Err` when either SMILES cannot be parsed, when `n_electrons` is
+/// outside `1..=4`, or when the configuration is invalid.
+pub fn compute_redox_potential(
+    oxidized_smiles: &str,
+    reduced_smiles: &str,
+    n_electrons: u32,
+    reference: Option<&electrochemistry::RedoxReference>,
+    config: &electrochemistry::ElectrochemistryConfig,
+) -> Result<electrochemistry::RedoxResult, SciFormError> {
+    electrochemistry::compute_redox_potential(
+        oxidized_smiles,
+        reduced_smiles,
+        n_electrons,
+        reference,
+        config,
+    )
 }
 
 /// Create a periodic unit cell from lattice parameters (a, b, c in Å; α, β, γ in degrees).
