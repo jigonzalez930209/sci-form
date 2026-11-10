@@ -10,7 +10,7 @@ The highest-confidence targets remain ¹H and ¹³C. A broader nucleus registry 
 > **Coverage note.** The registry lists many NMR-active nuclides, but only ¹H
 > and ¹³C have HOSE tables and the GIAO route is still restricted to
 > closed-shell singlets with STO-3G. Quantitative shielding for every active
-> isotope is a v3 candidate in the [v3 roadmap](/v3-roadmap).
+> isotope is a v2.x candidate in the [v2.x roadmap](/v2-roadmap).
 
 For quantum-mechanical shielding, sci-form also exposes a high-level public GIAO route that runs the crate's RHF SCF implementation and then evaluates isotope-specific shieldings for a requested nucleus. That route is currently restricted to singlet closed-shell systems and defaults to rejecting elements that only have the hydrogen-like fallback basis in the public STO-3G path.
 

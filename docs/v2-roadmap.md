@@ -1,7 +1,7 @@
-# v3 feature prospecting and evaluation roadmap
+# v2.x feature roadmap: development towards v3
 
 > **Status: proposal for evaluation, not a committed release plan.** This page
-> records the candidate features considered for `sci-form` 3.x, the state of
+> records the candidate features considered for the `sci-form` 2.x line, the state of
 > the art behind each one, the reuse path through the existing 2.0 code, and
 > the gate that must pass before development starts. Nothing here is a promise
 > of a release date or a stable API.
@@ -12,7 +12,7 @@
 
 `sci-form` 2.0 is a fast calculation library: it parses molecules, generates
 conformers, evaluates force fields and several electronic-structure methods,
-and produces spectra, descriptors and materials. The v3 question is different:
+and produces spectra, descriptors and materials. The v2.x question is different:
 
 > Which **new predictive capabilities** turn those calculations into workflows
 > that answer a scientific question end to end, without breaking the pure-Rust,
@@ -22,6 +22,25 @@ The portfolio below contains **15 fully scoped candidates**. Each one is new to
 the library, has an independent oracle, and either reuses an existing module or
 adds a thin layer on top of one. A separate [reserve list](#14-reserve-list)
 records ideas that were deliberately deferred.
+
+### 1.1 Versioning policy
+
+The current release is `2.0.0`. Every candidate on this page is additive: a new
+module, a new function or a new result type. None of them requires a breaking
+change to a stable 2.0 path. They therefore land in minor releases, not in a
+major release:
+
+| Band | Target release | Scope |
+|---|---|---|
+| A | `v2.1` | response, solvation and sampling candidates |
+| B | `v2.2` | environment, EPR, free-energy and ML candidates |
+| C | `v2.3` | correlated, core-level and all-nuclide NMR candidates |
+
+`v3.0` is **not** a feature bucket. It is the next major release only when a
+documented breaking change — a removal, an incompatible signature or a semantic
+change — is justified. Until then the development line stops at `v2.3`; v3 can
+adopt the promoted features without renumbering them. This keeps the version
+number tied to compatibility, not to the size of the roadmap.
 
 ## 2. Selection rules
 
@@ -72,7 +91,7 @@ The portfolio avoids features that already exist. The current surface includes:
 
 **Do not re-propose:** the microkinetic ODE solver, empirical pKa, RRHO
 thermochemistry, GIAO NMR, NPT/barostat, powder XRD or the D4 dispersion. They
-already exist. A v3 feature must add a capability, not rename one of these.
+already exist. A v2.x feature must add a capability, not rename one of these.
 
 ## 4. Portfolio at a glance
 
@@ -82,28 +101,28 @@ graph LR
     CORE --> A["Wave A<br/>response · solvation · sampling"]
     CORE --> B["Wave B<br/>QM/MM · EPR · free energy"]
     CORE --> C["Wave C<br/>hybrid DFT · RI-MP2 · RISM"]
-    A --> D["v3.0 band<br/>5 candidates"]
-    B --> E["v3.1 band<br/>5 candidates"]
-    C --> F["v3.2 band<br/>5 candidates"]
+    A --> D["v2.1 band<br/>5 candidates"]
+    B --> E["v2.2 band<br/>5 candidates"]
+    C --> F["v2.3 band<br/>5 candidates"]
 ```
 
 | ID | Candidate | Impact | Fit | Effort | Risk | Score | Target band |
 |---|---|---:|---:|---:|---:|---:|---|
-| V3-01 | Hybrid and range-separated DFT | 5 | 4 | 4 | 3 | **14** | v3.2 |
-| V3-02 | RI-MP2 and local correlation | 4 | 4 | 4 | 3 | **13** | v3.2 |
-| V3-03 | QM/MM with electrostatic embedding | 5 | 4 | 4 | 3 | **14** | v3.1 |
-| V3-04 | EPR: g-tensor and hyperfine coupling | 4 | 4 | 3 | 3 | **14** | v3.1 |
-| V3-05 | Raman, VCD and ROA spectroscopy | 4 | 5 | 3 | 2 | **16** | v3.0 |
-| V3-06 | Core-level XPS and XANES | 3 | 3 | 4 | 3 | **11** | v3.2 |
-| V3-07 | 3D-RISM solvation | 4 | 4 | 4 | 4 | **12** | v3.2 |
-| V3-08 | First-principles redox and pKa | 5 | 5 | 3 | 3 | **16** | v3.0 |
-| V3-09 | Alchemical free energies: FEP, BAR, MBAR | 5 | 4 | 4 | 3 | **14** | v3.1 |
-| V3-10 | Enhanced sampling: WTMetaD, OPES, replica exchange | 5 | 5 | 3 | 2 | **17** | v3.0 |
-| V3-11 | GCMC adsorption in porous materials | 4 | 5 | 3 | 2 | **16** | v3.0 |
-| V3-12 | Reaction-network discovery and kMC | 5 | 5 | 3 | 3 | **16** | v3.0 |
-| V3-13 | Universal equivariant MLIP backend | 5 | 4 | 4 | 3 | **14** | v3.1 |
-| V3-14 | Uncertainty-aware active learning | 4 | 4 | 3 | 2 | **15** | v3.1 |
-| V3-15 | Complete NMR coverage for all active nuclides | 5 | 4 | 5 | 4 | **12** | v3.2 |
+| V2-01 | Hybrid and range-separated DFT | 5 | 4 | 4 | 3 | **14** | v2.3 |
+| V2-02 | RI-MP2 and local correlation | 4 | 4 | 4 | 3 | **13** | v2.3 |
+| V2-03 | QM/MM with electrostatic embedding | 5 | 4 | 4 | 3 | **14** | v2.2 |
+| V2-04 | EPR: g-tensor and hyperfine coupling | 4 | 4 | 3 | 3 | **14** | v2.2 |
+| V2-05 | Raman, VCD and ROA spectroscopy | 4 | 5 | 3 | 2 | **16** | v2.1 |
+| V2-06 | Core-level XPS and XANES | 3 | 3 | 4 | 3 | **11** | v2.3 |
+| V2-07 | 3D-RISM solvation | 4 | 4 | 4 | 4 | **12** | v2.3 |
+| V2-08 | First-principles redox and pKa | 5 | 5 | 3 | 3 | **16** | v2.1 |
+| V2-09 | Alchemical free energies: FEP, BAR, MBAR | 5 | 4 | 4 | 3 | **14** | v2.2 |
+| V2-10 | Enhanced sampling: WTMetaD, OPES, replica exchange | 5 | 5 | 3 | 2 | **17** | v2.1 |
+| V2-11 | GCMC adsorption in porous materials | 4 | 5 | 3 | 2 | **16** | v2.1 |
+| V2-12 | Reaction-network discovery and kMC | 5 | 5 | 3 | 3 | **16** | v2.1 |
+| V2-13 | Universal equivariant MLIP backend | 5 | 4 | 4 | 3 | **14** | v2.2 |
+| V2-14 | Uncertainty-aware active learning | 4 | 4 | 3 | 2 | **15** | v2.2 |
+| V2-15 | Complete NMR coverage for all active nuclides | 5 | 4 | 5 | 4 | **12** | v2.3 |
 
 The effort is order-of-magnitude for one experienced developer: Wave A is
 roughly 27–41 person-weeks, Wave B 32–50, Wave C 46–70. The total portfolio is
@@ -111,7 +130,7 @@ therefore about **105–161 person-weeks**; it cannot ship as one release.
 
 ## 5. Evaluation waves
 
-### Wave A — response, solvation, sampling (v3.0 band)
+### Wave A — response, solvation, sampling (v2.1 band)
 
 These candidates have the best score and the smallest conceptual distance from
 the 2.0 code. Each can start with a numerical prototype and reuse a validated
@@ -119,50 +138,50 @@ engine.
 
 | ID | First spike | Existing anchor |
 |---|---|---|
-| V3-05 | Numerical polarizability derivatives on top of the existing Hessian | `compute_vibrational_analysis`, `compute_ir_spectrum` |
-| V3-08 | ALPB + xTB thermodynamic cycle for 10 acids and 10 bases | `compute_alpb_solvation`, `xtb`, `compute_empirical_pka` |
-| V3-10 | WTMetaD on a two-dimensional analytic surface | `compute_md_trajectory_nvt`, `compute_simplified_neb_path` |
-| V3-11 | GCMC insertion/deletion on a rigid MOF | `assemble_framework`, `forcefield`, `periodic_linear` |
-| V3-12 | Recover a known five-step network from SMIRKS + GSM | `smirks`, `gsm`, `kinetics` |
+| V2-05 | Numerical polarizability derivatives on top of the existing Hessian | `compute_vibrational_analysis`, `compute_ir_spectrum` |
+| V2-08 | ALPB + xTB thermodynamic cycle for 10 acids and 10 bases | `compute_alpb_solvation`, `xtb`, `compute_empirical_pka` |
+| V2-10 | WTMetaD on a two-dimensional analytic surface | `compute_md_trajectory_nvt`, `compute_simplified_neb_path` |
+| V2-11 | GCMC insertion/deletion on a rigid MOF | `assemble_framework`, `forcefield`, `periodic_linear` |
+| V2-12 | Recover a known five-step network from SMIRKS + GSM | `smirks`, `gsm`, `kinetics` |
 
-### Wave B — environment, response, free energy (v3.1 band)
+### Wave B — environment, response, free energy (v2.2 band)
 
 These add a new physical environment or a new statistical-mechanics layer.
 
 | ID | First spike | Existing anchor |
 |---|---|---|
-| V3-03 | Point-charge QM/MM energy on water dimer | `eht`/`pm3`/`xtb`, `forcefield` |
-| V3-04 | Isotropic hyperfine coupling for OH and CH3 | `compute_uhf`, `dft`, spin density |
-| V3-09 | Harmonic-oscillator FEP and MBAR recovery | `dynamics`, `forcefield` |
-| V3-13 | ONNX inference for one MACE-OFF model | `ani`, `alpha-mlff`, `dynamics` |
-| V3-14 | Conformal calibration of an existing RF/GBM ensemble | `ml`, `ani`, validation rows |
-| V3-15 | Multi-nucleus GIAO and isotope registry | `nmr`, `giao_nmr`, conformers |
+| V2-03 | Point-charge QM/MM energy on water dimer | `eht`/`pm3`/`xtb`, `forcefield` |
+| V2-04 | Isotropic hyperfine coupling for OH and CH3 | `compute_uhf`, `dft`, spin density |
+| V2-09 | Harmonic-oscillator FEP and MBAR recovery | `dynamics`, `forcefield` |
+| V2-13 | ONNX inference for one MACE-OFF model | `ani`, `alpha-mlff`, `dynamics` |
+| V2-14 | Conformal calibration of an existing RF/GBM ensemble | `ml`, `ani`, validation rows |
+| V2-15 | Multi-nucleus GIAO and isotope registry | `nmr`, `giao_nmr`, conformers |
 
-### Wave C — correlated and core-level methods (v3.2 band)
+### Wave C — correlated and core-level methods (v2.3 band)
 
 These are the largest scientific lifts and should follow the wave A/B
 infrastructure, not precede it.
 
 | ID | First spike | Existing anchor |
 |---|---|---|
-| V3-01 | Exact-exchange KS-DFT for water and benzene | `scf`, `dft`, `hf` |
-| V3-02 | RI-MP2 for water with a def2-SVP basis | `scf`, `CholeskyEris`, basis library |
-| V3-06 | ΔSCF C 1s binding energy for CO and CH4 | `dft`, `ecp`, `stda` |
-| V3-07 | 3D-RISM hydration free energy for ethanol | `solvation`, `charges_eeq`, `fft` |
-| V3-15 | GIAO shift for ¹H, ¹³C, ¹⁵N and ³¹P in one run | `nmr`, `giao_nmr`, `scf` |
+| V2-01 | Exact-exchange KS-DFT for water and benzene | `scf`, `dft`, `hf` |
+| V2-02 | RI-MP2 for water with a def2-SVP basis | `scf`, `CholeskyEris`, basis library |
+| V2-06 | ΔSCF C 1s binding energy for CO and CH4 | `dft`, `ecp`, `stda` |
+| V2-07 | 3D-RISM hydration free energy for ethanol | `solvation`, `charges_eeq`, `fft` |
+| V2-15 | GIAO shift for ¹H, ¹³C, ¹⁵N and ³¹P in one run | `nmr`, `giao_nmr`, `scf` |
 
 ## 6. Feature dossiers
 
 Each dossier is a development brief. It states what is new, why the method is
 credible, how it plugs into 2.0, and what evidence would promote it.
 
-### V3-01 · Hybrid and range-separated DFT
+### V2-01 · Hybrid and range-separated DFT
 
 | Field | Value |
 |---|---|
 | Track | Electronic structure |
 | Status | Candidate — evaluation required |
-| Target | v3.2 |
+| Target | v2.3 |
 | Effort | 10–16 person-weeks |
 | Reuse | `scf` ERIs, `dft` grid and functionals, `hf` exchange, `CholeskyEris` |
 | Surfaces | Rust, Python, CLI; WASM for small molecules |
@@ -264,13 +283,13 @@ showing exact-exchange vs semilocal exchange; at least three live examples.
 
 ---
 
-### V3-02 · RI-MP2 and local correlation
+### V2-02 · RI-MP2 and local correlation
 
 | Field | Value |
 |---|---|
 | Track | Electronic structure |
 | Status | Candidate — evaluation required |
-| Target | v3.2 |
+| Target | v2.3 |
 | Effort | 8–12 person-weeks |
 | Reuse | `scf` orbitals, `CholeskyEris`, basis library, DIIS |
 | Surfaces | Rust, Python, CLI; native-first |
@@ -283,7 +302,7 @@ correlated methods users expect.
 
 **State of the art.** RI-MP2 made MP2 practical for medium molecules; SCS-MP2
 and SOS-MP2 reduce its systematic errors, and local PNO/DLPNO-MP2 extends it to
-larger systems. A v3 implementation should ship RI-MP2 first, then SCS/SOS
+larger systems. A v2.x implementation should ship RI-MP2 first, then SCS/SOS
 variants, and leave local correlation as a follow-up.
 
 **Proposed method.** Transform the ERIs to the molecular-orbital basis and
@@ -341,7 +360,7 @@ pub fn compute_mp2_energy(
 **Risks.** The four-index transform dominates memory and time. Frozen-core
 handling, linear dependence in auxiliary bases and open-shell references add
 edge cases. A local PNO implementation would be a separate project; do not
-promise it in v3.0.
+promise it in v2.1.
 
 **Acceptance / kill criteria.** Promote when RI-MP2 and at least one SCS/SOS
 variant reproduce PySCF on a 10-molecule set and the memory benchmark fits the
@@ -354,13 +373,13 @@ per variant, and a diagram of the AO→MO→RI pipeline.
 
 ---
 
-### V3-03 · QM/MM with electrostatic embedding
+### V2-03 · QM/MM with electrostatic embedding
 
 | Field | Value |
 |---|---|
 | Track | Multiscale simulation |
 | Status | Candidate — evaluation required |
-| Target | v3.1 |
+| Target | v2.2 |
 | Effort | 8–12 person-weeks |
 | Reuse | `eht`, `pm3`, `xtb`, `hf`, `forcefield`, `materials` PBC |
 | Surfaces | Rust, Python, CLI; native-first |
@@ -373,7 +392,7 @@ classical environment.
 
 **State of the art.** Electrostatic embedding with link atoms is the standard
 production QM/MM model; polarizable embedding and ML/MM are active research
-extensions. The v3 target is the well-understood electrostatic model, not a
+extensions. The v2.x target is the well-understood electrostatic model, not a
 polarizable one.
 
 **Proposed method.** Partition the system into QM atoms `A` and MM point charges
@@ -445,13 +464,13 @@ one validation row per QM engine; an animated diagram of the QM/MM partition.
 
 ---
 
-### V3-04 · EPR: g-tensor and hyperfine coupling
+### V2-04 · EPR: g-tensor and hyperfine coupling
 
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
 | Status | Candidate — evaluation required |
-| Target | v3.1 |
+| Target | v2.2 |
 | Effort | 6–10 person-weeks |
 | Reuse | `compute_uhf`, UKS in `dft`, spin density, `giao_nmr` response code |
 | Surfaces | Rust, Python, CLI; WASM for small radicals |
@@ -538,13 +557,13 @@ hyperfine pipeline.
 
 ---
 
-### V3-05 · Raman, VCD and ROA spectroscopy
+### V2-05 · Raman, VCD and ROA spectroscopy
 
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
 | Status | Candidate — evaluation required |
-| Target | v3.0 |
+| Target | v2.1 |
 | Effort | 4–6 person-weeks for the numerical path; 6–10 for analytic |
 | Reuse | `compute_vibrational_analysis`, `compute_ir_spectrum`, SCF/ERI, GIAO response |
 | Surfaces | Rust, Python, WASM, CLI |
@@ -635,13 +654,13 @@ VCD; animated diagram of the finite-field/CPHF path.
 
 ---
 
-### V3-06 · Core-level XPS and XANES
+### V2-06 · Core-level XPS and XANES
 
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
 | Status | Candidate — evaluation required |
-| Target | v3.2 |
+| Target | v2.3 |
 | Effort | 8–12 person-weeks |
 | Reuse | `dft`, `ecp`, `stda`, UV-Vis broadening, basis library |
 | Surfaces | Rust, Python, CLI; native-first |
@@ -719,13 +738,13 @@ edges; diagram of the core-hole pipeline.
 
 ---
 
-### V3-07 · 3D-RISM solvation
+### V2-07 · 3D-RISM solvation
 
 | Field | Value |
 |---|---|
 | Track | Solvation and statistical mechanics |
 | Status | Candidate — evaluation required |
-| Target | v3.2 |
+| Target | v2.3 |
 | Effort | 10–14 person-weeks |
 | Reuse | `solvation` ALPB/GB, `charges_eeq`, `edl`, ESP grid, FFT |
 | Surfaces | Rust, Python, CLI; native-first, WASM with a smaller grid |
@@ -807,13 +826,13 @@ hydration free energy and density; diagram of the solute–solvent grid.
 
 ---
 
-### V3-08 · First-principles redox and pKa
+### V2-08 · First-principles redox and pKa
 
 | Field | Value |
 |---|---|
 | Track | Electrochemistry and thermodynamics |
 | Status | Candidate — evaluation required |
-| Target | v3.0 |
+| Target | v2.1 |
 | Effort | 4–6 person-weeks |
 | Reuse | `alpb`, `xtb`, `dft`, `conformers`, `thermochemistry`, `empirical_pka` |
 | Surfaces | Rust, Python, WASM, CLI |
@@ -907,13 +926,13 @@ for acids, bases and redox couples; diagram of the thermodynamic cycle.
 
 ---
 
-### V3-09 · Alchemical free energies: FEP, BAR and MBAR
+### V2-09 · Alchemical free energies: FEP, BAR and MBAR
 
 | Field | Value |
 |---|---|
 | Track | Free energy and statistical mechanics |
 | Status | Candidate — evaluation required |
-| Target | v3.1 |
+| Target | v2.2 |
 | Effort | 8–12 person-weeks |
 | Reuse | `dynamics`, `forcefield`, `mlff`, `alpb`, `parallel` |
 | Surfaces | Rust, Python, CLI; native-first, WASM for toy systems |
@@ -988,13 +1007,13 @@ and solvation cases; diagram of the λ windows and estimator.
 
 ---
 
-### V3-10 · Enhanced sampling: WTMetaD, OPES and replica exchange
+### V2-10 · Enhanced sampling: WTMetaD, OPES and replica exchange
 
 | Field | Value |
 |---|---|
 | Track | Dynamics and free energy |
 | Status | Candidate — evaluation required |
-| Target | v3.0 |
+| Target | v2.1 |
 | Effort | 5–8 person-weeks |
 | Reuse | `compute_md_trajectory_nvt`, NEB/GSM path CV, RMSD, force fields |
 | Surfaces | Rust, Python, CLI; WASM for small systems |
@@ -1085,13 +1104,13 @@ analytic surface and a molecular example; diagram of the bias and CV.
 
 ---
 
-### V3-11 · GCMC adsorption in porous materials
+### V2-11 · GCMC adsorption in porous materials
 
 | Field | Value |
 |---|---|
 | Track | Materials and statistical mechanics |
 | Status | Candidate — evaluation required |
-| Target | v3.0 |
+| Target | v2.1 |
 | Effort | 6–9 person-weeks |
 | Reuse | `assemble_framework`, `forcefield`, `periodic_linear`, `charges_eeq`, `d4` |
 | Surfaces | Rust, Python, CLI; native-first |
@@ -1169,13 +1188,13 @@ isotherms; animated diagram of insertion/deletion.
 
 ---
 
-### V3-12 · Reaction-network discovery and kinetic Monte Carlo
+### V2-12 · Reaction-network discovery and kinetic Monte Carlo
 
 | Field | Value |
 |---|---|
 | Track | Reactivity and kinetics |
 | Status | Candidate — evaluation required |
-| Target | v3.0 |
+| Target | v2.1 |
 | Effort | 8–12 person-weeks |
 | Reuse | `smirks`, `gsm`, `mbh`, `kinetics`, microkinetic solver, fingerprints |
 | Surfaces | Rust, Python, CLI; native-first |
@@ -1247,13 +1266,13 @@ for known networks; diagram of the generate → refine → solve pipeline.
 
 ---
 
-### V3-13 · Universal equivariant MLIP backend
+### V2-13 · Universal equivariant MLIP backend
 
 | Field | Value |
 |---|---|
 | Track | Machine learning potentials |
 | Status | Candidate — evaluation required |
-| Target | v3.1 |
+| Target | v2.2 |
 | Effort | 6–10 person-weeks |
 | Reuse | `ani`, `alpha-mlff`, `dynamics`, neighbour lists, PBC |
 | Surfaces | Rust, Python, CLI; WASM via a pure-Rust ONNX runtime |
@@ -1329,13 +1348,13 @@ per checkpoint; diagram of the model registry and MD coupling.
 
 ---
 
-### V3-14 · Uncertainty-aware active learning
+### V2-14 · Uncertainty-aware active learning
 
 | Field | Value |
 |---|---|
 | Track | Machine learning |
 | Status | Candidate — evaluation required |
-| Target | v3.1 |
+| Target | v2.2 |
 | Effort | 4–6 person-weeks |
 | Reuse | `ml` RF/GBM ensembles, `ani`, `mlip`, descriptors, validation rows |
 | Surfaces | Rust, Python, CLI; WASM for inference |
@@ -1420,13 +1439,13 @@ label efficiency; diagram of the active-learning loop.
 
 ---
 
-### V3-15 · Complete NMR coverage for all active nuclides
+### V2-15 · Complete NMR coverage for all active nuclides
 
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
 | Status | Candidate — evaluation required |
-| Target | v3.2 |
+| Target | v2.3 |
 | Effort | 10–16 person-weeks |
 | Reuse | `nmr::NmrNucleus`, `giao_nmr`, HOSE tables, Karplus, spectrum, SCF/ECP |
 | Surfaces | Rust, Python, CLI; WASM for light nuclei and small molecules |
@@ -1573,13 +1592,13 @@ and multi-nucleus branches.
 
 | New module | Dossiers | Existing modules it wraps |
 |---|---|---|
-| `src/response/` | V3-04, V3-05, V3-06, V3-15 | `spectroscopy`, `ir`, `nmr`, `giao_nmr`, `dft` |
-| `src/qmmm/` | V3-03 | `eht`, `pm3`, `xtb`, `hf`, `forcefield` |
-| `src/free_energy/` | V3-09, V3-10 | `dynamics`, `forcefield`, `mlff` |
-| `src/rism/` | V3-07 | `solvation`, `charges_eeq`, `fft` |
-| `src/gcmc/` | V3-11 | `materials`, `forcefield`, `periodic_linear` |
-| `src/networks/` | V3-12 | `smirks`, `gsm`, `kinetics` |
-| `src/mlip/` | V3-13, V3-14 | `ani`, `mlff` |
+| `src/response/` | V2-04, V2-05, V2-06, V2-15 | `spectroscopy`, `ir`, `nmr`, `giao_nmr`, `dft` |
+| `src/qmmm/` | V2-03 | `eht`, `pm3`, `xtb`, `hf`, `forcefield` |
+| `src/free_energy/` | V2-09, V2-10 | `dynamics`, `forcefield`, `mlff` |
+| `src/rism/` | V2-07 | `solvation`, `charges_eeq`, `fft` |
+| `src/gcmc/` | V2-11 | `materials`, `forcefield`, `periodic_linear` |
+| `src/networks/` | V2-12 | `smirks`, `gsm`, `kinetics` |
+| `src/mlip/` | V2-13, V2-14 | `ani`, `mlff` |
 
 Nothing in this table replaces the stable 2.0 paths. Each module starts behind a
 research flag, then follows the existing promotion process.
@@ -1599,21 +1618,21 @@ returns a bare `f64` whose unit is only in a comment.
 
 | Dossier | Rust | Python | WASM | CLI | Native-first? |
 |---|---|---|---|---|---|
-| V3-01 Hybrid DFT | yes | yes | small molecules | yes | yes |
-| V3-02 RI-MP2 | yes | yes | no | yes | yes |
-| V3-03 QM/MM | yes | yes | no | yes | yes |
-| V3-04 EPR | yes | yes | small radicals | yes | no |
-| V3-05 Raman/VCD | yes | yes | yes | yes | no |
-| V3-06 XPS/XANES | yes | yes | no | yes | yes |
-| V3-07 3D-RISM | yes | yes | reduced grid | yes | yes |
-| V3-08 Redox/pKa | yes | yes | yes | yes | no |
-| V3-09 FEP/MBAR | yes | yes | toy systems | yes | yes |
-| V3-10 Enhanced sampling | yes | yes | small systems | yes | no |
-| V3-11 GCMC | yes | yes | no | yes | yes |
-| V3-12 Networks/kMC | yes | yes | no | yes | yes |
-| V3-13 MLIP | yes | yes | ONNX subset | yes | no |
-| V3-14 Active learning | yes | yes | inference | yes | no |
-| V3-15 All-nuclide NMR | yes | yes | light nuclei | yes | no |
+| V2-01 Hybrid DFT | yes | yes | small molecules | yes | yes |
+| V2-02 RI-MP2 | yes | yes | no | yes | yes |
+| V2-03 QM/MM | yes | yes | no | yes | yes |
+| V2-04 EPR | yes | yes | small radicals | yes | no |
+| V2-05 Raman/VCD | yes | yes | yes | yes | no |
+| V2-06 XPS/XANES | yes | yes | no | yes | yes |
+| V2-07 3D-RISM | yes | yes | reduced grid | yes | yes |
+| V2-08 Redox/pKa | yes | yes | yes | yes | no |
+| V2-09 FEP/MBAR | yes | yes | toy systems | yes | yes |
+| V2-10 Enhanced sampling | yes | yes | small systems | yes | no |
+| V2-11 GCMC | yes | yes | no | yes | yes |
+| V2-12 Networks/kMC | yes | yes | no | yes | yes |
+| V2-13 MLIP | yes | yes | ONNX subset | yes | no |
+| V2-14 Active learning | yes | yes | inference | yes | no |
+| V2-15 All-nuclide NMR | yes | yes | light nuclei | yes | no |
 
 ### 7.4 Performance and size budgets
 
@@ -1631,7 +1650,7 @@ API table. That is allowed; hiding the limitation is not.
 ## 8. Validation strategy
 
 The project already has the right pattern: an external oracle, a measured
-deviation, a confidence region and a limitation. Every v3 dossier must add at
+deviation, a confidence region and a limitation. Every v2.x dossier must add at
 least one row to `reports/validation/summary.json` and one narrative entry to
 `docs/validation/scientific-validation.md`.
 
@@ -1666,45 +1685,45 @@ are true:
 
 | Candidate | Depends on | Unlocks |
 |---|---|---|
-| V3-01 Hybrid DFT | exact-exchange integrals, basis library | better EPR/XANES, hybrid thermochemistry |
-| V3-02 RI-MP2 | MO transform, auxiliary basis | correlated benchmarks, dispersion |
-| V3-03 QM/MM | QM engine + MM force field + link atoms | enzyme and surface chemistry |
-| V3-04 EPR | UKS spin density + response | radical mechanisms |
-| V3-05 Raman/VCD | Hessian + polarizability response | full vibrational assignment |
-| V3-06 XPS/XANES | core-hole SCF + excitation solver | oxidation-state analysis |
-| V3-07 3D-RISM | OZ solver + FFT | explicit-solvent structure and free energy |
-| V3-08 Redox/pKa | solvation + thermochemistry + conformers | electrochemistry and speciation |
-| V3-09 FEP/MBAR | MD + soft-core + estimators | relative binding and solvation |
-| V3-10 Enhanced sampling | MD + CV + reweighting | free-energy landscapes |
-| V3-11 GCMC | MOF + FF + Ewald | adsorption and separation |
-| V3-12 Networks/kMC | SMIRKS + GSM + HTST + microkinetics | mechanism discovery |
-| V3-13 MLIP | ONNX runtime + neighbour list | universal potentials |
-| V3-14 Active learning | MLIP or ML ensemble + calibration | data-efficient training |
-| V3-15 All-nuclide NMR | GIAO response + isotope registry + ECP | quantitative spectra for every active element |
+| V2-01 Hybrid DFT | exact-exchange integrals, basis library | better EPR/XANES, hybrid thermochemistry |
+| V2-02 RI-MP2 | MO transform, auxiliary basis | correlated benchmarks, dispersion |
+| V2-03 QM/MM | QM engine + MM force field + link atoms | enzyme and surface chemistry |
+| V2-04 EPR | UKS spin density + response | radical mechanisms |
+| V2-05 Raman/VCD | Hessian + polarizability response | full vibrational assignment |
+| V2-06 XPS/XANES | core-hole SCF + excitation solver | oxidation-state analysis |
+| V2-07 3D-RISM | OZ solver + FFT | explicit-solvent structure and free energy |
+| V2-08 Redox/pKa | solvation + thermochemistry + conformers | electrochemistry and speciation |
+| V2-09 FEP/MBAR | MD + soft-core + estimators | relative binding and solvation |
+| V2-10 Enhanced sampling | MD + CV + reweighting | free-energy landscapes |
+| V2-11 GCMC | MOF + FF + Ewald | adsorption and separation |
+| V2-12 Networks/kMC | SMIRKS + GSM + HTST + microkinetics | mechanism discovery |
+| V2-13 MLIP | ONNX runtime + neighbour list | universal potentials |
+| V2-14 Active learning | MLIP or ML ensemble + calibration | data-efficient training |
+| V2-15 All-nuclide NMR | GIAO response + isotope registry + ECP | quantitative spectra for every active element |
 
-V3-01 and V3-02 are not prerequisites for Wave A; they improve the physics of
-Waves B and C. V3-13 and V3-14 are deliberately adjacent so the MLIP backend and
+V2-01 and V2-02 are not prerequisites for Wave A; they improve the physics of
+Waves B and C. V2-13 and V2-14 are deliberately adjacent so the MLIP backend and
 its uncertainty layer share a model registry.
 
 ## 10. Risk register
 
 | Risk | Dossiers | Mitigation |
 |---|---|---|
-| Exact-exchange cost explodes | V3-01 | Cholesky/RI exchange, native-first, memory budget |
-| Auxiliary-basis fitting hides method error | V3-02 | separate RI error from MP2 error in the gate |
-| Link-atom artefacts | V3-03 | boundary test, charge-penetration test, documented cuts |
-| Spin contamination / gauge dependence | V3-04 | report `<S^2>`, stability, gauge and functional |
-| Numerical polarizability noise | V3-05 | field-step scan, analytic CPHF follow-up |
-| Core-hole SCF converges to wrong state | V3-06 | state tracking, ΔSCF restart, multiple initial guesses |
-| OZ iteration diverges | V3-07 | damping, DIIS, grid convergence, failure diagnostics |
-| Proton/electron convention errors | V3-08 | explicit reference electrode and standard state |
-| Poor λ overlap | V3-09 | soft-core, replica exchange, overlap matrix, uncertainty |
-| CV hides the slow mode | V3-10 | multiple CVs, path CV, unbiased comparison |
-| Framework charges dominate GCMC | V3-11 | charge-model sensitivity, Ewald convergence, rigid scope |
-| Combinatorial explosion | V3-12 | depth limit, valence filters, canonical deduplication |
-| Model licence / ONNX operators | V3-13 | user-supplied weights, licence field, operator smoke test |
-| Conformal coverage breaks out of domain | V3-14 | domain flag, calibration set, coverage report |
-| Relativistic/quadrupolar NMR errors | V3-15 | tiered scope, explicit reference, no silent fallback |
+| Exact-exchange cost explodes | V2-01 | Cholesky/RI exchange, native-first, memory budget |
+| Auxiliary-basis fitting hides method error | V2-02 | separate RI error from MP2 error in the gate |
+| Link-atom artefacts | V2-03 | boundary test, charge-penetration test, documented cuts |
+| Spin contamination / gauge dependence | V2-04 | report `<S^2>`, stability, gauge and functional |
+| Numerical polarizability noise | V2-05 | field-step scan, analytic CPHF follow-up |
+| Core-hole SCF converges to wrong state | V2-06 | state tracking, ΔSCF restart, multiple initial guesses |
+| OZ iteration diverges | V2-07 | damping, DIIS, grid convergence, failure diagnostics |
+| Proton/electron convention errors | V2-08 | explicit reference electrode and standard state |
+| Poor λ overlap | V2-09 | soft-core, replica exchange, overlap matrix, uncertainty |
+| CV hides the slow mode | V2-10 | multiple CVs, path CV, unbiased comparison |
+| Framework charges dominate GCMC | V2-11 | charge-model sensitivity, Ewald convergence, rigid scope |
+| Combinatorial explosion | V2-12 | depth limit, valence filters, canonical deduplication |
+| Model licence / ONNX operators | V2-13 | user-supplied weights, licence field, operator smoke test |
+| Conformal coverage breaks out of domain | V2-14 | domain flag, calibration set, coverage report |
+| Relativistic/quadrupolar NMR errors | V2-15 | tiered scope, explicit reference, no silent fallback |
 
 ## 11. Documentation package per feature
 
@@ -1739,7 +1758,7 @@ Each spike produces a short report: the oracle, the prototype result, the
 measured cost, the API shape and a go/no-go recommendation. No feature enters a
 release branch before that report exists.
 
-## 13. Non-goals for v3
+## 13. Non-goals for the v2.x line
 
 These are deliberately out of scope for this portfolio:
 
@@ -1764,10 +1783,10 @@ in a later planning cycle.
 |---|---|
 | Crystal structure prediction / polymorph screening | Very high effort; needs a robust CSP search and a large experimental benchmark |
 | COSMO-RS solvent screening | Strong fit with ALPB, but the parameterisation and licence review are unresolved |
-| Spin–orbit phosphorescence and triplet dynamics | Natural follow-up to V3-04/V3-06, but depends on relativistic response |
+| Spin–orbit phosphorescence and triplet dynamics | Natural follow-up to V2-04/V2-06, but depends on relativistic response |
 | Periodic phonons and thermal transport | Strong materials fit, but overlaps the existing dynamics roadmap and needs a careful PBC Hessian |
 | Protein–ligand docking | Application-layer scope; not a core library feature |
-| Full local correlation (DLPNO-MP2) | Follow-up to V3-02; RI-MP2 must ship first |
+| Full local correlation (DLPNO-MP2) | Follow-up to V2-02; RI-MP2 must ship first |
 
 ## 15. References
 

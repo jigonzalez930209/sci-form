@@ -11,7 +11,7 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 [![npm](https://img.shields.io/npm/v/sci-form-wasm)](https://www.npmjs.com/package/sci-form-wasm)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 2.0**](docs/guide/migration-2.0.md) · [Migrating to 1.0 (historical)](docs/guide/migration-1.0.md) · [Release checklist](docs/release-checklist-2.0.md) · [TESTING.md](TESTING.md) · [Roadmap: v3 feature prospecting](docs/v3-roadmap.md) · [Dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
+See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 2.0**](docs/guide/migration-2.0.md) · [Migrating to 1.0 (historical)](docs/guide/migration-1.0.md) · [Release checklist](docs/release-checklist-2.0.md) · [TESTING.md](TESTING.md) · [Roadmap: v2.x feature roadmap](docs/v2-roadmap.md) · [Dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
 
 > **Status: 2.0.0 — complete MMFF94, typed errors and promoted core modules.**
 > The library no longer panics on malformed input, the force-field results are

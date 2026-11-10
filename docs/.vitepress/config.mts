@@ -232,7 +232,7 @@ export default defineConfig({
         {
           text: 'Roadmaps',
           items: [
-            { text: 'v3 Feature Prospecting', link: '/v3-roadmap' },
+            { text: 'v2.x Feature Roadmap', link: '/v2-roadmap' },
             { text: 'Dynamics & Reactivity', link: '/dynamics_reactivity_roadmap' },
             { text: 'NMR — Detailed Plan', link: '/nmr_detailed_roadmap' },
             { text: 'Spectroscopy (Track D)', link: '/spectroscopy_roadmap' },
