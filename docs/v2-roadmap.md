@@ -151,8 +151,18 @@ Wave B branch: `feat/wave-b`.
 | V2-03 | QM/MM | Mechanical embedding implemented | Electrostatic embedding, link atoms and gradients |
 | V2-04 | EPR | Isotropic hyperfine implemented | Anisotropic tensor, g-tensor and ORCA benchmark |
 | V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR estimators implemented | Soft-core MD, λ scheduler and experimental benchmark |
-| V2-13 | Universal MLIP | Not started | ONNX backend, model registry and checkpoint gate |
+| V2-13 | Universal MLIP | Contract, registry and callback backend | ONNX adapter, checkpoint and benchmark |
 | V2-14 | Active learning | Conformal calibration and acquisition implemented | Chemical coverage benchmark and bindings |
+
+Wave C branch: `feat/wave-c`.
+
+| ID | Feature | Status in `feat/wave-c` | Remaining before promotion |
+|---|---|---|---|
+| V2-01 | Hybrid DFT | Restricted PBE0 exact exchange | Unrestricted/range-separated, gradient and parity |
+| V2-02 | RI-MP2 | Conventional MP2 implemented | RI, SCS/SOS, local correlation and parity |
+| V2-06 | XPS/XANES | Koopmans XPS implemented | ΔSCF, XANES and benchmarks |
+| V2-07 | 3D-RISM | Not started | OZ solver, closures, FFT |
+| V2-15 | All-nuclide NMR | Registry and multi-nucleus GIAO driver | SCF reuse, basis/ECP coverage, benchmarks |
 
 
 ### Wave A — response, solvation, sampling (v2.1 band)
@@ -205,7 +215,8 @@ credible, how it plugs into 2.0, and what evidence would promote it.
 | Field | Value |
 |---|---|
 | Track | Electronic structure |
-| Status | Candidate — evaluation required |
+| Status | Restricted PBE0 prototype implemented in `feat/wave-c`; range separation/unrestricted pending |
+| Implementation | [algorithm/hybrid-dft.md](/algorithm/hybrid-dft) |
 | Target | v2.3 |
 | Effort | 10–16 person-weeks |
 | Reuse | `scf` ERIs, `dft` grid and functionals, `hf` exchange, `CholeskyEris` |
@@ -313,7 +324,8 @@ showing exact-exchange vs semilocal exchange; at least three live examples.
 | Field | Value |
 |---|---|
 | Track | Electronic structure |
-| Status | Candidate — evaluation required |
+| Status | Conventional MP2 prototype implemented in `feat/wave-c`; RI/local pending |
+| Implementation | [algorithm/mp2.md](/algorithm/mp2) |
 | Target | v2.3 |
 | Effort | 8–12 person-weeks |
 | Reuse | `scf` orbitals, `CholeskyEris`, basis library, DIIS |
@@ -687,7 +699,8 @@ VCD; animated diagram of the finite-field/CPHF path.
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
-| Status | Candidate — evaluation required |
+| Status | Koopmans XPS prototype implemented in `feat/wave-c`; XANES/ΔSCF pending |
+| Implementation | [algorithm/xps.md](/algorithm/xps) |
 | Target | v2.3 |
 | Effort | 8–12 person-weeks |
 | Reuse | `dft`, `ecp`, `stda`, UV-Vis broadening, basis library |
@@ -1304,7 +1317,8 @@ for known networks; diagram of the generate → refine → solve pipeline.
 | Field | Value |
 |---|---|
 | Track | Machine learning potentials |
-| Status | Candidate — evaluation required |
+| Status | Model contract and callback backend implemented in `feat/wave-b`; ONNX adapter pending |
+| Implementation | [algorithm/mlip.md](/algorithm/mlip) |
 | Target | v2.2 |
 | Effort | 6–10 person-weeks |
 | Reuse | `ani`, `alpha-mlff`, `dynamics`, neighbour lists, PBC |
@@ -1478,7 +1492,8 @@ label efficiency; diagram of the active-learning loop.
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
-| Status | Candidate — evaluation required |
+| Status | Registry and multi-nucleus driver implemented in `feat/wave-c`; quantitative coverage pending |
+| Implementation | [algorithm/nmr-all.md](/algorithm/nmr-all) |
 | Target | v2.3 |
 | Effort | 10–16 person-weeks |
 | Reuse | `nmr::NmrNucleus`, `giao_nmr`, HOSE tables, Karplus, spectrum, SCF/ECP |

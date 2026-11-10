@@ -125,9 +125,12 @@ export default defineConfig({
           items: [
             { text: 'Extended Hückel Theory', link: '/algorithm/extended-huckel-theory' },
             { text: 'HF-3c Quantum Engine', link: '/algorithm/hf3c-quantum-engine' },
+            { text: 'MP2 Correlation', link: '/algorithm/mp2' },
             { text: 'PM3 & xTB: Surfaces and Gradients', link: '/algorithm/semiempirical-gradients' },
             { text: 'Kohn–Sham DFT', link: '/algorithm/ks-dft' },
+            { text: 'Hybrid DFT (PBE0)', link: '/algorithm/hybrid-dft' },
             { text: 'Machine Learning Potentials', link: '/algorithm/machine-learning-potentials' },
+            { text: 'MLIP Model Contract', link: '/algorithm/mlip' },
             { text: 'QM/MM', link: '/algorithm/qmmm' },
             { text: 'Electrostatic Potential', link: '/algorithm/electrostatic-potential' },
             { text: 'Density of States', link: '/algorithm/density-of-states' },
@@ -149,8 +152,10 @@ export default defineConfig({
             { text: 'Fluorescence', link: '/algorithm/fluorescence' },
             { text: 'IR Spectroscopy', link: '/algorithm/ir-spectroscopy' },
             { text: 'NMR Spectroscopy', link: '/algorithm/nmr-spectroscopy' },
+            { text: 'All-Nuclide NMR', link: '/algorithm/nmr-all' },
             { text: 'Raman Spectroscopy', link: '/algorithm/raman' },
             { text: 'EPR Spectroscopy', link: '/algorithm/epr' },
+            { text: 'Core-level XPS', link: '/algorithm/xps' },
           ],
         },
         {

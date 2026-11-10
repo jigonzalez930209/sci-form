@@ -32,11 +32,13 @@ pub enum DftMethod {
     Svwn,
     /// PBE (GGA): Perdew-Burke-Ernzerhof.
     Pbe,
+    /// PBE0: PBE exchange-correlation plus 25 % exact exchange.
+    Pbe0,
 }
 
 impl DftMethod {
     /// The canonical names of the supported functionals.
-    pub const SUPPORTED: &'static [&'static str] = &["svwn", "pbe"];
+    pub const SUPPORTED: &'static [&'static str] = &["svwn", "pbe", "pbe0"];
 
     /// The accepted spellings, alias → canonical name.
     const ALIASES: &'static [(&'static str, &'static str)] = &[
@@ -44,6 +46,9 @@ impl DftMethod {
         ("lda", "svwn"),
         ("pbe", "pbe"),
         ("gga", "pbe"),
+        ("pbe0", "pbe0"),
+        ("pbe-0", "pbe0"),
+        ("hybrid", "pbe0"),
     ];
 }
 
@@ -58,8 +63,19 @@ impl std::str::FromStr for DftMethod {
         Ok(match canonical {
             "svwn" => Self::Svwn,
             "pbe" => Self::Pbe,
+            "pbe0" => Self::Pbe0,
             _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
         })
+    }
+}
+
+impl DftMethod {
+    /// Exact-exchange fraction used in the Fock matrix.
+    pub fn exact_exchange_fraction(self) -> f64 {
+        match self {
+            Self::Svwn | Self::Pbe => 0.0,
+            Self::Pbe0 => 0.25,
+        }
     }
 }
 
@@ -302,7 +318,7 @@ pub fn solve_ks_dft(
     for iter in 0..config.max_iterations {
         iterations = iter + 1;
 
-        // Build Coulomb matrix J (no exchange for pure DFT)
+        // Build Coulomb matrix J and, for hybrids, the exact-exchange matrix K.
         let mut j_matrix = DMatrix::zeros(n_basis, n_basis);
         for mu in 0..n_basis {
             for nu in 0..n_basis {
@@ -320,15 +336,24 @@ pub fn solve_ks_dft(
         let (vxc, exc) = build_vxc_matrix(&basis, &density, &grid, config.method);
         xc_energy = exc;
 
-        // KS Fock matrix: F = H_core + J + V_XC
-        let fock = h_core + &j_matrix + &vxc;
+        let exchange_fraction = config.method.exact_exchange_fraction();
+        let (k_matrix, exact_exchange_energy) = if exchange_fraction > 0.0 {
+            let k = exchange_matrix(&density, &eri, n_basis);
+            let energy = -0.25 * exchange_fraction * (&density * &k).trace();
+            (k, energy)
+        } else {
+            (DMatrix::zeros(n_basis, n_basis), 0.0)
+        };
+
+        // KS Fock matrix: F = H_core + J + V_XC - 0.5 a K
+        let fock = h_core + &j_matrix + &vxc - (0.5 * exchange_fraction) * &k_matrix;
 
         // Compute Coulomb (Hartree) energy
         j_energy = 0.5 * (&density * &j_matrix).trace();
 
         // Total electronic energy
         let one_electron_energy = (&density * h_core).trace();
-        let e_elec = one_electron_energy + j_energy + xc_energy;
+        let e_elec = one_electron_energy + j_energy + xc_energy + exact_exchange_energy;
         let new_total = e_elec + v_nuc;
 
         // Convergence check
@@ -433,6 +458,22 @@ fn flatten_matrix(m: &DMatrix<f64>) -> Vec<f64> {
     out
 }
 
+fn exchange_matrix(density: &DMatrix<f64>, eri: &TwoElectronIntegrals, n: usize) -> DMatrix<f64> {
+    let mut k = DMatrix::zeros(n, n);
+    for mu in 0..n {
+        for nu in 0..n {
+            let mut value = 0.0;
+            for lam in 0..n {
+                for sig in 0..n {
+                    value += density[(lam, sig)] * eri.get(mu, lam, nu, sig);
+                }
+            }
+            k[(mu, nu)] = value;
+        }
+    }
+    k
+}
+
 fn coulomb_matrix(density: &DMatrix<f64>, eri: &TwoElectronIntegrals, n: usize) -> DMatrix<f64> {
     let mut j_matrix = DMatrix::zeros(n, n);
     for mu in 0..n {
@@ -455,6 +496,12 @@ fn solve_uks(
     n_electrons: usize,
     n_unpaired: usize,
 ) -> Result<DftResult, String> {
+    if config.method.exact_exchange_fraction() > 0.0 {
+        return Err(
+            "PBE0 exact exchange is currently implemented for restricted closed-shell systems only"
+                .to_string(),
+        );
+    }
     let n_alpha = (n_electrons + n_unpaired) / 2;
     let n_beta = n_electrons - n_alpha;
     if n_alpha == 0 {
@@ -753,6 +800,22 @@ mod tests {
         assert!(result.n_electrons < 36, "Br core electrons must be removed");
         assert!(result.n_basis > 2);
         assert!(result.total_energy.is_finite());
+    }
+
+    #[test]
+    fn pbe0_restricted_closed_shell_converges() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [0.96, 0.0, 0.0], [-0.24, 0.93, 0.0]];
+        let config = DftConfig {
+            method: DftMethod::Pbe0,
+            grid_quality: super::super::grid::GridQuality::Coarse,
+            max_iterations: 50,
+            ..DftConfig::default()
+        };
+        let result = solve_ks_dft(&elements, &positions, &config).unwrap();
+        assert!(result.converged);
+        assert!(result.total_energy.is_finite() && result.total_energy < 0.0);
+        assert_eq!(result.n_electrons, 10);
     }
 
     #[test]

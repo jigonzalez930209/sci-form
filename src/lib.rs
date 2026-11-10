@@ -227,7 +227,10 @@ pub mod materials;
 pub mod mesh;
 pub mod method;
 pub mod ml;
+pub mod mlip;
+pub mod mp2;
 pub mod nmr;
+pub mod nmr_all;
 pub mod optimization;
 pub mod periodic;
 pub mod periodic_linear;
@@ -264,6 +267,7 @@ pub mod surface;
 /// (linear, trigonal, tetrahedral, square-planar, trigonal-bipyramidal, octahedral).
 pub mod topology;
 pub mod transport;
+pub mod xps;
 pub mod xtb;
 
 #[cfg(any(
@@ -2345,6 +2349,23 @@ pub fn compute_epr_hyperfine(
     epr::compute_epr_hyperfine(elements, positions_angstrom, config)
 }
 
+/// Compute Koopmans core-level XPS binding energies.
+///
+/// Binding energies are in eV and use `E_b = -ε` from the UHF/STO-3G core-like
+/// s orbital. This is a screening estimate, not a ΔSCF core-hole calculation.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, the SCF fails, or no selected
+/// atom has a core-like s orbital.
+pub fn compute_xps_binding_energies(
+    elements: &[u8],
+    positions_angstrom: &[[f64; 3]],
+    config: &xps::XpsConfig,
+) -> Result<xps::XpsResult, SciFormError> {
+    xps::compute_xps_binding_energies(elements, positions_angstrom, config)
+}
+
 /// Predict representative NMR chemical shifts from SMILES.
 ///
 /// The shifts are in ppm and come from an empirical, topology-based
@@ -3374,6 +3395,41 @@ pub fn compute_hf3c(
 ) -> Result<hf::Hf3cResult, SciFormError> {
     validation::validate_geometry(elements, positions)?;
     hf::solve_hf3c(elements, positions, config).map_err(SciFormError::from)
+}
+
+/// Evaluate a user-supplied MLIP model through the documented contract.
+///
+/// The model manifest declares element coverage, cutoff, licence and stress
+/// support. Positions are Å, energy kcal/mol and forces kcal/mol/Å.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry, manifest or model output is invalid, or
+/// when the model does not cover an element in the system.
+pub fn evaluate_mlip(
+    model: &dyn mlip::MlipModel,
+    elements: &[u8],
+    positions_angstrom: &[[f64; 3]],
+    cell: Option<&[[f64; 3]; 3]>,
+) -> Result<mlip::MlipResult, SciFormError> {
+    model.evaluate(elements, positions_angstrom, cell)
+}
+
+/// Compute the conventional closed-shell MP2 correlation energy.
+///
+/// The implementation uses RHF/STO-3G orbitals and a four-index AO→MO
+/// transform. Energies are in Hartree and kcal/mol. The RI approximation and
+/// local PNO correlation are follow-ups.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, the SCF fails, or no virtual
+/// orbital is available.
+pub fn compute_mp2_energy(
+    elements: &[u8],
+    positions_angstrom: &[[f64; 3]],
+) -> Result<mp2::Mp2Result, SciFormError> {
+    mp2::compute_mp2_energy(elements, positions_angstrom)
 }
 
 /// Compute ANI neural-network potential energy (and optionally forces).

@@ -128,7 +128,7 @@ pub fn build_vxc_matrix(
                     }
                 }
             }
-            DftMethod::Pbe => {
+            DftMethod::Pbe | DftMethod::Pbe0 => {
                 let dphi = evaluate_basis_gradient_at_point(basis, &gp.xyz);
                 let grad_rho = compute_density_gradient(&phi, &dphi, density);
                 let sigma = grad_rho[0] * grad_rho[0]
