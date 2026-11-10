@@ -134,6 +134,7 @@ export default defineConfig({
             { text: 'Dipole Moments', link: '/algorithm/dipole-moments' },
             { text: 'Redox & pKa', link: '/algorithm/redox-pka' },
             { text: 'Enhanced Sampling', link: '/algorithm/enhanced-sampling' },
+            { text: 'Alchemical Free Energy', link: '/algorithm/free-energy' },
             { text: 'Kinetic Monte Carlo', link: '/algorithm/kmc' },
             { text: 'Active Learning', link: '/algorithm/active-learning' },
             { text: 'Strain Energy', link: '/algorithm/strain-energy' },

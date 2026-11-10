@@ -210,6 +210,7 @@ pub(crate) mod fd_gradient;
 #[doc(hidden)]
 pub mod fixture_io;
 pub mod forcefield;
+pub mod free_energy;
 pub mod gcmc;
 pub mod gpu;
 pub mod graph;

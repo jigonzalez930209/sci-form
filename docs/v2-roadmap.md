@@ -150,7 +150,7 @@ Wave B branch: `feat/wave-b`.
 |---|---|---|---|
 | V2-03 | QM/MM | Not started | Point-charge embedding and link atoms |
 | V2-04 | EPR | Not started | Spin density, hyperfine, g-tensor |
-| V2-09 | FEP/BAR/MBAR | Not started | Estimators, soft-core and overlap diagnostics |
+| V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR estimators implemented | Soft-core MD, λ scheduler and experimental benchmark |
 | V2-13 | Universal MLIP | Not started | ONNX backend, model registry and checkpoint gate |
 | V2-14 | Active learning | Conformal calibration and acquisition implemented | Chemical coverage benchmark and bindings |
 
@@ -958,7 +958,8 @@ for acids, bases and redox couples; diagram of the thermodynamic cycle.
 | Field | Value |
 |---|---|
 | Track | Free energy and statistical mechanics |
-| Status | Candidate — evaluation required |
+| Status | Estimator prototype implemented in `feat/wave-b`; MD workflow pending |
+| Implementation | [algorithm/free-energy.md](/algorithm/free-energy) |
 | Target | v2.2 |
 | Effort | 8–12 person-weeks |
 | Reuse | `dynamics`, `forcefield`, `mlff`, `alpb`, `parallel` |
