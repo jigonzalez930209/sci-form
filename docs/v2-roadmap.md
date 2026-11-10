@@ -1111,7 +1111,8 @@ analytic surface and a molecular example; diagram of the bias and CV.
 | Field | Value |
 |---|---|
 | Track | Materials and statistical mechanics |
-| Status | Candidate — evaluation required |
+| Status | Lennard-Jones GCMC prototype implemented in `feat/wave-a`; charges/Ewald and multi-site guests pending |
+| Implementation | [algorithm/gcmc.md](/algorithm/gcmc) |
 | Target | v2.1 |
 | Effort | 6–9 person-weeks |
 | Reuse | `assemble_framework`, `forcefield`, `periodic_linear`, `charges_eeq`, `d4` |

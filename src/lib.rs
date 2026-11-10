@@ -209,6 +209,7 @@ pub(crate) mod fd_gradient;
 #[doc(hidden)]
 pub mod fixture_io;
 pub mod forcefield;
+pub mod gcmc;
 pub mod gpu;
 pub mod graph;
 pub mod gsm;
@@ -3179,6 +3180,23 @@ pub fn assemble_framework(
     cell: &materials::UnitCell,
 ) -> materials::CrystalStructure {
     materials::assemble_framework(node, linker, topology, cell)
+}
+
+/// Compute a GCMC adsorption isotherm on a rigid periodic framework.
+///
+/// Pressures are in bar, temperature in K and loading in molecules per unit
+/// cell. The first implementation is Lennard-Jones only; framework charges and
+/// Ewald sums are documented follow-ups.
+///
+/// # Errors
+///
+/// Returns `Err` when the framework, guest model or configuration is invalid.
+pub fn compute_gcmc_isotherm(
+    framework: &gcmc::GcmcFramework,
+    guest: &gcmc::GuestModel,
+    config: &gcmc::GcmcConfig,
+) -> Result<gcmc::AdsorptionIsotherm, SciFormError> {
+    gcmc::compute_gcmc_isotherm(framework, guest, config)
 }
 
 /// Assemble a framework with one linker SBU per inequivalent edge type.

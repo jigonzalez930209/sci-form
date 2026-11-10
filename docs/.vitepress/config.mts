@@ -151,6 +151,7 @@ export default defineConfig({
           text: 'Materials',
           items: [
             { text: 'Materials Assembly', link: '/algorithm/materials-assembly' },
+            { text: 'GCMC Adsorption', link: '/algorithm/gcmc' },
             { text: 'Web Transport', link: '/algorithm/web-transport' },
             { text: 'WebGPU Validation', link: '/algorithm/webgpu-validation' },
           ],
