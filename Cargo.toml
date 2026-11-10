@@ -115,6 +115,7 @@ internal-debug-scratch = []
 
 [dependencies]
 flate2 = "1.1"
+libm = "0.2"
 petgraph = "0.6.4"
 # The "rand" feature of nalgebra is not used by this crate: dropping it keeps
 # `rand_distr` out of the dependency graph of every downstream build.

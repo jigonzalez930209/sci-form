@@ -1105,3 +1105,16 @@ pub fn cmd_xps(
         Err(error) => fail(format!("XPS error: {error}")),
     }
 }
+
+pub fn cmd_gcmc(framework_json: &str, guest_json: &str, config_json: &str) {
+    let framework: sci_form::gcmc::GcmcFramework = serde_json::from_str(framework_json)
+        .unwrap_or_else(|error| fail(format!("Invalid framework JSON: {error}")));
+    let guest: sci_form::gcmc::GuestModel = serde_json::from_str(guest_json)
+        .unwrap_or_else(|error| fail(format!("Invalid guest JSON: {error}")));
+    let config: sci_form::gcmc::GcmcConfig = serde_json::from_str(config_json)
+        .unwrap_or_else(|error| fail(format!("Invalid config JSON: {error}")));
+    match sci_form::compute_gcmc_isotherm(&framework, &guest, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("GCMC error: {error}")),
+    }
+}

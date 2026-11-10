@@ -1240,6 +1240,15 @@ pub enum Commands {
         #[arg(long, default_value_t = 1)]
         multiplicity: u32,
     },
+    /// GCMC adsorption isotherm from JSON framework, guest and config payloads
+    Gcmc {
+        /// JSON GcmcFramework (cell + host atoms)
+        framework: String,
+        /// JSON GuestModel (single- or multi-site)
+        guest: String,
+        /// JSON GcmcConfig
+        config: String,
+    },
     /// Relative pKa from an explicit acid/conjugate-base pair
     Pka {
         /// Acid SMILES (HA)

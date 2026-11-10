@@ -1714,6 +1714,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "flate2",
+ "libm",
  "nalgebra",
  "petgraph",
  "pollster",

@@ -102,3 +102,4 @@ Electrochemistry	redox	sci-form redox "CC(=O)O" "CC(=O)[O-]" --n-electrons 1 --n
 Spectroscopy	epr	sci-form epr '[1]' '[0,0,0]' --nucleus 1 --multiplicity 2
 Quantum chemistry	mp2	sci-form mp2 '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.927297,0]'
 Spectroscopy	xps	sci-form xps '[6,1,1,1,1]' '[0,0,0,0.629,0.629,0.629,0.629,-0.629,-0.629,-0.629,0.629,-0.629,-0.629,-0.629,0.629]' --elements-filter '[6]'
+Crystals & materials	gcmc	sci-form gcmc '{"cell":{"lattice":[[10,0,0],[0,10,0],[0,0,10]]},"atoms":[]}' '{"epsilon_kcal_mol":0.0,"sigma_angstrom":3.0,"charge":0.0}' '{"temperature_k":300,"pressures_bar":[1],"equilibration_steps":100,"production_steps":200,"sample_interval":20}'

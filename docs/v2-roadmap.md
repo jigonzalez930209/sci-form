@@ -141,7 +141,7 @@ package still have to land before a feature moves out of the prototype column.
 | V2-05 | Raman/VCD/ROA | Raman + VCD/ROA screening models | Coupled magnetic response and benchmark |
 | V2-08 | Redox and pKa | Relative pKa/redox + Python/WASM/CLI bindings | Experimental benchmark, thermal corrections |
 | V2-10 | Enhanced sampling | WTMetaD + OPES-style bias + reweighting + replica exchange | Full OPES flow, multi-CV |
-| V2-11 | GCMC adsorption | Lennard-Jones GCMC implemented | Charges/Ewald, multi-site guests, automatic typing |
+| V2-11 | GCMC adsorption | LJ + charges/Ewald + multi-site guests + CLI/WASM | Automatic typing and flexible frameworks |
 | V2-12 | Reaction networks/kMC | Gillespie kMC implemented | Rule-based discovery, site-based surface kMC |
 
 Wave B branch: `feat/wave-b`.
@@ -1154,7 +1154,7 @@ analytic surface and a molecular example; diagram of the bias and CV.
 | Field | Value |
 |---|---|
 | Track | Materials and statistical mechanics |
-| Status | Lennard-Jones GCMC prototype implemented in `feat/wave-a`; charges/Ewald and multi-site guests pending |
+| Status | LJ + charges/Ewald + multi-site guest prototype implemented in `feat/wave-a` |
 | Implementation | [algorithm/gcmc.md](/algorithm/gcmc) |
 | Target | v2.1 |
 | Effort | 6–9 person-weeks |
