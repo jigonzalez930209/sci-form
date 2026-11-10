@@ -128,6 +128,7 @@ export default defineConfig({
             { text: 'PM3 & xTB: Surfaces and Gradients', link: '/algorithm/semiempirical-gradients' },
             { text: 'Kohn–Sham DFT', link: '/algorithm/ks-dft' },
             { text: 'Machine Learning Potentials', link: '/algorithm/machine-learning-potentials' },
+            { text: 'QM/MM', link: '/algorithm/qmmm' },
             { text: 'Electrostatic Potential', link: '/algorithm/electrostatic-potential' },
             { text: 'Density of States', link: '/algorithm/density-of-states' },
             { text: 'Population Analysis', link: '/algorithm/population-analysis' },
@@ -149,6 +150,7 @@ export default defineConfig({
             { text: 'IR Spectroscopy', link: '/algorithm/ir-spectroscopy' },
             { text: 'NMR Spectroscopy', link: '/algorithm/nmr-spectroscopy' },
             { text: 'Raman Spectroscopy', link: '/algorithm/raman' },
+            { text: 'EPR Spectroscopy', link: '/algorithm/epr' },
           ],
         },
         {

@@ -148,8 +148,8 @@ Wave B branch: `feat/wave-b`.
 
 | ID | Feature | Status in `feat/wave-b` | Remaining before promotion |
 |---|---|---|---|
-| V2-03 | QM/MM | Not started | Point-charge embedding and link atoms |
-| V2-04 | EPR | Not started | Spin density, hyperfine, g-tensor |
+| V2-03 | QM/MM | Mechanical embedding implemented | Electrostatic embedding, link atoms and gradients |
+| V2-04 | EPR | Isotropic hyperfine implemented | Anisotropic tensor, g-tensor and ORCA benchmark |
 | V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR estimators implemented | Soft-core MD, λ scheduler and experimental benchmark |
 | V2-13 | Universal MLIP | Not started | ONNX backend, model registry and checkpoint gate |
 | V2-14 | Active learning | Conformal calibration and acquisition implemented | Chemical coverage benchmark and bindings |
@@ -403,7 +403,8 @@ per variant, and a diagram of the AO→MO→RI pipeline.
 | Field | Value |
 |---|---|
 | Track | Multiscale simulation |
-| Status | Candidate — evaluation required |
+| Status | Mechanical-embedding prototype implemented in `feat/wave-b`; electrostatic embedding pending |
+| Implementation | [algorithm/qmmm.md](/algorithm/qmmm) |
 | Target | v2.2 |
 | Effort | 8–12 person-weeks |
 | Reuse | `eht`, `pm3`, `xtb`, `hf`, `forcefield`, `materials` PBC |
@@ -494,7 +495,8 @@ one validation row per QM engine; an animated diagram of the QM/MM partition.
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
-| Status | Candidate — evaluation required |
+| Status | Isotropic hyperfine prototype implemented in `feat/wave-b`; g-tensor/anisotropy pending |
+| Implementation | [algorithm/epr.md](/algorithm/epr) |
 | Target | v2.2 |
 | Effort | 6–10 person-weeks |
 | Reuse | `compute_uhf`, UKS in `dft`, spin density, `giao_nmr` response code |

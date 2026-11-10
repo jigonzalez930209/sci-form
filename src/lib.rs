@@ -200,6 +200,7 @@ pub mod edl;
 pub mod eht;
 pub mod electrochemistry;
 pub mod enhanced_sampling;
+pub mod epr;
 pub mod esp;
 /// ETKDG internals: dihedral angles, torsion energy terms and their gradients.
 ///
@@ -233,6 +234,7 @@ pub mod periodic_linear;
 pub mod pm3;
 pub mod population;
 pub mod potentials;
+pub mod qmmm;
 pub mod raman;
 pub mod rand_nla;
 pub mod reactivity;
@@ -2192,6 +2194,23 @@ pub fn compute_xtb_gradient(
     xtb::compute_xtb_gradient(elements, positions).map_err(SciFormError::from)
 }
 
+/// Compute a mechanical-embedding QM/MM energy.
+///
+/// The QM region is evaluated with UHF/STO-3G or GFN2-xTB, its Mulliken
+/// charges are coupled to the MM point charges, and the MM-MM point-charge
+/// term is added. Energies are in kcal/mol.
+///
+/// # Errors
+///
+/// Returns `Err` when the QM/MM system is inconsistent, the QM SCF fails, or a
+/// charged region is requested with the neutral-only xTB backend.
+pub fn compute_qmmm_energy(
+    system: &qmmm::QmMmSystem,
+    config: &qmmm::QmMmConfig,
+) -> Result<qmmm::QmMmResult, SciFormError> {
+    qmmm::compute_qmmm_energy(system, config)
+}
+
 // ─── Spectroscopy API (Track D) ─────────────────────────────────────────────
 
 /// Compute an sTDA UV-Vis spectrum with proper oscillator strengths.
@@ -2306,6 +2325,24 @@ pub fn compute_raman_spectrum(
     config: &raman::RamanConfig,
 ) -> Result<raman::RamanSpectrum, SciFormError> {
     raman::compute_raman_spectrum(smiles, elements, positions_angstrom, config)
+}
+
+/// Compute isotropic EPR hyperfine coupling from the UHF spin density.
+///
+/// The result contains one entry per selected nucleus. Spin density is in
+/// electrons/Bohr³ and the coupling in MHz. Only the Fermi-contact term is
+/// implemented; the anisotropic tensor and g-tensor are documented follow-ups.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry or charge/multiplicity is invalid, when the
+/// UHF SCF fails, or when no selected nucleus has a known g-factor.
+pub fn compute_epr_hyperfine(
+    elements: &[u8],
+    positions_angstrom: &[[f64; 3]],
+    config: &epr::EprConfig,
+) -> Result<epr::EprHyperfineResult, SciFormError> {
+    epr::compute_epr_hyperfine(elements, positions_angstrom, config)
 }
 
 /// Predict representative NMR chemical shifts from SMILES.
