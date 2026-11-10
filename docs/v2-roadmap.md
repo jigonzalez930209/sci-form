@@ -161,7 +161,7 @@ Wave C branch: `feat/wave-c`.
 | V2-01 | Hybrid DFT | Restricted PBE0 exact exchange | Unrestricted/range-separated, gradient and parity |
 | V2-02 | RI-MP2 | Conventional MP2 implemented | RI, SCS/SOS, local correlation and parity |
 | V2-06 | XPS/XANES | Koopmans XPS implemented | ΔSCF, XANES and benchmarks |
-| V2-07 | 3D-RISM | Not started | OZ solver, closures, FFT |
+| V2-07 | 3D-RISM | 3D OZ/KH solver core | Solvent model, excess chemical potential and benchmark |
 | V2-15 | All-nuclide NMR | Registry and multi-nucleus GIAO driver | SCF reuse, basis/ECP coverage, benchmarks |
 
 
@@ -784,7 +784,8 @@ edges; diagram of the core-hole pipeline.
 | Field | Value |
 |---|---|
 | Track | Solvation and statistical mechanics |
-| Status | Candidate — evaluation required |
+| Status | 3D grid OZ/KH solver core implemented in `feat/wave-c`; solvent model/energy pending |
+| Implementation | [algorithm/rism.md](/algorithm/rism) |
 | Target | v2.3 |
 | Effort | 10–14 person-weeks |
 | Reuse | `solvation` ALPB/GB, `charges_eeq`, `edl`, ESP grid, FFT |

@@ -137,6 +137,7 @@ export default defineConfig({
             { text: 'Population Analysis', link: '/algorithm/population-analysis' },
             { text: 'Dipole Moments', link: '/algorithm/dipole-moments' },
             { text: 'Redox & pKa', link: '/algorithm/redox-pka' },
+            { text: '3D-RISM Solvation', link: '/algorithm/rism' },
             { text: 'Enhanced Sampling', link: '/algorithm/enhanced-sampling' },
             { text: 'Alchemical Free Energy', link: '/algorithm/free-energy' },
             { text: 'Kinetic Monte Carlo', link: '/algorithm/kmc' },

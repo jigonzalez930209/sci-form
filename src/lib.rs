@@ -244,6 +244,7 @@ pub mod reactivity;
 pub mod render_bridge;
 pub mod riemannian;
 pub mod rings;
+pub mod rism;
 pub mod scf;
 pub mod sdr;
 pub mod smarts;
@@ -3567,6 +3568,24 @@ pub fn compute_gb_solvation(
         probe_radius,
     )
     .map_err(SciFormError::from)
+}
+
+/// Solve the 3D-RISM Ornstein–Zernike equations on a periodic grid.
+///
+/// `solute_beta_potential` and `solvent_susceptibility_k` are row-major
+/// `nx × ny × nz` arrays. The result contains `g(r)`, `h(r)`, `c(r)`, the
+/// residual and convergence status. The susceptibility is caller-supplied; no
+/// solvent force field is bundled.
+///
+/// # Errors
+///
+/// Returns `Err` when the grid, configuration or OZ denominator is invalid.
+pub fn solve_3d_rism(
+    solute_beta_potential: &[f64],
+    solvent_susceptibility_k: &[f64],
+    config: &rism::RismConfig,
+) -> Result<rism::RismResult, SciFormError> {
+    rism::solve_3d_rism(solute_beta_potential, solvent_susceptibility_k, config)
 }
 
 /// Compute ALPB (Analytical Linearized Poisson-Boltzmann) solvation energy.
