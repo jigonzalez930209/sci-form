@@ -7,10 +7,11 @@ can be sampled. The module covers **well-tempered metadynamics**, an
 **OPES-style kernel-density bias**, **histogram reweighting** and **temperature
 replica exchange**, all with a Langevin thermostat.
 
-> **Status.** Implemented in `feat/wave-a`: WTMetaD, importance-weighted
-> OPES-style bias, block reweighting and temperature replica exchange are in
-> Rust. The exact OPES differential flow and the Python/WASM/CLI wrappers are
-> still pending. See the [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-a`: WTMetaD, importance-weighted OPES,
+> a self-consistent 1D flow, 2D multi-CV OPES/reweighting, block reweighting
+> and temperature replica exchange are in Rust. The exact OPES differential
+> flow and the Python/WASM/CLI wrappers are still pending. See the
+> [v2.x roadmap](/v2-roadmap).
 
 ## Why metadynamics
 
@@ -183,6 +184,52 @@ let result = run_opes(&potential, &initial_coords, &masses, &config)?;
 `OpesResult` contains the CV trace, the deposited kernels, the bias-derived
 surface and the reweighted surface.
 
+## Self-consistent OPES flow
+
+The kernel weights are not a single-pass estimate. At every deposit, the
+engine iterates
+
+$$
+w_i \leftarrow e^{\beta V(s_i)},
+\qquad
+P(s) = \frac{\sum_i w_i K(s,s_i)}{\sum_i w_i},
+$$
+
+for `flow_iterations` fixed-point steps (`5` by default). This is the
+importance-weight flow on the kernel set; it is not the exact time-dependent
+OPES differential equation.
+
+## Multi-CV OPES
+
+`run_multi_opes` implements a two-dimensional OPES surface:
+
+```rust
+use sci_form::enhanced_sampling_multi::MultiOpesConfig;
+use sci_form::run_multi_opes;
+
+let config = MultiOpesConfig {
+    max_steps: 10_000,
+    pace_steps: 100,
+    x_min: -2.0,
+    x_max: 2.0,
+    y_min: -2.0,
+    y_max: 2.0,
+    ..MultiOpesConfig::default()
+};
+let result = run_multi_opes(&potential, &initial_coords, &masses, &config)?;
+```
+
+`MultiOpesResult` contains:
+
+| Field | Meaning |
+|---|---|
+| `trace` | Step, two CV values, potential and bias |
+| `kernels` | 2D centres and importance weights |
+| `free_energy` | 2D bias-derived surface |
+| `reweighted_free_energy` | 2D histogram-reweighted surface |
+
+`reweight_free_energy_2d` builds the reweighted surface directly from a trace.
+
 ## Reweighting
 
 `reweight_free_energy` converts a biased CV trace into an unbiased histogram.
@@ -254,6 +301,8 @@ acceptance rate should be inspected in `result.swaps`.
 | Invalid bias factor | `γ = 1` | rejected |
 | Replica exchange | 4 replicas, 500 steps | swap proposals recorded, all final coordinates finite |
 | OPES double well | 4,000 steps | both minima visited |
+| 2D OPES harmonic well | 2,000 steps | finite trace and surfaces |
+| 2D reweighting constant bias | flat trace | finite bins zero |
 | Reweighting constant bias | flat trace | zero surface |
 | Block reweighting | 3 samples, block 2 | finite non-negative standard errors |
 
@@ -265,6 +314,8 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 - Only one CV is biased per run. Multi-dimensional metadynamics is a follow-up.
 - The OPES implementation is an importance-weighted bounded-grid
   approximation, not the exact OPES differential flow equation.
+- Multi-CV support is two-dimensional; higher-dimensional grids are not
+  implemented.
 - The block error is a simple block-average diagnostic, not a full
   autocorrelation analysis.
 - The bias-derived surface and the reweighted surface can disagree on short runs.
@@ -277,7 +328,8 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 
 1. Add multi-dimensional CVs and a grid in more than one dimension.
 2. Implement the exact OPES differential flow equations.
-3. Add autocorrelation-aware error propagation.
+3. Extend multi-CV grids above two dimensions.
+4. Add autocorrelation-aware error propagation.
 4. Wire the bias into the existing NVT/NPT dynamics module.
 5. Add Python, WASM and CLI wrappers.
 6. Benchmark a known free-energy landscape against long unbiased MD.

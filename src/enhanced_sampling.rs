@@ -738,6 +738,13 @@ pub struct OpesConfig {
     pub trace_stride: usize,
     /// Regularization added to the density ratio.
     pub regularization: f64,
+    /// Fixed-point iterations for the importance-weight flow.
+    #[serde(default = "default_flow_iterations")]
+    pub flow_iterations: usize,
+}
+
+fn default_flow_iterations() -> usize {
+    5
 }
 
 impl Default for OpesConfig {
@@ -757,6 +764,7 @@ impl Default for OpesConfig {
             grid_bins: 100,
             trace_stride: 1,
             regularization: 1e-8,
+            flow_iterations: 5,
         }
     }
 }
@@ -787,6 +795,9 @@ impl OpesConfig {
             return Err(SciFormError::validation(
                 "regularization must be finite and > 0",
             ));
+        }
+        if self.flow_iterations == 0 {
+            return Err(SciFormError::validation("flow_iterations must be >= 1"));
         }
         if self.pace_steps == 0 || self.max_steps == 0 || self.trace_stride == 0 {
             return Err(SciFormError::validation(
@@ -929,8 +940,9 @@ pub fn run_opes<P: Potential>(
                 center: cv_value,
                 height_kcal_mol: 1.0,
                 sigma: config.sigma,
-                weight: (bias / kbt).exp(),
+                weight: 1.0,
             });
+            update_opes_weights(&mut kernels, config, kbt);
         }
         if step % config.trace_stride == 0 {
             potential_energy = potential.energy(&x);
@@ -982,6 +994,36 @@ pub fn run_opes<P: Potential>(
         final_cv: cv_value,
         notes,
     })
+}
+
+fn update_opes_weights(kernels: &mut [GaussianDeposit], config: &OpesConfig, kbt: f64) {
+    let mut previous = kernels
+        .iter()
+        .map(|kernel| kernel.weight)
+        .collect::<Vec<_>>();
+    for _ in 0..config.flow_iterations {
+        let mut next = Vec::with_capacity(kernels.len());
+        for kernel in kernels.iter() {
+            let (bias, _) = opes_bias_and_derivative(kernels, kernel.center, config, kbt);
+            next.push((bias / kbt).exp().max(1e-12));
+        }
+        let maximum = next.iter().copied().fold(0.0f64, f64::max).max(1e-300);
+        for value in &mut next {
+            *value /= maximum;
+        }
+        for (kernel, weight) in kernels.iter_mut().zip(&next) {
+            kernel.weight = *weight;
+        }
+        let change = next
+            .iter()
+            .zip(&previous)
+            .map(|(new, old)| (new - old).abs())
+            .fold(0.0f64, f64::max);
+        previous = next;
+        if change < 1e-10 {
+            break;
+        }
+    }
 }
 
 fn opes_kernel_density(kernels: &[GaussianDeposit], cv: f64, sigma: f64) -> (f64, f64) {
@@ -1757,6 +1799,16 @@ mod tests {
             .values
             .iter()
             .any(|v| v.is_finite()));
+    }
+
+    #[test]
+    fn opes_rejects_zero_flow_iterations() {
+        let potential = DoubleWell::new(2.0, 1.0);
+        let config = OpesConfig {
+            flow_iterations: 0,
+            ..OpesConfig::default()
+        };
+        assert!(run_opes(&potential, &[-1.0], &[1.0], &config).is_err());
     }
 
     #[test]

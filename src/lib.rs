@@ -200,6 +200,7 @@ pub mod edl;
 pub mod eht;
 pub mod electrochemistry;
 pub mod enhanced_sampling;
+pub mod enhanced_sampling_multi;
 pub mod epr;
 pub mod esp;
 /// ETKDG internals: dihedral angles, torsion energy terms and their gradients.
@@ -3517,6 +3518,24 @@ pub fn evaluate_mlip(
     cell: Option<&[[f64; 3]; 3]>,
 ) -> Result<mlip::MlipResult, SciFormError> {
     model.evaluate(elements, positions_angstrom, cell)
+}
+
+/// Run two-dimensional OPES with self-consistent kernel weights.
+///
+/// The two collective variables, grids and kernel widths are configured in
+/// [`enhanced_sampling_multi::MultiOpesConfig`]. The result includes the
+/// bias-derived and reweighted 2D surfaces.
+///
+/// # Errors
+///
+/// Returns `Err` when the coordinates, masses or configuration are invalid.
+pub fn run_multi_opes<P: enhanced_sampling::Potential>(
+    potential: &P,
+    initial_coords: &[f64],
+    masses_amu: &[f64],
+    config: &enhanced_sampling_multi::MultiOpesConfig,
+) -> Result<enhanced_sampling_multi::MultiOpesResult, SciFormError> {
+    enhanced_sampling_multi::run_multi_opes(potential, initial_coords, masses_amu, config)
 }
 
 /// Compute the conventional closed-shell MP2 correlation energy.
