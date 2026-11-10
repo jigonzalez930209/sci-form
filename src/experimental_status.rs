@@ -19,7 +19,7 @@
 //!
 //! The gates are the cross-library *fichas* and integration tests under
 //! `tests/` — one per subsystem, named in the tables below. The culture they
-//! follow is documented in `docs/validation/cross-library-validation.es.md`
+//! follow is documented in `reports/validation/cross-library-validation.es.md`
 //! §13–§14: a module is promoted when a cross-library comparison (or a
 //! documented external benchmark) gates its observable, plus integration
 //! tests through the public API.
@@ -54,7 +54,7 @@
 //! The promotion criteria below follow the validation culture of the repo:
 //! a module is promoted when a cross-library ficha (or a documented external
 //! benchmark) gates its observable, plus integration tests through the public
-//! API. See `docs/validation/cross-library-validation.es.md` §13–§14.
+//! API. See `reports/validation/cross-library-validation.es.md` §13–§14.
 //!
 //! **This module is documentation-only; it contains no runtime code.** The
 //! experimental modules themselves remain behind their respective feature
@@ -65,7 +65,7 @@
 //!
 //! ## Module ledger — promoted entries and retained research
 //!
-//! ### EXP-201: Kernel Polynomial Method (KPM) — PROMOVIDO (`src/kpm`)
+//! ### EXP-201: Kernel Polynomial Method (KPM) — PROMOTED (`src/kpm`)
 //!
 //! **Feature flag:** `beta-kpm` is retained as a compatibility alias; the
 //! module is now unconditional.
@@ -96,16 +96,15 @@
 //! 2. Reproduce known global minima for test molecules (alanine dipeptide, etc.)
 //! 3. Compare basin-hopping yield vs multi-seed ETKDG
 //!
-//! **Validación externa (2026-10-14, F92)**: stretches diatómicos vs forma
-//! cerrada SI 1.3e-5 (valida el factor 108.59) y estructura de bloques en
-//! benceno (`tests/beta_mbh_validation.rs`). Gap: ±2 cm⁻¹ experimental.
+//! **External validation (2026-10-14, F92):** diatomic stretches against the
+//! SI closed form 1.3e-5 (validates the 108.59 factor) and block structure in
+//! benzene (`tests/beta_mbh_validation.rs`). Gap: ±2 cm⁻¹ experimental.
 //!
-//! **Benchmark vs ruta estable (2026-10-23)**: frecuencias MBH vs Hessiano
-//! analítico proyectado en `tests/beta_benchmarks.rs`, desviación máxima
-//! 2.6 % (los modos casi nulos quedan dominados por el ruido de diferencias
-//! finitas, ~5 cm⁻¹).
+//! **Benchmark against the stable path (2026-10-23):** MBH frequencies vs the
+//! projected analytic Hessian in `tests/beta_benchmarks.rs`, maximum deviation
+//! 2.6 % (near-null modes are dominated by finite-difference noise, ~5 cm⁻¹).
 //!
-//! ### EXP-203: Randomized Numerical Linear Algebra (RandNLA) — PROMOVIDO (`src/rand_nla`)
+//! ### EXP-203: Randomized Numerical Linear Algebra (RandNLA) — PROMOTED (`src/rand_nla`)
 //!
 //! **Feature flag:** `beta-randnla` is retained as a compatibility alias; the
 //! module is now unconditional.
@@ -125,35 +124,34 @@
 //! 2. Show <1% error in eigenvalues for rank = N/4
 //! 3. Demonstrate speedup for N>500 basis functions
 //!
-//! **Validación externa (2026-10-14, F93)**: caracterización single-shot
-//! rank-N/4 ~0.13, régimen válido 3.9e-3, producción exacta con fallback
+//! **External validation (2026-10-14, F93):** single-shot characterization
+//! rank-N/4 ~0.13, valid regime 3.9e-3, exact production with fallback
 //! (`tests/beta_randnla_validation.rs`).
 //!
-//! **Subspace iterations (2026-11-07)**: `NystromApprox` gana
-//! `from_matrix_with_power_iterations` y `RandNlaConfig::power_iterations`
-//! (default 2; re-ortogonaliza cada iteración). Con 384 iteraciones el rank
-//! N/4 de F93 baja a 3.8e-4, así que el **criterio 2 (<1e-3) queda cumplido**
-//! para el fixture.
+//! **Subspace iterations (2026-11-07):** `NystromApprox` gains
+//! `from_matrix_with_power_iterations` and `RandNlaConfig::power_iterations`
+//! (default 2; re-orthonormalizes each iteration). With 384 iterations the
+//! rank N/4 of F93 drops to 3.8e-4, so **criterion 2 (<1e-3) is met** for the
+//! fixture.
 //!
-//! **Backend EHT (2026-11-07)**: `eht::solve_eht_randnla` expone el solver
-//! aleatorizado como backend opcional (feature `beta-randnla`), con la misma
-//! geometría/basis EHT y metadatos de residuo/fallback. El criterio 1 queda
-//! cubierto.
+//! **EHT backend (2026-11-07):** `eht::solve_eht_randnla` exposes the
+//! randomized solver as an optional backend (feature `beta-randnla`), with the
+//! same EHT geometry/basis and residual/fallback metadata. Criterion 1 is
+//! covered.
 //!
-//! **Camino N>500 (2026-11-08)**: `solve_eht_randnla_lowrank` evita formar y
-//! diagonalizar el Hamiltoniano transformado N×N; usa Nyström para
-//! `S^{-1/2}` y Lanczos con reortogonalización completa sobre un arranque
-//! aleatorio. En N=600 (cadena, k=160) los 4 estados más bajos tienen error
-//! relativo 9.6e-4 y el tiempo baja a ~80 ms frente a ~143 ms de la
-//! diagonalización exacta. El **criterio 3 (speedup N>500)** queda cumplido
-//! para el estado más bajo; las excitaciones altas siguen requiriendo la
-//! ruta exacta o un bloque mayor.
+//! **N>500 path (2026-11-08):** `solve_eht_randnla_lowrank` avoids forming and
+//! diagonalizing the transformed N×N Hamiltonian; it uses Nyström for
+//! `S^{-1/2}` and Lanczos with full reorthogonalization from a random start.
+//! At N=600 (chain, k=160) the four lowest states have 9.6e-4 relative error
+//! and the time drops to ~80 ms versus ~143 ms for exact diagonalization.
+//! **Criterion 3 (speedup N>500) is met** for the lowest state; higher
+//! excitations still need the exact path or a larger block.
 //!
-//! **Benchmark vs ruta estable (2026-10-23)**: Nyström vs SVD exacta en
-//! `tests/beta_benchmarks.rs`; el error de reconstrucción queda ≤ 2× el mejor
-//! rank-k y decrece al aumentar el rango.
+//! **Benchmark against the stable path (2026-10-23):** Nyström vs exact SVD in
+//! `tests/beta_benchmarks.rs`; the reconstruction error is ≤ 2× the best
+//! rank-k and decreases as the rank grows.
 //!
-//! ### EXP-204: Spectral Dimensionality Reduction (SDR) — PROMOVIDO (`src/sdr`)
+//! ### EXP-204: Spectral Dimensionality Reduction (SDR) — PROMOTED (`src/sdr`)
 //!
 //! **Feature flag:** `alpha-sdr`
 //! **Location:** `src/sdr/` (embedding.rs, projections.rs)
@@ -172,21 +170,21 @@
 //! 2. Add adaptive bandwidth selection
 //! 3. Compare clustering quality vs Butina (Tanimoto)
 //!
-//! **Validación externa (2026-10-14, F83)**: proyecciones exactas vs numpy,
-//! embeds exactos 7e-15 (mejor que CVXPY/SCS 1e-8), caso ruidoso dentro de
-//! 3× del óptimo (`tests/alpha_sdr_validation.rs`).
+//! **External validation (2026-10-14, F83):** exact projections vs numpy,
+//! exact embeds 7e-15 (better than CVXPY/SCS 1e-8), noisy case within
+//! 3× of the optimum (`tests/alpha_sdr_validation.rs`).
 //!
-//! **Benchmark vs ruta estable (2026-10-23)**: SDR vs MDS clásico sobre
-//! distancias exactas en `tests/beta_benchmarks.rs`; error máximo de par
-//! 6.7e-16 frente a 2.2e-16 del MDS, sin quedar por encima del oráculo.
+//! **Benchmark against the stable path (2026-10-23):** SDR vs classical MDS on
+//! exact distances in `tests/beta_benchmarks.rs`; maximum pair error
+//! 6.7e-16 vs 2.2e-16 for MDS, without exceeding the oracle.
 //!
-//! **SDR vs Butina (2026-11-07)**: el criterio 3 se mide con el Adjusted Rand
-//! Index entre el k-means del embedding SDR (sobre la matriz de RMSD Kabsch)
-//! y las etiquetas de Butina en 30 conformeros de tres formas distintas:
-//! ARI = 1.0, también contra la verdad sintética (`tests/beta_benchmarks.rs`).
-//! La banda de kernel adaptativa (criterio 2) sigue abierta.
+//! **SDR vs Butina (2026-11-07):** criterion 3 is measured with the Adjusted
+//! Rand Index between the k-means of the SDR embedding (on the Kabsch RMSD
+//! matrix) and the Butina labels on 30 conformers of three different shapes:
+//! ARI = 1.0, also against the synthetic truth (`tests/beta_benchmarks.rs`).
+//! The adaptive kernel bandwidth (criterion 2) is still open.
 //!
-//! ### EXP-205a: Conformal Geometric Algebra (CGA) — PROMOVIDO (`src/cga`)
+//! ### EXP-205a: Conformal Geometric Algebra (CGA) — PROMOTED (`src/cga`)
 //!
 //! **Feature flag:** `alpha-cga`
 //! **Location:** `src/cga/` (multivector.rs, motor.rs, conformer.rs, materials.rs)
@@ -206,11 +204,11 @@
 //! 2. Benchmark CGA conformer vs ETKDG quality and speed
 //! 3. Show utility for symmetry-constrained crystal assembly
 //!
-//! **Validación externa (2026-10-14, F81)**: motores 3.4e-15 vs Rodrigues y
-//! `clifford` Cl(4,1), diedros 6.6e-15 (`tests/alpha_cga_validation.rs`).
-//! Convención de ángulo espejo documentada.
+//! **External validation (2026-10-14, F81):** motors 3.4e-15 vs Rodrigues and
+//! `clifford` Cl(4,1), dihedrals 6.6e-15 (`tests/alpha_cga_validation.rs`).
+//! Mirror-angle convention documented.
 //!
-//! ### EXP-205b: Growing String Method (GSM) — PROMOVIDO (`src/gsm`)
+//! ### EXP-205b: Growing String Method (GSM) — PROMOTED (`src/gsm`)
 //!
 //! **Feature flag:** `alpha-gsm` is retained as a compatibility alias; the
 //! module is now unconditional.
@@ -235,21 +233,21 @@
 //! 2. Reproduce known barrier heights (SN2, Diels-Alder)
 //! 3. Compare path energy profiles vs NEB reference in 5+ reactions
 //!
-//! **Validación externa (2026-10-14, F82)**: TS en Müller-Brown vs ASE
-//! CI-NEB (barrera 1.6e-3, TS 0.028; `tests/alpha_gsm_validation.rs`).
-//! Fix: reparametrización por arco cada iteración.
+//! **External validation (2026-10-14, F82):** TS on Müller-Brown vs ASE
+//! CI-NEB (barrier 1.6e-3, TS 0.028; `tests/alpha_gsm_validation.rs`).
+//! Fix: arc-length reparametrization every iteration.
 //!
-//! **Benchmark vs ruta estable (2026-10-23)**: cinco pozos dobles analíticos
-//! `V(x) = (x² − a²)²` en `tests/beta_benchmarks.rs`; la barrera y la posición
-//! del TS coinciden con la solución exacta (error relativo de barrera 0).
+//! **Benchmark against the stable path (2026-10-23):** five analytic double
+//! wells `V(x) = (x² − a²)²` in `tests/beta_benchmarks.rs`; the barrier and the
+//! TS position match the exact solution (barrier relative error 0).
 //!
-//! **GSM vs NEB en 5+ reacciones (2026-11-07)**: `tests/alpha_gsm_validation.rs`
-//! añade cinco pozos curvos `V(x,y) = (x²−a²)² + ½(y−c x²)²`, cuyo MEP es la
-//! parábola `y = c x²` y cuya barrera exacta es `a⁴`. GSM y un NEB discreto
-//! (referencia en el test) coinciden con la barrera analítica a ≤0.8 % y entre
-//! sí a ≤0.8 %; el criterio 3 queda cubierto para cinco reacciones.
+//! **GSM vs NEB on 5+ reactions (2026-11-07):** `tests/alpha_gsm_validation.rs`
+//! adds five curved wells `V(x,y) = (x²−a²)² + ½(y−c x²)²`, whose MEP is the
+//! parabola `y = c x²` and whose exact barrier is `a⁴`. GSM and a discrete NEB
+//! (reference in the test) match the analytic barrier to ≤0.8 % and each
+//! other to ≤0.8 %; criterion 3 is covered for five reactions.
 //!
-//! ### EXP-205c: Constant Potential Method (CPM) — PROMOVIDO (`src/cpm`)
+//! ### EXP-205c: Constant Potential Method (CPM) — PROMOTED (`src/cpm`)
 //!
 //! **Feature flag:** `beta-cpm` (alias; the core module is unconditional)
 //! **Location:** `src/cpm/` (surface.rs, grand_potential.rs)
@@ -270,12 +268,12 @@
 //! 2. Validate the quantum capacitance curve against experiment or DFT
 //! 3. Integrate with `materials::UnitCell` for electrode geometry
 //!
-//! **Nota 2026-10-13**: CPM promovido a core (`src/cpm`, F95 vs LAMMPS
-//! `electrode/conp`); `beta::cpm` sobrevive como re-export compatible.
+//! **Note 2026-10-13:** CPM promoted to core (`src/cpm`, F95 vs LAMMPS
+//! `electrode/conp`); `beta::cpm` survives as a compatible re-export.
 //!
-//! **Benchmark vs ruta estable (2026-10-23)**: cargas de dos sitios vs la
-//! solución cerrada del sistema lineal de CPM en `tests/beta_benchmarks.rs`
-//! (1.3e-15) y residual de estacionariedad < 1e-10.
+//! **Benchmark against the stable path (2026-10-23):** two-site charges vs the
+//! closed-form solution of the CPM linear system in `tests/beta_benchmarks.rs`
+//! (1.3e-15) and stationarity residual < 1e-10.
 //!
 //! ### EXP-206: Remaining gated subsystems
 //!

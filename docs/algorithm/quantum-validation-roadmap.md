@@ -40,7 +40,7 @@ What this table tells us:
 - The repo already exposes a reproducible compact comparison surface for PM3 and the current xTB path.
 - The 2026-03-24 snapshot used the now-legacy `solve_xtb` path (GFN0-style SCC), not GFN1 or GFN2. The current public surface is GFN2 (`compute_xtb`), gated against tblite by F45.
 - These values are useful for trend monitoring, but they are not directly comparable to STO-3G HF total energies because they are different observables.
-- **Nota (2026-10-13)**: `solve_xtb` dejó de ser el solver público de xTB — `compute_xtb` y `compute_xtb_gradient`-consumers ya usan GFN2, y el Hessiano/DOS/mesh migraron a `solve_gfn2`; `solve_xtb` ya no lo usa ningún backend (2026-11-03: NEB/MD `"xtb"` = GFN2); queda como API legacy. La tabla de arriba es un snapshot histórico (2026-03-24) del módulo `legacy_vs_experimental_*`, que sigue ejercitando deliberadamente el camino legacy.
+- **Note (2026-10-13):** `solve_xtb` is no longer the public xTB solver. `compute_xtb` and its gradient consumers use GFN2, and the Hessian, DOS and mesh paths moved to `solve_gfn2`; no backend uses `solve_xtb` (2026-11-03: NEB/MD `"xtb"` = GFN2). It remains as a legacy API. The table above is a historical snapshot (2026-03-24) of the `legacy_vs_experimental_*` module, which deliberately exercises the legacy path.
 
 ### Current HF-3c energy comparison snapshot
 

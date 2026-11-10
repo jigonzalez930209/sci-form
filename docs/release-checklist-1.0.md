@@ -83,7 +83,7 @@ Legend: `[x]` done, `[ ]` pending.
       `reports/v1.0-blockers.md`: 7 are accepted with a written justification
       and the rest are closed, each with a regression test or a documented
       change. The five closed in the last round (B-H7, C-H2, C-H3, C-H4 and
-      A-C13) carry a `Estado:` line in their own entry.
+      A-C13) carry a status line in their own entry.
 
 ## 4. The documentation
 

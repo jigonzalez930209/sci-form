@@ -1,8 +1,8 @@
 # Scientific validation
 
 This page is the quantitative companion to the
-[cross-library plan](./cross-library-validation.es.md). It answers four
-questions for each method:
+[cross-library validation plan](./cross-library-validation.es.md). It answers
+four questions for each method:
 
 1. **What was it compared with?** A canonical implementation, an independent
    method, or an analytic closed form.

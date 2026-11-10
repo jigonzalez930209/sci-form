@@ -28,6 +28,11 @@ def fmt(value) -> str:
     return str(value)
 
 
+def soft_breaks(text) -> str:
+    """Escape pipes and add break opportunities inside long identifiers."""
+    return str(text).replace("|", "\\|").replace("_", "_<wbr>")
+
+
 def sort_key(row: dict) -> tuple:
     ficha = row.get("ficha", "")
     match = re.match(r"F(\d+)(.*)", ficha)
@@ -60,32 +65,31 @@ def main() -> None:
         f"- Passing gates: **{passed}**",
         f"- Recorded method/provenance gaps: **{gaps}**",
         f"- Failing gates: **0**",
-        f"- Reference tools: {', '.join(tools)}",
+        "- Reference tools: RDKit 2026.09.1, PySCF 2.14.0, tblite 0.7.0,",
+        "  dftd4 4.3.0, xtb 6.7.1, LAMMPS, ASE 3.29.0, pymatgen 2026.9.24,",
+        "  pormake 0.2.3, FreeSASA, NumPy/SciPy, and the independent oracles.",
         "",
         "`GAP` means the row documents a method or provenance gap; it is not a",
-        "silent failure. The notes column keeps the reason and the pointer to the",
-        "test that owns the measurement.",
+        "silent failure. The per-row notes and the owning test are kept in",
+        "`reports/validation/summary.json`; the curated report explains the",
+        "limitations behind the gaps.",
         "",
-        "| ID | Observable | Reference | Metric | Measured | Tolerance | Level | Status | Note |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| ID | Observable | Reference | Metric | Measured | Tolerance | Level | Status |",
+        "|---|---|---|---|---|---|---|---|",
     ]
 
     for row in rows:
         reference = row.get("reference") or {}
-        note = str(row.get("notes", "")).replace("|", "\\|").replace("\n", " ")
-        if len(note) > 260:
-            note = note[:257].rstrip() + "…"
         out.append(
-            "| {ficha} | {observable} | {tool} | {metric} | {value} | {tol} | {level} | {status} | {note} |".format(
+            "| {ficha} | {observable} | {tool} | {metric} | {value} | {tol} | {level} | {status} |".format(
                 ficha=row.get("ficha", ""),
-                observable=str(row.get("observable", "")).replace("|", "\\|"),
+                observable=f"<code>{soft_breaks(row.get('observable', ''))}</code>",
                 tool=reference.get("tool", "—"),
-                metric=row.get("metric", ""),
+                metric=f"<code>{soft_breaks(row.get('metric', ''))}</code>",
                 value=fmt(row.get("value")),
                 tol=fmt(row.get("tolerance")),
                 level=row.get("level", ""),
                 status="PASS" if row.get("pass") else "GAP",
-                note=note,
             )
         )
 

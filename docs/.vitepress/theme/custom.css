@@ -178,3 +178,86 @@ mjx-container[display="true"] > svg {
   stroke-dashoffset: 1000;
   animation: draw 2s ease forwards;
 }
+
+/* ── Scrollbars: thin, theme-aware, 3px → 6px on hover ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--vp-c-divider) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-c-text-3);
+}
+
+/* Grow the scrollbar only while the cursor is over the scroll container. */
+table:hover::-webkit-scrollbar,
+pre:hover::-webkit-scrollbar,
+.vp-doc [class*="language-"]:hover::-webkit-scrollbar,
+.VPSidebar:hover::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* ── Tables: bounded height, compact wrapping cells, sticky header ── */
+.vp-doc table {
+  display: block;
+  width: 100%;
+  max-height: 75vh;
+  overflow: auto;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.vp-doc thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.vp-doc th,
+.vp-doc td {
+  padding: 8px 12px;
+  line-height: 1.4;
+  vertical-align: top;
+  min-width: 4.5em;
+  max-width: 340px;
+  overflow-wrap: break-word;
+}
+
+/* Tables with many columns keep readable cell widths and scroll horizontally;
+   the scrollbar sits at the bottom of the bounded table box. */
+.vp-doc table:has(thead th:nth-child(7)) th,
+.vp-doc table:has(thead th:nth-child(7)) td {
+  min-width: 8em;
+}
+
+.vp-doc th {
+  background: var(--vp-c-bg-soft);
+}
+
+.vp-doc td code,
+.vp-doc th code {
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Comparison tables used to force nowrap; wrapped cells are easier to scan. */
+.comparison-table table {
+  white-space: normal;
+}

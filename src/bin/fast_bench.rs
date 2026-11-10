@@ -110,13 +110,13 @@ fn main() {
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default();
 
-    // Seleccionar 100 moléculas aleatorias
+    // Select 100 random molecules
     let mut rng = rand::rngs::StdRng::seed_from_u64(42);
     let mut indices: Vec<usize> = (0..all_reference_mols.len()).collect();
     indices.shuffle(&mut rng);
     indices.truncate(100);
 
-    // Crear lista de SMILES a procesar
+    // Build the list of SMILES to process
     let mut test_smiles: Vec<String> = Vec::new();
     for idx in &indices {
         if *idx < smiles_list.len() {
@@ -124,7 +124,7 @@ fn main() {
         }
     }
 
-    // Crear mapa de reference para acceso rápido
+    // Build a reference map for fast lookup
     let reference_map: std::collections::HashMap<String, &oracle::OracleMolecule> =
         all_reference_mols
             .iter()
@@ -155,7 +155,7 @@ fn main() {
                 k_vdw: 0.0,
             };
 
-            // Fast mode: 1 solo intento
+            // Fast mode: a single attempt
             let seed = 42 + (smi.len() as u64 * 7);
             let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 

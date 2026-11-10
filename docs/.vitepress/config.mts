@@ -81,7 +81,7 @@ export default defineConfig({
           text: 'Advanced',
           items: [
             { text: 'Reaction Backends', link: '/guide/reaction-backends' },
-            { text: 'Portabilidad del backend GPU', link: '/guide/gpu-portabilidad' },
+            { text: 'GPU backend portability', link: '/guide/gpu-portability' },
           ],
         },
         {
@@ -159,7 +159,7 @@ export default defineConfig({
               link: '/validation/full-matrix',
             },
             {
-              text: 'Cross-library plan (historical, ES)',
+              text: 'Cross-library plan',
               link: '/validation/cross-library-validation.es',
             },
           ],

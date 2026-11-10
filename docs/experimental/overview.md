@@ -139,5 +139,5 @@ The legacy `experimental-*` names still work (`experimental-cga` →
 - [Scientific validation](/validation/scientific-validation) — per-algorithm
   reference, measured deviation, confidence region and limitations.
 - [Full validation matrix](/validation/full-matrix) — all 129 recorded rows.
-- [Cross-library plan (historical, Spanish)](/validation/cross-library-validation.es)
-  — the working plan that produced these gates; kept for provenance.
+- [Cross-library validation plan](/validation/cross-library-validation.es) —
+  the method-by-method plan and its gate families.

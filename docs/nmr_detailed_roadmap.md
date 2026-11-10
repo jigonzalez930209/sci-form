@@ -1,6 +1,6 @@
 # Detailed NMR Implementation Roadmap (High-Performance Module)
 
-This document outlines the four-phase implementation strategy for the NMR (RMN) spectroscopy module in `sci-form`, focusing on topological HOSE codes, static database integration, 3D J-coupling, and Lorentzian signal generation.
+This document outlines the four-phase implementation strategy for the NMR spectroscopy module in `sci-form`, focusing on topological HOSE codes, static database integration, 3D J-coupling, and Lorentzian signal generation.
 
 ---
 
@@ -74,7 +74,7 @@ The final stage converts calculated shifts and couplings into a visually accurat
 
 ## Verification & Benchmarks
 
-### Tags: [RMN, RDKit-inspired, Rust, Topología Molecular, WASM, High-Performance]
+### Tags: [NMR, RDKit-inspired, Rust, Molecular Topology, WASM, High-Performance]
 
 ### Performance Target:
 - **Prediction Speed:** Microsecond-range for 1H/13C shift predictions.
