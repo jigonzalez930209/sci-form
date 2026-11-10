@@ -39,6 +39,7 @@ pub mod experimental;
 pub mod forcefield;
 pub mod materials;
 pub mod mesh;
+pub mod methods;
 pub mod ml;
 pub mod properties;
 pub mod reaction;

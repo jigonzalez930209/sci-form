@@ -149,7 +149,7 @@ Wave B branch: `feat/wave-b`.
 | ID | Feature | Status in `feat/wave-b` | Remaining before promotion |
 |---|---|---|---|
 | V2-03 | QM/MM | Mechanical embedding implemented | Electrostatic embedding, link atoms and gradients |
-| V2-04 | EPR | Isotropic hyperfine implemented | Anisotropic tensor, g-tensor and ORCA benchmark |
+| V2-04 | EPR | Isotropic hyperfine + CLI/WASM | Anisotropic tensor, g-tensor and ORCA benchmark |
 | V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR estimators implemented | Soft-core MD, λ scheduler and experimental benchmark |
 | V2-13 | Universal MLIP | Contract, registry, callback and optional ONNX adapter | Real checkpoint and benchmark |
 | V2-14 | Active learning | Conformal calibration and acquisition implemented | Chemical coverage benchmark and bindings |
@@ -159,8 +159,8 @@ Wave C branch: `feat/wave-c`.
 | ID | Feature | Status in `feat/wave-c` | Remaining before promotion |
 |---|---|---|---|
 | V2-01 | Hybrid DFT | Restricted PBE0 exact exchange | Unrestricted/range-separated, gradient and parity |
-| V2-02 | RI-MP2 | Conventional MP2 implemented | RI, SCS/SOS, local correlation and parity |
-| V2-06 | XPS/XANES | Koopmans XPS implemented | ΔSCF, XANES and benchmarks |
+| V2-02 | RI-MP2 | Conventional MP2 + CLI/WASM | RI, SCS/SOS, local correlation and parity |
+| V2-06 | XPS/XANES | Koopmans XPS + CLI/WASM | ΔSCF, XANES and benchmarks |
 | V2-07 | 3D-RISM | OZ/KH solver core + ideal-gas/Gaussian solvent models + interaction energy | Real solvent, excess chemical potential and benchmark |
 | V2-15 | All-nuclide NMR | Registry and multi-nucleus GIAO driver | SCF reuse, basis/ECP coverage, benchmarks |
 

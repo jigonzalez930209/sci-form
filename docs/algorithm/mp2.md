@@ -78,6 +78,16 @@ println!("Total= {:.6} Ha", result.total_energy_hartree);
 A PySCF MP2 comparison and a basis-convergence study are still required before
 promotion.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form mp2 '<elements>' '<coords>'` |
+| WASM | `compute_mp2_energy(elements, coords)` |
+| Python | pending |
+
+The CLI prints the full JSON result.
+
 ## Limitations
 
 - Conventional `O(N⁵)` transform; not suitable for large molecules.

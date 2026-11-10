@@ -1201,6 +1201,45 @@ pub enum Commands {
         /// Path to the JSON structure file ("-" reads standard input)
         path: String,
     },
+    /// Isotropic EPR hyperfine coupling from a UHF spin density
+    Epr {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Target atomic number (omit for all known nuclei)
+        #[arg(long)]
+        nucleus: Option<u8>,
+        /// Total molecular charge
+        #[arg(long, default_value_t = 0)]
+        charge: i32,
+        /// Spin multiplicity
+        #[arg(long, default_value_t = 2)]
+        multiplicity: u32,
+    },
+    /// Conventional closed-shell MP2 correlation energy
+    Mp2 {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+    },
+    /// Koopmans core-level XPS binding energies
+    Xps {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// JSON array of elements to keep (omit for all)
+        #[arg(long)]
+        elements_filter: Option<String>,
+        /// Total molecular charge
+        #[arg(long, default_value_t = 0)]
+        charge: i32,
+        /// Spin multiplicity
+        #[arg(long, default_value_t = 1)]
+        multiplicity: u32,
+    },
     /// Relative pKa from an explicit acid/conjugate-base pair
     Pka {
         /// Acid SMILES (HA)

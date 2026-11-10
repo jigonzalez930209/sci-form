@@ -131,6 +131,27 @@ fn main() {
             charges,
             probe_radius,
         } => calc_cmds::cmd_solvation(&elements, &coords, charges.as_deref(), probe_radius),
+        Commands::Epr {
+            elements,
+            coords,
+            nucleus,
+            charge,
+            multiplicity,
+        } => calc_cmds::cmd_epr(&elements, &coords, nucleus, charge, multiplicity),
+        Commands::Mp2 { elements, coords } => calc_cmds::cmd_mp2(&elements, &coords),
+        Commands::Xps {
+            elements,
+            coords,
+            elements_filter,
+            charge,
+            multiplicity,
+        } => calc_cmds::cmd_xps(
+            &elements,
+            &coords,
+            elements_filter.as_deref(),
+            charge,
+            multiplicity,
+        ),
         Commands::Pka {
             acid,
             base,

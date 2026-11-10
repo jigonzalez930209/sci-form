@@ -101,6 +101,17 @@ Spin density is in electrons/Bohr³; coupling is in MHz.
 The hydrogen test is a real calibration: the STO-3G proton reference density is
 computed from the basis, so the result is not hard-coded.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form epr '<elements>' '<coords>' --nucleus 1 --multiplicity 2` |
+| WASM | `compute_epr_hyperfine(elements, coords, nucleus, charge, multiplicity)` |
+| Python | pending |
+
+The CLI prints the full JSON result. `nucleus = 0` in WASM means "all known
+nuclei".
+
 ## Limitations
 
 - Only the isotropic Fermi-contact term; the anisotropic hyperfine tensor and

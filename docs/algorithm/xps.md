@@ -68,6 +68,16 @@ for binding in result.bindings {
 The methane test checks the core-level scale, not chemical accuracy. A ΔSCF
 reference and an experimental C/N/O 1s set are still required.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form xps '<elements>' '<coords>' --elements-filter '[6]'` |
+| WASM | `compute_xps_binding_energies(elements, coords, filter_json, charge, multiplicity)` |
+| Python | pending |
+
+The CLI prints the full JSON result.
+
 ## Limitations
 
 - Koopmans approximation, no core-hole relaxation or final-state screening.

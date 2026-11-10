@@ -99,3 +99,6 @@ Charts (JSON for plotting)	chart-from-json	sci-form chart-from-json      [JSON]
 Charts (JSON for plotting)	validate-chart-schema	sci-form validate-chart-schema [JSON]
 Electrochemistry	pka	sci-form pka "CC(=O)O" "CC(=O)[O-]" --reference-acid "CC(=O)O" --reference-base "CC(=O)[O-]" --reference-pka 4.76 --n-conformers 1
 Electrochemistry	redox	sci-form redox "CC(=O)O" "CC(=O)[O-]" --n-electrons 1 --n-conformers 1
+Spectroscopy	epr	sci-form epr '[1]' '[0,0,0]' --nucleus 1 --multiplicity 2
+Quantum chemistry	mp2	sci-form mp2 '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.927297,0]'
+Spectroscopy	xps	sci-form xps '[6,1,1,1,1]' '[0,0,0,0.629,0.629,0.629,0.629,-0.629,-0.629,-0.629,0.629,-0.629,-0.629,-0.629,0.629]' --elements-filter '[6]'

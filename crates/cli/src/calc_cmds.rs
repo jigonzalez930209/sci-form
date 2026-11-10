@@ -1060,3 +1060,48 @@ pub fn cmd_redox(
         }
     }
 }
+
+pub fn cmd_epr(elements: &str, coords: &str, nucleus: Option<u8>, charge: i32, multiplicity: u32) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let config = sci_form::epr::EprConfig {
+        nucleus,
+        charge,
+        multiplicity,
+    };
+    match sci_form::compute_epr_hyperfine(&elems, &positions, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("EPR error: {error}")),
+    }
+}
+
+pub fn cmd_mp2(elements: &str, coords: &str) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    match sci_form::compute_mp2_energy(&elems, &positions) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("MP2 error: {error}")),
+    }
+}
+
+pub fn cmd_xps(
+    elements: &str,
+    coords: &str,
+    elements_filter: Option<&str>,
+    charge: i32,
+    multiplicity: u32,
+) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let filter: Option<Vec<u8>> = elements_filter.map(|value| {
+        serde_json::from_str(value).unwrap_or_else(|error| {
+            fail(format!("Invalid --elements-filter JSON: {error}"));
+        })
+    });
+    let config = sci_form::xps::XpsConfig {
+        charge,
+        multiplicity,
+        elements: filter,
+    };
+    match sci_form::compute_xps_binding_energies(&elems, &positions, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("XPS error: {error}")),
+    }
+}
