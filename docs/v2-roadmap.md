@@ -142,7 +142,7 @@ package still have to land before a feature moves out of the prototype column.
 | V2-08 | Redox and pKa | Relative pKa/redox + Python/WASM/CLI bindings | Experimental benchmark, thermal corrections |
 | V2-10 | Enhanced sampling | WTMetaD + OPES-style bias + reweighting + replica exchange | Full OPES flow, multi-CV |
 | V2-11 | GCMC adsorption | LJ + charges/Ewald + multi-site guests + CLI/WASM | Automatic typing and flexible frameworks |
-| V2-12 | Reaction networks/kMC | Rule-based discovery + Gillespie kMC + CLI/WASM | SMARTS adapter, barrier refinement, surface kMC |
+| V2-12 | Reaction networks/kMC | Rules + SMIRKS adapter + GSM refinement + kMC + CLI/WASM | Atom mapping, MBH, surface kMC |
 
 Wave B branch: `feat/wave-b`.
 
@@ -1239,7 +1239,7 @@ isotherms; animated diagram of insertion/deletion.
 | Field | Value |
 |---|---|
 | Track | Reactivity and kinetics |
-| Status | Rule-based discovery and Gillespie kMC implemented in `feat/wave-c`; SMARTS adapter pending |
+| Status | Rules, SMIRKS adapter, GSM refinement and kMC implemented; MBH/atom creation pending |
 | Implementation | [algorithm/kmc.md](/algorithm/kmc) |
 | Target | v2.1 |
 | Effort | 8–12 person-weeks |

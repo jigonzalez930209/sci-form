@@ -2994,6 +2994,25 @@ pub fn discover_template_network(
     config.discover()
 }
 
+/// Refine a reaction barrier with the existing GSM backend.
+///
+/// The reactant and product geometries must have the same atom count. The
+/// barrier is returned in eV and kcal/mol.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometries are mismatched or GSM produces a
+/// non-finite activation energy.
+pub fn refine_barrier_with_gsm(
+    smiles: &str,
+    reactant_coords: &[f64],
+    product_coords: &[f64],
+    method: &str,
+    config: &gsm::GsmConfig,
+) -> Result<networks::BarrierRefinementResult, SciFormError> {
+    networks::refine_barrier_with_gsm(smiles, reactant_coords, product_coords, method, config)
+}
+
 /// Run a Gillespie kinetic Monte Carlo simulation on an elementary-step network.
 ///
 /// Rates come from the existing HTST evaluator. Counts are integers, time is in

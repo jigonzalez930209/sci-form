@@ -16,9 +16,11 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::error::SciFormError;
+use crate::graph::BondOrder;
 use crate::graph::Molecule;
 use crate::kinetics::{ElementaryStep, ThermodynamicState};
 use crate::kmc::{KmcConfig, KmcSpecies, KmcStep};
+use crate::smarts::{parse_smarts, AtomQuery, BondQuery};
 
 /// A discovery rule.
 pub trait ReactionRule {
@@ -135,6 +137,193 @@ impl ReactionRule for TemplateRule {
     }
 }
 
+/// A SMARTS/SMIRKS rule that applies atom-charge and bond-order changes.
+///
+/// The adapter uses the existing SMIRKS matcher to locate the mapped atoms,
+/// copies the reactant graph, applies the product atom charges and mapped
+/// bond orders, and canonicalises the result. It supports one-component
+/// transforms with mapped atoms; atom creation/removal and multi-component
+/// products are explicitly unsupported.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SmirksRule {
+    /// Rule name.
+    pub name: String,
+    /// SMIRKS transform.
+    pub smirks: String,
+    /// Activation barrier in eV.
+    pub barrier_ev: f64,
+    /// Optional prefactor in s⁻¹.
+    pub prefactor_s_inv: Option<f64>,
+}
+
+impl SmirksRule {
+    /// Create a SMIRKS rule.
+    pub fn new(
+        name: &str,
+        smirks: &str,
+        barrier_ev: f64,
+        prefactor_s_inv: Option<f64>,
+    ) -> Result<Self, SciFormError> {
+        if name.trim().is_empty() || smirks.trim().is_empty() {
+            return Err(SciFormError::validation(
+                "SMIRKS rule name and transform must not be empty",
+            ));
+        }
+        crate::smirks::parse_smirks(smirks).map_err(SciFormError::from)?;
+        if !barrier_ev.is_finite() || barrier_ev < 0.0 {
+            return Err(SciFormError::validation(
+                "barrier_ev must be finite and >= 0",
+            ));
+        }
+        if let Some(prefactor) = prefactor_s_inv {
+            if !prefactor.is_finite() || prefactor <= 0.0 {
+                return Err(SciFormError::validation(
+                    "prefactor_s_inv must be finite and > 0",
+                ));
+            }
+        }
+        Ok(Self {
+            name: name.to_string(),
+            smirks: smirks.to_string(),
+            barrier_ev,
+            prefactor_s_inv,
+        })
+    }
+}
+
+impl ReactionRule for SmirksRule {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn reactant_count(&self) -> usize {
+        1
+    }
+
+    fn barrier_ev(&self) -> f64 {
+        self.barrier_ev
+    }
+
+    fn prefactor_s_inv(&self) -> Option<f64> {
+        self.prefactor_s_inv
+    }
+
+    fn apply(&self, reactants: &[&str]) -> Vec<Vec<String>> {
+        if reactants.len() != 1 {
+            return Vec::new();
+        }
+        let Ok(transform) = crate::smirks::parse_smirks(&self.smirks) else {
+            return Vec::new();
+        };
+        if transform.reactant_smarts.len() != 1 || transform.product_smarts.len() != 1 {
+            return Vec::new();
+        }
+        let Ok(result) = crate::smirks::apply_smirks(&self.smirks, reactants[0]) else {
+            return Vec::new();
+        };
+        if !result.success || result.products.is_empty() {
+            return Vec::new();
+        }
+        let Ok(product_pattern) = parse_smarts(&transform.product_smarts[0]) else {
+            return Vec::new();
+        };
+        let Ok(mut molecule) = Molecule::from_smiles(reactants[0]) else {
+            return Vec::new();
+        };
+        let mut pattern_to_molecule = HashMap::new();
+        let mut hydrogens_to_remove = Vec::new();
+        for (pattern_index, atom) in product_pattern.atoms.iter().enumerate() {
+            if let Some(map_index) = atom.map_idx {
+                if let Some(&molecule_index) = result.atom_mapping.get(&(map_index as usize)) {
+                    pattern_to_molecule.insert(pattern_index, molecule_index);
+                    if let Some(charge) = formal_charge(&atom.query) {
+                        let node = petgraph::graph::NodeIndex::new(molecule_index);
+                        molecule.graph[node].formal_charge = charge;
+                        molecule.graph[node].charge = charge as f32;
+                    }
+                    if let Some(hydrogens) = total_hydrogens(&atom.query) {
+                        let node = petgraph::graph::NodeIndex::new(molecule_index);
+                        molecule.graph[node].explicit_h = hydrogens;
+                        molecule.graph[node].no_implicit_h = true;
+                    } else if let Some(charge) = formal_charge(&atom.query) {
+                        if charge < 0 {
+                            let node = petgraph::graph::NodeIndex::new(molecule_index);
+                            molecule.graph[node].explicit_h = 0;
+                            molecule.graph[node].no_implicit_h = true;
+                            if let Some(hydrogen) = molecule
+                                .graph
+                                .neighbors(node)
+                                .find(|neighbor| molecule.graph[*neighbor].element == 1)
+                            {
+                                hydrogens_to_remove.push(hydrogen);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for bond in &product_pattern.bonds {
+            let (Some(&from), Some(&to)) = (
+                pattern_to_molecule.get(&bond.from),
+                pattern_to_molecule.get(&bond.to),
+            ) else {
+                continue;
+            };
+            let Some(order) = bond_order(&bond.query) else {
+                continue;
+            };
+            let from_node = petgraph::graph::NodeIndex::new(from);
+            let to_node = petgraph::graph::NodeIndex::new(to);
+            if let Some(edge) = molecule.graph.find_edge(from_node, to_node) {
+                molecule.graph[edge].order = order;
+            } else {
+                molecule.graph.add_edge(
+                    from_node,
+                    to_node,
+                    crate::graph::Bond {
+                        order,
+                        stereo: crate::graph::BondStereo::None,
+                    },
+                );
+            }
+        }
+        hydrogens_to_remove.sort();
+        hydrogens_to_remove.dedup();
+        for hydrogen in hydrogens_to_remove.into_iter().rev() {
+            molecule.graph.remove_node(hydrogen);
+        }
+        vec![vec![crate::canonical_smiles::to_canonical_smiles(
+            &molecule,
+        )]]
+    }
+}
+
+fn total_hydrogens(query: &AtomQuery) -> Option<u8> {
+    match query {
+        AtomQuery::TotalH(count) => Some(*count),
+        AtomQuery::And(parts) => parts.iter().find_map(total_hydrogens),
+        _ => None,
+    }
+}
+
+fn formal_charge(query: &AtomQuery) -> Option<i8> {
+    match query {
+        AtomQuery::FormalCharge(charge) => Some(*charge),
+        AtomQuery::And(parts) => parts.iter().find_map(formal_charge),
+        _ => None,
+    }
+}
+
+fn bond_order(query: &BondQuery) -> Option<BondOrder> {
+    match query {
+        BondQuery::Single => Some(BondOrder::Single),
+        BondQuery::Double => Some(BondOrder::Double),
+        BondQuery::Triple => Some(BondOrder::Triple),
+        BondQuery::Aromatic => Some(BondOrder::Aromatic),
+        _ => None,
+    }
+}
+
 /// One discovered species.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkSpecies {
@@ -168,6 +357,61 @@ pub struct ReactionNetwork {
     pub edges: Vec<NetworkEdge>,
     /// Discovery notes and skipped products.
     pub notes: Vec<String>,
+}
+
+/// Result of a GSM barrier refinement.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BarrierRefinementResult {
+    /// Refined activation barrier in eV.
+    pub barrier_ev: f64,
+    /// Refined activation barrier in kcal/mol.
+    pub barrier_kcal_mol: f64,
+    /// Transition-state energy in kcal/mol.
+    pub ts_energy_kcal_mol: f64,
+    /// Number of path nodes.
+    pub n_nodes: usize,
+    /// Energy evaluations.
+    pub energy_evaluations: usize,
+}
+
+/// Refine a barrier with the existing Growing String Method backend.
+///
+/// This requires a molecule with the same atom count in the reactant and
+/// product geometries and a backend supported by `neb_backend_energy_kcal`
+/// (`uff`, `mmff94`, `pm3`, `xtb`, `gfn1`, `gfn2`, `hf3c`). The returned
+/// barrier is `E(TS) − E(reactant)` converted from kcal/mol to eV.
+pub fn refine_barrier_with_gsm(
+    smiles: &str,
+    reactant_coords: &[f64],
+    product_coords: &[f64],
+    method: &str,
+    config: &crate::gsm::GsmConfig,
+) -> Result<BarrierRefinementResult, SciFormError> {
+    if reactant_coords.len() != product_coords.len()
+        || reactant_coords.is_empty()
+        || !reactant_coords.len().is_multiple_of(3)
+    {
+        return Err(SciFormError::geometry(
+            "reactant and product coordinates must be equal-length flat 3N arrays",
+        ));
+    }
+    let energy_fn = |coords: &[f64]| -> f64 {
+        crate::neb_backend_energy_kcal(method, smiles, coords).unwrap_or(f64::INFINITY)
+    };
+    let result =
+        crate::gsm::find_transition_state(reactant_coords, product_coords, &energy_fn, config);
+    if !result.activation_energy.is_finite() {
+        return Err(SciFormError::numerical(
+            "GSM barrier refinement produced a non-finite activation energy",
+        ));
+    }
+    Ok(BarrierRefinementResult {
+        barrier_ev: result.activation_energy / 23.060_548_867,
+        barrier_kcal_mol: result.activation_energy,
+        ts_energy_kcal_mol: result.ts_energy,
+        n_nodes: result.n_nodes,
+        energy_evaluations: result.energy_evaluations,
+    })
 }
 
 /// Discovery configuration.
@@ -356,6 +600,30 @@ fn add_edge(
 }
 
 impl ReactionNetwork {
+    /// Refine one edge barrier with GSM and update the edge in place.
+    ///
+    /// The caller supplies the same molecule SMILES and the reactant/product
+    /// geometries; GSM is only valid for a fixed atom count.
+    pub fn refine_edge_barrier_gsm(
+        &mut self,
+        edge_index: usize,
+        smiles: &str,
+        reactant_coords: &[f64],
+        product_coords: &[f64],
+        method: &str,
+        config: &crate::gsm::GsmConfig,
+    ) -> Result<BarrierRefinementResult, SciFormError> {
+        if edge_index >= self.edges.len() {
+            return Err(SciFormError::validation(format!(
+                "edge index {edge_index} is out of range"
+            )));
+        }
+        let result =
+            refine_barrier_with_gsm(smiles, reactant_coords, product_coords, method, config)?;
+        self.edges[edge_index].barrier_ev = result.barrier_ev;
+        Ok(result)
+    }
+
     /// Convert the network into the existing Gillespie kMC configuration.
     ///
     /// `initial_counts` must have one value per species. Every edge becomes an
@@ -477,6 +745,36 @@ mod tests {
         let result = run_kinetic_monte_carlo(&kmc).unwrap();
         assert!(!result.events.is_empty());
         assert_eq!(result.final_counts.iter().sum::<u64>(), 100);
+    }
+
+    #[test]
+    fn smirks_rule_applies_a_charge_change() {
+        let rule =
+            SmirksRule::new("deprotonate", "[C:1](=O)[OH:2]>>[C:1](=O)[O-:2]", 0.1, None).unwrap();
+        let products = rule.apply(&["CC(=O)O"]);
+        assert_eq!(products.len(), 1);
+        let product = &products[0][0];
+        assert!(product.contains("[O-]"), "product = {product}");
+    }
+
+    #[test]
+    fn smirks_rule_rejects_non_matching_species() {
+        let rule =
+            SmirksRule::new("deprotonate", "[C:1](=O)[OH:2]>>[C:1](=O)[O-:2]", 0.1, None).unwrap();
+        assert!(rule.apply(&["CCO"]).is_empty());
+    }
+
+    #[test]
+    fn gsm_refinement_rejects_mismatched_geometries() {
+        let error = refine_barrier_with_gsm(
+            "C",
+            &[0.0, 0.0, 0.0],
+            &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            "uff",
+            &crate::gsm::GsmConfig::default(),
+        )
+        .unwrap_err();
+        assert!(error.is_geometry());
     }
 
     #[test]

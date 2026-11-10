@@ -5,9 +5,10 @@ existing SMILES canonicalisation and Gillespie kMC solver. The engine applies
 explicit rules, deduplicates canonical species, records directed elementary
 edges and converts the result into a kMC configuration.
 
-> **Status.** Implemented in `feat/wave-c`. Rules are explicit templates; SMARTS
-> pattern generation and automatic barrier estimation remain follow-ups. See the
-> [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-c`: explicit template rules, a
+> SMARTS/SMIRKS adapter for mapped atom charges/bond orders and GSM barrier
+> refinement. General atom creation/removal and MBH refinement remain
+> follow-ups. See the [v2.x roadmap](/v2-roadmap).
 
 ## Why explicit rules
 
@@ -48,6 +49,51 @@ let rule = TemplateRule::new(
 
 Reactants and products are canonicalised at construction, so `"CCO"` and
 `"OCC"` are the same species.
+
+## SMARTS/SMIRKS adapter
+
+`SmirksRule` applies a one-component SMIRKS transform through the existing
+matcher:
+
+```rust
+use sci_form::networks::SmirksRule;
+
+let rule = SmirksRule::new(
+    "deprotonate",
+    "[C:1](=O)[OH:2]>>[C:1](=O)[O-:2]",
+    0.10,
+    None,
+)?;
+```
+
+The adapter copies the reactant graph, applies the product formal charges,
+mapped bond orders and the mapped hydrogen count, removes a mapped acidic
+hydrogen when the product atom is anionic, and canonicalises the result. It
+supports one-component transforms with mapped atoms; atom creation/removal and
+multi-component products are rejected.
+
+## GSM barrier refinement
+
+`refine_barrier_with_gsm` wraps the existing Growing String Method on a
+same-atom-count reactant/product pair:
+
+```rust
+use sci_form::networks::refine_barrier_with_gsm;
+
+let refined = refine_barrier_with_gsm(
+    "CCO",
+    &reactant_coords,
+    &product_coords,
+    "uff",
+    &sci_form::gsm::GsmConfig::default(),
+)?;
+println!("{:.3} eV", refined.barrier_ev);
+```
+
+The barrier is `E(TS) − E(reactant)` in kcal/mol converted to eV. The caller
+must supply matching atom counts and a backend supported by
+`neb_backend_energy_kcal`. MBH refinement is not yet wired into the network
+edge.
 
 ## Discovery
 
@@ -111,14 +157,19 @@ and prefactor come from the rule.
 | Canonicalisation | `"CCO"` vs `"OCC"` | one species |
 | kMC integration | 100 C, 1,000 events | population conserved |
 | Invalid product | `"Q"` | rejected |
+| SMIRKS deprotonation | Acetic acid → acetate | `[O-]` product |
+| GSM geometry guard | Mismatched atom counts | rejected |
 
 These are engine gates. A published mechanism and a barrier benchmark are still
 required.
 
 ## Limitations
 
-- Rules are explicit templates; no SMARTS pattern generation.
+- Template rules are explicit; the SMIRKS adapter supports only mapped
+  charge/bond-order/hydrogen changes, not atom creation/removal.
 - Only unimolecular and bimolecular rules.
+- GSM refinement needs the caller to supply same-atom-count 3D geometries.
+- MBH refinement is not wired into the network edge.
 - No automatic barrier estimation or thermodynamic consistency.
 - No reaction free energies, so kMC uses `ΔG_reaction = 0`.
 - The species limit can truncate the network; skipped products are recorded in
@@ -128,8 +179,8 @@ required.
 
 ## Next steps
 
-1. Add a SMARTS/SMIRKS-to-product rule adapter.
-2. Add GSM/MBH barrier refinement for each edge.
+1. Extend the SMIRKS adapter to atom creation/removal and multi-component products.
+2. Wire MBH refinement into the network edge.
 3. Add thermodynamic cycles and reverse rates.
 4. Add a published mechanism benchmark.
 5. Add site-based surface kMC.
