@@ -140,7 +140,7 @@ package still have to land before a feature moves out of the prototype column.
 |---|---|---|---|
 | V2-05 | Raman/VCD/ROA | Raman + VCD/ROA screening models | Coupled magnetic response and benchmark |
 | V2-08 | Redox and pKa | Relative pKa/redox + Python/WASM/CLI bindings | Experimental benchmark, thermal corrections |
-| V2-10 | Enhanced sampling | WTMetaD + replica exchange implemented | OPES, reweighting, multi-CV |
+| V2-10 | Enhanced sampling | WTMetaD + OPES-style bias + reweighting + replica exchange | Full OPES flow, multi-CV |
 | V2-11 | GCMC adsorption | Lennard-Jones GCMC implemented | Charges/Ewald, multi-site guests, automatic typing |
 | V2-12 | Reaction networks/kMC | Gillespie kMC implemented | Rule-based discovery, site-based surface kMC |
 
@@ -1056,7 +1056,7 @@ and solvation cases; diagram of the λ windows and estimator.
 | Field | Value |
 |---|---|
 | Track | Dynamics and free energy |
-| Status | WTMetaD and replica exchange prototypes implemented in `feat/wave-a`; OPES/reweighting pending |
+| Status | WTMetaD, OPES-style bias, reweighting and replica exchange implemented; full OPES flow pending |
 | Implementation | [algorithm/enhanced-sampling.md](/algorithm/enhanced-sampling) |
 | Target | v2.1 |
 | Effort | 5–8 person-weeks |
