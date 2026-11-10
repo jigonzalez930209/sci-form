@@ -87,7 +87,8 @@ export default defineConfig({
         {
           text: 'Upgrading',
           items: [
-            { text: 'Migrating to 1.0', link: '/guide/migration-1.0' },
+            { text: 'Migrating to 2.0', link: '/guide/migration-2.0' },
+            { text: 'Migrating to 1.0 (historical)', link: '/guide/migration-1.0' },
           ],
         },
       ],

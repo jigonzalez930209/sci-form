@@ -1,5 +1,9 @@
 # Migrating from 0.15.x to 1.0.0
 
+> **Historical guide.** This page covers the 0.15 → 1.0 transition. Upgrading
+> from 1.x to 2.0? Read [Migrating to 2.0](./migration-2.0.md) for the typed
+> error change and the core promotions.
+
 `sci-form` 1.0.0 is the first stable release. It closes three exhaustive audits
 (100 findings in [`reports/auditoria-total.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/auditoria-total.md),
 88 blockers in [`reports/v1.0-blockers.md`](https://github.com/jigonzalez930209/sci-form/blob/main/reports/v1.0-blockers.md)).
@@ -29,7 +33,7 @@ crashes on a malformed molecule is not a library you can ship.
 
 ### Functions that now return a `Result`
 
-These used to panic on bad input. They now return `Result<_, String>` in the 1.0 API; the 1.1 root API returns `Result<_, SciFormError>` (see the note at the top).
+These used to panic on bad input. They returned `Result<_, String>` in the 1.0 API; the 2.0 root API returns `Result<_, SciFormError>`. See [Migrating to 2.0](./migration-2.0.md).
 
 | Function | Before | After |
 |---|---|---|

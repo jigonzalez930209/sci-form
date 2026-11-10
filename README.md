@@ -11,15 +11,16 @@ Native bindings for **Rust**, **Python**, **TypeScript/JavaScript (WASM)**, and 
 [![npm](https://img.shields.io/npm/v/sci-form-wasm)](https://www.npmjs.com/package/sci-form-wasm)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 1.0**](docs/guide/migration-1.0.md) · [Release checklist](docs/release-checklist-1.0.md) · [TESTING.md](TESTING.md) · [Roadmap: dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
+See also: [CHANGELOG.md](CHANGELOG.md) · [**Migrating to 2.0**](docs/guide/migration-2.0.md) · [Migrating to 1.0 (historical)](docs/guide/migration-1.0.md) · [Release checklist](docs/release-checklist-1.0.md) · [TESTING.md](TESTING.md) · [Roadmap: dynamics & reactivity](docs/dynamics_reactivity_roadmap.md)
 
 > **Status: 2.0.0 — complete MMFF94, typed errors and promoted core modules.**
 > The library no longer panics on malformed input, the force-field results are
 > bit-for-bit reproducible regardless of the machine's core count, and every
-> public item is documented. Read the [migration guide](docs/guide/migration-1.0.md)
-> before upgrading from 0.15.x: the functions that can fail now return a
-> `Result`, and the canonical name of every capability is the Rust root name
-> in all four surfaces.
+> public item is documented. Read the
+> [2.0 migration guide](docs/guide/migration-2.0.md) before upgrading from 1.x:
+> the root Rust API now returns `SciFormError`, and the validated experimental
+> modules moved to top-level core paths. The
+> [1.0 guide](docs/guide/migration-1.0.md) remains for the 0.15 → 1.0 step.
 
 ## Features
 
