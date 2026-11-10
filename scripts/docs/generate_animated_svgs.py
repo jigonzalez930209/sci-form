@@ -1262,11 +1262,12 @@ def diagram_smiles_pipeline() -> None:
             b.append(path(f"M{x-8},122 L{x+2},122", stroke="var(--sf-line)", sw=1.2))
     b.append(text(230, 168, "token stream", size=10, fill="var(--sf-muted)"))
     b.append(arrow_between(410, 122, 480, 122, color="var(--sf-accent)", delay=0.2))
-    # Graph.
-    b.append(benzene(620, 135, 58, rotate=0, cls="sf-spin"))
+    # Graph: benzene ring plus the O substituent on the rightmost carbon.
+    b.append(benzene(600, 135, 58, rotate=0, cls="sf-spin"))
+    b.append(path("M658,135 L684,135", stroke="var(--sf-line)", sw=2))
+    b.append(circle(697, 135, 10, fill="var(--sf-rose)", opacity=0.9, cls="sf-pulse"))
+    b.append(text(697, 139, "O", size=10, fill="#fff", weight=700))
     b.append(text(620, 225, "molecular graph", size=10, fill="var(--sf-muted)"))
-    b.append(circle(678, 135, 8, fill="var(--sf-rose)", cls="sf-pulse"))
-    b.append(text(700, 128, "O", size=11, fill="var(--sf-rose)", weight=700))
     b.append(pill(260, 205, 112, "parse + rings", color="var(--sf-accent2)"))
     write("smiles-pipeline", 800, 270, "".join(b), label="A SMILES token stream becomes a molecular graph with atoms, bonds and rings.")
 
@@ -1274,14 +1275,16 @@ def diagram_smiles_pipeline() -> None:
 def diagram_smiles_phenol() -> None:
     begin("smiles-phenol")
     b = []
-    b.append(benzene(350, 155, 92, rotate=0, cls="sf-spin"))
-    b.append(circle(442, 155, 13, fill="var(--sf-rose)", opacity=0.85))
-    b.append(text(442, 160, "O", size=12, fill="#fff", weight=700))
-    b.append(text(480, 150, "H", size=11, fill="var(--sf-accent)", weight=700))
-    b.append(path("M442,155 L480,150", stroke="var(--sf-line)", sw=1.4))
-    b.append(text(350, 275, "phenol", size=13, fill="var(--sf-ink)", weight=700))
-    b.append(pill(300, 38, 100, "aromatic ring", color="var(--sf-accent)"))
-    b.append(pill(470, 210, 78, "hydroxyl", color="var(--sf-rose)"))
+    # Benzene ring with an explicit C-O-H substituent on the rightmost carbon.
+    b.append(benzene(300, 155, 88, rotate=0, cls="sf-spin"))
+    b.append(path("M388,155 L452,155", stroke="var(--sf-line)", sw=2))
+    b.append(circle(467, 155, 15, fill="var(--sf-rose)", opacity=0.9, cls="sf-pulse"))
+    b.append(text(467, 160, "O", size=12, fill="#fff", weight=700))
+    b.append(path("M477,147 L492,112", stroke="var(--sf-line)", sw=1.8))
+    b.append(text(500, 105, "H", size=12, fill="var(--sf-accent)", weight=700))
+    b.append(text(300, 285, "phenol", size=13, fill="var(--sf-ink)", weight=700))
+    b.append(pill(220, 38, 100, "aromatic ring", color="var(--sf-accent)"))
+    b.append(pill(430, 205, 84, "hydroxyl", color="var(--sf-rose)"))
     write("smiles-phenol", 700, 310, "".join(b), label="Phenol: a benzene ring with a hydroxyl substituent.")
 
 
