@@ -161,6 +161,32 @@ mod tests {
     use super::*;
 
     #[test]
+    fn toy_checkpoint_runs_energy_and_forces() {
+        let manifest = MlipManifest {
+            schema_version: 1,
+            name: "toy".into(),
+            elements: vec![1],
+            cutoff_angstrom: 5.0,
+            license: "test-only".into(),
+            energy_unit: MlipEnergyUnit::KcalMol,
+            supports_stress: false,
+            source: None,
+        };
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/mlip_toy.onnx");
+        let model = MlipOnnx::from_path(&path, manifest).unwrap();
+        let result = model
+            .evaluate(&[1, 1], &[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], None)
+            .unwrap();
+        assert!((result.energy_kcal_mol - 1.0).abs() < 1e-5);
+        assert_eq!(result.forces_kcal_mol_per_angstrom.len(), 2);
+        assert!(result
+            .forces_kcal_mol_per_angstrom
+            .iter()
+            .all(|force| force.iter().all(|value| value.abs() < 1e-6)));
+    }
+
+    #[test]
     fn missing_checkpoint_is_reported() {
         let manifest = MlipManifest {
             schema_version: 1,
