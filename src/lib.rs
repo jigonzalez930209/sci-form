@@ -231,6 +231,7 @@ pub mod periodic_linear;
 pub mod pm3;
 pub mod population;
 pub mod potentials;
+pub mod raman;
 pub mod rand_nla;
 pub mod reactivity;
 pub mod render_bridge;
@@ -2283,6 +2284,26 @@ pub fn compute_ir_spectrum(
     n_points: usize,
 ) -> ir::IrSpectrum {
     ir::compute_ir_spectrum(analysis, gamma, wn_min, wn_max, n_points)
+}
+
+/// Compute a Raman stick spectrum from the UFF normal modes.
+///
+/// The polarizability is the uncoupled HF/STO-3G sum-over-states tensor;
+/// Raman activities are finite differences along each normalized normal mode.
+/// Frequencies are cm⁻¹, polarizabilities Å³ and relative activities are
+/// dimensionless. VCD and ROA are not implemented in this prototype.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, the UHF SCF does not converge,
+/// or the finite-difference step is invalid.
+pub fn compute_raman_spectrum(
+    smiles: &str,
+    elements: &[u8],
+    positions_angstrom: &[[f64; 3]],
+    config: &raman::RamanConfig,
+) -> Result<raman::RamanSpectrum, SciFormError> {
+    raman::compute_raman_spectrum(smiles, elements, positions_angstrom, config)
 }
 
 /// Predict representative NMR chemical shifts from SMILES.

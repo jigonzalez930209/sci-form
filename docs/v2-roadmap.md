@@ -130,6 +130,21 @@ therefore about **105–161 person-weeks**; it cannot ship as one release.
 
 ## 5. Evaluation waves
 
+### 5.1 Development status
+
+The Wave A branch is `feat/wave-a`. A prototype is not a promotion: the
+validation set, bindings and the full documentation package still have to land
+before a feature moves out of the prototype column.
+
+| ID | Feature | Status in `feat/wave-a` | Remaining before promotion |
+|---|---|---|---|
+| V2-05 | Raman/VCD/ROA | Raman prototype implemented; VCD/ROA pending | Coupled response, VCD/ROA, benchmark |
+| V2-08 | Redox and pKa | Relative pKa and redox cycles implemented | Experimental benchmark, thermal corrections, bindings |
+| V2-10 | Enhanced sampling | WTMetaD implemented | OPES, replica exchange, reweighting, multi-CV |
+| V2-11 | GCMC adsorption | Lennard-Jones GCMC implemented | Charges/Ewald, multi-site guests, automatic typing |
+| V2-12 | Reaction networks/kMC | Gillespie kMC implemented | Rule-based discovery, site-based surface kMC |
+
+
 ### Wave A — response, solvation, sampling (v2.1 band)
 
 These candidates have the best score and the smallest conceptual distance from
@@ -562,7 +577,8 @@ hyperfine pipeline.
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
-| Status | Candidate — evaluation required |
+| Status | Raman prototype implemented in `feat/wave-a`; VCD/ROA pending |
+| Implementation | [algorithm/raman.md](/algorithm/raman) |
 | Target | v2.1 |
 | Effort | 4–6 person-weeks for the numerical path; 6–10 for analytic |
 | Reuse | `compute_vibrational_analysis`, `compute_ir_spectrum`, SCF/ERI, GIAO response |

@@ -146,6 +146,7 @@ export default defineConfig({
             { text: 'Fluorescence', link: '/algorithm/fluorescence' },
             { text: 'IR Spectroscopy', link: '/algorithm/ir-spectroscopy' },
             { text: 'NMR Spectroscopy', link: '/algorithm/nmr-spectroscopy' },
+            { text: 'Raman Spectroscopy', link: '/algorithm/raman' },
           ],
         },
         {
