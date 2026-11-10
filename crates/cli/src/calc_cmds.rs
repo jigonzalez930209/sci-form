@@ -1118,3 +1118,12 @@ pub fn cmd_gcmc(framework_json: &str, guest_json: &str, config_json: &str) {
         Err(error) => fail(format!("GCMC error: {error}")),
     }
 }
+
+pub fn cmd_network(config_json: &str) {
+    let config: sci_form::networks::TemplateNetworkConfig = serde_json::from_str(config_json)
+        .unwrap_or_else(|error| fail(format!("Invalid network config JSON: {error}")));
+    match config.discover() {
+        Ok(network) => println!("{}", serde_json::to_string_pretty(&network).unwrap()),
+        Err(error) => fail(format!("Network discovery error: {error}")),
+    }
+}

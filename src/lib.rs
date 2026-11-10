@@ -231,6 +231,7 @@ pub mod mlip;
 #[cfg(feature = "mlip-onnx")]
 pub mod mlip_onnx;
 pub mod mp2;
+pub mod networks;
 pub mod nmr;
 pub mod nmr_all;
 pub mod optimization;
@@ -2962,6 +2963,35 @@ pub fn run_uff_opes(
     config: &enhanced_sampling::OpesConfig,
 ) -> Result<enhanced_sampling::OpesResult, SciFormError> {
     enhanced_sampling::run_uff_opes(smiles, coords, config)
+}
+
+/// Discover a reaction network from explicit rules.
+///
+/// The engine canonicalises species, applies unimolecular and bimolecular
+/// rules in BFS order, deduplicates species/edges and respects `max_depth` and
+/// `max_species`.
+///
+/// # Errors
+///
+/// Returns `Err` when the initial species, rules or limits are invalid, or when
+/// a rule product is not a valid SMILES.
+pub fn discover_reaction_network(
+    config: &networks::NetworkDiscoveryConfig,
+) -> Result<networks::ReactionNetwork, SciFormError> {
+    networks::discover_reaction_network(config)
+}
+
+/// Discover a reaction network from serialisable template rules.
+///
+/// This is the JSON-friendly entry point used by the CLI and WASM bindings.
+///
+/// # Errors
+///
+/// Returns `Err` when the template configuration or a product SMILES is invalid.
+pub fn discover_template_network(
+    config: &networks::TemplateNetworkConfig,
+) -> Result<networks::ReactionNetwork, SciFormError> {
+    config.discover()
 }
 
 /// Run a Gillespie kinetic Monte Carlo simulation on an elementary-step network.

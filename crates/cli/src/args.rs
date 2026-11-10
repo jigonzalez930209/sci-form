@@ -1240,6 +1240,11 @@ pub enum Commands {
         #[arg(long, default_value_t = 1)]
         multiplicity: u32,
     },
+    /// Rule-based reaction-network discovery from a JSON template config
+    Network {
+        /// JSON TemplateNetworkConfig
+        config: String,
+    },
     /// GCMC adsorption isotherm from JSON framework, guest and config payloads
     Gcmc {
         /// JSON GcmcFramework (cell + host atoms)

@@ -141,6 +141,7 @@ export default defineConfig({
             { text: 'Enhanced Sampling', link: '/algorithm/enhanced-sampling' },
             { text: 'Alchemical Free Energy', link: '/algorithm/free-energy' },
             { text: 'Kinetic Monte Carlo', link: '/algorithm/kmc' },
+            { text: 'Reaction Networks', link: '/algorithm/reaction-networks' },
             { text: 'Active Learning', link: '/algorithm/active-learning' },
             { text: 'Strain Energy', link: '/algorithm/strain-energy' },
             { text: 'Molecular Alignment', link: '/algorithm/molecular-alignment' },

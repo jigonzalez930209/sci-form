@@ -131,6 +131,7 @@ fn main() {
             charges,
             probe_radius,
         } => calc_cmds::cmd_solvation(&elements, &coords, charges.as_deref(), probe_radius),
+        Commands::Network { config } => calc_cmds::cmd_network(&config),
         Commands::Gcmc {
             framework,
             guest,

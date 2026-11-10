@@ -98,3 +98,17 @@ pub fn compute_gcmc_isotherm(framework_json: &str, guest_json: &str, config_json
         Err(error) => json_error(&error),
     }
 }
+
+/// Rule-based reaction-network discovery from a JSON TemplateNetworkConfig.
+#[wasm_bindgen]
+pub fn discover_reaction_network(config_json: &str) -> String {
+    let config: sci_form::networks::TemplateNetworkConfig = match serde_json::from_str(config_json)
+    {
+        Ok(value) => value,
+        Err(error) => return json_error(&bad_json("'config_json'", config_json, &error)),
+    };
+    match config.discover() {
+        Ok(network) => serialize_or_error(&network),
+        Err(error) => json_error(&error),
+    }
+}
