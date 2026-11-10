@@ -7,10 +7,10 @@ can be sampled. The module covers **well-tempered metadynamics**, an
 **OPES-style kernel-density bias**, **histogram reweighting** and **temperature
 replica exchange**, all with a Langevin thermostat.
 
-> **Status.** Implemented in `feat/wave-a`: WTMetaD, OPES-style bias,
-> reweighting and temperature replica exchange are in Rust. The OPES flow
-> equations and the Python/WASM/CLI wrappers are still pending. See the
-> [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-a`: WTMetaD, importance-weighted
+> OPES-style bias, block reweighting and temperature replica exchange are in
+> Rust. The exact OPES differential flow and the Python/WASM/CLI wrappers are
+> still pending. See the [v2.x roadmap](/v2-roadmap).
 
 ## Why metadynamics
 
@@ -154,18 +154,20 @@ The returned `MetaDynamicsResult` has:
 
 ## OPES-style bias
 
-`run_opes` replaces the Gaussian history with a kernel-density estimate of the
-visited CV values:
+`run_opes` replaces the Gaussian history with an importance-weighted
+kernel-density estimate of the CV values. Each deposited kernel carries
+`w_i = exp(βV(s_i))`, so the density is the reweighted estimate
+`P(s) = Σ w_i K(s,s_i) / Σ w_i`:
 
 $$
 V(s) = \left(1-\frac{1}{\gamma}\right)k_BT \ln\left(\frac{P(s)}{P_{\max}}+\epsilon\right),
 $$
 
-where `P` is a Gaussian kernel density estimate and `P_max` is its maximum on
-the deposited kernels. The bias is zero at the most visited point and negative
-where the density is low, which lowers the effective barrier. This is the OPES
-probability-enhancement idea on a bounded grid, not the full OPES flow
-equations.
+where `P` is the weighted Gaussian kernel density and `P_max` is its maximum
+on the deposited kernels. The bias is zero at the most visited point and
+negative where the density is low, which lowers the effective barrier. This is
+an importance-weighted OPES approximation on a bounded grid; it does not
+integrate the exact OPES differential flow equation.
 
 ```rust
 use sci_form::enhanced_sampling::{OpesConfig, run_opes};
@@ -190,8 +192,9 @@ $$
 F(s) = -k_BT\ln\left(\sum_{i\in s} e^{V_b(s_i)/k_BT}\right).
 $$
 
-The result is shifted so the minimum is zero. This is a histogram estimator;
-correlated samples still need subsampling or block analysis.
+The result is shifted so the minimum is zero. For correlated samples, use
+`reweight_free_energy_correlated` with a `block_size`; it returns the same
+surface plus a per-bin block standard error.
 
 ```rust
 use sci_form::enhanced_sampling::{ReweightConfig, reweight_free_energy};
@@ -201,6 +204,7 @@ let surface = reweight_free_energy(&result.cv_trace, &ReweightConfig {
     grid_max: 1.5,
     grid_bins: 61,
     temperature_k: 300.0,
+    block_size: 1,
 })?;
 ```
 
@@ -251,6 +255,7 @@ acceptance rate should be inspected in `result.swaps`.
 | Replica exchange | 4 replicas, 500 steps | swap proposals recorded, all final coordinates finite |
 | OPES double well | 4,000 steps | both minima visited |
 | Reweighting constant bias | flat trace | zero surface |
+| Block reweighting | 3 samples, block 2 | finite non-negative standard errors |
 
 The double-well test checks exploration, not a converged barrier. A quantitative
 barrier benchmark needs a longer run and is part of the promotion gate.
@@ -258,10 +263,10 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 ## Limitations
 
 - Only one CV is biased per run. Multi-dimensional metadynamics is a follow-up.
-- The OPES implementation is a bounded-grid kernel-density approximation, not
-  the full OPES flow equations.
-- Reweighting is a histogram estimator; correlated samples need subsampling or
-  block analysis.
+- The OPES implementation is an importance-weighted bounded-grid
+  approximation, not the exact OPES differential flow equation.
+- The block error is a simple block-average diagnostic, not a full
+  autocorrelation analysis.
 - The bias-derived surface and the reweighted surface can disagree on short runs.
 - The Langevin thermostat is the only thermostat in this module; the existing
   NVT/NPT integrators are not yet coupled to the bias.
@@ -271,8 +276,8 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 ## Next steps
 
 1. Add multi-dimensional CVs and a grid in more than one dimension.
-2. Implement the full OPES flow equations.
-3. Add block/correlation-aware reweighting.
+2. Implement the exact OPES differential flow equations.
+3. Add autocorrelation-aware error propagation.
 4. Wire the bias into the existing NVT/NPT dynamics module.
 5. Add Python, WASM and CLI wrappers.
 6. Benchmark a known free-energy landscape against long unbiased MD.

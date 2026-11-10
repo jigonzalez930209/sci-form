@@ -175,6 +175,13 @@ pub struct GaussianDeposit {
     pub height_kcal_mol: f64,
     /// Gaussian width in CV units.
     pub sigma: f64,
+    /// Importance weight used by the OPES density estimate.
+    #[serde(default = "default_weight")]
+    pub weight: f64,
+}
+
+fn default_weight() -> f64 {
+    1.0
 }
 
 /// One point on the CV trace.
@@ -511,6 +518,7 @@ pub fn run_metadynamics<P: Potential>(
             grid_max: config.grid_max,
             grid_bins: config.grid_bins,
             temperature_k: config.temperature_k,
+            block_size: 1,
         },
     )?;
     let mut notes = vec![
@@ -548,6 +556,13 @@ pub struct ReweightConfig {
     pub grid_bins: usize,
     /// Temperature in K.
     pub temperature_k: f64,
+    /// Number of consecutive samples per block for correlated reweighting.
+    #[serde(default = "default_block_size")]
+    pub block_size: usize,
+}
+
+fn default_block_size() -> usize {
+    1
 }
 
 impl ReweightConfig {
@@ -567,6 +582,9 @@ impl ReweightConfig {
             return Err(SciFormError::validation(
                 "temperature_k must be finite and > 0",
             ));
+        }
+        if self.block_size == 0 {
+            return Err(SciFormError::validation("block_size must be >= 1"));
         }
         Ok(())
     }
@@ -627,6 +645,65 @@ pub fn reweight_free_energy(
         max: config.grid_max,
         bins,
         values,
+    })
+}
+
+/// Result of a correlation-aware reweighting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReweightResult {
+    /// Reweighted free-energy surface.
+    pub surface: FreeEnergySurface,
+    /// Per-bin standard error in kcal/mol.
+    pub standard_error: Vec<f64>,
+    /// Number of blocks.
+    pub n_blocks: usize,
+    /// Samples per block.
+    pub block_size: usize,
+}
+
+/// Reweight a biased trace with block-averaged uncertainty.
+///
+/// The surface is the same histogram estimate as [`reweight_free_energy`]; the
+/// standard error comes from the block-to-block variance of the per-bin
+/// weights. This is a simple correlation-aware diagnostic, not a full
+/// autocorrelation analysis.
+pub fn reweight_free_energy_correlated(
+    trace: &[MetaDynamicsPoint],
+    config: &ReweightConfig,
+) -> Result<ReweightResult, SciFormError> {
+    let surface = reweight_free_energy(trace, config)?;
+    config.validate()?;
+    let bins = config.grid_bins;
+    let width = (config.grid_max - config.grid_min) / (bins - 1) as f64;
+    let kbt = R_GAS_KCAL_MOLK * config.temperature_k;
+    let block_size = config.block_size;
+    let n_blocks = trace.len().div_ceil(block_size);
+    let mut block_weights = vec![vec![0.0f64; bins]; n_blocks];
+    for (index, point) in trace.iter().enumerate() {
+        let block = index / block_size;
+        let bin = ((point.cv - config.grid_min) / width)
+            .round()
+            .clamp(0.0, (bins - 1) as f64) as usize;
+        block_weights[block][bin] += (point.bias_kcal_mol / kbt).exp();
+    }
+    let mut standard_error = vec![0.0f64; bins];
+    for (bin, error) in standard_error.iter_mut().enumerate() {
+        let values: Vec<f64> = block_weights.iter().map(|block| block[bin]).collect();
+        let mean = values.iter().sum::<f64>() / values.len() as f64;
+        if mean > 0.0 && values.len() > 1 {
+            let variance = values
+                .iter()
+                .map(|value| (value - mean).powi(2))
+                .sum::<f64>()
+                / (values.len() - 1) as f64;
+            *error = kbt * (variance / values.len() as f64).sqrt() / mean;
+        }
+    }
+    Ok(ReweightResult {
+        surface,
+        standard_error,
+        n_blocks,
+        block_size,
     })
 }
 
@@ -852,6 +929,7 @@ pub fn run_opes<P: Potential>(
                 center: cv_value,
                 height_kcal_mol: 1.0,
                 sigma: config.sigma,
+                weight: (bias / kbt).exp(),
             });
         }
         if step % config.trace_stride == 0 {
@@ -881,6 +959,7 @@ pub fn run_opes<P: Potential>(
             grid_max: config.grid_max,
             grid_bins: config.grid_bins,
             temperature_k: config.temperature_k,
+            block_size: 1,
         },
     )?;
     let mut notes = vec![
@@ -911,14 +990,17 @@ fn opes_kernel_density(kernels: &[GaussianDeposit], cv: f64, sigma: f64) -> (f64
     }
     let mut density = 0.0;
     let mut derivative = 0.0;
+    let mut total_weight = 0.0;
     for kernel in kernels {
+        let weight = kernel.weight.max(1e-300);
         let delta = cv - kernel.center;
         let value = (-(delta * delta) / (2.0 * sigma * sigma)).exp();
-        density += value;
-        derivative += -value * delta / (sigma * sigma);
+        density += weight * value;
+        derivative += weight * -value * delta / (sigma * sigma);
+        total_weight += weight;
     }
-    let n = kernels.len() as f64;
-    (density / n, derivative / n)
+    let norm = total_weight.max(1e-300);
+    (density / norm, derivative / norm)
 }
 
 fn opes_bias_and_derivative(
@@ -1118,6 +1200,7 @@ fn deposit_gaussian(
         center,
         height_kcal_mol: height,
         sigma: config.sigma,
+        weight: 1.0,
     });
     Ok(())
 }
@@ -1593,10 +1676,51 @@ mod tests {
                 grid_max: 2.0,
                 grid_bins: 3,
                 temperature_k: 300.0,
+                block_size: 1,
             },
         )
         .unwrap();
         assert!(surface.values.iter().all(|value| value.abs() < 1e-12));
+    }
+
+    #[test]
+    fn correlated_reweighting_reports_block_error() {
+        let trace = vec![
+            MetaDynamicsPoint {
+                step: 0,
+                cv: 0.0,
+                potential_kcal_mol: 0.0,
+                bias_kcal_mol: 0.0,
+            },
+            MetaDynamicsPoint {
+                step: 1,
+                cv: 0.5,
+                potential_kcal_mol: 0.0,
+                bias_kcal_mol: 0.0,
+            },
+            MetaDynamicsPoint {
+                step: 2,
+                cv: 1.0,
+                potential_kcal_mol: 0.0,
+                bias_kcal_mol: 0.0,
+            },
+        ];
+        let result = reweight_free_energy_correlated(
+            &trace,
+            &ReweightConfig {
+                grid_min: 0.0,
+                grid_max: 1.0,
+                grid_bins: 3,
+                temperature_k: 300.0,
+                block_size: 2,
+            },
+        )
+        .unwrap();
+        assert_eq!(result.n_blocks, 2);
+        assert!(result
+            .standard_error
+            .iter()
+            .all(|value| value.is_finite() && *value >= 0.0));
     }
 
     #[test]
