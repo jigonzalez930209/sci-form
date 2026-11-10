@@ -147,6 +147,7 @@ export default defineConfig({
             { text: 'IR Spectroscopy', link: '/algorithm/ir-spectroscopy' },
             { text: 'NMR Spectroscopy', link: '/algorithm/nmr-spectroscopy' },
             { text: 'Raman Spectroscopy', link: '/algorithm/raman' },
+            { text: 'VCD & ROA', link: '/algorithm/vcd-roa' },
           ],
         },
         {

@@ -260,6 +260,7 @@ pub mod surface;
 /// (linear, trigonal, tetrahedral, square-planar, trigonal-bipyramidal, octahedral).
 pub mod topology;
 pub mod transport;
+pub mod vcd_roa;
 pub mod xtb;
 
 #[cfg(any(
@@ -2304,6 +2305,41 @@ pub fn compute_raman_spectrum(
     config: &raman::RamanConfig,
 ) -> Result<raman::RamanSpectrum, SciFormError> {
     raman::compute_raman_spectrum(smiles, elements, positions_angstrom, config)
+}
+
+/// Compute VCD rotational strengths with a nuclear charge-current screening model.
+///
+/// Frequencies are cm⁻¹; rotational strengths are relative screening units.
+/// The magnetic response is approximate and documented in the algorithm page.
+///
+/// # Errors
+///
+/// Returns `Err` when the geometry is invalid, the vibrational analysis fails,
+/// or the charge count does not match the atoms.
+pub fn compute_vcd_spectrum(
+    smiles: &str,
+    elements: &[u8],
+    positions_angstrom: &[[f64; 3]],
+    config: &vcd_roa::VcdRoaConfig,
+) -> Result<vcd_roa::VcdSpectrum, SciFormError> {
+    vcd_roa::compute_vcd_spectrum(smiles, elements, positions_angstrom, config)
+}
+
+/// Compute ROA screening intensities from Raman activities and the VCD magnetic term.
+///
+/// Relative signs and trends are meaningful; absolute cross-sections are not.
+///
+/// # Errors
+///
+/// Returns `Err` under the same conditions as [`compute_vcd_spectrum`] or when
+/// the Raman calculation fails.
+pub fn compute_roa_spectrum(
+    smiles: &str,
+    elements: &[u8],
+    positions_angstrom: &[[f64; 3]],
+    config: &vcd_roa::VcdRoaConfig,
+) -> Result<vcd_roa::RoaSpectrum, SciFormError> {
+    vcd_roa::compute_roa_spectrum(smiles, elements, positions_angstrom, config)
 }
 
 /// Predict representative NMR chemical shifts from SMILES.
