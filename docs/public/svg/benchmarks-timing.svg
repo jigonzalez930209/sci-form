@@ -1,39 +1,58 @@
-<svg width="600" height="250" viewBox="0 0 600 250" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <rect x="0" y="0" width="600" height="250" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif" font-size="11">
-    <text x="300" y="15" text-anchor="middle" fill="#1e3a5f" font-weight="700" font-size="13">RMSD Distribution (heavy-atom pairwise)</text>
-
-    <!-- Axes -->
-    <line x1="60" y1="200" x2="560" y2="200" stroke="#94a3b8" stroke-width="1"/>
-    <line x1="60" y1="200" x2="60" y2="30" stroke="#94a3b8" stroke-width="1"/>
-    <text x="50" y="25" text-anchor="end" fill="#334155" font-size="10">count</text>
-    <text x="556" y="220" text-anchor="end" fill="#334155" font-size="10">RMSD (Å)</text>
-
-    <!-- X ticks -->
-    <text x="60" y="218" text-anchor="middle" fill="#64748b" font-size="9">0</text>
-    <text x="160" y="218" text-anchor="middle" fill="#64748b" font-size="9">0.1</text>
-    <text x="260" y="218" text-anchor="middle" fill="#64748b" font-size="9">0.2</text>
-    <text x="360" y="218" text-anchor="middle" fill="#64748b" font-size="9">0.3</text>
-    <text x="460" y="218" text-anchor="middle" fill="#64748b" font-size="9">0.5</text>
-    <text x="560" y="218" text-anchor="middle" fill="#64748b" font-size="9">1.0</text>
-
-    <!-- Histogram bars (approximating the distribution) -->
-    <rect x="60" y="40" width="40" height="160" fill="#10b981" rx="2" opacity="0.8"/>
-    <rect x="105" y="70" width="40" height="130" fill="#10b981" rx="2" opacity="0.7"/>
-    <rect x="150" y="130" width="40" height="70" fill="#10b981" rx="2" opacity="0.6"/>
-    <rect x="195" y="150" width="40" height="50" fill="#2563eb" rx="2" opacity="0.6"/>
-    <rect x="240" y="170" width="40" height="30" fill="#2563eb" rx="2" opacity="0.5"/>
-    <rect x="285" y="180" width="40" height="20" fill="#2563eb" rx="2" opacity="0.4"/>
-    <rect x="330" y="185" width="40" height="15" fill="#ca8a04" rx="2" opacity="0.5"/>
-    <rect x="375" y="188" width="40" height="12" fill="#ca8a04" rx="2" opacity="0.4"/>
-    <rect x="420" y="192" width="40" height="8" fill="#ca8a04" rx="2" opacity="0.3"/>
-    <rect x="465" y="195" width="40" height="5" fill="#ef4444" rx="2" opacity="0.3"/>
-    <rect x="510" y="197" width="40" height="3" fill="#ef4444" rx="2" opacity="0.2"/>
-
-    <!-- 0.5Å threshold line -->
-    <line x1="460" y1="30" x2="460" y2="200" stroke="#ef4444" stroke-width="1" stroke-dasharray="4 2"/>
-    <text x="465" y="42" fill="#ef4444" font-size="9" font-weight="600">98.4%</text>
-    <text x="465" y="53" fill="#ef4444" font-size="9">below</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 300" width="620" height="300" role="img" aria-label="Runtime grows with molecule size; triangle smoothing and BFGS dominate.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-benchmarks-timing-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-benchmarks-timing-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-benchmarks-timing-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="620" height="300" fill="url(#sf-benchmarks-timing-glow)" stroke="none"/>
+<path d="M60,55 L60,225 M60,225 L560,225" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M60,225 l4,-4 M60,225 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M60,55 l-4,4 M60,55 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="310.0" y="247" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">atoms</text><text x="42" y="140.0" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 42 140.0)">time (ms)</text><path d="M70.00,188.00 Q89.00,187.22 108.00,186.45 Q127.00,184.67 146.00,182.89 Q165.00,180.32 184.00,177.74 Q203.00,174.46 222.00,171.18 Q241.00,167.24 260.00,163.31 Q279.00,158.76 298.00,154.21 Q317.00,149.08 336.00,143.95 Q355.00,138.27 374.00,132.58 Q393.00,126.36 412.00,120.14 Q431.00,113.40 450.00,106.65 Q469.00,99.41 488.00,92.16" fill="none" stroke="var(--sf-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><circle cx="70" cy="188.0" r="4" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="146" cy="182.89373569294105" r="4" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="222" cy="171.17810633964888" r="4" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="298" cy="154.21282752089405" r="4" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="374" cy="132.5825579516179" r="4" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="450" cy="106.65484366128526" r="4" fill="var(--sf-accent2)" class="sf-pulse"/><text x="310" y="275" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">Floyd–Warshall + BFGS dominate</text><rect x="430" y="28" width="120" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent)" stroke-width="1"/><text x="490.0" y="42.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">scaling</text>
 </svg>

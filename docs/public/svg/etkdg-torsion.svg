@@ -1,36 +1,58 @@
-<svg width="500" height="188" viewBox="0 -8 500 188" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <rect x="0" y="-8" width="500" height="188" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif">
-    <!-- Newman projection style -->
-    <!-- Anti conformation -->
-    <text x="130" y="15" text-anchor="middle" fill="#1e3a5f" font-weight="700" font-size="12">Anti (180°)</text>
-    <circle cx="130" cy="90" r="50" fill="none" stroke="#94a3b8" stroke-width="1"/>
-    <circle cx="130" cy="90" r="3" fill="#2563eb"/>
-    <!-- Back carbon bonds -->
-    <line x1="130" y1="90" x2="130" y2="38" stroke="#94a3b8" stroke-width="1.5"/>
-    <line x1="130" y1="90" x2="82" y2="118" stroke="#94a3b8" stroke-width="1.5"/>
-    <line x1="130" y1="90" x2="178" y2="118" stroke="#94a3b8" stroke-width="1.5"/>
-    <!-- Front carbon bonds (offset) -->
-    <line x1="130" y1="90" x2="130" y2="142" stroke="#2563eb" stroke-width="2"/>
-    <line x1="130" y1="90" x2="82" y2="62" stroke="#2563eb" stroke-width="2"/>
-    <line x1="130" y1="90" x2="178" y2="62" stroke="#2563eb" stroke-width="2"/>
-
-    <text x="130" y="160" text-anchor="middle" fill="#10b981" font-weight="600" font-size="11">✓ lowest energy</text>
-
-    <!-- Gauche conformation -->
-    <text x="370" y="15" text-anchor="middle" fill="#1e3a5f" font-weight="700" font-size="12">Gauche (60°)</text>
-    <circle cx="370" cy="90" r="50" fill="none" stroke="#94a3b8" stroke-width="1"/>
-    <circle cx="370" cy="90" r="3" fill="#2563eb"/>
-    <!-- Back carbon bonds -->
-    <line x1="370" y1="90" x2="370" y2="38" stroke="#94a3b8" stroke-width="1.5"/>
-    <line x1="370" y1="90" x2="322" y2="118" stroke="#94a3b8" stroke-width="1.5"/>
-    <line x1="370" y1="90" x2="418" y2="118" stroke="#94a3b8" stroke-width="1.5"/>
-    <!-- Front (rotated 60°) -->
-    <line x1="370" y1="90" x2="413" y2="65" stroke="#2563eb" stroke-width="2"/>
-    <line x1="370" y1="90" x2="327" y2="65" stroke="#2563eb" stroke-width="2"/>
-    <line x1="370" y1="90" x2="370" y2="142" stroke="#2563eb" stroke-width="2"/>
-
-    <text x="370" y="160" text-anchor="middle" fill="#ca8a04" font-weight="600" font-size="11">local minimum</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 280" width="700" height="280" role="img" aria-label="Torsion preferences bias the dihedral angle towards the low-energy anti and gauche wells.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-etkdg-torsion-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-etkdg-torsion-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-etkdg-torsion-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="700" height="280" fill="url(#sf-etkdg-torsion-glow)" stroke="none"/>
+<path d="M120,160 L220,160" fill="none" stroke="var(--sf-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M220,160 L300,100" fill="none" stroke="var(--sf-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-float"/><path d="M220,160 L300,220" fill="none" stroke="var(--sf-accent2)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-float sf-d2"/><circle cx="220" cy="160" r="7" fill="var(--sf-accent)"/><path d="M240,120 A55,55 0 0 1 300,110" fill="none" stroke="var(--sf-violet)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 5" class="sf-flow"/><text x="270" y="98" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-violet)">φ</text><path d="M390,75 L390,215 M390,215 L670,215" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M390,215 l4,-4 M390,215 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M390,75 l-4,4 M390,75 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="530.0" y="237" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">φ</text><text x="372" y="145.0" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 372 145.0)">E</text><path d="M390.00,108.00 Q391.15,108.21 392.30,108.42 Q393.45,109.05 394.60,109.67 Q395.75,110.70 396.90,111.72 Q398.05,113.13 399.20,114.53 Q400.35,116.27 401.50,118.02 Q402.65,120.07 403.80,122.12 Q404.95,124.43 406.10,126.73 Q407.25,129.24 408.40,131.75 Q409.55,134.40 410.70,137.06 Q411.85,139.79 413.00,142.53 Q414.15,145.29 415.30,148.05 Q416.45,150.76 417.60,153.48 Q418.75,156.09 419.90,158.71 Q421.05,161.16 422.20,163.61 Q423.35,165.85 424.50,168.09 Q425.65,170.06 426.80,172.04 Q427.95,173.71 429.10,175.38 Q430.25,176.71 431.40,178.04 Q432.55,179.00 433.70,179.97 Q434.85,180.56 436.00,181.14 Q437.15,181.34 438.30,181.54 Q439.45,181.35 440.60,181.17 Q441.75,180.61 442.90,180.05 Q444.05,179.14 445.20,178.24 Q446.35,177.01 447.50,175.78 Q448.65,174.26 449.80,172.75 Q450.95,171.00 452.10,169.25 Q453.25,167.31 454.40,165.37 Q455.55,163.29 456.70,161.22 Q457.85,159.07 459.00,156.92 Q460.15,154.74 461.30,152.57 Q462.45,150.44 463.60,148.31 Q464.75,146.28 465.90,144.25 Q467.05,142.36 468.20,140.48 Q469.35,138.80 470.50,137.12 Q471.65,135.69 472.80,134.25 Q473.95,133.10 475.10,131.95 Q476.25,131.11 477.40,130.28 Q478.55,129.78 479.70,129.28 Q480.85,129.13 482.00,128.98 Q483.15,129.18 484.30,129.39 Q485.45,129.94 486.60,130.49 Q487.75,131.38 488.90,132.26 Q490.05,133.46 491.20,134.66 Q492.35,136.14 493.50,137.61 Q494.65,139.33 495.80,141.06 Q496.95,142.98 498.10,144.89 Q499.25,146.96 500.40,149.03 Q501.55,151.20 502.70,153.36 Q503.85,155.56 505.00,157.77 Q506.15,159.95 507.30,162.14 Q508.45,164.26 509.60,166.37 Q510.75,168.36 511.90,170.35 Q513.05,172.16 514.20,173.97 Q515.35,175.55 516.50,177.14 Q517.65,178.46 518.80,179.78 Q519.95,180.80 521.10,181.82 Q522.25,182.51 523.40,183.21 Q524.55,183.56 525.70,183.91 Q526.85,183.91 528.00,183.91 Q529.15,183.56 530.30,183.21 Q531.45,182.51 532.60,181.82 Q533.75,180.80 534.90,179.78 Q536.05,178.46 537.20,177.14 Q538.35,175.55 539.50,173.97 Q540.65,172.16 541.80,170.35 Q542.95,168.36 544.10,166.37 Q545.25,164.26 546.40,162.14 Q547.55,159.95 548.70,157.77 Q549.85,155.56 551.00,153.36 Q552.15,151.20 553.30,149.03 Q554.45,146.96 555.60,144.89 Q556.75,142.98 557.90,141.06 Q559.05,139.33 560.20,137.61 Q561.35,136.14 562.50,134.66 Q563.65,133.46 564.80,132.26 Q565.95,131.38 567.10,130.49 Q568.25,129.94 569.40,129.39 Q570.55,129.18 571.70,128.98 Q572.85,129.13 574.00,129.28 Q575.15,129.78 576.30,130.28 Q577.45,131.11 578.60,131.95 Q579.75,133.10 580.90,134.25 Q582.05,135.69 583.20,137.12 Q584.35,138.80 585.50,140.48 Q586.65,142.36 587.80,144.25 Q588.95,146.28 590.10,148.31 Q591.25,150.44 592.40,152.57 Q593.55,154.74 594.70,156.92 Q595.85,159.07 597.00,161.22 Q598.15,163.29 599.30,165.37 Q600.45,167.31 601.60,169.25 Q602.75,171.00 603.90,172.75 Q605.05,174.26 606.20,175.78 Q607.35,177.01 608.50,178.24 Q609.65,179.14 610.80,180.05 Q611.95,180.61 613.10,181.17 Q614.25,181.35 615.40,181.54 Q616.55,181.34 617.70,181.14 Q618.85,180.56 620.00,179.97 Q621.15,179.00 622.30,178.04 Q623.45,176.71 624.60,175.38 Q625.75,173.71 626.90,172.04 Q628.05,170.06 629.20,168.09 Q630.35,165.85 631.50,163.61 Q632.65,161.16 633.80,158.71 Q634.95,156.09 636.10,153.48 Q637.25,150.76 638.40,148.05 Q639.55,145.29 640.70,142.53 Q641.85,139.79 643.00,137.06 Q644.15,134.40 645.30,131.75 Q646.45,129.24 647.60,126.73 Q648.75,124.43 649.90,122.12 Q651.05,120.07 652.20,118.02 Q653.35,116.27 654.50,114.53 Q655.65,113.13 656.80,111.72 Q657.95,110.70 659.10,109.67 Q660.25,109.05 661.40,108.42 Q662.55,108.21 663.70,108.00" fill="none" stroke="var(--sf-warm)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><circle cx="433.7" cy="181.0" r="5" fill="var(--sf-warm)" class="sf-pulse"/><circle cx="525.7" cy="184.0" r="5" fill="var(--sf-warm)" class="sf-pulse"/><circle cx="617.7" cy="181.0" r="5" fill="var(--sf-warm)" class="sf-pulse"/><text x="510" y="240" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">anti</text><text x="610" y="240" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">gauche</text><rect x="500" y="36" width="110" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="555.0" y="50.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">CSD preference</text>
 </svg>

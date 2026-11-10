@@ -2,11 +2,14 @@
 
 The ANI (ANAKIN-ME) family of machine learning potentials seeks to deliver quantum-mechanical accuracy at speeds comparable to classical force fields. `sci-form` ships with a purely-Rust implementation of the ANI inference engine.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## Architecture
 
 At its core, ANI maps local chemical environments to atomic energy contributions using a fully connected neural network (NN).
 
-![ANI Architecture](../public/ani-architecture.svg)
+<SvgDiagram src="/svg/ani-architecture.svg" alt="ANI inference: geometry, neighbor list, atomic environment vectors, per-element network and analytic forces." />
 
 ### 1. Spatial Partitioning & Neighbor Lists
 To evaluate interactions efficiently in large systems, `sci-form` implements a cell-list algorithm for spatial partitioning (`src/ani/neighbor.rs`), bound by a configuration cutoff (5.2 Å for the default ANI-2x-style parameters). Atoms are binned into a 3D grid of cells with side length equal to the cutoff and only the 13 forward half-neighbour cells are scanned, which gives O(N) scaling for uniformly distributed systems.
@@ -138,26 +141,23 @@ res = sci_form.compare_methods(
 
 ## Benchmarks & Validation
 
-> **Corrección 2026-10-14**: un párrafo anterior afirmaba equivalencia con
-> TorchANI al 0.0000 % — esa comparación nunca existió (nuestros AEV son
-> agnósticos por especie en la ruta `ml::symmetry_functions`; TorchANI parte por
-> especie). Estado real (gate F79, `tests/alpha_mlff_validation.rs`,
-> `--features alpha-mlff`): AEV exactos contra una implementación numpy
-> independiente de las fórmulas Behler-Parrinello (8 moléculas × 2 juegos de
-> parámetros, constantes ANI-2x verificadas), energías de redes diminutas y
-> fuerzas contra diferencias finitas centrales de la misma ruta. Las
-> tolerancias están fijadas en el fixture
-> `tests/fixtures/validation/mlff_bp.json` (AEV 1e-9, energía 1e-9, energía
-> GELU 2e-6, fuerza 1e-4) y el oráculo es
+> **Correction (2026-10-14).** An earlier paragraph claimed 0.0000%
+> equivalence with TorchANI. That comparison never existed: the AEVs are
+> species-agnostic in `ml::symmetry_functions`, while TorchANI splits by
+> species. The real F79 gate (`tests/alpha_mlff_validation.rs`,
+> `--features alpha-mlff`) compares against an independent NumPy
+> implementation of the Behler-Parrinello formulas (8 molecules × 2 parameter
+> sets, verified ANI-2x constants), tiny-network energies, and finite-difference
+> forces. Tolerances live in `tests/fixtures/validation/mlff_bp.json` (AEV
+> 1e-9, energy 1e-9, GELU energy 2e-6, force 1e-4); the oracle is
 > `scripts/validation/oracle_mlff.py`.
 >
-> Gaps pendientes: comparación de tensores contra TorchANI (diseño distinto) y
-> benchmarks MD17/SPICE (requieren pesos entrenados, ver la sección
-> *Weights*).
+> Open gaps: a tensor comparison against TorchANI (different design) and
+> MD17/SPICE benchmarks (they need trained weights; see *Weights*).
 
-> **Corrección 2026-10-21**: el gate F79 existe y corre, pero solo cubre la
-> ruta `ml::symmetry_functions`. El motor `ani::` (4032 features, redes por
-> especie) **no** tiene gate externo: su exactitud se apoya en los tests
-> unitarios de `src/ani/gradients.rs` (fuerza analítica contra diferencias
-> finitas centrales) y en `src/ani/aev.rs`. Sin pesos ANI-2x oficiales
-> cargables, tampoco existe una comparación de energías contra la literatura.
+> **Correction (2026-10-21).** F79 exists and runs, but it only covers the
+> `ml::symmetry_functions` route. The `ani::` engine (4032 features,
+> per-species networks) has **no external gate**: its accuracy rests on the
+> unit tests in `src/ani/gradients.rs` (analytic force vs central differences)
+> and `src/ani/aev.rs`. Without loadable official ANI-2x weights, there is also
+> no energy comparison against the literature.

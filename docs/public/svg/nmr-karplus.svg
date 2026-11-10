@@ -1,109 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" width="640" height="380" font-family="system-ui, sans-serif">
-  <rect width="640" height="380" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="320" y="26" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">Karplus Relation: ³J(H,H) vs Dihedral Angle φ</text>
-  <text x="320" y="42" text-anchor="middle" font-size="11" fill="#64748b">³J = A cos²φ − B cosφ + C &nbsp;&nbsp; (Karplus 1963)</text>
-
-  <!-- Axes -->
-  <line x1="70" y1="290" x2="590" y2="290" stroke="#1e293b" stroke-width="1.5"/>
-  <line x1="70" y1="50" x2="70" y2="290" stroke="#1e293b" stroke-width="1.5"/>
-  <!-- x-axis ticks and labels (0, 60, 120, 180, 240, 300, 360) -->
-  <line x1="70" y1="290" x2="70" y2="295" stroke="#475569" stroke-width="1"/>  <text x="70" y="308" text-anchor="middle" font-size="10" fill="#475569">0°</text>
-  <line x1="157" y1="290" x2="157" y2="295" stroke="#475569" stroke-width="1"/><text x="157" y="308" text-anchor="middle" font-size="10" fill="#475569">60°</text>
-  <line x1="244" y1="290" x2="244" y2="295" stroke="#475569" stroke-width="1"/><text x="244" y="308" text-anchor="middle" font-size="10" fill="#475569">120°</text>
-  <line x1="330" y1="290" x2="330" y2="295" stroke="#475569" stroke-width="1"/><text x="330" y="308" text-anchor="middle" font-size="10" fill="#475569">180°</text>
-  <line x1="417" y1="290" x2="417" y2="295" stroke="#475569" stroke-width="1"/><text x="417" y="308" text-anchor="middle" font-size="10" fill="#475569">240°</text>
-  <line x1="503" y1="290" x2="503" y2="295" stroke="#475569" stroke-width="1"/><text x="503" y="308" text-anchor="middle" font-size="10" fill="#475569">300°</text>
-  <line x1="590" y1="290" x2="590" y2="295" stroke="#475569" stroke-width="1"/><text x="590" y="308" text-anchor="middle" font-size="10" fill="#475569">360°</text>
-  <!-- y-axis ticks and labels (0, 2, 4, 6, 8, 10, 12) -->
-  <line x1="68" y1="290" x2="70" y2="290" stroke="#475569" stroke-width="1"/><text x="60" y="294" text-anchor="end" font-size="10" fill="#475569">0</text>
-  <line x1="68" y1="254" x2="70" y2="254" stroke="#475569" stroke-width="1"/><text x="60" y="258" text-anchor="end" font-size="10" fill="#475569">2</text>
-  <line x1="68" y1="218" x2="70" y2="218" stroke="#475569" stroke-width="1"/><text x="60" y="222" text-anchor="end" font-size="10" fill="#475569">4</text>
-  <line x1="68" y1="182" x2="70" y2="182" stroke="#475569" stroke-width="1"/><text x="60" y="186" text-anchor="end" font-size="10" fill="#475569">6</text>
-  <line x1="68" y1="146" x2="70" y2="146" stroke="#475569" stroke-width="1"/><text x="60" y="150" text-anchor="end" font-size="10" fill="#475569">8</text>
-  <line x1="68" y1="110" x2="70" y2="110" stroke="#475569" stroke-width="1"/><text x="60" y="114" text-anchor="end" font-size="10" fill="#475569">10</text>
-  <line x1="68" y1="74" x2="70" y2="74" stroke="#475569" stroke-width="1"/> <text x="60" y="78" text-anchor="end"  font-size="10" fill="#475569">12</text>
-  <!-- Axis labels -->
-  <text x="330" y="325" text-anchor="middle" font-size="11" fill="#475569" font-weight="600">Dihedral Angle φ</text>
-  <text x="22" y="180" text-anchor="middle" font-size="11" fill="#475569" font-weight="600" transform="rotate(-90,22,180)">³J (Hz)</text>
-  
-  <!-- Grid lines -->
-  <line x1="70" y1="254" x2="590" y2="254" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="70" y1="218" x2="590" y2="218" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="70" y1="182" x2="590" y2="182" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="70" y1="146" x2="590" y2="146" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="70" y1="110" x2="590" y2="110" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="70" y1="74" x2="590" y2="74" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="157" y1="50" x2="157" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="244" y1="50" x2="244" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="330" y1="50" x2="330" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="417" y1="50" x2="417" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
-  <line x1="503" y1="50" x2="503" y2="290" stroke="#e2e8f0" stroke-width="0.7"/>
-
-  <!-- Karplus curve: J = 7.76*cos^2(phi) - 1.10*cos(phi) + 1.40 
-       scale: x = 70 + phi_deg*(520/360), y = 290 - J * (240/12)
-       Key points: phi=0 => J=8.06, phi=60 => J=2.63, phi=90 => J=1.40, phi=120 => J=2.43, phi=180 => J=10.26
-   -->
-  <path d="
-    M 70,143
-    C 95,147 110,168 130,196
-    C 150,224 155,247 157,254
-    C 167,270 186,280 200,283
-    C 214,285 225,281 230,278
-    C 237,274 242,265 244,254
-    C 252,234 260,214 278,200
-    C 296,186 310,184 324,183
-    C 330,182 335,182 340,184
-    C 348,192 356,209 368,225
-    C 380,241 400,263 417,272
-    C 434,281 445,282 460,278
-    C 482,268 499,245 503,236
-    C 510,218 515,197 530,183
-    C 545,170 560,161 575,152
-    C 582,148 586,145 590,143"
-    fill="none" stroke="#0ea5e9" stroke-width="3"/>
-
-  <!-- Region shading: eclipsed region (0-±30°) -->
-  <rect x="70" y="50" width="43" height="240" fill="#fef2f2" opacity="0.5"/>
-  <rect x="547" y="50" width="43" height="240" fill="#fef2f2" opacity="0.5"/>
-
-  <!-- Region shading: gauche region (40–80°) -->
-  <rect x="130" y="50" width="100" height="240" fill="#fef9c3" opacity="0.4"/>
-  <rect x="390" y="50" width="100" height="240" fill="#fef9c3" opacity="0.4"/>
-
-  <!-- Region shading: anti region (150–210°) -->
-  <rect x="288" y="50" width="84" height="240" fill="#dcfce7" opacity="0.4"/>
-
-  <!-- Annotations -->
-  <text x="91" y="66" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">eclipsed</text>
-  <text x="91" y="77" text-anchor="middle" font-size="9" fill="#ef4444">φ≈0°</text>
-  <text x="572" y="66" text-anchor="middle" font-size="9" fill="#ef4444" font-weight="600">eclipsed</text>
-  <text x="572" y="77" text-anchor="middle" font-size="9" fill="#ef4444">φ≈360°</text>
-  <text x="180" y="66" text-anchor="middle" font-size="9" fill="#a16207" font-weight="600">gauche</text>
-  <text x="440" y="66" text-anchor="middle" font-size="9" fill="#a16207" font-weight="600">gauche</text>
-  <text x="330" y="66" text-anchor="middle" font-size="9" fill="#166534" font-weight="600">anti</text>
-
-  <!-- Key value markers -->
-  <!-- phi=0, J=8.06 -->
-  <circle cx="70" cy="143" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
-  <text x="73" y="134" font-size="9" fill="#0369a1">8.1 Hz</text>
-
-  <!-- phi=90, J=1.40 -->
-  <circle cx="200" cy="265" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
-  <text x="204" y="263" font-size="9" fill="#0369a1">1.4 Hz</text>
-
-  <!-- phi=180, J=10.26 -->
-  <circle cx="330" cy="104" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
-  <text x="334" y="100" font-size="9" fill="#0369a1">10.3 Hz</text>
-
-  <!-- phi=270, J=1.40 -->
-  <circle cx="460" cy="265" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
-  <text x="464" y="262" font-size="9" fill="#0369a1">1.4 Hz</text>
-
-  <!-- phi=360, J=8.06 -->
-  <circle cx="590" cy="143" r="4" fill="#0ea5e9" stroke="white" stroke-width="1.5"/>
-
-  <!-- Parameter box -->
-  <rect x="72" y="332" width="490" height="38" rx="6" fill="#f0f9ff" stroke="#bae6fd" stroke-width="1"/>
-  <text x="317" y="349" text-anchor="middle" font-size="10" fill="#0c4a6e" font-weight="600">Karplus parameters (Haasnoot–de Leeuw, sci-form defaults): A = 7.76, B = 1.10, C = 1.40</text>
-  <text x="317" y="363" text-anchor="middle" font-size="9" fill="#0c4a6e">Coupling small near 90° (orthogonal). Maximum near 0° (eclipsed) and 180° (anti, largest ³J).</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" height="260" role="img" aria-label="The Karplus relation maps a dihedral angle to a vicinal proton-proton coupling constant.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-nmr-karplus-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-nmr-karplus-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-nmr-karplus-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="700" height="260" fill="url(#sf-nmr-karplus-glow)" stroke="none"/>
+<path d="M70,160 L160,160" fill="none" stroke="var(--sf-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M160,160 L235,115" fill="none" stroke="var(--sf-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="sf-float"/><path d="M160,160 L235,205" fill="none" stroke="var(--sf-accent2)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="sf-float sf-d2"/><circle cx="160" cy="160" r="7" fill="var(--sf-accent)"/><path d="M180,120 A55,55 0 0 1 240,108" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 5" class="sf-flow"/><text x="210" y="104" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-violet)">φ</text><path d="M330,55 L330,215 M330,215 L650,215" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M330,215 l4,-4 M330,215 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M330,55 l-4,4 M330,55 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="490.0" y="237" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">φ</text><text x="312" y="135.0" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 312 135.0)">³J</text><path d="M330.00,172.00 Q331.30,172.02 332.60,172.03 Q333.90,172.08 335.20,172.13 Q336.50,172.20 337.80,172.28 Q339.10,172.39 340.40,172.49 Q341.70,172.62 343.00,172.75 Q344.30,172.90 345.60,173.05 Q346.90,173.22 348.20,173.38 Q349.50,173.56 350.80,173.74 Q352.10,173.92 353.40,174.10 Q354.70,174.29 356.00,174.47 Q357.30,174.64 358.60,174.82 Q359.90,174.98 361.20,175.15 Q362.50,175.30 363.80,175.45 Q365.10,175.57 366.40,175.70 Q367.70,175.80 369.00,175.90 Q370.30,175.97 371.60,176.05 Q372.90,176.09 374.20,176.13 Q375.50,176.13 376.80,176.14 Q378.10,176.12 379.40,176.09 Q380.70,176.03 382.00,175.98 Q383.30,175.89 384.60,175.80 Q385.90,175.68 387.20,175.56 Q388.50,175.42 389.80,175.28 Q391.10,175.12 392.40,174.96 Q393.70,174.79 395.00,174.61 Q396.30,174.43 397.60,174.25 Q398.90,174.07 400.20,173.88 Q401.50,173.71 402.80,173.53 Q404.10,173.37 405.40,173.21 Q406.70,173.07 408.00,172.94 Q409.30,172.83 410.60,172.72 Q411.90,172.65 413.20,172.57 Q414.50,172.55 415.80,172.52 Q417.10,172.54 418.40,172.56 Q419.70,172.63 421.00,172.71 Q422.30,172.84 423.60,172.97 Q424.90,173.17 426.20,173.36 Q427.50,173.62 428.80,173.87 Q430.10,174.19 431.40,174.51 Q432.70,174.89 434.00,175.27 Q435.30,175.70 436.60,176.14 Q437.90,176.63 439.20,177.12 Q440.50,177.66 441.80,178.20 Q443.10,178.78 444.40,179.36 Q445.70,179.97 447.00,180.59 Q448.30,181.23 449.60,181.87 Q450.90,182.52 452.20,183.18 Q453.50,183.84 454.80,184.50 Q456.10,185.16 457.40,185.81 Q458.70,186.45 460.00,187.09 Q461.30,187.70 462.60,188.31 Q463.90,188.89 465.20,189.46 Q466.50,189.99 467.80,190.52 Q469.10,190.99 470.40,191.46 Q471.70,191.87 473.00,192.28 Q474.30,192.61 475.60,192.94 Q476.90,193.20 478.20,193.46 Q479.50,193.63 480.80,193.80 Q482.10,193.89 483.40,193.98 Q484.70,193.98 486.00,193.98 Q487.30,193.89 488.60,193.80 Q489.90,193.63 491.20,193.46 Q492.50,193.20 493.80,192.94 Q495.10,192.61 496.40,192.28 Q497.70,191.87 499.00,191.46 Q500.30,190.99 501.60,190.52 Q502.90,189.99 504.20,189.46 Q505.50,188.89 506.80,188.31 Q508.10,187.70 509.40,187.09 Q510.70,186.45 512.00,185.81 Q513.30,185.16 514.60,184.50 Q515.90,183.84 517.20,183.18 Q518.50,182.52 519.80,181.87 Q521.10,181.23 522.40,180.59 Q523.70,179.97 525.00,179.36 Q526.30,178.78 527.60,178.20 Q528.90,177.66 530.20,177.12 Q531.50,176.63 532.80,176.14 Q534.10,175.70 535.40,175.27 Q536.70,174.89 538.00,174.51 Q539.30,174.19 540.60,173.87 Q541.90,173.62 543.20,173.36 Q544.50,173.17 545.80,172.97 Q547.10,172.84 548.40,172.71 Q549.70,172.63 551.00,172.56 Q552.30,172.54 553.60,172.52 Q554.90,172.55 556.20,172.57 Q557.50,172.65 558.80,172.72 Q560.10,172.83 561.40,172.94 Q562.70,173.07 564.00,173.21 Q565.30,173.37 566.60,173.53 Q567.90,173.71 569.20,173.88 Q570.50,174.07 571.80,174.25 Q573.10,174.43 574.40,174.61 Q575.70,174.79 577.00,174.96 Q578.30,175.12 579.60,175.28 Q580.90,175.42 582.20,175.56 Q583.50,175.68 584.80,175.80 Q586.10,175.89 587.40,175.98 Q588.70,176.03 590.00,176.09 Q591.30,176.12 592.60,176.14 Q593.90,176.13 595.20,176.13 Q596.50,176.09 597.80,176.05 Q599.10,175.97 600.40,175.90 Q601.70,175.80 603.00,175.70 Q604.30,175.57 605.60,175.45 Q606.90,175.30 608.20,175.15 Q609.50,174.98 610.80,174.82 Q612.10,174.64 613.40,174.47 Q614.70,174.29 616.00,174.10 Q617.30,173.92 618.60,173.74 Q619.90,173.56 621.20,173.38 Q622.50,173.22 623.80,173.05 Q625.10,172.90 626.40,172.75 Q627.70,172.62 629.00,172.49 Q630.30,172.39 631.60,172.28 Q632.90,172.20 634.20,172.13 Q635.50,172.08 636.80,172.03 Q638.10,172.02 639.40,172.00" fill="none" stroke="var(--sf-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><circle cx="460.0" cy="181.0" r="5" fill="var(--sf-warm)" class="sf-pulse"/><text x="390" y="235" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">0°</text><text x="490" y="235" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">90°</text><text x="590" y="235" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">180°</text><rect x="430" y="26" width="100" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="480.0" y="40.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">Karplus</text>
 </svg>

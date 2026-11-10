@@ -1,73 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" width="720" height="360" font-family="system-ui, sans-serif">
-  <rect width="720" height="360" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="360" y="28" text-anchor="middle" font-size="14" font-weight="700" fill="#0f172a">Broadening Line Shapes: Gaussian vs Lorentzian</text>
-
-  <!-- ─── Left panel: Gaussian ─── -->
-  <rect x="20" y="45" width="320" height="270" rx="8" fill="white" stroke="#bfdbfe" stroke-width="1.5"/>
-  <text x="180" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#1e40af">Gaussian</text>
-  <text x="180" y="83" text-anchor="middle" font-size="10" fill="#64748b">G(x, σ) = (1/σ√2π) exp(−x²/2σ²)</text>
-
-  <!-- Gaussian axes -->
-  <line x1="50" y1="240" x2="308" y2="240" stroke="#1e293b" stroke-width="1.5"/>
-  <line x1="50" y1="100" x2="50" y2="240" stroke="#1e293b" stroke-width="1.5"/>
-  <text x="180" y="260" text-anchor="middle" font-size="10" fill="#64748b">Δ (eV or cm⁻¹)</text>
-  <text x="35" y="175" text-anchor="middle" fill="#64748b" font-size="10" transform="rotate(-90,35,175)">Intensity</text>
-
-  <!-- Gaussian curve (standard bell) -->
-  <path d="M 55,239 Q 70,238 90,235 Q 105,228 115,215 Q 125,198 135,175 Q 145,152 155,130 Q 162,115 170,108 Q 180,100 190,108 Q 198,115 205,130 Q 215,152 225,175 Q 235,198 245,215 Q 255,228 265,235 Q 280,238 300,239" fill="none" stroke="#3b82f6" stroke-width="2.5"/>
-  <path d="M 55,239 Q 70,238 90,235 Q 105,228 115,215 Q 125,198 135,175 Q 145,152 155,130 Q 162,115 170,108 Q 180,100 190,108 Q 198,115 205,130 Q 215,152 225,175 Q 235,198 245,215 Q 255,228 265,235 Q 280,238 300,239 L 300,239 L 55,239 Z" fill="#3b82f6" opacity="0.12"/>
-
-  <!-- FWHM annotation -->
-  <line x1="50" y1="170" x2="308" y2="170" stroke="#64748b" stroke-width="0.8" stroke-dasharray="4,3"/>
-  <text x="312" y="174" font-size="9" fill="#64748b">½</text>
-  <line x1="142" y1="170" x2="218" y2="170" stroke="#ef4444" stroke-width="2"/>
-  <text x="180" y="167" text-anchor="middle" font-size="9" fill="#ef4444">FWHM = 2.355σ</text>
-
-  <!-- σ annotation -->
-  <line x1="180" y1="100" x2="215" y2="100" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,2"/>
-  <line x1="215" y1="100" x2="215" y2="240" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,2"/>
-  <text x="218" y="175" font-size="9" fill="#94a3b8">σ</text>
-
-  <!-- Properties box -->
-  <rect x="35" y="248" width="290" height="55" rx="6" fill="#eff6ff" stroke="#93c5fd" stroke-width="1"/>
-  <text x="45" y="264" font-size="10" fill="#1e40af" font-weight="600">Properties:</text>
-  <text x="45" y="278" font-size="9" fill="#374151">• Fast decay in wings (exponential)</text>
-  <text x="45" y="291" font-size="9" fill="#374151">• Instrument + thermal broadening</text>
-  <text x="45" y="304" font-size="9" fill="#374151">• Default for UV-Vis sTDA in sci-form</text>
-
-  <!-- ─── Right panel: Lorentzian ─── -->
-  <rect x="360" y="45" width="340" height="270" rx="8" fill="white" stroke="#c4b5fd" stroke-width="1.5"/>
-  <text x="530" y="68" text-anchor="middle" font-size="13" font-weight="700" fill="#6d28d9">Lorentzian</text>
-  <text x="530" y="83" text-anchor="middle" font-size="10" fill="#64748b">L(x, γ) = (γ/π) / (x² + γ²)</text>
-
-  <!-- Lorentzian axes -->
-  <line x1="390" y1="240" x2="680" y2="240" stroke="#1e293b" stroke-width="1.5"/>
-  <line x1="390" y1="100" x2="390" y2="240" stroke="#1e293b" stroke-width="1.5"/>
-  <text x="535" y="260" text-anchor="middle" font-size="10" fill="#64748b">Δ (eV, ppm, or cm⁻¹)</text>
-
-  <!-- Lorentzian curve (sharper peak, fatter wings) -->
-  <path d="M 393,239 Q 410,238 425,235 Q 440,230 450,222 Q 458,214 462,205 Q 466,194 468,182 Q 470,164 475,148 Q 482,128 493,114 Q 505,104 518,108 Q 530,100 542,108 Q 555,114 566,128 Q 577,148 582,164 Q 584,182 586,194 Q 588,205 592,214 Q 596,222 606,230 Q 620,235 640,238 Q 660,239 675,239" fill="none" stroke="#8b5cf6" stroke-width="2.5"/>
-  <path d="M 393,239 Q 410,238 425,235 Q 440,230 450,222 Q 458,214 462,205 Q 466,194 468,182 Q 470,164 475,148 Q 482,128 493,114 Q 505,104 518,108 Q 530,100 542,108 Q 555,114 566,128 Q 577,148 582,164 Q 584,182 586,194 Q 588,205 592,214 Q 596,222 606,230 Q 620,235 640,238 Q 660,239 675,239 L 393,239 Z" fill="#8b5cf6" opacity="0.12"/>
-
-  <!-- FWHM annotation -->
-  <line x1="390" y1="170" x2="680" y2="170" stroke="#64748b" stroke-width="0.8" stroke-dasharray="4,3"/>
-  <text x="682" y="174" font-size="9" fill="#64748b">½</text>
-  <line x1="504" y1="170" x2="556" y2="170" stroke="#ef4444" stroke-width="2"/>
-  <text x="530" y="167" text-anchor="middle" font-size="9" fill="#ef4444">FWHM = 2γ</text>
-
-  <!-- Heavy tails label -->
-  <text x="420" y="218" font-size="9" fill="#8b5cf6" font-style="italic">heavy tails</text>
-  <text x="630" y="218" font-size="9" fill="#8b5cf6" font-style="italic">heavy tails</text>
-
-  <!-- Properties box -->
-  <rect x="375" y="248" width="310" height="55" rx="6" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1"/>
-  <text x="385" y="264" font-size="10" fill="#6d28d9" font-weight="600">Properties:</text>
-  <text x="385" y="278" font-size="9" fill="#374151">• Slower decay in wings (1/x² tails)</text>
-  <text x="385" y="291" font-size="9" fill="#374151">• Natural line shape (lifetime broadening)</text>
-  <text x="385" y="304" font-size="9" fill="#374151">• Used for IR spectra and NMR in sci-form</text>
-
-  <!-- Bottom comparison note -->
-  <rect x="20" y="322" width="680" height="28" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1"/>
-  <text x="360" y="337" text-anchor="middle" font-size="10" fill="#166534" font-weight="600">Both share the same peak area. Lorentzian has sharper peak but extends further. Gaussian falls off faster at large |Δ|.</text>
-  <text x="360" y="349" text-anchor="middle" font-size="9" fill="#166534">sci-form: UV-Vis accepts BroadeningType::Gaussian or BroadeningType::Lorentzian. IR and NMR always use Lorentzian.</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 260" width="700" height="260" role="img" aria-label="Gaussian and Lorentzian line shapes differ mainly in their wings.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-broadening-functions-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-broadening-functions-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-broadening-functions-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="700" height="260" fill="url(#sf-broadening-functions-glow)" stroke="none"/>
+<path d="M60,55 L60,205 M60,205 L640,205" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M60,205 l4,-4 M60,205 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M60,55 l-4,4 M60,55 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="350.0" y="227" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">Δ</text><text x="42" y="130.0" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 42 130.0)">intensity</text><path d="M60.00,190.00 Q62.40,190.00 64.80,190.00 Q67.20,190.00 69.60,190.00 Q72.00,190.00 74.40,190.00 Q76.80,190.00 79.20,190.00 Q81.60,190.00 84.00,190.00 Q86.40,190.00 88.80,190.00 Q91.20,190.00 93.60,190.00 Q96.00,190.00 98.40,190.00 Q100.80,190.00 103.20,190.00 Q105.60,190.00 108.00,190.00 Q110.40,190.00 112.80,190.00 Q115.20,190.00 117.60,190.00 Q120.00,190.00 122.40,190.00 Q124.80,190.00 127.20,190.00 Q129.60,190.00 132.00,190.00 Q134.40,190.00 136.80,190.00 Q139.20,190.00 141.60,190.00 Q144.00,190.00 146.40,190.00 Q148.80,190.00 151.20,190.00 Q153.60,190.00 156.00,190.00 Q158.40,190.00 160.80,190.00 Q163.20,190.00 165.60,190.00 Q168.00,190.00 170.40,190.00 Q172.80,190.00 175.20,190.00 Q177.60,190.00 180.00,190.00 Q182.40,190.00 184.80,190.00 Q187.20,190.00 189.60,190.00 Q192.00,190.00 194.40,190.00 Q196.80,190.00 199.20,190.00 Q201.60,190.00 204.00,190.00 Q206.40,189.99 208.80,189.99 Q211.20,189.99 213.60,189.99 Q216.00,189.98 218.40,189.97 Q220.80,189.96 223.20,189.95 Q225.60,189.93 228.00,189.92 Q230.40,189.88 232.80,189.85 Q235.20,189.80 237.60,189.75 Q240.00,189.66 242.40,189.58 Q244.80,189.45 247.20,189.31 Q249.60,189.10 252.00,188.90 Q254.40,188.59 256.80,188.27 Q259.20,187.82 261.60,187.36 Q264.00,186.70 266.40,186.05 Q268.80,185.13 271.20,184.21 Q273.60,182.97 276.00,181.72 Q278.40,180.07 280.80,178.42 Q283.20,176.29 285.60,174.16 Q288.00,171.49 290.40,168.82 Q292.80,165.56 295.20,162.31 Q297.60,158.45 300.00,154.60 Q302.40,150.17 304.80,145.75 Q307.20,140.83 309.60,135.92 Q312.00,130.64 314.40,125.37 Q316.80,119.93 319.20,114.49 Q321.60,109.11 324.00,103.74 Q326.40,98.69 328.80,93.65 Q331.20,89.21 333.60,84.77 Q336.00,81.20 338.40,77.63 Q340.80,75.15 343.20,72.68 Q345.60,71.46 348.00,70.23 Q350.40,70.35 352.80,70.46 Q355.20,71.90 357.60,73.34 Q360.00,76.01 362.40,78.68 Q364.80,82.41 367.20,86.14 Q369.60,90.70 372.00,95.26 Q374.40,100.38 376.80,105.50 Q379.20,110.90 381.60,116.31 Q384.00,121.73 386.40,127.16 Q388.80,132.39 391.20,137.61 Q393.60,142.45 396.00,147.30 Q398.40,151.63 400.80,155.96 Q403.20,159.72 405.60,163.48 Q408.00,166.63 410.40,169.79 Q412.80,172.37 415.20,174.94 Q417.60,176.99 420.00,179.03 Q422.40,180.61 424.80,182.19 Q427.20,183.37 429.60,184.56 Q432.00,185.43 434.40,186.30 Q436.80,186.92 439.20,187.53 Q441.60,187.96 444.00,188.40 Q446.40,188.69 448.80,188.98 Q451.20,189.17 453.60,189.36 Q456.00,189.49 458.40,189.61 Q460.80,189.69 463.20,189.77 Q465.60,189.82 468.00,189.87 Q470.40,189.90 472.80,189.92 Q475.20,189.94 477.60,189.96 Q480.00,189.97 482.40,189.98 Q484.80,189.98 487.20,189.99 Q489.60,189.99 492.00,189.99 Q494.40,190.00 496.80,190.00 Q499.20,190.00 501.60,190.00 Q504.00,190.00 506.40,190.00 Q508.80,190.00 511.20,190.00 Q513.60,190.00 516.00,190.00 Q518.40,190.00 520.80,190.00 Q523.20,190.00 525.60,190.00 Q528.00,190.00 530.40,190.00 Q532.80,190.00 535.20,190.00 Q537.60,190.00 540.00,190.00 Q542.40,190.00 544.80,190.00 Q547.20,190.00 549.60,190.00 Q552.00,190.00 554.40,190.00 Q556.80,190.00 559.20,190.00 Q561.60,190.00 564.00,190.00 Q566.40,190.00 568.80,190.00 Q571.20,190.00 573.60,190.00 Q576.00,190.00 578.40,190.00 Q580.80,190.00 583.20,190.00 Q585.60,190.00 588.00,190.00 Q590.40,190.00 592.80,190.00 Q595.20,190.00 597.60,190.00 Q600.00,190.00 602.40,190.00 Q604.80,190.00 607.20,190.00 Q609.60,190.00 612.00,190.00 Q614.40,190.00 616.80,190.00 Q619.20,190.00 621.60,190.00 Q624.00,190.00 626.40,190.00 Q628.80,190.00 631.20,190.00" fill="none" stroke="var(--sf-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><path d="M60.00,188.89 Q62.40,188.87 64.80,188.85 Q67.20,188.83 69.60,188.82 Q72.00,188.79 74.40,188.77 Q76.80,188.75 79.20,188.73 Q81.60,188.71 84.00,188.68 Q86.40,188.66 88.80,188.64 Q91.20,188.61 93.60,188.59 Q96.00,188.56 98.40,188.53 Q100.80,188.50 103.20,188.48 Q105.60,188.44 108.00,188.41 Q110.40,188.38 112.80,188.35 Q115.20,188.32 117.60,188.28 Q120.00,188.25 122.40,188.21 Q124.80,188.17 127.20,188.13 Q129.60,188.09 132.00,188.05 Q134.40,188.01 136.80,187.97 Q139.20,187.92 141.60,187.87 Q144.00,187.82 146.40,187.77 Q148.80,187.72 151.20,187.67 Q153.60,187.61 156.00,187.55 Q158.40,187.49 160.80,187.43 Q163.20,187.36 165.60,187.30 Q168.00,187.22 170.40,187.15 Q172.80,187.08 175.20,187.00 Q177.60,186.91 180.00,186.83 Q182.40,186.74 184.80,186.65 Q187.20,186.55 189.60,186.45 Q192.00,186.34 194.40,186.24 Q196.80,186.12 199.20,186.00 Q201.60,185.87 204.00,185.74 Q206.40,185.60 208.80,185.46 Q211.20,185.30 213.60,185.15 Q216.00,184.98 218.40,184.80 Q220.80,184.61 223.20,184.42 Q225.60,184.21 228.00,184.00 Q230.40,183.76 232.80,183.52 Q235.20,183.25 237.60,182.99 Q240.00,182.69 242.40,182.39 Q244.80,182.05 247.20,181.71 Q249.60,181.33 252.00,180.94 Q254.40,180.50 256.80,180.07 Q259.20,179.56 261.60,179.06 Q264.00,178.48 266.40,177.90 Q268.80,177.22 271.20,176.55 Q273.60,175.76 276.00,174.97 Q278.40,174.04 280.80,173.12 Q283.20,172.02 285.60,170.92 Q288.00,169.61 290.40,168.30 Q292.80,166.73 295.20,165.16 Q297.60,163.25 300.00,161.35 Q302.40,159.04 304.80,156.72 Q307.20,153.89 309.60,151.06 Q312.00,147.60 314.40,144.14 Q316.80,139.92 319.20,135.70 Q321.60,130.63 324.00,125.56 Q326.40,119.64 328.80,113.73 Q331.20,107.19 333.60,100.65 Q336.00,94.12 338.40,87.58 Q340.80,82.13 343.20,76.68 Q345.60,73.65 348.00,70.61 Q350.40,70.90 352.80,71.19 Q355.20,74.71 357.60,78.23 Q360.00,83.95 362.40,89.68 Q364.80,96.28 367.20,102.88 Q369.60,109.34 372.00,115.80 Q374.40,121.59 376.80,127.37 Q379.20,132.30 381.60,137.22 Q384.00,141.31 386.40,145.39 Q388.80,148.74 391.20,152.09 Q393.60,154.82 396.00,157.56 Q398.40,159.80 400.80,162.04 Q403.20,163.88 405.60,165.72 Q408.00,167.25 410.40,168.77 Q412.80,170.04 415.20,171.31 Q417.60,172.38 420.00,173.45 Q422.40,174.35 424.80,175.25 Q427.20,176.02 429.60,176.79 Q432.00,177.44 434.40,178.10 Q436.80,178.67 439.20,179.24 Q441.60,179.73 444.00,180.22 Q446.40,180.65 448.80,181.08 Q451.20,181.45 453.60,181.83 Q456.00,182.16 458.40,182.49 Q460.80,182.79 463.20,183.08 Q465.60,183.34 468.00,183.60 Q470.40,183.84 472.80,184.07 Q475.20,184.28 477.60,184.49 Q480.00,184.68 482.40,184.86 Q484.80,185.03 487.20,185.20 Q489.60,185.36 492.00,185.51 Q494.40,185.65 496.80,185.79 Q499.20,185.91 501.60,186.04 Q504.00,186.16 506.40,186.27 Q508.80,186.38 511.20,186.49 Q513.60,186.58 516.00,186.68 Q518.40,186.77 520.80,186.86 Q523.20,186.94 525.60,187.02 Q528.00,187.10 530.40,187.18 Q532.80,187.25 535.20,187.32 Q537.60,187.38 540.00,187.45 Q542.40,187.51 544.80,187.57 Q547.20,187.63 549.60,187.68 Q552.00,187.74 554.40,187.79 Q556.80,187.84 559.20,187.89 Q561.60,187.93 564.00,187.98 Q566.40,188.02 568.80,188.07 Q571.20,188.11 573.60,188.15 Q576.00,188.19 578.40,188.22 Q580.80,188.26 583.20,188.29 Q585.60,188.33 588.00,188.36 Q590.40,188.39 592.80,188.43 Q595.20,188.45 597.60,188.48 Q600.00,188.51 602.40,188.54 Q604.80,188.57 607.20,188.59 Q609.60,188.62 612.00,188.64 Q614.40,188.67 616.80,188.69 Q619.20,188.72 621.60,188.74 Q624.00,188.76 626.40,188.78 Q628.80,188.80 631.20,188.82" fill="none" stroke="var(--sf-warm)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="350" y="235" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">Gaussian</text><text x="470" y="235" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">Lorentzian</text><rect x="250" y="26" width="100" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-violet)" stroke-width="1"/><text x="300.0" y="40.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-violet)">line shape</text>
 </svg>

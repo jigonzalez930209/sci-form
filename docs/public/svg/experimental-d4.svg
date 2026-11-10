@@ -1,55 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 220" width="780" height="220" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
-  <rect width="780" height="220" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Title -->
-  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">E7: Grimme D4 Dispersion Correction</text>
-  <text x="390" y="48" text-anchor="middle" font-size="10" fill="#64748b">Geometry-dependent C6/C8 with Becke-Johnson damping</text>
-
-  <!-- Phase boxes -->
-  <rect x="10"  y="65" width="140" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="80"  y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Coord. Numbers</text>
-  <text x="80"  y="106" text-anchor="middle" font-size="10" fill="#1d4ed8">CN_A (D4 counting)</text>
-  <text x="80"  y="120" text-anchor="middle" font-size="10" fill="#1d4ed8">error function</text>
-
-  <rect x="170" y="65" width="140" height="80" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="240" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">C6(CN) Interp</text>
-  <text x="240" y="106" text-anchor="middle" font-size="10" fill="#15803d">Reference C6^ref</text>
-  <text x="240" y="120" text-anchor="middle" font-size="10" fill="#15803d">Gaussian weights</text>
-
-  <rect x="330" y="65" width="140" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="400" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">BJ Damping</text>
-  <text x="400" y="106" text-anchor="middle" font-size="10" fill="#92400e">f_damp(r, R0_AB)</text>
-  <text x="400" y="120" text-anchor="middle" font-size="10" fill="#92400e">a1, a2, s8 params</text>
-
-  <rect x="490" y="65" width="140" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="560" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">E_disp</text>
-  <text x="560" y="106" text-anchor="middle" font-size="10" fill="#be185d">E2 + E3 body</text>
-  <text x="560" y="120" text-anchor="middle" font-size="10" fill="#be185d">−C6/r⁶ − C8/r⁸</text>
-
-  <rect x="650" y="65" width="120" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="710" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">Augmented FF</text>
-  <text x="710" y="106" text-anchor="middle" font-size="10" fill="#6d28d9">EHT-D4</text>
-  <text x="710" y="120" text-anchor="middle" font-size="10" fill="#6d28d9">UFF-D4</text>
-
-  <!-- Arrows -->
-  <line x1="150" y1="105" x2="168" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="310" y1="105" x2="328" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="470" y1="105" x2="488" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="630" y1="105" x2="648" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Labels -->
-  <text x="80"  y="168" text-anchor="middle" font-size="9" fill="#64748b">environment-aware</text>
-  <text x="240" y="168" text-anchor="middle" font-size="9" fill="#64748b">DFT-quality coefficients</text>
-  <text x="400" y="168" text-anchor="middle" font-size="9" fill="#64748b">rational damping</text>
-  <text x="560" y="168" text-anchor="middle" font-size="9" fill="#64748b">2- and 3-body terms</text>
-  <text x="710" y="168" text-anchor="middle" font-size="9" fill="#64748b">2.7% overhead</text>
-
-  <!-- Advantage badge -->
-  <rect x="180" y="185" width="420" height="24" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
-  <text x="390" y="201" text-anchor="middle" font-size="10" fill="#166534">✓ 36× faster than UFF · DFT-quality London dispersion · Analytical gradient</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 280" width="780" height="280" role="img" aria-label="Two molecular fragments exchange dynamic dispersion interactions.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-experimental-d4-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-experimental-d4-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-experimental-d4-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="780" height="280" fill="url(#sf-experimental-d4-glow)" stroke="none"/>
+<g class="sf-float"><path d="M195.57,120.39 L227.09,145.02 L221.52,184.63 L184.43,199.61 L152.91,174.98 L158.48,135.37 Z" fill="none" stroke="var(--sf-line)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="190" cy="160" r="22.400000000000002" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" opacity="0.75"/><circle cx="195.56692403840262" cy="120.38927725033719" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="227.0873541826715" cy="145.01573626336352" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="221.5204301442689" cy="184.62645901302633" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="184.43307596159738" cy="199.6107227496628" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="152.9126458173285" cy="174.98426373663648" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="158.4795698557311" cy="135.37354098697367" r="4.5" fill="var(--sf-ink)" opacity="0.85"/></g><g class="sf-float sf-d2"><path d="M551.77,107.01 L584.46,116.38 L592.68,149.37 L568.23,172.99 L535.54,163.62 L527.32,130.63 Z" fill="none" stroke="var(--sf-line)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="560" cy="140" r="19.040000000000003" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" opacity="0.75"/><circle cx="551.7746555496113" cy="107.00994530661612" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="584.4575532115141" cy="116.3816154043941" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="592.6828976619029" cy="149.37167009777798" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="568.2253444503887" cy="172.99005469338388" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="535.5424467884859" cy="163.6183845956059" r="4.5" fill="var(--sf-ink)" opacity="0.85"/><circle cx="527.3171023380971" cy="130.62832990222205" r="4.5" fill="var(--sf-ink)" opacity="0.85"/></g><text x="190" y="228" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">fragment A</text><text x="560" y="208" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">fragment B</text><path d="M255,110 C330,92 420,128 500,110" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sf-flow sf-d1" opacity="0.65"/><path d="M255,128 C330,110 420,146 500,128" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sf-flow sf-d2" opacity="0.65"/><path d="M255,146 C330,128 420,164 500,146" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sf-flow sf-d3" opacity="0.65"/><path d="M255,164 C330,146 420,182 500,164" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sf-flow sf-d4" opacity="0.65"/><path d="M255,182 C330,164 420,200 500,182" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sf-flow sf-d5" opacity="0.65"/><text x="378" y="244" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">dynamic C6 / C8</text><rect x="338" y="42" width="82" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-warm)" stroke-width="1"/><text x="379.0" y="56.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">dispersion</text>
 </svg>

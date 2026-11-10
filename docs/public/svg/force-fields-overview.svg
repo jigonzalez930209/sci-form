@@ -1,35 +1,58 @@
-<svg width="550" height="250" viewBox="0 0 550 250" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <rect x="0" y="0" width="550" height="250" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif">
-    <!-- Axes -->
-    <line x1="80" y1="200" x2="500" y2="200" stroke="#94a3b8" stroke-width="1"/>
-    <line x1="80" y1="200" x2="80" y2="20" stroke="#94a3b8" stroke-width="1"/>
-
-    <!-- E label -->
-    <text x="70" y="15" text-anchor="end" fill="#334155" font-weight="600" font-size="12">E</text>
-    <!-- d label -->
-    <text x="510" y="205" fill="#334155" font-weight="600" font-size="12">d</text>
-
-    <!-- Lower bound region -->
-    <path d="M 80 80 Q 120 195 170 200" fill="none" stroke="#ef4444" stroke-width="2.5"/>
-
-    <!-- Flat region -->
-    <line x1="170" y1="200" x2="350" y2="200" stroke="#10b981" stroke-width="2.5"/>
-
-    <!-- Upper bound region -->
-    <path d="M 350 200 Q 400 195 480 80" fill="none" stroke="#ef4444" stroke-width="2.5"/>
-
-    <!-- l and u markers -->
-    <line x1="170" y1="195" x2="170" y2="210" stroke="#2563eb" stroke-width="1.5"/>
-    <text x="170" y="225" text-anchor="middle" fill="#2563eb" font-weight="600" font-size="12">l_ij</text>
-
-    <line x1="350" y1="195" x2="350" y2="210" stroke="#2563eb" stroke-width="1.5"/>
-    <text x="350" y="225" text-anchor="middle" fill="#2563eb" font-weight="600" font-size="12">u_ij</text>
-
-    <!-- Labels -->
-    <text x="265" y="190" text-anchor="middle" fill="#10b981" font-size="11" font-weight="600">E = 0</text>
-    <text x="130" y="60" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="600">too close</text>
-    <text x="450" y="60" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="600">too far</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 280" width="600" height="280" role="img" aria-label="A force field balances repulsion at short range against attraction at long range.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-force-fields-overview-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-force-fields-overview-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-force-fields-overview-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="600" height="280" fill="url(#sf-force-fields-overview-glow)" stroke="none"/>
+<path d="M80,50 L80,220 M80,220 L540,220" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M80,220 l4,-4 M80,220 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M80,50 l-4,4 M80,50 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="310.0" y="242" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">distance</text><text x="62" y="135.0" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 62 135.0)">E</text><rect x="258" y="50" width="104" height="170" rx="8" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4" opacity="0.1"/><text x="310" y="42" text-anchor="middle" font-size="9.5" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">allowed</text><path d="M90.00,55.00 Q91.80,55.00 93.60,55.00 Q95.40,55.00 97.20,55.00 Q99.00,55.00 100.80,55.00 Q102.60,55.00 104.40,55.00 Q106.20,55.00 108.00,55.00 Q109.80,55.00 111.60,55.00 Q113.40,55.00 115.20,55.00 Q117.00,55.00 118.80,55.00 Q120.60,55.00 122.40,55.00 Q124.20,55.00 126.00,55.00 Q127.80,55.00 129.60,55.00 Q131.40,55.00 133.20,55.00 Q135.00,55.00 136.80,55.00 Q138.60,55.00 140.40,55.00 Q142.20,55.00 144.00,55.00 Q145.80,55.00 147.60,55.00 Q149.40,55.00 151.20,55.00 Q153.00,55.00 154.80,55.00 Q156.60,55.00 158.40,55.00 Q160.20,55.00 162.00,55.00 Q163.80,55.00 165.60,55.00 Q167.40,55.00 169.20,55.00 Q171.00,55.00 172.80,55.00 Q174.60,55.00 176.40,55.00 Q178.20,55.00 180.00,55.00 Q181.80,55.00 183.60,55.00 Q185.40,55.00 187.20,55.00 Q189.00,55.00 190.80,55.00 Q192.60,55.00 194.40,55.00 Q196.20,55.00 198.00,55.00 Q199.80,57.68 201.60,60.36 Q203.40,66.53 205.20,72.70 Q207.00,78.36 208.80,84.03 Q210.60,89.21 212.40,94.40 Q214.20,99.15 216.00,103.90 Q217.80,108.24 219.60,112.58 Q221.40,116.54 223.20,120.49 Q225.00,124.10 226.80,127.71 Q228.60,130.98 230.40,134.26 Q232.20,137.24 234.00,140.21 Q235.80,142.90 237.60,145.59 Q239.40,148.02 241.20,150.45 Q243.00,152.64 244.80,154.83 Q246.60,156.79 248.40,158.75 Q250.20,160.51 252.00,162.26 Q253.80,163.83 255.60,165.39 Q257.40,166.78 259.20,168.16 Q261.00,169.38 262.80,170.60 Q264.60,171.67 266.40,172.74 Q268.20,173.67 270.00,174.60 Q271.80,175.41 273.60,176.21 Q275.40,176.89 277.20,177.57 Q279.00,178.15 280.80,178.72 Q282.60,179.20 284.40,179.67 Q286.20,180.05 288.00,180.43 Q289.80,180.73 291.60,181.03 Q293.40,181.25 295.20,181.47 Q297.00,181.62 298.80,181.77 Q300.60,181.86 302.40,181.95 Q304.20,181.97 306.00,182.00 Q307.80,181.97 309.60,181.95 Q311.40,181.87 313.20,181.80 Q315.00,181.68 316.80,181.56 Q318.60,181.41 320.40,181.25 Q322.20,181.06 324.00,180.86 Q325.80,180.64 327.60,180.41 Q329.40,180.16 331.20,179.91 Q333.00,179.63 334.80,179.35 Q336.60,179.05 338.40,178.74 Q340.20,178.42 342.00,178.10 Q343.80,177.76 345.60,177.42 Q347.40,177.07 349.20,176.71 Q351.00,176.35 352.80,175.98 Q354.60,175.60 356.40,175.22 Q358.20,174.83 360.00,174.44 Q361.80,174.05 363.60,173.65 Q365.40,173.25 367.20,172.85 Q369.00,172.44 370.80,172.03 Q372.60,171.62 374.40,171.21 Q376.20,170.79 378.00,170.38 Q379.80,169.97 381.60,169.55 Q383.40,169.13 385.20,168.72 Q387.00,168.30 388.80,167.89 Q390.60,167.47 392.40,167.06 Q394.20,166.64 396.00,166.23 Q397.80,165.82 399.60,165.41 Q401.40,165.00 403.20,164.60 Q405.00,164.19 406.80,163.79 Q408.60,163.39 410.40,162.99 Q412.20,162.59 414.00,162.20 Q415.80,161.81 417.60,161.42 Q419.40,161.03 421.20,160.64 Q423.00,160.26 424.80,159.88 Q426.60,159.51 428.40,159.13 Q430.20,158.77 432.00,158.40 Q433.80,158.03 435.60,157.67 Q437.40,157.32 439.20,156.96 Q441.00,156.61 442.80,156.26 Q444.60,155.91 446.40,155.57 Q448.20,155.23 450.00,154.90 Q451.80,154.57 453.60,154.23 Q455.40,153.91 457.20,153.59 Q459.00,153.27 460.80,152.95 Q462.60,152.64 464.40,152.33 Q466.20,152.03 468.00,151.72 Q469.80,151.42 471.60,151.13 Q473.40,150.84 475.20,150.54 Q477.00,150.26 478.80,149.98 Q480.60,149.70 482.40,149.42 Q484.20,149.15 486.00,148.88 Q487.80,148.61 489.60,148.35 Q491.40,148.09 493.20,147.83 Q495.00,147.58 496.80,147.33 Q498.60,147.08 500.40,146.83 Q502.20,146.59 504.00,146.35 Q505.80,146.12 507.60,145.89 Q509.40,145.66 511.20,145.43 Q513.00,145.21 514.80,144.98 Q516.60,144.77 518.40,144.55" fill="none" stroke="var(--sf-warm)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><circle r="7" fill="var(--sf-accent)"><animateMotion dur="3.6s" repeatCount="indefinite" path="M286,178 Q306,166 326,178 Q306,190 286,178"/></circle><text x="150" y="235" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-rose)">too close</text><text x="500" y="235" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">too far</text>
 </svg>

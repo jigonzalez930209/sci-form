@@ -24,9 +24,16 @@ Download from [GitHub Releases](https://github.com/jigonzalez930209/sci-form/rel
 cargo install sci-form-cli
 ```
 
-### Feature-gated subcommands
+### Subcommands with historical feature labels
 
-The optional subcommands are compiled in only when the corresponding Cargo feature is enabled on
+> **State note (2.0.0).** The Rust implementations of CGA, SDR, EDL, GSM,
+> KPM, CPM, RandNLA, Riemannian, kinetics, the periodic adapters and the
+> render bridge are core. Some Python/WASM/CLI wrappers still carry the
+> historical `experimental-*`, `alpha-*` or `beta-*` feature flag; the flag is
+> a build choice, not a stability claim. MBH, DFT, MLFF and reaction dynamics
+> remain gated.
+
+The optional subcommands are compiled in when the corresponding Cargo feature is enabled on
 the `sci-form-cli` package:
 
 ```bash

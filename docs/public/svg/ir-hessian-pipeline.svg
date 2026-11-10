@@ -1,75 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 230" width="900" height="230" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
-  <rect width="900" height="230" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="450" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">IR Spectroscopy Pipeline — Numerical Hessian (Phase D2)</text>
-
-  <!-- Step 1: Geometry -->
-  <rect x="10" y="50" width="110" height="90" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
-  <text x="65" y="75" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">Geometry</text>
-  <text x="65" y="90" text-anchor="middle" font-size="9" fill="#64748b">N atoms</text>
-  <text x="65" y="103" text-anchor="middle" font-size="9" fill="#64748b">elements[]</text>
-  <text x="65" y="116" text-anchor="middle" font-size="9" fill="#64748b">positions[]</text>
-  <text x="65" y="129" text-anchor="middle" font-size="9" fill="#64748b">method: EHT/PM3/xTB</text>
-  <line x1="120" y1="95" x2="138" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 2: Numerical Hessian -->
-  <rect x="140" y="50" width="130" height="90" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="205" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#1e40af">Numerical Hessian</text>
-  <text x="205" y="88" text-anchor="middle" font-size="9" fill="#1d4ed8">Central diff. (6N evals)</text>
-  <text x="205" y="101" text-anchor="middle" font-size="9" fill="#1d4ed8">H_{ij} = [E(ri+δ,rj+δ) −</text>
-  <text x="205" y="114" text-anchor="middle" font-size="9" fill="#1d4ed8"> ... ] / 4δ²</text>
-  <text x="205" y="127" text-anchor="middle" font-size="9" fill="#1d4ed8">δ = 0.005 Å (default)</text>
-  <line x1="270" y1="95" x2="288" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 3: Mass-weighted -->
-  <rect x="290" y="50" width="130" height="90" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="355" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#166534">Mass-Weighted</text>
-  <text x="355" y="88" text-anchor="middle" font-size="9" fill="#15803d">H̃ᵢⱼ = Hᵢⱼ/(√mᵢmⱼ)</text>
-  <text x="355" y="101" text-anchor="middle" font-size="9" fill="#15803d">mᵢ: atomic mass (amu)</text>
-  <text x="355" y="114" text-anchor="middle" font-size="9" fill="#15803d">H̃ is symmetric</text>
-  <text x="355" y="127" text-anchor="middle" font-size="9" fill="#15803d">3N × 3N matrix</text>
-  <line x1="420" y1="95" x2="438" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 4: Diagonalization -->
-  <rect x="440" y="50" width="130" height="90" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="505" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#713f12">Diagonalization</text>
-  <text x="505" y="88" text-anchor="middle" font-size="9" fill="#92400e">H̃·v = λ·v</text>
-  <text x="505" y="101" text-anchor="middle" font-size="9" fill="#92400e">ν̃ = √λ / (2πc) cm⁻¹</text>
-  <text x="505" y="114" text-anchor="middle" font-size="9" fill="#92400e">6 zero/near-zero modes</text>
-  <text x="505" y="127" text-anchor="middle" font-size="9" fill="#92400e">(trans/rot removed)</text>
-  <line x1="570" y1="95" x2="588" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 5: Dipole derivatives -->
-  <rect x="590" y="50" width="140" height="90" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="660" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#9d174d">Dipole Derivatives</text>
-  <text x="660" y="88" text-anchor="middle" font-size="9" fill="#be185d">dμ/dQₖ ≈ Δμ/Δx(±δ)</text>
-  <text x="660" y="101" text-anchor="middle" font-size="9" fill="#be185d">Iᵢᵣ ∝ |dμ/dQₖ|²</text>
-  <text x="660" y="114" text-anchor="middle" font-size="9" fill="#be185d">scaled to km/mol</text>
-  <text x="660" y="127" text-anchor="middle" font-size="9" fill="#be185d">2δ step for μ</text>
-  <line x1="730" y1="95" x2="748" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 6: IR Spectrum -->
-  <rect x="750" y="50" width="130" height="90" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="815" y="73" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">IR Spectrum</text>
-  <text x="815" y="88" text-anchor="middle" font-size="9" fill="#6d28d9">Lorentzian broadening</text>
-  <text x="815" y="101" text-anchor="middle" font-size="9" fill="#6d28d9">L(x,γ) = γ²/(x²+γ²)</text>
-  <text x="815" y="114" text-anchor="middle" font-size="9" fill="#6d28d9">γ = 15 cm⁻¹ default</text>
-  <text x="815" y="127" text-anchor="middle" font-size="9" fill="#6d28d9">ZPVE = Σ ½hν (eV)</text>
-
-  <!-- Footer labels -->
-  <text x="65"  y="160" text-anchor="middle" font-size="9" fill="#64748b">EHT/PM3/xTB energies</text>
-  <text x="205" y="160" text-anchor="middle" font-size="9" fill="#64748b">3N·(3N+1)/2 evals</text>
-  <text x="355" y="160" text-anchor="middle" font-size="9" fill="#64748b">m(H)=1, m(C)=12, …</text>
-  <text x="505" y="160" text-anchor="middle" font-size="9" fill="#64748b">nalgebra symmetric eig</text>
-  <text x="660" y="160" text-anchor="middle" font-size="9" fill="#64748b">charges from EHT/PM3/xTB</text>
-  <text x="815" y="160" text-anchor="middle" font-size="9" fill="#64748b">wn_min→wn_max grid</text>
-
-  <!-- Explanation row -->
-  <rect x="10" y="178" width="880" height="40" rx="6" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1"/>
-  <text x="450" y="196" text-anchor="middle" font-size="10" fill="#3730a3" font-weight="600">Off-diagonal Hessian: H_{ij} = [E(+δᵢ,+δⱼ) − E(+δᵢ,−δⱼ) − E(−δᵢ,+δⱼ) + E(−δᵢ,−δⱼ)] / (4δ²)    Diagonal: H_{ii} = [E(+δ) − 2E₀ + E(−δ)] / δ²</text>
-  <text x="450" y="211" text-anchor="middle" font-size="10" fill="#3730a3">Real modes: |ν̃| &gt; 50 cm⁻¹   |   Imaginary modes: ν̃ &lt; 0 (saddle points)   |   3N − 6 vibrational modes (non-linear), 3N − 5 (linear)</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 250" width="800" height="250" role="img" aria-label="Infrared spectrum from a numerical Hessian: displacements, Hessian, normal modes and intensities.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-ir-hessian-pipeline-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-ir-hessian-pipeline-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-ir-hessian-pipeline-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="800" height="250" fill="url(#sf-ir-hessian-pipeline-glow)" stroke="none"/>
+<rect x="30" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="31.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-accent)" stroke="none" stroke-width="1.4"/><text x="96" y="112" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d1">geometry</text><text x="96" y="130" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d1">N atoms</text><circle cx="96" cy="160" r="14" fill="var(--sf-soft)" stroke="var(--sf-accent)" stroke-width="1.5" class="sf-pulse"/><path d="M166,130 L184,130" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-ir-hessian-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M166,130 L184,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><rect x="184" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="185.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4"/><text x="250" y="112" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d2">displacements</text><text x="250" y="130" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d2">6N energies</text><circle cx="250" cy="160" r="14" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1.5" class="sf-pulse"/><path d="M320,130 L338,130" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-ir-hessian-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.35s" repeatCount="indefinite" path="M320,130 L338,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.35s" repeatCount="indefinite"/></circle><rect x="338" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="339.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-violet)" stroke="none" stroke-width="1.4"/><text x="404" y="112" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d3">Hessian</text><text x="404" y="130" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d3">3N × 3N</text><circle cx="404" cy="160" r="14" fill="var(--sf-soft)" stroke="var(--sf-violet)" stroke-width="1.5" class="sf-pulse"/><path d="M474,130 L492,130" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-ir-hessian-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-violet)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.5s" repeatCount="indefinite" path="M474,130 L492,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.5s" repeatCount="indefinite"/></circle><rect x="492" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="493.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-warm)" stroke="none" stroke-width="1.4"/><text x="558" y="112" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d4">modes</text><text x="558" y="130" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d4">mass-weighted</text><circle cx="558" cy="160" r="14" fill="var(--sf-soft)" stroke="var(--sf-warm)" stroke-width="1.5" class="sf-pulse"/><path d="M628,130 L646,130" fill="none" stroke="var(--sf-warm)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-ir-hessian-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-warm)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6499999999999999s" repeatCount="indefinite" path="M628,130 L646,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6499999999999999s" repeatCount="indefinite"/></circle><rect x="646" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="647.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-rose)" stroke="none" stroke-width="1.4"/><text x="712" y="112" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d5">spectrum</text><text x="712" y="130" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d5">IR intensity</text><circle cx="712" cy="160" r="14" fill="var(--sf-soft)" stroke="var(--sf-rose)" stroke-width="1.5" class="sf-pulse"/><path d="M660,190 L660,170" fill="none" stroke="var(--sf-rose)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d1"/><path d="M682,190 L682,156" fill="none" stroke="var(--sf-rose)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d2"/><path d="M704,190 L704,144" fill="none" stroke="var(--sf-rose)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d3"/><path d="M726,190 L726,160" fill="none" stroke="var(--sf-rose)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d4"/><rect x="330" y="220" width="140" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="400.0" y="234.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">numerical Hessian</text>
 </svg>

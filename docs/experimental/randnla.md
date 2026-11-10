@@ -1,7 +1,21 @@
-# E2: Randomized Numerical Linear Algebra (RandNLA)
+# Randomized numerical linear algebra
 
 **Module:** `sci_form::rand_nla` (core since 2026-11-08; F93 validated)
 **Feature flag:** none — `beta-randnla` and `experimental-randnla` are compatibility aliases; `sci_form::beta::rand_nla` re-exports the core module.
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | exact symmetric eigensolver (NumPy/SciPy) |
+| Measured separation | rank-N/4 3.8e-4 with power iterations; N=600, k=160, 9.6e-4, ~80 ms vs ~143 ms |
+| Confidence region | near-identity or gapped EHT, k ≥ N/4, lowest four states |
+| Main limitation | the full-spectrum path still relies on the exact fallback; clustered spectra degrade |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Replaces the $O(N^3)$ EHT diagonalization with the **Randomized Nyström Approximation**, reducing cost to $O(N^2)$ or $O(N \log N)$ for sparse matrices. This enables EHT calculations on systems of thousands of atoms where full diagonalization is impractical.
 
-<SvgDiagram src="/svg/experimental-randnla.svg" alt="RandNLA Pipeline" />
+<SvgDiagram src="/svg/experimental-randnla.svg" alt="A large Hamiltonian is projected onto a random sketch before solving a small eigenproblem." />
 
 ---
 
@@ -110,8 +124,9 @@ plus the rank/residual/fallback metadata.
 it never forms or diagonalizes the full `N × N` transformed Hamiltonian.
 Measured on `N = 600`, `k = 160`: the four lowest states have `9.6e-4`
 relative error and the call takes ~80 ms versus ~143 ms for the exact
-symmetric diagonalization. The track stays beta because the full-spectrum
-path still needs the exact fallback.
+symmetric diagonalization. The module is core; the full-spectrum path still
+uses the exact fallback, and that limitation is recorded in the validation
+report.
 
 ## Tests
 

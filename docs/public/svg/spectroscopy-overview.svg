@@ -1,82 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 200" width="820" height="200" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-    <marker id="arr-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#3b82f6"/>
-    </marker>
-    <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#22c55e"/>
-    </marker>
-    <marker id="arr-violet" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#8b5cf6"/>
-    </marker>
-  </defs>
-  <rect width="820" height="200" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Title -->
-  <text x="410" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">Track D — Advanced Spectroscopy Pipeline</text>
-
-  <!-- Input box: 3D Geometry -->
-  <rect x="10" y="55" width="120" height="90" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
-  <text x="70" y="88" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">3D Geometry</text>
-  <text x="70" y="103" text-anchor="middle" font-size="9" fill="#64748b">elements[]</text>
-  <text x="70" y="116" text-anchor="middle" font-size="9" fill="#64748b">coords[]</text>
-  <text x="70" y="129" text-anchor="middle" font-size="9" fill="#64748b">SMILES</text>
-
-  <!-- Fan-out arrows to three tracks -->
-  <line x1="130" y1="80" x2="215" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="130" y1="100" x2="215" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-  <line x1="130" y1="120" x2="215" y2="120" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- D1: UV-Vis sTDA -->
-  <rect x="218" y="44" width="150" height="52" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="293" y="64" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">D1 — UV-Vis sTDA</text>
-  <text x="293" y="78" text-anchor="middle" font-size="9" fill="#1d4ed8">EHT/xTB MO transitions</text>
-  <text x="293" y="90" text-anchor="middle" font-size="9" fill="#1d4ed8">Oscillator strengths f</text>
-
-  <!-- D2: IR -->
-  <rect x="218" y="104" width="150" height="52" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="293" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="#166534">D2 — IR Spectroscopy</text>
-  <text x="293" y="138" text-anchor="middle" font-size="9" fill="#15803d">Numerical Hessian (6N)</text>
-  <text x="293" y="150" text-anchor="middle" font-size="9" fill="#15803d">Vibrational modes + ZPVE</text>
-
-  <!-- D3: NMR (below D2 on same arrow) -->
-  <rect x="218" y="162" width="150" height="30" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="293" y="177" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">D3 — NMR Spectroscopy</text>
-  <text x="293" y="188" text-anchor="middle" font-size="9" fill="#6d28d9">HOSE codes + Karplus</text>
-
-  <!-- Arrows D1 → outputs -->
-  <line x1="368" y1="70" x2="450" y2="70" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arr-blue)"/>
-  <line x1="368" y1="130" x2="450" y2="130" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr-green)"/>
-  <line x1="368" y1="177" x2="450" y2="177" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arr-violet)"/>
-
-  <!-- Output: sTDA spectrum -->
-  <rect x="453" y="44" width="160" height="52" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
-  <text x="533" y="64" text-anchor="middle" font-size="10" font-weight="700" fill="#1e40af">ε(λ) Spectrum</text>
-  <text x="533" y="78" text-anchor="middle" font-size="9" fill="#1d4ed8">Molar absorptivity</text>
-  <text x="533" y="90" text-anchor="middle" font-size="9" fill="#1d4ed8">Gaussian / Lorentzian</text>
-
-  <!-- Output: IR spectrum -->
-  <rect x="453" y="104" width="160" height="52" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
-  <text x="533" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="#166534">IR Spectrum</text>
-  <text x="533" y="138" text-anchor="middle" font-size="9" fill="#15803d">Frequencies  (cm⁻¹)</text>
-  <text x="533" y="150" text-anchor="middle" font-size="9" fill="#15803d">Intensities (km/mol)</text>
-
-  <!-- Output: NMR spectrum -->
-  <rect x="453" y="162" width="160" height="30" rx="8" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1.5"/>
-  <text x="533" y="177" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">¹H / ¹³C NMR Spectrum</text>
-  <text x="533" y="188" text-anchor="middle" font-size="9" fill="#6d28d9">δ (ppm), multiplets</text>
-
-  <!-- Final arrows to broadening layer -->
-  <line x1="613" y1="100" x2="680" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Broadening box -->
-  <rect x="683" y="55" width="125" height="90" rx="8" fill="#fff7ed" stroke="#f59e0b" stroke-width="1.5"/>
-  <text x="745" y="78" text-anchor="middle" font-size="10" font-weight="700" fill="#92400e">Broadening</text>
-  <text x="745" y="95" text-anchor="middle" font-size="9" fill="#b45309">Gaussian</text>
-  <text x="745" y="109" text-anchor="middle" font-size="9" fill="#b45309">σ (eV or cm⁻¹)</text>
-  <text x="745" y="123" text-anchor="middle" font-size="9" fill="#b45309">Lorentzian</text>
-  <text x="745" y="136" text-anchor="middle" font-size="9" fill="#b45309">γ (eV or ppm)</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 330" width="780" height="330" role="img" aria-label="One 3D geometry feeds three spectroscopy tracks: UV-Vis, infrared and nuclear magnetic resonance.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-spectroscopy-overview-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-spectroscopy-overview-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-spectroscopy-overview-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="780" height="330" fill="url(#sf-spectroscopy-overview-glow)" stroke="none"/>
+<rect x="55" y="120" width="150" height="100" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="130" y="160" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">3D geometry</text><text x="130" y="180" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">elements + coords</text><path d="M210,170 Q243.94906895673142,120.79166008722612 300,100" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-spectroscopy-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-violet)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M210,170 Q243.94906895673142,120.79166008722612 300,100"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><rect x="320" y="65" width="200" height="70" rx="12" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="321.5" y="66.5" width="197" height="4" rx="2" fill="var(--sf-violet)" stroke="none" stroke-width="1.4"/><text x="420" y="95" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">UV-Vis</text><text x="420" y="115" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">electronic transitions</text><circle cx="500" cy="100" r="6" fill="var(--sf-violet)" class="sf-pulse"/><path d="M210,170 L300,190" fill="none" stroke="var(--sf-warm)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-spectroscopy-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-warm)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.35s" repeatCount="indefinite" path="M210,170 L300,190"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.35s" repeatCount="indefinite"/></circle><rect x="320" y="155" width="200" height="70" rx="12" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="321.5" y="156.5" width="197" height="4" rx="2" fill="var(--sf-warm)" stroke="none" stroke-width="1.4"/><text x="420" y="185" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">IR</text><text x="420" y="205" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">vibrational modes</text><circle cx="500" cy="190" r="6" fill="var(--sf-warm)" class="sf-pulse"/><path d="M210,170 Q241.06876861434023,236.39828022463072 300,280" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-spectroscopy-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.5s" repeatCount="indefinite" path="M210,170 Q241.06876861434023,236.39828022463072 300,280"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.5s" repeatCount="indefinite"/></circle><rect x="320" y="245" width="200" height="70" rx="12" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="321.5" y="246.5" width="197" height="4" rx="2" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4"/><text x="420" y="275" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">NMR</text><text x="420" y="295" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">chemical shifts</text><circle cx="500" cy="280" r="6" fill="var(--sf-accent2)" class="sf-pulse"/><path d="M580,55 L580,105 M580,105 L730,105" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,105 l4,-4 M580,105 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,55 l-4,4 M580,55 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M610,105 L610,79" fill="none" stroke="var(--sf-violet)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M640,105 L640,67" fill="none" stroke="var(--sf-violet)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M670,105 L670,85" fill="none" stroke="var(--sf-violet)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,145 L580,195 M580,195 L730,195" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,195 l4,-4 M580,195 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,145 l-4,4 M580,145 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M600,195 L600,177" fill="none" stroke="var(--sf-warm)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M624,195 L624,165" fill="none" stroke="var(--sf-warm)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M648,195 L648,171" fill="none" stroke="var(--sf-warm)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M672,195 L672,183" fill="none" stroke="var(--sf-warm)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,235 L580,285 M580,285 L730,285" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,285 l4,-4 M580,285 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M580,235 l-4,4 M580,235 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M600,285 L600,271" fill="none" stroke="var(--sf-accent2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M624,285 L624,259" fill="none" stroke="var(--sf-accent2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M648,285 L648,265" fill="none" stroke="var(--sf-accent2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M672,285 L672,253" fill="none" stroke="var(--sf-accent2)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

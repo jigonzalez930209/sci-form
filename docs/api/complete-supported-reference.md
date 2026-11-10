@@ -315,7 +315,9 @@ feature-gated. The exhaustive reference is [`docs/api/cli.md`](./cli.md).
 - `uff-breakdown`, `mmff94-breakdown`, `tpsa`, `ensemble`
 - `parse-cif`, `write-cif`
 
-### Feature-gated CLI commands
+### CLI commands with historical feature labels
+
+The Rust modules behind these wrappers are core (CGA, SDR, EDL, GSM, KPM, CPM, RandNLA, Riemannian, kinetics, periodic adapters, render bridge). The CLI wrapper still needs the historical flag; MBH, DFT, MLFF and reaction dynamics remain genuinely gated.
 
 - `alpb` behind `experimental-alpb`
 - `d4` behind `experimental-d4`
@@ -545,7 +547,7 @@ Related theory docs:
 
 Related SVGs:
 
-- `/hf3c-architecture.svg`
+- `/svg/hf3c-architecture.svg`
 
 ### ANI Neural Potentials
 
@@ -566,7 +568,7 @@ Related theory docs:
 
 Related SVGs:
 
-- `/ani-architecture.svg`
+- `/svg/ani-architecture.svg`
 
 ### UV-Vis, IR, and NMR Spectroscopy
 
@@ -728,25 +730,32 @@ Related SVGs:
 
 ---
 
-## Feature-Gated Experimental APIs
+## Experimental APIs
 
-These are supported only when the corresponding feature flags are enabled.
+> **State note (2.0.0).** The Rust implementations of CGA, SDR, EDL, GSM,
+> KPM, CPM, RandNLA, Riemannian, kinetics, the periodic adapters and the
+> render bridge are core. Some Python/WASM/CLI wrappers still carry the
+> historical `experimental-*`, `alpha-*` or `beta-*` feature flag; the flag is
+> a build choice, not a stability claim. MBH, DFT, MLFF and reaction dynamics
+> remain gated.
+
+The table records the binding or CLI feature that still exposes each entry point.
 
 ### Experimental tracks and surfaces
 
 | Capability | Rust feature | Python | WASM | CLI | SVG |
 |-----------|--------------|--------|------|-----|-----|
-| EEQ charges | `experimental-eeq` | `compute_eeq_charges`, `compute_eeq_energy` (aliases `eeq_charges`, `eeq_energy`) | `compute_eeq_charges`, `compute_eeq_energy` | `eeq` | `/svg/experimental-eeq.svg` |
-| ALPB solvation | `experimental-alpb` | `compute_alpb_solvation`, `compute_alpb_born_radii` (aliases `alpb_solvation`, `alpb_born_radii`) | `compute_alpb_solvation`, `compute_alpb_born_radii` | `alpb` | `/svg/experimental-alpb.svg` |
-| D4 dispersion | `experimental-d4` | `compute_d4_energy` (alias `d4_energy`) | `compute_d4_energy` | `d4` | `/svg/experimental-d4.svg` |
-| CPM electrochemistry | `experimental-cpm` | `compute_cpm_charges`, `compute_cpm_surface` (aliases `cpm_charges`, `cpm_surface`) | `compute_cpm_charges`, `compute_cpm_surface` | `cpm` | `/svg/experimental-cpm.svg` |
-| CGA | `experimental-cga` | - | - | - | `/svg/experimental-cga.svg` |
-| RandNLA | `experimental-randnla` | - | - | - | `/svg/experimental-randnla.svg` |
-| Riemannian | `experimental-riemannian` | - | - | - | `/svg/experimental-riemannian.svg` |
-| KPM | `experimental-kpm` | - | - | - | `/svg/experimental-kpm.svg` |
-| SDR | `experimental-sdr` | - | - | - | `/svg/experimental-sdr.svg` |
-| MBH | `experimental-mbh` | - | - | - | `/svg/experimental-mbh.svg` |
-| GSM | `experimental-gsm` | - | - | - | `/svg/experimental-gsm.svg` |
+| EEQ charges | core (alias `experimental-eeq`) | `compute_eeq_charges`, `compute_eeq_energy` (aliases `eeq_charges`, `eeq_energy`) | `compute_eeq_charges`, `compute_eeq_energy` | `eeq` | `/svg/experimental-eeq.svg` |
+| ALPB solvation | core (alias `experimental-alpb`) | `compute_alpb_solvation`, `compute_alpb_born_radii` (aliases `alpb_solvation`, `alpb_born_radii`) | `compute_alpb_solvation`, `compute_alpb_born_radii` | `alpb` | `/svg/experimental-alpb.svg` |
+| D4 dispersion | core (alias `experimental-d4`) | `compute_d4_energy` (alias `d4_energy`) | `compute_d4_energy` | `d4` | `/svg/experimental-d4.svg` |
+| CPM electrochemistry | core (alias `experimental-cpm`) | `compute_cpm_charges`, `compute_cpm_surface` (aliases `cpm_charges`, `cpm_surface`) | `compute_cpm_charges`, `compute_cpm_surface` | `cpm` | `/svg/experimental-cpm.svg` |
+| CGA | core (alias `experimental-cga`) | - | - | - | `/svg/experimental-cga.svg` |
+| RandNLA | core (alias `experimental-randnla`) | - | - | - | `/svg/experimental-randnla.svg` |
+| Riemannian | core (alias `experimental-riemannian`) | - | - | - | `/svg/experimental-riemannian.svg` |
+| KPM | core (alias `experimental-kpm`) | - | - | - | `/svg/experimental-kpm.svg` |
+| SDR | core (alias `experimental-sdr`) | - | - | - | `/svg/experimental-sdr.svg` |
+| MBH | `beta-mbh` (gated) | - | - | - | `/svg/experimental-mbh.svg` |
+| GSM | core (alias `experimental-gsm`) | - | - | - | `/svg/experimental-gsm.svg` |
 
 Related theory docs:
 
@@ -863,8 +872,8 @@ This inventory is intended to support the “SVG by SVG” documentation pass. E
 
 | SVG | Meaning |
 |-----|---------|
-| `ani-architecture.svg` | ANI stack architecture |
-| `hf3c-architecture.svg` | HF-3c stack architecture |
+| `svg/ani-architecture.svg` | ANI stack architecture |
+| `svg/hf3c-architecture.svg` | HF-3c stack architecture |
 | `logo.svg` | Project/site branding |
 
 ---

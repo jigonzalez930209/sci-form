@@ -6,7 +6,7 @@ The Hartree-Fock-3c (HF-3c) method is an extended semi-empirical minimal-basis q
 
 `sci-form` fully controls its quantum computations without external C++ or Fortran dependencies, implementing every fundamental component of the Hartree-Fock theory cycle from scratch.
 
-![HF-3c Architecture](../public/hf3c-architecture.svg)
+<SvgDiagram src="/svg/hf3c-architecture.svg" alt="HF-3c: minimal-basis integrals, self-consistent field with DIIS, and D3, gCP and SRB corrections." />
 
 ### 1. Minimal Basis Integral Engine
 The HF-3c pipeline mandates computing exact analytical overlap, kinetic, nuclear attraction, and multi-center electron repulsion integrals (ERIs).
@@ -56,7 +56,11 @@ print(res.plan.geometry.recommended) # EHT or Embed
 # Evaluates and benchmarks immediately without manual intervention
 ```
 
-## Benchmarks & Validation
-The robust minimal basis SCF engine was extensively validated over heavy structural and functional datasets sourced directly from PySCF implementations.
-
-To pass continuous integration, analytical evaluations across 100 representative stereochemical molecules exhibited an enforced **maximum deviation threshold under 0.01%**, successfully converging without error via robust fractional thresholds.
+## Validation
+The HF/STO-3G layer shares the PySCF gate (F36–F39): total energy 1.2e-8 Ha,
+ERI 2.1e-11, and AO→MO 1.8e-14. The D3(BJ) component matches dftd4 to
+6.8e-9 Ha. There is **no independent full-HF-3c energy oracle** in the current
+campaign: the gCP and SRB corrections and the complete HF-3c energy are covered
+by unit and integration tests, not by an external parity gate. The measured
+state and the limitation are recorded in
+[Scientific validation](/validation/scientific-validation).

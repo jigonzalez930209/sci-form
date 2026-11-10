@@ -5,7 +5,7 @@ Reaction simulation in sci-form now has three separate layers that should not be
 1. Molecule and reaction interpretation.
    This is the SMILES, SMARTS, and SMIRKS layer. It defines which atoms, bonds, mappings, and formal product transforms are being considered.
 2. Path construction.
-   This is where alpha GSM builds a path between reactant and product geometries and searches for a transition-state candidate.
+   This is where the Growing String Method builds a path between reactant and product geometries and searches for a transition-state candidate.
 3. Energy surface selection.
    This is the backend that assigns a scalar energy to each geometry along the path.
 
@@ -25,12 +25,12 @@ Available backends are grouped by role:
 
 - Exploratory force fields: UFF, MMFF94.
 - Barrier-capable electronic methods: PM3, xTB/GFN0, GFN1-xTB, GFN2-xTB, HF-3c.
-- Reactive force field: ReaxFF, currently only through the alpha CHON parameter set when the `alpha-reaxff` feature is enabled.
+- Reactive force field: ReaxFF with the CHON parameter set. The module is core; the historical `alpha-reaxff` flag is only a compatibility alias.
 - Orbital-only analysis: EHT.
 
 ## Energy surface and gradient of each backend
 
-<SvgDiagram src="/svg/energy-surface-map.svg" alt="Which energy surface each backend name evaluates and how its gradient is obtained" />
+<SvgDiagram src="/svg/energy-surface-map.svg" alt="Every public method name maps to one energy surface and one gradient path." />
 
 | Backend name | Energy | Gradient (NEB, MD, reaction dynamics) |
 |---|---|---|
@@ -64,7 +64,7 @@ Reason:
 
 ## Current public API
 
-Rust alpha GSM now exposes:
+The Rust core exposes:
 
 - `plan_gsm_backends(elements)`
 - `plan_gsm_backends_for_smiles(smiles)`
@@ -72,19 +72,19 @@ Rust alpha GSM now exposes:
 - `compare_gsm_backends(smiles, coords, backends)`
 - `find_transition_state_with_backend(smiles, reactant, product, backend, config)`
 
-Python alpha bindings expose:
+Python bindings expose:
 
 - `gsm_backend_plan(smiles)`
 - `gsm_compare_backends(smiles, coords, methods=None)`
 - `gsm_find_ts(smiles, reactant_coords, product_coords, n_nodes=9, method="uff")`
 
-WASM alpha bindings expose:
+WASM bindings expose:
 
 - `alpha_gsm_backend_plan(smiles)`
 - `alpha_gsm_compare_backends(smiles, coordsFlatJson, methodsJson)`
 - `alpha_gsm_find_ts_with_method(smiles, reactantJson, productJson, configJson, method)`
 
-The legacy `alpha_gsm_find_ts(...)` entry point remains as a UFF wrapper for backward compatibility.
+The `alpha_gsm_*` names are historical export names kept for compatibility; the implementation is core `sci_form::gsm`. The legacy `alpha_gsm_find_ts(...)` entry point remains a UFF wrapper.
 
 ## Practical comparison guidance
 

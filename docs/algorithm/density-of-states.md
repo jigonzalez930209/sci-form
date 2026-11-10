@@ -2,9 +2,12 @@
 
 The density of states (DOS) describes how many electronic states exist at each energy level. sci-form computes DOS from EHT orbital energies using Gaussian smearing.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## DOS via Gaussian Smearing
 
-<SvgDiagram src="/svg/dos-smearing.svg" alt="DOS Gaussian smearing" />
+<SvgDiagram src="/svg/dos-smearing.svg" alt="Discrete eigenvalues broadened into a continuous density of states." />
 
 ### Total DOS Formula
 

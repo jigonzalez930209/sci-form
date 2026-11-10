@@ -1,7 +1,21 @@
-# E11: Growing String Method (GSM)
+# Growing String Method
 
 **Module:** `sci_form::gsm` (core since 2026-11-08; F82 validated)
 **Feature flag:** none — `alpha-gsm` and `experimental-gsm` are compatibility aliases; `sci_form::alpha::gsm` re-exports the core module.
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | ASE CI-NEB and analytic surfaces |
+| Measured separation | Müller-Brown barrier 1.6e-3, TS location 0.028; five curved wells ≤0.8% |
+| Confidence region | Müller-Brown plus five curved wells |
+| Main limitation | no pyGSM/Transition1x parity; the energy backend limits accuracy |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Implements a **reaction path and transition state finder** driven purely by force-field gradients. Unlike NEB (Nudged Elastic Band), GSM does not require an initial guess of the full path — it grows the string from both reactant and product endpoints, finding the minimum energy path and saddle point with fewer energy evaluations.
 
-<SvgDiagram src="/svg/experimental-gsm.svg" alt="GSM Pipeline" />
+<SvgDiagram src="/svg/experimental-gsm.svg" alt="A string of states grows from both ends of a reaction path toward the saddle point." />
 
 ---
 

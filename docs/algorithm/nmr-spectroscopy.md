@@ -4,11 +4,14 @@ sci-form predicts representative NMR chemical shifts from the molecular graph us
 
 The highest-confidence targets remain ¹H and ¹³C. A broader nucleus registry is also available for fast relative inference, including halogens, alkali metals, alkaline-earth metals, selected main-group nuclei, and transition-metal isotopes.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 For quantum-mechanical shielding, sci-form also exposes a high-level public GIAO route that runs the crate's RHF SCF implementation and then evaluates isotope-specific shieldings for a requested nucleus. That route is currently restricted to singlet closed-shell systems and defaults to rejecting elements that only have the hydrogen-like fallback basis in the public STO-3G path.
 
 ## Pipeline
 
-<SvgDiagram src="/svg/nmr-pipeline.svg" alt="NMR pipeline: SMILES → Mol.Graph → HOSE codes → Shift lookup → J-Coupling → Peak splitting → Lorentzian → NMR Spectrum" />
+<SvgDiagram src="/svg/nmr-pipeline.svg" alt="NMR pipeline from SMILES to HOSE environments, shifts, couplings and a broadened spectrum." />
 
 ## Theory
 
@@ -76,7 +79,7 @@ $$
 
 with parameters $A = 7.76$, $B = 1.10$, $C = 1.40$ Hz (Altona–Sundaralingam, JACS 1972).
 
-<SvgDiagram src="/svg/nmr-karplus.svg" alt="Karplus curve: J(φ) vs dihedral angle, maximum near 0° and 180°, minimum near 90°" />
+<SvgDiagram src="/svg/nmr-karplus.svg" alt="The Karplus relation maps a dihedral angle to a vicinal proton-proton coupling." />
 
 When 3D coordinates are available, the actual H–C–C–H dihedral angle $\phi$ is computed from the positions. When only topology is available, a **free-rotation average** is used:
 

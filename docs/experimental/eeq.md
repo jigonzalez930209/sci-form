@@ -1,7 +1,21 @@
-# E5: Dynamic EEQ Charge Model
+# Electronegativity equalization charges
 
-**Module:** `sci_form::charges_eeq` (core; promoted E3)
+**Module:** `sci_form::charges_eeq` (core; promoted from the experimental tier)
 **Feature flag:** none (core)
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | multicharge 0.6.0 and an independent NumPy EEQ2019 oracle |
+| Measured separation | charges 6.9e-12 e; coordination numbers 1.9e-11; EEQ2019 charge 6.1e-7 e |
+| Confidence region | 23 molecules vs multicharge; 14 EEQ2019 cases |
+| Main limitation | numerical gradients; no periodic boundary conditions; parameter coverage is not universal |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Implements **geometry-dependent Electronegativity Equalization (EEQ)** charges, capturing polarization effects that static charge models like Gasteiger-Marsili miss. Charges depend on the 3D molecular geometry through fractional coordination numbers, making them suitable for conformer-dependent property prediction and as input to dispersion and solvation models.
 
-<SvgDiagram src="/svg/experimental-eeq.svg" alt="EEQ Pipeline" />
+<SvgDiagram src="/svg/experimental-eeq.svg" alt="Coordination numbers shift atomic electronegativity and produce geometry-dependent charges." />
 
 ---
 

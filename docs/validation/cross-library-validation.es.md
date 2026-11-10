@@ -1,5 +1,10 @@
 # Plan de validación cruzada por funcionalidad y por crate
 
+> **Historical planning document (Spanish).** The current quantitative report,
+> with per-method deviations, confidence regions and limitations, is
+> [Scientific validation](/validation/scientific-validation) in English. This
+> page is kept for provenance and for the original gate descriptions.
+
 > **Objetivo** — para cada funcionalidad de sci-form: (1) qué programa/librería probada hace lo mismo,
 > (2) qué test equivalente permite comparar ambos, (3) qué ficheros o datasets ya calculados o
 > experimentales existen para medir la desviación, y (4) el trabajo detallado crate por crate para

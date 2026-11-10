@@ -311,7 +311,12 @@ The full 3D reaction-dynamics path (`alpha-reaction-dynamics`) is available only
 
 ## Experimental and alpha surfaces
 
-These commands are feature-gated. Build the binary with the matching feature:
+The Rust implementations of CGA, SDR, EDL, GSM, KPM, CPM, RandNLA, Riemannian,
+kinetics, the periodic adapters and the render bridge are core. The flags below
+gate the **CLI wrappers** and are retained for compatibility. MBH, DFT, MLFF
+and reaction dynamics remain genuinely gated.
+
+Build the binary with the matching feature:
 
 ```bash
 cargo install sci-form-cli --features experimental-alpb,experimental-d4,experimental-cpm,alpha-edl,alpha-kinetics

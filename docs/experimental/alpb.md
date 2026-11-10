@@ -1,7 +1,21 @@
-# E6: Analytical Linearized Poisson-Boltzmann (ALPB)
+# Analytical linearized Poisson-Boltzmann
 
-**Module:** `sci_form::solvation_alpb` (core; promoted E3)
+**Module:** `sci_form::solvation_alpb` (core; promoted from the experimental tier)
 **Feature flag:** none (core)
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | tblite 0.7.0 GB/ALPB |
+| Measured separation | electrostatic term 3.14 kcal/mol (tolerance 5); total 11.66 (tolerance 11.66) |
+| Confidence region | 16 solutes in water |
+| Main limitation | the surface, CDS and empirical-shift terms differ from tblite; no solvent-specific fitting |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Implements the Klamt/Grimme **Analytical Linearized Poisson-Boltzmann (ALPB)** implicit solvation model. Computes solvation free energies $\Delta G_{solv}$ with analytical gradients at negligible computational cost, enabling thermodynamically realistic conformer ranking in solution.
 
-<SvgDiagram src="/svg/experimental-alpb.svg" alt="ALPB Pipeline" />
+<SvgDiagram src="/svg/experimental-alpb.svg" alt="A solute cavity with Born radii coupled to a continuum solvent through the generalized Born kernel." />
 
 ---
 

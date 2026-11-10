@@ -1,51 +1,58 @@
-<svg width="650" height="200" viewBox="0 0 650 200" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <defs>
-    <marker id="earr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-      <polygon points="0 0, 8 3, 0 6" fill="#2563eb"/>
-    </marker>
-  </defs>
-  <rect x="0" y="0" width="650" height="200" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif" font-size="12">
-    <!-- Metric Matrix T -->
-    <rect x="10" y="30" width="100" height="100" rx="4" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-    <text x="60" y="23" text-anchor="middle" fill="#1e3a5f" font-weight="700">T (N×N)</text>
-    <text x="60" y="80" text-anchor="middle" fill="#2563eb" font-size="20">T</text>
-    <text x="60" y="148" text-anchor="middle" fill="#64748b" font-size="10">Gram matrix</text>
-
-    <!-- = -->
-    <text x="130" y="85" text-anchor="middle" fill="#64748b" font-size="20">=</text>
-
-    <!-- V -->
-    <rect x="150" y="30" width="60" height="100" rx="4" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
-    <text x="180" y="23" text-anchor="middle" fill="#14532d" font-weight="700">V</text>
-    <text x="180" y="85" text-anchor="middle" fill="#10b981" font-size="16">V</text>
-
-    <!-- Lambda -->
-    <rect x="220" y="30" width="100" height="100" rx="4" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
-    <text x="270" y="23" text-anchor="middle" fill="#713f12" font-weight="700">Λ</text>
-    <text x="245" y="58" fill="#ca8a04" font-size="11" font-weight="bold">λ₁</text>
-    <text x="262" y="76" fill="#ca8a04" font-size="11" font-weight="bold">λ₂</text>
-    <text x="280" y="94" fill="#ca8a04" font-size="11" font-weight="bold">λ₃</text>
-    <text x="298" y="112" fill="#94a3b8" font-size="11">0</text>
-    <text x="270" y="148" text-anchor="middle" fill="#64748b" font-size="10">Top 3 (or 4) eigenvalues</text>
-
-    <!-- V^T -->
-    <rect x="330" y="30" width="60" height="100" rx="4" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
-    <text x="360" y="23" text-anchor="middle" fill="#14532d" font-weight="700">Vᵀ</text>
-    <text x="360" y="85" text-anchor="middle" fill="#10b981" font-size="16">Vᵀ</text>
-
-    <!-- Arrow -->
-    <line x1="405" y1="80" x2="440" y2="80" stroke="#2563eb" stroke-width="1.5" marker-end="url(#earr)"/>
-
-    <!-- Result coords -->
-    <rect x="450" y="30" width="80" height="100" rx="4" fill="#f0fdf4" stroke="#10b981" stroke-width="2"/>
-    <text x="490" y="23" text-anchor="middle" fill="#14532d" font-weight="700">X (N×d)</text>
-    <text x="490" y="75" text-anchor="middle" fill="#10b981" font-size="11">xᵢₖ = √λₖ · vᵢₖ</text>
-    <text x="490" y="95" text-anchor="middle" fill="#64748b" font-size="10">d = 3 or 4</text>
-    <text x="490" y="148" text-anchor="middle" fill="#64748b" font-size="10">Atom coordinates</text>
-
-    <!-- Formula below -->
-    <text x="550" y="180" text-anchor="end" fill="#64748b" font-size="10" font-style="italic">Power iteration extracts top d eigenpairs</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 280" width="800" height="280" role="img" aria-label="A distance matrix becomes a Gram matrix; its leading eigenvalues give 3D coordinates.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-distance-geometry-matrix-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-distance-geometry-matrix-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-distance-geometry-matrix-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="800" height="280" fill="url(#sf-distance-geometry-matrix-glow)" stroke="none"/>
+<rect x="38" y="63" width="140" height="140" rx="10" fill="var(--sf-card2)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="45" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="66" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="87" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="108" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="129" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="150" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="45" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="66" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="87" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="108" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="129" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="150" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="45" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="66" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="87" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="108" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="129" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="150" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="45" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="66" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="87" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="108" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="129" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="150" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="45" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="66" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="87" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="108" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="129" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="150" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="45" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="66" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="87" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="108" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="129" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="150" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" opacity="0.82"/><text x="108.0" y="220" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">distances</text><path d="M190,145 L250,145" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-distance-geometry-matrix-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M190,145 L250,145"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><rect x="263" y="63" width="140" height="140" rx="10" fill="var(--sf-card2)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="270" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="291" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="312" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="333" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="354" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="375" y="70" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="270" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="291" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="312" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="333" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="354" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="375" y="91" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="270" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="291" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="312" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="333" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="354" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="375" y="112" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="270" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="291" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="312" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="333" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="354" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="375" y="133" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="270" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="291" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="312" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="333" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="354" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4" opacity="0.82"/><rect x="375" y="154" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="270" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="291" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="312" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="333" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="354" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-soft)" stroke="none" stroke-width="1.4" opacity="0.34"/><rect x="375" y="175" width="19.2" height="19.2" rx="1.8" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4" opacity="0.82"/><text x="333.0" y="220" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">Gram</text><path d="M415,145 L475,145" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-distance-geometry-matrix-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.4s" repeatCount="indefinite" path="M415,145 L475,145"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.4s" repeatCount="indefinite"/></circle><path d="M505,80 L505,195 M505,195 L620,195" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M505,195 l4,-4 M505,195 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M505,80 l-4,4 M505,80 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="562.5" y="217" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">λ</text><path d="M520,195 L520,125" fill="none" stroke="var(--sf-violet)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d1"/><path d="M535,195 L535,140" fill="none" stroke="var(--sf-violet)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d2"/><path d="M550,195 L550,153" fill="none" stroke="var(--sf-violet)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d3"/><path d="M565,195 L565,165" fill="none" stroke="var(--sf-violet)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d4"/><path d="M580,195 L580,175" fill="none" stroke="var(--sf-violet)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d5"/><path d="M595,195 L595,183" fill="none" stroke="var(--sf-violet)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d6"/><text x="562" y="232" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">eigenvalues</text><path d="M632,145 L675,145" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-distance-geometry-matrix-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-violet)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6s" repeatCount="indefinite" path="M632,145 L675,145"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6s" repeatCount="indefinite"/></circle><path d="M700,190 L735,95 L775,180 Z" fill="none" stroke="var(--sf-accent2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><circle cx="700" cy="190" r="6" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="735" cy="95" r="6" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="775" cy="180" r="6" fill="var(--sf-accent2)" class="sf-pulse"/><text x="738" y="222" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">coordinates</text><rect x="248" y="36" width="72" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent)" stroke-width="1"/><text x="284.0" y="50.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">square</text>
 </svg>

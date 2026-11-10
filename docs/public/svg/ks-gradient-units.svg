@@ -1,32 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 290" width="820" height="290" font-family="system-ui, sans-serif" role="img" aria-label="KS-DFT gradient units: the analytic gradient in Hartree per Bohr is the per-angstrom energy derivative multiplied by 0.5292">
-  <style>
-    @media (prefers-reduced-motion: reduce) { .ku-anim * { animation: none !important; } }
-    .ku-slide { animation: ku-slide 6s ease-in-out infinite; }
-    @keyframes ku-slide { 0%,20% { transform: translateX(0); } 55%,100% { transform: translateX(-148px); } }
-    .ku-shrink { transform-origin: 380px 0; animation: ku-shrink 6s ease-in-out infinite; }
-    @keyframes ku-shrink { 0%,20% { transform: scaleX(1); } 55%,100% { transform: scaleX(.5292); } }
-    .ku-ok { animation: ku-ok 6s steps(1,end) infinite; }
-    @keyframes ku-ok { 0%,54% { opacity:0; } 55%,100% { opacity:1; } }
-  </style>
-  <g class="ku-anim">
-  <rect width="820" height="290" fill="white" rx="12" stroke="#e2e8f0"/>
-  <text x="410" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="#0f172a">KS-DFT gradient: a unit mismatch, not a missing physics term</text>
-  <text x="410" y="46" text-anchor="middle" font-size="10.5" fill="#64748b">H₂ at 0.80 Å, SVWN / STO-3G — values measured by the F80 gate before the fix</text>
-
-  <text x="20" y="92" font-size="11" font-weight="bold" fill="#334155">∂E/∂R from finite differences of E(R), R in Å</text>
-  <rect x="20" y="100" width="380" height="30" fill="#fecaca" stroke="#ef4444" class="ku-shrink" rx="4"/>
-  <text x="30" y="120" font-size="11" fill="#7f1d1d">−0.18137 Ha/Å   (the old reference)</text>
-
-  <text x="20" y="168" font-size="11" font-weight="bold" fill="#334155">analytic ks_nuclear_gradient, R in Bohr</text>
-  <rect x="20" y="176" width="201" height="30" fill="#bbf7d0" stroke="#22c55e" rx="4"/>
-  <text x="30" y="196" font-size="11" fill="#14532d">−0.09598 Ha/Bohr</text>
-
-  <g class="ku-ok"><text x="410" y="236" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">× 0.52918 Å/Bohr  →  −0.09598 Ha/Bohr: the two agree</text></g>
-  <text x="640" y="116" font-size="10.5" fill="#475569">ratio analytic / reference</text>
-  <text x="640" y="134" font-size="16" font-weight="bold" fill="#0f172a">0.5292</text>
-  <text x="640" y="152" font-size="10.5" fill="#475569">= Å per Bohr (for every component)</text>
-
-  <rect x="20" y="250" width="782" height="28" rx="8" fill="#f0fdf4" stroke="#22c55e"/>
-  <text x="34" y="268" font-size="10.5" fill="#14532d">After converting the reference: max |Δg| = 3·10⁻⁷ Ha/Bohr on H₂O₂ (max |g| = 0.227). The gradient was right; the F80 gate was un-ignored.</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 280" width="620" height="280" role="img" aria-label="A KS-DFT gradient in Hartree per Bohr equals the energy derivative per angstroms multiplied by 0.5292.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-ks-gradient-units-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-ks-gradient-units-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-ks-gradient-units-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="620" height="280" fill="url(#sf-ks-gradient-units-glow)" stroke="none"/>
+<rect x="50" y="90" width="200" height="86" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="150" y="124" text-anchor="middle" font-size="16" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">dE/dR</text><text x="150" y="148" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">Hartree / Bohr</text><path d="M255,133 L335,133" fill="none" stroke="var(--sf-warm)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-ks-gradient-units-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-warm)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M255,133 L335,133"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><text x="295" y="116" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">× 0.5292</text><rect x="340" y="90" width="200" height="86" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="440" y="124" text-anchor="middle" font-size="16" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">dE/dR</text><text x="440" y="148" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">Hartree / Å</text><text x="150" y="210" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">Å per Bohr</text><text x="440" y="210" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">same physical force</text><path d="M300,230 L380,230" fill="none" stroke="var(--sf-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="300" cy="230" r="6" fill="var(--sf-rose)"/><circle cx="380" cy="230" r="6" fill="var(--sf-accent2)"/><text x="340" y="252" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">unit conversion, not physics</text><rect x="220" y="32" width="180" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-warm)" stroke-width="1"/><text x="310.0" y="46.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">the 0.5292 factor</text>
 </svg>

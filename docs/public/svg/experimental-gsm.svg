@@ -1,58 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 240" width="780" height="240" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
-  <rect width="780" height="240" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Title -->
-  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">E11: Growing String Method (GSM)</text>
-  <text x="390" y="48" text-anchor="middle" font-size="10" fill="#64748b">Reaction path + transition state finder from force-field gradients</text>
-
-  <!-- Row 1: String growth -->
-  <rect x="10"  y="65" width="170" height="70" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="95"  y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Reactant + Product</text>
-  <text x="95"  y="106" text-anchor="middle" font-size="10" fill="#1d4ed8">Start/end geometries</text>
-  <text x="95"  y="120" text-anchor="middle" font-size="10" fill="#1d4ed8">flat coordinate arrays</text>
-
-  <rect x="200" y="65" width="170" height="70" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="285" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">Interpolate Nodes</text>
-  <text x="285" y="106" text-anchor="middle" font-size="10" fill="#15803d">Linear interp t∈[0,1]</text>
-  <text x="285" y="120" text-anchor="middle" font-size="10" fill="#15803d">n_nodes images</text>
-
-  <rect x="390" y="65" width="170" height="70" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="475" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Grow String</text>
-  <text x="475" y="106" text-anchor="middle" font-size="10" fill="#92400e">Add nodes inward</text>
-  <text x="475" y="120" text-anchor="middle" font-size="10" fill="#92400e">energy evaluation</text>
-
-  <rect x="580" y="65" width="170" height="70" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="665" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">Energy Profile</text>
-  <text x="665" y="106" text-anchor="middle" font-size="10" fill="#be185d">E(node) along path</text>
-  <text x="665" y="120" text-anchor="middle" font-size="10" fill="#be185d">locate maximum</text>
-
-  <!-- Arrows row 1 -->
-  <line x1="180" y1="100" x2="198" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="370" y1="100" x2="388" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="560" y1="100" x2="578" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Row 2: TS refinement -->
-  <rect x="200" y="150" width="170" height="55" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="285" y="172" text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">Refine Saddle</text>
-  <text x="285" y="188" text-anchor="middle" font-size="10" fill="#6d28d9">Optimize TS node</text>
-
-  <rect x="390" y="150" width="170" height="55" rx="8" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
-  <text x="475" y="172" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">TS Result</text>
-  <text x="475" y="188" text-anchor="middle" font-size="10" fill="#b45309">E_act, E_rev, coords</text>
-
-  <!-- Arrow from profile down -->
-  <line x1="665" y1="135" x2="665" y2="175" stroke="#64748b" stroke-width="1.5"/>
-  <line x1="665" y1="175" x2="562" y2="175" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Arrow refine → result -->
-  <line x1="370" y1="175" x2="388" y2="175" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Advantage badge -->
-  <rect x="180" y="213" width="420" height="24" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
-  <text x="390" y="229" text-anchor="middle" font-size="10" fill="#166534">✓ No initial path guess · Force-field driven · Activation + reverse barriers</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 280" width="780" height="280" role="img" aria-label="A string of states grows from both ends of a reaction path towards the saddle point.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-experimental-gsm-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-experimental-gsm-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-experimental-gsm-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="780" height="280" fill="url(#sf-experimental-gsm-glow)" stroke="none"/>
+<path d="M55.00,115.80 Q57.00,117.40 59.00,119.00 Q61.00,120.76 63.00,122.53 Q65.00,124.45 67.00,126.37 Q69.00,128.45 71.00,130.53 Q73.00,132.77 75.00,135.00 Q77.00,137.38 79.00,139.76 Q81.00,142.26 83.00,144.77 Q85.00,147.39 87.00,150.00 Q89.00,152.71 91.00,155.42 Q93.00,158.19 95.00,160.95 Q97.00,163.76 99.00,166.56 Q101.00,169.36 103.00,172.16 Q105.00,174.93 107.00,177.69 Q109.00,180.38 111.00,183.07 Q113.00,185.65 115.00,188.23 Q117.00,190.66 119.00,193.09 Q121.00,195.33 123.00,197.56 Q125.00,199.58 127.00,201.59 Q129.00,203.34 131.00,205.09 Q133.00,206.54 135.00,208.00 Q137.00,209.14 139.00,210.29 Q141.00,211.09 143.00,211.89 Q145.00,212.34 147.00,212.80 Q149.00,212.89 151.00,212.98 Q153.00,212.70 155.00,212.43 Q157.00,211.80 159.00,211.17 Q161.00,210.20 163.00,209.22 Q165.00,207.92 167.00,206.62 Q169.00,205.01 171.00,203.40 Q173.00,201.52 175.00,199.63 Q177.00,197.50 179.00,195.37 Q181.00,193.03 183.00,190.69 Q185.00,188.18 187.00,185.67 Q189.00,183.03 191.00,180.39 Q193.00,177.65 195.00,174.91 Q197.00,172.12 199.00,169.32 Q201.00,166.51 203.00,163.70 Q205.00,160.90 207.00,158.11 Q209.00,155.35 211.00,152.60 Q213.00,149.92 215.00,147.25 Q217.00,144.66 219.00,142.08 Q221.00,139.62 223.00,137.15 Q225.00,134.81 227.00,132.48 Q229.00,130.28 231.00,128.09 Q233.00,126.04 235.00,123.99 Q237.00,122.10 239.00,120.20 Q241.00,118.45 243.00,116.70 Q245.00,115.10 247.00,113.50 Q249.00,112.03 251.00,110.57 Q253.00,109.23 255.00,107.90 Q257.00,106.68 259.00,105.46 Q261.00,104.35 263.00,103.24 Q265.00,102.22 267.00,101.19 Q269.00,100.25 271.00,99.31 Q273.00,98.43 275.00,97.55 Q277.00,96.71 279.00,95.88 Q281.00,95.08 283.00,94.29 Q285.00,93.51 287.00,92.73 Q289.00,91.97 291.00,91.20 Q293.00,90.43 295.00,89.67 Q297.00,88.89 299.00,88.11 Q301.00,87.31 303.00,86.51 Q305.00,85.69 307.00,84.87 Q309.00,84.01 311.00,83.16 Q313.00,82.27 315.00,81.39 Q317.00,80.47 319.00,79.56 Q321.00,78.61 323.00,77.66 Q325.00,76.68 327.00,75.71 Q329.00,74.71 331.00,73.71 Q333.00,72.70 335.00,71.69 Q337.00,70.67 339.00,69.65 Q341.00,68.64 343.00,67.63 Q345.00,66.63 347.00,65.64 Q349.00,64.67 351.00,63.70 Q353.00,62.78 355.00,61.85 Q357.00,60.98 359.00,60.11 Q361.00,59.31 363.00,58.51 Q365.00,57.79 367.00,57.08 Q369.00,56.45 371.00,55.83 Q373.00,55.31 375.00,54.79 Q377.00,54.38 379.00,53.97 Q381.00,53.68 383.00,53.40 Q385.00,53.24 387.00,53.08 Q389.00,53.04 391.00,53.01 Q393.00,53.11 395.00,53.20 Q397.00,53.43 399.00,53.65 Q401.00,54.00 403.00,54.34 Q405.00,54.81 407.00,55.27 Q409.00,55.84 411.00,56.42 Q413.00,57.09 415.00,57.76 Q417.00,58.52 419.00,59.28 Q421.00,60.11 423.00,60.94 Q425.00,61.84 427.00,62.73 Q429.00,63.67 431.00,64.61 Q433.00,65.59 435.00,66.56 Q437.00,67.56 439.00,68.55 Q441.00,69.56 443.00,70.56 Q445.00,71.56 447.00,72.56 Q449.00,73.54 451.00,74.52 Q453.00,75.48 455.00,76.44 Q457.00,77.37 459.00,78.29 Q461.00,79.18 463.00,80.07 Q465.00,80.91 467.00,81.76 Q469.00,82.56 471.00,83.36 Q473.00,84.11 475.00,84.86 Q477.00,85.56 479.00,86.27 Q481.00,86.93 483.00,87.59 Q485.00,88.21 487.00,88.84 Q489.00,89.42 491.00,90.01 Q493.00,90.56 495.00,91.12 Q497.00,91.66 499.00,92.20 Q501.00,92.72 503.00,93.25 Q505.00,93.77 507.00,94.29 Q509.00,94.83 511.00,95.36 Q513.00,95.91 515.00,96.47 Q517.00,97.05 519.00,97.64 Q521.00,98.27 523.00,98.91 Q525.00,99.60 527.00,100.30 Q529.00,101.06 531.00,101.83 Q533.00,102.68 535.00,103.54 Q537.00,104.49 539.00,105.45 Q541.00,106.52 543.00,107.59 Q545.00,108.78 547.00,109.97 Q549.00,111.30 551.00,112.63 Q553.00,114.11 555.00,115.58 Q557.00,117.20 559.00,118.83 Q561.00,120.61 563.00,122.39 Q565.00,124.33 567.00,126.27 Q569.00,128.36 571.00,130.46 Q573.00,132.70 575.00,134.94 Q577.00,137.33 579.00,139.71 Q581.00,142.23 583.00,144.74 Q585.00,147.36 587.00,149.98 Q589.00,152.69 591.00,155.40 Q593.00,158.17 595.00,160.94 Q597.00,163.74 599.00,166.55 Q601.00,169.35 603.00,172.15 Q605.00,174.92 607.00,177.69 Q609.00,180.38 611.00,183.07 Q613.00,185.65 615.00,188.23 Q617.00,190.66 619.00,193.09 Q621.00,195.33 623.00,197.56 Q625.00,199.57 627.00,201.59 Q629.00,203.34 631.00,205.09 Q633.00,206.54 635.00,208.00 Q637.00,209.14 639.00,210.29 Q641.00,211.09 643.00,211.89 Q645.00,212.34 647.00,212.80 Q649.00,212.89 651.00,212.98 Q653.00,212.71 655.00,212.43 Q657.00,211.81 659.00,211.18 Q661.00,210.20 663.00,209.23 Q665.00,207.92 667.00,206.62 Q669.00,205.01 671.00,203.41 Q673.00,201.52 675.00,199.64 Q677.00,197.51 679.00,195.38 Q681.00,193.04 683.00,190.70 Q685.00,188.20 687.00,185.69 Q689.00,183.05 691.00,180.41 Q693.00,177.67 695.00,174.94 Q697.00,172.15 699.00,169.36 Q701.00,166.56 703.00,163.75 Q705.00,160.96 707.00,158.17 Q709.00,155.43 711.00,152.69 Q713.00,150.03 715.00,147.36 Q717.00,144.80 719.00,142.23 Q721.00,139.79 723.00,137.35 Q725.00,135.04 727.00,132.73 Q729.00,130.57 731.00,128.41" fill="none" stroke="var(--sf-line)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="130" y="245" text-anchor="middle" font-size="11" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">reactant</text><text x="390" y="28" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">transition state</text><text x="650" y="245" text-anchor="middle" font-size="11" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">product</text><circle cx="145" cy="212.43364639824767" r="6.5" fill="var(--sf-card)" stroke="var(--sf-accent)" stroke-width="2" class="sf-rise sf-d1"/><circle cx="230" cy="129.15838152261514" r="6.5" fill="var(--sf-card)" stroke="var(--sf-accent)" stroke-width="2" class="sf-rise sf-d2"/><circle cx="310" cy="83.59180279801438" r="6.5" fill="var(--sf-card)" stroke="var(--sf-accent)" stroke-width="2" class="sf-rise sf-d3"/><circle cx="390" cy="53.002091603605734" r="6.5" fill="var(--sf-card)" stroke="var(--sf-accent)" stroke-width="2" class="sf-rise sf-d4"/><circle cx="470" cy="82.9653683627114" r="6.5" fill="var(--sf-card)" stroke="var(--sf-accent)" stroke-width="2" class="sf-rise sf-d5"/><circle cx="550" cy="111.94085206147517" r="6.5" fill="var(--sf-card)" stroke="var(--sf-accent)" stroke-width="2" class="sf-rise sf-d6"/><circle cx="645" cy="212.4338980765394" r="6.5" fill="var(--sf-card)" stroke="var(--sf-accent)" stroke-width="2" class="sf-rise sf-d6"/><path d="M145,212.4 L230,129.2 L310,83.6 L390,53.0 L470,83.0 L550,111.9 L645,212.4" fill="none" stroke="var(--sf-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="3.4s" begin="0s" repeatCount="indefinite" path="M145,212.4 L230,129.2 L310,83.6 L390,53.0 L470,83.0 L550,111.9 L645,212.4"/><animate attributeName="opacity" values="0;1;1;0" dur="3.4s" begin="0s" repeatCount="indefinite"/></circle><path d="M120,200 Q180.95252887942235,167.46095847749683 250,170" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-experimental-gsm-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M120,200 Q180.95252887942235,167.46095847749683 250,170"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><path d="M660,200 Q599.0474711205776,167.46095847749683 530,170" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-experimental-gsm-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6s" repeatCount="indefinite" path="M660,200 Q599.0474711205776,167.46095847749683 530,170"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6s" repeatCount="indefinite"/></circle><rect x="342" y="252" width="96" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="390.0" y="266.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">grow</text>
 </svg>

@@ -4,7 +4,7 @@ The electrostatic potential (ESP) describes the electric potential energy a unit
 
 ## ESP Grid Generation
 
-<SvgDiagram src="/svg/esp-grid.svg" alt="ESP volumetric grid" />
+<SvgDiagram src="/svg/esp-grid.svg" alt="Electrostatic potential sampled on a voxel grid around a solute." />
 
 ### Coulomb Potential Formula
 

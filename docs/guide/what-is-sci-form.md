@@ -18,7 +18,7 @@
 14. **Periodic Systems** — PBC-aware bonding, hapticity detection (metallocenes)
 15. **Reaction Transforms** — SMIRKS atom-mapped reactant→product patterns
 16. **Fingerprints & Clustering** — ECFP/Morgan, Tanimoto, Butina RMSD clustering
-17. **Reaction Path Backends** — alpha GSM backend planning and TS search across UFF, MMFF94, PM3, xTB/GFN, HF-3c, and feature-gated ReaxFF
+17. **Reaction Path Backends** — Growing String Method backend planning and transition-state search across UFF, MMFF94, PM3, xTB/GFN, HF-3c, and ReaxFF
 
 Everything is available from **four entry points**: Rust, Python, TypeScript/WASM, and CLI — with **no C++ dependencies** and **native performance**.
 
@@ -118,7 +118,7 @@ sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, eac
 
 **Gateway method** for semi-empirical orbital properties — fast, stable, supported on all elements.
 
-<SvgDiagram src="/svg/eht-pipeline.svg" alt="EHT quantum calculation phases" />
+<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline: basis, overlap and Hamiltonian, orthonormalization, diagonalization and orbitals." />
 
 **Capabilities:**
 - Wolfsberg-Helmholtz Hamiltonian with STO-3G basis
@@ -188,7 +188,7 @@ sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, eac
 
 The **Extended Hückel Theory** module provides semi-empirical molecular orbital calculations based on the Wolfsberg-Helmholtz approximation:
 
-<SvgDiagram src="/svg/eht-pipeline.svg" alt="EHT quantum calculation phases" />
+<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline: basis, overlap and Hamiltonian, orthonormalization, diagonalization and orbitals." />
 
 ### Key Capabilities
 
@@ -258,7 +258,7 @@ Evaluate strain energy and optimize molecular geometry:
 
 - **Coverage:** Main-group organic chemistry, parameterized from QM
 - **Energy terms:** Quartic bond stretch, cubic angle bend, stretch-bend, out-of-plane, 3-term torsion (Fourier), Halgren 14-7 vdW and buffered Coulomb electrostatics with MMFF partial charges
-- **Accuracy:** ~0.08 Å RMSD vs experiment on small molecules; the full energy matches RDKit to <1e-8 kcal/mol on the validation corpus
+- **Accuracy:** ~0.08 Å RMSD vs experiment on small molecules; the full energy matches RDKit to 2.8e-11 kcal/mol on the seven-molecule F100 corpus
 
 → [Force Fields Algorithm](/algorithm/force-fields)
 

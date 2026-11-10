@@ -2,6 +2,8 @@
 
 sci-form is a computational chemistry library with two main areas: **3D conformer generation** and **quantum-chemistry-inspired property computation**. This page describes both pipelines at a high level.
 
+> The quantitative claims behind these pipelines — reference, measured deviation, confidence region and limitations — are collected in [Scientific validation](/validation/scientific-validation).
+
 ---
 
 ## Part 1: ETKDGv2 Conformer Pipeline
@@ -10,7 +12,7 @@ sci-form implements **ETKDGv2** (Experimental Torsion Knowledge Distance Geometr
 
 ### The 9-Step Pipeline
 
-<SvgDiagram src="/svg/pipeline-overview.svg" alt="pipeline-overview" />
+<SvgDiagram src="/svg/pipeline-overview.svg" alt="Six-stage conformer pipeline: parse, bounds, embed, refine, validate and output." />
 
 ### Phase 1: Topology → Bounds (Steps 1–3)
 

@@ -1753,8 +1753,15 @@ function compare_methods(smiles: string, elements: string, coords_flat: string, 
 
 ## Experimental (feature-gated)
 
-These exports only exist when the corresponding Cargo feature is enabled on the
-`sci-form-wasm` package. The always-available experimental entry points are:
+> **State note (2.0.0).** The Rust implementations of CGA, SDR, EDL, GSM,
+> KPM, CPM, RandNLA, Riemannian, kinetics, the periodic adapters and the
+> render bridge are core. Some Python/WASM/CLI wrappers still carry the
+> historical `experimental-*`, `alpha-*` or `beta-*` feature flag; the flag is
+> a build choice, not a stability claim. MBH, DFT, MLFF and reaction dynamics
+> remain gated.
+
+These exports are exposed when the corresponding Cargo feature is enabled on the
+`sci-form-wasm` build. The entry points are:
 
 | Function | Feature |
 |---|---|

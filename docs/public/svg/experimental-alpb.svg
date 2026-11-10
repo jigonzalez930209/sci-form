@@ -1,55 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 220" width="780" height="220" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
-  <rect width="780" height="220" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Title -->
-  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">E6: Analytical Linearized Poisson-Boltzmann (ALPB)</text>
-  <text x="390" y="48" text-anchor="middle" font-size="10" fill="#64748b">Analytical Born radii + GB kernel + ALPB correction for solvation</text>
-
-  <!-- Phase boxes -->
-  <rect x="10"  y="65" width="140" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="80"  y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Born Radii</text>
-  <text x="80"  y="106" text-anchor="middle" font-size="10" fill="#1d4ed8">Analytical formula</text>
-  <text x="80"  y="120" text-anchor="middle" font-size="10" fill="#1d4ed8">Ψ_i(r_ij, R_j)</text>
-
-  <rect x="170" y="65" width="140" height="80" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="240" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">GB Kernel</text>
-  <text x="240" y="106" text-anchor="middle" font-size="10" fill="#15803d">f_GB(r_ij, B_i, B_j)</text>
-  <text x="240" y="120" text-anchor="middle" font-size="10" fill="#15803d">Still formula</text>
-
-  <rect x="330" y="65" width="140" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="400" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">ALPB Factor</text>
-  <text x="400" y="106" text-anchor="middle" font-size="10" fill="#92400e">α correction</text>
-  <text x="400" y="120" text-anchor="middle" font-size="10" fill="#92400e">linearized PB</text>
-
-  <rect x="490" y="65" width="140" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="560" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">Electrostatic</text>
-  <text x="560" y="106" text-anchor="middle" font-size="10" fill="#be185d">ΔG_elec</text>
-  <text x="560" y="120" text-anchor="middle" font-size="10" fill="#be185d">q_i · q_j / f_GB</text>
-
-  <rect x="650" y="65" width="120" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="710" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">ΔG_solv</text>
-  <text x="710" y="106" text-anchor="middle" font-size="10" fill="#6d28d9">elec + nonpolar</text>
-  <text x="710" y="120" text-anchor="middle" font-size="10" fill="#6d28d9">kcal/mol</text>
-
-  <!-- Arrows -->
-  <line x1="150" y1="105" x2="168" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="310" y1="105" x2="328" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="470" y1="105" x2="488" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="630" y1="105" x2="648" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Labels -->
-  <text x="80"  y="168" text-anchor="middle" font-size="9" fill="#64748b">no numerical integration</text>
-  <text x="240" y="168" text-anchor="middle" font-size="9" fill="#64748b">effective Born distance</text>
-  <text x="400" y="168" text-anchor="middle" font-size="9" fill="#64748b">beyond pure GB</text>
-  <text x="560" y="168" text-anchor="middle" font-size="9" fill="#64748b">charge-charge solvation</text>
-  <text x="710" y="168" text-anchor="middle" font-size="9" fill="#64748b">+ SASA cavity term</text>
-
-  <!-- Advantage badge -->
-  <rect x="180" y="185" width="420" height="24" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
-  <text x="390" y="201" text-anchor="middle" font-size="10" fill="#166534">✓ 130× faster than GB-HCT · Analytical gradients · Closer to experiment</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 280" width="780" height="280" role="img" aria-label="A solute cavity with Born radii is coupled to a continuum solvent through the generalized Born kernel.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-experimental-alpb-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-experimental-alpb-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-experimental-alpb-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="780" height="280" fill="url(#sf-experimental-alpb-glow)" stroke="none"/>
+<circle cx="235" cy="150" r="88" fill="none" stroke="var(--sf-accent2)" stroke-width="1.2" class="sf-halo" opacity="0.18"/><circle cx="235" cy="150" r="68" fill="none" stroke="var(--sf-accent2)" stroke-width="1.2" class="sf-halo" opacity="0.26"/><circle cx="235" cy="150" r="48" fill="none" stroke="var(--sf-accent2)" stroke-width="1.2" class="sf-halo" opacity="0.34"/><g class="sf-float"><path d="M235,145 L207.0,169.0" fill="none" stroke="var(--sf-line)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M235,145 L263.0,169.0" fill="none" stroke="var(--sf-line)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="235" cy="145" r="15.0" fill="var(--sf-rose)" opacity="0.18"/><circle cx="235" cy="145" r="9.0" fill="var(--sf-rose)"/><circle cx="207.0" cy="169.0" r="6.0" fill="var(--sf-accent)"/><circle cx="263.0" cy="169.0" r="6.0" fill="var(--sf-accent)"/><text x="235" y="148.5" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">O</text><text x="207.0" y="172.0" text-anchor="middle" font-size="8" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">H</text><text x="263.0" y="172.0" text-anchor="middle" font-size="8" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">H</text></g><text x="235" y="242" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">solute cavity</text><path d="M278.2,165.7 L306.4,176.0" fill="none" stroke="var(--sf-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><path d="M235.0,196.0 L235.0,226.0" fill="none" stroke="var(--sf-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><path d="M191.8,165.7 L163.6,176.0" fill="none" stroke="var(--sf-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><path d="M219.3,106.8 L209.0,78.6" fill="none" stroke="var(--sf-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><path d="M270.2,120.4 L293.2,101.1" fill="none" stroke="var(--sf-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><path d="M340,150 L430,150" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-experimental-alpb-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M340,150 L430,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><path d="M455,78 L455,208 M455,208 L695,208" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M455,208 l4,-4 M455,208 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M455,78 l-4,4 M455,78 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="575.0" y="230" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">r</text><text x="437" y="143.0" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 437 143.0)">f</text><path d="M455.00,194.91 Q456.50,194.90 458.00,194.89 Q459.50,194.88 461.00,194.87 Q462.50,194.86 464.00,194.84 Q465.50,194.83 467.00,194.81 Q468.50,194.79 470.00,194.77 Q471.50,194.74 473.00,194.71 Q474.50,194.68 476.00,194.65 Q477.50,194.61 479.00,194.57 Q480.50,194.53 482.00,194.48 Q483.50,194.42 485.00,194.36 Q486.50,194.29 488.00,194.22 Q489.50,194.14 491.00,194.05 Q492.50,193.95 494.00,193.85 Q495.50,193.72 497.00,193.60 Q498.50,193.44 500.00,193.29 Q501.50,193.11 503.00,192.92 Q504.50,192.70 506.00,192.47 Q507.50,192.20 509.00,191.93 Q510.50,191.61 512.00,191.28 Q513.50,190.89 515.00,190.49 Q516.50,190.02 518.00,189.55 Q519.50,188.99 521.00,188.43 Q522.50,187.77 524.00,187.10 Q525.50,186.31 527.00,185.52 Q528.50,184.60 530.00,183.68 Q531.50,182.60 533.00,181.52 Q534.50,180.28 536.00,179.04 Q537.50,177.62 539.00,176.21 Q540.50,174.61 542.00,173.01 Q543.50,171.23 545.00,169.45 Q546.50,167.50 548.00,165.55 Q549.50,163.44 551.00,161.34 Q552.50,159.11 554.00,156.88 Q555.50,154.55 557.00,152.23 Q558.50,149.87 560.00,147.50 Q561.50,145.13 563.00,142.77 Q564.50,140.45 566.00,138.12 Q567.50,135.89 569.00,133.66 Q570.50,131.56 572.00,129.45 Q573.50,127.50 575.00,125.55 Q576.50,123.77 578.00,121.99 Q579.50,120.39 581.00,118.79 Q582.50,117.38 584.00,115.96 Q585.50,114.72 587.00,113.48 Q588.50,112.40 590.00,111.32 Q591.50,110.40 593.00,109.48 Q594.50,108.69 596.00,107.90 Q597.50,107.23 599.00,106.57 Q600.50,106.01 602.00,105.45 Q603.50,104.98 605.00,104.51 Q606.50,104.11 608.00,103.72 Q609.50,103.39 611.00,103.07 Q612.50,102.80 614.00,102.53 Q615.50,102.30 617.00,102.08 Q618.50,101.89 620.00,101.71 Q621.50,101.56 623.00,101.40 Q624.50,101.28 626.00,101.15 Q627.50,101.05 629.00,100.95 Q630.50,100.86 632.00,100.78 Q633.50,100.71 635.00,100.64 Q636.50,100.58 638.00,100.52 Q639.50,100.47 641.00,100.43 Q642.50,100.39 644.00,100.35 Q645.50,100.32 647.00,100.29 Q648.50,100.26 650.00,100.23 Q651.50,100.21 653.00,100.19 Q654.50,100.17 656.00,100.16 Q657.50,100.14 659.00,100.13 Q660.50,100.12 662.00,100.11 Q663.50,100.10 665.00,100.09 Q666.50,100.08 668.00,100.07 Q669.50,100.06 671.00,100.06 Q672.50,100.05 674.00,100.05 Q675.50,100.04 677.00,100.04 Q678.50,100.04 680.00,100.03 Q681.50,100.03 683.00,100.03 Q684.50,100.02 686.00,100.02 Q687.50,100.02 689.00,100.02 Q690.50,100.02 692.00,100.01" fill="none" stroke="var(--sf-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="575" y="238" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">generalized Born kernel</text><rect x="520" y="36" width="100" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="570.0" y="50.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">solvent</text>
 </svg>

@@ -4,7 +4,7 @@ The molecular dipole moment $\vec{\mu}$ measures the overall polarity of a molec
 
 ## Dipole Calculation
 
-<SvgDiagram src="/svg/dipole-vector.svg" alt="Dipole moment vector" />
+<SvgDiagram src="/svg/dipole-vector.svg" alt="Partial charges on water create a molecular dipole moment." />
 
 ### Formula
 

@@ -20,7 +20,7 @@ $$E_{\text{dist}} = \sum_{i<j} \begin{cases}
 0 & \text{otherwise}
 \end{cases}$$
 
-<SvgDiagram src="/svg/force-fields-overview.svg" alt="force-fields-overview" />
+<SvgDiagram src="/svg/force-fields-overview.svg" alt="A force field balances repulsion at short range against attraction at long range." />
 
 The **basin filter** ($u - l \leq 5.0$) skips widely constrained pairs (typically distant non-bonded atoms) to focus optimization on well-determined distances.
 
@@ -92,7 +92,7 @@ $$
 \end{aligned}
 $$
 
-<SvgDiagram src="/svg/force-fields-torsion.svg" alt="force-fields-torsion" />
+<SvgDiagram src="/svg/force-fields-torsion.svg" alt="Two- and three-fold torsion potentials." />
 
 #### UFF Inversion Terms
 
@@ -186,7 +186,7 @@ The line search uses the following strategy:
 
 ## 3. MMFF94 Force Field
 
-The **Merck Molecular Force Field 94 (MMFF94)** is used for post-embedding energy refinement and geometry optimization of organic drug-like molecules. sci-form implements the **complete** MMFF94 energy expression with analytical gradients: quartic bond stretching, cubic angle bending, stretch-bend coupling, out-of-plane bending, three-term Fourier torsion, Halgren buffered 14-7 van der Waals and buffered Coulomb electrostatics with MMFF94 partial charges. `compute_mmff94_energy` reproduces RDKit's `MMFFGetMoleculeForceField().CalcEnergy()` to better than `1e-8 kcal/mol` on the validation corpus; the published parameter tables, the atom typing and the partial-charge tables are all real (validated against RDKit's `Params.cpp`).
+The **Merck Molecular Force Field 94 (MMFF94)** is used for post-embedding energy refinement and geometry optimization of organic drug-like molecules. sci-form implements the **complete** MMFF94 energy expression with analytical gradients: quartic bond stretching, cubic angle bending, stretch-bend coupling, out-of-plane bending, three-term Fourier torsion, Halgren buffered 14-7 van der Waals and buffered Coulomb electrostatics with MMFF94 partial charges. `compute_mmff94_energy` reproduces RDKit's `MMFFGetMoleculeForceField().CalcEnergy()` to **2.8e-11 kcal/mol** on the seven-molecule F100 corpus; the partial charges match exactly and the atom types agree case by case. The published parameter tables, the atom typing and the partial-charge tables are all real (validated against RDKit's `Params.cpp`).
 
 ### Atom Types
 
@@ -334,7 +334,7 @@ let max_err = validate_gradients(&term, &coords, 1e-5);
 assert!(max_err < 1e-4, "gradient error: {max_err}");
 ```
 
-The test suite verifies these four implemented term types against RDKit/OpenMM-derived references; it does not claim coverage of the missing electrostatic, stretch-bend or out-of-plane terms.
+The F100 gate compares the full energy (bond, angle, stretch-bend, out-of-plane, torsion, buffered 14-7 van der Waals and buffered electrostatics) and the partial charges against RDKit on the same coordinates. The seven-molecule corpus is intentionally small; it is a parity gate, not a parameter-coverage claim. The measured deviation, confidence region and limitations are recorded in [Scientific validation](/validation/scientific-validation).
 
 ### References
 

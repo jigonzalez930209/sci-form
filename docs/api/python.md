@@ -1896,10 +1896,16 @@ sci_form.optimize_framework("CCO", coords, options={"nope": 1})
 
 ---
 
-## Experimental, feature-gated surface
+## Experimental surface
 
-These functions only exist when the matching Cargo feature is enabled on the `sci-form-python`
-package. They are still listed in `sci_form.__all__` when present.
+> **State note (2.0.0).** The Rust implementations of CGA, SDR, EDL, GSM,
+> KPM, CPM, RandNLA, Riemannian, kinetics, the periodic adapters and the
+> render bridge are core. Some Python/WASM/CLI wrappers still carry the
+> historical `experimental-*`, `alpha-*` or `beta-*` feature flag; the flag is
+> a build choice, not a stability claim. MBH, DFT, MLFF and reaction dynamics
+> remain gated.
+
+These functions are exposed by the Python package when the matching Cargo feature is enabled on the `sci-form-python` build. They are listed in `sci_form.__all__` when present.
 
 | Capability | Feature | Canonical functions | Deprecated aliases |
 |---|---|---|---|

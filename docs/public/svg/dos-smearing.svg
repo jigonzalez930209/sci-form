@@ -1,60 +1,58 @@
-<svg width="720" height="400" viewBox="0 0 720 400" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <rect x="0" y="0" width="720" height="400" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif">
-    <!-- Title -->
-    <text x="360" y="30" text-anchor="middle" fill="#1e293b" font-size="16" font-weight="700">Density of States (DOS) and PDOS</text>
-
-    <!-- DOS curve illustration -->
-    <g transform="translate(40, 60)">
-      <!-- Axes -->
-      <line x1="30" y1="200" x2="300" y2="200" stroke="#1e293b" stroke-width="1.5"/>
-      <line x1="30" y1="200" x2="30" y2="20" stroke="#1e293b" stroke-width="1.5"/>
-      <text x="165" y="225" text-anchor="middle" fill="#64748b" font-size="11">Energy (eV)</text>
-      <text x="10" y="110" text-anchor="middle" fill="#64748b" font-size="11" transform="rotate(-90, 10, 110)">DOS</text>
-
-      <!-- Discrete eigenvalues (sticks) -->
-      <line x1="70" y1="200" x2="70" y2="160" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-      <line x1="100" y1="200" x2="100" y2="140" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-      <line x1="130" y1="200" x2="130" y2="150" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-      <line x1="180" y1="200" x2="180" y2="130" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-      <line x1="220" y1="200" x2="220" y2="165" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-      <line x1="260" y1="200" x2="260" y2="170" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-
-      <!-- Gaussian-smeared curve -->
-      <path d="M 40,198 C 50,196 55,180 70,155 C 80,140 85,135 100,120 C 110,130 115,140 130,135 C 140,130 155,160 165,170 C 170,165 175,140 180,110 C 185,130 195,160 210,165 C 215,160 220,148 225,155 C 235,160 250,165 260,158 C 275,170 285,190 295,198" fill="none" stroke="#2563eb" stroke-width="2.5"/>
-
-      <!-- PDOS fill (atom contribution) -->
-      <path d="M 40,198 C 50,197 55,188 70,175 C 80,165 85,160 100,155 C 110,162 115,168 130,165 C 140,162 155,180 165,185 C 170,182 175,168 180,155 C 185,165 195,180 210,183 C 215,180 220,175 225,178 C 235,182 250,185 260,180 C 275,188 285,195 295,198 Z" fill="#2563eb" opacity="0.15"/>
-
-      <!-- Legend -->
-      <line x1="40" y1="240" x2="60" y2="240" stroke="#6366f1" stroke-width="2" opacity="0.5"/>
-      <text x="68" y="244" fill="#64748b" font-size="10">eigenvalue sticks</text>
-      <line x1="140" y1="240" x2="160" y2="240" stroke="#2563eb" stroke-width="2.5"/>
-      <text x="168" y="244" fill="#64748b" font-size="10">smeared DOS</text>
-      <rect x="240" y="235" width="15" height="10" fill="#2563eb" opacity="0.15" stroke="#2563eb" stroke-width="0.5"/>
-      <text x="262" y="244" fill="#64748b" font-size="10">PDOS (atom)</text>
-    </g>
-
-    <!-- Formula section -->
-    <rect x="370" y="60" width="330" height="210" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1"/>
-
-    <text x="390" y="88" fill="#3730a3" font-weight="700" font-size="14">Gaussian Smearing</text>
-
-    <text x="390" y="115" fill="#1e293b" font-size="12" font-weight="600">Total DOS:</text>
-    <text x="390" y="138" fill="#312e81" font-size="12" font-weight="600">D(E) = Σᵢ G(E − εᵢ, σ)</text>
-
-    <text x="390" y="165" fill="#1e293b" font-size="12" font-weight="600">Gaussian kernel:</text>
-    <text x="390" y="188" fill="#312e81" font-size="12" font-weight="600">G(x,σ) = 1/(σ√2π) · e^(−x²/2σ²)</text>
-
-    <text x="390" y="215" fill="#1e293b" font-size="12" font-weight="600">PDOS for atom A:</text>
-    <text x="390" y="238" fill="#312e81" font-size="12" font-weight="600">Dₐ(E) = Σᵢ wₐᵢ · G(E − εᵢ, σ)</text>
-    <text x="390" y="258" fill="#64748b" font-size="11">wₐᵢ = Σᵤ∈ₐ |Cᵤᵢ|² (Mulliken weight)</text>
-
-    <!-- Properties -->
-    <rect x="40" y="310" width="660" height="70" rx="10" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1"/>
-    <text x="60" y="335" fill="#3730a3" font-weight="700" font-size="13">Parameters</text>
-    <text x="60" y="355" fill="#64748b" font-size="12">σ (smearing width): 0.1–0.5 eV typical | grid_points: 500–2000 | Σₐ Dₐ(E) = D(E) (PDOS sums to total)</text>
-    <text x="60" y="372" fill="#64748b" font-size="12">∫ D(E) dE ≈ N_orbitals | narrower σ → sharper peaks near eigenvalues</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260" width="800" height="260" role="img" aria-label="Discrete eigenvalues are broadened into a continuous density of states.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-dos-smearing-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-dos-smearing-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-dos-smearing-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="800" height="260" fill="url(#sf-dos-smearing-glow)" stroke="none"/>
+<path d="M70,210 L70,160" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d1"/><path d="M95,210 L95,130" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d2"/><path d="M120,210 L120,100" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d3"/><path d="M150,210 L150,140" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d4"/><path d="M180,210 L180,115" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d5"/><path d="M210,210 L210,165" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d6"/><path d="M55,210 L230,210" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="142" y="236" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">eigenvalues</text><path d="M245,150 L305,150" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-dos-smearing-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M245,150 L305,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><path d="M350.00,209.61 Q352.00,209.46 354.00,209.31 Q356.00,209.07 358.00,208.83 Q360.00,208.46 362.00,208.08 Q364.00,207.52 366.00,206.95 Q368.00,206.13 370.00,205.31 Q372.00,204.17 374.00,203.03 Q376.00,201.51 378.00,199.98 Q380.00,198.01 382.00,196.05 Q384.00,193.63 386.00,191.22 Q388.00,188.37 390.00,185.53 Q392.00,182.35 394.00,179.16 Q396.00,175.78 398.00,172.40 Q400.00,169.02 402.00,165.64 Q404.00,162.50 406.00,159.36 Q408.00,156.72 410.00,154.09 Q412.00,152.17 414.00,150.26 Q416.00,149.26 418.00,148.26 Q420.00,148.26 422.00,148.26 Q424.00,149.26 426.00,150.26 Q428.00,152.17 430.00,154.09 Q432.00,156.72 434.00,159.36 Q436.00,162.50 438.00,165.64 Q440.00,169.02 442.00,172.40 Q444.00,175.78 446.00,179.16 Q448.00,182.35 450.00,185.53 Q452.00,188.37 454.00,191.22 Q456.00,193.63 458.00,196.05 Q460.00,198.01 462.00,199.98 Q464.00,201.51 466.00,203.03 Q468.00,204.17 470.00,205.31 Q472.00,206.13 474.00,206.95 Q476.00,207.52 478.00,208.08 Q480.00,208.46 482.00,208.83 Q484.00,209.07 486.00,209.31 Q488.00,209.46 490.00,209.61 Q492.00,209.70 494.00,209.78 Q496.00,209.83 498.00,209.88 Q500.00,209.91 502.00,209.94 Q504.00,209.96 506.00,209.97 Q508.00,209.98 510.00,209.99 Q512.00,209.99 514.00,209.99 Q516.00,210.00 518.00,210.00 Q520.00,210.00 522.00,210.00 Q524.00,210.00 526.00,210.00 Q528.00,210.00 530.00,210.00 Q532.00,210.00 534.00,210.00 Q536.00,210.00 538.00,210.00 Q540.00,210.00 542.00,210.00 Q544.00,210.00 546.00,210.00 Q548.00,210.00 550.00,210.00 Q552.00,210.00 554.00,210.00 Q556.00,210.00 558.00,210.00 Q560.00,210.00 562.00,210.00 Q564.00,210.00 566.00,210.00 Q568.00,210.00 570.00,210.00 Q572.00,210.00 574.00,210.00 Q576.00,210.00 578.00,210.00 Q580.00,210.00 582.00,210.00 Q584.00,210.00 586.00,210.00 Q588.00,210.00 590.00,210.00 Q592.00,210.00 594.00,210.00 Q596.00,210.00 598.00,210.00 Q600.00,210.00 602.00,210.00 Q604.00,210.00 606.00,210.00 Q608.00,210.00 610.00,210.00 Q612.00,210.00 614.00,210.00 Q616.00,210.00 618.00,210.00 Q620.00,210.00 622.00,210.00 Q624.00,210.00 626.00,210.00" fill="none" stroke="var(--sf-accent2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><path d="M350.00,210.00 Q352.00,210.00 354.00,210.00 Q356.00,210.00 358.00,210.00 Q360.00,210.00 362.00,210.00 Q364.00,210.00 366.00,210.00 Q368.00,210.00 370.00,210.00 Q372.00,210.00 374.00,209.99 Q376.00,209.99 378.00,209.99 Q380.00,209.98 382.00,209.97 Q384.00,209.96 386.00,209.94 Q388.00,209.91 390.00,209.88 Q392.00,209.83 394.00,209.77 Q396.00,209.68 398.00,209.58 Q400.00,209.42 402.00,209.26 Q404.00,208.99 406.00,208.72 Q408.00,208.29 410.00,207.87 Q412.00,207.21 414.00,206.55 Q416.00,205.58 418.00,204.61 Q420.00,203.24 422.00,201.86 Q424.00,199.97 426.00,198.09 Q428.00,195.62 430.00,193.15 Q432.00,190.04 434.00,186.93 Q436.00,183.19 438.00,179.45 Q440.00,175.15 442.00,170.85 Q444.00,166.16 446.00,161.46 Q448.00,156.63 450.00,151.79 Q452.00,147.12 454.00,142.45 Q456.00,138.31 458.00,134.16 Q460.00,130.90 462.00,127.63 Q464.00,125.54 466.00,123.44 Q468.00,122.72 470.00,122.00 Q472.00,122.72 474.00,123.44 Q476.00,125.54 478.00,127.63 Q480.00,130.90 482.00,134.16 Q484.00,138.31 486.00,142.45 Q488.00,147.12 490.00,151.79 Q492.00,156.63 494.00,161.46 Q496.00,166.16 498.00,170.85 Q500.00,175.15 502.00,179.45 Q504.00,183.19 506.00,186.93 Q508.00,190.04 510.00,193.15 Q512.00,195.62 514.00,198.09 Q516.00,199.97 518.00,201.86 Q520.00,203.24 522.00,204.61 Q524.00,205.58 526.00,206.55 Q528.00,207.21 530.00,207.87 Q532.00,208.29 534.00,208.72 Q536.00,208.99 538.00,209.26 Q540.00,209.42 542.00,209.58 Q544.00,209.68 546.00,209.77 Q548.00,209.83 550.00,209.88 Q552.00,209.91 554.00,209.94 Q556.00,209.96 558.00,209.97 Q560.00,209.98 562.00,209.99 Q564.00,209.99 566.00,209.99 Q568.00,210.00 570.00,210.00 Q572.00,210.00 574.00,210.00 Q576.00,210.00 578.00,210.00 Q580.00,210.00 582.00,210.00 Q584.00,210.00 586.00,210.00 Q588.00,210.00 590.00,210.00 Q592.00,210.00 594.00,210.00 Q596.00,210.00 598.00,210.00 Q600.00,210.00 602.00,210.00 Q604.00,210.00 606.00,210.00 Q608.00,210.00 610.00,210.00 Q612.00,210.00 614.00,210.00 Q616.00,210.00 618.00,210.00 Q620.00,210.00 622.00,210.00 Q624.00,210.00 626.00,210.00" fill="none" stroke="var(--sf-warm)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><path d="M350.00,210.00 Q352.00,210.00 354.00,210.00 Q356.00,210.00 358.00,210.00 Q360.00,210.00 362.00,210.00 Q364.00,210.00 366.00,210.00 Q368.00,210.00 370.00,210.00 Q372.00,210.00 374.00,210.00 Q376.00,210.00 378.00,210.00 Q380.00,210.00 382.00,210.00 Q384.00,210.00 386.00,210.00 Q388.00,210.00 390.00,210.00 Q392.00,210.00 394.00,210.00 Q396.00,210.00 398.00,210.00 Q400.00,210.00 402.00,210.00 Q404.00,210.00 406.00,210.00 Q408.00,210.00 410.00,210.00 Q412.00,210.00 414.00,210.00 Q416.00,210.00 418.00,210.00 Q420.00,210.00 422.00,210.00 Q424.00,210.00 426.00,209.99 Q428.00,209.99 430.00,209.99 Q432.00,209.98 434.00,209.97 Q436.00,209.96 438.00,209.95 Q440.00,209.92 442.00,209.90 Q444.00,209.85 446.00,209.81 Q448.00,209.73 450.00,209.65 Q452.00,209.52 454.00,209.39 Q456.00,209.18 458.00,208.96 Q460.00,208.63 462.00,208.30 Q464.00,207.80 466.00,207.30 Q468.00,206.57 470.00,205.84 Q472.00,204.83 474.00,203.82 Q476.00,202.46 478.00,201.11 Q480.00,199.37 482.00,197.63 Q484.00,195.48 486.00,193.34 Q488.00,190.82 490.00,188.29 Q492.00,185.47 494.00,182.64 Q496.00,179.64 498.00,176.64 Q500.00,173.64 502.00,170.65 Q504.00,167.86 506.00,165.08 Q508.00,162.74 510.00,160.40 Q512.00,158.70 514.00,157.01 Q516.00,156.12 518.00,155.23 Q520.00,155.23 522.00,155.23 Q524.00,156.12 526.00,157.01 Q528.00,158.70 530.00,160.40 Q532.00,162.74 534.00,165.08 Q536.00,167.86 538.00,170.65 Q540.00,173.64 542.00,176.64 Q544.00,179.64 546.00,182.64 Q548.00,185.47 550.00,188.29 Q552.00,190.82 554.00,193.34 Q556.00,195.48 558.00,197.63 Q560.00,199.37 562.00,201.11 Q564.00,202.46 566.00,203.82 Q568.00,204.83 570.00,205.84 Q572.00,206.57 574.00,207.30 Q576.00,207.80 578.00,208.30 Q580.00,208.63 582.00,208.96 Q584.00,209.18 586.00,209.39 Q588.00,209.52 590.00,209.65 Q592.00,209.73 594.00,209.81 Q596.00,209.85 598.00,209.90 Q600.00,209.92 602.00,209.95 Q604.00,209.96 606.00,209.97 Q608.00,209.98 610.00,209.99 Q612.00,209.99 614.00,209.99 Q616.00,210.00 618.00,210.00 Q620.00,210.00 622.00,210.00 Q624.00,210.00 626.00,210.00" fill="none" stroke="var(--sf-violet)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="470" y="236" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">broadened peaks</text><path d="M560,150 L620,150" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-dos-smearing-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.4s" repeatCount="indefinite" path="M560,150 L620,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.4s" repeatCount="indefinite"/></circle><path d="M630,210 L795,210" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M640.00,207.51 Q641.00,207.21 642.00,206.90 Q643.00,206.54 644.00,206.18 Q645.00,205.76 646.00,205.34 Q647.00,204.85 648.00,204.35 Q649.00,203.79 650.00,203.22 Q651.00,202.58 652.00,201.93 Q653.00,201.21 654.00,200.48 Q655.00,199.67 656.00,198.87 Q657.00,197.98 658.00,197.09 Q659.00,196.12 660.00,195.15 Q661.00,194.11 662.00,193.07 Q663.00,191.96 664.00,190.86 Q665.00,189.69 666.00,188.53 Q667.00,187.32 668.00,186.11 Q669.00,184.86 670.00,183.62 Q671.00,182.36 672.00,181.10 Q673.00,179.83 674.00,178.56 Q675.00,177.30 676.00,176.05 Q677.00,174.81 678.00,173.57 Q679.00,172.36 680.00,171.16 Q681.00,169.99 682.00,168.82 Q683.00,167.70 684.00,166.58 Q685.00,165.51 686.00,164.43 Q687.00,163.41 688.00,162.38 Q689.00,161.40 690.00,160.42 Q691.00,159.47 692.00,158.53 Q693.00,157.62 694.00,156.71 Q695.00,155.82 696.00,154.94 Q697.00,154.07 698.00,153.20 Q699.00,152.35 700.00,151.49 Q701.00,150.65 702.00,149.80 Q703.00,148.97 704.00,148.14 Q705.00,147.33 706.00,146.52 Q707.00,145.73 708.00,144.94 Q709.00,144.19 710.00,143.45 Q711.00,142.75 712.00,142.06 Q713.00,141.44 714.00,140.82 Q715.00,140.29 716.00,139.76 Q717.00,139.34 718.00,138.92 Q719.00,138.62 720.00,138.32 Q721.00,138.16 722.00,138.00 Q723.00,137.98 724.00,137.96 Q725.00,138.09 726.00,138.22 Q727.00,138.49 728.00,138.76 Q729.00,139.17 730.00,139.58 Q731.00,140.12 732.00,140.66 Q733.00,141.32 734.00,141.97 Q735.00,142.73 736.00,143.48 Q737.00,144.33 738.00,145.17 Q739.00,146.09 740.00,147.01 Q741.00,148.00 742.00,148.98 Q743.00,150.03 744.00,151.07 Q745.00,152.17 746.00,153.27 Q747.00,154.42 748.00,155.57 Q749.00,156.77 750.00,157.97 Q751.00,159.22 752.00,160.48 Q753.00,161.78 754.00,163.09 Q755.00,164.44 756.00,165.80 Q757.00,167.20 758.00,168.60 Q759.00,170.05 760.00,171.49 Q761.00,172.97 762.00,174.45 Q763.00,175.94 764.00,177.44 Q765.00,178.93 766.00,180.43 Q767.00,181.91 768.00,183.40 Q769.00,184.85 770.00,186.30 Q771.00,187.70 772.00,189.10 Q773.00,190.43 774.00,191.77 Q775.00,193.02 776.00,194.27 Q777.00,195.42 778.00,196.58 Q779.00,197.63 780.00,198.68 Q781.00,199.62 782.00,200.56 Q783.00,201.40 784.00,202.23 Q785.00,202.96 786.00,203.68 Q787.00,204.30 788.00,204.92 Q789.00,205.45 790.00,205.97 Q791.00,206.41 792.00,206.85 Q793.00,207.20 794.00,207.56 Q795.00,207.85 796.00,208.14 Q797.00,208.37 798.00,208.60" fill="none" stroke="var(--sf-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="712" y="236" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">total DOS</text><rect x="380" y="36" width="100" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="430.0" y="50.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">Gaussian smearing</text>
 </svg>

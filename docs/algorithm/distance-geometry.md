@@ -10,7 +10,7 @@ $$l_{ij} \leq \|\mathbf{x}_i - \mathbf{x}_j\| \leq u_{ij} \quad \forall\, i < j$
 
 where $l_{ij}$ and $u_{ij}$ are the lower and upper distance bounds.
 
-<SvgDiagram src="/svg/distance-geometry-pipeline.svg" alt="distance-geometry-pipeline" />
+<SvgDiagram src="/svg/distance-geometry-pipeline.svg" alt="Distance geometry pipeline: bounds, sampling, embedding and refinement." />
 
 ## Distance Bounds Sources
 
@@ -81,7 +81,7 @@ $$x_{ik} = \sqrt{\lambda_k} \cdot v_{ik}$$
 
 where $\lambda_k$ are the top $d$ eigenvalues and $v_{ik}$ are the corresponding eigenvector components.
 
-<SvgDiagram src="/svg/distance-geometry-matrix.svg" alt="distance-geometry-matrix" />
+<SvgDiagram src="/svg/distance-geometry-matrix.svg" alt="Distance matrix to Gram matrix to eigenvalues to 3D coordinates." />
 
 ### Why 4D?
 

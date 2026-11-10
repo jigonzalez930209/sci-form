@@ -1,7 +1,21 @@
-# E10: Constant Potential Method (CPM)
+# Constant Potential Method
 
 **Module:** `sci_form::cpm` (core since 2026-10-13; `beta::cpm` re-export)
 **Feature flag:** none (core); `beta-cpm`/`experimental-cpm` kept as no-op aliases
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | LAMMPS `fix electrode/conp` |
+| Measured separation | plate charge scale 1.76×; per-atom cosine similarity 0.44 |
+| Confidence region | graphene bilayer, 3×3 cells, V = ±0.5/1/2 V, η = 1.979 |
+| Main limitation | point-charge hardness 5 eV vs ~22 eV Gaussian self-energy; over-polarizes dense conductors |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Extends charge and electronic property calculations by coupling the molecule to a "virtual electrode" at electrochemical potential $\mu$. Charges fluctuate to equilibrate with the electrode, enabling simulation of **quantum capacitance**, charge response to potential, and electrochemical energy surfaces.
 
-<SvgDiagram src="/svg/experimental-cpm.svg" alt="CPM Pipeline" />
+<SvgDiagram src="/svg/experimental-cpm.svg" alt="An applied electrode potential induces a charge response in the electrolyte." />
 
 ---
 

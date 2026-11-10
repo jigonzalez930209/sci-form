@@ -1,4 +1,4 @@
-# E4: Kernel Polynomial Method (KPM)
+# Kernel Polynomial Method
 
 **Module:** `sci_form::kpm` (core since 2026-11-07; F91 validated; `sci_form::beta::kpm` is an alias)
 **Feature flag:** none — promoted to core on 2026-11-07. `beta-kpm` and
@@ -7,11 +7,25 @@
 
 ---
 
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | NumPy `eigh` on GOE and gapped spectra |
+| Measured separation | moments 3.5e-15; DOS L2 1.7e-14; Mulliken 3.8e-5 gapped, 2.6e-2 finite-T |
+| Confidence region | gapped spectra, order 100–500, sparse matrices up to 5000 sites |
+| Main limitation | T=0 gapless spectra show Gibbs ringing; stochastic trace noise |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
+
+---
+
 ## Overview
 
 Computes the density of states (DOS), density matrix, and Mulliken populations via **Chebyshev polynomial expansion** of the Hamiltonian, avoiding diagonalization entirely. Achieves $O(N)$ scaling for sparse Hamiltonians, enabling electronic structure calculations on systems of thousands of atoms.
 
-<SvgDiagram src="/svg/experimental-kpm.svg" alt="KPM Pipeline" />
+<SvgDiagram src="/svg/experimental-kpm.svg" alt="A discrete spectrum is expanded in Chebyshev polynomials and turned into a smooth density of states." />
 
 ---
 

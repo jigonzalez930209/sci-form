@@ -2,13 +2,16 @@
 
 sci-form implements a simplified Tamm-Dancoff approximation (sTDA) for UV-Vis absorption spectra using EHT molecular orbital transitions with oscillator strength weighting and configurable broadening.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## Overview
 
-<SvgDiagram src="/svg/spectroscopy-overview.svg" alt="Spectroscopy overview — three tracks D1 UV-Vis, D2 IR, D3 NMR" />
+<SvgDiagram src="/svg/spectroscopy-overview.svg" alt="One geometry feeds UV-Vis, infrared and nuclear magnetic resonance tracks." />
 
 ## sTDA Pipeline
 
-<SvgDiagram src="/svg/uvvis-stda-pipeline.svg" alt="sTDA UV-Vis pipeline: Geometry → EHT/xTB → MO Transitions → Oscillator Strength → Broadening → ε(λ)" />
+<SvgDiagram src="/svg/uvvis-stda-pipeline.svg" alt="UV-Vis sTDA pipeline from geometry to orbitals, transitions, oscillator strengths and spectrum." />
 
 ## Theory
 

@@ -1,7 +1,21 @@
-# E1: Conformal Geometric Algebra (CGA)
+# Conformal geometric algebra
 
 **Module:** `sci_form::cga` (core since 2026-10-14; `alpha::cga` re-export)
 **Feature flag:** none (core); `alpha-cga` kept as no-op alias
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | Rodrigues closed form + `clifford` Cl(4,1) |
+| Measured separation | motors 3.4e-15; dihedral rotation 6.6e-15 (16 rigid motions) |
+| Confidence region | small rigid motions, seed 42 |
+| Main limitation | `refine_torsion_cga` vs the matrix method and MOF assembly are not covered |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Replaces the internal geometry engine (separate quaternions + vectors) with Conformal Geometric Algebra $G(4,1)$, unifying rotations and translations into a single multiplicative operator called a **Motor** ($M X \tilde{M}$). This eliminates gimbal lock and enables massively parallelizable geometric operations for conformer generation and MOF assembly.
 
-<SvgDiagram src="/svg/experimental-cga.svg" alt="CGA Pipeline" />
+<SvgDiagram src="/svg/experimental-cga.svg" alt="A conformal motor rotates a molecular subtree around a bond axis." />
 
 ---
 

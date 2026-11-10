@@ -1,7 +1,21 @@
-# E8: Semidefinite Relaxation Embedding (SDR)
+# Semidefinite relaxation embedding
 
 **Module:** `sci_form::sdr` (core since 2026-10-14; `alpha::sdr` re-export)
 **Feature flag:** none (core); `alpha-sdr` kept as no-op alias
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | CVXPY/SCS |
+| Measured separation | projections 4.4e-16; exact embeds 7e-15; noisy case within 3× the SDP optimum |
+| Confidence region | small distance sets, equilateral triangle and tetrahedron |
+| Main limitation | SDP scaling to large molecules is not benchmarked |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Reformulates the conformer embedding problem as a **convex semidefinite program (SDP)**, mathematically guaranteeing that the distance matrix is positive semidefinite before extracting coordinates. This eliminates the retry loop caused by negative eigenvalues in the metric matrix — the most common failure mode in distance geometry embedding.
 
-<SvgDiagram src="/svg/experimental-sdr.svg" alt="SDR Embedding Pipeline" />
+<SvgDiagram src="/svg/experimental-sdr.svg" alt="Distance constraints are projected onto the positive-semidefinite cone to obtain a stable embedding." />
 
 ---
 

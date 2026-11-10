@@ -4,7 +4,7 @@ The Kabsch algorithm finds the optimal rotation to align two molecular structure
 
 ## Kabsch SVD Pipeline
 
-<SvgDiagram src="/svg/kabsch-alignment.svg" alt="Kabsch alignment algorithm" />
+<SvgDiagram src="/svg/kabsch-alignment.svg" alt="Kabsch alignment finds the optimal rotation between two point clouds." />
 
 ### Step 1: Center Both Structures
 

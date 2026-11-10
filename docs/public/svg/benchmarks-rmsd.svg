@@ -1,70 +1,58 @@
-<svg width="700" height="470" viewBox="0 0 700 470" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <rect x="0" y="0" width="700" height="470" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif" font-size="11">
-    <text x="350" y="15" text-anchor="middle" fill="#1e3a5f" font-weight="700" font-size="14">Embed Success Rate by Category</text>
-
-    <!-- Axis -->
-    <line x1="150" y1="30" x2="150" y2="400" stroke="#e2e8f0" stroke-width="1"/>
-    <line x1="150" y1="400" x2="680" y2="400" stroke="#e2e8f0" stroke-width="1"/>
-
-    <!-- 100% marker -->
-    <line x1="150" y1="30" x2="680" y2="30" stroke="#e2e8f0" stroke-width="0.5" stroke-dasharray="3 2"/>
-    <text x="145" y="35" text-anchor="end" fill="#64748b" font-size="9">100%</text>
-
-    <!-- 50% marker -->
-    <line x1="150" y1="215" x2="680" y2="215" stroke="#e2e8f0" stroke-width="0.5" stroke-dasharray="3 2"/>
-    <text x="145" y="220" text-anchor="end" fill="#64748b" font-size="9">50%</text>
-
-    <!-- Bars — representative categories -->
-    <!-- bar height: 100% = 370px (y=30 to y=400) -->
-    <rect x="160" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="169" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,169,420)">simple</text>
-
-    <rect x="185" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="194" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,194,420)">alcohol</text>
-
-    <rect x="210" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="219" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,219,420)">amine</text>
-
-    <rect x="235" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="244" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,244,420)">aromatic</text>
-
-    <rect x="260" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="269" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,269,420)">halogen</text>
-
-    <rect x="285" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="294" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,294,420)">n-heterocycle</text>
-
-    <rect x="310" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="319" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,319,420)">drug</text>
-
-    <rect x="335" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="344" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,344,420)">stereo</text>
-
-    <rect x="360" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="369" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,369,420)">fused</text>
-
-    <rect x="385" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="394" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,394,420)">bridged</text>
-
-    <rect x="410" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="419" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,419,420)">macrocycle</text>
-
-    <rect x="435" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="444" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,444,420)">silicon</text>
-
-    <rect x="460" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="469" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,469,420)">boron</text>
-
-    <rect x="485" y="30" width="18" height="370" fill="#10b981" rx="2"/>
-    <text x="494" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,494,420)">selenium</text>
-
-    <!-- Partial success categories -->
-    <rect x="510" y="215" width="18" height="185" fill="#ca8a04" rx="2"/>
-    <text x="519" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,519,420)">polycyclic</text>
-
-    <rect x="535" y="215" width="18" height="185" fill="#ca8a04" rx="2"/>
-    <text x="544" y="420" text-anchor="middle" fill="#334155" font-size="8" transform="rotate(-45,544,420)">strained</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 310" width="620" height="310" role="img" aria-label="Conformer embedding succeeds for almost every molecule in each chemical category.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-benchmarks-rmsd-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-benchmarks-rmsd-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-benchmarks-rmsd-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="620" height="310" fill="url(#sf-benchmarks-rmsd-glow)" stroke="none"/>
+<text x="20" y="30" text-anchor="start" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">embed success by category</text><text x="116" y="88" text-anchor="middle" font-size="9.5" font-weight="550" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">simple</text><rect x="140" y="70" width="420" height="22" rx="11" fill="var(--sf-soft)" stroke="none" stroke-width="1.4"/><rect x="140" y="70" width="415.8" height="22" rx="11" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" class="sf-rise sf-d1" opacity="0.75"/><text x="575" y="86" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">99%</text><text x="116" y="130" text-anchor="middle" font-size="9.5" font-weight="550" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">alcohol</text><rect x="140" y="112" width="420" height="22" rx="11" fill="var(--sf-soft)" stroke="none" stroke-width="1.4"/><rect x="140" y="112" width="407.4" height="22" rx="11" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" class="sf-rise sf-d2" opacity="0.75"/><text x="575" y="128" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">97%</text><text x="116" y="172" text-anchor="middle" font-size="9.5" font-weight="550" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">amine</text><rect x="140" y="154" width="420" height="22" rx="11" fill="var(--sf-soft)" stroke="none" stroke-width="1.4"/><rect x="140" y="154" width="411.59999999999997" height="22" rx="11" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" class="sf-rise sf-d3" opacity="0.75"/><text x="575" y="170" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">98%</text><text x="116" y="214" text-anchor="middle" font-size="9.5" font-weight="550" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">aromatic</text><rect x="140" y="196" width="420" height="22" rx="11" fill="var(--sf-soft)" stroke="none" stroke-width="1.4"/><rect x="140" y="196" width="399.0" height="22" rx="11" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" class="sf-rise sf-d4" opacity="0.75"/><text x="575" y="212" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">95%</text><text x="116" y="256" text-anchor="middle" font-size="9.5" font-weight="550" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">halogen</text><rect x="140" y="238" width="420" height="22" rx="11" fill="var(--sf-soft)" stroke="none" stroke-width="1.4"/><rect x="140" y="238" width="390.6" height="22" rx="11" fill="var(--sf-accent)" stroke="none" stroke-width="1.4" class="sf-rise sf-d5" opacity="0.75"/><text x="575" y="254" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">93%</text><text x="300" y="290" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">success rate</text>
 </svg>

@@ -1,10 +1,17 @@
-# Validation
+# Conformer validation
 
-After minimization, each candidate conformer must pass a series of geometric validation checks. If any check fails, the conformer is rejected and the pipeline retries with a new random embedding.
+After minimization, each candidate conformer must pass a series of geometric
+validation checks. If any check fails, the conformer is rejected and the
+pipeline retries with a new random embedding.
+
+> This page covers the **geometric checks inside conformer generation**. For
+> cross-library comparisons, the measured distance to each reference, the
+> confidence region and the limitations of every method, see
+> [Scientific validation](/validation/scientific-validation).
 
 ## Validation Pipeline
 
-<SvgDiagram src="/svg/validation-pipeline.svg" alt="validation-pipeline" />
+<SvgDiagram src="/svg/validation-pipeline.svg" alt="Five geometric checks accept a conformer or send it back for another embedding." />
 
 ## Check 1: Energy Per Atom
 
@@ -23,7 +30,7 @@ For each carbon or nitrogen atom that:
 
 The volume of the tetrahedron formed by its 4 neighbors must be substantial:
 
-<SvgDiagram src="/svg/validation-tetrahedral.svg" alt="validation-tetrahedral" />
+<SvgDiagram src="/svg/validation-tetrahedral.svg" alt="A tetrahedral centre with large volume is accepted; a nearly coplanar centre is rejected." />
 
 ### Volume Computation
 
@@ -85,7 +92,7 @@ $$\cos\theta + 1 > 10^{-3}$$
 
 where $\theta$ is the angle between a substituent and the double bond vector. A value near 180° (cos θ ≈ −1) would mean the substituent is collinear with the double bond — a physically impossible configuration.
 
-<SvgDiagram src="/svg/validation-double-bond.svg" alt="validation-double-bond" />
+<SvgDiagram src="/svg/validation-double-bond.svg" alt="Double-bond substituents must stay bent; a collinear arrangement is rejected." />
 
 ## Summary of Thresholds
 

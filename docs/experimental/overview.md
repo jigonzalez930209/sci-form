@@ -1,165 +1,111 @@
 # Experimental Modules
 
-sci-form organises pre-production algorithms into three tiers based on maturity:
+sci-form keeps research code separate from the stable surface. That separation is
+smaller than it used to be: most of the old alpha and beta code is now core, and
+the historical names remain only as compatibility aliases. This page is the
+current map.
 
-| Tier | Stability | API guarantee | Coverage |
-|------|-----------|--------------|----------|
-| **Alpha** | Proof-of-concept | May break between minor versions | Basic integration tests |
-| **Beta** | Validated | Minor-version bumps only | Regression + reference validation |
-| **Experimental** (legacy) | Track-by-track | See individual track page | Varies |
+## The three states
 
----
+| State | What it means | Feature flag |
+|---|---|---|
+| **Core** | Compiled by default, covered by a cross-library or analytic gate, and part of the stable API | none |
+| **Gated research** | Validated in a narrower regime but not ready for the stable surface | an explicit `alpha-*` or `beta-*` flag |
+| **Compatibility alias** | The old path or flag still resolves, but the implementation lives in core | old flag only |
 
-## [Alpha Modules →](./alpha)
+## What moved to core
 
-The alpha tier now mixes compatibility aliases for promoted methods with the remaining gated research modules (DFT, MLFF, reaction dynamics).
+The following modules cleared their promotion criteria and now live at the
+top-level paths. The old paths still compile.
 
-| ID | Module | Feature flag | Description |
-|----|--------|-------------|-------------|
-| A1 | `alpha::dft` | `alpha-dft` | Kohn-Sham DFT (SVWN / PBE) |
-| A2 | `forcefield::reaxff` (core, F78) | — | ReaxFF reactive force field |
-| A3 | `alpha::mlff` | `alpha-mlff` | Neural network FF with AEV descriptors |
-| A4 | `scf::obara_saika` (core, F80) | — | Obara-Saika ERIs + Boys function |
-| A5 | `cga` (core, F81) | — | CGA motor algebra dihedral refinement |
-| A6 | `gsm` (core) | `alpha-gsm` alias | Growing String Method |
-| A7 | `sdr` (core, F83) | — | Semidefinite relaxation embedding |
-| A8 | `dynamics_live` (core) | `alpha-dynamics-live` alias | Live interactive MD |
-| A9 | `imd` (core, F85) | — | IMD steering forces |
+| Old path | Core path | Evidence |
+|---|---|---|
+| `alpha::cga` | `sci_form::cga` | motors 3.4e-15 vs Rodrigues + `clifford` |
+| `alpha::sdr` | `sci_form::sdr` | embedding 7e-15 vs CVXPY/SCS |
+| `alpha::edl` | `sci_form::edl` | worst 2e-14 vs analytic Gouy-Chapman-Stern |
+| `experimental-eeq` | `sci_form::charges_eeq` | charges 6.9e-12 vs multicharge |
+| `experimental-alpb` | `sci_form::solvation_alpb` | electrostatic term 3.14 kcal/mol vs tblite |
+| `experimental-d4` | `sci_form::dispersion` | D4(PBE) 6.2e-10 Ha vs dftd4 |
+| `alpha::gsm` | `sci_form::gsm` | Müller-Brown barrier 1.6e-3 vs ASE CI-NEB |
+| `alpha::kinetics` | `sci_form::kinetics` | Eyring 1.9e-16; traces vs SciPy `solve_ivp` |
+| `alpha::periodic_linear` | `sci_form::periodic_linear` | k-mesh and Bloch phases vs ASE |
+| `alpha::dynamics_live` | `sci_form::dynamics_live` | UFF forces 3.6e-13 vs RDKit |
+| `alpha::render_bridge` | `sci_form::render_bridge` | JSON Schema 2020-12 + pack round-trip |
+| `beta::kpm` | `sci_form::kpm` | moments 3.5e-15; DOS 1.7e-14 vs exact diagonalization |
+| `beta::cpm` | `sci_form::cpm` | LAMMPS `fix electrode/conp` bilayer comparison |
+| `beta::rand_nla` | `sci_form::rand_nla` | rank-N/4 3.8e-4; N=600 low-rank path 9.6e-4 |
+| `beta::riemannian` | `sci_form::riemannian` | projection 8.2e-12 vs SciPy L-BFGS-B |
+| `forcefield::reaxff` | `sci_form::forcefield::reaxff` | bond orders vs LAMMPS; analytical gradients |
+| `scf::obara_saika` | `sci_form::scf::obara_saika` | Boys/ERI/Schwarz vs SciPy + libcint |
 
-```typescript
-// WASM: subpath import
-import { alpha_compute_dft, alpha_compute_reaxff_gradient } from 'sci-form-wasm/alpha';
-```
+## What is still gated
 
-```python
-# Python: submodule
-from sci_form.alpha import dft_calculate, reaxff_gradient
-```
+Only four research lines remain behind a flag. Each one has a concrete reason,
+not a vague "not finished" label.
 
----
+| Module | Flag | Why it stays gated |
+|---|---|---|
+| **Kohn-Sham density functional theory** | `alpha-dft` | Energy error is 7.2e-5 Ha vs PySCF (target 1e-5), `coulomb_energy` is still zero, and the ECP path is not fitted |
+| **Machine-learned force field** | `alpha-mlff` | Descriptors and gradients match a NumPy oracle, but there are no trained production weights and no MD17/SPICE benchmark |
+| **Mobile Block Hessian** | `beta-mbh` | Stretch test 1.3e-5 SI; the experimental reference is ±2 cm⁻¹ (Ghysels) and global-minimum integration is not covered |
+| **Reaction dynamics** | `alpha-reaction-dynamics` | Self-consistency only; there is no ASE NEB parity for the full 3D path |
 
-## [Beta Modules →](./beta)
+## Plain-language names
 
-Most of the beta tier is now core; only MBH remains gated.
+The documentation uses the descriptive name first and the short code only when
+the API requires it.
 
-| ID | Module | Feature flag | Description |
-|----|--------|-------------|-------------|
-| B1 | `kpm` (`beta::kpm` alias) | core | Kernel Polynomial Method — O(N) DOS (promoted 2026-11-07) |
-| B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian |
-| B3 | `rand_nla` (`beta::rand_nla` alias) | core | Randomized Nyström EHT + low-rank Lanczos for N>500 (promoted 2026-11-08) |
-| B4 | `riemannian` (core, F94) | — | Riemannian PSD cone geometry |
-| B5 | `cpm` (core, F95) | — | Constant Potential Method |
+| Short name | Plain name | Where it lives |
+|---|---|---|
+| CGA | Conformal geometric algebra | core `cga` |
+| GSM | Growing String Method | core `gsm` |
+| KPM | Kernel Polynomial Method | core `kpm` |
+| RandNLA | Randomized numerical linear algebra | core `rand_nla` |
+| MBH | Mobile Block Hessian | gated `beta::mbh` |
+| CPM | Constant Potential Method | core `cpm` |
+| EDL | Electrical double layer | core `edl` |
+| ALPB | Analytical linearized Poisson-Boltzmann | core `solvation_alpb` |
+| EEQ | Electronegativity equalization | core `charges_eeq` |
+| SDR | Semidefinite relaxation | core `sdr` |
+| D4 | Dispersion correction with dynamic \(C_6/C_8\) | core `dispersion` |
+| HTST | Harmonic transition-state theory | core `kinetics` |
 
-```typescript
-// WASM: subpath import
-import { beta_compute_kpm_dos, beta_solve_eht_randnla } from 'sci-form-wasm/beta';
-```
+## Enabling features
 
-```python
-# Python: submodule
-from sci_form.beta import kpm_dos, eht_randnla
-```
-
----
-
-## Legacy Experimental Tracks
-
-The older `experimental-*` feature flags remain available at their existing module paths:
-
-> Gated modules live behind `alpha-*`/`beta-*` features (legacy
-> `experimental-*` flags alias them); promoted modules need no feature.
-> There is no `sci_form::experimental` Rust path.
-
-### Track Summary
-
-| Track | Module | Feature Flag | Description |
-|-------|--------|-------------|-------------|
-| E1 | `cga` | `experimental-cga` | Conformal Geometric Algebra G(4,1) |
-| E2 | `rand_nla` | core (`experimental-randnla` alias) | Randomized NLA for O(N²k) EHT, low-rank N>500 path |
-| E3 | `riemannian` | core (`experimental-riemannian` alias) | Riemannian L-BFGS for ETKDG |
-| E4 | `kpm` | core (`experimental-kpm` alias) | Kernel Polynomial Method — O(N) DOS |
-| E5 | `eeq` | `experimental-eeq` | Dynamic EEQ Charge Model |
-| E6 | `alpb` | `experimental-alpb` | Analytical Linearized Poisson-Boltzmann |
-| E7 | `d4` | `experimental-d4` | DFT-D4 Dispersion Correction |
-| E8 | `sdr` | `experimental-sdr` | Semidefinite Relaxation Embedding |
-| E9 | `mbh` | `experimental-mbh` | Mobile Block Hessian |
-| E10 | `cpm` | core (`experimental-cpm` alias) | Constant Potential Method |
-| E11 | `gsm` | core (`experimental-gsm` alias) | Growing String Method |
-
-### Groups
-
-#### Group A — Advanced Geometry
-
-| Track | Focus |
-|-------|-------|
-| [E1: CGA](./cga) | Unify rotations/translations via geometric algebra motors |
-| [E2: RandNLA](./randnla) | Sub-cubic EHT diagonalization with randomized sketching |
-| [E3: Riemannian](./riemannian) | PSD-guaranteed embedding via manifold optimization |
-
-#### Group B — Electronic Structure
-
-| Track | Focus |
-|-------|-------|
-| [E4: KPM](./kpm) | Linear-scaling DOS and density matrix via Chebyshev expansion |
-| [E5: EEQ](./eeq) | Geometry-dependent electronegativity equalization charges |
-| [E6: ALPB](./alpb) | Analytical implicit solvation with Born radii |
-
-#### Group C — Precision Methods
-
-| Track | Focus |
-|-------|-------|
-| [E7: D4](./d4) | Geometry-dependent dispersion with BJ damping |
-| [E8: SDR](./sdr) | Convex SDP embedding eliminating the retry loop |
-| [E9: MBH](./mbh) | Reduced-DOF vibrational analysis for large molecules |
-| [E10: CPM](./cpm) | Electrochemical charge equilibration at fixed potential |
-| [E11: GSM](./gsm) | Reaction path and transition state search |
-
----
-
-## Enabling Features
-
-### Rust
+Core modules need no flag. The aliases below are only for builds that still
+name the historical feature.
 
 ```toml
 [dependencies]
-# Alpha modules
+# Gated research
 sci-form = { version = "2.0", features = ["alpha-dft", "alpha-mlff"] }
-
-# Beta modules (KPM is core since 2026-11-07; beta-kpm is a compatibility alias)
 sci-form = { version = "2.0", features = ["beta-mbh"] }
-
-# Legacy experimental
 sci-form = { version = "2.0", features = ["alpha-reaction-dynamics"] }
 
 # Everything + parallel
 sci-form = { version = "2.0", features = [
     "alpha-dft", "alpha-mlff", "alpha-reaction-dynamics",
-    "beta-mbh",
-    "parallel"
+    "beta-mbh", "parallel"
 ] }
 ```
 
-### Run tests
+### Run the tests
 
-The `tests/experimental/` suite is aggregated by the **`experimental_gates`** test target
-(`tests/experimental_gates.rs`), not by `regression`. A command of the form
-`cargo test --test regression -- test_<module>` matches **no test** and therefore
-"succeeds" without running anything — always use `experimental_gates`.
+The `tests/experimental/` suite is aggregated by the **`experimental_gates`**
+target. A command that targets `--test regression -- test_<module>` matches no
+test and appears to pass without running anything.
 
 ```bash
-# Alpha tests
-cargo test --features alpha-dft,alpha-reaxff,alpha-mlff --lib --test 'alpha_*'
-
-# Beta tests
+# Gated research modules
+cargo test --features alpha-dft,alpha-mlff --lib --test 'alpha_*'
 cargo test --features beta-mbh --lib --test 'beta_*'
 
-# The experimental/ suite (needs beta-cpm so that the aggregated CPM
-# benchmark module compiles, plus the feature of the module under test)
+# The aggregated experimental suite
 cargo test --features "beta-mbh alpha-cga alpha-sdr" --test experimental_gates
 ```
 
-| Module | Command suffix | Tests |
-|--------|----------------|-------|
+| Module | Filter | Tests |
+|---|---|---|
 | ALPB | `-- test_alpb` | 8 |
 | CGA | `-- test_cga` | 20 |
 | CPM | `-- test_cpm` | 9 |
@@ -172,15 +118,26 @@ cargo test --features "beta-mbh alpha-cga alpha-sdr" --test experimental_gates
 | Riemannian | `-- test_riemannian` | 11 |
 | SDR | `-- test_sdr` | 8 |
 
-The legacy `experimental-*` feature names still work as aliases
-(`experimental-cga` → `alpha-cga`, `experimental-kpm` → `beta-kpm`, and so on),
-but the modern `alpha-*` / `beta-*` names are the ones to use.
+The legacy `experimental-*` names still work (`experimental-cga` →
+`alpha-cga`, `experimental-kpm` → `beta-kpm`, and so on), but the modern
+`alpha-*` / `beta-*` names are the ones to use.
 
----
+## Design principles
 
-## Design Principles
+1. **Isolation.** Research code does not modify the stable conformer, EHT or
+   force-field paths until it passes its gate.
+2. **One flag per line.** A gated module compiles only when its flag is on.
+3. **Independent tests.** Every line has its own oracle or analytic reference.
+4. **A promotion is a path move, not a fork.** Promoted modules keep a
+   re-export at the old path so downstream code keeps compiling.
+5. **Numbers, not adjectives.** "Validated" means a named reference, a measured
+   deviation, a confidence region and a recorded limitation. The complete
+   report is in [Scientific validation](/validation/scientific-validation).
 
-1. **Isolation** — Experimental code never modifies stable modules (`src/conformer/`, `src/eht/`, etc.)
-2. **Feature gates** — Each track compiles only when its flag is enabled
-3. **Independent testing** — Each track has its own test suite under `tests/experimental/`
-4. **Graduation path** — Tracks may be promoted through alpha → beta → stable after validation
+## Where to read the numbers
+
+- [Scientific validation](/validation/scientific-validation) — per-algorithm
+  reference, measured deviation, confidence region and limitations.
+- [Full validation matrix](/validation/full-matrix) — all 129 recorded rows.
+- [Cross-library plan (historical, Spanish)](/validation/cross-library-validation.es)
+  — the working plan that produced these gates; kept for provenance.

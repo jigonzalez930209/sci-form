@@ -1,7 +1,21 @@
-# E3: Riemannian Optimization for ETKDG
+# Riemannian optimization
 
 **Module:** `sci_form::riemannian` (core since 2026-10-14; `beta::riemannian` re-export)
 **Feature flag:** none (core); `beta-riemannian` kept as no-op alias
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | NumPy + SciPy L-BFGS-B |
+| Measured separation | projection 8.2e-12; Frobenius distance 2.2e-16; objective/gradient 1.2e-16 |
+| Confidence region | small positive-semidefinite matrices and ETKDG objectives |
+| Main limitation | `psd_distance` is a Frobenius proxy, not the affine-invariant geodesic; the retraction is first-order |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Replaces the Euclidean BFGS optimizer in the embedding step with **Riemannian L-BFGS** over the manifold of fixed-rank positive semidefinite (PSD) matrices. Negative eigenvalues are eliminated by design, reducing the retry loop failure rate to zero.
 
-<SvgDiagram src="/svg/experimental-riemannian.svg" alt="Riemannian Optimization Pipeline" />
+<SvgDiagram src="/svg/experimental-riemannian.svg" alt="An optimizer follows a geodesic on the positive-semidefinite manifold towards a constrained minimum." />
 
 ---
 

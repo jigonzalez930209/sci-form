@@ -1,31 +1,58 @@
-<svg width="550" height="220" viewBox="0 0 550 220" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <rect x="0" y="0" width="550" height="220" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif">
-    <!-- Axes -->
-    <line x1="60" y1="180" x2="520" y2="180" stroke="#94a3b8" stroke-width="1"/>
-    <line x1="60" y1="180" x2="60" y2="20" stroke="#94a3b8" stroke-width="1"/>
-    <text x="50" y="22" text-anchor="end" fill="#334155" font-weight="600" font-size="11">E</text>
-
-    <!-- X labels -->
-    <text x="60" y="198" text-anchor="middle" fill="#64748b" font-size="10">-180°</text>
-    <text x="175" y="198" text-anchor="middle" fill="#64748b" font-size="10">-90°</text>
-    <text x="290" y="198" text-anchor="middle" fill="#64748b" font-size="10">0°</text>
-    <text x="405" y="198" text-anchor="middle" fill="#64748b" font-size="10">90°</text>
-    <text x="520" y="198" text-anchor="middle" fill="#64748b" font-size="10">180°</text>
-
-    <!-- Typical V3 torsion (SP3-SP3, 3-fold) -->
-    <path d="M 60 100 C 98 40 137 40 175 100 C 213 160 252 160 290 100 C 328 40 367 40 405 100 C 443 160 482 160 520 100" fill="none" stroke="#2563eb" stroke-width="2"/>
-    <text x="470" y="90" fill="#2563eb" font-size="11" font-weight="600">V₃ (SP3-SP3)</text>
-
-    <!-- Typical V2 torsion (amide, 2-fold) -->
-    <path d="M 60 40 C 137 175 213 175 290 40 C 367 175 443 175 520 40" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 3"/>
-    <text x="470" y="40" fill="#ef4444" font-size="11" font-weight="600">V₂ (amide)</text>
-
-    <!-- Minima markers -->
-    <circle cx="175" cy="175" r="3" fill="#2563eb"/>
-    <circle cx="405" cy="175" r="3" fill="#2563eb"/>
-    <text x="175" y="215" text-anchor="middle" fill="#2563eb" font-size="9">gauche</text>
-    <text x="290" y="215" text-anchor="middle" fill="#ef4444" font-size="9">trans</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 280" width="700" height="280" role="img" aria-label="Torsion potentials with two-fold and three-fold periodicities.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-force-fields-torsion-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-force-fields-torsion-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-force-fields-torsion-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="700" height="280" fill="url(#sf-force-fields-torsion-glow)" stroke="none"/>
+<path d="M70,160 L160,160" fill="none" stroke="var(--sf-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M160,160 L245,105" fill="none" stroke="var(--sf-accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-float"/><path d="M160,160 L245,215" fill="none" stroke="var(--sf-accent2)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-float sf-d2"/><circle cx="160" cy="160" r="7" fill="var(--sf-accent)"/><path d="M180,115 A60,60 0 0 1 250,100" fill="none" stroke="var(--sf-violet)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 5" class="sf-flow"/><text x="215" y="95" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-violet)">φ</text><path d="M330,55 L330,220 M330,220 L650,220" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M330,220 l4,-4 M330,220 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M330,55 l-4,4 M330,55 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="490.0" y="242" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">φ</text><text x="312" y="137.5" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 312 137.5)">E</text><path d="M330.00,132.00 Q331.27,132.18 332.55,132.35 Q333.83,132.87 335.10,133.39 Q336.38,134.25 337.65,135.10 Q338.92,136.27 340.20,137.43 Q341.48,138.88 342.75,140.33 Q344.02,142.03 345.30,143.72 Q346.58,145.62 347.85,147.52 Q349.12,149.57 350.40,151.63 Q351.67,153.79 352.95,155.95 Q354.23,158.16 355.50,160.37 Q356.77,162.58 358.05,164.78 Q359.33,166.93 360.60,169.07 Q361.88,171.11 363.15,173.14 Q364.42,175.01 365.70,176.87 Q366.98,178.53 368.25,180.19 Q369.52,181.59 370.80,182.99 Q372.08,184.11 373.35,185.23 Q374.62,186.03 375.90,186.83 Q377.17,187.29 378.45,187.76 Q379.73,187.87 381.00,187.99 Q382.27,187.76 383.55,187.52 Q384.83,186.95 386.10,186.37 Q387.38,185.46 388.65,184.55 Q389.92,183.34 391.20,182.12 Q392.48,180.63 393.75,179.13 Q395.02,177.40 396.30,175.67 Q397.58,173.74 398.85,171.81 Q400.12,169.74 401.40,167.66 Q402.67,165.49 403.95,163.32 Q405.23,161.11 406.50,158.89 Q407.77,156.69 409.05,154.49 Q410.33,152.36 411.60,150.23 Q412.88,148.22 414.15,146.21 Q415.42,144.38 416.70,142.54 Q417.98,140.93 419.25,139.31 Q420.52,137.95 421.80,136.59 Q423.08,135.53 424.35,134.46 Q425.62,133.72 426.90,132.97 Q428.17,132.56 429.45,132.16 Q430.73,132.10 432.00,132.04 Q433.27,132.33 434.55,132.62 Q435.83,133.26 437.10,133.89 Q438.38,134.85 439.65,135.81 Q440.92,137.08 442.20,138.34 Q443.48,139.88 444.75,141.41 Q446.02,143.18 447.30,144.95 Q448.58,146.90 449.85,148.86 Q451.12,150.96 452.40,153.05 Q453.67,155.23 454.95,157.42 Q456.23,159.63 457.50,161.85 Q458.77,164.04 460.05,166.23 Q461.32,168.34 462.60,170.46 Q463.88,172.44 465.15,174.42 Q466.42,176.23 467.70,178.03 Q468.98,179.61 470.25,181.18 Q471.52,182.49 472.80,183.81 Q474.07,184.82 475.35,185.83 Q476.62,186.52 477.90,187.21 Q479.17,187.56 480.45,187.91 Q481.73,187.91 483.00,187.91 Q484.27,187.56 485.55,187.21 Q486.82,186.52 488.10,185.83 Q489.38,184.82 490.65,183.81 Q491.92,182.49 493.20,181.18 Q494.48,179.61 495.75,178.03 Q497.02,176.23 498.30,174.42 Q499.57,172.44 500.85,170.46 Q502.12,168.34 503.40,166.23 Q504.67,164.04 505.95,161.85 Q507.23,159.63 508.50,157.42 Q509.77,155.23 511.05,153.05 Q512.33,150.96 513.60,148.86 Q514.88,146.90 516.15,144.95 Q517.42,143.18 518.70,141.41 Q519.98,139.88 521.25,138.34 Q522.52,137.08 523.80,135.81 Q525.08,134.85 526.35,133.89 Q527.62,133.26 528.90,132.62 Q530.17,132.33 531.45,132.04 Q532.73,132.10 534.00,132.16 Q535.27,132.56 536.55,132.97 Q537.83,133.72 539.10,134.46 Q540.38,135.53 541.65,136.59 Q542.92,137.95 544.20,139.31 Q545.48,140.93 546.75,142.54 Q548.02,144.38 549.30,146.21 Q550.58,148.22 551.85,150.23 Q553.12,152.36 554.40,154.49 Q555.67,156.69 556.95,158.89 Q558.23,161.11 559.50,163.32 Q560.77,165.49 562.05,167.66 Q563.33,169.74 564.60,171.81 Q565.88,173.74 567.15,175.67 Q568.42,177.40 569.70,179.13 Q570.98,180.63 572.25,182.12 Q573.52,183.34 574.80,184.55 Q576.08,185.46 577.35,186.37 Q578.62,186.95 579.90,187.52 Q581.17,187.76 582.45,187.99 Q583.73,187.87 585.00,187.76 Q586.27,187.29 587.55,186.83 Q588.82,186.03 590.10,185.23 Q591.38,184.11 592.65,182.99 Q593.92,181.59 595.20,180.19 Q596.48,178.53 597.75,176.87 Q599.02,175.01 600.30,173.14 Q601.57,171.11 602.85,169.07 Q604.12,166.93 605.40,164.78 Q606.67,162.58 607.95,160.37 Q609.23,158.16 610.50,155.95 Q611.77,153.79 613.05,151.63 Q614.32,149.57 615.60,147.52 Q616.88,145.62 618.15,143.72 Q619.42,142.03 620.70,140.33 Q621.98,138.88 623.25,137.43 Q624.52,136.27 625.80,135.10 Q627.07,134.25 628.35,133.39 Q629.62,132.87 630.90,132.35 Q632.17,132.18 633.45,132.00" fill="none" stroke="var(--sf-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><path d="M330.00,146.00 Q331.27,146.06 332.55,146.12 Q333.83,146.31 335.10,146.49 Q336.38,146.79 337.65,147.09 Q338.92,147.51 340.20,147.93 Q341.48,148.46 342.75,149.00 Q344.02,149.63 345.30,150.27 Q346.58,151.01 347.85,151.74 Q349.12,152.57 350.40,153.39 Q351.67,154.30 352.95,155.21 Q354.23,156.19 355.50,157.17 Q356.77,158.21 358.05,159.25 Q359.33,160.33 360.60,161.42 Q361.88,162.55 363.15,163.67 Q364.42,164.82 365.70,165.97 Q366.98,167.13 368.25,168.29 Q369.52,169.45 370.80,170.61 Q372.08,171.75 373.35,172.90 Q374.62,174.01 375.90,175.13 Q377.17,176.21 378.45,177.28 Q379.73,178.31 381.00,179.33 Q382.27,180.30 383.55,181.26 Q384.83,182.15 386.10,183.03 Q387.38,183.84 388.65,184.64 Q389.92,185.36 391.20,186.07 Q392.48,186.68 393.75,187.29 Q395.02,187.79 396.30,188.30 Q397.58,188.69 398.85,189.08 Q400.12,189.35 401.40,189.63 Q402.67,189.78 403.95,189.93 Q405.23,189.96 406.50,189.99 Q407.77,189.90 409.05,189.81 Q410.33,189.60 411.60,189.38 Q412.88,189.05 414.15,188.72 Q415.42,188.27 416.70,187.82 Q417.98,187.26 419.25,186.70 Q420.52,186.04 421.80,185.38 Q423.08,184.62 424.35,183.86 Q425.62,183.01 426.90,182.17 Q428.17,181.24 429.45,180.31 Q430.73,179.32 432.00,178.32 Q433.27,177.27 434.55,176.22 Q435.83,175.12 437.10,174.02 Q438.38,172.89 439.65,171.76 Q440.92,170.60 442.20,169.45 Q443.48,168.29 444.75,167.13 Q446.02,165.97 447.30,164.82 Q448.58,163.68 449.85,162.54 Q451.12,161.43 452.40,160.32 Q453.67,159.26 454.95,158.19 Q456.23,157.18 457.50,156.17 Q458.77,155.23 460.05,154.28 Q461.32,153.41 462.60,152.55 Q463.88,151.76 465.15,150.98 Q466.42,150.29 467.70,149.61 Q468.98,149.02 470.25,148.44 Q471.52,147.96 472.80,147.49 Q474.07,147.12 475.35,146.76 Q476.62,146.52 477.90,146.28 Q479.17,146.15 480.45,146.03 Q481.73,146.03 483.00,146.03 Q484.27,146.15 485.55,146.28 Q486.82,146.52 488.10,146.76 Q489.38,147.12 490.65,147.49 Q491.92,147.96 493.20,148.44 Q494.48,149.02 495.75,149.61 Q497.02,150.29 498.30,150.98 Q499.57,151.76 500.85,152.55 Q502.12,153.41 503.40,154.28 Q504.67,155.23 505.95,156.17 Q507.23,157.18 508.50,158.19 Q509.77,159.26 511.05,160.32 Q512.33,161.43 513.60,162.54 Q514.88,163.68 516.15,164.82 Q517.42,165.97 518.70,167.13 Q519.98,168.29 521.25,169.45 Q522.52,170.60 523.80,171.76 Q525.08,172.89 526.35,174.02 Q527.62,175.12 528.90,176.22 Q530.17,177.27 531.45,178.32 Q532.73,179.32 534.00,180.31 Q535.27,181.24 536.55,182.17 Q537.83,183.01 539.10,183.86 Q540.38,184.62 541.65,185.38 Q542.92,186.04 544.20,186.70 Q545.48,187.26 546.75,187.82 Q548.02,188.27 549.30,188.72 Q550.58,189.05 551.85,189.38 Q553.12,189.60 554.40,189.81 Q555.67,189.90 556.95,189.99 Q558.23,189.96 559.50,189.93 Q560.77,189.78 562.05,189.63 Q563.33,189.35 564.60,189.08 Q565.88,188.69 567.15,188.30 Q568.42,187.79 569.70,187.29 Q570.98,186.68 572.25,186.07 Q573.52,185.36 574.80,184.64 Q576.08,183.84 577.35,183.03 Q578.62,182.15 579.90,181.26 Q581.17,180.30 582.45,179.33 Q583.73,178.31 585.00,177.28 Q586.27,176.21 587.55,175.13 Q588.82,174.01 590.10,172.90 Q591.38,171.75 592.65,170.61 Q593.92,169.45 595.20,168.29 Q596.48,167.13 597.75,165.97 Q599.02,164.82 600.30,163.67 Q601.57,162.55 602.85,161.42 Q604.12,160.33 605.40,159.25 Q606.67,158.21 607.95,157.17 Q609.23,156.19 610.50,155.21 Q611.77,154.30 613.05,153.39 Q614.32,152.57 615.60,151.74 Q616.88,151.01 618.15,150.27 Q619.42,149.63 620.70,149.00 Q621.98,148.46 623.25,147.93 Q624.52,147.51 625.80,147.09 Q627.07,146.79 628.35,146.49 Q629.62,146.31 630.90,146.12 Q632.17,146.06 633.45,146.00" fill="none" stroke="var(--sf-warm)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="600" y="235" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">V3 (sp3)</text><text x="455" y="235" text-anchor="middle" font-size="9.5" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">V2 (amide)</text><rect x="420" y="26" width="90" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-violet)" stroke-width="1"/><text x="465.0" y="40.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-violet)">torsion terms</text>
 </svg>

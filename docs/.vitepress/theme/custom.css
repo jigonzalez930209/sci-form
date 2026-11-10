@@ -42,19 +42,37 @@ mjx-container[display="true"] > svg {
   overflow-wrap: break-word;
 }
 
-/* ── External SVG diagrams — Vue SvgDiagram component ── */
+/* ── Animated SVG diagrams — Vue SvgDiagram component ── */
+/* The SVG itself is transparent; the wrapper only supplies a theme-aware
+   frame so the diagram never sits on a hard-coded white card. */
 .svg-diagram-wrap {
   margin: 2em 0;
-  border-radius: 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--vp-c-bg-soft) 0%, transparent 70%);
+  box-shadow: 0 6px 24px -18px var(--vp-c-text-1);
 }
 
-/* The inline SVG fills the wrapper with correct aspect ratio */
+/* The inline SVG fills the wrapper with the correct aspect ratio. */
+.svg-inline {
+  background: transparent;
+}
+
 .svg-inline > svg {
   display: block;
   width: 100%;
   height: auto;
+  background: transparent;
+}
+
+/* Prefer the visitor's reduced-motion setting over decorative motion. */
+@media (prefers-reduced-motion: reduce) {
+  .svg-inline svg * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 /* Skeleton placeholder while SVG loads */

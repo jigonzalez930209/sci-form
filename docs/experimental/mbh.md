@@ -1,7 +1,21 @@
-# E9: Mobile Block Hessian (MBH)
+# Mobile Block Hessian
 
-**Module:** `sci_form::beta::mbh` (gated; F92 validated, promotion pending)
+**Module:** `sci_form::beta::mbh` (gated; F92 validated; promotion criteria not yet met)
 **Feature flag:** `beta-mbh` (`experimental-mbh` alias)
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | analytic diatomic stretches plus the full Hessian |
+| Measured separation | stretch 1.3e-5 SI; zero modes ≤5 cm⁻¹; benzene 24/36 degrees of freedom |
+| Confidence region | diatomic and benzene-sized systems |
+| Main limitation | the experimental reference is ±2 cm⁻¹ (Ghysels); global-minimum integration is not covered |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 
@@ -9,7 +23,7 @@
 
 Reduces vibrational analysis cost from $O(3N)$ energy evaluations to $O(n_\text{flex})$ by treating rigid groups (aromatic rings, fused ring systems) as rigid bodies with 6 degrees of freedom (3 translation + 3 rotation). Enables real-time IR spectra for large molecules where full Hessian computation is impractical.
 
-<SvgDiagram src="/svg/experimental-mbh.svg" alt="MBH Pipeline" />
+<SvgDiagram src="/svg/experimental-mbh.svg" alt="Rigid molecular blocks reduce the full Cartesian Hessian to a small set of vibrational modes." />
 
 ---
 

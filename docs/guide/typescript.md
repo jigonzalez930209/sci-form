@@ -886,7 +886,12 @@ with payload shapes and units, is in the [TypeScript / JavaScript API reference]
 | System planning | `system_capabilities`, `get_system_capabilities`, `system_method_plan`, `get_system_method_plan`, `compare_methods` |
 | Experimental (always built) | `compute_eeq_charges`, `compute_eeq_energy` |
 
-Total: **128** exports in the default build. Feature-gated exports (`compute_alpb_solvation`, `compute_d4_energy`, `compute_cpm_charges`, the `alpha-periodic-linear`, `alpha-kinetics` and `alpha-render-bridge` families, and the `alpha_*` / `beta_*` research functions) appear only when the matching Cargo feature is enabled at build time.
+Total: **128** exports in the default build. The Rust modules behind the
+`compute_alpb_solvation`, `compute_d4_energy`, `compute_cpm_charges`, periodic,
+kinetics and render-bridge families are core; their WASM wrappers still carry
+the historical build flags. MBH, DFT, MLFF and reaction dynamics remain gated.
+See [Scientific validation](/validation/scientific-validation) for the
+measured state of each method.
 
 ---
 

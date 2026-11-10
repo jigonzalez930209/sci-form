@@ -4,7 +4,7 @@ sci-form implements the **Universal Force Field (UFF)** for molecular energy eva
 
 ## UFF Energy Terms
 
-<SvgDiagram src="/svg/uff-energy-terms.svg" alt="UFF energy terms" />
+<SvgDiagram src="/svg/uff-energy-terms.svg" alt="UFF energy terms: bond stretch, angle bend, torsion and van der Waals contact." />
 
 ### Total Energy
 

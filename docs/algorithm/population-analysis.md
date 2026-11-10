@@ -8,7 +8,7 @@ Given the density matrix $P$ and overlap matrix $S$ from the EHT solution, popul
 
 ## Mulliken Population Analysis
 
-<SvgDiagram src="/svg/population-mulliken.svg" alt="Mulliken population analysis" />
+<SvgDiagram src="/svg/population-mulliken.svg" alt="Mulliken analysis contracts the density matrix with the overlap matrix into atomic charges." />
 
 ### Density Matrix
 
@@ -45,7 +45,7 @@ This follows from $\text{Tr}(PS) = N_{\text{electrons}}$.
 
 ## Löwdin Population Analysis
 
-<SvgDiagram src="/svg/population-lowdin.svg" alt="Löwdin population analysis" />
+<SvgDiagram src="/svg/population-lowdin.svg" alt="Löwdin analysis orthogonalizes the basis before contracting the density matrix." />
 
 ### Symmetric Orthogonalization
 

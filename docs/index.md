@@ -55,5 +55,8 @@ features:
     details: "Native Rust, PyO3 (Python), WASM (TypeScript/JS, browser/Node.js/Deno/Bun), and CLI."
   - icon: 📖
     title: Documented Algorithms
-    details: "Complete theoretical foundations with mathematical derivations, SVG diagrams, and step-by-step pipeline explanations for every module."
+    details: "Complete theoretical foundations with mathematical derivations, animated light/dark diagrams, and step-by-step pipeline explanations for every module."
+  - icon: ✅
+    title: Auditable Validation
+    details: "129 recorded rows, 122 passing gates, 0 failures. Every method lists its reference, measured deviation, confidence region and limitations."
 ---

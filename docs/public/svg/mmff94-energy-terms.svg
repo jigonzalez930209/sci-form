@@ -1,49 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 180" width="760" height="180" font-family="system-ui, sans-serif">
-  <rect x="0" y="0" width="760" height="180" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Background -->
-  <rect width="760" height="180" fill="#f8fafc" rx="8"/>
-
-  <!-- Title -->
-  <text x="380" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">MMFF94 Energy Terms</text>
-
-  <!-- Bond Stretch -->
-  <rect x="15"  y="50" width="165" height="90" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="97"  y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Bond Stretch</text>
-  <text x="97"  y="88"  text-anchor="middle" font-size="9.5" fill="#1d4ed8">Quartic form</text>
-  <text x="97"  y="103" text-anchor="middle" font-size="9"   fill="#1d4ed8">E = ½ kᵦ Δr² (1 + csΔr + …)</text>
-  <text x="97"  y="119" text-anchor="middle" font-size="9"   fill="#1d4ed8">cs = −2.0 Å⁻¹</text>
-  <text x="97"  y="133" text-anchor="middle" font-size="9"   fill="#1d4ed8">× 143.9325</text>
-
-  <!-- Angle Bend -->
-  <rect x="200" y="50" width="165" height="90" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="282" y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">Angle Bend</text>
-  <text x="282" y="88"  text-anchor="middle" font-size="9.5" fill="#15803d">Cubic form</text>
-  <text x="282" y="103" text-anchor="middle" font-size="9"   fill="#15803d">E = ½ kₐ Δθ² (1 + cbΔθ)</text>
-  <text x="282" y="119" text-anchor="middle" font-size="9"   fill="#15803d">cb = −0.014 deg⁻¹</text>
-  <text x="282" y="133" text-anchor="middle" font-size="9"   fill="#15803d">× 0.043844</text>
-
-  <!-- Torsion -->
-  <rect x="385" y="50" width="165" height="90" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="467" y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Torsion</text>
-  <text x="467" y="88"  text-anchor="middle" font-size="9.5" fill="#92400e">3-Term Fourier</text>
-  <text x="467" y="103" text-anchor="middle" font-size="9"   fill="#92400e">E = ½(V₁(1+cosφ)</text>
-  <text x="467" y="116" text-anchor="middle" font-size="9"   fill="#92400e">    + V₂(1−cos2φ)</text>
-  <text x="467" y="129" text-anchor="middle" font-size="9"   fill="#92400e">    + V₃(1+cos3φ))</text>
-
-  <!-- vdW -->
-  <rect x="570" y="50" width="170" height="90" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="655" y="72"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">van der Waals</text>
-  <text x="655" y="88"  text-anchor="middle" font-size="9.5" fill="#be185d">Halgren Buffered 14-7</text>
-  <text x="655" y="103" text-anchor="middle" font-size="9"   fill="#be185d">E = ε (1.07R*/R+0.07R*)⁷</text>
-  <text x="655" y="116" text-anchor="middle" font-size="9"   fill="#be185d">  × (1.12R*⁷/R⁷+0.12R*⁷ − 2)</text>
-  <text x="655" y="130" text-anchor="middle" font-size="9"   fill="#be185d">Softer repulsion vs. 12-6</text>
-
-  <!-- Plus signs between boxes -->
-  <text x="192" y="99" text-anchor="middle" font-size="18" fill="#64748b" font-weight="bold">+</text>
-  <text x="377" y="99" text-anchor="middle" font-size="18" fill="#64748b" font-weight="bold">+</text>
-  <text x="562" y="99" text-anchor="middle" font-size="18" fill="#64748b" font-weight="bold">+</text>
-
-  <!-- Total label -->
-  <text x="380" y="165" text-anchor="middle" font-size="10" fill="#64748b">E_MMFF94 = E_stretch + E_bend + E_torsion + E_vdW</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 260" width="820" height="260" role="img" aria-label="MMFF94 energy terms: bond, angle, stretch-bend, out-of-plane and nonbonded interactions.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-mmff94-energy-terms-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-mmff94-energy-terms-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-mmff94-energy-terms-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="820" height="260" fill="url(#sf-mmff94-energy-terms-glow)" stroke="none"/>
+<rect x="30" y="64" width="148" height="166" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="104" y="90" text-anchor="middle" font-size="10.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">bond</text><path d="M60,165 L148,165" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M72,200 Q104,115 136,200" fill="none" stroke="var(--sf-accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="104" cy="143" r="8" fill="var(--sf-accent)" class="sf-pulse"/><text x="104" y="210" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">quartic</text><rect x="188" y="64" width="148" height="166" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="262" y="90" text-anchor="middle" font-size="10.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">angle</text><path d="M218,187 L262,117 L306,187" fill="none" stroke="var(--sf-accent2)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M242,187 A28,28 0 0 1 282,187" fill="none" stroke="var(--sf-warm)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 4"/><text x="262" y="210" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">cubic</text><rect x="346" y="64" width="148" height="166" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="420" y="90" text-anchor="middle" font-size="10.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">stretch-bend</text><path d="M376,185 L420,127 L464,185" fill="none" stroke="var(--sf-violet)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M398,155 L442,155" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 4" class="sf-flow"/><text x="420" y="210" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">coupling</text><rect x="504" y="64" width="148" height="166" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="578" y="90" text-anchor="middle" font-size="10.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">out-of-plane</text><path d="M578,110 L626,173 L530,173 Z" fill="var(--sf-soft)" stroke="var(--sf-line)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="578" cy="153" r="8" fill="var(--sf-warm)" class="sf-pulse"/><path d="M578,110 L578,195" fill="none" stroke="var(--sf-warm)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 4"/><text x="578" y="210" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">improper</text><rect x="662" y="64" width="148" height="166" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><text x="736" y="90" text-anchor="middle" font-size="10.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">nonbonded</text><circle cx="707" cy="161" r="11" fill="var(--sf-rose)" opacity="0.7"/><circle cx="767" cy="161" r="11" fill="var(--sf-accent)" opacity="0.7"/><circle cx="737" cy="161" r="22" fill="none" stroke="var(--sf-line)" stroke-width="1" opacity="0.4"/><circle cx="737" cy="161" r="32" fill="none" stroke="var(--sf-line)" stroke-width="1" opacity="0.4"/><text x="737" y="201" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">+ / −</text><text x="736" y="210" text-anchor="middle" font-size="9" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">vdW + charge</text>
 </svg>

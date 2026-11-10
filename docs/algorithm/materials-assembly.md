@@ -2,9 +2,12 @@
 
 sci-form supports assembly of **Metal-Organic Frameworks (MOFs)** and other crystalline structures from **Secondary Building Units (SBUs)** and topological blueprints. This module handles periodic unit cells, coordination geometries, and framework construction.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## Unit Cell and Lattice Vectors
 
-<SvgDiagram src="/svg/materials-unit-cell.svg" alt="Crystallographic unit cell" />
+<SvgDiagram src="/svg/materials-unit-cell.svg" alt="A unit cell defined by three lattice vectors and three angles." />
 
 ### Lattice Parameters
 
@@ -86,7 +89,7 @@ Lattice vectors scale: $\vec{a}' = n_a \vec{a}$, etc.
 
 ## Framework Assembly
 
-<SvgDiagram src="/svg/materials-assembly.svg" alt="Framework assembly pipeline" />
+<SvgDiagram src="/svg/materials-assembly.svg" alt="Topology nodes decorated with secondary building units to assemble a periodic framework." />
 
 ### Assembly Pipeline
 

@@ -1,7 +1,21 @@
-# EDL: Electrical Double Layer (core)
+# Electrical double layer
 
 **Module:** `sci_form::edl` (core since 2026-10-14; `alpha::edl` re-export)
 **Feature flag:** none (core)
+
+---
+
+## Validation and limits
+
+| Question | Answer |
+|---|---|
+| Compared with | analytic Gouy-Chapman and Stern closed forms |
+| Measured separation | worst deviation 2.0e-14 |
+| Confidence region | 3 temperatures × 3 ionic strengths × 6 potentials/charges |
+| Main limitation | 1:1 electrolyte, mean-field model, no finite ion size beyond the Stern layer |
+
+The raw rows and the exact tolerances are in the
+[full validation matrix](/validation/full-matrix).
 
 ---
 

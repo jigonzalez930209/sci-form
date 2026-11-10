@@ -70,7 +70,7 @@ Throughput is machine-dependent and is printed by the test itself (138.9 mol/s o
 
 ### Per-Category Results
 
-<SvgDiagram src="/svg/benchmarks-rmsd.svg" alt="benchmarks-rmsd" />
+<SvgDiagram src="/svg/benchmarks-rmsd.svg" alt="Embedding success rate by chemical category." />
 
 ### Embed Failures
 
@@ -113,7 +113,7 @@ The recorded run reported:
 
 ### RMSD Distribution
 
-<SvgDiagram src="/svg/benchmarks-timing.svg" alt="benchmarks-timing" />
+<SvgDiagram src="/svg/benchmarks-timing.svg" alt="Runtime scaling with molecule size." />
 
 ### Hardest Categories
 
@@ -175,7 +175,7 @@ No CI job re-runs this sweep, and no committed artifact stores its result.
 
 ## Performance Scaling
 
-<SvgDiagram src="/svg/benchmarks-success.svg" alt="benchmarks-success" />
+<SvgDiagram src="/svg/benchmarks-success.svg" alt="Heavy-atom RMSD distribution of generated conformers." />
 
 The dominant cost is the Floyd-Warshall triangle smoothing ($O(N^3)$) and the BFGS optimization (each iteration is $O(N^2)$ for the inverse Hessian update).
 

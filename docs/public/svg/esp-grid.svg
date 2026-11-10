@@ -1,79 +1,58 @@
-<svg width="720" height="400" viewBox="0 0 720 400" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <defs>
-    <marker id="espArrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#059669"/>
-    </marker>
-    <linearGradient id="espColorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#dc2626"/>
-      <stop offset="30%" stop-color="#fbbf24"/>
-      <stop offset="50%" stop-color="#f9fafb"/>
-      <stop offset="70%" stop-color="#60a5fa"/>
-      <stop offset="100%" stop-color="#2563eb"/>
-    </linearGradient>
-  </defs>
-  <rect x="0" y="0" width="720" height="400" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-
-  <g font-family="system-ui,sans-serif">
-    <!-- Title -->
-    <text x="360" y="30" text-anchor="middle" fill="#1e293b" font-size="16" font-weight="700">Electrostatic Potential (ESP) Map</text>
-
-    <!-- 3D grid illustration -->
-    <g transform="translate(130, 190)">
-      <!-- Grid planes (isometric-ish) -->
-      <rect x="-90" y="-80" width="180" height="160" rx="4" fill="none" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
-
-      <!-- Grid dots -->
-      <g fill="#94a3b8" opacity="0.6">
-        <circle cx="-60" cy="-60" r="2"/><circle cx="-20" cy="-60" r="2"/><circle cx="20" cy="-60" r="2"/><circle cx="60" cy="-60" r="2"/>
-        <circle cx="-60" cy="-20" r="2"/><circle cx="-20" cy="-20" r="2"/><circle cx="20" cy="-20" r="2"/><circle cx="60" cy="-20" r="2"/>
-        <circle cx="-60" cy="20" r="2"/><circle cx="-20" cy="20" r="2"/><circle cx="20" cy="20" r="2"/><circle cx="60" cy="20" r="2"/>
-        <circle cx="-60" cy="60" r="2"/><circle cx="-20" cy="60" r="2"/><circle cx="20" cy="60" r="2"/><circle cx="60" cy="60" r="2"/>
-      </g>
-
-      <!-- Colored ESP regions -->
-      <circle cx="-30" cy="10" r="22" fill="#dc2626" opacity="0.2" stroke="#dc2626" stroke-width="0.5"/>
-      <text x="-30" y="15" text-anchor="middle" fill="#dc2626" font-size="10" font-weight="600">−</text>
-
-      <circle cx="30" cy="-10" r="18" fill="#2563eb" opacity="0.2" stroke="#2563eb" stroke-width="0.5"/>
-      <text x="30" y="-5" text-anchor="middle" fill="#2563eb" font-size="10" font-weight="600">+</text>
-
-      <!-- Molecule overlay -->
-      <circle cx="-10" cy="0" r="10" fill="#ef4444" stroke="#dc2626" stroke-width="1"/>
-      <text x="-10" y="4" text-anchor="middle" fill="white" font-size="9" font-weight="700">O</text>
-      <line x1="-10" y1="0" x2="-35" y2="-25" stroke="#6b7280" stroke-width="2"/>
-      <line x1="-10" y1="0" x2="15" y2="-25" stroke="#6b7280" stroke-width="2"/>
-      <circle cx="-35" cy="-25" r="7" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1"/>
-      <text x="-35" y="-22" text-anchor="middle" fill="#374151" font-size="8" font-weight="700">H</text>
-      <circle cx="15" cy="-25" r="7" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1"/>
-      <text x="15" y="-22" text-anchor="middle" fill="#374151" font-size="8" font-weight="700">H</text>
-
-      <!-- Labels -->
-      <text x="0" y="100" text-anchor="middle" fill="#64748b" font-size="11">3D voxel grid</text>
-    </g>
-
-    <!-- Formula section -->
-    <rect x="280" y="55" width="420" height="130" rx="10" fill="#ecfdf5" stroke="#86efac" stroke-width="1"/>
-
-    <text x="300" y="82" fill="#065f46" font-weight="700" font-size="14">ESP Formula</text>
-
-    <text x="300" y="108" fill="#1e293b" font-size="12" font-weight="600">Coulomb potential at grid point r⃗:</text>
-    <text x="300" y="132" fill="#064e3b" font-size="13" font-weight="600">Φ(r⃗) = Σₐ qₐ / |r⃗ − R⃗ₐ|</text>
-
-    <text x="300" y="158" fill="#64748b" font-size="11">qₐ = partial charge on atom A</text>
-    <text x="300" y="175" fill="#64748b" font-size="11">R⃗ₐ = position of atom A</text>
-
-    <!-- Color scale -->
-    <rect x="280" y="200" width="420" height="70" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
-    <text x="300" y="225" fill="#065f46" font-weight="700" font-size="13">Color Scale</text>
-    <rect x="300" y="238" width="360" height="18" rx="4" fill="url(#espColorGrad)"/>
-    <text x="300" y="268" fill="#dc2626" font-size="10" font-weight="600">negative (nucleophilic)</text>
-    <text x="660" y="268" text-anchor="end" fill="#2563eb" font-size="10" font-weight="600">positive (electrophilic)</text>
-
-    <!-- Cube format box -->
-    <rect x="20" y="305" width="680" height="70" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
-    <text x="40" y="330" fill="#065f46" font-weight="700" font-size="13">Gaussian .cube Export</text>
-    <text x="40" y="350" fill="#64748b" font-size="11">Header: N_atoms, origin (x,y,z) | N_x dx_x dx_y dx_z | N_y ... | N_z ... | atom lines | volumetric data</text>
-    <text x="40" y="366" fill="#64748b" font-size="11">Grid: N_x × N_y × N_z float values, one ESP value Φ(r⃗) per voxel</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 290" width="780" height="290" role="img" aria-label="The electrostatic potential is sampled on a voxel grid around the solute.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-esp-grid-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-esp-grid-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-esp-grid-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="780" height="290" fill="url(#sf-esp-grid-glow)" stroke="none"/>
+<path d="M80,80 L80,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M110,80 L110,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M140,80 L140,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M170,80 L170,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M200,80 L200,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M230,80 L230,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M260,80 L260,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M290,80 L290,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M320,80 L320,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M80,80 L320,80" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M80,110 L320,110" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M80,140 L320,140" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M80,170 L320,170" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M80,200 L320,200" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><path d="M80,230 L320,230" fill="none" stroke="var(--sf-line)" stroke-width="0.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/><circle cx="200" cy="155" r="58" fill="var(--sf-rose)" class="sf-halo" opacity="0.16"/><circle cx="200" cy="155" r="34" fill="var(--sf-accent)" class="sf-halo sf-d2" opacity="0.18"/><g class="sf-float"><path d="M200,150 L174.8,171.6" fill="none" stroke="var(--sf-line)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M200,150 L225.2,171.6" fill="none" stroke="var(--sf-line)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="200" cy="150" r="13.5" fill="var(--sf-rose)" opacity="0.18"/><circle cx="200" cy="150" r="8.1" fill="var(--sf-rose)"/><circle cx="174.8" cy="171.6" r="5.4" fill="var(--sf-accent)"/><circle cx="225.2" cy="171.6" r="5.4" fill="var(--sf-accent)"/><text x="200" y="153.5" text-anchor="middle" font-size="9" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">O</text><text x="174.8" y="174.6" text-anchor="middle" font-size="7" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">H</text><text x="225.2" y="174.6" text-anchor="middle" font-size="7" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">H</text></g><text x="200" y="258" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">solute in a voxel grid</text><rect x="80" y="80" width="6" height="150" rx="3" fill="var(--sf-warm)" stroke="none" stroke-width="1.4" class="sf-blink" opacity="0.8"/><path d="M345,155 L420,155" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-esp-grid-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M345,155 L420,155"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><text x="500" y="80" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)">ESP</text><path d="M460,110 L620,110" fill="none" stroke="var(--sf-line)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/><path d="M460,110 L540,110" fill="none" stroke="var(--sf-rose)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/><path d="M540,110 L620,110" fill="none" stroke="var(--sf-accent)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/><text x="460" y="136" text-anchor="middle" font-size="14" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-rose)">−</text><text x="620" y="136" text-anchor="middle" font-size="14" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">+</text><text x="540" y="180" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">electrostatic potential</text><rect x="470" y="210" width="120" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="530.0" y="224.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">grid + isosurface</text>
 </svg>

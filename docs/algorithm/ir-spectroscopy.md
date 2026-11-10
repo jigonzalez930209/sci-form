@@ -2,9 +2,12 @@
 
 sci-form computes infrared spectra from first principles via a numerical second-derivative (Hessian) approach. The resulting normal-mode frequencies and dipole derivatives directly yield IR intensities.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## Pipeline
 
-<SvgDiagram src="/svg/ir-hessian-pipeline.svg" alt="IR Hessian pipeline: Geometry → 6N Energy Evaluations → Hessian → Mass-weighted → Diagonalize → Modes + Frequencies → Dipole Derivatives → IR spectrum" />
+<SvgDiagram src="/svg/ir-hessian-pipeline.svg" alt="Infrared spectrum from a numerical Hessian: displacements, Hessian, normal modes and intensities." />
 
 ## Theory
 

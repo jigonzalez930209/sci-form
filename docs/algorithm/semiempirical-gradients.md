@@ -6,9 +6,12 @@ gradients are obtained. It exists because three different things used to be
 called "xTB" in the code base and two gradients did not belong to the energy
 they were attached to.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## 1. Which energy surface does a name evaluate?
 
-<SvgDiagram src="/svg/energy-surface-map.svg" alt="Map from each public name (pm3, xtb, gfn1, gfn2, solve_gfn0) to the solver that produces its energy and to the way its gradient is obtained" />
+<SvgDiagram src="/svg/energy-surface-map.svg" alt="Every public method name maps to one energy surface and one gradient path." />
 
 | Public name | Where | Energy surface | Gradient |
 |---|---|---|---|
@@ -65,7 +68,7 @@ The MOPAC-parity solver converges it in two stages:
    if the budget runs out while the energy has stalled, the result is still
    accepted as converged (the behaviour before DIIS existed).
 
-<SvgDiagram src="/svg/pm3-scf-diis.svg" alt="Animated bars: the damped fixed point exhausts 200 iterations while Pulay DIIS converges in 27 on the H2O2 gate geometry" />
+<SvgDiagram src="/svg/pm3-scf-diis.svg" alt="Pulay DIIS converges the PM3 self-consistent field in 27 iterations while damped fixed-point mixing exhausts 200." />
 
 On the H₂O₂ gate geometry the damped loop used all 200 iterations, DIIS needs
 27, and the two reach the same energy to 1·10⁻⁷ eV. This is not cosmetic. The
@@ -112,7 +115,7 @@ charges and atomic multipoles (`Gfn2Result::warm_start`), so the SCC converges
 in a few iterations instead of from a zero state. The energy is identical to a
 cold SCC run; only the iteration count drops.
 
-<SvgDiagram src="/svg/gradient-central-difference.svg" alt="Animated: one atom is displaced by plus and minus h, two SCF runs give E plus and E minus, and their difference over 2h is the gradient component" />
+<SvgDiagram src="/svg/gradient-central-difference.svg" alt="A central difference displaces one coordinate by plus and minus h and divides the energy difference by 2h." />
 
 * The `3N` coordinates are independent, so they run on the rayon pool when the
   `parallel` feature is on. Each component is collected in order, so the result

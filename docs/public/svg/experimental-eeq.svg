@@ -1,55 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 220" width="780" height="220" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
-  <rect width="780" height="220" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Title -->
-  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">E5: Dynamic EEQ Charge Equilibration</text>
-  <text x="390" y="48" text-anchor="middle" font-size="10" fill="#64748b">Geometry-dependent electronegativity equalization + D3-BJ dispersion</text>
-
-  <!-- Phase boxes -->
-  <rect x="10"  y="65" width="140" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="80"  y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Coord. Numbers</text>
-  <text x="80"  y="106" text-anchor="middle" font-size="10" fill="#1d4ed8">CN_i = Σ f(r_ij)</text>
-  <text x="80"  y="120" text-anchor="middle" font-size="10" fill="#1d4ed8">fractional counting</text>
-
-  <rect x="170" y="65" width="140" height="80" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="240" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">χ, η Params</text>
-  <text x="240" y="106" text-anchor="middle" font-size="10" fill="#15803d">χ_i(CN) dynamic</text>
-  <text x="240" y="120" text-anchor="middle" font-size="10" fill="#15803d">η_i hardness</text>
-
-  <rect x="330" y="65" width="140" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="400" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Coulomb Matrix</text>
-  <text x="400" y="106" text-anchor="middle" font-size="10" fill="#92400e">A_ij = γ(r_ij)</text>
-  <text x="400" y="120" text-anchor="middle" font-size="10" fill="#92400e">+ Lagrange: Σq=0</text>
-
-  <rect x="490" y="65" width="140" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="560" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">Linear Solve</text>
-  <text x="560" y="106" text-anchor="middle" font-size="10" fill="#be185d">A · q = −χ</text>
-  <text x="560" y="120" text-anchor="middle" font-size="10" fill="#be185d">Cholesky / LU</text>
-
-  <rect x="650" y="65" width="120" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="710" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">Charges + E</text>
-  <text x="710" y="106" text-anchor="middle" font-size="10" fill="#6d28d9">q_i partial</text>
-  <text x="710" y="120" text-anchor="middle" font-size="10" fill="#6d28d9">E_EEQ + E_D3</text>
-
-  <!-- Arrows -->
-  <line x1="150" y1="105" x2="168" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="310" y1="105" x2="328" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="470" y1="105" x2="488" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="630" y1="105" x2="648" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Labels -->
-  <text x="80"  y="168" text-anchor="middle" font-size="9" fill="#64748b">geometry-dependent</text>
-  <text x="240" y="168" text-anchor="middle" font-size="9" fill="#64748b">element parameters</text>
-  <text x="400" y="168" text-anchor="middle" font-size="9" fill="#64748b">damped 1/r interactions</text>
-  <text x="560" y="168" text-anchor="middle" font-size="9" fill="#64748b">charge neutrality</text>
-  <text x="710" y="168" text-anchor="middle" font-size="9" fill="#64748b">forces available</text>
-
-  <!-- Advantage badge -->
-  <rect x="180" y="185" width="420" height="24" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
-  <text x="390" y="201" text-anchor="middle" font-size="10" fill="#166534">✓ Geometry-dependent (unlike Gasteiger) · Charge-neutral · Differentiable</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 280" width="780" height="280" role="img" aria-label="Coordination numbers shift atomic electronegativity and produce geometry-dependent partial charges.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-experimental-eeq-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-experimental-eeq-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-experimental-eeq-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="780" height="280" fill="url(#sf-experimental-eeq-glow)" stroke="none"/>
+<circle cx="150" cy="150" r="22" fill="none" stroke="var(--sf-accent)" stroke-width="1.1" class="sf-halo sf-d1" opacity="0.35"/><circle cx="150" cy="150" r="14" fill="var(--sf-accent)" opacity="0.85"/><text x="150" y="184" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">+</text><circle cx="220" cy="110" r="19" fill="none" stroke="var(--sf-accent)" stroke-width="1.1" class="sf-halo sf-d2" opacity="0.35"/><circle cx="220" cy="110" r="11" fill="var(--sf-accent2)" opacity="0.85"/><text x="220" y="141" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">−</text><circle cx="225" cy="195" r="19" fill="none" stroke="var(--sf-accent)" stroke-width="1.1" class="sf-halo sf-d3" opacity="0.35"/><circle cx="225" cy="195" r="11" fill="var(--sf-accent)" opacity="0.85"/><text x="225" y="226" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">+</text><circle cx="300" cy="150" r="17" fill="none" stroke="var(--sf-accent)" stroke-width="1.1" class="sf-halo sf-d4" opacity="0.35"/><circle cx="300" cy="150" r="9" fill="var(--sf-accent2)" opacity="0.85"/><text x="300" y="179" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">−</text><path d="M150,150 L220,110 M150,150 L225,195 M220,110 L300,150 M225,195 L300,150" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><text x="225" y="245" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">coordination</text><path d="M340,150 L430,150" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-experimental-eeq-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M340,150 L430,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><path d="M455,78 L455,208 M455,208 L705,208" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M455,208 l4,-4 M455,208 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M455,78 l-4,4 M455,78 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><text x="580.0" y="230" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">CN</text><text x="437" y="143.0" text-anchor="middle" font-size="10" font-weight="500" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" transform="rotate(-90 437 143.0)">χ</text><path d="M455.00,175.00 Q456.55,173.76 458.10,172.51 Q459.65,171.34 461.20,170.16 Q462.75,169.05 464.30,167.94 Q465.85,166.89 467.40,165.83 Q468.95,164.84 470.50,163.84 Q472.05,162.90 473.60,161.96 Q475.15,161.07 476.70,160.18 Q478.25,159.34 479.80,158.49 Q481.35,157.70 482.90,156.90 Q484.45,156.15 486.00,155.39 Q487.55,154.68 489.10,153.97 Q490.65,153.29 492.20,152.62 Q493.75,151.98 495.30,151.34 Q496.85,150.74 498.40,150.13 Q499.95,149.56 501.50,148.99 Q503.05,148.45 504.60,147.91 Q506.15,147.40 507.70,146.89 Q509.25,146.41 510.80,145.92 Q512.35,145.47 513.90,145.01 Q515.45,144.58 517.00,144.14 Q518.55,143.73 520.10,143.32 Q521.65,142.94 523.20,142.55 Q524.75,142.18 526.30,141.82 Q527.85,141.47 529.40,141.13 Q530.95,140.80 532.50,140.47 Q534.05,140.16 535.60,139.85 Q537.15,139.56 538.70,139.26 Q540.25,138.99 541.80,138.71 Q543.35,138.45 544.90,138.18 Q546.45,137.94 548.00,137.69 Q549.55,137.45 551.10,137.22 Q552.65,137.00 554.20,136.77 Q555.75,136.56 557.30,136.35 Q558.85,136.16 560.40,135.96 Q561.95,135.77 563.50,135.58 Q565.05,135.40 566.60,135.23 Q568.15,135.06 569.70,134.89 Q571.25,134.73 572.80,134.57 Q574.35,134.42 575.90,134.27 Q577.45,134.13 579.00,133.98 Q580.55,133.85 582.10,133.72 Q583.65,133.59 585.20,133.46 Q586.75,133.34 588.30,133.22 Q589.85,133.11 591.40,132.99 Q592.95,132.88 594.50,132.78 Q596.05,132.67 597.60,132.57 Q599.15,132.48 600.70,132.38 Q602.25,132.29 603.80,132.20 Q605.35,132.11 606.90,132.02 Q608.45,131.94 610.00,131.86 Q611.55,131.78 613.10,131.71 Q614.65,131.63 616.20,131.56 Q617.75,131.49 619.30,131.42 Q620.85,131.36 622.40,131.29 Q623.95,131.23 625.50,131.17 Q627.05,131.11 628.60,131.05 Q630.15,130.99 631.70,130.94 Q633.25,130.89 634.80,130.83 Q636.35,130.78 637.90,130.73 Q639.45,130.69 641.00,130.64 Q642.55,130.60 644.10,130.55 Q645.65,130.51 647.20,130.47 Q648.75,130.43 650.30,130.39 Q651.85,130.35 653.40,130.31 Q654.95,130.28 656.50,130.24 Q658.05,130.21 659.60,130.18 Q661.15,130.14 662.70,130.11 Q664.25,130.08 665.80,130.05 Q667.35,130.02 668.90,130.00 Q670.45,129.97 672.00,129.94 Q673.55,129.92 675.10,129.89 Q676.65,129.87 678.20,129.84 Q679.75,129.82 681.30,129.80 Q682.85,129.78 684.40,129.75 Q685.95,129.73 687.50,129.71 Q689.05,129.69 690.60,129.67 Q692.15,129.66 693.70,129.64 Q695.25,129.62 696.80,129.60 Q698.35,129.59 699.90,129.57 Q701.45,129.56 703.00,129.54" fill="none" stroke="var(--sf-warm)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><circle cx="616.2" cy="131.55934792078077" r="5" fill="var(--sf-warm)" class="sf-pulse"/><text x="580" y="238" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">CN-dependent hardness</text><rect x="700" y="46" width="54" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="727.0" y="60.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">q</text>
 </svg>

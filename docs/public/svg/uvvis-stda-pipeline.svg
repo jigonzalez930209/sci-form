@@ -1,69 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 210" width="860" height="210" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
-  <rect width="860" height="210" fill="#f8fafc" rx="10" stroke="#e2e8f0" stroke-width="1"/>
-  <text x="430" y="26" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">sTDA UV-Vis Pipeline (Phase D1)</text>
-
-  <!-- Step 1: Geometry -->
-  <rect x="10" y="55" width="120" height="80" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
-  <text x="70" y="82" text-anchor="middle" font-size="11" font-weight="700" fill="#334155">Geometry</text>
-  <text x="70" y="97" text-anchor="middle" font-size="9" fill="#64748b">elements[]</text>
-  <text x="70" y="110" text-anchor="middle" font-size="9" fill="#64748b">positions[]</text>
-  <text x="70" y="123" text-anchor="middle" font-size="9" fill="#64748b">Å units</text>
-
-  <line x1="130" y1="95" x2="148" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 2: EHT / xTB -->
-  <rect x="150" y="55" width="130" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="215" y="80" text-anchor="middle" font-size="11" font-weight="700" fill="#1e40af">EHT / xTB</text>
-  <text x="215" y="95" text-anchor="middle" font-size="9" fill="#1d4ed8">MO energies εᵢ</text>
-  <text x="215" y="108" text-anchor="middle" font-size="9" fill="#1d4ed8">Coefficients Cᵤᵢ</text>
-  <text x="215" y="121" text-anchor="middle" font-size="9" fill="#1d4ed8">HOMO index</text>
-
-  <line x1="280" y1="95" x2="298" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 3: Transitions -->
-  <rect x="300" y="55" width="140" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="370" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#713f12">MO Transitions</text>
-  <text x="370" y="93" text-anchor="middle" font-size="9" fill="#92400e">i → a  (occ → virt)</text>
-  <text x="370" y="106" text-anchor="middle" font-size="9" fill="#92400e">ΔEᵢₐ = εₐ − εᵢ</text>
-  <text x="370" y="119" text-anchor="middle" font-size="9" fill="#92400e">λ = 1239.84 / ΔE nm</text>
-
-  <line x1="440" y1="95" x2="458" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 4: Oscillator strength -->
-  <rect x="460" y="55" width="140" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="530" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#9d174d">Oscillator Strength</text>
-  <text x="530" y="93" text-anchor="middle" font-size="9" fill="#be185d">μᵢₐ = ⟨ψᵢ|r|ψₐ⟩</text>
-  <text x="530" y="106" text-anchor="middle" font-size="9" fill="#be185d">f = (2/3)·ΔE·|μ|²</text>
-  <text x="530" y="119" text-anchor="middle" font-size="9" fill="#be185d">one-center approx.</text>
-
-  <line x1="600" y1="95" x2="618" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-
-  <!-- Step 5: Broadening -->
-  <rect x="620" y="55" width="140" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="690" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="#5b21b6">Broadening</text>
-  <text x="690" y="93" text-anchor="middle" font-size="9" fill="#6d28d9">ε(E) = Σ f·G/L(E,ΔE,σ)</text>
-  <text x="690" y="106" text-anchor="middle" font-size="9" fill="#6d28d9">× 28700 L/(mol·cm)</text>
-  <text x="690" y="119" text-anchor="middle" font-size="9" fill="#6d28d9">Gaussian or Lorentzian</text>
-
-  <!-- Step 6: Output label -->
-  <rect x="770" y="70" width="78" height="50" rx="8" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1.5"/>
-  <line x1="760" y1="95" x2="768" y2="95" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr)"/>
-  <text x="809" y="90" text-anchor="middle" font-size="10" font-weight="700" fill="#5b21b6">ε(λ)</text>
-  <text x="809" y="105" text-anchor="middle" font-size="9" fill="#6d28d9">spectrum</text>
-
-  <!-- Bottom labels -->
-  <text x="70"  y="153" text-anchor="middle" font-size="9" fill="#64748b">SCC converged or EHT</text>
-  <text x="215" y="153" text-anchor="middle" font-size="9" fill="#64748b">n_occ × n_virt pairs</text>
-  <text x="370" y="153" text-anchor="middle" font-size="9" fill="#64748b">energy-window filtered</text>
-  <text x="530" y="153" text-anchor="middle" font-size="9" fill="#64748b">⟨Cᵤᵢ Cᵤₐ⟩ overlap proxy</text>
-  <text x="690" y="153" text-anchor="middle" font-size="9" fill="#64748b">n_points grid, e_min→e_max</text>
-
-  <!-- HOMO / LUMO label illustration -->
-  <text x="370" y="175" text-anchor="middle" font-size="9" fill="#94a3b8">HOMO (εᴴ) ──────── LUMO (εᴸ)    ΔEgap = εᴸ − εᴴ</text>
-  <text x="370" y="190" text-anchor="middle" font-size="9" fill="#94a3b8">excitation from occupied MO i to virtual a: ΔEᵢₐ = εₐ − εᵢ</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 250" width="800" height="250" role="img" aria-label="UV-Vis sTDA pipeline from geometry to molecular orbitals, transitions, oscillator strengths and spectrum.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-uvvis-stda-pipeline-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-uvvis-stda-pipeline-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-uvvis-stda-pipeline-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="800" height="250" fill="url(#sf-uvvis-stda-pipeline-glow)" stroke="none"/>
+<rect x="30" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="31.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-accent)" stroke="none" stroke-width="1.4"/><text x="96" y="110" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d1">geometry</text><text x="96" y="128" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d1">3D structure</text><circle cx="96" cy="158" r="14" fill="var(--sf-soft)" stroke="var(--sf-accent)" stroke-width="1.5" class="sf-pulse"/><path d="M166,130 L184,130" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-uvvis-stda-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M166,130 L184,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><rect x="184" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="185.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4"/><text x="250" y="110" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d2">orbitals</text><text x="250" y="128" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d2">EHT / xTB</text><circle cx="250" cy="158" r="14" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1.5" class="sf-pulse"/><path d="M320,130 L338,130" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-uvvis-stda-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.35s" repeatCount="indefinite" path="M320,130 L338,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.35s" repeatCount="indefinite"/></circle><rect x="338" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="339.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-violet)" stroke="none" stroke-width="1.4"/><text x="404" y="110" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d3">transitions</text><text x="404" y="128" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d3">CIS-like</text><circle cx="404" cy="158" r="14" fill="var(--sf-soft)" stroke="var(--sf-violet)" stroke-width="1.5" class="sf-pulse"/><path d="M474,130 L492,130" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-uvvis-stda-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-violet)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.5s" repeatCount="indefinite" path="M474,130 L492,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.5s" repeatCount="indefinite"/></circle><rect x="492" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="493.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-warm)" stroke="none" stroke-width="1.4"/><text x="558" y="110" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d4">oscillator</text><text x="558" y="128" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d4">intensity</text><circle cx="558" cy="158" r="14" fill="var(--sf-soft)" stroke="var(--sf-warm)" stroke-width="1.5" class="sf-pulse"/><path d="M628,130 L646,130" fill="none" stroke="var(--sf-warm)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-uvvis-stda-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-warm)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6499999999999999s" repeatCount="indefinite" path="M628,130 L646,130"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6499999999999999s" repeatCount="indefinite"/></circle><rect x="646" y="70" width="132" height="120" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="647.5" y="71.5" width="129" height="4" rx="2" fill="var(--sf-rose)" stroke="none" stroke-width="1.4"/><text x="712" y="110" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d5">spectrum</text><text x="712" y="128" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d5">ε(λ)</text><circle cx="712" cy="158" r="14" fill="var(--sf-soft)" stroke="var(--sf-rose)" stroke-width="1.5" class="sf-pulse"/><path d="M650,145 L650,190 M650,190 L770,190" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M650,190 l4,-4 M650,190 l-4,-4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M650,145 l-4,4 M650,145 l4,4" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M650.00,190.00 Q651.00,190.00 652.00,190.00 Q653.00,189.99 654.00,189.99 Q655.00,189.98 656.00,189.98 Q657.00,189.96 658.00,189.94 Q659.00,189.91 660.00,189.88 Q661.00,189.81 662.00,189.75 Q663.00,189.62 664.00,189.50 Q665.00,189.29 666.00,189.07 Q667.00,188.71 668.00,188.35 Q669.00,187.78 670.00,187.21 Q671.00,186.36 672.00,185.51 Q673.00,184.32 674.00,183.14 Q675.00,181.57 676.00,180.01 Q677.00,178.09 678.00,176.18 Q679.00,173.99 680.00,171.80 Q681.00,169.51 682.00,167.21 Q683.00,165.03 684.00,162.85 Q685.00,161.04 686.00,159.24 Q687.00,158.04 688.00,156.84 Q689.00,156.42 690.00,156.00 Q691.00,156.42 692.00,156.84 Q693.00,158.03 694.00,159.23 Q695.00,161.03 696.00,162.84 Q697.00,165.01 698.00,167.18 Q699.00,169.47 700.00,171.75 Q701.00,173.91 702.00,176.07 Q703.00,177.94 704.00,179.82 Q705.00,181.30 706.00,182.78 Q707.00,183.83 708.00,184.89 Q709.00,185.52 710.00,186.15 Q711.00,186.40 712.00,186.64 Q713.00,186.53 714.00,186.42 Q715.00,185.99 716.00,185.56 Q717.00,184.82 718.00,184.09 Q719.00,183.09 720.00,182.09 Q721.00,180.86 722.00,179.63 Q723.00,178.25 724.00,176.87 Q725.00,175.43 726.00,173.98 Q727.00,172.60 728.00,171.21 Q729.00,170.01 730.00,168.82 Q731.00,167.94 732.00,167.06 Q733.00,166.59 734.00,166.12 Q735.00,166.12 736.00,166.12 Q737.00,166.59 738.00,167.06 Q739.00,167.94 740.00,168.82 Q741.00,170.02 742.00,171.22 Q743.00,172.60 744.00,173.99 Q745.00,175.44 746.00,176.89 Q747.00,178.29 748.00,179.69 Q749.00,180.95 750.00,182.21 Q751.00,183.28 752.00,184.34 Q753.00,185.20 754.00,186.05 Q755.00,186.70 756.00,187.35 Q757.00,187.82 758.00,188.30 Q759.00,188.62 760.00,188.95 Q761.00,189.16 762.00,189.37 Q763.00,189.51 764.00,189.64 Q765.00,189.72 766.00,189.80 Q767.00,189.85 768.00,189.90" fill="none" stroke="var(--sf-rose)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><rect x="320" y="220" width="120" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-rose)" stroke-width="1"/><text x="380.0" y="234.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-rose)">sTDA UV-Vis</text>
 </svg>

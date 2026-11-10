@@ -1,83 +1,58 @@
-<svg width="720" height="440" viewBox="0 0 720 440" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <defs>
-    <marker id="cellArrowX" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
-    </marker>
-    <marker id="cellArrowY" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
-    </marker>
-    <marker id="cellArrowZ" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
-    </marker>
-  </defs>
-  <rect x="0" y="0" width="720" height="440" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-
-  <g font-family="system-ui,sans-serif">
-    <!-- Title -->
-    <text x="360" y="30" text-anchor="middle" fill="#1e293b" font-size="16" font-weight="700">Crystallographic Unit Cell</text>
-
-    <!-- Unit cell 3D illustration -->
-    <g transform="translate(160, 200)">
-      <!-- Back face -->
-      <line x1="0" y1="0" x2="120" y2="-30" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
-      <line x1="0" y1="0" x2="40" y2="-60" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
-      <line x1="120" y1="-30" x2="160" y2="-90" stroke="#d1d5db" stroke-width="1"/>
-      <line x1="40" y1="-60" x2="160" y2="-90" stroke="#d1d5db" stroke-width="1"/>
-
-      <!-- Bottom face -->
-      <line x1="0" y1="0" x2="120" y2="-30" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
-      <line x1="120" y1="-30" x2="120" y2="90" stroke="#94a3b8" stroke-width="1.5"/>
-      <line x1="0" y1="0" x2="0" y2="120" stroke="#94a3b8" stroke-width="1.5"/>
-      <line x1="0" y1="120" x2="120" y2="90" stroke="#94a3b8" stroke-width="1.5"/>
-
-      <!-- Top face -->
-      <line x1="40" y1="-60" x2="160" y2="-90" stroke="#94a3b8" stroke-width="1.5"/>
-      <line x1="160" y1="-90" x2="160" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
-      <line x1="40" y1="-60" x2="40" y2="60" stroke="#94a3b8" stroke-width="1.5"/>
-      <line x1="40" y1="60" x2="160" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
-
-      <!-- Right face -->
-      <line x1="120" y1="90" x2="160" y2="30" stroke="#94a3b8" stroke-width="1.5"/>
-      <line x1="0" y1="120" x2="40" y2="60" stroke="#94a3b8" stroke-width="1.5"/>
-
-      <!-- Lattice vectors from origin -->
-      <circle cx="0" cy="120" r="4" fill="#1e293b"/>
-      <line x1="0" y1="120" x2="115" y2="92" stroke="#dc2626" stroke-width="2.5" marker-end="url(#cellArrowX)"/>
-      <text x="65" y="118" fill="#dc2626" font-weight="700" font-size="13">a⃗</text>
-
-      <line x1="0" y1="120" x2="36" y2="64" stroke="#16a34a" stroke-width="2.5" marker-end="url(#cellArrowY)"/>
-      <text x="8" y="82" fill="#16a34a" font-weight="700" font-size="13">b⃗</text>
-
-      <line x1="0" y1="120" x2="0" y2="5" stroke="#2563eb" stroke-width="2.5" marker-end="url(#cellArrowZ)"/>
-      <text x="-18" y="60" fill="#2563eb" font-weight="700" font-size="13">c⃗</text>
-
-      <!-- Angle labels -->
-      <text x="55" y="138" fill="#d97706" font-size="10" font-weight="600">γ</text>
-      <text x="-12" y="105" fill="#d97706" font-size="10" font-weight="600">β</text>
-      <text x="72" y="80" fill="#d97706" font-size="10" font-weight="600">α</text>
-    </g>
-
-    <!-- Formulas -->
-    <rect x="370" y="55" width="330" height="200" rx="10" fill="#fef3c7" stroke="#fde68a" stroke-width="1"/>
-
-    <text x="390" y="82" fill="#92400e" font-weight="700" font-size="14">Cell Parameters</text>
-
-    <text x="390" y="108" fill="#1e293b" font-size="12" font-weight="600">Lattice parameters:</text>
-    <text x="390" y="128" fill="#64748b" font-size="12">a, b, c (lengths in Å)</text>
-    <text x="390" y="145" fill="#64748b" font-size="12">α, β, γ (angles in degrees)</text>
-
-    <text x="390" y="172" fill="#1e293b" font-size="12" font-weight="600">Volume:</text>
-    <text x="390" y="192" fill="#78350f" font-size="12" font-weight="600">V = a⃗ · (b⃗ × c⃗)</text>
-
-    <text x="390" y="218" fill="#1e293b" font-size="12" font-weight="600">Coordinate transform:</text>
-    <text x="390" y="238" fill="#78350f" font-size="12" font-weight="600">r⃗_cart = Mᵀ · f⃗_frac</text>
-    <text x="390" y="255" fill="#64748b" font-size="11">M rows = lattice vectors a⃗, b⃗, c⃗</text>
-
-    <!-- PBC section -->
-    <rect x="20" y="345" width="680" height="75" rx="10" fill="#fffbeb" stroke="#fde68a" stroke-width="1"/>
-    <text x="40" y="372" fill="#92400e" font-weight="700" font-size="13">Periodic Boundary Conditions (PBC)</text>
-    <text x="40" y="394" fill="#64748b" font-size="12">Wrap: f⃗_wrapped = f⃗ − floor(f⃗)  →  all fractional coords in [0, 1)</text>
-    <text x="40" y="412" fill="#64748b" font-size="12">Minimum image: Δf = Δf − round(Δf)  →  shortest distance under periodicity</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 270" width="700" height="270" role="img" aria-label="A crystallographic unit cell defined by three lattice vectors and three angles.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-materials-unit-cell-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-materials-unit-cell-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-materials-unit-cell-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="700" height="270" fill="url(#sf-materials-unit-cell-glow)" stroke="none"/>
+<path d="M130,200 L260,200 L330,120 L200,120 Z" fill="var(--sf-soft)" stroke="var(--sf-line)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M130,200 L130,95 L200,40 L200,120" fill="none" stroke="var(--sf-line)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M200,40 L330,40 L330,120" fill="none" stroke="var(--sf-line)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M260,200 L260,95 L330,40" fill="none" stroke="var(--sf-line)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M200,160 L290,160" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-materials-unit-cell-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M200,160 L290,160"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><text x="250" y="148" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">a</text><path d="M200,160 L130,95" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-materials-unit-cell-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.4s" repeatCount="indefinite" path="M200,160 L130,95"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.4s" repeatCount="indefinite"/></circle><text x="150" y="115" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">b</text><path d="M200,160 L200,55" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-materials-unit-cell-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-violet)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6s" repeatCount="indefinite" path="M200,160 L200,55"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6s" repeatCount="indefinite"/></circle><text x="212" y="95" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-violet)">c</text><text x="230" y="240" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">unit cell</text><path d="M240,160 A40,40 0 0 0 220,140" fill="none" stroke="var(--sf-warm)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3 4"/><text x="255" y="130" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">γ</text><rect x="430" y="60" width="90" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent)" stroke-width="1"/><text x="475.0" y="74.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">a, b, c</text><rect x="430" y="110" width="90" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-warm)" stroke-width="1"/><text x="475.0" y="124.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">α, β, γ</text>
 </svg>

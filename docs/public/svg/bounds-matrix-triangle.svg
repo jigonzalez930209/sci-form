@@ -1,29 +1,58 @@
-<svg width="500" height="200" viewBox="0 0 500 200" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <rect x="0" y="0" width="500" height="200" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <g font-family="system-ui,sans-serif">
-    <!-- Triangle -->
-    <line x1="80" y1="150" x2="250" y2="50" stroke="#2563eb" stroke-width="2"/>
-    <line x1="250" y1="50" x2="420" y2="150" stroke="#2563eb" stroke-width="2"/>
-    <line x1="80" y1="150" x2="420" y2="150" stroke="#10b981" stroke-width="2" stroke-dasharray="6 3"/>
-
-    <!-- Atoms -->
-    <circle cx="80" cy="150" r="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
-    <text x="80" y="155" text-anchor="middle" fill="#2563eb" font-weight="bold" font-size="14">A</text>
-
-    <circle cx="250" cy="50" r="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
-    <text x="250" y="55" text-anchor="middle" fill="#2563eb" font-weight="bold" font-size="14">B</text>
-
-    <circle cx="420" cy="150" r="16" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
-    <text x="420" y="155" text-anchor="middle" fill="#2563eb" font-weight="bold" font-size="14">C</text>
-
-    <!-- Labels -->
-    <text x="150" y="85" text-anchor="middle" fill="#2563eb" font-size="13" font-weight="600">d₁</text>
-    <text x="350" y="85" text-anchor="middle" fill="#2563eb" font-size="13" font-weight="600">d₂</text>
-    <text x="250" y="175" text-anchor="middle" fill="#10b981" font-size="13" font-weight="600">d₁₃ = ?</text>
-
-    <!-- Angle arc -->
-    <path d="M 220 70 A 30 30 0 0 1 280 70" fill="none" stroke="#ca8a04" stroke-width="1.5"/>
-    <text x="250" y="95" text-anchor="middle" fill="#ca8a04" font-weight="600" font-size="12">θ</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 300" width="700" height="300" role="img" aria-label="Triangle smoothing propagates a distance bound through a third atom.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-bounds-matrix-triangle-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-bounds-matrix-triangle-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-bounds-matrix-triangle-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="700" height="300" fill="url(#sf-bounds-matrix-triangle-glow)" stroke="none"/>
+<path d="M120,220 L320,90 L520,220 Z" fill="none" stroke="var(--sf-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="120" cy="220" r="12" fill="var(--sf-accent)" opacity="0.85"/><text x="120" y="224" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">A</text><circle cx="320" cy="90" r="12" fill="var(--sf-accent)" opacity="0.85"/><text x="320" y="94" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">B</text><circle cx="520" cy="220" r="12" fill="var(--sf-accent)" opacity="0.85"/><text x="520" y="224" text-anchor="middle" font-size="10" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="#fff">C</text><text x="220" y="145" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">d₁</text><text x="420" y="145" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">d₂</text><text x="320" y="250" text-anchor="middle" font-size="11" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">d₁₃</text><path d="M140,205 C230,160 410,160 500,205" fill="none" stroke="var(--sf-warm)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="sf-flow"/><rect x="265" y="34" width="110" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent)" stroke-width="1"/><text x="320.0" y="48.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">triangle inequality</text><text x="320" y="282" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">smooth impossible bounds</text>
 </svg>

@@ -1,24 +1,36 @@
 # Beta Modules
 
-**Beta** now contains one remaining gated module (MBH) plus compatibility aliases for methods promoted to core. The promoted paths stay available under their historical `beta-*` flags.
+The beta tier now contains one gated research line, the Mobile Block Hessian,
+plus compatibility aliases for methods that have moved to core. The old
+`beta::*` paths still compile; the implementations live at the top-level
+modules.
 
-> Only MBH requires an explicit opt-in. KPM, CPM, RandNLA and Riemannian are core.
+## Module map
+
+| Module | State | What it does |
+|---|---|---|
+| Kernel Polynomial Method | core (`beta-kpm` alias) | Chebyshev density of states and stochastic Mulliken charges |
+| Mobile Block Hessian | gated (`beta-mbh`) | Reduced vibrational analysis with rigid blocks |
+| Randomized eigensolver | core (`beta-randnla` alias) | Nyström sketch plus low-rank path for large EHT problems |
+| Riemannian geometry | core | Positive-semidefinite projection and manifold optimization |
+| Constant Potential Method | core (`beta-cpm` alias) | Charge equilibration at a fixed electrode potential |
+
+## Validation at a glance
+
+The full report, including the confidence region of every method, is in
+[Scientific validation](/validation/scientific-validation).
+
+| Module | Compared with | Measured separation | Confidence region | Main limitation |
+|---|---|---|---|---|
+| Mobile Block Hessian | analytic diatomic stretches plus the full Hessian | stretch 1.3e-5 SI; zero modes ≤5 cm⁻¹; benzene 24/36 degrees of freedom | diatomic and benzene-sized systems | experimental reference is ±2 cm⁻¹ (Ghysels); global-minimum integration is not covered |
+| Kernel Polynomial Method | NumPy `eigh` on GOE and gapped spectra | moments 3.5e-15; DOS L2 1.7e-14; Mulliken 3.8e-5 gapped / 2.6e-2 finite-T | gapped spectra, sparse matrices up to 5000 sites | T=0 gapless spectra show Gibbs ringing; stochastic noise |
+| Randomized eigensolver | exact symmetric eigensolver | rank-N/4 3.8e-4 with power iterations; N=600 low-rank 9.6e-4 | near-identity/gapped EHT, k ≥ N/4, lowest 4 states | full-spectrum path uses the exact fallback; clustered spectra degrade |
+| Riemannian geometry | NumPy + SciPy L-BFGS-B | projection 8.2e-12; Frobenius distance 2.2e-16 | small positive-semidefinite matrices | `psd_distance` is a Frobenius proxy, not the affine-invariant geodesic; first-order retraction |
+| Constant Potential Method | LAMMPS `fix electrode/conp` | plate charge scale 1.76×; per-atom cosine 0.44 | graphene bilayer, 3×3 cells, V = ±0.5/1/2 V | point-charge hardness 5 eV vs ~22 eV Gaussian self-energy; over-polarizes dense conductors |
 
 ---
 
-## Module Index
-
-| ID | Module | Feature flag | Description |
-|----|--------|-------------|-------------|
-| B1 | `kpm` (`beta::kpm` alias) | core | Kernel Polynomial Method — O(N) DOS (promoted 2026-11-07) |
-| B2 | `beta::mbh` | `beta-mbh` | Mobile Block Hessian vibrational analysis |
-| B3 | `rand_nla` (core) | `beta-randnla` alias | Randomized Nyström EHT + low-rank Lanczos path for N>500 |
-| B4 | `riemannian` (core, F94) | — | Riemannian geometry on the PSD cone |
-| B5 | `cpm` (core, F95) | — | Constant Potential Method charge equilibration |
-
----
-
-## B1 — Kernel Polynomial Method (core `kpm`, `beta-kpm` alias)
+## Kernel Polynomial Method (core, `beta-kpm` alias)
 
 > Promoted to core on 2026-11-07. Use `sci_form::kpm`; the old
 > `sci_form::beta::kpm` path remains as an alias.
@@ -86,7 +98,7 @@ The stochastic trace estimation (`ChebyshevExpansion::from_matrix`) generates al
 
 ---
 
-## B2 — Mobile Block Hessian (`beta-mbh`)
+## Mobile Block Hessian (`beta-mbh`, gated)
 
 **Module:** `sci_form::beta::mbh` (gated; F92 validated 2026-10-14: stretch 1.3e-5 SI; Ghysels gap)
 
@@ -129,7 +141,7 @@ print(f"ZPE: {result.zero_point_energy:.4f} Ha")
 
 ---
 
-## B3 — Randomized Nyström EHT (core `rand_nla`, `beta-randnla` alias)
+## Randomized eigensolver (core, `beta-randnla` alias)
 
 **Module:** `sci_form::rand_nla` (core since 2026-11-08; F93 validated; low-rank N>500 path added 2026-11-08)
 
@@ -186,7 +198,7 @@ print(f"RandNLA gap: {result.gap:.3f} eV  (k={result.k})")
 
 ---
 
-## B4 — Riemannian PSD Geometry (`beta-riemannian`)
+## Riemannian positive-semidefinite geometry (core)
 
 **Module:** `sci_form::riemannian` (core since 2026-10-14, F94: projection 8.2e-12, optimizer like scipy; Frobenius proxy)
 
@@ -237,7 +249,7 @@ proj = beta_psd_projection(m_flat, dim=3)
 
 ---
 
-## B5 — Constant Potential Method (`beta-cpm`)
+## Constant Potential Method (core, `beta-cpm` alias)
 
 **Module:** `sci_form::cpm` (core since 2026-10-13, F95 vs LAMMPS electrode/conp)
 
@@ -277,21 +289,22 @@ print(f"total charge: {result.total_charge:.4f} e")
 
 ---
 
-## Enabling Beta Features
+## Enabling beta features
 
 ### Rust
 
 ```toml
 [dependencies]
-# KPM is core since 2026-11-07; beta-kpm still resolves as an alias.
-sci-form = { version = "2.0", features = ["beta-mbh"] }
-
-# All still-gated beta modules:
+# The only still-gated beta module:
 sci-form = { version = "2.0", features = ["beta-mbh"] }
 
 # Beta + parallelization:
 sci-form = { version = "2.0", features = ["beta-mbh", "parallel"] }
 ```
+
+KPM, CPM, RandNLA and Riemannian are core and need no flag. The historical
+`beta-kpm`, `beta-cpm`, `beta-randnla` and `beta-riemannian` names are no-op
+aliases.
 
 ### WASM / npm
 
@@ -345,11 +358,11 @@ bash crates/wasm/build.sh --web-only --web-features "beta-mbh"
 
 ---
 
-## Comparison: Alpha vs Beta vs Stable
+## Comparison: research tiers vs stable
 
-| Property | Alpha | Beta | Stable |
+| Property | Gated research | Validated alias | Stable |
 |----------|-------|------|--------|
-| API stability | May break | Minor-version bumps only | Fully stable |
+| API stability | May break | Historical alias only | Fully stable |
 | Test coverage | Basic integration tests | Regression + reference validation | Comprehensive + benchmarks |
 | Documentation | Module-level | Full API docs | Full API + guides |
 | Real-world validation | None required | Recommended | Required |

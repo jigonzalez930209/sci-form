@@ -1,113 +1,58 @@
-<svg width="800" height="580" viewBox="0 0 800 580" xmlns="http://www.w3.org/2000/svg" style="margin:2em auto;display:block;">
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
-      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
-    </marker>
-    <linearGradient id="pipeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#10b981"/>
-    </linearGradient>
-  </defs>
-  <rect x="0" y="0" width="800" height="580" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-
-  <!-- Step boxes -->
-  <g font-family="system-ui,sans-serif" font-size="13">
-    <!-- Step 1 -->
-    <rect x="20" y="10" width="220" height="50" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-    <circle cx="40" cy="35" r="12" fill="#2563eb"/>
-    <text x="40" y="39" text-anchor="middle" fill="white" font-weight="bold" font-size="11">1</text>
-    <text x="60" y="30" fill="#1e3a5f" font-weight="600">SMILES Parsing</text>
-    <text x="60" y="46" fill="#64748b" font-size="11">String → molecular graph</text>
-
-    <!-- Step 2 -->
-    <rect x="280" y="10" width="220" height="50" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-    <circle cx="300" cy="35" r="12" fill="#2563eb"/>
-    <text x="300" y="39" text-anchor="middle" fill="white" font-weight="bold" font-size="11">2</text>
-    <text x="320" y="30" fill="#1e3a5f" font-weight="600">Bounds Matrix</text>
-    <text x="320" y="46" fill="#64748b" font-size="11">1-2, 1-3, 1-4, VDW bounds</text>
-
-    <!-- Step 3 -->
-    <rect x="540" y="10" width="220" height="50" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
-    <circle cx="560" cy="35" r="12" fill="#2563eb"/>
-    <text x="560" y="39" text-anchor="middle" fill="white" font-weight="bold" font-size="11">3</text>
-    <text x="580" y="30" fill="#1e3a5f" font-weight="600">Triangle Smoothing</text>
-    <text x="580" y="46" fill="#64748b" font-size="11">Floyd-Warshall enforcement</text>
-
-    <!-- Step 4 -->
-    <rect x="20" y="130" width="220" height="50" rx="8" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
-    <circle cx="40" cy="155" r="12" fill="#10b981"/>
-    <text x="40" y="159" text-anchor="middle" fill="white" font-weight="bold" font-size="11">4</text>
-    <text x="60" y="150" fill="#14532d" font-weight="600">Distance Picking</text>
-    <text x="60" y="166" fill="#64748b" font-size="11">Random d ∈ [lower, upper]</text>
-
-    <!-- Step 5 -->
-    <rect x="280" y="130" width="220" height="50" rx="8" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
-    <circle cx="300" cy="155" r="12" fill="#10b981"/>
-    <text x="300" y="159" text-anchor="middle" fill="white" font-weight="bold" font-size="11">5</text>
-    <text x="320" y="150" fill="#14532d" font-weight="600">Metric Matrix Embedding</text>
-    <text x="320" y="166" fill="#64748b" font-size="11">Eigendecomposition → 4D</text>
-
-    <!-- Step 6 -->
-    <rect x="540" y="130" width="220" height="50" rx="8" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
-    <circle cx="560" cy="155" r="12" fill="#10b981"/>
-    <text x="560" y="159" text-anchor="middle" fill="white" font-weight="bold" font-size="11">6</text>
-    <text x="580" y="150" fill="#14532d" font-weight="600">Bounds FF (BFGS)</text>
-    <text x="580" y="166" fill="#64748b" font-size="11">4D distance violation min.</text>
-
-    <!-- Step 7 -->
-    <rect x="20" y="250" width="220" height="50" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
-    <circle cx="40" cy="275" r="12" fill="#ca8a04"/>
-    <text x="40" y="279" text-anchor="middle" fill="white" font-weight="bold" font-size="11">7</text>
-    <text x="60" y="270" fill="#713f12" font-weight="600">Project to 3D</text>
-    <text x="60" y="286" fill="#64748b" font-size="11">Drop 4th dimension</text>
-
-    <!-- Step 8 -->
-    <rect x="280" y="250" width="220" height="50" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
-    <circle cx="300" cy="275" r="12" fill="#ca8a04"/>
-    <text x="300" y="279" text-anchor="middle" fill="white" font-weight="bold" font-size="11">8</text>
-    <text x="320" y="270" fill="#713f12" font-weight="600">ETKDG 3D Refinement</text>
-    <text x="320" y="286" fill="#64748b" font-size="11">CSD torsions + BFGS</text>
-
-    <!-- Step 9 -->
-    <rect x="540" y="250" width="220" height="50" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5"/>
-    <circle cx="560" cy="275" r="12" fill="#ca8a04"/>
-    <text x="560" y="279" text-anchor="middle" fill="white" font-weight="bold" font-size="11">9</text>
-    <text x="580" y="270" fill="#713f12" font-weight="600">Validation</text>
-    <text x="580" y="286" fill="#64748b" font-size="11">Tetrahedral, planar, E/Z</text>
-
-    <!-- Arrows row 1 -->
-    <line x1="240" y1="35" x2="278" y2="35" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <line x1="500" y1="35" x2="538" y2="35" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-    <!-- Arrows row 1→2 -->
-    <path d="M 650 60 L 650 90 L 130 90 L 130 128" stroke="#2563eb" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
-
-    <!-- Arrows row 2 -->
-    <line x1="240" y1="155" x2="278" y2="155" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <line x1="500" y1="155" x2="538" y2="155" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-    <!-- Arrows row 2→3 -->
-    <path d="M 650 180 L 650 210 L 130 210 L 130 248" stroke="#10b981" stroke-width="1.5" fill="none" marker-end="url(#arrow)"/>
-
-    <!-- Arrows row 3 -->
-    <line x1="240" y1="275" x2="278" y2="275" stroke="#ca8a04" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <line x1="500" y1="275" x2="538" y2="275" stroke="#ca8a04" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-    <!-- Retry loop -->
-    <rect x="20" y="340" width="740" height="40" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="6 3"/>
-    <text x="400" y="365" text-anchor="middle" fill="#991b1b" font-weight="600">
-      ← Retry loop: if validation fails at steps 3–9, return to step 4 with next RNG seed (max 10N attempts)
-    </text>
-
-    <!-- Output -->
-    <rect x="250" y="420" width="300" height="50" rx="8" fill="#f0fdf4" stroke="#10b981" stroke-width="2"/>
-    <text x="400" y="450" text-anchor="middle" fill="#14532d" font-weight="700" font-size="15">3D Coordinates (N × 3)</text>
-    <line x1="400" y1="380" x2="400" y2="418" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
-
-    <!-- Labels -->
-    <text x="20" y="510" fill="#64748b" font-size="11">Blue: Topology → Bounds</text>
-    <text x="280" y="510" fill="#64748b" font-size="11">Green: Embedding → Optimization</text>
-    <text x="540" y="510" fill="#64748b" font-size="11">Yellow: Refinement → Output</text>
-  </g>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 470" width="800" height="470" role="img" aria-label="Six-stage conformer pipeline: parse SMILES, build distance bounds, embed, refine, validate and return a 3D conformer.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-pipeline-overview-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-pipeline-overview-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-pipeline-overview-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="800" height="470" fill="url(#sf-pipeline-overview-glow)" stroke="none"/>
+<rect x="70" y="95" width="180" height="110" rx="16" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="71.5" y="96.5" width="177" height="4" rx="2" fill="var(--sf-accent)" stroke="none" stroke-width="1.4"/><text x="160" y="143" text-anchor="middle" font-size="15" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d1">SMILES</text><text x="160" y="165" text-anchor="middle" font-size="10" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d1">parse</text><circle cx="160" cy="187" r="5" fill="var(--sf-accent)" class="sf-pulse"/><rect x="310" y="95" width="180" height="110" rx="16" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="311.5" y="96.5" width="177" height="4" rx="2" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4"/><text x="400" y="143" text-anchor="middle" font-size="15" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d2">graph</text><text x="400" y="165" text-anchor="middle" font-size="10" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d2">atoms + bonds</text><circle cx="400" cy="187" r="5" fill="var(--sf-accent2)" class="sf-pulse"/><rect x="550" y="95" width="180" height="110" rx="16" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="551.5" y="96.5" width="177" height="4" rx="2" fill="var(--sf-violet)" stroke="none" stroke-width="1.4"/><text x="640" y="143" text-anchor="middle" font-size="15" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d3">bounds</text><text x="640" y="165" text-anchor="middle" font-size="10" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d3">lower / upper</text><circle cx="640" cy="187" r="5" fill="var(--sf-violet)" class="sf-pulse"/><rect x="550" y="300" width="180" height="110" rx="16" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="551.5" y="301.5" width="177" height="4" rx="2" fill="var(--sf-warm)" stroke="none" stroke-width="1.4"/><text x="640" y="348" text-anchor="middle" font-size="15" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d4">embed</text><text x="640" y="370" text-anchor="middle" font-size="10" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d4">sample distances</text><circle cx="640" cy="392" r="5" fill="var(--sf-warm)" class="sf-pulse"/><rect x="310" y="300" width="180" height="110" rx="16" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="311.5" y="301.5" width="177" height="4" rx="2" fill="var(--sf-rose)" stroke="none" stroke-width="1.4"/><text x="400" y="348" text-anchor="middle" font-size="15" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d5">refine</text><text x="400" y="370" text-anchor="middle" font-size="10" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d5">force field</text><circle cx="400" cy="392" r="5" fill="var(--sf-rose)" class="sf-pulse"/><rect x="70" y="300" width="180" height="110" rx="16" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="71.5" y="301.5" width="177" height="4" rx="2" fill="var(--sf-accent)" stroke="none" stroke-width="1.4"/><text x="160" y="348" text-anchor="middle" font-size="15" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d6">validate</text><text x="160" y="370" text-anchor="middle" font-size="10" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d6">geometry checks</text><circle cx="160" cy="392" r="5" fill="var(--sf-accent)" class="sf-pulse"/><path d="M255,150 L300,150" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-pipeline-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M255,150 L300,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><path d="M495,150 L540,150" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-pipeline-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.4s" repeatCount="indefinite" path="M495,150 L540,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.4s" repeatCount="indefinite"/></circle><path d="M640,210 L640,290" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-pipeline-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-violet)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6s" repeatCount="indefinite" path="M640,210 L640,290"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6s" repeatCount="indefinite"/></circle><path d="M540,355 L495,355" fill="none" stroke="var(--sf-rose)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-pipeline-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-rose)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.8s" repeatCount="indefinite" path="M540,355 L495,355"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.8s" repeatCount="indefinite"/></circle><path d="M300,355 L255,355" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-pipeline-overview-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="1.0s" repeatCount="indefinite" path="M300,355 L255,355"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="1.0s" repeatCount="indefinite"/></circle><path d="M355,248 L385,228 L420,244 L392,264 Z" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><circle cx="355" cy="248" r="4.5" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="385" cy="228" r="4.5" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="420" cy="244" r="4.5" fill="var(--sf-accent2)" class="sf-pulse"/><circle cx="392" cy="264" r="4.5" fill="var(--sf-accent2)" class="sf-pulse"/><text x="388" y="286" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">3D</text>
 </svg>

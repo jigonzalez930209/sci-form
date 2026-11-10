@@ -46,6 +46,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Algorithm', link: '/algorithm/overview' },
       { text: 'Experimental', link: '/experimental/overview' },
+      { text: 'Validation', link: '/validation/scientific-validation' },
       { text: 'API', link: '/api/rust' },
       { text: 'Benchmarks', link: '/benchmarks' },
     ],
@@ -147,10 +148,18 @@ export default defineConfig({
       ],
       '/validation/': [
         {
-          text: 'Validación',
+          text: 'Validation',
           items: [
             {
-              text: 'Plan de validación cruzada (ES)',
+              text: 'Scientific validation',
+              link: '/validation/scientific-validation',
+            },
+            {
+              text: 'Full matrix (129 rows)',
+              link: '/validation/full-matrix',
+            },
+            {
+              text: 'Cross-library plan (historical, ES)',
               link: '/validation/cross-library-validation.es',
             },
           ],
@@ -161,35 +170,35 @@ export default defineConfig({
           text: 'Experimental Modules',
           items: [
             { text: 'Overview', link: '/experimental/overview' },
-            { text: 'Alpha Modules', link: '/experimental/alpha' },
-            { text: 'Beta Modules', link: '/experimental/beta' },
-            { text: 'EDL — Electrical Double Layer', link: '/experimental/edl' },
+            { text: 'Alpha tier', link: '/experimental/alpha' },
+            { text: 'Beta tier', link: '/experimental/beta' },
+            { text: 'Electrical double layer', link: '/experimental/edl' },
           ],
         },
         {
           text: 'Group A — Advanced Geometry',
           items: [
-            { text: 'E1: CGA', link: '/experimental/cga' },
-            { text: 'E2: RandNLA', link: '/experimental/randnla' },
-            { text: 'E3: Riemannian', link: '/experimental/riemannian' },
+            { text: 'Conformal geometric algebra', link: '/experimental/cga' },
+            { text: 'Randomized eigensolver', link: '/experimental/randnla' },
+            { text: 'Riemannian geometry', link: '/experimental/riemannian' },
           ],
         },
         {
           text: 'Group B — Electronic Structure',
           items: [
-            { text: 'E4: KPM', link: '/experimental/kpm' },
-            { text: 'E5: EEQ', link: '/experimental/eeq' },
-            { text: 'E6: ALPB', link: '/experimental/alpb' },
+            { text: 'Kernel Polynomial Method', link: '/experimental/kpm' },
+            { text: 'Electronegativity equalization', link: '/experimental/eeq' },
+            { text: 'Analytical solvation', link: '/experimental/alpb' },
           ],
         },
         {
           text: 'Group C — Precision Methods',
           items: [
-            { text: 'E7: D4', link: '/experimental/d4' },
-            { text: 'E8: SDR', link: '/experimental/sdr' },
-            { text: 'E9: MBH', link: '/experimental/mbh' },
-            { text: 'E10: CPM', link: '/experimental/cpm' },
-            { text: 'E11: GSM', link: '/experimental/gsm' },
+            { text: 'Dispersion correction', link: '/experimental/d4' },
+            { text: 'Semidefinite relaxation', link: '/experimental/sdr' },
+            { text: 'Mobile Block Hessian', link: '/experimental/mbh' },
+            { text: 'Constant Potential Method', link: '/experimental/cpm' },
+            { text: 'Growing String Method', link: '/experimental/gsm' },
           ],
         },
       ],

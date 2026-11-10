@@ -8,6 +8,9 @@ F = H_\text{core} + J + V_{xc}
 
 with SVWN or PBE on a Becke grid. There is no exact exchange.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## Basis this cycle
 
 Hehre STO-3G is used unchanged for H, He, C, N, O, F, P, S, and Cl.

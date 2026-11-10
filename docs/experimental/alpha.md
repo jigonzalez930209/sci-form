@@ -1,35 +1,49 @@
 # Alpha Modules
 
-**Alpha** now contains a few remaining research modules plus compatibility aliases for methods that have been promoted to core. The promoted paths stay available under their historical `alpha-*` flags.
+The alpha tier is now mostly a compatibility layer. Only three research lines
+remain gated: density functional theory, the machine-learned force field and
+reaction dynamics. Everything else on this page is core and needs no feature
+flag.
 
-> Only the remaining research modules (DFT, MLFF, reaction dynamics) require an explicit opt-in. GSM, kinetics, periodic-linear adapters, live MD and the render-bridge builders are core.
+## Module map
+
+| Module | State | What it does |
+|---|---|---|
+| Density functional theory | gated (`alpha-dft`) | Kohn-Sham SVWN/PBE with a minimal Gaussian basis |
+| Machine-learned force field | gated (`alpha-mlff`) | Behler-Parrinello descriptors and a small neural network |
+| Reaction dynamics | gated (`alpha-reaction-dynamics`) | Approach frames, CI-NEB images and departure frames |
+| ReaxFF | core | Reactive force field with bond orders and analytical gradients |
+| Electron-repulsion integrals | core | Obara-Saika recurrences and the Boys function |
+| Conformal geometric algebra | core | Motor-based rigid rotations and dihedral refinement |
+| Growing String Method | core (`alpha-gsm` alias) | Reaction path and saddle search |
+| Semidefinite relaxation | core | Convex distance-geometry embedding |
+| Live molecular dynamics | core (`alpha-dynamics-live` alias) | Frame-by-frame Verlet/Langevin integration |
+| IMD bridge | core | Interactive molecular-dynamics steering |
+| Electrical double layer | core | Helmholtz, Gouy-Chapman and Stern models |
+| Periodic adapters | core (`alpha-periodic-linear` alias) | k-meshes, Bloch phases and band integration |
+| Kinetics | core (`alpha-kinetics` alias) | Transition-state theory and microkinetic networks |
+| Render bridge | core (`alpha-render-bridge` alias) | Chart and trajectory payloads plus domain builders |
+
+## Validation at a glance
+
+The full report, including the confidence region of every method, is in
+[Scientific validation](/validation/scientific-validation). The gated modules
+are summarized here because they are the ones that still need a decision.
+
+| Module | Compared with | Measured separation | Confidence region | Main limitation |
+|---|---|---|---|---|
+| Density functional theory | PySCF 2.14.0, STO-3G, SVWN/PBE | total energy 7.2e-5 Ha; gap 9.7e-3 eV | 6 small molecules (H₂, H₂O, CH₄, NH₃, N₂, CO) | target is 1e-5 Ha; `coulomb_energy` is zero; ECP is not fitted; no exact exchange |
+| Machine-learned force field | independent NumPy Behler-Parrinello oracle | AEV exact; energy 5.1e-14; force 6.4e-6 | tiny networks; 8 molecules; two parameter sets | no trained production weights; no MD17/SPICE; the ANI engine has no external gate |
+| Reaction dynamics | self-consistency and analytic frames | frame and energy invariants only | small 3D paths | no ASE NEB parity for the full path |
+
+The promoted modules keep their detailed gates in the core documentation and in
+the [validation report](/validation/scientific-validation).
 
 ---
 
-## Module Index
+## Density functional theory (`alpha-dft`, gated)
 
-| ID | Module | Feature flag | Description |
-|----|--------|-------------|-------------|
-| A1 | `alpha::dft` | `alpha-dft` | Kohn-Sham DFT (SVWN / PBE) |
-| A2 | `forcefield::reaxff` (core, F78) | — | ReaxFF reactive force field |
-| A3 | `alpha::mlff` | `alpha-mlff` | Neural network force field with AEV descriptors |
-| A4 | `scf::obara_saika` (core, F80) | — | Obara-Saika ERIs and Boys function |
-| A5 | `cga` (core, F81) | — | CGA motor algebra for dihedral refinement |
-| A6 | `gsm` (core) | `alpha-gsm` alias | Growing String Method for reaction paths |
-| A7 | `sdr` (core, F83) | — | Semidefinite relaxation embedding |
-| A8 | `dynamics_live` (core) | `alpha-dynamics-live` alias | Live interactive molecular dynamics |
-| A9 | `imd` (core, F85) | — | IMD steering forces |
-| A10 | `edl` (core, F86) | — | Electrochemical double-layer models |
-| A11 | `periodic_linear` (core) | `alpha-periodic-linear` alias | Periodic k-mesh, Bloch-phase, and linear-scaling spectral contracts |
-| A12 | `kinetics` (core) | `alpha-kinetics` alias | HTST and microkinetic contracts with CPU reference rates |
-| A13 | `render_bridge` (core, F90) | `alpha-render-bridge` alias | Chart/trajectory payloads and domain builders |
-| A14 | `alpha::reaction_dynamics` | `alpha-reaction-dynamics` (**Rust core only**) | 3D reaction path: approach frames, CI-NEB images and departure frames |
-
----
-
-## A1 — Kohn-Sham DFT (`alpha-dft`)
-
-**Module:** `sci_form::alpha::dft` (gated; F77 validated 2026-10-14: dE ≤ 7.2e-5 Ha vs PySCF, gap vs 1e-5)
+**Module:** `sci_form::dft` (feature `alpha-dft`; F77: dE ≤ 7.2e-5 Ha vs PySCF, gap vs the 1e-5 target)
 
 Density functional theory solver using a minimal Gaussian basis. Supports SVWN (LDA) and PBE (GGA) functionals. For systems up to ~20 atoms in the current implementation.
 
@@ -83,7 +97,7 @@ print(f"gap: {result.gap:.3f} eV")
 
 ---
 
-## A2 — ReaxFF Reactive Force Field (`alpha-reaxff`)
+## ReaxFF reactive force field (core)
 
 **Module:** `sci_form::forcefield::reaxff` (core since 2026-10-13, F78; `alpha::reaxff` re-export)
 
@@ -125,16 +139,16 @@ The analytical gradient avoids the 6·N energy evaluations of central difference
 
 ---
 
-## A3 — Neural Network Force Field (`alpha-mlff`)
+## Machine-learned force field (`alpha-mlff`, gated)
 
-**Module:** `sci_form::alpha::mlff` (gated; F79 validated 2026-10-14: AEV exact, E 5.1e-14, F 6.4e-6; TorchANI/MD17 gaps)
+**Module:** `sci_form::mlff` (feature `alpha-mlff`; F79: AEV exact, E 5.1e-14, F 6.4e-6; TorchANI/MD17 gaps)
 
 Machine-learned force field using Atomic Environment Vectors (AEVs) / Behler-Parrinello symmetry functions as descriptors. The AEV computation (`compute_aevs`) is parallelized with the `parallel` feature.
 
 ### Rust
 
 ```rust
-use sci_form::alpha::mlff::{compute_aevs, compute_mlff, MlffConfig, SymmetryFunctionParams};
+use sci_form::mlff::{compute_aevs, compute_mlff, MlffConfig, SymmetryFunctionParams};
 
 let pos: Vec<[f64;3]> = conf.coords.chunks(3).map(|c| [c[0],c[1],c[2]]).collect();
 
@@ -176,7 +190,7 @@ print(f"MLFF energy: {mlff_result.energy:.4f} eV")
 
 ---
 
-## A4 — Obara-Saika ERIs and Boys Function (`alpha-obara-saika`)
+## Electron-repulsion integrals and Boys function (core)
 
 **Module:** `sci_form::scf::obara_saika` (core since 2026-10-14, F80: Boys 5.6e-14, ERI 3.1e-14)
 
@@ -209,7 +223,7 @@ const eri = JSON.parse(alpha_eri_ssss(shellA_json, shellB_json, shellC_json, she
 
 ---
 
-## A5 — CGA Dihedral Refinement (`alpha-cga`)
+## Conformal geometric algebra (core)
 
 **Module:** `sci_form::cga` (core since 2026-10-14, F81: motors 3.4e-15 vs Rodrigues+clifford)
 
@@ -241,7 +255,7 @@ const rotated = JSON.parse(alpha_rotate_dihedral_cga(
 
 ---
 
-## A6 — Growing String Method (core `gsm`, `alpha-gsm` alias)
+## Growing String Method (core, `alpha-gsm` alias)
 
 **Module:** `sci_form::gsm` (core since 2026-11-08; F82 validated: MB barrier 1.6e-3 vs ASE; arc-length fix)
 
@@ -275,7 +289,7 @@ const ts = JSON.parse(alpha_gsm_find_ts(smiles, reactant_json, product_json, con
 
 ---
 
-## A7 — Semidefinite Relaxation Embedding (`alpha-sdr`)
+## Semidefinite relaxation embedding (core)
 
 **Module:** `sci_form::sdr` (core since 2026-10-14, F83: embeds 7e-15, beats CVXPY)
 
@@ -308,7 +322,7 @@ const result = JSON.parse(alpha_sdr_embed(distance_pairs_json, n_atoms, config_j
 
 ---
 
-## A8 & A9 — Live MD and IMD Bridge (core `dynamics_live` + `imd`)
+## Live molecular dynamics and IMD bridge (core)
 
 **Module:** `sci_form::dynamics_live` (core since 2026-11-08; F84 validated: UFF forces 3.6e-13 vs RDKit; steering → `imd` core)
 
@@ -334,7 +348,7 @@ sim.start();
 
 ---
 
-## A10 — Electrochemistry / EDL (`alpha-edl`)
+## Electrical double layer (core)
 
 **Module:** `sci_form::edl` (core since 2026-10-14, F86: worst 2e-14 vs Grahame/Stern)
 
@@ -436,7 +450,7 @@ sci-form edl-scan --v-min -0.5 --v-max 0.5 --n-points 50 --model gcs
 
 ---
 
-## A11 — Periodic Linear-Scaling (core `periodic_linear`)
+## Periodic linear-scaling adapters (core)
 
 **Module:** base in `sci_form::kmesh` (core, F88) + KPM/RandNLA adapters in core `periodic_linear`
 
@@ -513,7 +527,7 @@ sci-form kmesh --grid 4 4 4 --centering monkhorst-pack
 
 ---
 
-## A12 — Kinetics (core `kinetics`)
+## Kinetics and microkinetic networks (core)
 
 **Module:** `sci_form::kinetics` (core since 2026-11-08; F87 validated: Eyring 1.9e-16, equilibrium 8e-16; Cantera gap)
 
@@ -602,7 +616,7 @@ sci-form htst-rate --activation 0.45 --reaction -0.10 --temperature 298.15
 
 ---
 
-## A13 — Render Bridge (`alpha-render-bridge`)
+## Render bridge (core, `alpha-render-bridge` alias)
 **Module:** `sci_form::render_bridge` (core since 2026-11-08, F90); `alpha::render_bridge` alias
 
 Defines solver-agnostic payloads for charts, traces, and trajectory visualizations. Shared chart generator for EDL profiles, band structures, microkinetic population traces, Arrhenius plots, and capacitance scans. Converts computed results into Arrow RecordBatch format for transport to web frontends or Jupyter notebooks.
@@ -680,7 +694,7 @@ console.log(`Packed chart: ${packed.n_columns} columns, ${packed.column_names.jo
 
 ---
 
-## Enabling Alpha Features
+## Enabling alpha features
 
 ### Rust
 
@@ -690,13 +704,17 @@ sci-form = { version = "2.0", features = ["alpha-dft", "alpha-mlff"] }
 
 # All still-gated alpha modules:
 sci-form = { version = "2.0", features = [
-    "alpha-dft", "alpha-mlff", "alpha-render-bridge",
-    "alpha-reaction-dynamics"
+    "alpha-dft", "alpha-mlff", "alpha-reaction-dynamics"
 ] }
 
 # Alpha + parallelization:
 sci-form = { version = "2.0", features = ["alpha-mlff", "parallel"] }
 ```
+
+The old `alpha-gsm`, `alpha-kinetics`, `alpha-periodic-linear`,
+`alpha-dynamics-live` and `alpha-render-bridge` names are no-op aliases for
+core modules. They keep old manifests resolving; they do not enable extra
+code.
 
 ### WASM / npm
 
@@ -742,7 +760,7 @@ bash crates/wasm/build.sh --web-only --web-features "alpha-dft alpha-mlff alpha-
 
 ---
 
-## A14 — 3D Reaction Dynamics (`alpha-reaction-dynamics`)
+## Reaction dynamics (`alpha-reaction-dynamics`, gated)
 
 **Module:** `sci_form::alpha::reaction_dynamics`
 

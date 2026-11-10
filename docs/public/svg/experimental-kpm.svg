@@ -1,55 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 220" width="780" height="220" font-family="system-ui, sans-serif">
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
-  <rect width="780" height="220" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Title -->
-  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">E4: Kernel Polynomial Method (KPM)</text>
-  <text x="390" y="48" text-anchor="middle" font-size="10" fill="#64748b">O(N) DOS and Mulliken charges via Chebyshev expansion</text>
-
-  <!-- Phase boxes -->
-  <rect x="10"  y="65" width="140" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="80"  y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Spectral Bounds</text>
-  <text x="80"  y="106" text-anchor="middle" font-size="10" fill="#1d4ed8">λ_min, λ_max</text>
-  <text x="80"  y="120" text-anchor="middle" font-size="10" fill="#1d4ed8">Lanczos estimate</text>
-
-  <rect x="170" y="65" width="140" height="80" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="240" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">Rescale H̃</text>
-  <text x="240" y="106" text-anchor="middle" font-size="10" fill="#15803d">Map to [−1, 1]</text>
-  <text x="240" y="120" text-anchor="middle" font-size="10" fill="#15803d">H̃ = (H−a)/b</text>
-
-  <rect x="330" y="65" width="140" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="400" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Chebyshev Iter</text>
-  <text x="400" y="106" text-anchor="middle" font-size="10" fill="#92400e">μ_n = ⟨r|T_n(H̃)|r⟩</text>
-  <text x="400" y="120" text-anchor="middle" font-size="10" fill="#92400e">3-term recurrence</text>
-
-  <rect x="490" y="65" width="140" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="560" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">Jackson Kernel</text>
-  <text x="560" y="106" text-anchor="middle" font-size="10" fill="#be185d">Gibbs damping</text>
-  <text x="560" y="120" text-anchor="middle" font-size="10" fill="#be185d">g_n · μ_n</text>
-
-  <rect x="650" y="65" width="120" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="710" y="90"  text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">DOS / Charges</text>
-  <text x="710" y="106" text-anchor="middle" font-size="10" fill="#6d28d9">ρ(E) spectrum</text>
-  <text x="710" y="120" text-anchor="middle" font-size="10" fill="#6d28d9">Mulliken q_a</text>
-
-  <!-- Arrows -->
-  <line x1="150" y1="105" x2="168" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="310" y1="105" x2="328" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="470" y1="105" x2="488" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="630" y1="105" x2="648" y2="105" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Labels -->
-  <text x="80"  y="168" text-anchor="middle" font-size="9" fill="#64748b">power method bounds</text>
-  <text x="240" y="168" text-anchor="middle" font-size="9" fill="#64748b">Chebyshev domain</text>
-  <text x="400" y="168" text-anchor="middle" font-size="9" fill="#64748b">stochastic trace M iters</text>
-  <text x="560" y="168" text-anchor="middle" font-size="9" fill="#64748b">suppress oscillation</text>
-  <text x="710" y="168" text-anchor="middle" font-size="9" fill="#64748b">no diagonalization</text>
-
-  <!-- Advantage badge -->
-  <rect x="200" y="185" width="380" height="24" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="1"/>
-  <text x="390" y="201" text-anchor="middle" font-size="10" fill="#166534">✓ O(N) scaling · Sparse matrix-vector only · Stochastic trace estimation</text>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 280" width="780" height="280" role="img" aria-label="A discrete spectrum is expanded in Chebyshev polynomials and turned into a smooth density of states.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-experimental-kpm-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-experimental-kpm-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-experimental-kpm-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="780" height="280" fill="url(#sf-experimental-kpm-glow)" stroke="none"/>
+<path d="M86,205 L86,153" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d1"/><path d="M108,205 L108,119" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d2"/><path d="M132,205 L132,85" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d3"/><path d="M158,205 L158,131" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d4"/><path d="M184,205 L184,100" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d5"/><path d="M210,205 L210,157" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d6"/><path d="M238,205 L238,113" fill="none" stroke="var(--sf-accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="sf-rise sf-d6"/><path d="M70,205 L260,205" fill="none" stroke="var(--sf-line)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><text x="160" y="236" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">spectrum</text><path d="M300.00,150.00 Q301.30,154.65 302.60,159.30 Q303.90,163.56 305.20,167.82 Q306.50,171.44 307.80,175.05 Q309.10,177.82 310.40,180.59 Q311.70,182.35 313.00,184.11 Q314.30,184.79 315.60,185.46 Q316.90,185.03 318.20,184.59 Q319.50,183.10 320.80,181.61 Q322.10,179.18 323.40,176.75 Q324.70,173.55 326.00,170.35 Q327.30,166.59 328.60,162.83 Q329.90,158.76 331.20,154.69 Q332.50,150.57 333.80,146.44 Q335.10,142.52 336.40,138.59 Q337.70,135.10 339.00,131.61 Q340.30,128.77 341.60,125.93 Q342.90,123.88 344.20,121.84 Q345.50,120.72 346.80,119.59 Q348.10,119.42 349.40,119.25 Q350.70,120.04 352.00,120.82 Q353.30,122.49 354.60,124.15 Q355.90,126.58 357.20,129.00 Q358.50,132.02 359.80,135.04 Q361.10,138.45 362.40,141.87 Q363.70,145.46 365.00,149.04 Q366.30,152.58 367.60,156.12 Q368.90,159.40 370.20,162.67 Q371.50,165.48 372.80,168.29 Q374.10,170.48 375.40,172.66 Q376.70,174.10 378.00,175.54 Q379.30,176.16 380.60,176.78 Q381.90,176.56 383.20,176.35 Q384.50,175.32 385.80,174.30 Q387.10,172.55 388.40,170.80 Q389.70,168.44 391.00,166.09 Q392.30,163.29 393.60,160.50 Q394.90,157.44 396.20,154.38 Q397.50,151.25 398.80,148.13 Q400.10,145.13 401.40,142.13 Q402.70,139.44 404.00,136.75 Q405.30,134.52 406.60,132.30 Q407.90,130.67 409.20,129.04 Q410.50,128.09 411.80,127.14 Q413.10,126.92 414.40,126.69 Q415.70,127.19 417.00,127.69 Q418.30,128.87 419.60,130.05 Q420.90,131.81 422.20,133.57 Q423.50,135.81 424.80,138.04 Q426.10,140.59 427.40,143.14 Q428.70,145.85 430.00,148.55 Q431.30,151.25 432.60,153.94 Q433.90,156.45 435.20,158.96 Q436.50,161.14 437.80,163.32 Q439.10,165.04 440.40,166.76 Q441.70,167.93 443.00,169.10 Q444.30,169.65 445.60,170.20 Q446.90,170.12 448.20,170.04 Q449.50,169.35 450.80,168.65 Q452.10,167.39 453.40,166.14 Q454.70,164.41 456.00,162.69 Q457.30,160.61 458.60,158.53 Q459.90,156.24 461.20,153.94 Q462.50,151.57 463.80,149.21 Q465.10,146.92 466.40,144.63 Q467.70,142.55 469.00,140.48 Q470.30,138.74 471.60,137.01 Q472.90,135.71 474.20,134.42 Q475.50,133.63 476.80,132.84 Q478.10,132.60 479.40,132.35 Q480.70,132.66 482.00,132.97 Q483.30,133.79 484.60,134.62 Q485.90,135.90 487.20,137.18 Q488.50,138.82 489.80,140.47 Q491.10,142.38 492.40,144.28 Q493.70,146.32 495.00,148.36 Q496.30,150.40 497.60,152.45 Q498.90,154.37 500.20,156.30 Q501.50,157.98 502.80,159.67 Q504.10,161.03 505.40,162.38" fill="none" stroke="var(--sf-accent2)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="410" y="236" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">Chebyshev expansion</text><path d="M565,205 L760,205" fill="none" stroke="var(--sf-line)" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M565.00,204.99 Q566.10,204.98 567.20,204.98 Q568.30,204.97 569.40,204.96 Q570.50,204.95 571.60,204.93 Q572.70,204.91 573.80,204.88 Q574.90,204.84 576.00,204.80 Q577.10,204.74 578.20,204.68 Q579.30,204.58 580.40,204.48 Q581.50,204.33 582.60,204.18 Q583.70,203.96 584.80,203.73 Q585.90,203.41 587.00,203.09 Q588.10,202.63 589.20,202.18 Q590.30,201.55 591.40,200.93 Q592.50,200.09 593.60,199.25 Q594.70,198.16 595.80,197.07 Q596.90,195.68 598.00,194.29 Q599.10,192.58 600.20,190.87 Q601.30,188.81 602.40,186.75 Q603.50,184.35 604.60,181.96 Q605.70,179.25 606.80,176.54 Q607.90,173.58 609.00,170.62 Q610.10,167.51 611.20,164.39 Q612.30,161.23 613.40,158.08 Q614.50,155.03 615.60,151.98 Q616.70,149.19 617.80,146.40 Q618.90,144.03 620.00,141.66 Q621.10,139.85 622.20,138.04 Q623.30,136.91 624.40,135.77 Q625.50,135.38 626.60,135.00 Q627.70,135.38 628.80,135.77 Q629.90,136.90 631.00,138.03 Q632.10,139.83 633.20,141.64 Q634.30,143.99 635.40,146.35 Q636.50,149.12 637.60,151.88 Q638.70,154.89 639.80,157.90 Q640.90,160.99 642.00,164.08 Q643.10,167.08 644.20,170.08 Q645.30,172.84 646.40,175.61 Q647.50,178.02 648.60,180.43 Q649.70,182.36 650.80,184.30 Q651.90,185.68 653.00,187.05 Q654.10,187.78 655.20,188.52 Q656.30,188.55 657.40,188.57 Q658.50,187.84 659.60,187.11 Q660.70,185.59 661.80,184.06 Q662.90,181.74 664.00,179.41 Q665.10,176.32 666.20,173.22 Q667.30,169.44 668.40,165.66 Q669.50,161.33 670.60,157.00 Q671.70,152.34 672.80,147.68 Q673.90,142.94 675.00,138.21 Q676.10,133.71 677.20,129.22 Q678.30,125.28 679.40,121.35 Q680.50,118.28 681.60,115.21 Q682.70,113.26 683.80,111.31 Q684.90,110.64 686.00,109.98 Q687.10,110.65 688.20,111.33 Q689.30,113.29 690.40,115.25 Q691.50,118.34 692.60,121.42 Q693.70,125.38 694.80,129.34 Q695.90,133.87 697.00,138.39 Q698.10,143.16 699.20,147.94 Q700.30,152.64 701.40,157.35 Q702.50,161.72 703.60,166.09 Q704.70,169.90 705.80,173.72 Q706.90,176.82 708.00,179.92 Q709.10,182.20 710.20,184.49 Q711.30,185.90 712.40,187.32 Q713.50,187.85 714.60,188.39 Q715.70,188.07 716.80,187.76 Q717.90,186.66 719.00,185.57 Q720.10,183.80 721.20,182.03 Q722.30,179.76 723.40,177.49 Q724.50,174.91 725.60,172.34 Q726.70,169.70 727.80,167.07 Q728.90,164.65 730.00,162.23 Q731.10,160.28 732.20,158.33 Q733.30,157.07 734.40,155.81 Q735.50,155.38 736.60,154.95 Q737.70,155.41 738.80,155.88 Q739.90,157.19 741.00,158.49 Q742.10,160.52 743.20,162.54 Q744.30,165.08 745.40,167.62 Q746.50,170.44 747.60,173.26 Q748.70,176.14 749.80,179.02 Q750.90,181.75 752.00,184.49 Q753.10,186.93 754.20,189.38 Q755.30,191.46 756.40,193.53 Q757.50,195.21 758.60,196.88 Q759.70,198.17 760.80,199.46" fill="none" stroke="var(--sf-warm)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="sf-draw"/><text x="662" y="236" text-anchor="middle" font-size="10" font-weight="600" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)">density of states</text><path d="M266,150 L292,150" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-experimental-kpm-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M266,150 L292,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><path d="M520,150 L556,150" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-experimental-kpm-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6s" repeatCount="indefinite" path="M520,150 L556,150"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6s" repeatCount="indefinite"/></circle><rect x="330" y="36" width="76" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="368.0" y="50.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">moments</text><rect x="602" y="36" width="76" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-warm)" stroke-width="1"/><text x="640.0" y="50.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">DOS</text>
 </svg>

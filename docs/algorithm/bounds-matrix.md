@@ -10,7 +10,7 @@ For $N$ atoms, the bounds matrix $B$ is an $N \times N$ matrix:
 - **Lower triangle** ($j < i$): lower bounds $l_{ij}$ (stored as $B[j][i]$)
 - **Diagonal**: zero
 
-<SvgDiagram src="/svg/bounds-matrix-overview.svg" alt="bounds-matrix-overview" />
+<SvgDiagram src="/svg/bounds-matrix-overview.svg" alt="The bounds matrix stores a lower and an upper distance for every atom pair." />
 
 ## 1-2 Bounds (Bonded Pairs)
 
@@ -57,7 +57,7 @@ Selected covalent radii and electronegativities:
 
 For atoms separated by two bonds (sharing a common neighbor), the distance is computed via the **law of cosines**:
 
-<SvgDiagram src="/svg/bounds-matrix-triangle.svg" alt="bounds-matrix-triangle" />
+<SvgDiagram src="/svg/bounds-matrix-triangle.svg" alt="Triangle smoothing propagates a distance bound through a third atom." />
 
 $$d_{13} = \sqrt{d_1^2 + d_2^2 - 2 d_1 d_2 \cos\theta}$$
 
@@ -77,7 +77,7 @@ When multiple paths connect the same atom pair, **union semantics** apply: the l
 
 For atoms separated by three bonds, the distance depends on the **torsion angle** between the two outer atoms. We compute the extreme distances at cis ($\phi = 0°$) and trans ($\phi = 180°$) configurations.
 
-<SvgDiagram src="/svg/bounds-matrix-1-4.svg" alt="bounds-matrix-1-4" />
+<SvgDiagram src="/svg/bounds-matrix-1-4.svg" alt="The 1-4 distance depends on the dihedral angle, so the bounds are dihedral-dependent." />
 
 The cis and trans distances are computed from planar geometry:
 

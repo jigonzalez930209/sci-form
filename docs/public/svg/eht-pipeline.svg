@@ -1,60 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 200" width="780" height="200" font-family="system-ui, sans-serif">
-  <rect x="0" y="0" width="780" height="200" fill="white" rx="12" stroke="#e2e8f0" stroke-width="1"/>
-
-  <!-- Background -->
-  <rect width="780" height="200" fill="#f8fafc" rx="8"/>
-
-  <!-- Phase boxes -->
-  <!-- B1 -->
-  <rect x="10"  y="60" width="130" height="80" rx="8" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.5"/>
-  <text x="75"  y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#1e40af">Phase B1</text>
-  <text x="75"  y="108" text-anchor="middle" font-size="10" fill="#1d4ed8">Atomic basis</text>
-  <text x="75"  y="122" text-anchor="middle" font-size="10" fill="#1d4ed8">STO-3G / VSIP</text>
-
-  <!-- B2 -->
-  <rect x="160" y="60" width="130" height="80" rx="8" fill="#dcfce7" stroke="#22c55e" stroke-width="1.5"/>
-  <text x="225" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#166534">Phase B2</text>
-  <text x="225" y="108" text-anchor="middle" font-size="10" fill="#15803d">Overlap S</text>
-  <text x="225" y="122" text-anchor="middle" font-size="10" fill="#15803d">Hamiltonian H</text>
-
-  <!-- B3 -->
-  <rect x="310" y="60" width="130" height="80" rx="8" fill="#fef9c3" stroke="#eab308" stroke-width="1.5"/>
-  <text x="375" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#713f12">Phase B3</text>
-  <text x="375" y="108" text-anchor="middle" font-size="10" fill="#92400e">Löwdin ortho.</text>
-  <text x="375" y="122" text-anchor="middle" font-size="10" fill="#92400e">HC = SCE</text>
-
-  <!-- B4 -->
-  <rect x="460" y="60" width="130" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
-  <text x="525" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#9d174d">Phase B4</text>
-  <text x="525" y="108" text-anchor="middle" font-size="10" fill="#be185d">MO grid</text>
-  <text x="525" y="122" text-anchor="middle" font-size="10" fill="#be185d">|ψ(r)|²</text>
-
-  <!-- B5 -->
-  <rect x="610" y="60" width="130" height="80" rx="8" fill="#ede9fe" stroke="#8b5cf6" stroke-width="1.5"/>
-  <text x="675" y="92"  text-anchor="middle" font-size="11" font-weight="bold" fill="#5b21b6">Phase B5</text>
-  <text x="675" y="108" text-anchor="middle" font-size="10" fill="#6d28d9">Marching Cubes</text>
-  <text x="675" y="122" text-anchor="middle" font-size="10" fill="#6d28d9">Isosurface mesh</text>
-
-  <!-- Arrows between boxes -->
-  <line x1="140" y1="100" x2="158" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="290" y1="100" x2="308" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="440" y1="100" x2="458" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <line x1="590" y1="100" x2="608" y2="100" stroke="#64748b" stroke-width="1.5" marker-end="url(#arrow)"/>
-
-  <!-- Labels below boxes -->
-  <text x="75"  y="160" text-anchor="middle" font-size="9" fill="#64748b">elements + coords</text>
-  <text x="225" y="160" text-anchor="middle" font-size="9" fill="#64748b">Gaussian product theorem</text>
-  <text x="375" y="160" text-anchor="middle" font-size="9" fill="#64748b">S⁻¹/² H S⁻¹/² eigenproblem</text>
-  <text x="525" y="160" text-anchor="middle" font-size="9" fill="#64748b">parallel Rayon evaluation</text>
-  <text x="675" y="160" text-anchor="middle" font-size="9" fill="#64748b">256-case lookup table</text>
-
-  <!-- Title -->
-  <text x="390" y="30" text-anchor="middle" font-size="13" font-weight="bold" fill="#0f172a">Extended Hückel Theory Pipeline</text>
-
-  <!-- Arrow marker -->
-  <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-      <path d="M0,0 L0,6 L8,3 z" fill="#64748b"/>
-    </marker>
-  </defs>
+<svg class="sf-d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 260" width="800" height="260" role="img" aria-label="Extended Hückel theory: build overlap and Hamiltonian, orthonormalize, diagonalize and read the orbitals.">
+<style>
+.sf-d{
+  --sf-ink:#0f172a; --sf-muted:#5b6b82; --sf-line:#9aa9bd;
+  --sf-card:rgba(255,255,255,.62); --sf-card2:rgba(255,255,255,.34);
+  --sf-accent:#2563eb; --sf-accent2:#0d9488; --sf-warm:#d97706;
+  --sf-violet:#7c3aed; --sf-rose:#e11d48;
+  --sf-soft:rgba(37,99,235,.12); --sf-glow:rgba(37,99,235,.20);
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+html.dark .sf-d{
+  --sf-ink:#e6edf7; --sf-muted:#9fb0c7; --sf-line:#5b6b82;
+  --sf-card:rgba(15,23,42,.52); --sf-card2:rgba(15,23,42,.28);
+  --sf-accent:#60a5fa; --sf-accent2:#2dd4bf; --sf-warm:#fbbf24;
+  --sf-violet:#a78bfa; --sf-rose:#fb7185;
+  --sf-soft:rgba(96,165,250,.14); --sf-glow:rgba(96,165,250,.20);
+}
+@keyframes sf-dash{to{stroke-dashoffset:-28}}
+@keyframes sf-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes sf-halo{0%,100%{transform:scale(.92);opacity:.14}50%{transform:scale(1.08);opacity:.34}}
+@keyframes sf-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes sf-draw{to{stroke-dashoffset:0}}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@keyframes sf-blink{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes sf-rise{0%{transform:translateY(6px);opacity:0}100%{transform:translateY(0);opacity:1}}
+@keyframes sf-scan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(var(--sf-span,260px));opacity:0}}
+.sf-flow{stroke-dasharray:4 6;animation:sf-dash 1.3s linear infinite}
+.sf-pulse{transform-box:fill-box;transform-origin:center;animation:sf-pulse 2.8s ease-in-out infinite}
+.sf-halo{transform-box:fill-box;transform-origin:center;animation:sf-halo 3.4s ease-in-out infinite}
+.sf-float{transform-box:fill-box;transform-origin:center;animation:sf-float 4.5s ease-in-out infinite}
+.sf-spin{transform-box:fill-box;transform-origin:center;animation:sf-spin 12s linear infinite}
+.sf-draw{stroke-dasharray:400;stroke-dashoffset:400;animation:sf-draw 2s ease forwards}
+.sf-blink{animation:sf-blink 2.4s ease-in-out infinite}
+.sf-rise{animation:sf-rise .9s ease both}
+.sf-d1{animation-delay:.25s}.sf-d2{animation-delay:.5s}.sf-d3{animation-delay:.75s}
+.sf-d4{animation-delay:1s}.sf-d5{animation-delay:1.25s}.sf-d6{animation-delay:1.5s}
+@media (prefers-reduced-motion:reduce){
+  .sf-flow,.sf-pulse,.sf-halo,.sf-float,.sf-spin,.sf-draw,.sf-blink,.sf-rise{animation:none!important}
+  .sf-draw{stroke-dashoffset:0!important}
+  .sf-particle{display:none}
+}
+</style>
+<defs>
+  <marker id="sf-eht-pipeline-arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+    <path d="M0,0 L0,7 L9,3.5 Z" fill="var(--sf-line)"/>
+  </marker>
+  <radialGradient id="sf-eht-pipeline-glow" cx="50%" cy="45%" r="55%">
+    <stop offset="0%" stop-color="var(--sf-accent)" stop-opacity="0.16"/>
+    <stop offset="100%" stop-color="var(--sf-accent)" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="sf-eht-pipeline-line" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0%" stop-color="var(--sf-accent)"/>
+    <stop offset="100%" stop-color="var(--sf-accent2)"/>
+  </linearGradient>
+</defs>
+<rect x="0" y="0" width="800" height="260" fill="url(#sf-eht-pipeline-glow)" stroke="none"/>
+<rect x="35" y="72" width="132" height="112" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="36.5" y="73.5" width="129" height="4" rx="2" fill="var(--sf-accent)" stroke="none" stroke-width="1.4"/><text x="101" y="114" text-anchor="middle" font-size="11.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d1">basis</text><text x="101" y="132" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d1">STO-3G</text><circle cx="101" cy="158" r="16" fill="var(--sf-soft)" stroke="var(--sf-accent)" stroke-width="1.5" class="sf-pulse"/><text x="101" y="163" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent)">1</text><path d="M171,128 L189,128" fill="none" stroke="var(--sf-accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-eht-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.2s" repeatCount="indefinite" path="M171,128 L189,128"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.2s" repeatCount="indefinite"/></circle><rect x="189" y="72" width="132" height="112" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="190.5" y="73.5" width="129" height="4" rx="2" fill="var(--sf-accent2)" stroke="none" stroke-width="1.4"/><text x="255" y="114" text-anchor="middle" font-size="11.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d2">S and H</text><text x="255" y="132" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d2">overlap + Hamiltonian</text><circle cx="255" cy="158" r="16" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1.5" class="sf-pulse"/><text x="255" y="163" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">2</text><path d="M325,128 L343,128" fill="none" stroke="var(--sf-accent2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-eht-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-accent2)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.35s" repeatCount="indefinite" path="M325,128 L343,128"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.35s" repeatCount="indefinite"/></circle><rect x="343" y="72" width="132" height="112" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="344.5" y="73.5" width="129" height="4" rx="2" fill="var(--sf-violet)" stroke="none" stroke-width="1.4"/><text x="409" y="114" text-anchor="middle" font-size="11.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d3">orthonormalize</text><text x="409" y="132" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d3">S⁻¹ᐟ²</text><circle cx="409" cy="158" r="16" fill="var(--sf-soft)" stroke="var(--sf-violet)" stroke-width="1.5" class="sf-pulse"/><text x="409" y="163" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-violet)">3</text><path d="M479,128 L497,128" fill="none" stroke="var(--sf-violet)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-eht-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-violet)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.5s" repeatCount="indefinite" path="M479,128 L497,128"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.5s" repeatCount="indefinite"/></circle><rect x="497" y="72" width="132" height="112" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="498.5" y="73.5" width="129" height="4" rx="2" fill="var(--sf-warm)" stroke="none" stroke-width="1.4"/><text x="563" y="114" text-anchor="middle" font-size="11.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d4">diagonalize</text><text x="563" y="132" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d4">H′ C = C E</text><circle cx="563" cy="158" r="16" fill="var(--sf-soft)" stroke="var(--sf-warm)" stroke-width="1.5" class="sf-pulse"/><text x="563" y="163" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-warm)">4</text><path d="M633,128 L651,128" fill="none" stroke="var(--sf-warm)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#sf-eht-pipeline-arrow)" class="sf-flow"/><circle r="2.6" fill="var(--sf-warm)" class="sf-particle" opacity="0"><animateMotion dur="2.8s" begin="0.6499999999999999s" repeatCount="indefinite" path="M633,128 L651,128"/><animate attributeName="opacity" values="0;1;1;0" dur="2.8s" begin="0.6499999999999999s" repeatCount="indefinite"/></circle><rect x="651" y="72" width="132" height="112" rx="14" fill="var(--sf-card)" stroke="var(--sf-line)" stroke-width="1.4"/><rect x="652.5" y="73.5" width="129" height="4" rx="2" fill="var(--sf-rose)" stroke="none" stroke-width="1.4"/><text x="717" y="114" text-anchor="middle" font-size="11.5" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-ink)" class="sf-rise sf-d5">orbitals</text><text x="717" y="132" text-anchor="middle" font-size="8.5" font-weight="450" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-muted)" class="sf-rise sf-d5">HOMO / LUMO</text><circle cx="717" cy="158" r="16" fill="var(--sf-soft)" stroke="var(--sf-rose)" stroke-width="1.5" class="sf-pulse"/><text x="717" y="163" text-anchor="middle" font-size="12" font-weight="700" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-rose)">5</text><rect x="330" y="212" width="116" height="22" rx="11.0" fill="var(--sf-soft)" stroke="var(--sf-accent2)" stroke-width="1"/><text x="388.0" y="226.5" text-anchor="middle" font-size="10" font-weight="650" font-family='ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif' fill="var(--sf-accent2)">one-shot eigensolve</text>
 </svg>

@@ -2,9 +2,12 @@
 
 sci-form implements a full **Extended Hückel Theory** (EHT) pipeline for semiempirical electronic-structure calculations. EHT calculates molecular orbital (MO) energies, coefficients, and volumetric orbital densities from a 3D geometry without self-consistent field iteration.
 
+> The reference, measured deviation, confidence region and limitations for this
+> method are recorded in [Scientific validation](/validation/scientific-validation).
+
 ## Overview
 
-<SvgDiagram src="/svg/eht-pipeline.svg" alt="EHT pipeline phases B1–B5" />
+<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline: basis, overlap and Hamiltonian, orthonormalization, diagonalization and orbitals." />
 
 EHT was introduced by Hoffmann (1963) as an extension of Hückel theory to all valence electrons (not just π electrons). It requires only:
 
