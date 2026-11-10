@@ -134,6 +134,7 @@ export default defineConfig({
             { text: 'Dipole Moments', link: '/algorithm/dipole-moments' },
             { text: 'Redox & pKa', link: '/algorithm/redox-pka' },
             { text: 'Enhanced Sampling', link: '/algorithm/enhanced-sampling' },
+            { text: 'Kinetic Monte Carlo', link: '/algorithm/kmc' },
             { text: 'Strain Energy', link: '/algorithm/strain-energy' },
             { text: 'Molecular Alignment', link: '/algorithm/molecular-alignment' },
           ],

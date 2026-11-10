@@ -1196,7 +1196,8 @@ isotherms; animated diagram of insertion/deletion.
 | Field | Value |
 |---|---|
 | Track | Reactivity and kinetics |
-| Status | Candidate — evaluation required |
+| Status | Gillespie kMC prototype implemented in `feat/wave-a`; network discovery pending |
+| Implementation | [algorithm/kmc.md](/algorithm/kmc) |
 | Target | v2.1 |
 | Effort | 8–12 person-weeks |
 | Reuse | `smirks`, `gsm`, `mbh`, `kinetics`, microkinetic solver, fingerprints |

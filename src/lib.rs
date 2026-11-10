@@ -217,6 +217,7 @@ pub mod hf;
 pub mod imd;
 pub mod ir;
 pub mod kinetics;
+pub mod kmc;
 pub mod kmesh;
 pub mod kpm;
 pub mod materials;
@@ -2825,6 +2826,18 @@ pub fn run_uff_metadynamics(
     config: &enhanced_sampling::MetaDynamicsConfig,
 ) -> Result<enhanced_sampling::MetaDynamicsResult, SciFormError> {
     enhanced_sampling::run_uff_metadynamics(smiles, coords, config)
+}
+
+/// Run a Gillespie kinetic Monte Carlo simulation on an elementary-step network.
+///
+/// Rates come from the existing HTST evaluator. Counts are integers, time is in
+/// seconds and the output includes every accepted event plus sampled frames.
+///
+/// # Errors
+///
+/// Returns `Err` when the network is invalid or an HTST rate cannot be evaluated.
+pub fn run_kinetic_monte_carlo(config: &kmc::KmcConfig) -> Result<kmc::KmcResult, SciFormError> {
+    kmc::run_kinetic_monte_carlo(config)
 }
 
 /// Build a simplified NEB path between two geometries.
