@@ -7,7 +7,7 @@ sci-form computes infrared spectra from first principles via a numerical second-
 
 ## Pipeline
 
-<SvgDiagram src="/svg/ir-hessian-pipeline.svg" alt="Infrared spectrum from a numerical Hessian: displacements, Hessian, normal modes and intensities." />
+<SvgDiagram src="/svg/ir-hessian-pipeline.svg" alt="Numerical-Hessian IR of water with xTB: displacements, Hessian, mass weighting, three normal modes and the spectrum." />
 
 ## Theory
 

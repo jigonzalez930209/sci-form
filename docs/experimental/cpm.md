@@ -23,7 +23,7 @@ The raw rows and the exact tolerances are in the
 
 Extends charge and electronic property calculations by coupling the molecule to a "virtual electrode" at electrochemical potential $\mu$. Charges fluctuate to equilibrate with the electrode, enabling simulation of **quantum capacitance**, charge response to potential, and electrochemical energy surfaces.
 
-<SvgDiagram src="/svg/experimental-cpm.svg" alt="An applied electrode potential induces a charge response in the electrolyte." />
+<SvgDiagram src="/svg/experimental-cpm.svg" alt="Constant-potential toy cell: plate charges from one linear solve, linear Q(V), and why the damped fixed point diverges." />
 
 ---
 

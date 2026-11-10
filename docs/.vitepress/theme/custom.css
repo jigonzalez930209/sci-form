@@ -261,3 +261,29 @@ pre:hover::-webkit-scrollbar,
 .comparison-table table {
   white-space: normal;
 }
+
+/* ── Responsive equations and navigation ── */
+/* On tablets the seven top-level links do not fit; use the hamburger menu. */
+@media (max-width: 1024px) {
+  .VPNavBarMenu {
+    display: none !important;
+  }
+
+  .VPNavBarHamburger {
+    display: flex !important;
+  }
+}
+
+/* Scale a long display equation to the content width on small screens instead
+   of clipping it behind a nearly invisible horizontal scrollbar. */
+@media (max-width: 768px) {
+  mjx-container[display="true"] > svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .vp-doc td mjx-container,
+  .vp-doc th mjx-container {
+    font-size: 0.95em;
+  }
+}

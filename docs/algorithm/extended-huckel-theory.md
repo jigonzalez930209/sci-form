@@ -7,7 +7,7 @@ sci-form implements a full **Extended Hückel Theory** (EHT) pipeline for semiem
 
 ## Overview
 
-<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline: basis, overlap and Hamiltonian, orthonormalization, diagonalization and orbitals." />
+<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline B1–B5 for water: STO-3G basis, S and H matrices, HC = SCE with HOMO/LUMO, orbital grid and Marching Cubes isosurface." />
 
 EHT was introduced by Hoffmann (1963) as an extension of Hückel theory to all valence electrons (not just π electrons). It requires only:
 

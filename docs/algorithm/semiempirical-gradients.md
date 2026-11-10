@@ -11,7 +11,7 @@ they were attached to.
 
 ## 1. Which energy surface does a name evaluate?
 
-<SvgDiagram src="/svg/energy-surface-map.svg" alt="Every public method name maps to one energy surface and one gradient path." />
+<SvgDiagram src="/svg/energy-surface-map.svg" alt="Each backend name maps to one energy surface and the gradient of that energy; gfn0 is a legacy alias of GFN2." />
 
 | Public name | Where | Energy surface | Gradient |
 |---|---|---|---|
@@ -68,7 +68,7 @@ The MOPAC-parity solver converges it in two stages:
    if the budget runs out while the energy has stalled, the result is still
    accepted as converged (the behaviour before DIIS existed).
 
-<SvgDiagram src="/svg/pm3-scf-diis.svg" alt="Pulay DIIS converges the PM3 self-consistent field in 27 iterations while damped fixed-point mixing exhausts 200." />
+<SvgDiagram src="/svg/pm3-scf-diis.svg" alt="PM3 SCF on H2O2: DIIS reaches the 1e-9 threshold in 27 iterations, damped mixing uses all 200; same energy, far less gradient scatter." />
 
 On the H₂O₂ gate geometry the damped loop used all 200 iterations, DIIS needs
 27, and the two reach the same energy to 1·10⁻⁷ eV. This is not cosmetic. The
@@ -115,7 +115,7 @@ charges and atomic multipoles (`Gfn2Result::warm_start`), so the SCC converges
 in a few iterations instead of from a zero state. The energy is identical to a
 cold SCC run; only the iteration count drops.
 
-<SvgDiagram src="/svg/gradient-central-difference.svg" alt="A central difference displaces one coordinate by plus and minus h and divides the energy difference by 2h." />
+<SvgDiagram src="/svg/gradient-central-difference.svg" alt="Central difference: secant versus tangent, and the error versus step size trade-off at h = 5e-4 Å." />
 
 * The `3N` coordinates are independent, so they run on the rayon pool when the
   `parallel` feature is on. Each component is collected in order, so the result

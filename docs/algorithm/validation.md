@@ -11,7 +11,7 @@ pipeline retries with a new random embedding.
 
 ## Validation Pipeline
 
-<SvgDiagram src="/svg/validation-pipeline.svg" alt="Five geometric checks accept a conformer or send it back for another embedding." />
+<SvgDiagram src="/svg/validation-pipeline.svg" alt="Five geometric checks with their exact thresholds; any failure retries within a 10N budget." />
 
 ## Check 1: Energy Per Atom
 
@@ -30,7 +30,7 @@ For each carbon or nitrogen atom that:
 
 The volume of the tetrahedron formed by its 4 neighbors must be substantial:
 
-<SvgDiagram src="/svg/validation-tetrahedral.svg" alt="A tetrahedral centre with large volume is accepted; a nearly coplanar centre is rejected." />
+<SvgDiagram src="/svg/validation-tetrahedral.svg" alt="Smallest unit-vector triple product: 0.770 for an ideal sp3 centre, below 0.50 when flattened." />
 
 ### Volume Computation
 
@@ -92,7 +92,7 @@ $$\cos\theta + 1 > 10^{-3}$$
 
 where $\theta$ is the angle between a substituent and the double bond vector. A value near 180° (cos θ ≈ −1) would mean the substituent is collinear with the double bond — a physically impossible configuration.
 
-<SvgDiagram src="/svg/validation-double-bond.svg" alt="Double-bond substituents must stay bent; a collinear arrangement is rejected." />
+<SvgDiagram src="/svg/validation-double-bond.svg" alt="cos θ + 1 for a double-bond substituent: 122° passes, 179.2° falls below the 1e-3 threshold." />
 
 ## Summary of Thresholds
 

@@ -4,7 +4,7 @@ The molecular dipole moment $\vec{\mu}$ measures the overall polarity of a molec
 
 ## Dipole Calculation
 
-<SvgDiagram src="/svg/dipole-vector.svg" alt="Partial charges on water create a molecular dipole moment." />
+<SvgDiagram src="/svg/dipole-vector.svg" alt="Water dipole from Mulliken charges and coordinates: −0.675 e·Å, i.e. 3.24 D (EHT overestimates the 1.85 D experiment)." />
 
 ### Formula
 

@@ -30,7 +30,7 @@ Available backends are grouped by role:
 
 ## Energy surface and gradient of each backend
 
-<SvgDiagram src="/svg/energy-surface-map.svg" alt="Every public method name maps to one energy surface and one gradient path." />
+<SvgDiagram src="/svg/energy-surface-map.svg" alt="Each backend name maps to one energy surface and the gradient of that energy; gfn0 is a legacy alias of GFN2." />
 
 | Backend name | Energy | Gradient (NEB, MD, reaction dynamics) |
 |---|---|---|

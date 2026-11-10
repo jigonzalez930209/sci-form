@@ -12,7 +12,7 @@ sci-form implements **ETKDGv2** (Experimental Torsion Knowledge Distance Geometr
 
 ### The 9-Step Pipeline
 
-<SvgDiagram src="/svg/pipeline-overview.svg" alt="Six-stage conformer pipeline: parse, bounds, embed, refine, validate and output." />
+<SvgDiagram src="/svg/pipeline-overview.svg" alt="ETKDGv2 nine-step pipeline in three phases with the retry loop, illustrated with ethanol." />
 
 ### Phase 1: Topology → Bounds (Steps 1–3)
 

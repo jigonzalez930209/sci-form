@@ -25,7 +25,7 @@ The raw rows and the exact tolerances are in the
 
 Computes the density of states (DOS), density matrix, and Mulliken populations via **Chebyshev polynomial expansion** of the Hamiltonian, avoiding diagonalization entirely. Achieves $O(N)$ scaling for sparse Hamiltonians, enabling electronic structure calculations on systems of thousands of atoms.
 
-<SvgDiagram src="/svg/experimental-kpm.svg" alt="A discrete spectrum is expanded in Chebyshev polynomials and turned into a smooth density of states." />
+<SvgDiagram src="/svg/experimental-kpm.svg" alt="KPM on a 200-site ring: Chebyshev polynomials and the DOS from 20 and 100 moments with the Jackson kernel versus the exact histogram." />
 
 ---
 

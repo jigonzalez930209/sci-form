@@ -70,7 +70,7 @@ Throughput is machine-dependent and is printed by the test itself (138.9 mol/s o
 
 ### Per-Category Results
 
-<SvgDiagram src="/svg/benchmarks-rmsd.svg" alt="Embedding success rate by chemical category." />
+<SvgDiagram src="/svg/benchmarks-success.svg" alt="Embed results per category for the 131-molecule benchmark: only cubane (strained) fails." />
 
 ### Embed Failures
 
@@ -113,7 +113,7 @@ The recorded run reported:
 
 ### RMSD Distribution
 
-<SvgDiagram src="/svg/benchmarks-timing.svg" alt="Runtime scaling with molecule size." />
+<SvgDiagram src="/svg/benchmarks-rmsd.svg" alt="RMSD distribution versus RDKit: 82.8% below 0.1 Å, all below 1.0 Å; mean 0.064, median 0.011 Å." />
 
 ### Hardest Categories
 
@@ -175,7 +175,7 @@ No CI job re-runs this sweep, and no committed artifact stores its result.
 
 ## Performance Scaling
 
-<SvgDiagram src="/svg/benchmarks-success.svg" alt="Heavy-atom RMSD distribution of generated conformers." />
+<SvgDiagram src="/svg/benchmarks-timing.svg" alt="Measured embed time for n-alkanes from 17 to 302 atoms on a log-log scale with N² and N³ guides." />
 
 The dominant cost is the Floyd-Warshall triangle smoothing ($O(N^3)$) and the BFGS optimization (each iteration is $O(N^2)$ for the inverse Hessian update).
 

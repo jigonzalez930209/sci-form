@@ -6,7 +6,7 @@ The Hartree-Fock-3c (HF-3c) method is an extended semi-empirical minimal-basis q
 
 `sci-form` fully controls its quantum computations without external C++ or Fortran dependencies, implementing every fundamental component of the Hartree-Fock theory cycle from scratch.
 
-<SvgDiagram src="/svg/hf3c-architecture.svg" alt="HF-3c: minimal-basis integrals, self-consistent field with DIIS, and D3, gCP and SRB corrections." />
+<SvgDiagram src="/svg/hf3c-architecture.svg" alt="HF-3c for water from compute_hf3c: integrals, 9-iteration SCF, D3/gCP/SRB corrections and the −74.79141 Ha total." />
 
 ### 1. Minimal Basis Integral Engine
 The HF-3c pipeline mandates computing exact analytical overlap, kinetic, nuclear attraction, and multi-center electron repulsion integrals (ERIs).

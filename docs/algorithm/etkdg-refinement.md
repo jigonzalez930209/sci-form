@@ -6,7 +6,7 @@ The **Experimental Torsion Knowledge Distance Geometry** (ETKDG) refinement is w
 
 Plain distance geometry produces geometrically valid structures, but the torsion angles around rotatable bonds are essentially random. The ETKDG approach adds a **torsion preference force field** that biases the conformer toward experimentally observed dihedral angles.
 
-<SvgDiagram src="/svg/etkdg-pipeline.svg" alt="Distance geometry, torsion preferences and force-field refinement produce the ETKDG conformer." />
+<SvgDiagram src="/svg/etkdg-pipeline.svg" alt="Plain DG leaves dihedrals random; the ETKDG force field (torsion, inversion, distance, linear angle) moves them into CSD wells." />
 
 ## CSD Torsion Pattern Library
 
@@ -114,6 +114,6 @@ The ETKDG 3D force field is minimized with a single BFGS pass:
 
 For butane (CCCC), the central C-C bond matches a CSD pattern with staggered preference ($V_3 = 7.0$):
 
-<SvgDiagram src="/svg/etkdg-torsion.svg" alt="Torsion preferences bias the dihedral angle towards low-energy wells." />
+<SvgDiagram src="/svg/etkdg-torsion.svg" alt="Butane torsion energy 7(1 + cos 3φ) with Newman projections and a DG start relaxing into the nearest well." />
 
 The torsion force field naturally drives the dihedral toward the anti (180°) or gauche (±60°) conformations, which match experimental observation.

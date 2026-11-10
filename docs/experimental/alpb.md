@@ -23,7 +23,7 @@ The raw rows and the exact tolerances are in the
 
 Implements the Klamt/Grimme **Analytical Linearized Poisson-Boltzmann (ALPB)** implicit solvation model. Computes solvation free energies $\Delta G_{solv}$ with analytical gradients at negligible computational cost, enabling thermodynamically realistic conformer ranking in solution.
 
-<SvgDiagram src="/svg/experimental-alpb.svg" alt="A solute cavity with Born radii coupled to a continuum solvent through the generalized Born kernel." />
+<SvgDiagram src="/svg/experimental-alpb.svg" alt="Generalized Born kernel, ALPB scaling versus solvent dielectric, and OBC Born radii with the SASA non-polar term." />
 
 ---
 

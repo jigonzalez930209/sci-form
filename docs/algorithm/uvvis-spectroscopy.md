@@ -7,11 +7,11 @@ sci-form implements a simplified Tamm-Dancoff approximation (sTDA) for UV-Vis ab
 
 ## Overview
 
-<SvgDiagram src="/svg/spectroscopy-overview.svg" alt="One geometry feeds UV-Vis, infrared and nuclear magnetic resonance tracks." />
+<SvgDiagram src="/svg/spectroscopy-overview.svg" alt="One embedded geometry feeding UV-Vis, IR and 1H NMR tracks, each with real sci-form output." />
 
 ## sTDA Pipeline
 
-<SvgDiagram src="/svg/uvvis-stda-pipeline.svg" alt="UV-Vis sTDA pipeline from geometry to orbitals, transitions, oscillator strengths and spectrum." />
+<SvgDiagram src="/svg/uvvis-stda-pipeline.svg" alt="Real sTDA output for benzaldehyde: frontier orbitals, enumerated transitions, oscillator strengths and broadened spectrum." />
 
 ## Theory
 
@@ -69,7 +69,7 @@ $$
 
 ### Broadening Functions Compared
 
-<SvgDiagram src="/svg/broadening-functions.svg" alt="Gaussian vs Lorentzian broadening: Gaussian has faster wing decay; Lorentzian has heavier tails" />
+<SvgDiagram src="/svg/broadening-functions.svg" alt="Gaussian vs Lorentzian with width 0.3 eV: FWHM, peak heights and tails on a log scale." />
 
 ## Parameters
 

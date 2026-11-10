@@ -7,7 +7,7 @@ The density of states (DOS) describes how many electronic states exist at each e
 
 ## DOS via Gaussian Smearing
 
-<SvgDiagram src="/svg/dos-smearing.svg" alt="Discrete eigenvalues broadened into a continuous density of states." />
+<SvgDiagram src="/svg/dos-smearing.svg" alt="Water DOS from its six EHT eigenvalues broadened with σ = 0.1, 0.3 and 0.5 eV." />
 
 ### Total DOS Formula
 

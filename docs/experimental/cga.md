@@ -23,7 +23,7 @@ The raw rows and the exact tolerances are in the
 
 Replaces the internal geometry engine (separate quaternions + vectors) with Conformal Geometric Algebra $G(4,1)$, unifying rotations and translations into a single multiplicative operator called a **Motor** ($M X \tilde{M}$). This eliminates gimbal lock and enables massively parallelizable geometric operations for conformer generation and MOF assembly.
 
-<SvgDiagram src="/svg/experimental-cga.svg" alt="A conformal motor rotates a molecular subtree around a bond axis." />
+<SvgDiagram src="/svg/experimental-cga.svg" alt="Conformal GA: 32 components by grade, the lift of a 3D point to a null vector, and a motor rotating a hydrogen 60° about a C–C axis." />
 
 ---
 

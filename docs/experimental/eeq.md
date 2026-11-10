@@ -23,7 +23,7 @@ The raw rows and the exact tolerances are in the
 
 Implements **geometry-dependent Electronegativity Equalization (EEQ)** charges, capturing polarization effects that static charge models like Gasteiger-Marsili miss. Charges depend on the 3D molecular geometry through fractional coordination numbers, making them suitable for conformer-dependent property prediction and as input to dispersion and solvation models.
 
-<SvgDiagram src="/svg/experimental-eeq.svg" alt="Coordination numbers shift atomic electronegativity and produce geometry-dependent charges." />
+<SvgDiagram src="/svg/experimental-eeq.svg" alt="EEQ for water: Fermi coordination number, the bordered linear system and sci-form charges O −0.547, H +0.276 / +0.271." />
 
 ---
 

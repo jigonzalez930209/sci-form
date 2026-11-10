@@ -11,7 +11,7 @@ For quantum-mechanical shielding, sci-form also exposes a high-level public GIAO
 
 ## Pipeline
 
-<SvgDiagram src="/svg/nmr-pipeline.svg" alt="NMR pipeline from SMILES to HOSE environments, shifts, couplings and a broadened spectrum." />
+<SvgDiagram src="/svg/nmr-pipeline.svg" alt="Ethanol 1H NMR from sci-form: HOSE spheres, shifts, couplings and the triplet/quintet/triplet spectrum." />
 
 ## Theory
 
@@ -79,7 +79,7 @@ $$
 
 with parameters $A = 7.76$, $B = 1.10$, $C = 1.40$ Hz (Altona–Sundaralingam, JACS 1972).
 
-<SvgDiagram src="/svg/nmr-karplus.svg" alt="The Karplus relation maps a dihedral angle to a vicinal proton-proton coupling." />
+<SvgDiagram src="/svg/nmr-karplus.svg" alt="Karplus curve with values at 0, 60, 90 and 180 degrees and the 5.28 Hz free-rotation average." />
 
 When 3D coordinates are available, the actual H–C–C–H dihedral angle $\phi$ is computed from the positions. When only topology is available, a **free-rotation average** is used:
 

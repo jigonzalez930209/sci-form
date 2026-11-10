@@ -4,7 +4,7 @@ The first step of the pipeline converts a SMILES (Simplified Molecular Input Lin
 
 ## From String to Graph
 
-<SvgDiagram src="/svg/smiles-pipeline.svg" alt="A SMILES token stream becomes a molecular graph." />
+<SvgDiagram src="/svg/smiles-pipeline.svg" alt="Parsing c1ccccc1O: tokens with atom indices, ring closure, perception of hybridization, implicit H and SSSR, and the final molecule." />
 
 ## The `Molecule` Structure
 
@@ -101,6 +101,6 @@ The SSSR is found using a modified graph traversal:
 
 For the SMILES `c1ccccc1O`:
 
-<SvgDiagram src="/svg/smiles-phenol.svg" alt="Phenol: a benzene ring with a hydroxyl substituent." />
+<SvgDiagram src="/svg/smiles-phenol.svg" alt="Phenol from c1ccccc1O with atom indices, ring-closure bond, hydrogens and a per-atom property table." />
 
 Result: 13 atoms (6C + 1O + 6H), 13 bonds, 1 SSSR ring of size 6, all ring carbons SP2, oxygen SP3.

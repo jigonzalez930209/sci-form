@@ -9,7 +9,7 @@ The ANI (ANAKIN-ME) family of machine learning potentials seeks to deliver quant
 
 At its core, ANI maps local chemical environments to atomic energy contributions using a fully connected neural network (NN).
 
-<SvgDiagram src="/svg/ani-architecture.svg" alt="ANI inference: geometry, neighbor list, atomic environment vectors, per-element network and analytic forces." />
+<SvgDiagram src="/svg/ani-architecture.svg" alt="ANI inference: 5.2 Å neighbor cutoff, 448 radial + 3584 angular AEV entries, per-element networks and analytic forces; only a random test model ships." />
 
 ### 1. Spatial Partitioning & Neighbor Lists
 To evaluate interactions efficiently in large systems, `sci-form` implements a cell-list algorithm for spatial partitioning (`src/ani/neighbor.rs`), bound by a configuration cutoff (5.2 Å for the default ANI-2x-style parameters). Atoms are binned into a 3D grid of cells with side length equal to the cutoff and only the 13 forward half-neighbour cells are scanned, which gives O(N) scaling for uniformly distributed systems.

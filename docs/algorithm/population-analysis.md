@@ -8,7 +8,7 @@ Given the density matrix $P$ and overlap matrix $S$ from the EHT solution, popul
 
 ## Mulliken Population Analysis
 
-<SvgDiagram src="/svg/population-mulliken.svg" alt="Mulliken analysis contracts the density matrix with the overlap matrix into atomic charges." />
+<SvgDiagram src="/svg/population-mulliken.svg" alt="Mulliken analysis of water: PS diagonal summed per atom gives populations 7.168 / 0.416 and charges −1.168 / +0.584." />
 
 ### Density Matrix
 
@@ -45,14 +45,14 @@ This follows from $\text{Tr}(PS) = N_{\text{electrons}}$.
 
 ## Löwdin Population Analysis
 
-<SvgDiagram src="/svg/population-lowdin.svg" alt="Löwdin analysis orthogonalizes the basis before contracting the density matrix." />
+<SvgDiagram src="/svg/population-lowdin.svg" alt="Löwdin analysis: S^1/2 P S^1/2 diagonal gives water charges O −1.096 and H +0.548." />
 
 ### Symmetric Orthogonalization
 
 Löwdin analysis first orthogonalizes the basis by diagonalizing the overlap matrix:
 
 $$
-S = U \Lambda U^T \quad \Rightarrow \quad S^{-1/2} = U \Lambda^{-1/2} U^T
+S = U \Lambda U^T \quad \Rightarrow \quad S^{1/2} = U \Lambda^{1/2} U^T
 $$
 
 ### Löwdin Charge Formula
@@ -60,7 +60,7 @@ $$
 The Löwdin density matrix in the orthogonalized basis is:
 
 $$
-\tilde{P} = S^{-1/2} P \, S^{-1/2}
+\tilde{P} = S^{1/2} P \, S^{1/2}
 $$
 
 The Löwdin charge on atom $A$:

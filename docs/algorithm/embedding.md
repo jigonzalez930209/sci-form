@@ -120,7 +120,7 @@ If any check fails, we reject this embedding and retry with the next RNG state.
 
 For a 4-atom molecule with bounds:
 
-<SvgDiagram src="/svg/embedding-eigendecomp.svg" alt="Sampled distances form a Gram matrix whose eigenvectors place atoms in 3D." />
+<SvgDiagram src="/svg/embedding-eigendecomp.svg" alt="Real power-iteration traces with deflation on butane's metric matrix, converging to the three eigenvalues that give 3D coordinates." />
 
 ## Random Box Fallback
 

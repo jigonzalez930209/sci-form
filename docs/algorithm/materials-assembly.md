@@ -7,7 +7,7 @@ sci-form supports assembly of **Metal-Organic Frameworks (MOFs)** and other crys
 
 ## Unit Cell and Lattice Vectors
 
-<SvgDiagram src="/svg/materials-unit-cell.svg" alt="A unit cell defined by three lattice vectors and three angles." />
+<SvgDiagram src="/svg/materials-unit-cell.svg" alt="A triclinic cell with its lattice matrix, volume and the fractional-to-Cartesian mapping." />
 
 ### Lattice Parameters
 
@@ -89,7 +89,7 @@ Lattice vectors scale: $\vec{a}' = n_a \vec{a}$, etc.
 
 ## Framework Assembly
 
-<SvgDiagram src="/svg/materials-assembly.svg" alt="Topology nodes decorated with secondary building units to assemble a periodic framework." />
+<SvgDiagram src="/svg/materials-assembly.svg" alt="Assembling an sql framework: topology, metal nodes, Rodrigues-oriented linkers and the periodic crystal." />
 
 ### Assembly Pipeline
 

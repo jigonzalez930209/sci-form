@@ -848,9 +848,9 @@ This inventory is intended to support the “SVG by SVG” documentation pass. E
 
 | SVG | Meaning |
 |-----|---------|
-| `benchmarks-rmsd.svg` | RMSD benchmark comparison |
-| `benchmarks-success.svg` | Success-rate benchmark comparison |
-| `benchmarks-timing.svg` | Timing benchmark comparison |
+| `benchmarks-rmsd.svg` | RMSD distribution versus RDKit |
+| `benchmarks-success.svg` | Per-category embed success (diverse set) |
+| `benchmarks-timing.svg` | Measured embed time vs. molecule size |
 
 ### Experimental SVGs
 

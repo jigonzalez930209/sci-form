@@ -23,7 +23,7 @@ The raw rows and the exact tolerances are in the
 
 Reformulates the conformer embedding problem as a **convex semidefinite program (SDP)**, mathematically guaranteeing that the distance matrix is positive semidefinite before extracting coordinates. This eliminates the retry loop caused by negative eigenvalues in the metric matrix — the most common failure mode in distance geometry embedding.
 
-<SvgDiagram src="/svg/experimental-sdr.svg" alt="Distance constraints are projected onto the positive-semidefinite cone to obtain a stable embedding." />
+<SvgDiagram src="/svg/experimental-sdr.svg" alt="Alternating projections run on 10 points with incomplete distances: convergence, eigenvalues before/after, rank-3 recovery." />
 
 ---
 

@@ -23,7 +23,7 @@ The raw rows and the exact tolerances are in the
 
 Replaces the $O(N^3)$ EHT diagonalization with the **Randomized Nyström Approximation**, reducing cost to $O(N^2)$ or $O(N \log N)$ for sparse matrices. This enables EHT calculations on systems of thousands of atoms where full diagonalization is impractical.
 
-<SvgDiagram src="/svg/experimental-randnla.svg" alt="A large Hamiltonian is projected onto a random sketch before solving a small eigenproblem." />
+<SvgDiagram src="/svg/experimental-randnla.svg" alt="Randomized Nyström drawn to scale (N = 600, k = 160) and a synthetic check of recovered eigenvalues with and without power iterations." />
 
 ---
 

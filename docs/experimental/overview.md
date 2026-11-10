@@ -67,7 +67,7 @@ the API requires it.
 | ALPB | Analytical linearized Poisson-Boltzmann | core `solvation_alpb` |
 | EEQ | Electronegativity equalization | core `charges_eeq` |
 | SDR | Semidefinite relaxation | core `sdr` |
-| D4 | Dispersion correction with dynamic \(C_6/C_8\) | core `dispersion` |
+| D4 | Dispersion correction with dynamic $C_6/C_8$ | core `dispersion` |
 | HTST | Harmonic transition-state theory | core `kinetics` |
 
 ## Enabling features

@@ -118,7 +118,7 @@ sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, eac
 
 **Gateway method** for semi-empirical orbital properties — fast, stable, supported on all elements.
 
-<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline: basis, overlap and Hamiltonian, orthonormalization, diagonalization and orbitals." />
+<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline B1–B5 for water: STO-3G basis, S and H matrices, HC = SCE with HOMO/LUMO, orbital grid and Marching Cubes isosurface." />
 
 **Capabilities:**
 - Wolfsberg-Helmholtz Hamiltonian with STO-3G basis
@@ -188,7 +188,7 @@ sci-form v0.4.3 offers **three complementary quantum chemistry approaches**, eac
 
 The **Extended Hückel Theory** module provides semi-empirical molecular orbital calculations based on the Wolfsberg-Helmholtz approximation:
 
-<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline: basis, overlap and Hamiltonian, orthonormalization, diagonalization and orbitals." />
+<SvgDiagram src="/svg/eht-pipeline.svg" alt="Extended Hückel pipeline B1–B5 for water: STO-3G basis, S and H matrices, HC = SCE with HOMO/LUMO, orbital grid and Marching Cubes isosurface." />
 
 ### Key Capabilities
 

@@ -4,7 +4,7 @@ SMARTS (SMiles ARbitrary Target Specification) is a pattern language for describ
 
 ## Role in the Pipeline
 
-<SvgDiagram src="/svg/smarts-pattern.svg" alt="A SMARTS pattern scans a molecule and highlights the matching substructure." />
+<SvgDiagram src="/svg/smarts-pattern.svg" alt="Torsion matching on butane: real CSD patterns tried in priority order until the first match gives V3 = 7.0." />
 
 For each rotatable bond in the molecule, the torsion matcher:
 

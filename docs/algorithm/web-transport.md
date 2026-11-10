@@ -4,7 +4,7 @@ sci-form includes a transport layer for efficient data transfer between WASM mod
 
 ## Arrow Columnar Layout
 
-<SvgDiagram src="/svg/transport-arrow.svg" alt="Row-oriented records transposed into contiguous columnar buffers." />
+<SvgDiagram src="/svg/transport-arrow.svg" alt="Water conformer rows as JSON versus the five contiguous typed columns of a RecordBatch." />
 
 ### Why Columnar?
 
@@ -53,7 +53,7 @@ let batch = pack_dos(&dos_result);
 
 ## Chunked Streaming
 
-<SvgDiagram src="/svg/transport-chunked.svg" alt="A large result streamed in chunks to independent workers." />
+<SvgDiagram src="/svg/transport-chunked.svg" alt="A 2912-value ESP grid streamed in three chunks, and 200 SMILES split round-robin over four workers then merged." />
 
 ### ChunkedIterator
 

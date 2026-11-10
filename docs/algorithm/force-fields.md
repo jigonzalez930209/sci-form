@@ -20,7 +20,7 @@ $$E_{\text{dist}} = \sum_{i<j} \begin{cases}
 0 & \text{otherwise}
 \end{cases}$$
 
-<SvgDiagram src="/svg/force-fields-overview.svg" alt="A force field balances repulsion at short range against attraction at long range." />
+<SvgDiagram src="/svg/force-fields-overview.svg" alt="Bounds-violation force field: flat-bottom distance penalty, signed chiral volume and 4D penalty." />
 
 The **basin filter** ($u - l \leq 5.0$) skips widely constrained pairs (typically distant non-bonded atoms) to focus optimization on well-determined distances.
 
@@ -92,7 +92,7 @@ $$
 \end{aligned}
 $$
 
-<SvgDiagram src="/svg/force-fields-torsion.svg" alt="Two- and three-fold torsion potentials." />
+<SvgDiagram src="/svg/force-fields-torsion.svg" alt="A real CSD torsion pattern decomposed into its Fourier components, with the Chebyshev recurrences." />
 
 #### UFF Inversion Terms
 
@@ -218,7 +218,7 @@ MMFF94 assigns each heavy atom a chemical context type used to look up force con
 
 ### Energy Function
 
-<SvgDiagram src="/svg/mmff94-energy-terms.svg" alt="MMFF94 energy terms: bonded, out-of-plane, van der Waals and electrostatics" />
+<SvgDiagram src="/svg/mmff94-energy-terms.svg" alt="MMFF94 terms drawn from their formulas next to harmonic, Lennard-Jones and bare Coulomb counterparts." />
 
 $$E_{\text{MMFF94}} = E_s + E_\theta + E_{sb} + E_{oop} + E_\phi + E_\text{vdW} + E_{qq}$$
 

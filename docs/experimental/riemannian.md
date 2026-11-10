@@ -23,7 +23,7 @@ The raw rows and the exact tolerances are in the
 
 Replaces the Euclidean BFGS optimizer in the embedding step with **Riemannian L-BFGS** over the manifold of fixed-rank positive semidefinite (PSD) matrices. Negative eigenvalues are eliminated by design, reducing the retry loop failure rate to zero.
 
-<SvgDiagram src="/svg/experimental-riemannian.svg" alt="An optimizer follows a geodesic on the positive-semidefinite manifold towards a constrained minimum." />
+<SvgDiagram src="/svg/experimental-riemannian.svg" alt="The PSD set of trace-2 2×2 matrices is a disk: raw gradient steps leave it, retraction keeps iterates feasible." />
 
 ---
 
