@@ -108,6 +108,16 @@ with a coverage interpretation.
 A real coverage test needs a held-out chemical dataset and exchangeable
 calibration/test splits. That benchmark is still pending.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form conformal '<predictions-json>' '<targets-json>' --coverage 0.9` |
+| WASM | `conformal_calibrate(predictions_json, targets_json, coverage)` |
+| Python | `conformal_calibrate(predictions, targets, coverage)` |
+
+The model-bound `ActiveLearningSession` remains a Rust API because its
+acquisition loop owns a generic `UncertaintyModel`.
 ## Limitations
 
 - Conformal coverage assumes exchangeability. A new chemical series can break

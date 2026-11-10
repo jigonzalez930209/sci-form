@@ -147,7 +147,7 @@ and prefactor come from the rule.
 |---|---|
 | CLI | `sci-form network '<TemplateNetworkConfig-json>'` |
 | WASM | `discover_reaction_network(config_json)` |
-| Python | pending |
+| Python | `discover_reaction_network(config_json)`, `refine_barrier_with_gsm(...)` |
 
 ## Validation
 

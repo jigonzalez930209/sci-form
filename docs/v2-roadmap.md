@@ -138,31 +138,31 @@ package still have to land before a feature moves out of the prototype column.
 
 | ID | Feature | Status in `feat/wave-a` | Remaining before promotion |
 |---|---|---|---|
-| V2-05 | Raman/VCD/ROA | Raman + VCD/ROA screening models | Coupled magnetic response and benchmark |
+| V2-05 | Raman/VCD/ROA | Raman + VCD/ROA + CLI/WASM/Python | Coupled magnetic response and benchmark |
 | V2-08 | Redox and pKa | Relative pKa/redox + Python/WASM/CLI bindings | Experimental benchmark, thermal corrections |
-| V2-10 | Enhanced sampling | WTMetaD + 1D/2D self-consistent OPES + block reweighting + replica exchange | Exact OPES flow, >2 CV |
-| V2-11 | GCMC adsorption | LJ + charges/Ewald + multi-site guests + CLI/WASM | Automatic typing and flexible frameworks |
-| V2-12 | Reaction networks/kMC | Rules + SMIRKS adapter + GSM refinement + kMC + CLI/WASM | Atom mapping, MBH, surface kMC |
+| V2-10 | Enhanced sampling | WTMetaD + 1D/2D OPES + reweighting + replica exchange + WASM/Python | Exact OPES flow, >2 CV |
+| V2-11 | GCMC adsorption | LJ + charges/Ewald + multi-site guests + CLI/WASM/Python | Automatic typing and flexible frameworks |
+| V2-12 | Reaction networks/kMC | Rules + SMIRKS + GSM + kMC + CLI/WASM/Python | Atom mapping, MBH, surface kMC |
 
 Wave B branch: `feat/wave-b`.
 
 | ID | Feature | Status in `feat/wave-b` | Remaining before promotion |
 |---|---|---|---|
-| V2-03 | QM/MM | Mechanical embedding implemented | Electrostatic embedding, link atoms and gradients |
-| V2-04 | EPR | Isotropic hyperfine + CLI/WASM | Anisotropic tensor, g-tensor and ORCA benchmark |
-| V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR estimators implemented | Soft-core MD, λ scheduler and experimental benchmark |
-| V2-13 | Universal MLIP | Contract, registry, callback and optional ONNX adapter | Real checkpoint and benchmark |
-| V2-14 | Active learning | Conformal calibration and acquisition implemented | Chemical coverage benchmark and bindings |
+| V2-03 | QM/MM | Mechanical embedding + CLI/WASM/Python | Electrostatic embedding, link atoms and gradients |
+| V2-04 | EPR | Isotropic hyperfine + CLI/WASM/Python | Anisotropic tensor, g-tensor and ORCA benchmark |
+| V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR + CLI/WASM/Python | Soft-core MD, λ scheduler and experimental benchmark |
+| V2-13 | Universal MLIP | Contract, registry, callback, ONNX adapter and ONNX fixture test | Real checkpoint and benchmark |
+| V2-14 | Active learning | Conformal calibration + acquisition + CLI/WASM/Python calibration | Chemical coverage benchmark and model-bound bindings |
 
 Wave C branch: `feat/wave-c`.
 
 | ID | Feature | Status in `feat/wave-c` | Remaining before promotion |
 |---|---|---|---|
-| V2-01 | Hybrid DFT | Restricted PBE0 exact exchange | Unrestricted/range-separated, gradient and parity |
-| V2-02 | RI-MP2 | Conventional MP2 + CLI/WASM | RI, SCS/SOS, local correlation and parity |
-| V2-06 | XPS/XANES | Koopmans XPS + CLI/WASM | ΔSCF, XANES and benchmarks |
-| V2-07 | 3D-RISM | OZ/KH solver core + ideal-gas/Gaussian solvent models + interaction energy | Real solvent, excess chemical potential and benchmark |
-| V2-15 | All-nuclide NMR | Registry and multi-nucleus GIAO driver | SCF reuse, basis/ECP coverage, benchmarks |
+| V2-01 | Hybrid DFT | Restricted PBE0 + Python (gated) | Unrestricted/range-separated, gradient and parity |
+| V2-02 | RI-MP2 | Conventional MP2 + CLI/WASM/Python | RI, SCS/SOS, local correlation and parity |
+| V2-06 | XPS/XANES | Koopmans XPS + CLI/WASM/Python | ΔSCF, XANES and benchmarks |
+| V2-07 | 3D-RISM | OZ/KH core + solvent models + interaction energy + CLI/WASM/Python | Real solvent, excess chemical potential, benchmark |
+| V2-15 | All-nuclide NMR | Registry, driver and WASM/Python | SCF reuse, basis/ECP coverage, benchmarks |
 
 
 ### Wave A — response, solvation, sampling (v2.1 band)

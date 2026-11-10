@@ -84,7 +84,7 @@ promotion.
 |---|---|
 | CLI | `sci-form mp2 '<elements>' '<coords>'` |
 | WASM | `compute_mp2_energy(elements, coords)` |
-| Python | pending |
+| Python | `compute_mp2_energy(elements, coords)` |
 
 The CLI prints the full JSON result.
 

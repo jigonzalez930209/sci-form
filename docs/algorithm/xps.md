@@ -74,7 +74,7 @@ reference and an experimental C/N/O 1s set are still required.
 |---|---|
 | CLI | `sci-form xps '<elements>' '<coords>' --elements-filter '[6]'` |
 | WASM | `compute_xps_binding_energies(elements, coords, filter_json, charge, multiplicity)` |
-| Python | pending |
+| Python | `compute_xps_binding_energies(elements, coords, elements_filter=None, charge=0, multiplicity=1)` |
 
 The CLI prints the full JSON result.
 

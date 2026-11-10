@@ -132,6 +132,41 @@ fn main() {
             probe_radius,
         } => calc_cmds::cmd_solvation(&elements, &coords, charges.as_deref(), probe_radius),
         Commands::Network { config } => calc_cmds::cmd_network(&config),
+        Commands::Kmc { config } => calc_cmds::cmd_kmc(&config),
+        Commands::Raman {
+            smiles,
+            elements,
+            coords,
+            step,
+        } => calc_cmds::cmd_raman(&smiles, &elements, &coords, step),
+        Commands::Vcd {
+            smiles,
+            elements,
+            coords,
+            min_frequency,
+        } => calc_cmds::cmd_vcd(&smiles, &elements, &coords, min_frequency),
+        Commands::Roa {
+            smiles,
+            elements,
+            coords,
+            min_frequency,
+        } => calc_cmds::cmd_roa(&smiles, &elements, &coords, min_frequency),
+        Commands::Qmmm { system, config } => calc_cmds::cmd_qmmm(&system, &config),
+        Commands::FreeEnergy {
+            samples,
+            estimator,
+            config,
+        } => calc_cmds::cmd_free_energy(&samples, &estimator, config.as_deref()),
+        Commands::Conformal {
+            predictions,
+            targets,
+            coverage,
+        } => calc_cmds::cmd_conformal(&predictions, &targets, coverage),
+        Commands::Rism {
+            beta_u,
+            susceptibility,
+            config,
+        } => calc_cmds::cmd_rism(&beta_u, &susceptibility, &config),
         Commands::Gcmc {
             framework,
             guest,

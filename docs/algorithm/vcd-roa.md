@@ -78,6 +78,15 @@ let roa = compute_roa_spectrum(smiles, &elements, &positions, &VcdRoaConfig::def
 The chiral test checks that the model produces a nonzero pseudoscalar. It does
 not establish quantitative VCD accuracy.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form vcd <smiles> '<elements>' '<coords>'`, `sci-form roa ...` |
+| WASM | `compute_vcd_spectrum(...)`, `compute_roa_spectrum(...)` |
+| Python | `compute_vcd_spectrum(...)`, `compute_roa_spectrum(...)` |
+
+Python returns the JSON encoding of `VcdSpectrum` or `RoaSpectrum`.
 ## Limitations
 
 - Nuclear charge-current model only; no electronic magnetic response.

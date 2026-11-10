@@ -118,6 +118,15 @@ let chi = solvent_susceptibility_k(&config, RismSolventModel::Gaussian {
 These are solver-core tests. A solvent-model test and a hydration free-energy
 comparison are still required.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form rism '<beta-u-json>' '<susceptibility-json>' '<RismConfig-json>'` |
+| WASM | `solve_3d_rism(beta_u, susceptibility, config_json)` |
+| Python | `solve_3d_rism(beta_u, susceptibility, config_json)` |
+
+The grid arrays are row-major `nx × ny × nz` JSON arrays.
 ## Limitations
 
 - No real solvent force field is bundled; the ideal-gas and Gaussian models are

@@ -214,7 +214,7 @@ activity factor, not to replace a production equilibration.
 |---|---|
 | CLI | `sci-form gcmc '<framework-json>' '<guest-json>' '<config-json>'` |
 | WASM | `compute_gcmc_isotherm(framework_json, guest_json, config_json)` |
-| Python | pending |
+| Python | `compute_gcmc_isotherm(framework_json, guest_json, config_json)` |
 
 The CLI prints the full JSON isotherm. The JSON types are the serialized
 `GcmcFramework`, `GuestModel` and `GcmcConfig`.

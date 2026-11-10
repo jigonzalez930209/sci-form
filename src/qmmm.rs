@@ -47,6 +47,7 @@ pub struct QmMmSystem {
 
 /// QM/MM configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct QmMmConfig {
     /// QM method.
     pub method: QmMethod,

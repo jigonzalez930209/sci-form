@@ -1245,6 +1245,11 @@ pub enum Commands {
         /// JSON TemplateNetworkConfig
         config: String,
     },
+    /// Gillespie kinetic Monte Carlo from a JSON KmcConfig
+    Kmc {
+        /// JSON KmcConfig
+        config: String,
+    },
     /// GCMC adsorption isotherm from JSON framework, guest and config payloads
     Gcmc {
         /// JSON GcmcFramework (cell + host atoms)
@@ -1252,6 +1257,79 @@ pub enum Commands {
         /// JSON GuestModel (single- or multi-site)
         guest: String,
         /// JSON GcmcConfig
+        config: String,
+    },
+    /// Raman stick spectrum from the response polarizability
+    Raman {
+        /// SMILES used for the UFF normal modes and charges
+        smiles: String,
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Finite-difference step in Å
+        #[arg(long, default_value_t = 0.01)]
+        step: f64,
+    },
+    /// VCD rotational strengths from the nuclear charge-current model
+    Vcd {
+        /// SMILES used for the UFF normal modes and charges
+        smiles: String,
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Keep modes above this frequency in cm^-1
+        #[arg(long, default_value_t = 1.0)]
+        min_frequency: f64,
+    },
+    /// ROA screening intensities from Raman activities and the VCD term
+    Roa {
+        /// SMILES used for the UFF normal modes and charges
+        smiles: String,
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON array of flat xyz coords
+        coords: String,
+        /// Keep modes above this frequency in cm^-1
+        #[arg(long, default_value_t = 1.0)]
+        min_frequency: f64,
+    },
+    /// Mechanical-embedding QM/MM energy from JSON payloads
+    Qmmm {
+        /// JSON QmMmSystem
+        system: String,
+        /// JSON QmMmConfig
+        config: String,
+    },
+    /// Alchemical free-energy estimate from JSON samples
+    FreeEnergy {
+        /// JSON array of AlchemicalSample
+        samples: String,
+        /// Estimator: fep, bar or mbar
+        #[arg(long, default_value = "mbar")]
+        estimator: String,
+        /// JSON FreeEnergyConfig (omit for defaults)
+        #[arg(long)]
+        config: Option<String>,
+    },
+    /// Split-conformal calibration radius
+    Conformal {
+        /// JSON array of predictions
+        predictions: String,
+        /// JSON array of targets
+        targets: String,
+        /// Requested coverage in (0, 1)
+        #[arg(long, default_value_t = 0.9)]
+        coverage: f64,
+    },
+    /// Solve 3D-RISM from JSON grid arrays and a JSON config
+    Rism {
+        /// JSON array of beta*u on the grid
+        beta_u: String,
+        /// JSON array of solvent susceptibility on the grid
+        susceptibility: String,
+        /// JSON RismConfig
         config: String,
     },
     /// Relative pKa from an explicit acid/conjugate-base pair

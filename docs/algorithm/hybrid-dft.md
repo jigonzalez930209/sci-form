@@ -83,6 +83,16 @@ follow-up.
 The important missing gate is **method parity** against PySCF/ORCA for the same
 PBE0/basis. Until that exists, the implementation is a prototype.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | pending |
+| WASM | pending |
+| Python | `compute_pbe0_energy(elements, coords, max_iterations=100)` behind the `alpha-dft` feature |
+
+The DFT engine remains feature-gated, so the CLI/WASM surfaces are not built by
+default.
 ## Limitations
 
 - The exact-exchange matrix is built with the existing `O(N^4)` ERI loop; no RI

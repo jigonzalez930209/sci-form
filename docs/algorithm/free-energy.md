@@ -123,6 +123,15 @@ println!("converged = {}", result.converged);
 These are analytic estimator tests. A soft-core MD benchmark and a hydration
 free-energy comparison are still required.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form free-energy '<samples-json>' --estimator mbar [--config ...]` |
+| WASM | `estimate_free_energy(samples_json, estimator, config_json)` |
+| Python | `estimate_free_energy(samples_json, estimator="mbar", config_json=None)` |
+
+Estimator names are `fep`, `bar` and `mbar`.
 ## Limitations
 
 - The module does not run MD or create λ windows.

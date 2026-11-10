@@ -107,7 +107,7 @@ computed from the basis, so the result is not hard-coded.
 |---|---|
 | CLI | `sci-form epr '<elements>' '<coords>' --nucleus 1 --multiplicity 2` |
 | WASM | `compute_epr_hyperfine(elements, coords, nucleus, charge, multiplicity)` |
-| Python | pending |
+| Python | `compute_epr_hyperfine(elements, coords, nucleus=None, charge=0, multiplicity=2)` |
 
 The CLI prints the full JSON result. `nucleus = 0` in WASM means "all known
 nuclei".

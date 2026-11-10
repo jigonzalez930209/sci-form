@@ -108,6 +108,16 @@ The water test checks that the response path runs and produces a symmetric
 tensor. A quantitative benchmark against ORCA/Gaussian Raman intensities is
 still required before promotion.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form raman <smiles> '<elements>' '<coords>' [--step 0.01]` |
+| WASM | `compute_raman_spectrum(smiles, elements, coords, step)` |
+| Python | `compute_raman_spectrum(smiles, elements, coords, step_angstrom=0.01)` |
+
+All three return the same spectrum; Python returns the JSON encoding of
+`RamanSpectrum`.
 ## Limitations
 
 - The polarizability is uncoupled HF/STO-3G, not a coupled-perturbed or

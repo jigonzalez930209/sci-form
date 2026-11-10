@@ -42,6 +42,7 @@ mod spectroscopy;
 mod stereo;
 mod system;
 mod transport;
+mod v2;
 
 /// The public API of the `sci_form` package, grouped by capability area.
 ///
@@ -349,6 +350,28 @@ pub(crate) const __ALL_EXPERIMENTAL__: &[&str] = &[
     "ChartPayload",
     "ChartSeries",
     "TrajectoryFrame",
+    // ── v2.x feature set (JSON-returning entry points) ───────────────────
+    "compute_epr_hyperfine",
+    "compute_mp2_energy",
+    "compute_xps_binding_energies",
+    "compute_raman_spectrum",
+    "compute_vcd_spectrum",
+    "compute_roa_spectrum",
+    "compute_qmmm_energy",
+    "compute_gcmc_isotherm",
+    "discover_reaction_network",
+    "run_kinetic_monte_carlo",
+    "refine_barrier_with_gsm",
+    "run_uff_metadynamics",
+    "run_uff_opes",
+    "reweight_free_energy",
+    "reweight_free_energy_correlated",
+    "reweight_free_energy_2d",
+    "solve_3d_rism",
+    "estimate_free_energy",
+    "conformal_calibrate",
+    "active_nmr_isotopes",
+    "compute_all_nmr",
 ];
 
 /// sci_form Python module
@@ -374,6 +397,7 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     population::register(m)?;
     reactivity::register(m)?;
     electrochemistry::register(m)?;
+    v2::register(m)?;
     analysis::register(m)?;
     forcefield::register(m)?;
     materials::register(m)?;

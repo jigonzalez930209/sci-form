@@ -117,6 +117,15 @@ Time is in seconds, rates in s⁻¹ and counts are dimensionless integers.
 These are algorithmic gates. A quantitative comparison against a reference kMC
 code or a catalytic experiment is part of the promotion work.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form kmc '<KmcConfig-json>'` |
+| WASM | `run_kinetic_monte_carlo(config_json)` |
+| Python | `run_kinetic_monte_carlo(config_json)` |
+
+Python returns the JSON encoding of `KmcResult`.
 ## Limitations
 
 - The network is supplied by the caller; automatic reaction discovery is not

@@ -1127,3 +1127,105 @@ pub fn cmd_network(config_json: &str) {
         Err(error) => fail(format!("Network discovery error: {error}")),
     }
 }
+
+pub fn cmd_raman(smiles: &str, elements: &str, coords: &str, step: f64) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let config = sci_form::raman::RamanConfig {
+        step_angstrom: step,
+    };
+    match sci_form::compute_raman_spectrum(smiles, &elems, &positions, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("Raman error: {error}")),
+    }
+}
+
+pub fn cmd_vcd(smiles: &str, elements: &str, coords: &str, min_frequency: f64) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let config = sci_form::vcd_roa::VcdRoaConfig {
+        raman: sci_form::raman::RamanConfig::default(),
+        min_frequency_cm1: min_frequency,
+    };
+    match sci_form::compute_vcd_spectrum(smiles, &elems, &positions, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("VCD error: {error}")),
+    }
+}
+
+pub fn cmd_roa(smiles: &str, elements: &str, coords: &str, min_frequency: f64) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let config = sci_form::vcd_roa::VcdRoaConfig {
+        raman: sci_form::raman::RamanConfig::default(),
+        min_frequency_cm1: min_frequency,
+    };
+    match sci_form::compute_roa_spectrum(smiles, &elems, &positions, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("ROA error: {error}")),
+    }
+}
+
+pub fn cmd_qmmm(system_json: &str, config_json: &str) {
+    let system: sci_form::qmmm::QmMmSystem = serde_json::from_str(system_json)
+        .unwrap_or_else(|error| fail(format!("Invalid QM/MM system JSON: {error}")));
+    let config: sci_form::qmmm::QmMmConfig = serde_json::from_str(config_json)
+        .unwrap_or_else(|error| fail(format!("Invalid QM/MM config JSON: {error}")));
+    match sci_form::compute_qmmm_energy(&system, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("QM/MM error: {error}")),
+    }
+}
+
+pub fn cmd_free_energy(samples_json: &str, estimator: &str, config_json: Option<&str>) {
+    use sci_form::free_energy::{FreeEnergyConfig, FreeEnergyEstimator};
+    let samples: Vec<sci_form::free_energy::AlchemicalSample> = serde_json::from_str(samples_json)
+        .unwrap_or_else(|error| fail(format!("Invalid samples JSON: {error}")));
+    let estimator = match estimator.to_ascii_lowercase().as_str() {
+        "fep" => FreeEnergyEstimator::Fep,
+        "bar" => FreeEnergyEstimator::Bar,
+        "mbar" => FreeEnergyEstimator::Mbar,
+        other => fail(format!(
+            "Invalid estimator '{other}'. Expected 'fep', 'bar' or 'mbar'."
+        )),
+    };
+    let config: FreeEnergyConfig = match config_json {
+        Some(value) => serde_json::from_str(value)
+            .unwrap_or_else(|error| fail(format!("Invalid free-energy config JSON: {error}"))),
+        None => FreeEnergyConfig::default(),
+    };
+    match sci_form::free_energy::estimate_free_energy(&samples, estimator, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("Free-energy error: {error}")),
+    }
+}
+
+pub fn cmd_conformal(predictions_json: &str, targets_json: &str, coverage: f64) {
+    let predictions: Vec<f64> = serde_json::from_str(predictions_json)
+        .unwrap_or_else(|error| fail(format!("Invalid predictions JSON: {error}")));
+    let targets: Vec<f64> = serde_json::from_str(targets_json)
+        .unwrap_or_else(|error| fail(format!("Invalid targets JSON: {error}")));
+    match sci_form::active_learning::ConformalCalibrator::fit(&predictions, &targets, coverage) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("Conformal error: {error}")),
+    }
+}
+
+pub fn cmd_rism(beta_u_json: &str, susceptibility_json: &str, config_json: &str) {
+    let beta_u: Vec<f64> = serde_json::from_str(beta_u_json)
+        .unwrap_or_else(|error| fail(format!("Invalid beta-u JSON: {error}")));
+    let susceptibility: Vec<f64> = serde_json::from_str(susceptibility_json)
+        .unwrap_or_else(|error| fail(format!("Invalid susceptibility JSON: {error}")));
+    let config: sci_form::rism::RismConfig = serde_json::from_str(config_json)
+        .unwrap_or_else(|error| fail(format!("Invalid RISM config JSON: {error}")));
+    match sci_form::solve_3d_rism(&beta_u, &susceptibility, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("3D-RISM error: {error}")),
+    }
+}
+
+pub fn cmd_kmc(config_json: &str) {
+    let config: sci_form::kmc::KmcConfig = serde_json::from_str(config_json)
+        .unwrap_or_else(|error| fail(format!("Invalid kMC config JSON: {error}")));
+    match sci_form::run_kinetic_monte_carlo(&config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("kMC error: {error}")),
+    }
+}

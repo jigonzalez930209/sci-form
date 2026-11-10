@@ -104,3 +104,11 @@ Quantum chemistry	mp2	sci-form mp2 '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.9272
 Spectroscopy	xps	sci-form xps '[6,1,1,1,1]' '[0,0,0,0.629,0.629,0.629,0.629,-0.629,-0.629,-0.629,0.629,-0.629,-0.629,-0.629,0.629]' --elements-filter '[6]'
 Crystals & materials	gcmc	sci-form gcmc '{"cell":{"lattice":[[10,0,0],[0,10,0],[0,0,10]]},"atoms":[]}' '{"epsilon_kcal_mol":0.0,"sigma_angstrom":3.0,"charge":0.0}' '{"temperature_k":300,"pressures_bar":[1],"equilibration_steps":100,"production_steps":200,"sample_interval":20}'
 Reaction networks	network	sci-form network '{"initial_species":["C"],"rules":[{"name":"C1","reactants":["C"],"products":["CC"],"barrier_ev":0.05,"prefactor_s_inv":1e12}],"max_depth":2,"max_species":10}'
+Spectroscopy	raman	sci-form raman O '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.927297,0]'
+Spectroscopy	vcd	sci-form vcd O '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.927297,0]'
+Spectroscopy	roa	sci-form roa O '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.927297,0]'
+Multiscale	qmmm	sci-form qmmm '{"qm_elements":[8,1,1],"qm_positions":[[0,0,0],[0.9572,0,0],[-0.239987,0.927297,0]],"mm_elements":[8],"mm_positions":[[0,0,5]],"mm_charges":[-0.5]}' '{}'
+Thermodynamics	free-energy	sci-form free-energy '[{"origin_state":0,"reduced_potentials":[0,1.5]},{"origin_state":1,"reduced_potentials":[0,1.5]}]' --estimator mbar
+Machine learning	conformal	sci-form conformal '[1,2,3]' '[1.1,2.1,3.1]' --coverage 0.9
+Solvation	rism	sci-form rism '[0,0,0,0,0,0,0,0]' '[0.03,0.03,0.03,0.03,0.03,0.03,0.03,0.03]' '{"nx":2,"ny":2,"nz":2,"box_length_angstrom":8,"temperature_k":300,"bulk_density_angstrom3":0.03,"max_iterations":20,"mixing":0.5,"tolerance":1e-6,"closure":"kh"}'
+Reaction networks	kmc	sci-form kmc '{"species":[{"id":"A","initial_count":10},{"id":"B","initial_count":0}],"steps":[{"step":{"step_id":"A-to-B","activation_free_energy_ev":0.05,"reaction_free_energy_ev":-0.1,"prefactor_s_inv":1e12},"reactants":[[0,1]],"products":[[1,1]]}],"state":{"temperature_k":500,"pressure_bar":1},"max_events":100,"max_time_s":1,"seed":7,"frame_stride":10}'

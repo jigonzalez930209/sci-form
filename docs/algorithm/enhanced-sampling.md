@@ -309,6 +309,16 @@ acceptance rate should be inspected in `result.swaps`.
 The double-well test checks exploration, not a converged barrier. A quantitative
 barrier benchmark needs a longer run and is part of the promotion gate.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | not exposed; use the JSON payloads through the library |
+| WASM | `run_uff_metadynamics`, `run_uff_opes`, `reweight_free_energy`, `reweight_free_energy_correlated`, `reweight_free_energy_2d` |
+| Python | same five functions; results are JSON strings |
+
+The WASM and Python entry points take the serialized configuration types
+(`MetaDynamicsConfig`, `OpesConfig`, `ReweightConfig`, `MultiReweightConfig`).
 ## Limitations
 
 - Only one CV is biased per run. Multi-dimensional metadynamics is a follow-up.

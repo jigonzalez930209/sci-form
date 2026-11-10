@@ -58,6 +58,15 @@ for failure in &result.failures {
 
 A failure is explicit. An unsupported element is never reported as a zero shift.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | not exposed |
+| WASM | `active_nmr_isotopes(element)`, `compute_all_nmr(elements, coords, config_json)` |
+| Python | `active_nmr_isotopes(element)`, `compute_all_nmr(elements, coords, config_json)` |
+
+Both return JSON. `compute_all_nmr` reports unsupported elements in `failures`.
 ## Coverage and limits
 
 - The registry is the existing 85-isotope table; it is not expanded by this

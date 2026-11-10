@@ -1748,6 +1748,7 @@ dependencies = [
  "pyo3",
  "rayon",
  "sci-form",
+ "serde",
  "serde_json",
 ]
 

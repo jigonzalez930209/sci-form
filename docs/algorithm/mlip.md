@@ -139,6 +139,17 @@ A production gate needs a real checkpoint and a reference trajectory
 (MD17/SPICE or a materials benchmark). That is why the adapter is not marked
 promoted.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | no generic command; a model must be supplied by the host |
+| WASM | no generic callback bridge |
+| Python | no generic callback bridge |
+
+The contract is evaluated through a host-provided callback. The optional
+`mlip-onnx` adapter is the native load path; a Python/WASM bridge requires a
+host model loader and is not bundled.
 ## Limitations
 
 - No model weights are included; the caller supplies the checkpoint.

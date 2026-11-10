@@ -429,3 +429,171 @@ def test_error_messages_survive_a_json_round_trip():
         sci_form.compute_dos_multimethod(E, C, method='we"ird\\value')
     message = str(excinfo.value)
     assert json.loads(json.dumps({"error": message}))["error"] == message
+
+
+# ─── v2.x feature bindings ────────────────────────────────────────────────
+
+WATER_E = [8, 1, 1]
+WATER_C = [
+    0.0, 0.0, 0.0,
+    0.9572, 0.0, 0.0,
+    -0.239987, 0.927297, 0.0,
+]
+
+
+def test_epr_mp2_xps_bindings():
+    epr = json.loads(
+        sci_form.compute_epr_hyperfine([1], [0.0, 0.0, 0.0], nucleus=1, multiplicity=2)
+    )
+    assert abs(epr["entries"][0]["a_iso_mhz"] - 1420.405751) < 5.0
+
+    mp2 = json.loads(sci_form.compute_mp2_energy(WATER_E, WATER_C))
+    assert mp2["correlation_energy_hartree"] < 0.0
+    assert mp2["n_occupied"] > 0 and mp2["n_virtual"] > 0
+
+    methane = [
+        0.0, 0.0, 0.0,
+        0.629, 0.629, 0.629,
+        0.629, -0.629, -0.629,
+        -0.629, 0.629, -0.629,
+        -0.629, -0.629, 0.629,
+    ]
+    xps = json.loads(
+        sci_form.compute_xps_binding_energies(
+            [6, 1, 1, 1, 1], methane, elements_filter=[6]
+        )
+    )
+    assert 200.0 < xps["bindings"][0]["binding_energy_ev"] < 400.0
+
+
+def test_spectroscopy_and_qmmm_bindings():
+    raman = json.loads(sci_form.compute_raman_spectrum("O", WATER_E, WATER_C))
+    assert raman["modes"]
+    assert all(math.isfinite(mode["activity"]) for mode in raman["modes"])
+
+    qmmm = json.loads(
+        sci_form.compute_qmmm_energy(
+            json.dumps(
+                {
+                    "qm_elements": WATER_E,
+                    "qm_positions": [[0.0, 0.0, 0.0], [0.9572, 0.0, 0.0], [-0.239987, 0.927297, 0.0]],
+                    "mm_elements": [8],
+                    "mm_positions": [[0.0, 0.0, 5.0]],
+                    "mm_charges": [-0.5],
+                }
+            ),
+            json.dumps({}),
+        )
+    )
+    assert math.isfinite(qmmm["total_energy_kcal_mol"])
+
+
+def test_gcmc_network_kmc_bindings():
+    framework = {
+        "cell": {"lattice": [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]},
+        "atoms": [],
+    }
+    guest = {"epsilon_kcal_mol": 0.0, "sigma_angstrom": 3.0, "charge": 0.0}
+    config = {
+        "temperature_k": 300.0,
+        "pressures_bar": [1.0],
+        "equilibration_steps": 100,
+        "production_steps": 200,
+        "sample_interval": 20,
+    }
+    isotherm = json.loads(
+        sci_form.compute_gcmc_isotherm(
+            json.dumps(framework), json.dumps(guest), json.dumps(config)
+        )
+    )
+    assert isotherm["points"][0]["mean_loading"] >= 0.0
+
+    network = json.loads(
+        sci_form.discover_reaction_network(
+            json.dumps(
+                {
+                    "initial_species": ["C"],
+                    "rules": [
+                        {
+                            "name": "C1",
+                            "reactants": ["C"],
+                            "products": ["CC"],
+                            "barrier_ev": 0.05,
+                            "prefactor_s_inv": 1e12,
+                        }
+                    ],
+                    "max_depth": 2,
+                    "max_species": 10,
+                }
+            )
+        )
+    )
+    assert len(network["species"]) == 2
+    assert len(network["edges"]) == 1
+
+    kmc = json.loads(
+        sci_form.run_kinetic_monte_carlo(
+            json.dumps(
+                {
+                    "species": [
+                        {"id": "A", "initial_count": 10},
+                        {"id": "B", "initial_count": 0},
+                    ],
+                    "steps": [
+                        {
+                            "step": {
+                                "step_id": "A-to-B",
+                                "activation_free_energy_ev": 0.05,
+                                "reaction_free_energy_ev": -0.1,
+                                "prefactor_s_inv": 1e12,
+                            },
+                            "reactants": [[0, 1]],
+                            "products": [[1, 1]],
+                        }
+                    ],
+                    "state": {"temperature_k": 500.0, "pressure_bar": 1.0},
+                    "max_events": 100,
+                    "max_time_s": 1.0,
+                    "seed": 7,
+                    "frame_stride": 10,
+                }
+            )
+        )
+    )
+    assert sum(kmc["final_counts"]) == 10
+
+
+def test_free_energy_conformal_and_rism_bindings():
+    samples = [
+        {"origin_state": 0, "reduced_potentials": [0.0, 1.5]},
+        {"origin_state": 1, "reduced_potentials": [0.0, 1.5]},
+    ]
+    free_energy = json.loads(sci_form.estimate_free_energy(json.dumps(samples), "mbar"))
+    assert abs(free_energy["delta_f_kbt"][1] - 1.5) < 1e-8
+
+    calibrator = json.loads(
+        sci_form.conformal_calibrate([1.0, 2.0, 3.0], [1.1, 2.1, 3.1], 0.9)
+    )
+    assert abs(calibrator["radius"] - 0.1) < 1e-12
+
+    rism = json.loads(
+        sci_form.solve_3d_rism(
+            [0.0] * 8,
+            [0.03] * 8,
+            json.dumps(
+                {
+                    "nx": 2,
+                    "ny": 2,
+                    "nz": 2,
+                    "box_length_angstrom": 8.0,
+                    "temperature_k": 300.0,
+                    "bulk_density_angstrom3": 0.03,
+                    "max_iterations": 20,
+                    "mixing": 0.5,
+                    "tolerance": 1e-6,
+                    "closure": "kh",
+                }
+            ),
+        )
+    )
+    assert abs(rism["mean_g"] - 1.0) < 1e-8

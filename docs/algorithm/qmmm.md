@@ -117,6 +117,15 @@ silently using the wrong electron count.
 These are implementation gates. A QM/MM benchmark against ONIOM or an
 electrostatic-embedding reference is still required.
 
+## Bindings
+
+| Surface | Entry point |
+|---|---|
+| CLI | `sci-form qmmm '<QmMmSystem-json>' '<QmMmConfig-json>'` |
+| WASM | `compute_qmmm_energy(system_json, config_json)` |
+| Python | `compute_qmmm_energy(system_json, config_json)` |
+
+The JSON payloads are the serialized `QmMmSystem` and `QmMmConfig`.
 ## Limitations
 
 - Mechanical embedding only; the MM charges do not polarize the QM density.
