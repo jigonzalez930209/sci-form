@@ -157,6 +157,7 @@ export default defineConfig({
             { text: 'Raman Spectroscopy', link: '/algorithm/raman' },
             { text: 'EPR Spectroscopy', link: '/algorithm/epr' },
             { text: 'Core-level XPS', link: '/algorithm/xps' },
+            { text: 'VCD & ROA', link: '/algorithm/vcd-roa' },
           ],
         },
         {

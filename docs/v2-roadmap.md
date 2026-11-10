@@ -138,7 +138,7 @@ package still have to land before a feature moves out of the prototype column.
 
 | ID | Feature | Status in `feat/wave-a` | Remaining before promotion |
 |---|---|---|---|
-| V2-05 | Raman/VCD/ROA | Raman prototype implemented; VCD/ROA pending | Coupled response, VCD/ROA, benchmark |
+| V2-05 | Raman/VCD/ROA | Raman + VCD/ROA screening models | Coupled magnetic response and benchmark |
 | V2-08 | Redox and pKa | Relative pKa/redox + Python/WASM/CLI bindings | Experimental benchmark, thermal corrections |
 | V2-10 | Enhanced sampling | WTMetaD + replica exchange implemented | OPES, reweighting, multi-CV |
 | V2-11 | GCMC adsorption | Lennard-Jones GCMC implemented | Charges/Ewald, multi-site guests, automatic typing |
@@ -601,7 +601,7 @@ hyperfine pipeline.
 | Field | Value |
 |---|---|
 | Track | Spectroscopy |
-| Status | Raman prototype implemented in `feat/wave-a`; VCD/ROA pending |
+| Status | Raman and VCD/ROA screening prototypes implemented in `feat/wave-a`; coupled response pending |
 | Implementation | [algorithm/raman.md](/algorithm/raman) |
 | Target | v2.1 |
 | Effort | 4–6 person-weeks for the numerical path; 6–10 for analytic |
