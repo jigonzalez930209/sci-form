@@ -133,6 +133,7 @@ export default defineConfig({
             { text: 'Population Analysis', link: '/algorithm/population-analysis' },
             { text: 'Dipole Moments', link: '/algorithm/dipole-moments' },
             { text: 'Redox & pKa', link: '/algorithm/redox-pka' },
+            { text: 'Enhanced Sampling', link: '/algorithm/enhanced-sampling' },
             { text: 'Strain Energy', link: '/algorithm/strain-energy' },
             { text: 'Molecular Alignment', link: '/algorithm/molecular-alignment' },
           ],

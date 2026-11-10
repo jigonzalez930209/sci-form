@@ -1013,7 +1013,8 @@ and solvation cases; diagram of the λ windows and estimator.
 | Field | Value |
 |---|---|
 | Track | Dynamics and free energy |
-| Status | Candidate — evaluation required |
+| Status | WTMetaD prototype implemented in `feat/wave-a`; OPES/replica exchange pending |
+| Implementation | [algorithm/enhanced-sampling.md](/algorithm/enhanced-sampling) |
 | Target | v2.1 |
 | Effort | 5–8 person-weeks |
 | Reuse | `compute_md_trajectory_nvt`, NEB/GSM path CV, RMSD, force fields |

@@ -198,6 +198,7 @@ pub mod dynamics;
 pub mod edl;
 pub mod eht;
 pub mod electrochemistry;
+pub mod enhanced_sampling;
 pub mod esp;
 /// ETKDG internals: dihedral angles, torsion energy terms and their gradients.
 ///
@@ -2804,6 +2805,25 @@ pub fn compute_md_trajectory_nvt(
         Some((target_temp_k, thermostat_tau_fs)),
     )
     .map_err(SciFormError::from)
+}
+
+/// Run well-tempered metadynamics on a UFF molecule.
+///
+/// The collective variable, Gaussian height and width, bias factor,
+/// temperature, time step and number of steps are configured in
+/// [`enhanced_sampling::MetaDynamicsConfig`]. Coordinates are Å, energies
+/// kcal/mol, distances Å and angular CVs radians.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES cannot be parsed, the coordinate length does
+/// not match the molecule, or the metadynamics configuration is invalid.
+pub fn run_uff_metadynamics(
+    smiles: &str,
+    coords: &[f64],
+    config: &enhanced_sampling::MetaDynamicsConfig,
+) -> Result<enhanced_sampling::MetaDynamicsResult, SciFormError> {
+    enhanced_sampling::run_uff_metadynamics(smiles, coords, config)
 }
 
 /// Build a simplified NEB path between two geometries.
