@@ -2885,6 +2885,22 @@ pub fn run_uff_metadynamics(
     enhanced_sampling::run_uff_metadynamics(smiles, coords, config)
 }
 
+/// Run OPES-style enhanced sampling on a UFF molecule.
+///
+/// The bias is a Gaussian kernel-density estimate of the visited CV values and
+/// the result includes both the bias-derived and histogram-reweighted surfaces.
+///
+/// # Errors
+///
+/// Returns `Err` when the SMILES, coordinates or OPES configuration is invalid.
+pub fn run_uff_opes(
+    smiles: &str,
+    coords: &[f64],
+    config: &enhanced_sampling::OpesConfig,
+) -> Result<enhanced_sampling::OpesResult, SciFormError> {
+    enhanced_sampling::run_uff_opes(smiles, coords, config)
+}
+
 /// Run a Gillespie kinetic Monte Carlo simulation on an elementary-step network.
 ///
 /// Rates come from the existing HTST evaluator. Counts are integers, time is in

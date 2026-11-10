@@ -376,6 +376,8 @@ pub struct MetaDynamicsResult {
     pub gaussians: Vec<GaussianDeposit>,
     /// Reconstructed free-energy surface.
     pub free_energy: FreeEnergySurface,
+    /// Histogram-reweighted free-energy surface.
+    pub reweighted_free_energy: FreeEnergySurface,
     /// Final flat coordinates in Å.
     pub final_coords: Vec<f64>,
     /// Final CV value.
@@ -502,6 +504,15 @@ pub fn run_metadynamics<P: Potential>(
     }
 
     let free_energy = build_free_energy(&gaussians, config);
+    let reweighted_free_energy = reweight_free_energy(
+        &trace,
+        &ReweightConfig {
+            grid_min: config.grid_min,
+            grid_max: config.grid_max,
+            grid_bins: config.grid_bins,
+            temperature_k: config.temperature_k,
+        },
+    )?;
     let mut notes = vec![
         "Well-tempered metadynamics with a Gaussian bias and a Langevin thermostat.".to_string(),
         "The free-energy surface is the negative of the converged bias, shifted to its minimum."
@@ -519,10 +530,443 @@ pub fn run_metadynamics<P: Potential>(
         cv_trace: trace,
         gaussians,
         free_energy,
+        reweighted_free_energy,
         final_coords: x,
         final_cv: cv_value,
         notes,
     })
+}
+
+/// Configuration for histogram reweighting.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReweightConfig {
+    /// Grid lower bound.
+    pub grid_min: f64,
+    /// Grid upper bound.
+    pub grid_max: f64,
+    /// Number of bins.
+    pub grid_bins: usize,
+    /// Temperature in K.
+    pub temperature_k: f64,
+}
+
+impl ReweightConfig {
+    fn validate(&self) -> Result<(), SciFormError> {
+        if !self.grid_min.is_finite()
+            || !self.grid_max.is_finite()
+            || self.grid_max <= self.grid_min
+        {
+            return Err(SciFormError::validation(
+                "grid_max must be finite and greater than grid_min",
+            ));
+        }
+        if self.grid_bins < 2 {
+            return Err(SciFormError::validation("grid_bins must be >= 2"));
+        }
+        if !self.temperature_k.is_finite() || self.temperature_k <= 0.0 {
+            return Err(SciFormError::validation(
+                "temperature_k must be finite and > 0",
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Reweight a biased CV trace into an unbiased free-energy histogram.
+///
+/// Each sample is weighted by `exp(+V_bias/kBT)`, the standard importance
+/// weight for a biased trajectory. The result is shifted so its minimum is zero.
+pub fn reweight_free_energy(
+    trace: &[MetaDynamicsPoint],
+    config: &ReweightConfig,
+) -> Result<FreeEnergySurface, SciFormError> {
+    config.validate()?;
+    if trace.is_empty() {
+        return Err(SciFormError::validation(
+            "cannot reweight an empty CV trace",
+        ));
+    }
+    let bins = config.grid_bins;
+    let width = (config.grid_max - config.grid_min) / (bins - 1) as f64;
+    let mut weights = vec![0.0f64; bins];
+    let kbt = R_GAS_KCAL_MOLK * config.temperature_k;
+    for point in trace {
+        if !point.cv.is_finite() || !point.bias_kcal_mol.is_finite() {
+            return Err(SciFormError::validation(
+                "CV trace contains a non-finite value",
+            ));
+        }
+        let index = ((point.cv - config.grid_min) / width)
+            .round()
+            .clamp(0.0, (bins - 1) as f64) as usize;
+        weights[index] += (point.bias_kcal_mol / kbt).exp();
+    }
+    if weights.iter().all(|weight| *weight <= 0.0) {
+        return Err(SciFormError::numerical(
+            "no CV sample fell inside the reweighting grid",
+        ));
+    }
+    let mut values: Vec<f64> = weights
+        .iter()
+        .map(|weight| {
+            if *weight > 0.0 {
+                -kbt * weight.ln()
+            } else {
+                f64::INFINITY
+            }
+        })
+        .collect();
+    let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
+    if minimum.is_finite() {
+        for value in &mut values {
+            *value -= minimum;
+        }
+    }
+    Ok(FreeEnergySurface {
+        min: config.grid_min,
+        max: config.grid_max,
+        bins,
+        values,
+    })
+}
+
+/// Configuration for the OPES-style kernel-density bias.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpesConfig {
+    /// Biased collective variable.
+    pub cv: CollectiveVariable,
+    /// Kernel width in CV units.
+    pub sigma: f64,
+    /// Bias factor `γ > 1`.
+    pub bias_factor: f64,
+    /// Deposit a kernel every `pace_steps` steps.
+    pub pace_steps: usize,
+    /// Temperature in K.
+    pub temperature_k: f64,
+    /// Integration time step in fs.
+    pub dt_fs: f64,
+    /// Langevin friction in ps^-1.
+    pub friction_ps_inv: f64,
+    /// Number of integration steps.
+    pub max_steps: usize,
+    /// RNG seed.
+    pub seed: u64,
+    /// Grid lower bound.
+    pub grid_min: f64,
+    /// Grid upper bound.
+    pub grid_max: f64,
+    /// Number of grid bins.
+    pub grid_bins: usize,
+    /// Trace stride.
+    pub trace_stride: usize,
+    /// Regularization added to the density ratio.
+    pub regularization: f64,
+}
+
+impl Default for OpesConfig {
+    fn default() -> Self {
+        Self {
+            cv: CollectiveVariable::Distance { i: 0, j: 1 },
+            sigma: 0.1,
+            bias_factor: 10.0,
+            pace_steps: 100,
+            temperature_k: 300.0,
+            dt_fs: 0.5,
+            friction_ps_inv: 1.0,
+            max_steps: 10_000,
+            seed: 42,
+            grid_min: 0.0,
+            grid_max: 10.0,
+            grid_bins: 100,
+            trace_stride: 1,
+            regularization: 1e-8,
+        }
+    }
+}
+
+impl OpesConfig {
+    fn validate(&self, coords_len: usize, masses_len: usize) -> Result<(), SciFormError> {
+        if coords_len == 0 || masses_len != coords_len {
+            return Err(SciFormError::validation(
+                "coords and masses must be non-empty and of equal length",
+            ));
+        }
+        if !matches!(self.cv, CollectiveVariable::Coordinate { .. })
+            && !coords_len.is_multiple_of(3)
+        {
+            return Err(SciFormError::validation(
+                "atom-indexed CVs require coords to be a multiple of three",
+            ));
+        }
+        if !self.sigma.is_finite() || self.sigma <= 0.0 {
+            return Err(SciFormError::validation("sigma must be finite and > 0"));
+        }
+        if !self.bias_factor.is_finite() || self.bias_factor <= 1.0 {
+            return Err(SciFormError::validation(
+                "bias_factor must be finite and > 1",
+            ));
+        }
+        if !self.regularization.is_finite() || self.regularization <= 0.0 {
+            return Err(SciFormError::validation(
+                "regularization must be finite and > 0",
+            ));
+        }
+        if self.pace_steps == 0 || self.max_steps == 0 || self.trace_stride == 0 {
+            return Err(SciFormError::validation(
+                "pace_steps, max_steps and trace_stride must be >= 1",
+            ));
+        }
+        if !self.temperature_k.is_finite() || self.temperature_k <= 0.0 {
+            return Err(SciFormError::validation(
+                "temperature_k must be finite and > 0",
+            ));
+        }
+        if !self.dt_fs.is_finite() || self.dt_fs <= 0.0 {
+            return Err(SciFormError::validation("dt_fs must be finite and > 0"));
+        }
+        if !self.friction_ps_inv.is_finite() || self.friction_ps_inv < 0.0 {
+            return Err(SciFormError::validation(
+                "friction_ps_inv must be finite and >= 0",
+            ));
+        }
+        if !self.grid_min.is_finite()
+            || !self.grid_max.is_finite()
+            || self.grid_max <= self.grid_min
+        {
+            return Err(SciFormError::validation(
+                "grid_max must be finite and greater than grid_min",
+            ));
+        }
+        if self.grid_bins < 2 {
+            return Err(SciFormError::validation("grid_bins must be >= 2"));
+        }
+        Ok(())
+    }
+}
+
+/// Result of an OPES-style run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpesResult {
+    /// Biased CV.
+    pub cv: CollectiveVariable,
+    /// Integration steps.
+    pub steps: usize,
+    /// Time step in fs.
+    pub dt_fs: f64,
+    /// CV trace.
+    pub cv_trace: Vec<MetaDynamicsPoint>,
+    /// Deposited kernels.
+    pub kernels: Vec<GaussianDeposit>,
+    /// Bias-derived free-energy surface.
+    pub free_energy: FreeEnergySurface,
+    /// Histogram-reweighted free-energy surface.
+    pub reweighted_free_energy: FreeEnergySurface,
+    /// Final coordinates.
+    pub final_coords: Vec<f64>,
+    /// Final CV.
+    pub final_cv: f64,
+    /// Notes and caveats.
+    pub notes: Vec<String>,
+}
+
+/// Run an OPES-style kernel-density bias.
+///
+/// The bias is
+///
+/// ```text
+/// V(s) = -(1 - 1/γ) kBT ln(P(s)/P_max + ε),
+/// ```
+///
+/// where `P` is a Gaussian kernel density estimate of the visited CV values.
+/// This is the OPES probability-enhancement idea with a bounded-grid
+/// normalisation; it is not a full implementation of the OPES flow equations.
+pub fn run_opes<P: Potential>(
+    potential: &P,
+    initial_coords: &[f64],
+    masses_amu: &[f64],
+    config: &OpesConfig,
+) -> Result<OpesResult, SciFormError> {
+    config.validate(initial_coords.len(), masses_amu.len())?;
+    let n_coords = initial_coords.len();
+    let mut x = initial_coords.to_vec();
+    let mut rng = StdRng::seed_from_u64(config.seed);
+    let mut v = vec![0.0; n_coords];
+    for index in 0..n_coords {
+        let sigma = (R_GAS_KCAL_MOLK * config.temperature_k
+            / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL))
+            .sqrt();
+        v[index] = sigma * sample_standard_normal(&mut rng);
+    }
+    let mut gradient = vec![0.0; n_coords];
+    let mut kernels = Vec::new();
+    let mut trace = Vec::with_capacity(config.max_steps / config.trace_stride + 1);
+    let mut cv_value = config.cv.value(&x)?;
+    let mut potential_energy = potential.energy(&x);
+    trace.push(MetaDynamicsPoint {
+        step: 0,
+        cv: cv_value,
+        potential_kcal_mol: potential_energy,
+        bias_kcal_mol: 0.0,
+    });
+    let kbt = R_GAS_KCAL_MOLK * config.temperature_k;
+    let friction_fs_inv = config.friction_ps_inv * 1e-3;
+    let mut bias;
+
+    for step in 1..=config.max_steps {
+        potential.gradient(&x, &mut gradient);
+        let cv_gradient = config.cv.gradient(&x)?;
+        let (_, bias_derivative) = opes_bias_and_derivative(&kernels, cv_value, config, kbt);
+        let mut force = vec![0.0; n_coords];
+        for index in 0..n_coords {
+            force[index] = -gradient[index] - bias_derivative * cv_gradient[index];
+        }
+        for index in 0..n_coords {
+            let acceleration = force[index] / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL);
+            v[index] += 0.5 * acceleration * config.dt_fs;
+            x[index] += v[index] * config.dt_fs;
+        }
+        potential.gradient(&x, &mut gradient);
+        cv_value = config.cv.value(&x)?;
+        let (bias_energy, bias_derivative) =
+            opes_bias_and_derivative(&kernels, cv_value, config, kbt);
+        bias = bias_energy;
+        let cv_gradient = config.cv.gradient(&x)?;
+        for index in 0..n_coords {
+            force[index] = -gradient[index] - bias_derivative * cv_gradient[index];
+        }
+        for index in 0..n_coords {
+            let acceleration = force[index] / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL);
+            v[index] += 0.5 * acceleration * config.dt_fs;
+        }
+        if friction_fs_inv > 0.0 {
+            let decay = (-friction_fs_inv * config.dt_fs).exp();
+            let noise_scale = (kbt * (1.0 - decay * decay)).sqrt();
+            for index in 0..n_coords {
+                let scale = noise_scale / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL).sqrt();
+                v[index] = decay * v[index] + scale * sample_standard_normal(&mut rng);
+            }
+        }
+        if step % config.pace_steps == 0 {
+            kernels.push(GaussianDeposit {
+                step,
+                center: cv_value,
+                height_kcal_mol: 1.0,
+                sigma: config.sigma,
+            });
+        }
+        if step % config.trace_stride == 0 {
+            potential_energy = potential.energy(&x);
+            trace.push(MetaDynamicsPoint {
+                step,
+                cv: cv_value,
+                potential_kcal_mol: potential_energy,
+                bias_kcal_mol: bias,
+            });
+        }
+        if !x.iter().all(|value| value.is_finite())
+            || !v.iter().all(|value| value.is_finite())
+            || !potential_energy.is_finite()
+        {
+            return Err(SciFormError::numerical(format!(
+                "OPES became non-finite at step {step}"
+            )));
+        }
+    }
+
+    let free_energy = opes_free_energy(&kernels, config, kbt);
+    let reweighted_free_energy = reweight_free_energy(
+        &trace,
+        &ReweightConfig {
+            grid_min: config.grid_min,
+            grid_max: config.grid_max,
+            grid_bins: config.grid_bins,
+            temperature_k: config.temperature_k,
+        },
+    )?;
+    let mut notes = vec![
+        "OPES-style kernel-density bias with a Langevin thermostat.".to_string(),
+        "Bias-derived and histogram-reweighted surfaces are both reported.".to_string(),
+        "This is a bounded-grid OPES approximation, not the full OPES flow equations.".to_string(),
+    ];
+    if trace.len() < 10 {
+        notes.push("Very short run: the free-energy surface is not converged.".to_string());
+    }
+    Ok(OpesResult {
+        cv: config.cv.clone(),
+        steps: config.max_steps,
+        dt_fs: config.dt_fs,
+        cv_trace: trace,
+        kernels,
+        free_energy,
+        reweighted_free_energy,
+        final_coords: x,
+        final_cv: cv_value,
+        notes,
+    })
+}
+
+fn opes_kernel_density(kernels: &[GaussianDeposit], cv: f64, sigma: f64) -> (f64, f64) {
+    if kernels.is_empty() {
+        return (0.0, 0.0);
+    }
+    let mut density = 0.0;
+    let mut derivative = 0.0;
+    for kernel in kernels {
+        let delta = cv - kernel.center;
+        let value = (-(delta * delta) / (2.0 * sigma * sigma)).exp();
+        density += value;
+        derivative += -value * delta / (sigma * sigma);
+    }
+    let n = kernels.len() as f64;
+    (density / n, derivative / n)
+}
+
+fn opes_bias_and_derivative(
+    kernels: &[GaussianDeposit],
+    cv: f64,
+    config: &OpesConfig,
+    kbt: f64,
+) -> (f64, f64) {
+    if kernels.is_empty() {
+        return (0.0, 0.0);
+    }
+    let (density, derivative) = opes_kernel_density(kernels, cv, config.sigma);
+    let max_density = kernels
+        .iter()
+        .map(|kernel| opes_kernel_density(kernels, kernel.center, config.sigma).0)
+        .fold(0.0f64, f64::max)
+        .max(config.regularization);
+    let ratio = density / max_density + config.regularization;
+    let factor = 1.0 - 1.0 / config.bias_factor;
+    let bias = factor * kbt * ratio.ln();
+    let derivative = factor * kbt * derivative / (density + config.regularization * max_density);
+    (bias, derivative)
+}
+
+fn opes_free_energy(
+    kernels: &[GaussianDeposit],
+    config: &OpesConfig,
+    kbt: f64,
+) -> FreeEnergySurface {
+    let mut values = Vec::with_capacity(config.grid_bins);
+    for index in 0..config.grid_bins {
+        let cv = config.grid_min
+            + (config.grid_max - config.grid_min) * index as f64 / (config.grid_bins - 1) as f64;
+        let (bias, _) = opes_bias_and_derivative(kernels, cv, config, kbt);
+        values.push(-bias);
+    }
+    let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
+    if minimum.is_finite() {
+        for value in &mut values {
+            *value -= minimum;
+        }
+    }
+    FreeEnergySurface {
+        min: config.grid_min,
+        max: config.grid_max,
+        bins: config.grid_bins,
+        values,
+    }
 }
 
 /// UFF-backed potential for molecular metadynamics.
@@ -595,6 +1039,24 @@ pub fn run_uff_metadynamics(
     }
     let masses = cartesian_masses(smiles)?;
     run_metadynamics(&potential, initial_coords, &masses, config)
+}
+
+/// Run OPES on a UFF molecule.
+pub fn run_uff_opes(
+    smiles: &str,
+    initial_coords: &[f64],
+    config: &OpesConfig,
+) -> Result<OpesResult, SciFormError> {
+    let potential = UffPotential::from_smiles(smiles)?;
+    if initial_coords.len() != potential.n_atoms() * 3 {
+        return Err(SciFormError::geometry(format!(
+            "coords length {} != 3 * atoms {}",
+            initial_coords.len(),
+            potential.n_atoms()
+        )));
+    }
+    let masses = cartesian_masses(smiles)?;
+    run_opes(&potential, initial_coords, &masses, config)
 }
 
 /// A one-dimensional double well for tests and demonstrations.
@@ -1100,6 +1562,77 @@ mod tests {
             .final_coords
             .iter()
             .all(|coords| coords.iter().all(|value| value.is_finite())));
+    }
+
+    #[test]
+    fn reweighting_a_constant_bias_is_flat() {
+        let trace = vec![
+            MetaDynamicsPoint {
+                step: 0,
+                cv: 0.0,
+                potential_kcal_mol: 0.0,
+                bias_kcal_mol: 0.0,
+            },
+            MetaDynamicsPoint {
+                step: 1,
+                cv: 1.0,
+                potential_kcal_mol: 0.0,
+                bias_kcal_mol: 0.0,
+            },
+            MetaDynamicsPoint {
+                step: 2,
+                cv: 2.0,
+                potential_kcal_mol: 0.0,
+                bias_kcal_mol: 0.0,
+            },
+        ];
+        let surface = reweight_free_energy(
+            &trace,
+            &ReweightConfig {
+                grid_min: 0.0,
+                grid_max: 2.0,
+                grid_bins: 3,
+                temperature_k: 300.0,
+            },
+        )
+        .unwrap();
+        assert!(surface.values.iter().all(|value| value.abs() < 1e-12));
+    }
+
+    #[test]
+    fn opes_double_well_samples_both_minima() {
+        let potential = DoubleWell::new(2.0, 1.0);
+        let config = OpesConfig {
+            cv: CollectiveVariable::Coordinate { index: 0 },
+            sigma: 0.15,
+            bias_factor: 10.0,
+            pace_steps: 50,
+            max_steps: 4_000,
+            grid_min: -1.5,
+            grid_max: 1.5,
+            grid_bins: 61,
+            trace_stride: 10,
+            ..OpesConfig::default()
+        };
+        let result = run_opes(&potential, &[-1.0], &[1.0], &config).unwrap();
+        let min = result
+            .cv_trace
+            .iter()
+            .map(|p| p.cv)
+            .fold(f64::INFINITY, f64::min);
+        let max = result
+            .cv_trace
+            .iter()
+            .map(|p| p.cv)
+            .fold(f64::NEG_INFINITY, f64::max);
+        assert!(min < -0.5, "min = {min}");
+        assert!(max > 0.5, "max = {max}");
+        assert!(result.free_energy.values.iter().all(|v| v.is_finite()));
+        assert!(result
+            .reweighted_free_energy
+            .values
+            .iter()
+            .any(|v| v.is_finite()));
     }
 
     #[test]

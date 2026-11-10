@@ -3,12 +3,14 @@
 The first v2.x enhanced-sampling implementation adds a collective-variable
 bias to a potential. It is designed to sit on top of the existing UFF force
 field, but the engine is generic: any type implementing the `Potential` trait
-can be sampled. The initial release covers **well-tempered metadynamics with a
-Langevin thermostat**; OPES and replica exchange are follow-up implementations.
+can be sampled. The module covers **well-tempered metadynamics**, an
+**OPES-style kernel-density bias**, **histogram reweighting** and **temperature
+replica exchange**, all with a Langevin thermostat.
 
-> **Status.** Implemented in `feat/wave-a`: WTMetaD and temperature replica
-> exchange are in Rust. OPES, reweighting and the Python/WASM/CLI wrappers are
-> still pending. See the [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-a`: WTMetaD, OPES-style bias,
+> reweighting and temperature replica exchange are in Rust. The OPES flow
+> equations and the Python/WASM/CLI wrappers are still pending. See the
+> [v2.x roadmap](/v2-roadmap).
 
 ## Why metadynamics
 
@@ -145,9 +147,62 @@ The returned `MetaDynamicsResult` has:
 | `cv_trace` | Step, CV, unbiased potential and bias energy |
 | `gaussians` | Step, centre, height and width of every deposit |
 | `free_energy` | Grid bounds, bins and `F(s)` in kcal/mol |
+| `reweighted_free_energy` | Histogram-reweighted `F(s)` in kcal/mol |
 | `final_coords` | Final flat coordinates in Å |
 | `final_cv` | Final CV value |
 | `notes` | Convergence and scope caveats |
+
+## OPES-style bias
+
+`run_opes` replaces the Gaussian history with a kernel-density estimate of the
+visited CV values:
+
+$$
+V(s) = \left(1-\frac{1}{\gamma}\right)k_BT \ln\left(\frac{P(s)}{P_{\max}}+\epsilon\right),
+$$
+
+where `P` is a Gaussian kernel density estimate and `P_max` is its maximum on
+the deposited kernels. The bias is zero at the most visited point and negative
+where the density is low, which lowers the effective barrier. This is the OPES
+probability-enhancement idea on a bounded grid, not the full OPES flow
+equations.
+
+```rust
+use sci_form::enhanced_sampling::{OpesConfig, run_opes};
+
+let config = OpesConfig {
+    cv: CollectiveVariable::Coordinate { index: 0 },
+    max_steps: 5_000,
+    ..OpesConfig::default()
+};
+let result = run_opes(&potential, &initial_coords, &masses, &config)?;
+```
+
+`OpesResult` contains the CV trace, the deposited kernels, the bias-derived
+surface and the reweighted surface.
+
+## Reweighting
+
+`reweight_free_energy` converts a biased CV trace into an unbiased histogram.
+Each sample is weighted by `exp(+V_bias/kBT)`:
+
+$$
+F(s) = -k_BT\ln\left(\sum_{i\in s} e^{V_b(s_i)/k_BT}\right).
+$$
+
+The result is shifted so the minimum is zero. This is a histogram estimator;
+correlated samples still need subsampling or block analysis.
+
+```rust
+use sci_form::enhanced_sampling::{ReweightConfig, reweight_free_energy};
+
+let surface = reweight_free_energy(&result.cv_trace, &ReweightConfig {
+    grid_min: -1.5,
+    grid_max: 1.5,
+    grid_bins: 61,
+    temperature_k: 300.0,
+})?;
+```
 
 ## Replica exchange
 
@@ -194,6 +249,8 @@ acceptance rate should be inspected in `result.swaps`.
 | UFF metadynamics | 200-step ethanol run | finite trace and deposits |
 | Invalid bias factor | `γ = 1` | rejected |
 | Replica exchange | 4 replicas, 500 steps | swap proposals recorded, all final coordinates finite |
+| OPES double well | 4,000 steps | both minima visited |
+| Reweighting constant bias | flat trace | zero surface |
 
 The double-well test checks exploration, not a converged barrier. A quantitative
 barrier benchmark needs a longer run and is part of the promotion gate.
@@ -201,9 +258,11 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 ## Limitations
 
 - Only one CV is biased per run. Multi-dimensional metadynamics is a follow-up.
-- OPES and reweighting are not implemented yet.
-- The free-energy surface is the negative bias, not a reweighted histogram.
-  Reweighting is needed for a quantitative comparison with unbiased MD.
+- The OPES implementation is a bounded-grid kernel-density approximation, not
+  the full OPES flow equations.
+- Reweighting is a histogram estimator; correlated samples need subsampling or
+  block analysis.
+- The bias-derived surface and the reweighted surface can disagree on short runs.
 - The Langevin thermostat is the only thermostat in this module; the existing
   NVT/NPT integrators are not yet coupled to the bias.
 - The CV gradient is numerical for angles and dihedrals.
@@ -212,8 +271,8 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 ## Next steps
 
 1. Add multi-dimensional CVs and a grid in more than one dimension.
-2. Add OPES.
-3. Add reweighting from the biased trajectory.
+2. Implement the full OPES flow equations.
+3. Add block/correlation-aware reweighting.
 4. Wire the bias into the existing NVT/NPT dynamics module.
 5. Add Python, WASM and CLI wrappers.
 6. Benchmark a known free-energy landscape against long unbiased MD.
