@@ -1201,4 +1201,51 @@ pub enum Commands {
         /// Path to the JSON structure file ("-" reads standard input)
         path: String,
     },
+    /// Relative pKa from an explicit acid/conjugate-base pair
+    Pka {
+        /// Acid SMILES (HA)
+        acid: String,
+        /// Conjugate-base SMILES (A-)
+        base: String,
+        /// Reference acid SMILES
+        #[arg(long)]
+        reference_acid: Option<String>,
+        /// Reference conjugate-base SMILES
+        #[arg(long)]
+        reference_base: Option<String>,
+        /// Reference pKa
+        #[arg(long)]
+        reference_pka: Option<f64>,
+        /// Electronic method: uhf or xtb
+        #[arg(long, default_value = "uhf")]
+        method: String,
+        /// Number of conformers per state
+        #[arg(long, default_value_t = 1)]
+        n_conformers: usize,
+    },
+    /// Redox potential from an explicit oxidised/reduced pair
+    Redox {
+        /// Oxidised SMILES
+        oxidized: String,
+        /// Reduced SMILES
+        reduced: String,
+        /// Number of electrons
+        #[arg(long, default_value_t = 1)]
+        n_electrons: u32,
+        /// Reference oxidised SMILES
+        #[arg(long)]
+        reference_oxidized: Option<String>,
+        /// Reference reduced SMILES
+        #[arg(long)]
+        reference_reduced: Option<String>,
+        /// Reference potential in volt
+        #[arg(long)]
+        reference_potential: Option<f64>,
+        /// Electronic method: uhf or xtb
+        #[arg(long, default_value = "uhf")]
+        method: String,
+        /// Number of conformers per state
+        #[arg(long, default_value_t = 1)]
+        n_conformers: usize,
+    },
 }

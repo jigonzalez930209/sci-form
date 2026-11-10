@@ -31,6 +31,7 @@ pub mod webgpu;
 
 pub mod dynamics;
 pub mod eht;
+pub mod electrochemistry;
 pub mod electronic;
 pub mod embed;
 pub mod esp;

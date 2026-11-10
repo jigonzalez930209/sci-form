@@ -97,3 +97,5 @@ Charts (JSON for plotting)	reaction-coordinate-chart	sci-form reaction-coordinat
 Charts (JSON for plotting)	chart-to-json	sci-form chart-to-json '{"title":"t","series":[{"series_id":"s","label":"S","x":[0,1],"y":[0,1],"x_unit":"V","y_unit":"A"}]}'
 Charts (JSON for plotting)	chart-from-json	sci-form chart-from-json      [JSON]
 Charts (JSON for plotting)	validate-chart-schema	sci-form validate-chart-schema [JSON]
+Electrochemistry	pka	sci-form pka "CC(=O)O" "CC(=O)[O-]" --reference-acid "CC(=O)O" --reference-base "CC(=O)[O-]" --reference-pka 4.76 --n-conformers 1
+Electrochemistry	redox	sci-form redox "CC(=O)O" "CC(=O)[O-]" --n-electrons 1 --n-conformers 1

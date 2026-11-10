@@ -759,6 +759,230 @@ fn sample_standard_normal(rng: &mut StdRng) -> f64 {
     (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
 }
 
+/// One accepted or rejected replica-exchange proposal.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReplicaSwap {
+    /// Integration step.
+    pub step: usize,
+    /// First replica index.
+    pub replica_i: usize,
+    /// Second replica index.
+    pub replica_j: usize,
+    /// Whether the configurations were exchanged.
+    pub accepted: bool,
+    /// Metropolis exponent `(β_i-β_j)(U_i-U_j)`.
+    pub delta: f64,
+}
+
+/// One potential-energy sample from a replica.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReplicaPoint {
+    /// Integration step.
+    pub step: usize,
+    /// Potential energy in kcal/mol.
+    pub potential_kcal_mol: f64,
+}
+
+/// Configuration for Hamiltonian/temperature replica exchange.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReplicaExchangeConfig {
+    /// Temperatures in K, one per replica.
+    pub temperatures_k: Vec<f64>,
+    /// Integration time step in fs.
+    pub dt_fs: f64,
+    /// Langevin friction in ps^-1.
+    pub friction_ps_inv: f64,
+    /// Number of integration steps.
+    pub max_steps: usize,
+    /// Attempt adjacent swaps every `swap_interval` steps.
+    pub swap_interval: usize,
+    /// RNG seed.
+    pub seed: u64,
+    /// Store a sample every `trace_stride` steps.
+    pub trace_stride: usize,
+}
+
+impl Default for ReplicaExchangeConfig {
+    fn default() -> Self {
+        Self {
+            temperatures_k: vec![300.0, 400.0, 500.0, 600.0],
+            dt_fs: 0.5,
+            friction_ps_inv: 1.0,
+            max_steps: 10_000,
+            swap_interval: 50,
+            seed: 42,
+            trace_stride: 10,
+        }
+    }
+}
+
+impl ReplicaExchangeConfig {
+    fn validate(&self, coords_len: usize, masses_len: usize) -> Result<(), SciFormError> {
+        if coords_len == 0 || masses_len != coords_len {
+            return Err(SciFormError::validation(
+                "coords and masses must be non-empty and of equal length",
+            ));
+        }
+        if self.temperatures_k.len() < 2 {
+            return Err(SciFormError::validation(
+                "at least two replica temperatures are required",
+            ));
+        }
+        if self
+            .temperatures_k
+            .iter()
+            .any(|temperature| !temperature.is_finite() || *temperature <= 0.0)
+        {
+            return Err(SciFormError::validation(
+                "replica temperatures must be finite and > 0",
+            ));
+        }
+        if !self.dt_fs.is_finite() || self.dt_fs <= 0.0 {
+            return Err(SciFormError::validation("dt_fs must be finite and > 0"));
+        }
+        if !self.friction_ps_inv.is_finite() || self.friction_ps_inv < 0.0 {
+            return Err(SciFormError::validation(
+                "friction_ps_inv must be finite and >= 0",
+            ));
+        }
+        if self.max_steps == 0 || self.swap_interval == 0 || self.trace_stride == 0 {
+            return Err(SciFormError::validation(
+                "max_steps, swap_interval and trace_stride must be >= 1",
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Result of a replica-exchange run.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReplicaExchangeResult {
+    /// Temperatures in K.
+    pub temperatures_k: Vec<f64>,
+    /// Potential-energy traces per replica.
+    pub traces: Vec<Vec<ReplicaPoint>>,
+    /// Swap proposals.
+    pub swaps: Vec<ReplicaSwap>,
+    /// Final coordinates per replica.
+    pub final_coords: Vec<Vec<f64>>,
+    /// Notes and caveats.
+    pub notes: Vec<String>,
+}
+
+/// Run temperature replica exchange with a Langevin thermostat.
+///
+/// Each replica follows velocity Verlet at its own temperature. Every
+/// `swap_interval` steps, adjacent replicas attempt a configuration exchange
+/// with probability
+///
+/// ```text
+/// P_acc = min(1, exp((β_i - β_j)(U_i - U_j))).
+/// ```
+pub fn run_replica_exchange<P: Potential>(
+    potential: &P,
+    initial_coords: &[f64],
+    masses_amu: &[f64],
+    config: &ReplicaExchangeConfig,
+) -> Result<ReplicaExchangeResult, SciFormError> {
+    config.validate(initial_coords.len(), masses_amu.len())?;
+    let n_replicas = config.temperatures_k.len();
+    let n_coords = initial_coords.len();
+    let mut rng = StdRng::seed_from_u64(config.seed);
+    let mut coords = vec![initial_coords.to_vec(); n_replicas];
+    let mut velocities = vec![vec![0.0; n_coords]; n_replicas];
+    for (replica, temperature) in config.temperatures_k.iter().enumerate() {
+        for index in 0..n_coords {
+            let sigma = (R_GAS_KCAL_MOLK * temperature
+                / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL))
+                .sqrt();
+            velocities[replica][index] = sigma * sample_standard_normal(&mut rng);
+        }
+    }
+    let mut traces: Vec<Vec<ReplicaPoint>> = (0..n_replicas)
+        .map(|replica| {
+            vec![ReplicaPoint {
+                step: 0,
+                potential_kcal_mol: potential.energy(&coords[replica]),
+            }]
+        })
+        .collect();
+    let mut swaps = Vec::new();
+    let friction_fs_inv = config.friction_ps_inv * 1e-3;
+
+    for step in 1..=config.max_steps {
+        for replica in 0..n_replicas {
+            let temperature = config.temperatures_k[replica];
+            let kbt = R_GAS_KCAL_MOLK * temperature;
+            let mut gradient = vec![0.0; n_coords];
+            potential.gradient(&coords[replica], &mut gradient);
+            for index in 0..n_coords {
+                let acceleration = -gradient[index] / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL);
+                velocities[replica][index] += 0.5 * acceleration * config.dt_fs;
+                coords[replica][index] += velocities[replica][index] * config.dt_fs;
+            }
+            potential.gradient(&coords[replica], &mut gradient);
+            for index in 0..n_coords {
+                let acceleration = -gradient[index] / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL);
+                velocities[replica][index] += 0.5 * acceleration * config.dt_fs;
+            }
+            if friction_fs_inv > 0.0 {
+                let decay = (-friction_fs_inv * config.dt_fs).exp();
+                let noise_scale = (kbt * (1.0 - decay * decay)).sqrt();
+                for index in 0..n_coords {
+                    let scale = noise_scale / (masses_amu[index] * AMU_ANGFS2_TO_KCAL_MOL).sqrt();
+                    velocities[replica][index] = decay * velocities[replica][index]
+                        + scale * sample_standard_normal(&mut rng);
+                }
+            }
+        }
+
+        if step % config.swap_interval == 0 {
+            for pair in 0..(n_replicas / 2) {
+                let i = 2 * pair;
+                let j = i + 1;
+                let energy_i = potential.energy(&coords[i]);
+                let energy_j = potential.energy(&coords[j]);
+                let beta_i = 1.0 / (R_GAS_KCAL_MOLK * config.temperatures_k[i]);
+                let beta_j = 1.0 / (R_GAS_KCAL_MOLK * config.temperatures_k[j]);
+                let delta = (beta_i - beta_j) * (energy_i - energy_j);
+                let accepted = delta >= 0.0 || rng.gen::<f64>() < delta.exp();
+                swaps.push(ReplicaSwap {
+                    step,
+                    replica_i: i,
+                    replica_j: j,
+                    accepted,
+                    delta,
+                });
+                if accepted {
+                    coords.swap(i, j);
+                    velocities.swap(i, j);
+                }
+            }
+        }
+
+        if step % config.trace_stride == 0 {
+            for replica in 0..n_replicas {
+                traces[replica].push(ReplicaPoint {
+                    step,
+                    potential_kcal_mol: potential.energy(&coords[replica]),
+                });
+            }
+        }
+    }
+
+    Ok(ReplicaExchangeResult {
+        temperatures_k: config.temperatures_k.clone(),
+        traces,
+        swaps,
+        final_coords: coords,
+        notes: vec![
+            "Temperature replica exchange with a Langevin thermostat.".to_string(),
+            "Adjacent pairs are exchanged with the Metropolis criterion.".to_string(),
+            "The output keeps one coordinate set per temperature index.".to_string(),
+        ],
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -858,6 +1082,24 @@ mod tests {
         assert_eq!(result.cv_trace.len(), 21);
         assert!(result.final_coords.iter().all(|value| value.is_finite()));
         assert!(!result.gaussians.is_empty());
+    }
+
+    #[test]
+    fn replica_exchange_runs_and_records_swaps() {
+        let potential = DoubleWell::new(2.0, 1.0);
+        let config = ReplicaExchangeConfig {
+            temperatures_k: vec![200.0, 300.0, 400.0, 500.0],
+            max_steps: 500,
+            swap_interval: 20,
+            ..ReplicaExchangeConfig::default()
+        };
+        let result = run_replica_exchange(&potential, &[-1.0], &[1.0], &config).unwrap();
+        assert_eq!(result.traces.len(), 4);
+        assert!(!result.swaps.is_empty());
+        assert!(result
+            .final_coords
+            .iter()
+            .all(|coords| coords.iter().all(|value| value.is_finite())));
     }
 
     #[test]

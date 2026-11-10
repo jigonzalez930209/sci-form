@@ -6,9 +6,9 @@ field, but the engine is generic: any type implementing the `Potential` trait
 can be sampled. The initial release covers **well-tempered metadynamics with a
 Langevin thermostat**; OPES and replica exchange are follow-up implementations.
 
-> **Status.** Implemented in `feat/wave-a`. The API is available in Rust; the
-> Python, WASM and CLI wrappers are still pending. See the
-> [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-a`: WTMetaD and temperature replica
+> exchange are in Rust. OPES, reweighting and the Python/WASM/CLI wrappers are
+> still pending. See the [v2.x roadmap](/v2-roadmap).
 
 ## Why metadynamics
 
@@ -149,6 +149,41 @@ The returned `MetaDynamicsResult` has:
 | `final_cv` | Final CV value |
 | `notes` | Convergence and scope caveats |
 
+## Replica exchange
+
+The same module also provides temperature replica exchange. Each replica runs
+at its own temperature, and adjacent pairs are exchanged every `swap_interval`
+steps with
+
+$$
+P_{\mathrm{acc}} =
+\min\left[1,\,
+e^{(\beta_i-\beta_j)(U_i-U_j)}
+\right],
+\qquad
+\beta = \frac{1}{k_BT}.
+$$
+
+The result contains one potential-energy trace per replica, every swap proposal
+with its Metropolis exponent, and the final coordinates. It is a generic
+`Potential` engine, so it works with the analytic double well and with the UFF
+adapter.
+
+```rust
+use sci_form::enhanced_sampling::{ReplicaExchangeConfig, run_replica_exchange};
+
+let config = ReplicaExchangeConfig {
+    temperatures_k: vec![300.0, 400.0, 500.0, 600.0],
+    max_steps: 10_000,
+    ..ReplicaExchangeConfig::default()
+};
+let result = run_replica_exchange(&potential, &initial_coords, &masses, &config)?;
+```
+
+Replica exchange is not a substitute for a converged metadynamics bias; it
+improves barrier crossing when the replicas overlap in energy. The swap
+acceptance rate should be inspected in `result.swaps`.
+
 ## Validation
 
 | Gate | Observable | Result |
@@ -158,6 +193,7 @@ The returned `MetaDynamicsResult` has:
 | UFF gradient | Analytic vs finite difference | < 1e-4 kcal/mol/Å |
 | UFF metadynamics | 200-step ethanol run | finite trace and deposits |
 | Invalid bias factor | `γ = 1` | rejected |
+| Replica exchange | 4 replicas, 500 steps | swap proposals recorded, all final coordinates finite |
 
 The double-well test checks exploration, not a converged barrier. A quantitative
 barrier benchmark needs a longer run and is part of the promotion gate.
@@ -165,7 +201,7 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 ## Limitations
 
 - Only one CV is biased per run. Multi-dimensional metadynamics is a follow-up.
-- OPES and replica exchange are not implemented yet.
+- OPES and reweighting are not implemented yet.
 - The free-energy surface is the negative bias, not a reweighted histogram.
   Reweighting is needed for a quantitative comparison with unbiased MD.
 - The Langevin thermostat is the only thermostat in this module; the existing
@@ -176,7 +212,7 @@ barrier benchmark needs a longer run and is part of the promotion gate.
 ## Next steps
 
 1. Add multi-dimensional CVs and a grid in more than one dimension.
-2. Add OPES and Hamiltonian replica exchange.
+2. Add OPES.
 3. Add reweighting from the biased trajectory.
 4. Wire the bias into the existing NVT/NPT dynamics module.
 5. Add Python, WASM and CLI wrappers.

@@ -147,6 +147,43 @@ let result = compute_redox_potential(
 )?;
 ```
 
+### Python, WASM and CLI
+
+The same workflow is exposed on every surface:
+
+| Surface | Entry points |
+|---|---|
+| Python | `compute_pka`, `compute_redox_potential`, `PkaResult`, `RedoxResult` |
+| WASM | `compute_pka`, `compute_pka_relative`, `compute_redox_potential`, `compute_redox_potential_relative` |
+| CLI | `sci-form pka ...`, `sci-form redox ...` |
+
+Python example:
+
+```python
+import sci_form
+
+result = sci_form.compute_pka(
+    "FC(F)(F)C(=O)O",
+    "FC(F)(F)C(=O)[O-]",
+    reference_acid="CC(=O)O",
+    reference_base="CC(=O)[O-]",
+    reference_pka=4.76,
+)
+print(result.pka, result.relative)
+```
+
+CLI example:
+
+```bash
+sci-form pka "CC(=O)O" "CC(=O)[O-]" \
+  --reference-acid "CC(=O)O" --reference-base "CC(=O)[O-]" \
+  --reference-pka 4.76 --n-conformers 1
+```
+
+The CLI prints the full JSON result, including every conformer and note.
+The Python classes expose the top-level fields; the WASM functions return the
+full JSON payload.
+
 ### Result fields
 
 | Type | Key fields |

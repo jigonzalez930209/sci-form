@@ -18,6 +18,7 @@ mod buffer;
 mod compare;
 mod dynamics;
 mod eht;
+mod electrochemistry;
 mod electronic;
 mod embed;
 mod errors;
@@ -125,6 +126,10 @@ pub(crate) const __ALL__: &[&str] = &[
     "compute_mmff94_energy",
     "compute_mmff94_energy_breakdown",
     "compute_empirical_pka",
+    "compute_pka",
+    "compute_redox_potential",
+    "PkaResult",
+    "RedoxResult",
     "EmpiricalPkaResult",
     "EmpiricalPkaSite",
     "UffHeuristicEnergy",
@@ -368,6 +373,7 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     properties::register(m)?;
     population::register(m)?;
     reactivity::register(m)?;
+    electrochemistry::register(m)?;
     analysis::register(m)?;
     forcefield::register(m)?;
     materials::register(m)?;

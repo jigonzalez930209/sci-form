@@ -965,3 +965,98 @@ fn read_input(path: &str) -> String {
     }
     std::fs::read_to_string(path).unwrap_or_else(|e| fail(format!("cannot read {path}: {e}")))
 }
+
+fn electrochemistry_config(
+    method: &str,
+    n_conformers: usize,
+) -> sci_form::electrochemistry::ElectrochemistryConfig {
+    use sci_form::electrochemistry::{ElectrochemistryConfig, ElectrochemistryMethod};
+    let method = match method.to_ascii_lowercase().as_str() {
+        "uhf" | "hf" => ElectrochemistryMethod::Uhf,
+        "xtb" | "gfn2" => ElectrochemistryMethod::Xtb,
+        other => fail(format!(
+            "Invalid electrochemistry method '{other}'. Expected 'uhf' or 'xtb'."
+        )),
+    };
+    ElectrochemistryConfig {
+        method,
+        n_conformers,
+        ..Default::default()
+    }
+}
+
+pub fn cmd_pka(
+    acid: &str,
+    base: &str,
+    reference_acid: Option<&str>,
+    reference_base: Option<&str>,
+    reference_pka: Option<f64>,
+    method: &str,
+    n_conformers: usize,
+) {
+    use sci_form::electrochemistry::PkaReference;
+    let reference = match (reference_acid, reference_base, reference_pka) {
+        (Some(acid), Some(base), Some(pka)) => Some(PkaReference {
+            acid_smiles: acid.to_string(),
+            base_smiles: base.to_string(),
+            pka,
+        }),
+        (None, None, None) => None,
+        _ => fail(
+            "--reference-acid, --reference-base and --reference-pka must be supplied together"
+                .to_string(),
+        ),
+    };
+    let config = electrochemistry_config(method, n_conformers);
+    match sci_form::compute_pka(acid, base, reference.as_ref(), &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => {
+            eprintln!("pKa error: {error}");
+            std::process::exit(1);
+        }
+    }
+}
+
+pub fn cmd_redox(
+    oxidized: &str,
+    reduced: &str,
+    n_electrons: u32,
+    reference_oxidized: Option<&str>,
+    reference_reduced: Option<&str>,
+    reference_potential: Option<f64>,
+    method: &str,
+    n_conformers: usize,
+) {
+    use sci_form::electrochemistry::RedoxReference;
+    let reference = match (
+        reference_oxidized,
+        reference_reduced,
+        reference_potential,
+    ) {
+        (Some(oxidized), Some(reduced), Some(potential)) => Some(RedoxReference {
+            oxidized_smiles: oxidized.to_string(),
+            reduced_smiles: reduced.to_string(),
+            n_electrons,
+            potential_v: potential,
+        }),
+        (None, None, None) => None,
+        _ => fail(
+            "--reference-oxidized, --reference-reduced and --reference-potential must be supplied together"
+                .to_string(),
+        ),
+    };
+    let config = electrochemistry_config(method, n_conformers);
+    match sci_form::compute_redox_potential(
+        oxidized,
+        reduced,
+        n_electrons,
+        reference.as_ref(),
+        &config,
+    ) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => {
+            eprintln!("Redox error: {error}");
+            std::process::exit(1);
+        }
+    }
+}

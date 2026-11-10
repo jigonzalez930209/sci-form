@@ -140,7 +140,7 @@ before a feature moves out of the prototype column.
 |---|---|---|---|
 | V2-05 | Raman/VCD/ROA | Raman prototype implemented; VCD/ROA pending | Coupled response, VCD/ROA, benchmark |
 | V2-08 | Redox and pKa | Relative pKa and redox cycles implemented | Experimental benchmark, thermal corrections, bindings |
-| V2-10 | Enhanced sampling | WTMetaD implemented | OPES, replica exchange, reweighting, multi-CV |
+| V2-10 | Enhanced sampling | WTMetaD + replica exchange implemented | OPES, reweighting, multi-CV |
 | V2-11 | GCMC adsorption | Lennard-Jones GCMC implemented | Charges/Ewald, multi-site guests, automatic typing |
 | V2-12 | Reaction networks/kMC | Gillespie kMC implemented | Rule-based discovery, site-based surface kMC |
 
@@ -1029,7 +1029,7 @@ and solvation cases; diagram of the λ windows and estimator.
 | Field | Value |
 |---|---|
 | Track | Dynamics and free energy |
-| Status | WTMetaD prototype implemented in `feat/wave-a`; OPES/replica exchange pending |
+| Status | WTMetaD and replica exchange prototypes implemented in `feat/wave-a`; OPES/reweighting pending |
 | Implementation | [algorithm/enhanced-sampling.md](/algorithm/enhanced-sampling) |
 | Target | v2.1 |
 | Effort | 5–8 person-weeks |
