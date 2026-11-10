@@ -144,6 +144,16 @@ before a feature moves out of the prototype column.
 | V2-11 | GCMC adsorption | Lennard-Jones GCMC implemented | Charges/Ewald, multi-site guests, automatic typing |
 | V2-12 | Reaction networks/kMC | Gillespie kMC implemented | Rule-based discovery, site-based surface kMC |
 
+Wave B branch: `feat/wave-b`.
+
+| ID | Feature | Status in `feat/wave-b` | Remaining before promotion |
+|---|---|---|---|
+| V2-03 | QM/MM | Not started | Point-charge embedding and link atoms |
+| V2-04 | EPR | Not started | Spin density, hyperfine, g-tensor |
+| V2-09 | FEP/BAR/MBAR | Not started | Estimators, soft-core and overlap diagnostics |
+| V2-13 | Universal MLIP | Not started | ONNX backend, model registry and checkpoint gate |
+| V2-14 | Active learning | Conformal calibration and acquisition implemented | Chemical coverage benchmark and bindings |
+
 
 ### Wave A — response, solvation, sampling (v2.1 band)
 
@@ -1373,7 +1383,8 @@ per checkpoint; diagram of the model registry and MD coupling.
 | Field | Value |
 |---|---|
 | Track | Machine learning |
-| Status | Candidate — evaluation required |
+| Status | Conformal calibration and acquisition prototype implemented in `feat/wave-b` |
+| Implementation | [algorithm/active-learning.md](/algorithm/active-learning) |
 | Target | v2.2 |
 | Effort | 4–6 person-weeks |
 | Reuse | `ml` RF/GBM ensembles, `ani`, `mlip`, descriptors, validation rows |

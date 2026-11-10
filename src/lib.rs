@@ -155,6 +155,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 
+pub mod active_learning;
 pub mod alignment;
 pub mod ani;
 pub mod canonical_smiles;
