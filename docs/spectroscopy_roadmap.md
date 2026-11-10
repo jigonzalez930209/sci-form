@@ -1,5 +1,11 @@
 # Track D: Advanced Spectroscopy and Response Properties
 
+> **Status in 2.0.** All three phases below shipped: UV-Vis via sTDA-xTB
+> ([algorithm/uvvis-spectroscopy](/algorithm/uvvis-spectroscopy)), IR via the
+> numerical Hessian ([algorithm/ir-spectroscopy](/algorithm/ir-spectroscopy)),
+> and NMR shifts plus J-coupling ([algorithm/nmr-spectroscopy](/algorithm/nmr-spectroscopy)).
+> This page is kept as the original design record, not as pending work.
+
 Building on the existing electronic structure (Track B) and ML (Track C) foundations, Track D expands the library into response properties and experimental observable simulation.
 
 ## Overview Diagram

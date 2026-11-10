@@ -28,6 +28,19 @@ export default defineConfig({
   markdown: {
     config: (md) => {
       md.use(mathjax3)
+
+      // Mermaid diagrams are rendered on the client by theme/Mermaid.vue.
+      // Hand the source over as base64 so quotes and line breaks inside the
+      // diagram cannot break the component attribute.
+      const fence = md.renderer.rules.fence
+      md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+        const token = tokens[idx]
+        if (token.info.trim().toLowerCase() === 'mermaid') {
+          const code = Buffer.from(token.content, 'utf8').toString('base64')
+          return `<Mermaid code="${code}" />\n`
+        }
+        return fence ? fence(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options)
+      }
     },
   },
 
@@ -40,7 +53,7 @@ export default defineConfig({
   },
 
   themeConfig: {
-    logo: '/sci-form/logo.svg',
+    logo: '/logo.svg',
 
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
@@ -227,6 +240,7 @@ export default defineConfig({
         {
           text: 'Releasing',
           items: [
+            { text: 'v2.0.0 Release Checklist', link: '/release-checklist-2.0' },
             { text: 'v1.0.0 Release Checklist', link: '/release-checklist-1.0' },
           ],
         },

@@ -48,6 +48,7 @@
   "homepage": "https://github.com/jigonzalez930209/sci-form#readme",
   "devDependencies": {
     "markdown-it-mathjax3": "^4.3.2",
+    "mermaid": "^11.17.2",
     "playwright": "^1.53.0",
     "vitepress": "^1.6.4"
   }

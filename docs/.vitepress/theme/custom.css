@@ -287,3 +287,70 @@ pre:hover::-webkit-scrollbar,
     font-size: 0.95em;
   }
 }
+
+/* ── Mermaid diagrams ── */
+/* Mermaid blocks are rendered client-side by theme/Mermaid.vue. The card gives
+   them the same frame as the animated SVG figures and keeps wide flowcharts
+   scrollable instead of stretching the page. */
+.sf-mermaid {
+  margin: 24px 0;
+  padding: 18px 14px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  overflow-x: auto;
+}
+
+.sf-mermaid-canvas {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.sf-mermaid-canvas svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.sf-mermaid-source {
+  margin: 0;
+  padding: 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  overflow-x: auto;
+}
+
+.sf-mermaid-failed {
+  border-color: var(--vp-c-danger-1, #e11d48);
+}
+
+/* Mermaid labels use a <p> wrapper; VitePress gives every paragraph a 28px
+   line-height, which overflows the foreignObject and clips the last line.
+   Restore the label's own rhythm inside the diagram card. */
+.sf-mermaid .nodeLabel p,
+.sf-mermaid .edgeLabel p,
+.sf-mermaid foreignObject p {
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: inherit;
+}
+
+/* On narrow screens the flowcharts keep a readable minimum width and scroll
+   inside their card instead of shrinking to unreadable labels. */
+@media (max-width: 768px) {
+  .sf-mermaid {
+    padding: 12px 8px;
+  }
+
+  .sf-mermaid-canvas {
+    justify-content: flex-start;
+  }
+
+  .sf-mermaid-canvas svg {
+    min-width: 640px;
+    max-width: none;
+  }
+}

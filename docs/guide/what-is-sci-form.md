@@ -53,32 +53,24 @@ For the reaction-specific split between interpretation, path construction, and b
 
 ```mermaid
 graph LR
-    A["SMILES Input"] --> B["ETKDGv2<br/>Conformer"]
-    B --> C["3D Geometry<br/>+ Topology"]
-    
-    C --> E["Quantum Properties"]
-    C --> F["ML Descriptors"]
-    
-    E --> E1["EHT"]
-    E --> E2["PM3"]
-    E --> E3["GFN-xTB"]
-    
-    E1 --> G["HOMO/LUMO<br/>DOS, Dipole"]
-    E2 --> G
-    E3 --> G
-    
-    C --> I["Force Fields"]
-    I --> I1["UFF"]
-    I --> I2["MMFF94"]
-    I1 --> J["Energy"]
-    I2 --> J
-    
-    F --> H["LogP, Solubility<br/>Lipinski, Drug-like"]
-    
-    G --> M["✓ Results"]
-    H --> M
-    J --> M
+    A["SMILES · CIF · JSON"] --> B["ETKDGv2<br/>3D conformer + topology"]
+
+    B --> Q["Quantum engines<br/>EHT · PM3 · GFN-xTB · ANI"]
+    B --> FF["Force fields<br/>UFF · MMFF94 · strain"]
+    B --> SP["Spectroscopy<br/>IR · UV-Vis · NMR"]
+    B --> MA["Materials & PBC<br/>space groups · MOF · KPM"]
+    B --> D["Descriptors & ML<br/>WHIM/RDF · LogP · Lipinski"]
+
+    Q --> R["Results<br/>energies · spectra"]
+    FF --> R
+    SP --> R
+    MA --> R
+    D --> R
 ```
+
+Every public entry point returns typed `SciFormError` values since 2.0, so a
+failed parse, an unsupported element and a numerical failure are distinguishable
+without matching on message strings.
 
 ---
 
