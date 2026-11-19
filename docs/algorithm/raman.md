@@ -8,6 +8,8 @@ remain follow-ups.
 
 > **Status.** Implemented in `feat/wave-a`. This is a screening prototype, not a
 > calibrated Raman cross-section. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-raman` (included in `alpha-v2`).
 
 ## Why a response polarizability
 
@@ -20,7 +22,7 @@ uncoupled sum-over-states expression
 
 $$
 \alpha_{ij} =
-\sum_{\mathrm{spin}}
+2\sum_{\mathrm{spin}}
 \sum_{a}^{\mathrm{occ}}
 \sum_{b}^{\mathrm{vir}}
 \frac{
@@ -31,8 +33,11 @@ $$
 }.
 $$
 
-The dipole integrals are evaluated in the existing STO-3G basis and transformed
-to the UHF molecular orbitals. The result is in Å³ after the Bohr³ conversion.
+The factor 2 follows from $\alpha = -\partial^2 E/\partial F^2$ with the
+second-order energy $-\sum |F\cdot\mu_{ab}|^2/\Delta\epsilon$; ficha F105 checks
+it against PySCF and a finite-difference derivative. The dipole integrals are
+evaluated in the existing STO-3G basis and transformed to the UHF molecular
+orbitals. The result is in Å³ after the Bohr³ conversion.
 This is the uncoupled HF approximation; electron correlation and coupled
 response are not included.
 

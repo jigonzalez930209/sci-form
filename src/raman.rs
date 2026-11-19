@@ -79,7 +79,7 @@ impl Default for RamanConfig {
 /// The sum-over-states expression is
 ///
 /// ```text
-/// α_ij = Σ_spin Σ_a^occ Σ_b^vir
+/// α_ij = 2 Σ_spin Σ_a^occ Σ_b^vir
 ///        <a|μ_i|b><b|μ_j|a> / (ε_b - ε_a)
 /// ```
 ///
@@ -141,7 +141,9 @@ pub fn compute_polarizability(
                 }
                 for i in 0..3 {
                     for j in 0..3 {
-                        tensor[i][j] += d_mo[i][(a, b)] * d_mo[j][(b, a)] / delta;
+                        // α = -∂²E/∂F²; the second-order energy is -Σ|F·μ_ab|²/Δ,
+                        // hence the factor 2 (validated in F105 by finite differences).
+                        tensor[i][j] += 2.0 * d_mo[i][(a, b)] * d_mo[j][(b, a)] / delta;
                     }
                 }
             }
