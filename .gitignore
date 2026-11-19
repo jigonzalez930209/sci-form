@@ -45,3 +45,4 @@ __pycache__/
 /docs/public/wasm
 
 .release-check.ok
+.venv-validation/
