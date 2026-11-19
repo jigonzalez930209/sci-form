@@ -128,14 +128,19 @@ pub fn build_vxc_matrix(
                     }
                 }
             }
-            DftMethod::Pbe | DftMethod::Pbe0 => {
+            // `DftMethod` is `#[non_exhaustive]` and PBE0 is feature-gated, so
+            // every GGA variant shares this arm and only the exchange scale
+            // differs: a hybrid keeps `1 - a` of the PBE exchange.
+            gga => {
+                let exchange_scale = 1.0 - gga.exact_exchange_fraction();
                 let dphi = evaluate_basis_gradient_at_point(basis, &gp.xyz);
                 let grad_rho = compute_density_gradient(&phi, &dphi, density);
                 let sigma = grad_rho[0] * grad_rho[0]
                     + grad_rho[1] * grad_rho[1]
                     + grad_rho[2] * grad_rho[2];
 
-                let (exc, vxc_rho, vxc_sigma) = pbe::pbe(rho, sigma);
+                let (exc, vxc_rho, vxc_sigma) =
+                    pbe::pbe_with_exchange_scale(rho, sigma, exchange_scale);
                 exc_total += gp.weight * rho * exc;
 
                 for mu in 0..n {

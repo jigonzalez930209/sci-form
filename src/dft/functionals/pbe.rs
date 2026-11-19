@@ -18,6 +18,15 @@ const BETA: f64 = 0.066_724_550_603_149_22;
 /// - vxc_rho: ∂(ρ·εxc)/∂ρ
 /// - vxc_sigma: ∂(ρ·εxc)/∂(|∇ρ|²)
 pub fn pbe(rho: f64, sigma: f64) -> (f64, f64, f64) {
+    pbe_with_exchange_scale(rho, sigma, 1.0)
+}
+
+/// PBE with the semilocal exchange scaled by `exchange_scale`.
+///
+/// A global hybrid replaces a fraction `a` of the semilocal exchange by exact
+/// exchange, so its density-functional part is `(1 - a) E_x^PBE + E_c^PBE`
+/// (PBE0: `a = 0.25`, `exchange_scale = 0.75`). Same return convention as [`pbe`].
+pub fn pbe_with_exchange_scale(rho: f64, sigma: f64, exchange_scale: f64) -> (f64, f64, f64) {
     if rho < 1e-20 {
         return (0.0, 0.0, 0.0);
     }
@@ -25,7 +34,11 @@ pub fn pbe(rho: f64, sigma: f64) -> (f64, f64, f64) {
     let (ex, vx_rho, vx_sigma) = pbe_exchange(rho, sigma);
     let (ec, vc_rho, vc_sigma) = pbe_correlation(rho, sigma);
 
-    (ex + ec, vx_rho + vc_rho, vx_sigma + vc_sigma)
+    (
+        exchange_scale * ex + ec,
+        exchange_scale * vx_rho + vc_rho,
+        exchange_scale * vx_sigma + vc_sigma,
+    )
 }
 
 /// PBE exchange enhancement factor.
