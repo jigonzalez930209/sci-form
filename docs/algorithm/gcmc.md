@@ -9,6 +9,8 @@ given pressure and temperature?
 > with optional charges, Ewald electrostatics and multi-site guests. Framework
 > flexibility and bonded MM terms remain follow-ups. See the
 > [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-gcmc` (included in `alpha-v2`).
 
 ## Grand-canonical ensemble
 

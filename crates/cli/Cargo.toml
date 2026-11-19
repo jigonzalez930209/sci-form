@@ -45,6 +45,39 @@ alpha-edl = ["sci-form/alpha-edl"]
 alpha-periodic-linear = ["sci-form/alpha-periodic-linear", "dep:nalgebra"]
 alpha-kinetics = ["sci-form/alpha-kinetics"]
 alpha-render-bridge = ["sci-form/alpha-render-bridge"]
+alpha-dft = ["sci-form/alpha-dft"]
+alpha-dft-hybrid = ["sci-form/alpha-dft-hybrid", "alpha-dft"]
+alpha-mp2 = ["sci-form/alpha-mp2"]
+alpha-qmmm = ["sci-form/alpha-qmmm"]
+alpha-epr = ["sci-form/alpha-epr"]
+alpha-raman = ["sci-form/alpha-raman"]
+alpha-core-spectroscopy = ["sci-form/alpha-core-spectroscopy"]
+alpha-rism = ["sci-form/alpha-rism"]
+alpha-redox-pka = ["sci-form/alpha-redox-pka"]
+alpha-free-energy = ["sci-form/alpha-free-energy"]
+alpha-enhanced-sampling = ["sci-form/alpha-enhanced-sampling"]
+alpha-gcmc = ["sci-form/alpha-gcmc"]
+alpha-reaction-network = ["sci-form/alpha-reaction-network"]
+alpha-mlip = ["sci-form/alpha-mlip"]
+alpha-active-learning = ["sci-form/alpha-active-learning"]
+alpha-nmr-all = ["sci-form/alpha-nmr-all"]
+alpha-v2 = [
+    "alpha-dft-hybrid",
+    "alpha-mp2",
+    "alpha-qmmm",
+    "alpha-epr",
+    "alpha-raman",
+    "alpha-core-spectroscopy",
+    "alpha-rism",
+    "alpha-redox-pka",
+    "alpha-free-energy",
+    "alpha-enhanced-sampling",
+    "alpha-gcmc",
+    "alpha-reaction-network",
+    "alpha-mlip",
+    "alpha-active-learning",
+    "alpha-nmr-all",
+]
 
 [dependencies]
 sci-form = { path = "../..", version = "2.0.0", default-features = false }

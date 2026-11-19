@@ -9,6 +9,8 @@ trends are the useful output.
 > **Status.** Implemented in `feat/wave-a`. This is a qualitative screening
 > model, not a coupled-perturbed magnetic response. See the
 > [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-raman` (included in `alpha-v2`).
 
 ## VCD
 

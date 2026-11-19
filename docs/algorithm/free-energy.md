@@ -8,6 +8,8 @@ differences and, when a temperature is set, kcal/mol values.
 > **Status.** Implemented in `feat/wave-b`. This is the statistical estimator;
 > the soft-core MD workflow and replicate exchange around it are still pending.
 > See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-free-energy` (included in `alpha-v2`).
 
 ## Why an estimator layer
 

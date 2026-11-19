@@ -5,8 +5,10 @@ from the UHF spin density. It is a light-element, single-reference model; the
 g-tensor, anisotropic tensor, relativistic corrections and paramagnetic shifts
 are documented follow-ups.
 
-> **Status.** Implemented in `feat/wave-b` (Rust). Python, WASM and CLI wrappers
-> are pending. See the [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-c` with Rust, Python, WASM and CLI
+> entry points. The anisotropic tensor, g-tensor and ORCA benchmark are pending. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-epr` (included in `alpha-v2`).
 
 ## Fermi-contact coupling
 

@@ -1,8 +1,13 @@
-//! WASM bindings for EPR, MP2 and XPS.
+//! WASM bindings for the v2.x candidates (docs/v2-roadmap.md).
+//!
+//! Each export is gated by its `alpha-*` feature; `alpha-v2` enables them all.
 
+#[allow(unused_imports)] // unused when no alpha v2 feature is enabled
 use crate::helpers::{bad_json, json_error, parse_elements_and_positions, serialize_or_error};
+#[allow(unused_imports)]
 use wasm_bindgen::prelude::*;
 
+#[cfg(feature = "alpha-epr")]
 /// Isotropic EPR hyperfine coupling. `nucleus = 0` evaluates all known nuclei.
 #[wasm_bindgen]
 pub fn compute_epr_hyperfine(
@@ -27,6 +32,7 @@ pub fn compute_epr_hyperfine(
     }
 }
 
+#[cfg(feature = "alpha-mp2")]
 /// Conventional closed-shell MP2 correlation energy.
 #[wasm_bindgen]
 pub fn compute_mp2_energy(elements: &str, coords_flat: &str) -> String {
@@ -40,6 +46,7 @@ pub fn compute_mp2_energy(elements: &str, coords_flat: &str) -> String {
     }
 }
 
+#[cfg(feature = "alpha-core-spectroscopy")]
 /// Koopmans core-level XPS binding energies.
 #[wasm_bindgen]
 pub fn compute_xps_binding_energies(
@@ -78,6 +85,7 @@ pub fn compute_xps_binding_energies(
     }
 }
 
+#[cfg(feature = "alpha-gcmc")]
 /// GCMC adsorption isotherm from JSON framework, guest and config payloads.
 #[wasm_bindgen]
 pub fn compute_gcmc_isotherm(framework_json: &str, guest_json: &str, config_json: &str) -> String {
@@ -99,6 +107,7 @@ pub fn compute_gcmc_isotherm(framework_json: &str, guest_json: &str, config_json
     }
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Rule-based reaction-network discovery from a JSON TemplateNetworkConfig.
 #[wasm_bindgen]
 pub fn discover_reaction_network(config_json: &str) -> String {
@@ -113,6 +122,7 @@ pub fn discover_reaction_network(config_json: &str) -> String {
     }
 }
 
+#[cfg(feature = "alpha-raman")]
 /// Raman activities from the response polarizability and UFF modes.
 #[wasm_bindgen]
 pub fn compute_raman_spectrum(
@@ -132,6 +142,7 @@ pub fn compute_raman_spectrum(
     }
 }
 
+#[cfg(feature = "alpha-raman")]
 /// VCD rotational strengths with the nuclear charge-current screening model.
 #[wasm_bindgen]
 pub fn compute_vcd_spectrum(
@@ -154,6 +165,7 @@ pub fn compute_vcd_spectrum(
     }
 }
 
+#[cfg(feature = "alpha-raman")]
 /// ROA screening intensities from Raman activities and the VCD magnetic term.
 #[wasm_bindgen]
 pub fn compute_roa_spectrum(
@@ -176,6 +188,7 @@ pub fn compute_roa_spectrum(
     }
 }
 
+#[cfg(feature = "alpha-qmmm")]
 /// Mechanical-embedding QM/MM energy from serialized system/config payloads.
 #[wasm_bindgen]
 pub fn compute_qmmm_energy(system_json: &str, config_json: &str) -> String {
@@ -193,6 +206,7 @@ pub fn compute_qmmm_energy(system_json: &str, config_json: &str) -> String {
     }
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Gillespie kinetic Monte Carlo from a JSON KmcConfig.
 #[wasm_bindgen]
 pub fn run_kinetic_monte_carlo(config_json: &str) -> String {
@@ -206,6 +220,7 @@ pub fn run_kinetic_monte_carlo(config_json: &str) -> String {
     }
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Refine a barrier with GSM from flat coordinate arrays.
 #[wasm_bindgen]
 pub fn refine_barrier_with_gsm(
@@ -237,6 +252,7 @@ pub fn refine_barrier_with_gsm(
     }
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Well-tempered metadynamics on a UFF molecule from a JSON config.
 #[wasm_bindgen]
 pub fn run_uff_metadynamics(smiles: &str, coords_flat: &str, config_json: &str) -> String {
@@ -255,6 +271,7 @@ pub fn run_uff_metadynamics(smiles: &str, coords_flat: &str, config_json: &str) 
     }
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// OPES-style enhanced sampling on a UFF molecule from a JSON config.
 #[wasm_bindgen]
 pub fn run_uff_opes(smiles: &str, coords_flat: &str, config_json: &str) -> String {
@@ -272,6 +289,7 @@ pub fn run_uff_opes(smiles: &str, coords_flat: &str, config_json: &str) -> Strin
     }
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a biased 1D CV trace from JSON.
 #[wasm_bindgen]
 pub fn reweight_free_energy(trace_json: &str, config_json: &str) -> String {
@@ -291,6 +309,7 @@ pub fn reweight_free_energy(trace_json: &str, config_json: &str) -> String {
     }
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Block-averaged reweighting of a correlated 1D CV trace from JSON.
 #[wasm_bindgen]
 pub fn reweight_free_energy_correlated(trace_json: &str, config_json: &str) -> String {
@@ -310,6 +329,7 @@ pub fn reweight_free_energy_correlated(trace_json: &str, config_json: &str) -> S
     }
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a 2D OPES trace from JSON.
 #[wasm_bindgen]
 pub fn reweight_free_energy_2d(trace_json: &str, config_json: &str) -> String {
@@ -329,6 +349,7 @@ pub fn reweight_free_energy_2d(trace_json: &str, config_json: &str) -> String {
     }
 }
 
+#[cfg(feature = "alpha-rism")]
 /// Solve 3D-RISM from grid arrays and a JSON config.
 #[wasm_bindgen]
 pub fn solve_3d_rism(beta_u: &str, susceptibility: &str, config_json: &str) -> String {
@@ -350,6 +371,7 @@ pub fn solve_3d_rism(beta_u: &str, susceptibility: &str, config_json: &str) -> S
     }
 }
 
+#[cfg(feature = "alpha-free-energy")]
 /// Estimate an alchemical free-energy difference from JSON samples.
 #[wasm_bindgen]
 pub fn estimate_free_energy(samples_json: &str, estimator: &str, config_json: &str) -> String {
@@ -378,6 +400,7 @@ pub fn estimate_free_energy(samples_json: &str, estimator: &str, config_json: &s
     }
 }
 
+#[cfg(feature = "alpha-active-learning")]
 /// Fit a split-conformal calibration radius.
 #[wasm_bindgen]
 pub fn conformal_calibrate(predictions_json: &str, targets_json: &str, coverage: f64) -> String {
@@ -395,12 +418,14 @@ pub fn conformal_calibrate(predictions_json: &str, targets_json: &str, coverage:
     }
 }
 
+#[cfg(feature = "alpha-nmr-all")]
 /// List every NMR-active isotope registered for an element.
 #[wasm_bindgen]
 pub fn active_nmr_isotopes(element: u8) -> String {
     serialize_or_error(&sci_form::nmr_all::active_isotopes(element))
 }
 
+#[cfg(feature = "alpha-nmr-all")]
 /// Run the all-nuclide NMR driver from a JSON GiaoNmrConfig.
 #[wasm_bindgen]
 pub fn compute_all_nmr(elements: &str, coords_flat: &str, config_json: &str) -> String {
@@ -413,6 +438,28 @@ pub fn compute_all_nmr(elements: &str, coords_flat: &str, config_json: &str) -> 
         Err(error) => return json_error(&bad_json("'config_json'", config_json, &error)),
     };
     match sci_form::nmr_all::compute_all_nmr(&elems, &positions, &config) {
+        Ok(result) => serialize_or_error(&result),
+        Err(error) => json_error(&error),
+    }
+}
+
+/// Restricted closed-shell PBE0 single point. Returns JSON `DftResult`.
+///
+/// Same as `alpha_compute_dft(elements, coords, "pbe0")` with an explicit
+/// iteration cap; open-shell systems return an error.
+#[cfg(feature = "alpha-dft-hybrid")]
+#[wasm_bindgen]
+pub fn compute_pbe0_energy(elements: &str, coords_flat: &str, max_iterations: usize) -> String {
+    let (elems, positions) = match parse_elements_and_positions(elements, coords_flat) {
+        Ok(value) => value,
+        Err(error) => return json_error(&error),
+    };
+    let config = sci_form::dft::ks_fock::DftConfig {
+        method: sci_form::dft::ks_fock::DftMethod::Pbe0,
+        max_iterations,
+        ..Default::default()
+    };
+    match sci_form::dft::ks_fock::solve_ks_dft(&elems, &positions, &config) {
         Ok(result) => serialize_or_error(&result),
         Err(error) => json_error(&error),
     }

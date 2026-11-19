@@ -33,12 +33,19 @@ pub enum DftMethod {
     /// PBE (GGA): Perdew-Burke-Ernzerhof.
     Pbe,
     /// PBE0: PBE exchange-correlation plus 25 % exact exchange.
+    ///
+    /// Gated by `alpha-dft-hybrid` until the PySCF parity gate passes.
+    #[cfg(feature = "alpha-dft-hybrid")]
     Pbe0,
 }
 
 impl DftMethod {
     /// The canonical names of the supported functionals.
+    #[cfg(feature = "alpha-dft-hybrid")]
     pub const SUPPORTED: &'static [&'static str] = &["svwn", "pbe", "pbe0"];
+    /// The canonical names of the supported functionals.
+    #[cfg(not(feature = "alpha-dft-hybrid"))]
+    pub const SUPPORTED: &'static [&'static str] = &["svwn", "pbe"];
 
     /// The accepted spellings, alias → canonical name.
     const ALIASES: &'static [(&'static str, &'static str)] = &[
@@ -46,8 +53,11 @@ impl DftMethod {
         ("lda", "svwn"),
         ("pbe", "pbe"),
         ("gga", "pbe"),
+        #[cfg(feature = "alpha-dft-hybrid")]
         ("pbe0", "pbe0"),
+        #[cfg(feature = "alpha-dft-hybrid")]
         ("pbe-0", "pbe0"),
+        #[cfg(feature = "alpha-dft-hybrid")]
         ("hybrid", "pbe0"),
     ];
 }
@@ -63,6 +73,7 @@ impl std::str::FromStr for DftMethod {
         Ok(match canonical {
             "svwn" => Self::Svwn,
             "pbe" => Self::Pbe,
+            #[cfg(feature = "alpha-dft-hybrid")]
             "pbe0" => Self::Pbe0,
             _ => return Err(crate::method::invalid_method(s, Self::SUPPORTED)),
         })
@@ -74,6 +85,7 @@ impl DftMethod {
     pub fn exact_exchange_fraction(self) -> f64 {
         match self {
             Self::Svwn | Self::Pbe => 0.0,
+            #[cfg(feature = "alpha-dft-hybrid")]
             Self::Pbe0 => 0.25,
         }
     }
@@ -802,6 +814,7 @@ mod tests {
         assert!(result.total_energy.is_finite());
     }
 
+    #[cfg(feature = "alpha-dft-hybrid")]
     #[test]
     fn pbe0_restricted_closed_shell_converges() {
         let elements = [8u8, 1, 1];

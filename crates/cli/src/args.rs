@@ -1201,6 +1201,42 @@ pub enum Commands {
         /// Path to the JSON structure file ("-" reads standard input)
         path: String,
     },
+    /// Restricted closed-shell PBE0 hybrid-DFT single point
+    #[cfg(feature = "alpha-dft-hybrid")]
+    Pbe0 {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON flat array of coordinates in Å
+        coords: String,
+        /// Maximum number of SCF iterations
+        #[arg(long, default_value_t = 100)]
+        max_iterations: usize,
+    },
+    /// GIAO NMR shieldings for every NMR-active nucleus in the molecule
+    #[cfg(feature = "alpha-nmr-all")]
+    NmrAll {
+        /// JSON array of atomic numbers
+        elements: String,
+        /// JSON flat array of coordinates in Å
+        coords: String,
+        #[arg(long, default_value_t = 0)]
+        charge: i32,
+        #[arg(long, default_value_t = 1)]
+        multiplicity: u32,
+        /// Maximum number of SCF iterations
+        #[arg(long, default_value_t = 100)]
+        max_scf_iterations: usize,
+        /// Fall back to a smaller basis when an element has no supported one
+        #[arg(long)]
+        allow_basis_fallback: bool,
+    },
+    /// NMR-active isotopes known for an element
+    #[cfg(feature = "alpha-nmr-all")]
+    NmrIsotopes {
+        /// Atomic number
+        element: u8,
+    },
+    #[cfg(feature = "alpha-epr")]
     /// Isotropic EPR hyperfine coupling from a UHF spin density
     Epr {
         /// JSON array of atomic numbers
@@ -1217,6 +1253,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 2)]
         multiplicity: u32,
     },
+    #[cfg(feature = "alpha-mp2")]
     /// Conventional closed-shell MP2 correlation energy
     Mp2 {
         /// JSON array of atomic numbers
@@ -1224,6 +1261,7 @@ pub enum Commands {
         /// JSON array of flat xyz coords
         coords: String,
     },
+    #[cfg(feature = "alpha-core-spectroscopy")]
     /// Koopmans core-level XPS binding energies
     Xps {
         /// JSON array of atomic numbers
@@ -1240,16 +1278,19 @@ pub enum Commands {
         #[arg(long, default_value_t = 1)]
         multiplicity: u32,
     },
+    #[cfg(feature = "alpha-reaction-network")]
     /// Rule-based reaction-network discovery from a JSON template config
     Network {
         /// JSON TemplateNetworkConfig
         config: String,
     },
+    #[cfg(feature = "alpha-reaction-network")]
     /// Gillespie kinetic Monte Carlo from a JSON KmcConfig
     Kmc {
         /// JSON KmcConfig
         config: String,
     },
+    #[cfg(feature = "alpha-gcmc")]
     /// GCMC adsorption isotherm from JSON framework, guest and config payloads
     Gcmc {
         /// JSON GcmcFramework (cell + host atoms)
@@ -1259,6 +1300,7 @@ pub enum Commands {
         /// JSON GcmcConfig
         config: String,
     },
+    #[cfg(feature = "alpha-raman")]
     /// Raman stick spectrum from the response polarizability
     Raman {
         /// SMILES used for the UFF normal modes and charges
@@ -1271,6 +1313,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 0.01)]
         step: f64,
     },
+    #[cfg(feature = "alpha-raman")]
     /// VCD rotational strengths from the nuclear charge-current model
     Vcd {
         /// SMILES used for the UFF normal modes and charges
@@ -1283,6 +1326,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 1.0)]
         min_frequency: f64,
     },
+    #[cfg(feature = "alpha-raman")]
     /// ROA screening intensities from Raman activities and the VCD term
     Roa {
         /// SMILES used for the UFF normal modes and charges
@@ -1295,6 +1339,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 1.0)]
         min_frequency: f64,
     },
+    #[cfg(feature = "alpha-qmmm")]
     /// Mechanical-embedding QM/MM energy from JSON payloads
     Qmmm {
         /// JSON QmMmSystem
@@ -1302,6 +1347,7 @@ pub enum Commands {
         /// JSON QmMmConfig
         config: String,
     },
+    #[cfg(feature = "alpha-free-energy")]
     /// Alchemical free-energy estimate from JSON samples
     FreeEnergy {
         /// JSON array of AlchemicalSample
@@ -1313,6 +1359,7 @@ pub enum Commands {
         #[arg(long)]
         config: Option<String>,
     },
+    #[cfg(feature = "alpha-active-learning")]
     /// Split-conformal calibration radius
     Conformal {
         /// JSON array of predictions
@@ -1323,6 +1370,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 0.9)]
         coverage: f64,
     },
+    #[cfg(feature = "alpha-rism")]
     /// Solve 3D-RISM from JSON grid arrays and a JSON config
     Rism {
         /// JSON array of beta*u on the grid
@@ -1332,6 +1380,7 @@ pub enum Commands {
         /// JSON RismConfig
         config: String,
     },
+    #[cfg(feature = "alpha-redox-pka")]
     /// Relative pKa from an explicit acid/conjugate-base pair
     Pka {
         /// Acid SMILES (HA)
@@ -1354,6 +1403,7 @@ pub enum Commands {
         #[arg(long, default_value_t = 1)]
         n_conformers: usize,
     },
+    #[cfg(feature = "alpha-redox-pka")]
     /// Redox potential from an explicit oxidised/reduced pair
     Redox {
         /// Oxidised SMILES

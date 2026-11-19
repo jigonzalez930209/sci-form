@@ -9,9 +9,11 @@ replica exchange**, all with a Langevin thermostat.
 
 > **Status.** Implemented in `feat/wave-a`: WTMetaD, importance-weighted OPES,
 > a self-consistent 1D flow, 2D multi-CV OPES/reweighting, block reweighting
-> and temperature replica exchange are in Rust. The exact OPES differential
-> flow and the Python/WASM/CLI wrappers are still pending. See the
+> and temperature replica exchange are in Rust. Python and WASM wrappers
+> exist; the exact OPES differential flow and a CLI command are still pending. See the
 > [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-enhanced-sampling` (included in `alpha-v2`).
 
 ## Why metadynamics
 

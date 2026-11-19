@@ -8,6 +8,8 @@ charges, and the MM-MM point-charge term is added.
 > **Status.** Implemented in `feat/wave-b`. This is **mechanical embedding**,
 > not electrostatic embedding. Link atoms, bonded MM terms and polarizable MM
 > are follow-ups. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-qmmm` (included in `alpha-v2`).
 
 ## Why mechanical embedding first
 

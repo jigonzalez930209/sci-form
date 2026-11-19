@@ -54,6 +54,7 @@ pub(crate) fn not_converged(message: impl Into<String>) -> PyErr {
 /// Build the canonical "invalid value" error message.
 ///
 /// `<what> '<value>'. Supported: 'a', 'b', 'c'.`
+#[allow(dead_code)] // only feature-gated bindings call it
 pub(crate) fn invalid_value(what: &str, value: &str, supported: &[&str]) -> String {
     if supported.is_empty() {
         return format!("Invalid {what} '{value}'.");

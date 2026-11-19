@@ -18,6 +18,7 @@ mod buffer;
 mod compare;
 mod dynamics;
 mod eht;
+#[cfg(feature = "alpha-redox-pka")]
 mod electrochemistry;
 mod electronic;
 mod embed;
@@ -127,10 +128,6 @@ pub(crate) const __ALL__: &[&str] = &[
     "compute_mmff94_energy",
     "compute_mmff94_energy_breakdown",
     "compute_empirical_pka",
-    "compute_pka",
-    "compute_redox_potential",
-    "PkaResult",
-    "RedoxResult",
     "EmpiricalPkaResult",
     "EmpiricalPkaSite",
     "UffHeuristicEnergy",
@@ -351,6 +348,11 @@ pub(crate) const __ALL_EXPERIMENTAL__: &[&str] = &[
     "ChartSeries",
     "TrajectoryFrame",
     // ── v2.x feature set (JSON-returning entry points) ───────────────────
+    "compute_pka",
+    "compute_redox_potential",
+    "PkaResult",
+    "RedoxResult",
+    "compute_pbe0_energy",
     "compute_epr_hyperfine",
     "compute_mp2_energy",
     "compute_xps_binding_energies",
@@ -396,6 +398,7 @@ fn sci_form(m: &Bound<'_, PyModule>) -> PyResult<()> {
     properties::register(m)?;
     population::register(m)?;
     reactivity::register(m)?;
+    #[cfg(feature = "alpha-redox-pka")]
     electrochemistry::register(m)?;
     v2::register(m)?;
     analysis::register(m)?;

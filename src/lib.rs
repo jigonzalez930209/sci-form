@@ -122,6 +122,18 @@
 //! | `beta-kpm`, `beta-randnla` | legacy aliases only: KPM and RandNLA are core |
 //! | `alpha-dft` | the `dft` module |
 //! | `alpha-mlff` | the `mlff` re-export module |
+//! | `alpha-v2` | every v2.x candidate below (`docs/v2-roadmap.md`) |
+//! | `alpha-dft-hybrid` | the PBE0 variant of `dft::ks_fock::DftMethod` |
+//! | `alpha-mp2`, `alpha-qmmm`, `alpha-epr`, `alpha-rism`, `alpha-gcmc` | `mp2`, `qmmm`, `epr`, `rism`, `gcmc` |
+//! | `alpha-raman` | `raman`, `vcd_roa` |
+//! | `alpha-core-spectroscopy` | `xps` |
+//! | `alpha-redox-pka` | `electrochemistry` |
+//! | `alpha-free-energy` | `free_energy` |
+//! | `alpha-enhanced-sampling` | `enhanced_sampling`, `enhanced_sampling_multi` |
+//! | `alpha-reaction-network` | `networks`, `kmc` |
+//! | `alpha-mlip`, `mlip-onnx` | `mlip`; `mlip-onnx` adds the `mlip_onnx` adapter |
+//! | `alpha-active-learning` | `active_learning` |
+//! | `alpha-nmr-all` | `nmr_all` |
 //!
 //! The legacy `experimental-*` flags (e.g. `experimental-riemannian`) are kept as no-op
 //! aliases of the corresponding `beta-*` / `alpha-*` flags so existing build scripts keep
@@ -155,6 +167,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 
+#[cfg(feature = "alpha-active-learning")]
 pub mod active_learning;
 pub mod alignment;
 pub mod ani;
@@ -198,9 +211,13 @@ pub use error::SciFormError;
 pub mod dynamics;
 pub mod edl;
 pub mod eht;
+#[cfg(feature = "alpha-redox-pka")]
 pub mod electrochemistry;
+#[cfg(feature = "alpha-enhanced-sampling")]
 pub mod enhanced_sampling;
+#[cfg(feature = "alpha-enhanced-sampling")]
 pub mod enhanced_sampling_multi;
+#[cfg(feature = "alpha-epr")]
 pub mod epr;
 pub mod esp;
 /// ETKDG internals: dihedral angles, torsion energy terms and their gradients.
@@ -212,7 +229,9 @@ pub(crate) mod fd_gradient;
 #[doc(hidden)]
 pub mod fixture_io;
 pub mod forcefield;
+#[cfg(feature = "alpha-free-energy")]
 pub mod free_energy;
+#[cfg(feature = "alpha-gcmc")]
 pub mod gcmc;
 pub mod gpu;
 pub mod graph;
@@ -221,6 +240,7 @@ pub mod hf;
 pub mod imd;
 pub mod ir;
 pub mod kinetics;
+#[cfg(feature = "alpha-reaction-network")]
 pub mod kmc;
 pub mod kmesh;
 pub mod kpm;
@@ -228,12 +248,16 @@ pub mod materials;
 pub mod mesh;
 pub mod method;
 pub mod ml;
+#[cfg(feature = "alpha-mlip")]
 pub mod mlip;
 #[cfg(feature = "mlip-onnx")]
 pub mod mlip_onnx;
+#[cfg(feature = "alpha-mp2")]
 pub mod mp2;
+#[cfg(feature = "alpha-reaction-network")]
 pub mod networks;
 pub mod nmr;
+#[cfg(feature = "alpha-nmr-all")]
 pub mod nmr_all;
 pub mod optimization;
 pub mod periodic;
@@ -241,13 +265,16 @@ pub mod periodic_linear;
 pub mod pm3;
 pub mod population;
 pub mod potentials;
+#[cfg(feature = "alpha-qmmm")]
 pub mod qmmm;
+#[cfg(feature = "alpha-raman")]
 pub mod raman;
 pub mod rand_nla;
 pub mod reactivity;
 pub mod render_bridge;
 pub mod riemannian;
 pub mod rings;
+#[cfg(feature = "alpha-rism")]
 pub mod rism;
 pub mod scf;
 pub mod sdr;
@@ -272,7 +299,9 @@ pub mod surface;
 /// (linear, trigonal, tetrahedral, square-planar, trigonal-bipyramidal, octahedral).
 pub mod topology;
 pub mod transport;
+#[cfg(feature = "alpha-raman")]
 pub mod vcd_roa;
+#[cfg(feature = "alpha-core-spectroscopy")]
 pub mod xps;
 pub mod xtb;
 
@@ -2204,6 +2233,7 @@ pub fn compute_xtb_gradient(
     xtb::compute_xtb_gradient(elements, positions).map_err(SciFormError::from)
 }
 
+#[cfg(feature = "alpha-qmmm")]
 /// Compute a mechanical-embedding QM/MM energy.
 ///
 /// The QM region is evaluated with UHF/STO-3G or GFN2-xTB, its Mulliken
@@ -2317,6 +2347,7 @@ pub fn compute_ir_spectrum(
     ir::compute_ir_spectrum(analysis, gamma, wn_min, wn_max, n_points)
 }
 
+#[cfg(feature = "alpha-raman")]
 /// Compute a Raman stick spectrum from the UFF normal modes.
 ///
 /// The polarizability is the uncoupled HF/STO-3G sum-over-states tensor;
@@ -2337,6 +2368,7 @@ pub fn compute_raman_spectrum(
     raman::compute_raman_spectrum(smiles, elements, positions_angstrom, config)
 }
 
+#[cfg(feature = "alpha-epr")]
 /// Compute isotropic EPR hyperfine coupling from the UHF spin density.
 ///
 /// The result contains one entry per selected nucleus. Spin density is in
@@ -2355,6 +2387,7 @@ pub fn compute_epr_hyperfine(
     epr::compute_epr_hyperfine(elements, positions_angstrom, config)
 }
 
+#[cfg(feature = "alpha-core-spectroscopy")]
 /// Compute Koopmans core-level XPS binding energies.
 ///
 /// Binding energies are in eV and use `E_b = -ε` from the UHF/STO-3G core-like
@@ -2372,6 +2405,7 @@ pub fn compute_xps_binding_energies(
     xps::compute_xps_binding_energies(elements, positions_angstrom, config)
 }
 
+#[cfg(feature = "alpha-raman")]
 /// Compute VCD rotational strengths with a nuclear charge-current screening model.
 ///
 /// Frequencies are cm⁻¹; rotational strengths are relative screening units.
@@ -2390,6 +2424,7 @@ pub fn compute_vcd_spectrum(
     vcd_roa::compute_vcd_spectrum(smiles, elements, positions_angstrom, config)
 }
 
+#[cfg(feature = "alpha-raman")]
 /// Compute ROA screening intensities from Raman activities and the VCD magnetic term.
 ///
 /// Relative signs and trends are meaningful; absolute cross-sections are not.
@@ -2931,6 +2966,7 @@ pub fn compute_md_trajectory_nvt(
     .map_err(SciFormError::from)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Run well-tempered metadynamics on a UFF molecule.
 ///
 /// The collective variable, Gaussian height and width, bias factor,
@@ -2950,6 +2986,7 @@ pub fn run_uff_metadynamics(
     enhanced_sampling::run_uff_metadynamics(smiles, coords, config)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Run OPES-style enhanced sampling on a UFF molecule.
 ///
 /// The bias is a Gaussian kernel-density estimate of the visited CV values and
@@ -2966,6 +3003,7 @@ pub fn run_uff_opes(
     enhanced_sampling::run_uff_opes(smiles, coords, config)
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Discover a reaction network from explicit rules.
 ///
 /// The engine canonicalises species, applies unimolecular and bimolecular
@@ -2982,6 +3020,7 @@ pub fn discover_reaction_network(
     networks::discover_reaction_network(config)
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Discover a reaction network from serialisable template rules.
 ///
 /// This is the JSON-friendly entry point used by the CLI and WASM bindings.
@@ -2995,6 +3034,7 @@ pub fn discover_template_network(
     config.discover()
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Refine a reaction barrier with the existing GSM backend.
 ///
 /// The reactant and product geometries must have the same atom count. The
@@ -3014,6 +3054,7 @@ pub fn refine_barrier_with_gsm(
     networks::refine_barrier_with_gsm(smiles, reactant_coords, product_coords, method, config)
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Run a Gillespie kinetic Monte Carlo simulation on an elementary-step network.
 ///
 /// Rates come from the existing HTST evaluator. Counts are integers, time is in
@@ -3303,6 +3344,7 @@ pub fn compute_empirical_pka(smiles: &str) -> Result<reactivity::EmpiricalPkaRes
     Ok(reactivity::estimate_empirical_pka(&mol, &charges.charges))
 }
 
+#[cfg(feature = "alpha-redox-pka")]
 /// Compute a solution pKa from an explicit acid/conjugate-base pair.
 ///
 /// The workflow embeds both states, evaluates their conformers with GFN2-xTB
@@ -3324,6 +3366,7 @@ pub fn compute_pka(
     electrochemistry::compute_pka(acid_smiles, base_smiles, reference, config)
 }
 
+#[cfg(feature = "alpha-redox-pka")]
 /// Compute a redox potential from an explicit oxidised/reduced pair.
 ///
 /// The reaction is `Ox + n e- -> Red`; the returned potential is in volt
@@ -3381,6 +3424,7 @@ pub fn assemble_framework(
     materials::assemble_framework(node, linker, topology, cell)
 }
 
+#[cfg(feature = "alpha-gcmc")]
 /// Compute a GCMC adsorption isotherm on a rigid periodic framework.
 ///
 /// Pressures are in bar, temperature in K and loading in molecules per unit
@@ -3502,6 +3546,7 @@ pub fn compute_hf3c(
     hf::solve_hf3c(elements, positions, config).map_err(SciFormError::from)
 }
 
+#[cfg(feature = "alpha-mlip")]
 /// Evaluate a user-supplied MLIP model through the documented contract.
 ///
 /// The model manifest declares element coverage, cutoff, licence and stress
@@ -3520,6 +3565,7 @@ pub fn evaluate_mlip(
     model.evaluate(elements, positions_angstrom, cell)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Run two-dimensional OPES with self-consistent kernel weights.
 ///
 /// The two collective variables, grids and kernel widths are configured in
@@ -3538,6 +3584,7 @@ pub fn run_multi_opes<P: enhanced_sampling::Potential>(
     enhanced_sampling_multi::run_multi_opes(potential, initial_coords, masses_amu, config)
 }
 
+#[cfg(feature = "alpha-mp2")]
 /// Compute the conventional closed-shell MP2 correlation energy.
 ///
 /// The implementation uses RHF/STO-3G orbitals and a four-index AO→MO
@@ -3692,6 +3739,7 @@ pub fn compute_gb_solvation(
     .map_err(SciFormError::from)
 }
 
+#[cfg(feature = "alpha-rism")]
 /// Solve the 3D-RISM Ornstein–Zernike equations on a periodic grid.
 ///
 /// `solute_beta_potential` and `solvent_susceptibility_k` are row-major

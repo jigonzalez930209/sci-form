@@ -6,7 +6,7 @@
 > the gate that must pass before development starts. Nothing here is a promise
 > of a release date or a stable API.
 >
-> Last updated: 2026-11-10. Baseline: `sci-form 2.0.0`.
+> Last updated: 2026-11-19. Baseline: `sci-form 2.0.0`.
 
 ## 1. Purpose
 
@@ -132,38 +132,33 @@ therefore about **105–161 person-weeks**; it cannot ship as one release.
 
 ### 5.1 Development status
 
-The Wave A branch is `feat/wave-a`. A prototype is not a promotion: the
-validation set, the remaining surface bindings and the full documentation
-package still have to land before a feature moves out of the prototype column.
+All three waves are integrated in `feat/wave-c` (`feat/wave-a` and
+`feat/wave-b` are its ancestors and need no separate merge). A prototype is not
+a promotion: every candidate is compiled only with its `alpha-*` Cargo feature
+(`alpha-v2` enables the whole set) until the promotion gate in
+section 8.2 passes. Rust, Python, WASM and CLI forward the
+same feature names; CI and release builds enable `alpha-v2`.
 
-| ID | Feature | Status in `feat/wave-a` | Remaining before promotion |
-|---|---|---|---|
-| V2-05 | Raman/VCD/ROA | Raman + VCD/ROA + CLI/WASM/Python | Coupled magnetic response and benchmark |
-| V2-08 | Redox and pKa | Relative pKa/redox + Python/WASM/CLI bindings | Experimental benchmark, thermal corrections |
-| V2-10 | Enhanced sampling | WTMetaD + 1D/2D OPES + reweighting + replica exchange + WASM/Python | Exact OPES flow, >2 CV |
-| V2-11 | GCMC adsorption | LJ + charges/Ewald + multi-site guests + CLI/WASM/Python | Automatic typing and flexible frameworks |
-| V2-12 | Reaction networks/kMC | Rules + SMIRKS + GSM + kMC + CLI/WASM/Python | Atom mapping, MBH, surface kMC |
+| ID | Feature | Cargo feature | Implemented in `feat/wave-c` | Remaining before promotion |
+|---|---|---|---|---|
+| V2-01 | Hybrid DFT | `alpha-dft-hybrid` | Restricted PBE0 + CLI/WASM/Python | Unrestricted/range-separated, gradient and PySCF parity |
+| V2-02 | RI-MP2 | `alpha-mp2` | Conventional MP2 + CLI/WASM/Python | RI, SCS/SOS, local correlation and parity |
+| V2-03 | QM/MM | `alpha-qmmm` | Mechanical embedding + CLI/WASM/Python | Electrostatic embedding, link atoms and gradients |
+| V2-04 | EPR | `alpha-epr` | Isotropic hyperfine + CLI/WASM/Python | Anisotropic tensor, g-tensor and ORCA benchmark |
+| V2-05 | Raman/VCD/ROA | `alpha-raman` | Raman + VCD/ROA + CLI/WASM/Python | Coupled magnetic response and benchmark |
+| V2-06 | XPS/XANES | `alpha-core-spectroscopy` | Koopmans XPS + CLI/WASM/Python | ΔSCF, XANES and benchmarks |
+| V2-07 | 3D-RISM | `alpha-rism` | OZ/KH core + solvent models + interaction energy + CLI/WASM/Python | Real solvent, excess chemical potential, benchmark |
+| V2-08 | Redox and pKa | `alpha-redox-pka` | Relative pKa/redox + CLI/WASM/Python | Experimental benchmark, thermal corrections |
+| V2-09 | FEP/BAR/MBAR | `alpha-free-energy` | FEP/BAR/MBAR + CLI/WASM/Python | Soft-core MD, λ scheduler and experimental benchmark |
+| V2-10 | Enhanced sampling | `alpha-enhanced-sampling` | WTMetaD + 1D/2D OPES + reweighting + replica exchange + WASM/Python | Exact OPES flow, >2 CV, CLI command |
+| V2-11 | GCMC adsorption | `alpha-gcmc` | LJ + charges/Ewald + multi-site guests + CLI/WASM/Python | Automatic typing and flexible frameworks |
+| V2-12 | Reaction networks/kMC | `alpha-reaction-network` | Rules + SMIRKS + GSM + kMC + CLI/WASM/Python | Atom mapping, MBH, surface kMC |
+| V2-13 | Universal MLIP | `alpha-mlip` (+ `mlip-onnx`) | Contract, registry, callback, ONNX adapter and fixture test | Real checkpoint and benchmark |
+| V2-14 | Active learning | `alpha-active-learning` | Conformal calibration + acquisition + CLI/WASM/Python calibration | Chemical coverage benchmark and model-bound bindings |
+| V2-15 | All-nuclide NMR | `alpha-nmr-all` | Registry, driver + CLI/WASM/Python | SCF reuse, basis/ECP coverage, benchmarks |
 
-Wave B branch: `feat/wave-b`.
-
-| ID | Feature | Status in `feat/wave-b` | Remaining before promotion |
-|---|---|---|---|
-| V2-03 | QM/MM | Mechanical embedding + CLI/WASM/Python | Electrostatic embedding, link atoms and gradients |
-| V2-04 | EPR | Isotropic hyperfine + CLI/WASM/Python | Anisotropic tensor, g-tensor and ORCA benchmark |
-| V2-09 | FEP/BAR/MBAR | FEP/BAR/MBAR + CLI/WASM/Python | Soft-core MD, λ scheduler and experimental benchmark |
-| V2-13 | Universal MLIP | Contract, registry, callback, ONNX adapter and ONNX fixture test | Real checkpoint and benchmark |
-| V2-14 | Active learning | Conformal calibration + acquisition + CLI/WASM/Python calibration | Chemical coverage benchmark and model-bound bindings |
-
-Wave C branch: `feat/wave-c`.
-
-| ID | Feature | Status in `feat/wave-c` | Remaining before promotion |
-|---|---|---|---|
-| V2-01 | Hybrid DFT | Restricted PBE0 + Python (gated) | Unrestricted/range-separated, gradient and parity |
-| V2-02 | RI-MP2 | Conventional MP2 + CLI/WASM/Python | RI, SCS/SOS, local correlation and parity |
-| V2-06 | XPS/XANES | Koopmans XPS + CLI/WASM/Python | ΔSCF, XANES and benchmarks |
-| V2-07 | 3D-RISM | OZ/KH core + solvent models + interaction energy + CLI/WASM/Python | Real solvent, excess chemical potential, benchmark |
-| V2-15 | All-nuclide NMR | Registry, driver and WASM/Python | SCF reuse, basis/ECP coverage, benchmarks |
-
+No candidate has a row in `reports/validation/summary.json` yet; adding one is
+part of each promotion gate.
 
 ### Wave A — response, solvation, sampling (v2.1 band)
 
@@ -215,7 +210,7 @@ credible, how it plugs into 2.0, and what evidence would promote it.
 | Field | Value |
 |---|---|
 | Track | Electronic structure |
-| Status | Restricted PBE0 prototype implemented in `feat/wave-c`; range separation/unrestricted pending |
+| Status | Restricted PBE0 prototype implemented in `feat/wave-c` (exchange-corrected: PBE exchange scaled by 0.75); range separation/unrestricted pending |
 | Implementation | [algorithm/hybrid-dft.md](/algorithm/hybrid-dft) |
 | Target | v2.3 |
 | Effort | 10–16 person-weeks |

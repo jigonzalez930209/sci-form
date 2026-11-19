@@ -56,6 +56,38 @@ alpha-periodic-linear = ["sci-form-core/alpha-periodic-linear"]
 alpha-kinetics = ["sci-form-core/alpha-kinetics"]
 alpha-render-bridge = ["sci-form-core/alpha-render-bridge"]
 alpha-imd = ["sci-form-core/alpha-imd", "alpha-dynamics-live"]
+alpha-dft-hybrid = ["sci-form-core/alpha-dft-hybrid", "alpha-dft"]
+alpha-mp2 = ["sci-form-core/alpha-mp2"]
+alpha-qmmm = ["sci-form-core/alpha-qmmm"]
+alpha-epr = ["sci-form-core/alpha-epr"]
+alpha-raman = ["sci-form-core/alpha-raman"]
+alpha-core-spectroscopy = ["sci-form-core/alpha-core-spectroscopy"]
+alpha-rism = ["sci-form-core/alpha-rism"]
+alpha-redox-pka = ["sci-form-core/alpha-redox-pka"]
+alpha-free-energy = ["sci-form-core/alpha-free-energy"]
+alpha-enhanced-sampling = ["sci-form-core/alpha-enhanced-sampling"]
+alpha-gcmc = ["sci-form-core/alpha-gcmc"]
+alpha-reaction-network = ["sci-form-core/alpha-reaction-network"]
+alpha-mlip = ["sci-form-core/alpha-mlip"]
+alpha-active-learning = ["sci-form-core/alpha-active-learning"]
+alpha-nmr-all = ["sci-form-core/alpha-nmr-all"]
+alpha-v2 = [
+    "alpha-dft-hybrid",
+    "alpha-mp2",
+    "alpha-qmmm",
+    "alpha-epr",
+    "alpha-raman",
+    "alpha-core-spectroscopy",
+    "alpha-rism",
+    "alpha-redox-pka",
+    "alpha-free-energy",
+    "alpha-enhanced-sampling",
+    "alpha-gcmc",
+    "alpha-reaction-network",
+    "alpha-mlip",
+    "alpha-active-learning",
+    "alpha-nmr-all",
+]
 beta-kpm = ["sci-form-core/beta-kpm"]
 beta-mbh = ["sci-form-core/beta-mbh"]
 beta-randnla = ["sci-form-core/beta-randnla"]

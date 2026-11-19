@@ -6,9 +6,11 @@ model-agnostic: any model that exposes a prediction and an uncertainty estimate
 can use it. The existing Random Forest already exposes both through
 `predict_with_variance`.
 
-> **Status.** Implemented in `feat/wave-b`. The Rust API and validation are in
-> place; Python, WASM and CLI wrappers are still pending. See the
+> **Status.** Implemented in `feat/wave-b`. Rust, Python, WASM and CLI
+> (`conformal`) expose the calibration; model-bound bindings are pending. See the
 > [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-active-learning` (included in `alpha-v2`).
 
 ## Why conformal calibration
 

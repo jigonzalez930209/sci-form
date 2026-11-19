@@ -966,6 +966,7 @@ fn read_input(path: &str) -> String {
     std::fs::read_to_string(path).unwrap_or_else(|e| fail(format!("cannot read {path}: {e}")))
 }
 
+#[cfg(feature = "alpha-redox-pka")]
 fn electrochemistry_config(
     method: &str,
     n_conformers: usize,
@@ -985,6 +986,7 @@ fn electrochemistry_config(
     }
 }
 
+#[cfg(feature = "alpha-redox-pka")]
 pub fn cmd_pka(
     acid: &str,
     base: &str,
@@ -1017,6 +1019,7 @@ pub fn cmd_pka(
     }
 }
 
+#[cfg(feature = "alpha-redox-pka")]
 pub fn cmd_redox(
     oxidized: &str,
     reduced: &str,
@@ -1061,6 +1064,7 @@ pub fn cmd_redox(
     }
 }
 
+#[cfg(feature = "alpha-epr")]
 pub fn cmd_epr(elements: &str, coords: &str, nucleus: Option<u8>, charge: i32, multiplicity: u32) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let config = sci_form::epr::EprConfig {
@@ -1074,6 +1078,7 @@ pub fn cmd_epr(elements: &str, coords: &str, nucleus: Option<u8>, charge: i32, m
     }
 }
 
+#[cfg(feature = "alpha-mp2")]
 pub fn cmd_mp2(elements: &str, coords: &str) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     match sci_form::compute_mp2_energy(&elems, &positions) {
@@ -1082,6 +1087,7 @@ pub fn cmd_mp2(elements: &str, coords: &str) {
     }
 }
 
+#[cfg(feature = "alpha-core-spectroscopy")]
 pub fn cmd_xps(
     elements: &str,
     coords: &str,
@@ -1106,6 +1112,7 @@ pub fn cmd_xps(
     }
 }
 
+#[cfg(feature = "alpha-gcmc")]
 pub fn cmd_gcmc(framework_json: &str, guest_json: &str, config_json: &str) {
     let framework: sci_form::gcmc::GcmcFramework = serde_json::from_str(framework_json)
         .unwrap_or_else(|error| fail(format!("Invalid framework JSON: {error}")));
@@ -1119,6 +1126,7 @@ pub fn cmd_gcmc(framework_json: &str, guest_json: &str, config_json: &str) {
     }
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 pub fn cmd_network(config_json: &str) {
     let config: sci_form::networks::TemplateNetworkConfig = serde_json::from_str(config_json)
         .unwrap_or_else(|error| fail(format!("Invalid network config JSON: {error}")));
@@ -1128,6 +1136,7 @@ pub fn cmd_network(config_json: &str) {
     }
 }
 
+#[cfg(feature = "alpha-raman")]
 pub fn cmd_raman(smiles: &str, elements: &str, coords: &str, step: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let config = sci_form::raman::RamanConfig {
@@ -1139,6 +1148,7 @@ pub fn cmd_raman(smiles: &str, elements: &str, coords: &str, step: f64) {
     }
 }
 
+#[cfg(feature = "alpha-raman")]
 pub fn cmd_vcd(smiles: &str, elements: &str, coords: &str, min_frequency: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let config = sci_form::vcd_roa::VcdRoaConfig {
@@ -1151,6 +1161,7 @@ pub fn cmd_vcd(smiles: &str, elements: &str, coords: &str, min_frequency: f64) {
     }
 }
 
+#[cfg(feature = "alpha-raman")]
 pub fn cmd_roa(smiles: &str, elements: &str, coords: &str, min_frequency: f64) {
     let (elems, _, positions) = parse_elems_coords(elements, coords);
     let config = sci_form::vcd_roa::VcdRoaConfig {
@@ -1163,6 +1174,7 @@ pub fn cmd_roa(smiles: &str, elements: &str, coords: &str, min_frequency: f64) {
     }
 }
 
+#[cfg(feature = "alpha-qmmm")]
 pub fn cmd_qmmm(system_json: &str, config_json: &str) {
     let system: sci_form::qmmm::QmMmSystem = serde_json::from_str(system_json)
         .unwrap_or_else(|error| fail(format!("Invalid QM/MM system JSON: {error}")));
@@ -1174,6 +1186,7 @@ pub fn cmd_qmmm(system_json: &str, config_json: &str) {
     }
 }
 
+#[cfg(feature = "alpha-free-energy")]
 pub fn cmd_free_energy(samples_json: &str, estimator: &str, config_json: Option<&str>) {
     use sci_form::free_energy::{FreeEnergyConfig, FreeEnergyEstimator};
     let samples: Vec<sci_form::free_energy::AlchemicalSample> = serde_json::from_str(samples_json)
@@ -1197,6 +1210,7 @@ pub fn cmd_free_energy(samples_json: &str, estimator: &str, config_json: Option<
     }
 }
 
+#[cfg(feature = "alpha-active-learning")]
 pub fn cmd_conformal(predictions_json: &str, targets_json: &str, coverage: f64) {
     let predictions: Vec<f64> = serde_json::from_str(predictions_json)
         .unwrap_or_else(|error| fail(format!("Invalid predictions JSON: {error}")));
@@ -1208,6 +1222,7 @@ pub fn cmd_conformal(predictions_json: &str, targets_json: &str, coverage: f64) 
     }
 }
 
+#[cfg(feature = "alpha-rism")]
 pub fn cmd_rism(beta_u_json: &str, susceptibility_json: &str, config_json: &str) {
     let beta_u: Vec<f64> = serde_json::from_str(beta_u_json)
         .unwrap_or_else(|error| fail(format!("Invalid beta-u JSON: {error}")));
@@ -1221,6 +1236,7 @@ pub fn cmd_rism(beta_u_json: &str, susceptibility_json: &str, config_json: &str)
     }
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 pub fn cmd_kmc(config_json: &str) {
     let config: sci_form::kmc::KmcConfig = serde_json::from_str(config_json)
         .unwrap_or_else(|error| fail(format!("Invalid kMC config JSON: {error}")));
@@ -1228,4 +1244,47 @@ pub fn cmd_kmc(config_json: &str) {
         Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
         Err(error) => fail(format!("kMC error: {error}")),
     }
+}
+
+#[cfg(feature = "alpha-dft-hybrid")]
+pub fn cmd_pbe0(elements: &str, coords: &str, max_iterations: usize) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let config = sci_form::dft::ks_fock::DftConfig {
+        method: sci_form::dft::ks_fock::DftMethod::Pbe0,
+        max_iterations,
+        ..Default::default()
+    };
+    match sci_form::dft::ks_fock::solve_ks_dft(&elems, &positions, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("PBE0 error: {error}")),
+    }
+}
+
+#[cfg(feature = "alpha-nmr-all")]
+pub fn cmd_nmr_all(
+    elements: &str,
+    coords: &str,
+    charge: i32,
+    multiplicity: u32,
+    max_scf_iterations: usize,
+    allow_basis_fallback: bool,
+) {
+    let (elems, _, positions) = parse_elems_coords(elements, coords);
+    let config = sci_form::GiaoNmrConfig {
+        charge,
+        multiplicity,
+        max_scf_iterations,
+        allow_basis_fallback,
+        ..Default::default()
+    };
+    match sci_form::nmr_all::compute_all_nmr(&elems, &positions, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("NMR error: {error}")),
+    }
+}
+
+#[cfg(feature = "alpha-nmr-all")]
+pub fn cmd_nmr_isotopes(element: u8) {
+    let isotopes = sci_form::nmr_all::active_isotopes(element);
+    println!("{}", serde_json::to_string_pretty(&isotopes).unwrap());
 }

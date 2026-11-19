@@ -5,9 +5,11 @@ elementary-step network. The existing `kinetics` module already evaluates HTST
 rates and integrates a deterministic microkinetic ODE; the new module propagates
 integer species counts with the Gillespie direct method.
 
-> **Status.** Implemented in `feat/wave-a` for an **explicit** network. Automatic
-> network discovery from SMIRKS/graph rules is still pending; see the
-> [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-c` for an **explicit** network. Rule-based
+> discovery that feeds it is documented in [reaction networks](./reaction-networks);
+> surface kMC is pending. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-reaction-network` (included in `alpha-v2`).
 
 ## Why kMC
 

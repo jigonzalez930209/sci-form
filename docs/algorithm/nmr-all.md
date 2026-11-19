@@ -10,6 +10,8 @@ orchestration layer that answers two practical questions:
 > **Status.** Registry and multi-nucleus driver implemented in `feat/wave-c`.
 > Quantitative all-element GIAO still depends on basis/ECP coverage; the driver
 > reports unsupported elements explicitly. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-nmr-all` (included in `alpha-v2`).
 
 ## Registry
 
@@ -62,7 +64,7 @@ A failure is explicit. An unsupported element is never reported as a zero shift.
 
 | Surface | Entry point |
 |---|---|
-| CLI | not exposed |
+| CLI | `sci-form nmr-all <elements> <coords> [--charge] [--multiplicity] [--max-scf-iterations] [--allow-basis-fallback]`, `sci-form nmr-isotopes <element>` |
 | WASM | `active_nmr_isotopes(element)`, `compute_all_nmr(elements, coords, config_json)` |
 | Python | `active_nmr_isotopes(element)`, `compute_all_nmr(elements, coords, config_json)` |
 

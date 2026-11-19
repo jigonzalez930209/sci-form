@@ -7,19 +7,24 @@
 
 use pyo3::prelude::*;
 
+#[allow(unused_imports)]
 use crate::errors::{engine_error, value_error};
+#[allow(unused_imports)]
 use crate::system::coords_to_positions;
 
+#[allow(dead_code)] // unused when no alpha v2 feature is enabled
 fn to_json<T: serde::Serialize>(value: &T) -> PyResult<String> {
     serde_json::to_string(value)
         .map_err(|error| value_error(format!("could not serialize the result: {error}")))
 }
 
+#[allow(dead_code)]
 fn parse_json<T: serde::de::DeserializeOwned>(input: &str, what: &str) -> PyResult<T> {
     serde_json::from_str(input)
         .map_err(|error| value_error(format!("invalid {what} JSON: {error}")))
 }
 
+#[cfg(feature = "alpha-epr")]
 /// Isotropic EPR hyperfine coupling from the UHF spin density.
 ///
 /// `elements` and `coords` describe the molecule. `nucleus=None` evaluates
@@ -46,6 +51,7 @@ fn compute_epr_hyperfine(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-mp2")]
 /// Conventional closed-shell MP2 correlation energy on RHF/STO-3G orbitals.
 ///
 /// Returns the JSON encoding of `sci_form_core::mp2::Mp2Result`. Energies are
@@ -58,6 +64,7 @@ fn compute_mp2_energy(elements: Vec<u8>, coords: Vec<f64>) -> PyResult<String> {
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-core-spectroscopy")]
 /// Koopmans core-level XPS binding energies.
 ///
 /// `elements_filter` restricts the output to those atomic numbers. Returns the
@@ -86,6 +93,7 @@ fn compute_xps_binding_energies(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-raman")]
 /// Raman activities from the response polarizability and UFF normal modes.
 ///
 /// Returns the JSON encoding of `sci_form_core::raman::RamanSpectrum`.
@@ -110,6 +118,7 @@ fn compute_raman_spectrum(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-raman")]
 /// VCD rotational strengths with the nuclear charge-current screening model.
 ///
 /// Returns the JSON encoding of `sci_form_core::vcd_roa::VcdSpectrum`.
@@ -136,6 +145,7 @@ fn compute_vcd_spectrum(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-raman")]
 /// ROA screening intensities from Raman activities and the VCD magnetic term.
 ///
 /// Returns the JSON encoding of `sci_form_core::vcd_roa::RoaSpectrum`.
@@ -162,6 +172,7 @@ fn compute_roa_spectrum(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-qmmm")]
 /// Mechanical-embedding QM/MM energy.
 ///
 /// `system_json` is the serialized `QmMmSystem`; `config_json` is the
@@ -174,6 +185,7 @@ fn compute_qmmm_energy(system_json: &str, config_json: &str) -> PyResult<String>
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-gcmc")]
 /// GCMC adsorption isotherm on a periodic framework.
 ///
 /// The three JSON payloads are the serialized `GcmcFramework`, `GuestModel` and
@@ -193,6 +205,7 @@ fn compute_gcmc_isotherm(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Rule-based reaction-network discovery.
 ///
 /// `config_json` is the serialized `TemplateNetworkConfig`. Returns
@@ -205,6 +218,7 @@ fn discover_reaction_network(config_json: &str) -> PyResult<String> {
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Gillespie kinetic Monte Carlo on an elementary-step network.
 ///
 /// `config_json` is the serialized `KmcConfig`. Returns `KmcResult` as JSON.
@@ -215,6 +229,7 @@ fn run_kinetic_monte_carlo(config_json: &str) -> PyResult<String> {
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-reaction-network")]
 /// Refine a barrier with the existing GSM backend.
 ///
 /// Returns `BarrierRefinementResult` as JSON; the barrier is in eV and
@@ -243,6 +258,7 @@ fn refine_barrier_with_gsm(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Well-tempered metadynamics on a UFF molecule.
 ///
 /// `config_json` is the serialized `MetaDynamicsConfig`. Returns
@@ -257,6 +273,7 @@ fn run_uff_metadynamics(smiles: &str, coords: Vec<f64>, config_json: &str) -> Py
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// OPES-style enhanced sampling on a UFF molecule.
 ///
 /// `config_json` is the serialized `OpesConfig`. Returns `OpesResult` as JSON.
@@ -268,6 +285,7 @@ fn run_uff_opes(smiles: &str, coords: Vec<f64>, config_json: &str) -> PyResult<S
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a biased 1D CV trace into an unbiased free-energy histogram.
 ///
 /// Returns `FreeEnergySurface` as JSON. Energies are kcal/mol.
@@ -282,6 +300,7 @@ fn reweight_free_energy(trace_json: &str, config_json: &str) -> PyResult<String>
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Block-averaged reweighting of a correlated 1D CV trace.
 ///
 /// Returns `ReweightResult` as JSON with the surface and per-bin errors.
@@ -296,6 +315,7 @@ fn reweight_free_energy_correlated(trace_json: &str, config_json: &str) -> PyRes
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a 2D OPES trace into an unbiased surface.
 ///
 /// Returns `Surface2D` as JSON. The trace is a serialized list of
@@ -311,6 +331,7 @@ fn reweight_free_energy_2d(trace_json: &str, config_json: &str) -> PyResult<Stri
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-rism")]
 /// Solve the 3D-RISM Ornstein–Zernike equations on a periodic grid.
 ///
 /// `beta_u` and `susceptibility` are row-major `nx × ny × nz` arrays;
@@ -327,6 +348,7 @@ fn solve_3d_rism(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-free-energy")]
 /// Estimate an alchemical free-energy difference.
 ///
 /// `samples_json` is a list of `AlchemicalSample`; `estimator` is `"fep"`,
@@ -362,6 +384,7 @@ fn estimate_free_energy(
     to_json(&result)
 }
 
+#[cfg(feature = "alpha-active-learning")]
 /// Fit a split-conformal calibration radius.
 ///
 /// Returns `ConformalCalibrator` as JSON. The radius is in the target unit and
@@ -378,6 +401,7 @@ fn conformal_calibrate(
     to_json(&calibrator)
 }
 
+#[cfg(feature = "alpha-nmr-all")]
 /// List every registered NMR-active isotope for an element.
 ///
 /// Returns a JSON list of `NmrIsotopeInfo`.
@@ -387,6 +411,7 @@ fn active_nmr_isotopes(element: u8) -> PyResult<String> {
     to_json(&isotopes)
 }
 
+#[cfg(feature = "alpha-nmr-all")]
 /// Run the all-nuclide NMR driver for a molecule.
 ///
 /// `config_json` is the serialized `GiaoNmrConfig`. Returns `AllNmrResult` as
@@ -401,10 +426,10 @@ fn compute_all_nmr(elements: Vec<u8>, coords: Vec<f64>, config_json: &str) -> Py
     to_json(&result)
 }
 
-/// Restricted PBE0 energy (requires the `alpha-dft` feature).
+#[cfg(feature = "alpha-dft-hybrid")]
+/// Restricted PBE0 energy (requires the `alpha-dft-hybrid` feature).
 ///
 /// Returns the JSON encoding of `sci_form_core::dft::ks_fock::DftResult`.
-#[cfg(feature = "alpha-dft")]
 #[pyfunction]
 #[pyo3(signature = (elements, coords, max_iterations=100))]
 fn compute_pbe0_energy(
@@ -427,29 +452,51 @@ fn compute_pbe0_energy(
     to_json(&result)
 }
 
+#[allow(unused_variables)]
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    #[cfg(feature = "alpha-epr")]
     m.add_function(wrap_pyfunction!(compute_epr_hyperfine, m)?)?;
+    #[cfg(feature = "alpha-mp2")]
     m.add_function(wrap_pyfunction!(compute_mp2_energy, m)?)?;
+    #[cfg(feature = "alpha-core-spectroscopy")]
     m.add_function(wrap_pyfunction!(compute_xps_binding_energies, m)?)?;
+    #[cfg(feature = "alpha-raman")]
     m.add_function(wrap_pyfunction!(compute_raman_spectrum, m)?)?;
+    #[cfg(feature = "alpha-raman")]
     m.add_function(wrap_pyfunction!(compute_vcd_spectrum, m)?)?;
+    #[cfg(feature = "alpha-raman")]
     m.add_function(wrap_pyfunction!(compute_roa_spectrum, m)?)?;
+    #[cfg(feature = "alpha-qmmm")]
     m.add_function(wrap_pyfunction!(compute_qmmm_energy, m)?)?;
+    #[cfg(feature = "alpha-gcmc")]
     m.add_function(wrap_pyfunction!(compute_gcmc_isotherm, m)?)?;
+    #[cfg(feature = "alpha-reaction-network")]
     m.add_function(wrap_pyfunction!(discover_reaction_network, m)?)?;
+    #[cfg(feature = "alpha-reaction-network")]
     m.add_function(wrap_pyfunction!(run_kinetic_monte_carlo, m)?)?;
+    #[cfg(feature = "alpha-reaction-network")]
     m.add_function(wrap_pyfunction!(refine_barrier_with_gsm, m)?)?;
+    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(run_uff_metadynamics, m)?)?;
+    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(run_uff_opes, m)?)?;
+    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(reweight_free_energy, m)?)?;
+    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(reweight_free_energy_correlated, m)?)?;
+    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(reweight_free_energy_2d, m)?)?;
+    #[cfg(feature = "alpha-rism")]
     m.add_function(wrap_pyfunction!(solve_3d_rism, m)?)?;
+    #[cfg(feature = "alpha-free-energy")]
     m.add_function(wrap_pyfunction!(estimate_free_energy, m)?)?;
+    #[cfg(feature = "alpha-active-learning")]
     m.add_function(wrap_pyfunction!(conformal_calibrate, m)?)?;
+    #[cfg(feature = "alpha-nmr-all")]
     m.add_function(wrap_pyfunction!(active_nmr_isotopes, m)?)?;
+    #[cfg(feature = "alpha-nmr-all")]
     m.add_function(wrap_pyfunction!(compute_all_nmr, m)?)?;
-    #[cfg(feature = "alpha-dft")]
+    #[cfg(feature = "alpha-dft-hybrid")]
     m.add_function(wrap_pyfunction!(compute_pbe0_energy, m)?)?;
     Ok(())
 }

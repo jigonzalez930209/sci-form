@@ -9,6 +9,8 @@ edges and converts the result into a kMC configuration.
 > SMARTS/SMIRKS adapter for mapped atom charges/bond orders and GSM barrier
 > refinement. General atom creation/removal and MBH refinement remain
 > follow-ups. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-reaction-network` (included in `alpha-v2`).
 
 ## Why explicit rules
 

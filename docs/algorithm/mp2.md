@@ -7,6 +7,8 @@ not yet the RI/local variant.
 > **Status.** Implemented in `feat/wave-c`. The RI approximation, local PNO
 > correlation and a PySCF parity benchmark are pending. See the
 > [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-mp2` (included in `alpha-v2`).
 
 ## Theory
 

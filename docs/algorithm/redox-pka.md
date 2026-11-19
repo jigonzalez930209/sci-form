@@ -9,6 +9,8 @@ the solvent term comes from the existing ALPB model.
 > **Status.** Implemented in the `feat/wave-a` development branch. The
 > validation set and the Python/WASM/CLI wrappers are still in progress; see
 > the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-redox-pka` (included in `alpha-v2`).
 
 ## Why an explicit pair
 

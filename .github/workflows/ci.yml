@@ -25,24 +25,24 @@ env:
     parallel
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
     alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
-    alpha-render-bridge alpha-reaction-dynamics
+    alpha-render-bridge alpha-reaction-dynamics alpha-v2
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
   PYTHON_BINDING_FEATURES: >-
     parallel
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
     alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
-    alpha-render-bridge
+    alpha-render-bridge alpha-v2
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
   WASM_WEB_FEATURES: >-
     parallel experimental-gpu
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
     alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
-    alpha-render-bridge
+    alpha-render-bridge alpha-v2
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
   WASM_NODE_FEATURES: >-
     alpha-dft alpha-reaxff alpha-mlff alpha-obara-saika alpha-cga alpha-gsm alpha-sdr
     alpha-dynamics-live alpha-imd alpha-edl alpha-periodic-linear alpha-kinetics
-    alpha-render-bridge
+    alpha-render-bridge alpha-v2
     beta-kpm beta-mbh beta-randnla beta-riemannian beta-cpm
 
 jobs:

@@ -4,9 +4,11 @@ The v2.3 electronic-structure prototype adds **PBE0** to the gated KS-DFT
 engine. PBE0 is PBE exchange-correlation plus 25 % exact Hartree–Fock exchange.
 The exact-exchange path is currently restricted to closed-shell systems.
 
-> **Status.** Implemented in `feat/wave-c` behind `alpha-dft`. Range-separated
+> **Status.** Implemented in `feat/wave-c` behind `alpha-dft-hybrid`. Range-separated
 > hybrids, unrestricted exact exchange and the ORCA/PySCF parity gate are still
 > pending. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-dft-hybrid` (included in `alpha-v2`).
 
 ## Theory
 
@@ -39,7 +41,8 @@ K_{\mu\nu} =
 $$
 
 The implementation reuses the existing DFT ERI tensor and adds the exchange
-matrix once per SCF iteration.
+matrix once per SCF iteration. The semilocal PBE exchange is scaled by
+$1-a$ on the grid, so exact and semilocal exchange are never double-counted.
 
 ## API
 
@@ -55,8 +58,8 @@ println!("E = {} Hartree", result.total_energy);
 ```
 
 PBE0 is available through `DftMethod::Pbe0`; `pbe0`, `pbe-0` and `hybrid` are
-accepted aliases. The module is gated behind `alpha-dft`, so the caller must
-enable that feature.
+accepted aliases. The variant and its aliases exist only with the
+`alpha-dft-hybrid` feature, which also enables `alpha-dft`.
 
 ## Scope
 
@@ -87,20 +90,19 @@ PBE0/basis. Until that exists, the implementation is a prototype.
 
 | Surface | Entry point |
 |---|---|
-| CLI | pending |
-| WASM | pending |
-| Python | `compute_pbe0_energy(elements, coords, max_iterations=100)` behind the `alpha-dft` feature |
+| CLI | `sci-form pbe0 <elements> <coords> [--max-iterations N]` |
+| WASM | `compute_pbe0_energy(elements, coords, max_iterations)`, or `alpha_compute_dft(elements, coords, "pbe0")` |
+| Python | `compute_pbe0_energy(elements, coords, max_iterations=100)` |
 
-The DFT engine remains feature-gated, so the CLI/WASM surfaces are not built by
-default.
+All three are built only with `alpha-dft-hybrid` (or `alpha-v2`).
 ## Limitations
 
 - The exact-exchange matrix is built with the existing `O(N^4)` ERI loop; no RI
   or Cholesky exchange yet.
 - Restricted closed-shell only.
-- PBE0 uses the existing PBE exchange-correlation evaluator; no B3LYP.
+- PBE0 uses the existing PBE evaluator with the exchange scaled by 0.75; no B3LYP.
 - No range separation, no exact-exchange gradient and no response properties.
-- The DFT module remains feature-gated and is not exposed on Python/WASM/CLI.
+- Native builds and bindings need the `alpha-dft-hybrid` feature.
 - No benchmark against PySCF/ORCA yet.
 
 ## Next steps

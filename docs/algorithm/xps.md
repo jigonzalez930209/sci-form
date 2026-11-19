@@ -5,8 +5,10 @@ energies from the UHF/STO-3G orbital energies. It is a Koopmans screening model:
 it does **not** perform a ΔSCF core-hole calculation and does **not** implement
 XANES.
 
-> **Status.** Implemented in `feat/wave-c` (Rust). Python, WASM and CLI wrappers
-> are pending. See the [v2.x roadmap](/v2-roadmap).
+> **Status.** Implemented in `feat/wave-c` with Rust, Python, WASM and CLI
+> entry points. ΔSCF, XANES and the reference-edge benchmark are pending. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-core-spectroscopy` (included in `alpha-v2`).
 
 ## Koopmans estimate
 

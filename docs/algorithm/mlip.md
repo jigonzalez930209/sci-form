@@ -9,6 +9,8 @@ that a random or test-weight model is a production potential.
 > **Status.** Contract, callback backend and the optional `mlip-onnx` adapter are
 > implemented in `feat/wave-c`. A real checkpoint is user-supplied; no weights
 > are bundled. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-mlip` (included in `alpha-v2`).
 
 ## Contract
 

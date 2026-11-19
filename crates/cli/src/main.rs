@@ -131,47 +131,82 @@ fn main() {
             charges,
             probe_radius,
         } => calc_cmds::cmd_solvation(&elements, &coords, charges.as_deref(), probe_radius),
+        #[cfg(feature = "alpha-reaction-network")]
         Commands::Network { config } => calc_cmds::cmd_network(&config),
+        #[cfg(feature = "alpha-reaction-network")]
         Commands::Kmc { config } => calc_cmds::cmd_kmc(&config),
+        #[cfg(feature = "alpha-raman")]
         Commands::Raman {
             smiles,
             elements,
             coords,
             step,
         } => calc_cmds::cmd_raman(&smiles, &elements, &coords, step),
+        #[cfg(feature = "alpha-raman")]
         Commands::Vcd {
             smiles,
             elements,
             coords,
             min_frequency,
         } => calc_cmds::cmd_vcd(&smiles, &elements, &coords, min_frequency),
+        #[cfg(feature = "alpha-raman")]
         Commands::Roa {
             smiles,
             elements,
             coords,
             min_frequency,
         } => calc_cmds::cmd_roa(&smiles, &elements, &coords, min_frequency),
+        #[cfg(feature = "alpha-qmmm")]
         Commands::Qmmm { system, config } => calc_cmds::cmd_qmmm(&system, &config),
+        #[cfg(feature = "alpha-free-energy")]
         Commands::FreeEnergy {
             samples,
             estimator,
             config,
         } => calc_cmds::cmd_free_energy(&samples, &estimator, config.as_deref()),
+        #[cfg(feature = "alpha-active-learning")]
         Commands::Conformal {
             predictions,
             targets,
             coverage,
         } => calc_cmds::cmd_conformal(&predictions, &targets, coverage),
+        #[cfg(feature = "alpha-rism")]
         Commands::Rism {
             beta_u,
             susceptibility,
             config,
         } => calc_cmds::cmd_rism(&beta_u, &susceptibility, &config),
+        #[cfg(feature = "alpha-gcmc")]
         Commands::Gcmc {
             framework,
             guest,
             config,
         } => calc_cmds::cmd_gcmc(&framework, &guest, &config),
+        #[cfg(feature = "alpha-dft-hybrid")]
+        Commands::Pbe0 {
+            elements,
+            coords,
+            max_iterations,
+        } => calc_cmds::cmd_pbe0(&elements, &coords, max_iterations),
+        #[cfg(feature = "alpha-nmr-all")]
+        Commands::NmrAll {
+            elements,
+            coords,
+            charge,
+            multiplicity,
+            max_scf_iterations,
+            allow_basis_fallback,
+        } => calc_cmds::cmd_nmr_all(
+            &elements,
+            &coords,
+            charge,
+            multiplicity,
+            max_scf_iterations,
+            allow_basis_fallback,
+        ),
+        #[cfg(feature = "alpha-nmr-all")]
+        Commands::NmrIsotopes { element } => calc_cmds::cmd_nmr_isotopes(element),
+        #[cfg(feature = "alpha-epr")]
         Commands::Epr {
             elements,
             coords,
@@ -179,7 +214,9 @@ fn main() {
             charge,
             multiplicity,
         } => calc_cmds::cmd_epr(&elements, &coords, nucleus, charge, multiplicity),
+        #[cfg(feature = "alpha-mp2")]
         Commands::Mp2 { elements, coords } => calc_cmds::cmd_mp2(&elements, &coords),
+        #[cfg(feature = "alpha-core-spectroscopy")]
         Commands::Xps {
             elements,
             coords,
@@ -193,6 +230,7 @@ fn main() {
             charge,
             multiplicity,
         ),
+        #[cfg(feature = "alpha-redox-pka")]
         Commands::Pka {
             acid,
             base,
@@ -210,6 +248,7 @@ fn main() {
             &method,
             n_conformers,
         ),
+        #[cfg(feature = "alpha-redox-pka")]
         Commands::Redox {
             oxidized,
             reduced,
