@@ -9,6 +9,8 @@ solute–solvent potential and the solvent susceptibility are caller-supplied.
 > interaction energy are implemented in `feat/wave-c`. A real solvent
 > parameterisation, the excess chemical potential and a hydration-free-energy
 > benchmark are follow-ups. See the [v2.x roadmap](/v2-roadmap).
+>
+> **Feature.** `alpha-rism` (included in `alpha-v2`).
 
 ## Equations
 
@@ -27,12 +29,16 @@ The Kovalenko–Hirata closure is
 $$
 g(\mathbf{r}) =
 \begin{cases}
-\exp\left[-\beta u(\mathbf{r})+h(\mathbf{r})-c(\mathbf{r})\right],
-& h-c \le 0,\\[4pt]
-1-\beta u(\mathbf{r})+h(\mathbf{r})-c(\mathbf{r}),
-& h-c > 0,
+\exp\left[d(\mathbf{r})\right], & d \le 0,\\[4pt]
+1+d(\mathbf{r}), & d > 0,
 \end{cases}
+\qquad
+d(\mathbf{r}) = -\beta u(\mathbf{r})+h(\mathbf{r})-c(\mathbf{r}),
 $$
+
+The branch is chosen on the full exponent $d$, so attractive regions
+($-\beta u > 0$) are linearised; F107 checks the exact ideal-solvent limit
+$\chi = 0 \Rightarrow h = c$, $g = \mathrm{KH}(-\beta u)$.
 
 and
 

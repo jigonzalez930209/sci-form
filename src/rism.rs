@@ -16,8 +16,9 @@
 //! The KH closure is
 //!
 //! ```text
-//! g(r) = exp(-βu(r) + h(r) - c(r))   when h - c <= 0
-//! g(r) = 1 - βu(r) + h(r) - c(r)     otherwise
+//! d(r) = -βu(r) + h(r) - c(r)
+//! g(r) = exp(d(r))   when d <= 0
+//! g(r) = 1 + d(r)    otherwise
 //! c(r) = g(r) - 1 - h(r).
 //! ```
 //!
@@ -212,11 +213,13 @@ pub fn solve_3d_rism(
         for index in 0..n {
             let hc = h[index] - c[index];
             let g = match config.closure {
+                // Kovalenko–Hirata: linearise where the exponent d is positive.
                 RismClosure::Kh => {
-                    if hc <= 0.0 {
-                        (-solute_beta_potential[index] + hc).exp()
+                    let d = -solute_beta_potential[index] + hc;
+                    if d <= 0.0 {
+                        d.exp()
                     } else {
-                        1.0 - solute_beta_potential[index] + hc
+                        1.0 + d
                     }
                 }
             };
