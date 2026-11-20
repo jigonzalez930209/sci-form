@@ -64,6 +64,11 @@ name = "debug"
 path = "tests/debug.rs"
 required-features = ["internal-debug-scratch"]
 
+[[test]]
+name = "v2_validation"
+path = "tests/v2_validation.rs"
+required-features = ["alpha-v2"]
+
 [features]
 default = ["parallel"]
 parallel = ["rayon"]

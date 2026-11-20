@@ -3,9 +3,9 @@
 This appendix is generated from `reports/validation/summary.json`. It is the
 raw record behind the curated [scientific validation report](./scientific-validation.md).
 
-- Rows: **129**
-- Passing gates: **122**
-- Recorded method/provenance gaps: **7**
+- Rows: **156**
+- Passing gates: **146**
+- Recorded method/provenance gaps: **10**
 - Failing gates: **0**
 - Reference tools: RDKit 2026.09.1, PySCF 2.14.0, tblite 0.7.0,
   dftd4 4.3.0, xtb 6.7.1, LAMMPS, ASE 3.29.0, pymatgen 2026.9.24,
@@ -27,19 +27,19 @@ limitations behind the gaps.
 | F21 | <code>gasteiger_<wbr>charges_<wbr>max_<wbr>abs</code> | RDKit 2026.09.1 | <code>max_<wbr>abs</code> | 8.327e-17 | 0.02 | L2 | PASS |
 | F22 | <code>eeqbc_<wbr>charges_<wbr>vs_<wbr>multicharge</code> | — | <code>max_<wbr>abs</code> | 6.902e-12 | 1.000e-10 | L2 | PASS |
 | F22 | <code>eeqbc_<wbr>cn_<wbr>vs_<wbr>multicharge</code> | — | <code>max_<wbr>abs</code> | 1.908e-11 | 1.000e-10 | L2 | PASS |
-| F23 | <code>mulliken_<wbr>charges_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 8.564e-08 | 0.005 | L2 | PASS |
-| F26 | <code>scf_<wbr>mulliken_<wbr>dipole_<wbr>parity_<wbr>debye</code> | — | <code>max_<wbr>abs</code> | 1.829e-07 | 1.000e-06 | L2 | PASS |
+| F23 | <code>mulliken_<wbr>charges_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 1.339e-07 | 0.005 | L2 | PASS |
+| F26 | <code>scf_<wbr>mulliken_<wbr>dipole_<wbr>parity_<wbr>debye</code> | — | <code>max_<wbr>abs</code> | 9.456e-07 | 1.000e-06 | L2 | PASS |
 | F28 | <code>sasa_<wbr>max_<wbr>rel_<wbr>error</code> | FreeSASA python-bindings calcCoord (same radii/probe/npoints) | <code>max_<wbr>rel</code> | 0.0153304 | 0.02 | L2 | PASS |
 | F31 | <code>eht_<wbr>metal_<wbr>params_<wbr>vs_<wbr>yaehmop</code> | — | <code>max_<wbr>abs</code> | 0 | 0.02 | L2 | PASS |
-| F36 | <code>scf_<wbr>matrices_<wbr>energy_<wbr>mulliken</code> | PySCF 2.14.0 | <code>max_<wbr>abs_<wbr>e_<wbr>tot</code> | 1.224e-08 | 1.000e-07 | L2 | PASS |
+| F36 | <code>scf_<wbr>matrices_<wbr>energy_<wbr>mulliken</code> | PySCF 2.14.0 | <code>max_<wbr>abs_<wbr>e_<wbr>tot</code> | 1.223e-08 | 1.000e-07 | L2 | PASS |
 | F37 | <code>two_<wbr>electron_<wbr>integrals_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 2.139e-11 | 1.000e-10 | L2 | PASS |
 | F38 | <code>uhf_<wbr>rohf_<wbr>energy_<wbr>s2</code> | PySCF 2.14.0 | <code>max_<wbr>abs_<wbr>e_<wbr>tot</code> | 6.502e-08 | 1.000e-06 | L2 | PASS |
 | F39 | <code>ao_<wbr>to_<wbr>mo_<wbr>transform_<wbr>max_<wbr>abs</code> | PySCF 2.14.0 ao2mo.full | <code>max_<wbr>abs</code> | 1.834e-14 | 1.000e-10 | L2 | PASS |
 | F41 | <code>ao_<wbr>dipole_<wbr>integrals_<wbr>max_<wbr>abs_<wbr>au</code> | — | <code>max_<wbr>abs</code> | 1.100e-09 | 1.000e-08 | L2 | PASS |
-| F41 | <code>cis_<wbr>oscillator_<wbr>strength_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 0.004068 | 0.005 | L2 | PASS |
-| F41 | <code>cis_<wbr>singlet_<wbr>excitations_<wbr>ev</code> | PySCF 2.14.0 tdscf.TDA (singlets) | <code>max_<wbr>abs</code> | 1.724e-06 | 0.01 | L2 | PASS |
-| F41 | <code>cis_<wbr>singlet_<wbr>excitations_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 2.622e-06 | 0.01 | L2 | PASS |
-| F41 | <code>cisd_<wbr>correlation_<wbr>vs_<wbr>pyscf</code> | — | <code>max_<wbr>abs</code> | 2.073e-08 | 1.000e-06 | L2 | PASS |
+| F41 | <code>cis_<wbr>oscillator_<wbr>strength_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 9.217e-07 | 0.005 | L2 | PASS |
+| F41 | <code>cis_<wbr>singlet_<wbr>excitations_<wbr>ev</code> | PySCF 2.14.0 tdscf.TDA (singlets) | <code>max_<wbr>abs</code> | 1.645e-06 | 0.01 | L2 | PASS |
+| F41 | <code>cis_<wbr>singlet_<wbr>excitations_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 2.633e-06 | 0.01 | L2 | PASS |
+| F41 | <code>cisd_<wbr>correlation_<wbr>vs_<wbr>pyscf</code> | — | <code>max_<wbr>abs</code> | 2.466e-08 | 1.000e-06 | L2 | PASS |
 | F42 | <code>mopac_<wbr>pm3_<wbr>max_<wbr>abs</code> | MOPAC 23.2.5 PM3 1SCF | <code>max_<wbr>abs</code> | 0.00834273 | 0.02 | L2 | PASS |
 | F42 | <code>pm3_<wbr>heat_<wbr>of_<wbr>formation_<wbr>guard</code> | NIST WebBook gas-phase ΔHf°(298 K) | <code>max_<wbr>abs_<wbr>vs_<wbr>experiment</code> | 8.60829 | 5000 | L4 | PASS |
 | F43 | <code>gfn0_<wbr>single_<wbr>point_<wbr>ev</code> | xtb GFN0-xTB | <code>max_<wbr>abs</code> | 1.650e-04 | 0.01 | L4 | PASS |
@@ -84,8 +84,8 @@ limitations behind the gaps.
 | F75 | <code>smarts_<wbr>match_<wbr>agreement</code> | RDKit 2026.09.1 GetSubstructMatches | <code>fraction_<wbr>geq</code> | 1 | 0.9 | L2 | PASS |
 | F75 | <code>smarts_<wbr>raw_<wbr>count_<wbr>agreement</code> | — | <code>fraction_<wbr>geq</code> | 0.999403 | 0.9 | L2 | PASS |
 | F76 | <code>csd_<wbr>torsion_<wbr>table_<wbr>drift</code> | RDKit Release_2026_09_1 torsionPreferences*.in | <code>differing_<wbr>entries</code> | 0 | 0 | L2 | PASS |
-| F77 | <code>stda_<wbr>exchange_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 1.814e-06 | 0.001 | L2 | PASS |
-| F77 | <code>stda_<wbr>exchange_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 5.634e-08 | 1.000e-05 | L2 | PASS |
+| F77 | <code>stda_<wbr>exchange_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 2.687e-06 | 0.001 | L2 | PASS |
+| F77 | <code>stda_<wbr>exchange_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 9.606e-08 | 1.000e-05 | L2 | PASS |
 | F77 | <code>stda_<wbr>exchange_<wbr>term_<wbr>effect_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 18.2198 | 20 | L2 | PASS |
 | F77 | <code>stda_<wbr>exchange_<wbr>vs_<wbr>pyscf_<wbr>tda_<wbr>fullspace_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 9.73173 | 10 | L2 | PASS |
 | F77 | <code>stda_<wbr>exchange_<wbr>vs_<wbr>pyscf_<wbr>tda_<wbr>fullspace_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 1.0161 | 5 | L2 | PASS |
@@ -93,11 +93,11 @@ limitations behind the gaps.
 | F77 | <code>stda_<wbr>exchange_<wbr>vs_<wbr>pyscf_<wbr>tda_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 1.0161 | 5 | L2 | PASS |
 | F77 | <code>stda_<wbr>exchange_<wbr>vs_<wbr>pyscf_<wbr>tdhf_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 9.25628 | 10 | L2 | PASS |
 | F77 | <code>stda_<wbr>exchange_<wbr>vs_<wbr>pyscf_<wbr>tdhf_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 0.806881 | 5 | L2 | PASS |
-| F77 | <code>stda_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 3.264e-06 | 0.001 | L2 | PASS |
-| F77 | <code>stda_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 4.876e-08 | 1.000e-05 | L2 | PASS |
+| F77 | <code>stda_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 3.277e-06 | 0.001 | L2 | PASS |
+| F77 | <code>stda_<wbr>impl_<wbr>parity_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 9.720e-08 | 1.000e-05 | L2 | PASS |
 | F77 | <code>stda_<wbr>missing_<wbr>exchange_<wbr>gap_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 18.2198 | 20 | L2 | PASS |
 | F77 | <code>stda_<wbr>monopole_<wbr>coulomb_<wbr>gap_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 9.73173 | 20 | L2 | PASS |
-| F77 | <code>stda_<wbr>scf_<wbr>orbital_<wbr>energy_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 1.253e-07 | 1.000e-06 | L2 | PASS |
+| F77 | <code>stda_<wbr>scf_<wbr>orbital_<wbr>energy_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 1.188e-07 | 1.000e-06 | L2 | PASS |
 | F77 | <code>stda_<wbr>vs_<wbr>pyscf_<wbr>tda_<wbr>fullspace_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 16.0437 | 20 | L2 | PASS |
 | F77 | <code>stda_<wbr>vs_<wbr>pyscf_<wbr>tda_<wbr>fullspace_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 0.927451 | 5 | L2 | PASS |
 | F77 | <code>stda_<wbr>vs_<wbr>pyscf_<wbr>tda_<wbr>max_<wbr>abs_<wbr>ev</code> | PySCF 2.14.0 tdscf.TDA / tdscf.TDHF | <code>max_<wbr>abs</code> | 16.0437 | 20 | L2 | PASS |
@@ -106,18 +106,22 @@ limitations behind the gaps.
 | F77 | <code>stda_<wbr>vs_<wbr>pyscf_<wbr>tdhf_<wbr>max_<wbr>abs_<wbr>oscillator</code> | — | <code>max_<wbr>abs</code> | 0.789967 | 5 | L2 | PASS |
 | F78 | <code>esp_<wbr>far_<wbr>field_<wbr>max_<wbr>abs_<wbr>dev</code> | PySCF 2.14.0 RHF/STO-3G density ESP (cubegen scheme) | <code>max_<wbr>abs</code> | 0.00439039 | 0.006 | L2 | PASS |
 | F78 | <code>esp_<wbr>far_<wbr>field_<wbr>max_<wbr>rel_<wbr>dev</code> | — | <code>max_<wbr>abs</code> | 0.0320234 | 0.05 | L2 | PASS |
-| F78 | <code>esp_<wbr>grid_<wbr>formula_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 1.110e-16 | 1.000e-12 | L2 | PASS |
+| F78 | <code>esp_<wbr>grid_<wbr>formula_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 5.551e-17 | 1.000e-12 | L2 | PASS |
 | F78 | <code>esp_<wbr>monopole_<wbr>residual_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 0.00923947 | 0.02 | L2 | PASS |
 | F78 | <code>esp_<wbr>near_<wbr>field_<wbr>max_<wbr>abs_<wbr>dev</code> | — | <code>max_<wbr>abs</code> | 0.0497805 | 1 | L2 | PASS |
-| F79b | <code>ir_<wbr>frequencies_<wbr>max_<wbr>abs_<wbr>cm1</code> | — | <code>max_<wbr>abs</code> | 0.44626 | 5 | L2 | PASS |
+| F79b | <code>ir_<wbr>frequencies_<wbr>max_<wbr>abs_<wbr>cm1</code> | — | <code>max_<wbr>abs</code> | 0.284003 | 5 | L2 | PASS |
 | F79b | <code>ir_<wbr>intensity_<wbr>vs_<wbr>exact_<wbr>dipole_<wbr>reference_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 37.1477 | 60 | L2 | PASS |
-| F79b | <code>ir_<wbr>intensity_<wbr>vs_<wbr>mulliken_<wbr>reference_<wbr>max_<wbr>abs</code> | PySCF 2.14.0 analytic Hessian + SCF dipole derivatives | <code>max_<wbr>abs</code> | 0.576716 | 5 | L2 | PASS |
+| F79b | <code>ir_<wbr>intensity_<wbr>vs_<wbr>mulliken_<wbr>reference_<wbr>max_<wbr>abs</code> | PySCF 2.14.0 analytic Hessian + SCF dipole derivatives | <code>max_<wbr>abs</code> | 0.575423 | 5 | L2 | PASS |
 | F80 | <code>ani_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 8.318e-07 | 1.000e-06 | L2 | PASS |
-| F80 | <code>eht_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 3.055e-08 | 1.493e-04 | L2 | PASS |
-| F80 | <code>mmff94_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 8.385e-08 | 4.845e-05 | L2 | PASS |
+| F80 | <code>eht_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 3.340e-08 | 1.493e-04 | L2 | PASS |
+| F80 | <code>ks_<wbr>dft_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 3.082e-07 | 2.273e-06 | L2 | PASS |
+| F80 | <code>mmff94_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 8.432e-08 | 3.698e-05 | L2 | PASS |
 | F80 | <code>mmff94_<wbr>term_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 8.328e-08 | 1.000e-04 | L2 | PASS |
+| F80 | <code>pm3_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 1.197e-05 | 1.000e-04 | L2 | PASS |
 | F80 | <code>scf_<wbr>nuclear_<wbr>repulsion_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 3.885e-10 | 9.485e-07 | L2 | PASS |
 | F80 | <code>uff_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 4.008e-08 | 5.414e-05 | L2 | PASS |
+| F80 | <code>uks_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 3.127e-07 | 2.818e-06 | L2 | PASS |
+| F80 | <code>xtb_<wbr>gradient_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 5.430e-05 | 1.000e-04 | L2 | PASS |
 | F81 | <code>cip_<wbr>stereo_<wbr>labels_<wbr>vs_<wbr>rdkit</code> | RDKit 2026.09.1 CIP labeller | <code>mismatched_<wbr>labels</code> | 0 | 0 | L2 | PASS |
 | F81 | <code>smiles_<wbr>chiral_<wbr>tag_<wbr>handling</code> | — | <code>mismatched_<wbr>cases</code> | 0 | 0 | L2 | PASS |
 | F82 | <code>ertl_<wbr>tpsa_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 5.684e-14 | 0.01 | L2 | PASS |
@@ -147,6 +151,29 @@ limitations behind the gaps.
 | F87-EEQ2019 | <code>eeq2019_<wbr>total_<wbr>charge_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 8.327e-17 | 1.000e-09 | L2 | PASS |
 | F100 | <code>mmff94_<wbr>full_<wbr>energy_<wbr>max_<wbr>abs</code> | RDKit 2026.09.1 MMFF94 (MMFFGetMoleculeForceField) | <code>max_<wbr>abs</code> | 2.806e-11 | 1.000e-06 | L2 | PASS |
 | F100 | <code>mmff94_<wbr>partial_<wbr>charge_<wbr>max_<wbr>abs</code> | RDKit 2026.09.1 MMFF94 (MMFFGetMoleculeForceField) | <code>max_<wbr>abs</code> | 0 | 1.000e-09 | L2 | PASS |
+| F101 | <code>pbe0_<wbr>total_<wbr>energy</code> | PySCF RKS/STO-3G, grids.level 4 | <code>max_<wbr>abs_<wbr>error_<wbr>hartree</code> | 4.097e-05 | 0.001 | L2 | PASS |
+| F101 | <code>pbe_<wbr>total_<wbr>energy</code> | PySCF RKS/STO-3G, grids.level 4 | <code>max_<wbr>abs_<wbr>error_<wbr>hartree</code> | 5.165e-05 | 0.001 | L2 | PASS |
+| F102 | <code>hf_<wbr>reference_<wbr>energy</code> | PySCF RHF+MP2/STO-3G, all electrons | <code>max_<wbr>abs_<wbr>error_<wbr>hartree</code> | 9.962e-09 | 1.000e-06 | L2 | PASS |
+| F102 | <code>mp2_<wbr>correlation_<wbr>energy</code> | PySCF RHF+MP2/STO-3G, all electrons | <code>max_<wbr>abs_<wbr>error_<wbr>hartree</code> | 4.371e-08 | 1.000e-06 | L2 | PASS |
+| F103 | <code>electrostatic_<wbr>embedding_<wbr>total_<wbr>energy</code> | PySCF qmmm.mm_charge RHF/STO-3G | <code>abs_<wbr>error_<wbr>kcal_<wbr>mol</code> | 4.20273 | 0.1 | L3 | GAP |
+| F103 | <code>mechanical_<wbr>total_<wbr>energy</code> | PySCF RHF/STO-3G + Mulliken point charges | <code>abs_<wbr>error_<wbr>kcal_<wbr>mol</code> | 5.285e-06 | 0.01 | L2 | PASS |
+| F104 | <code>spin_<wbr>density_<wbr>at_<wbr>nucleus</code> | PySCF UHF/STO-3G spin density at the nucleus | <code>max_<wbr>rel_<wbr>error</code> | 6.192e-06 | 0.001 | L2 | PASS |
+| F105 | <code>coupled_<wbr>isotropic_<wbr>polarizability</code> | PySCF finite-field RHF/STO-3G (CPHF) | <code>max_<wbr>rel_<wbr>error</code> | 0.213576 | 0.02 | L3 | GAP |
+| F105 | <code>uncoupled_<wbr>isotropic_<wbr>polarizability</code> | PySCF RHF/STO-3G sum-over-states (UCHF) | <code>max_<wbr>rel_<wbr>error</code> | 1.041e-06 | 0.001 | L2 | PASS |
+| F106 | <code>koopmans_<wbr>core_<wbr>binding_<wbr>energy</code> | PySCF UHF/STO-3G 1s orbital energies | <code>max_<wbr>abs_<wbr>error_<wbr>ev</code> | 1.840e-05 | 0.01 | L2 | PASS |
+| F107 | <code>ideal_<wbr>limit_<wbr>kh_<wbr>closure</code> | analytic: chi = 0 gives g = KH(-beta u) | <code>max_<wbr>abs_<wbr>error_<wbr>g</code> | 6.661e-16 | 1.000e-08 | L0 | PASS |
+| F108 | <code>relative_<wbr>pka_<wbr>carboxylic_<wbr>acids</code> | CRC Handbook; relative to acetic acid 4.76 | <code>mae_<wbr>pka_<wbr>units</code> | 6.64332 | 1 | L4 | GAP |
+| F109 | <code>bar_<wbr>vs_<wbr>pymbar</code> | pymbar 4 on identical samples | <code>max_<wbr>abs_<wbr>error_<wbr>kbt</code> | 8.993e-15 | 1.000e-06 | L2 | PASS |
+| F109 | <code>fep_<wbr>vs_<wbr>pymbar_<wbr>exp</code> | pymbar 4 on identical samples | <code>max_<wbr>abs_<wbr>error_<wbr>kbt</code> | 8.882e-16 | 1.000e-06 | L2 | PASS |
+| F109 | <code>mbar_<wbr>vs_<wbr>exact</code> | analytic: Delta f = ln(K_k/K_0)/2 (500 samples per state) | <code>max_<wbr>abs_<wbr>error_<wbr>kbt</code> | 0.0100586 | 0.05 | L0 | PASS |
+| F109 | <code>mbar_<wbr>vs_<wbr>pymbar</code> | pymbar 4 on identical samples | <code>max_<wbr>abs_<wbr>error_<wbr>kbt</code> | 2.487e-14 | 1.000e-06 | L2 | PASS |
+| F110 | <code>double_<wbr>well_<wbr>barrier</code> | analytic: F(x) = U(x) for the coordinate CV | <code>abs_<wbr>error_<wbr>kcal_<wbr>mol</code> | 0.0189412 | 1 | L0 | PASS |
+| F111 | <code>ideal_<wbr>gas_<wbr>loading</code> | analytic: <N> = PV/kT | <code>rel_<wbr>error</code> | 0.0059562 | 0.05 | L0 | PASS |
+| F112 | <code>first_<wbr>order_<wbr>survival_<wbr>at_<wbr>one_<wbr>lifetime</code> | analytic: N_A(t)/N0 = exp(-k t) | <code>rel_<wbr>error</code> | 0.0133755 | 0.05 | L0 | PASS |
+| F113 | <code>ev_<wbr>energy_<wbr>converted_<wbr>to_<wbr>kcal_<wbr>mol</code> | analytic harmonic bond declared in eV | <code>abs_<wbr>error_<wbr>kcal_<wbr>mol</code> | 0 | 1.000e-09 | L0 | PASS |
+| F113 | <code>forces_<wbr>are_<wbr>minus_<wbr>energy_<wbr>gradient</code> | analytic harmonic bond declared in eV | <code>max_<wbr>abs_<wbr>error_<wbr>kcal_<wbr>mol_<wbr>per_<wbr>angstrom</code> | 6.870e-10 | 1.000e-05 | L0 | PASS |
+| F114 | <code>split_<wbr>conformal_<wbr>coverage</code> | exchangeability guarantee: coverage >= 0.90 | <code>abs_<wbr>deviation_<wbr>from_<wbr>0.90</code> | 0.0074 | 0.02 | L0 | PASS |
+| F115 | <code>all_<wbr>nuclide_<wbr>driver_<wbr>vs_<wbr>direct_<wbr>giao</code> | sci-form compute_giao_nmr_configured | <code>max_<wbr>abs_<wbr>error_<wbr>ppm</code> | 0 | 1.000e-10 | L1 | PASS |
 
 ## Reproduce
 

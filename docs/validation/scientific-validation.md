@@ -208,6 +208,73 @@ limitations.
 | Live MD | `dynamics_live` | forces 3.6e-13 vs RDKit | UFF systems | short trajectories |
 | Render bridge | `render_bridge` | JSON Schema + pack round-trip | payload contracts | schema, not visual correctness |
 
+## v2.x candidates (`alpha-*`): fichas F101–F115
+
+The fifteen v2.x candidates of the [v2 roadmap](../v2-roadmap.md) are gated by
+`tests/v2_validation.rs` (feature `alpha-v2`). A row the prototype meets is
+asserted and recorded as PASS; a row it does not meet yet is recorded with its
+measured value as a **gap** (`pass: null`, `status: "gap"`), never as a pass.
+These rows are on `feat/wave-c` and are not part of the 2.0.0 audit above.
+
+| Item | Value |
+|---|---|
+| Recorded rows | 23 |
+| Passing gates | 20 |
+| Gaps | 3 |
+| Oracles | PySCF 2.15.1 (STO-3G cartesian, all electrons); pymbar 4.0.3 |
+
+| Ficha | Candidate | Reference | Measured | Confidence region | Main limitation |
+|---|---|---|---|---|---|
+| F101 | PBE0 (V2-01) | PySCF RKS, grids level 4 | PBE 5.2e-5 Ha; PBE0 4.1e-5 Ha | 7 closed-shell H/C/N/O/F molecules, `GridQuality::VeryFine` | minimal basis; no range-separated hybrids |
+| F102 | MP2 (V2-02) | PySCF RHF+MP2 | HF 1.0e-8 Ha; E_corr 1.3e-8 Ha | same 7 molecules, all electrons | no frozen core, no RI |
+| F103 | QM/MM (V2-03) | PySCF RHF + Mulliken point charges | 5.3e-6 kcal/mol | water + two TIP3P-like charges | mechanical embedding only (gap below) |
+| F104 | EPR (V2-04) | PySCF UHF spin density at the nucleus | 6.2e-6 relative | H, CH3, NH2, OH | isotropic Fermi contact only; A_iso calibrated on the STO-3G H atom |
+| F105 | polarizability (V2-05) | PySCF sum-over-states (UCHF) | 1.6e-7 relative | H2O, NH3, CH4, HF, CO | uncoupled response (gap below) |
+| F106 | XPS (V2-06) | PySCF UHF 1s orbital energies | 1.8e-5 eV | 10 C/N/O/F core levels | Koopmans; no ΔSCF relaxation |
+| F107 | 3D-RISM (V2-07) | analytic: χ = 0 ⇒ g = KH(−βu) | 6.7e-16 | 16³ grid, both KH branches | no solvent model, no free energy |
+| F109 | FEP/BAR/MBAR (V2-09) | pymbar on identical samples; analytic ΔF | 2.5e-14 kBT vs pymbar; 1.0e-2 kBT vs exact | three harmonic states, 500 samples each | no soft-core MD driver |
+| F110 | WT-metaD (V2-10) | analytic double-well barrier | 1.9e-2 kcal/mol | 3 kcal/mol barrier, 300 K, γ = 10, 20 ps | 1D CV; friction must dissipate the deposited bias |
+| F111 | GCMC (V2-11) | analytic ⟨N⟩ = PV/kT | 0.6 % | empty 30 Å box, 50 bar | ideal-gas limit only; no isotherm benchmark |
+| F112 | kMC (V2-12) | analytic exp(−kt) | 1.3 % | A→B, 200 seeds × 100 molecules | first-order step only |
+| F113 | MLIP contract (V2-13) | analytic harmonic bond in eV | units exact; forces 6.9e-10 | callback adapter | no trained model benchmark |
+| F114 | conformal (V2-14) | nominal coverage 0.90 | 7.4e-3 | 2 000 calibration + 20 000 test points | exchangeable synthetic data |
+| F115 | all-nuclide NMR (V2-15) | direct GIAO per nucleus (L1) | 0 ppm | water | PySCF GIAO oracle pending |
+
+The gates found and fixed eight defects on the branch:
+
+- **SCF initial guess.** RHF/UHF started from the H_core orbitals, which put
+  NH2 and O2 in excited states (²A₁ NH2, 0.097 Ha high; O2 triplet 0.255 Ha
+  high). They now start from a superposition of atomic densities; F38 is
+  checked against PySCF's default (minao) UHF.
+- **SCF energy.** RHF and UHF evaluated the energy with the DIIS-extrapolated
+  (RHF: also level-shifted) Fock matrix. The energy and the returned Fock
+  matrix are now those of the returned density; the CIS oscillator strengths
+  of F41 moved from 4.1e-3 to 9.2e-7.
+
+- **Lebedev grids.** The 26-point grid (`GridQuality::Medium`, the default)
+  had the edge and cube weights swapped, and the 110-point grid
+  (`GridQuality::Fine`) was not a Lebedev rule; PBE energies were off by up to
+  0.25 Ha on `Fine`. Both are now the Lebedev–Laikov rules, exact for
+  spherical monomials up to degree 7 and 17.
+- **GCMC deletion** accepted every move with ΔU ≤ 0 without the N/(βfV)
+  prefactor, so the ideal gas loaded to ~0.6 PV/kT.
+- **3D-RISM closure** used `c = g − 1 − h` instead of `c = g − 1 − t`
+  (t = h − c), so even χ = 0 did not reproduce the closure of the bare
+  potential.
+- **Well-tempered free energy.** The metadynamics and OPES surfaces were
+  `−V`; the well-tempered estimator is `−γ/(γ−1)·V`.
+- **FEP** refused one-directional (state-0 only) samples.
+- **MLIP callback** ignored `energy_unit: ev`; eV models were reported as
+  kcal/mol.
+
+Gaps recorded with their measured value:
+
+| Row | Measured | Why it is not met yet |
+|---|---|---|
+| F103 electrostatic embedding (L3) | 4.2 kcal/mol | the MM charges do not polarise the QM density |
+| F105 coupled polarizability (L3) | 21 % | no CPHF response |
+| F108 relative pKa (L4) | MAE 6.6 pKa units | single-point UHF/STO-3G on unoptimised ETKDG geometries; with 8 conformers the result moves by up to 8 units |
+
 ## What PASS does not mean
 
 A passing row means the measured observable agrees with the named reference in
@@ -264,6 +331,10 @@ python3 scripts/validation/oracle_kpm.py
 python3 scripts/validation/oracle_randnla.py
 python3 scripts/validation/oracle_gsm.py
 
+# v2.x candidates (F101–F115); see the environment in scripts/run_validation.sh
+.venv-validation/bin/python -I scripts/validation/oracle_pyscf_v2.py
+.venv-validation/bin/python -I scripts/validation/oracle_pymbar_v2.py
+
 # Collect the rows into the machine-readable summary
 python3 scripts/validation/collect.py
 
@@ -282,4 +353,5 @@ cargo test --release --test cross_validation
 cargo test --release --test alpha_gsm_validation
 cargo test --release --test beta_randnla_validation
 cargo test --release --test alpha_edl_validation
+scripts/cargo-guard.sh test --profile numeric --features alpha-v2 --test v2_validation
 ```

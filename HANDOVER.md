@@ -1,7 +1,7 @@
 # Handover — `feat/wave-c`: gates v2 y filas de validación
 
 > Estado al 2026-11-19. Rama: `feat/wave-c` (no fusionada en `main`).
-> Último commit de trabajo: `d5b6597`. Borra este archivo al fusionar.
+> Último commit de trabajo: ver `git log`. Borra este archivo al fusionar.
 
 ## 1. Contexto
 
@@ -41,51 +41,46 @@ tests de los 17 módulos + `dft::{ks_fock,vxc_matrix,functionals}` → 95 ok;
 **No** se ejecutó: `every_example_runs` de la CLI, tests Python (maturin),
 build `wasm32`.
 
-## 3. Qué falta (siguiente paso inmediato)
+## 3. Estado de la validación v2 (2026-11-19, sesión 2)
 
-### 3.1 `tests/v2_validation.rs` — NO existe todavía
+### 3.1 Hecho — `tests/v2_validation.rs` (F101–F115)
 
-Fichas **F101–F115 ↔ V2-01…V2-15** (F100 era el último ID usado;
-`collect.py` solo recoge `target/validation/F*.json`). Declarar el test en
-`Cargo.toml` con `required-features = ["alpha-v2"]`.
+`scripts/cargo-guard.sh test --profile numeric --features alpha-v2 --test v2_validation`
+→ 15/15 tests; `collect.py` → 23 filas v2: **20 PASS, 3 gap**, 0 fail.
+`collect.py` copia ahora `status/level/units/reference/notes` y cuenta los gap
+aparte. Narrativa en `docs/validation/scientific-validation.md` (sección
+"v2.x candidates"); matriz regenerada (156 filas).
 
-**Regla de registro (decidida):** `collect.py` devuelve 1 si alguna fila tiene
-`pass: false`. Por eso:
-- Gates L0–L2 que el prototipo debe cumplir → `assert!` + `pass: true`.
-- Gates L3/L4 que el prototipo aún no cumple → registrar el valor medido con
-  `pass: null`, `status: "gap"`. Nunca inventar un pass.
-- Hay que **extender `scripts/validation/collect.py`** para copiar campos
-  opcionales de la fila (`status`, `level`, `units`, `reference`, `notes`);
-  hoy solo copia ficha/observable/metric/value/tolerance/pass/n_cases/source.
-- Helper `record(...)` propio en el test (copiar el de `tests/pyscf_parity.rs`
-  pero con `pass: Option<bool>` y los campos extra).
+Bugs encontrados por los gates y corregidos (cada uno con test de regresión):
 
-Plan por ficha (oráculo → API sci-form):
+| Módulo | Defecto |
+|---|---|
+| `scf` (RHF/UHF) | Guess H_core → estados excitados (NH2 ²A₁, O2 +0.255 Ha); ahora guess SAD. F38 compara con `uhf_default` de PySCF |
+| `scf` (RHF/UHF/FON) | La energía usaba la Fock extrapolada por DIIS (y con level shift en RHF); ahora E y F son las de la densidad devuelta (F41 osc. 4.1e-3 → 9.2e-7) |
+| `dft::lebedev` | Grid 26 (`Medium`, el default) con pesos arista/cubo intercambiados; grid 110 (`Fine`) no era Lebedev (PBE −0.25 Ha). Ahora Lebedev–Laikov exacto hasta grado 7/17 |
+| `gcmc` | El borrado aceptaba ΔU ≤ 0 sin el factor N/(βfV): gas ideal a ~0.6 PV/kT |
+| `rism` | Clausura `c = g−1−h` en vez de `c = g−1−t`; ahora itera sobre t = h − c |
+| `enhanced_sampling(_multi)` | FES WT-metaD/OPES era `−V`; ahora `−γ/(γ−1)·V` |
+| `free_energy` | FEP rechazaba muestras solo del estado 0 |
+| `mlip` | `CallbackMlip` ignoraba `energy_unit: ev` |
 
-| Ficha | Gate | Nivel | Cómo |
-|---|---|---|---|
-| F101 | PBE y PBE0 total vs PySCF (`v2_pyscf.json["dft"]`) | L2 → probablemente **gap** | `dft::ks_fock::solve_ks_dft` con `DftMethod::Pbe`/`Pbe0`, base `Minimal`. La fila PBE aísla si el error viene del motor PBE ("PW92 simplificado") o del híbrido. PySCF agua: PBE −75.225377, PBE0 −75.245543; sci-form PBE0 agua dio −75.0743 |
-| F102 | MP2 correlación vs PySCF (`["mp2"]`) | L2, tol 1e-6 Ha | `compute_mp2_energy(elements, positions)`; todos los electrones |
-| F103 | QM/MM mecánico vs referencia PySCF (`["qmmm"]["mechanical_total_kcal_mol"]`) | L2, tol ~1e-3 kcal/mol | `compute_qmmm_energy` (UHF, `include_mm_mm: true`). Gap L3: `electrostatic_total_kcal_mol` (−4.2 kcal/mol de polarización ausente) |
-| F104 | A_iso vs densidad de espín UHF de PySCF (`["epr"]`, H, CH3, NH2, OH) | L2 | `compute_epr_hyperfine`. Gap L4: átomo H exacto 1420.405751 MHz (STO-3G da ~1761) |
-| F105 | α isotrópica no acoplada vs PySCF (`["polarizability"]`) | L2 | `raman::compute_polarizability`. Gap L3: `coupled_isotropic_ang3` (CPHF campo finito) |
-| F106 | BE Koopmans vs PySCF (`["xps"]`, emparejar por `atom_index`) | L2 | `compute_xps_binding_energies` |
-| F107 | RISM límite ideal: χ = 0 ⇒ h = c ⇒ g = KH(−βu) exacto | L0, tol 1e-8 | `solve_3d_rism` con pozo atractivo **y** repulsivo, χ = 0 |
-| F108 | pKa relativo a ácido acético (4.76) | L4 → gap si MAE > 1 | `compute_pka`, UHF, 1 conf. Exp (CRC Handbook): fórmico 3.75, propanoico 4.87, cloroacético 2.87, benzoico 4.20 |
-| F109 | FEP/BAR/MBAR vs pymbar (`v2_pymbar.json`) | L2, tol 1e-6 | `free_energy::estimate_free_energy`, `n_states: 3` (BAR: 2 estados, muestras de 0 y 1). L0 vs `exact_delta_f` con tolerancia estadística (MBAR pymbar: [0, 0.3412, 0.7032] vs exacto [0, 0.3466, 0.6931]) |
-| F110 | Barrera WT-metaD en `DoubleWell::new(3.0, 1.0)` vs exacta | L0, tol 1 kcal/mol | `run_metadynamics`; CV = coordenada ⇒ F(x) = U(x). Ver config de ejemplo en tests de `enhanced_sampling.rs` (~l.1577) |
-| F111 | GCMC gas ideal ⟨N⟩ = PV/kT | L0, 5 % | `GcmcFramework::empty_cubic`, `GuestModel::single_site(0,3,0)`; ver test `ideal_gas_loading_follows_pv_over_kbt` |
-| F112 | kMC A→B: ⟨N_A(t=1/k)⟩/N₀ vs e⁻¹ | L0, 5 % | `run_kinetic_monte_carlo` con `max_time_s = 1/k`, ~200 semillas; k de `kinetics::evaluate_htst_rate(..).forward_rate_s_inv` |
-| F113 | Contrato MLIP: callback en eV → kcal/mol y F = −∇E por diferencias finitas | L0 | `mlip::CallbackMlip` + `MlipEnergyUnit::Ev`; fila ONNX solo con `cfg(feature = "mlip-onnx")` |
-| F114 | Cobertura conformal empírica 0.90 ± 0.02 en datos sintéticos | L0 | `active_learning::ConformalCalibrator::fit`, intervalo = pred ± `radius` |
-| F115 | Driver all-nuclide == GIAO directo por núcleo | L1 | `nmr_all::compute_all_nmr` vs `compute_giao_nmr_configured` |
+Gaps registrados (valor medido, `pass: null`):
 
-Luego: `cargo test --features alpha-v2 --test v2_validation` y
-`python3 scripts/validation/collect.py` para escribir las filas en
-`reports/validation/summary.json`; añadir la narrativa a
-`docs/validation/scientific-validation.md` (lo pide el roadmap §8).
+| Fila | Valor | Causa |
+|---|---|---|
+| F103 embedding electrostático (L3) | 4.2 kcal/mol | sin polarización MM→QM |
+| F105 CPHF (L3) | 21 % | sin respuesta acoplada |
+| F108 pKa (L4) | MAE 6.6 | single-point sobre geometrías ETKDG sin optimizar; con 8 confórmeros cambia hasta 8 unidades |
 
-### 3.2 Pendientes menores
+### 3.2 Decisiones abiertas
+
+- **pKa**: optimizar geometría (QM o FF) antes del single-point.
+- Grid 302 (`VeryFine`) sigue siendo una espiral de Fibonacci (aproximada,
+  pero F77/F101 dan < 1e-4 Ha); sustituir por Lebedev 302 real.
+- `MetaDynamicsConfig::default().friction_ps_inv = 1.0` deja al caminante
+  caliente con la deposición por defecto (documentado; F110 usa 10 ps⁻¹).
+
+### 3.3 Pendientes menores
 
 - Enhanced sampling no tiene comando CLI (anotado en roadmap §5.1).
 - La CLI de release se compila sin features (`release.yml`), como ya pasa con
@@ -125,4 +120,8 @@ uv pip install -p .venv-validation/bin/python pyscf pymbar numpy scipy
 - `pyscf-properties` (GIAO/EPR en PySCF) se instala desde git; en la sesión
   anterior esa instalación fue denegada por permisos → por eso F115 es L1.
 - Preferencia del usuario: **no correr toda la suite**; solo los tests de los
-  módulos tocados (`cargo test -p sci-form --lib --features alpha-v2 -- <modulo>::`).
+  módulos tocados.
+- **Guard de RAM**: compilar/testear siempre con `scripts/cargo-guard.sh`
+  (scope systemd con MemoryHigh/MemoryMax, 8 jobs) y `--profile numeric`
+  (release sin LTO fat). `cargo test --release` con LTO tumbó la sesión por OOM.
+  Ej.: `scripts/cargo-guard.sh test --profile numeric -p sci-form --lib --features alpha-v2 -- <modulo>::`

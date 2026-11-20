@@ -43,6 +43,13 @@ def main() -> int:
                     "source": row.get("source", "tests/cross_validation.rs"),
                 }
             )
+            # Optional fields (tests/v2_validation.rs): a gap row carries
+            # `pass: null` and `status: "gap"` with the measured value.
+            for field in ("status", "level", "units", "reference", "notes"):
+                if field in row:
+                    base[field] = row[field]
+            if "status" not in row and base.get("status") == "gap":
+                del base["status"]  # a former gap that now has a verdict
             base.setdefault("reference", {})
             base.setdefault("level", "L2")
             by_key[key] = base
@@ -59,11 +66,17 @@ def main() -> int:
 
     passed = [r for r in rows if r.get("pass") is True]
     failed = [r for r in rows if r.get("pass") is False]
-    pending = [r for r in rows if r.get("pass") is None]
+    gaps = [r for r in rows if r.get("status") == "gap"]
+    pending = [r for r in rows if r.get("pass") is None and r.get("status") != "gap"]
     print(f"validation summary: {len(rows)} reports, {len(passed)} pass, "
-          f"{len(failed)} fail, {len(pending)} pending (Rust-side metrics)")
+          f"{len(failed)} fail, {len(gaps)} gap, {len(pending)} pending (Rust-side metrics)")
     for r in rows:
-        flag = "PASS" if r.get("pass") is True else ("FAIL" if r.get("pass") is False else "----")
+        if r.get("pass") is True:
+            flag = "PASS"
+        elif r.get("pass") is False:
+            flag = "FAIL"
+        else:
+            flag = "GAP " if r.get("status") == "gap" else "----"
         value = r.get("value")
         value_s = "n/a" if value is None else f"{value:.6g}"
         print(
