@@ -84,15 +84,20 @@ $$
 The friction is configured in ps⁻¹ and converted to fs⁻¹ internally. Masses
 are in amu; the same conversion factor as the existing MD module is used.
 
+The thermostat must remove the energy the deposition injects. With the default
+0.2 kcal/mol every 50 steps of 0.5 fs, a 1 ps⁻¹ friction lets a light walker run
+hot and underestimate the barrier; F110 uses 10 ps⁻¹ and recovers a 3 kcal/mol
+double-well barrier to 0.02 kcal/mol.
+
 ## Free-energy surface
 
 At the end of the run, the total bias is evaluated on a one-dimensional grid:
 
 $$
-F(s) \approx -V_b(s),
+F(s) \approx -\frac{\gamma}{\gamma-1}\,V_b(s),
 $$
 
-shifted so that `min(F) = 0`. The result also contains the CV trace, every
+the well-tempered limit `V_b → (1 − 1/γ) F`, shifted so that `min(F) = 0`. The result also contains the CV trace, every
 deposited Gaussian and the final coordinates. The surface is only meaningful
 after the bias has converged; a short run is flagged in `notes`.
 
@@ -167,7 +172,8 @@ V(s) = \left(1-\frac{1}{\gamma}\right)k_BT \ln\left(\frac{P(s)}{P_{\max}}+\epsil
 $$
 
 where `P` is the weighted Gaussian kernel density and `P_max` is its maximum
-on the deposited kernels. The bias is zero at the most visited point and
+on the deposited kernels. The reported surface is `F(s) = −k_BT ln P(s) = −V(s)/(1 − 1/γ)`, shifted
+to `min(F) = 0`; the 2D multi-CV surface uses the same relation. The bias is zero at the most visited point and
 negative where the density is low, which lowers the effective barrier. This is
 an importance-weighted OPES approximation on a bounded grid; it does not
 integrate the exact OPES differential flow equation.

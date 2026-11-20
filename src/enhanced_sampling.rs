@@ -1072,12 +1072,14 @@ fn opes_free_energy(
     config: &OpesConfig,
     kbt: f64,
 ) -> FreeEnergySurface {
+    // V = (1 - 1/γ) kT ln p, so F = -kT ln p = -V / (1 - 1/γ).
+    let factor = 1.0 - 1.0 / config.bias_factor;
     let mut values = Vec::with_capacity(config.grid_bins);
     for index in 0..config.grid_bins {
         let cv = config.grid_min
             + (config.grid_max - config.grid_min) * index as f64 / (config.grid_bins - 1) as f64;
         let (bias, _) = opes_bias_and_derivative(kernels, cv, config, kbt);
-        values.push(-bias);
+        values.push(-bias / factor);
     }
     let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
     if minimum.is_finite() {
@@ -1264,12 +1266,14 @@ fn build_free_energy(
     gaussians: &[GaussianDeposit],
     config: &MetaDynamicsConfig,
 ) -> FreeEnergySurface {
+    // Well-tempered limit: V(s) -> (1 - 1/γ) F(s), so F = -γ/(γ-1) V.
+    let scale = config.bias_factor / (config.bias_factor - 1.0);
     let mut values = Vec::with_capacity(config.grid_bins);
     for index in 0..config.grid_bins {
         let cv = config.grid_min
             + (config.grid_max - config.grid_min) * index as f64 / (config.grid_bins - 1) as f64;
         let (bias, _) = bias_and_derivative(gaussians, cv, config.sigma);
-        values.push(-bias);
+        values.push(-scale * bias);
     }
     let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
     if minimum.is_finite() {
@@ -1591,6 +1595,29 @@ mod tests {
             grid_bins: 61,
             trace_stride: 10,
         }
+    }
+
+    #[test]
+    fn well_tempered_free_energy_rescales_the_bias() {
+        // Well-tempered limit: F(s) = -γ/(γ-1) V(s) + const.
+        let config = double_well_config();
+        let gaussians = vec![GaussianDeposit {
+            step: 0,
+            center: 0.0,
+            height_kcal_mol: 0.9,
+            sigma: config.sigma,
+            weight: 1.0,
+        }];
+        let fes = build_free_energy(&gaussians, &config);
+        let gamma = config.bias_factor;
+        let far = fes.values[0];
+        let expected = gamma / (gamma - 1.0)
+            * 0.9
+            * (1.0 - (-(1.5f64.powi(2)) / (2.0 * 0.15f64.powi(2))).exp());
+        assert!(
+            (far - expected).abs() < 1e-12,
+            "far = {far}, expected = {expected}"
+        );
     }
 
     #[test]

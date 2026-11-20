@@ -516,6 +516,8 @@ fn update_multi_weights(kernels: &mut [MultiKernel], config: &MultiOpesConfig, k
 }
 
 fn multi_free_energy(kernels: &[MultiKernel], config: &MultiOpesConfig, kbt: f64) -> Surface2D {
+    // V = (1 - 1/γ) kT ln p, so F = -kT ln p = -V / (1 - 1/γ).
+    let factor = 1.0 - 1.0 / config.bias_factor;
     let mut values = Vec::with_capacity(config.x_bins * config.y_bins);
     for iy in 0..config.y_bins {
         let y =
@@ -524,7 +526,7 @@ fn multi_free_energy(kernels: &[MultiKernel], config: &MultiOpesConfig, kbt: f64
             let x = config.x_min
                 + (config.x_max - config.x_min) * ix as f64 / (config.x_bins - 1) as f64;
             let (bias, _, _) = multi_bias(kernels, [x, y], config, kbt);
-            values.push(-bias);
+            values.push(-bias / factor);
         }
     }
     let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
