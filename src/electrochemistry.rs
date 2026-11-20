@@ -799,8 +799,10 @@ mod tests {
 
     #[test]
     fn config_rejects_bad_temperature() {
-        let mut config = ElectrochemistryConfig::default();
-        config.temperature_k = 0.0;
+        let config = ElectrochemistryConfig {
+            temperature_k: 0.0,
+            ..Default::default()
+        };
         assert!(config.validate().is_err());
     }
 

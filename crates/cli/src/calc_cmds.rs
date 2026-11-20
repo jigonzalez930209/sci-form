@@ -1004,10 +1004,9 @@ pub fn cmd_pka(
             pka,
         }),
         (None, None, None) => None,
-        _ => fail(
-            "--reference-acid, --reference-base and --reference-pka must be supplied together"
-                .to_string(),
-        ),
+        _ => {
+            fail("--reference-acid, --reference-base and --reference-pka must be supplied together")
+        }
     };
     let config = electrochemistry_config(method, n_conformers);
     match sci_form::compute_pka(acid, base, reference.as_ref(), &config) {
@@ -1020,6 +1019,7 @@ pub fn cmd_pka(
 }
 
 #[cfg(feature = "alpha-redox-pka")]
+#[allow(clippy::too_many_arguments)]
 pub fn cmd_redox(
     oxidized: &str,
     reduced: &str,
@@ -1044,8 +1044,7 @@ pub fn cmd_redox(
         }),
         (None, None, None) => None,
         _ => fail(
-            "--reference-oxidized, --reference-reduced and --reference-potential must be supplied together"
-                .to_string(),
+            "--reference-oxidized, --reference-reduced and --reference-potential must be supplied together",
         ),
     };
     let config = electrochemistry_config(method, n_conformers);

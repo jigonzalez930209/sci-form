@@ -321,13 +321,7 @@ mod tests {
         }
     }
 
-    fn lj_model() -> CallbackMlip<
-        impl Fn(
-            &[u8],
-            &[[f64; 3]],
-            Option<&[[f64; 3]; 3]>,
-        ) -> Result<(f64, Vec<[f64; 3]>, Option<[[f64; 3]; 3]>), SciFormError>,
-    > {
+    fn lj_model() -> impl MlipModel {
         CallbackMlip::new(
             manifest(),
             |elements: &[u8], positions: &[[f64; 3]], _cell: Option<&[[f64; 3]; 3]>| {
