@@ -358,7 +358,8 @@ struct UhfLoopState {
     iterations: usize,
 }
 
-/// Iterate the UHF SCF equations starting from the H_core guess.
+/// Iterate the UHF SCF equations starting from the total guess density
+/// `p_guess`, split evenly between the spins.
 ///
 /// The level shift is applied only to the matrix that is diagonalized: it
 /// must never enter the energy expression or the returned effective Fock
@@ -373,15 +374,17 @@ fn run_uhf_loop(
     n_alpha: usize,
     n_beta: usize,
     e_nuc: f64,
+    p_guess: &DMatrix<f64>,
     config: &UhfConfig,
 ) -> UhfLoopState {
-    // Initial guess: diagonalize H_core for both spins
+    // Orbitals are only placeholders until the first diagonalisation; the
+    // first Fock matrices are built from the guess density.
     let (mut c_alpha, mut e_alpha) = diag_fock(h_core, x, n_basis);
-    let (mut c_beta, mut e_beta) = diag_fock(h_core, x, n_basis);
+    let (mut c_beta, mut e_beta) = (c_alpha.clone(), e_alpha.clone());
 
-    let mut p_alpha = build_spin_density(&c_alpha, n_alpha);
-    let mut p_beta = build_spin_density(&c_beta, n_beta);
-    let mut p_total = &p_alpha + &p_beta;
+    let mut p_alpha = p_guess * 0.5;
+    let mut p_beta = p_guess * 0.5;
+    let mut p_total = p_guess.clone();
 
     let mut p_alpha_old = p_alpha.clone();
     let mut p_beta_old = p_beta.clone();
@@ -391,15 +394,12 @@ fn run_uhf_loop(
     let mut e_total = 0.0;
     let mut converged = false;
     let mut scf_iter = 0;
-    let mut f_alpha = h_core.clone();
-    let mut f_beta = h_core.clone();
-
     for iteration in 0..config.max_iterations {
         scf_iter = iteration + 1;
 
         // Build Fock matrices
-        f_alpha = build_uhf_fock(h_core, &p_total, &p_alpha, eris);
-        f_beta = build_uhf_fock(h_core, &p_total, &p_beta, eris);
+        let f_alpha = build_uhf_fock(h_core, &p_total, &p_alpha, eris);
+        let f_beta = build_uhf_fock(h_core, &p_total, &p_beta, eris);
 
         // Pulay SCF gradient from the freshly built Fock matrices. It must be
         // measured before DIIS extrapolation: an extrapolated Fock matrix need
@@ -407,20 +407,21 @@ fn run_uhf_loop(
         let grad =
             scf_gradient_norm(&f_alpha, &p_alpha, s).max(scf_gradient_norm(&f_beta, &p_beta, s));
 
-        // DIIS operates on the unshifted Fock matrices.
+        // Energy of the densities that built F; DIIS and the level shift only
+        // change the matrices that are diagonalised.
+        let e_new = uhf_electronic_energy(&p_alpha, &p_beta, h_core, &f_alpha, &f_beta) + e_nuc;
+
+        let (mut f_alpha_diag, mut f_beta_diag) = (f_alpha.clone(), f_beta.clone());
         if config.diis_size > 0 {
             diis_alpha.add_iteration(&f_alpha, &p_alpha, s);
             diis_beta.add_iteration(&f_beta, &p_beta, s);
             if let Some(fa) = diis_alpha.extrapolate() {
-                f_alpha = fa;
+                f_alpha_diag = fa;
             }
             if let Some(fb) = diis_beta.extrapolate() {
-                f_beta = fb;
+                f_beta_diag = fb;
             }
         }
-
-        // Level shift only affects the diagonalization.
-        let (mut f_alpha_diag, mut f_beta_diag) = (f_alpha.clone(), f_beta.clone());
         if config.level_shift > 0.0 {
             for i in 0..n_basis {
                 f_alpha_diag[(i, i)] += config.level_shift;
@@ -448,9 +449,6 @@ fn run_uhf_loop(
         }
         p_total = &p_alpha + &p_beta;
 
-        let e_elec = uhf_electronic_energy(&p_alpha, &p_beta, h_core, &f_alpha, &f_beta);
-        let e_new = e_elec + e_nuc;
-
         let delta_e = (e_new - e_total).abs();
         let delta_pa = density_rms(&p_alpha, &p_alpha_old);
         let delta_pb = density_rms(&p_beta, &p_beta_old);
@@ -466,7 +464,6 @@ fn run_uhf_loop(
             && iteration > 0
         {
             converged = true;
-            e_total = e_new;
             break;
         }
 
@@ -474,6 +471,11 @@ fn run_uhf_loop(
         p_alpha_old = p_alpha.clone();
         p_beta_old = p_beta.clone();
     }
+
+    // Report the energy and Fock matrices of the returned densities.
+    let f_alpha = build_uhf_fock(h_core, &p_total, &p_alpha, eris);
+    let f_beta = build_uhf_fock(h_core, &p_total, &p_beta, eris);
+    e_total = uhf_electronic_energy(&p_alpha, &p_beta, h_core, &f_alpha, &f_beta) + e_nuc;
 
     UhfLoopState {
         c_alpha,
@@ -548,7 +550,9 @@ pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> Result<UhfResult
 
     // The open-shell SCF can fail to converge for a given iteration schedule
     // (DIIS limit cycles, slow fixed point). Escalate through progressively
-    // more robust schedules, always restarting from the H_core guess.
+    // more robust schedules, always restarting from the SAD guess.
+    let p_guess =
+        super::density_matrix::superposition_of_atomic_densities(&basis, &system.atomic_numbers);
     let mut schedules: Vec<UhfConfig> = vec![config.clone()];
     if config.diis_size > 0 {
         schedules.push(UhfConfig {
@@ -573,6 +577,7 @@ pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> Result<UhfResult
         n_alpha,
         n_beta,
         e_nuc,
+        &p_guess,
         &schedules[0],
     );
     for schedule in schedules.iter().skip(1) {
@@ -580,7 +585,7 @@ pub fn run_uhf(system: &MolecularSystem, config: &UhfConfig) -> Result<UhfResult
             break;
         }
         state = run_uhf_loop(
-            h_core, s, &x, &eris, n_basis, n_alpha, n_beta, e_nuc, schedule,
+            h_core, s, &x, &eris, n_basis, n_alpha, n_beta, e_nuc, &p_guess, schedule,
         );
     }
     let mut c_alpha = state.c_alpha;
@@ -715,4 +720,61 @@ pub fn run_rohf(system: &MolecularSystem) -> Result<UhfResult, String> {
             ..UhfConfig::default()
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn reported_energy_is_the_energy_of_the_reported_densities() {
+        // H2+ doublet: the DIIS-extrapolated Fock matrices must not enter E.
+        use super::super::basis::BasisSet;
+        use super::super::core_matrices::{nuclear_repulsion_energy, CoreMatrices};
+        use super::super::two_electron::TwoElectronIntegrals;
+        use super::{build_uhf_fock, uhf_electronic_energy};
+
+        let elements = [1u8, 1];
+        let positions = [[0.0, 0.0, 0.0], [1.06, 0.0, 0.0]];
+        let result = crate::compute_uhf(&elements, &positions, 1, 2).unwrap();
+        assert!(result.converged);
+        let bohr: Vec<[f64; 3]> = positions
+            .iter()
+            .map(|p| p.map(|v| v * super::super::constants::ANGSTROM_TO_BOHR))
+            .collect();
+        let basis = BasisSet::sto3g(&elements, &bohr);
+        let core = CoreMatrices::build(&basis, &elements, &bohr);
+        let eris = TwoElectronIntegrals::compute(&basis);
+        let h = &core.core_hamiltonian;
+        let (pa, pb) = (&result.alpha_density, &result.beta_density);
+        let pt = pa + pb;
+        let fa = build_uhf_fock(h, &pt, pa, &eris);
+        let fb = build_uhf_fock(h, &pt, pb, &eris);
+        let expected =
+            uhf_electronic_energy(pa, pb, h, &fa, &fb) + nuclear_repulsion_energy(&elements, &bohr);
+        assert!(
+            (result.total_energy - expected).abs() < 1e-8,
+            "reported {} vs E[P] {}",
+            result.total_energy,
+            expected
+        );
+    }
+
+    #[test]
+    fn nh2_radical_reaches_the_2b1_ground_state() {
+        // NH2, r = 1.024 Å, ∠HNH = 103.4° (NIST CCCBDB). PySCF 2.15.1
+        // UHF/STO-3G (cartesian) gives -54.83692440 Ha for the 2B1 ground
+        // state from its minao guess; the H_core guess lands on 2A1 at
+        // -54.73957851 Ha.
+        let positions = [
+            [0.0, 0.0, 0.0],
+            [0.803_611_003_425_876_9, 0.0, 0.634_653_728_558_223_6],
+            [-0.803_611_003_425_876_9, 0.0, 0.634_653_728_558_223_6],
+        ];
+        let result = crate::compute_uhf(&[7, 1, 1], &positions, 0, 2).unwrap();
+        assert!(result.converged);
+        assert!(
+            (result.total_energy - (-54.836_924_40)).abs() < 1e-6,
+            "E = {}",
+            result.total_energy
+        );
+    }
 }

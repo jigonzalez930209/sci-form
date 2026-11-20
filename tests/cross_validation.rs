@@ -1236,8 +1236,8 @@ mod f38_uhf_rohf {
         multiplicity: u32,
         #[allow(dead_code)]
         method: String,
-        #[allow(dead_code)]
         uhf_default: Ref,
+        #[allow(dead_code)]
         uhf_hcore: Ref,
         rohf: Ref,
     }
@@ -1262,16 +1262,17 @@ mod f38_uhf_rohf {
                 case.multiplicity,
             );
 
-            // sci-form starts from the H_core guess, so the apples-to-apples
-            // reference is PySCF's UHF run with init_guess='hcore'.
+            // sci-form starts from a SAD guess, so the apples-to-apples
+            // reference is PySCF's default (minao) UHF; the H_core guess lands
+            // on excited states for NH2 and O2.
             let result = run_uhf(&system, &UhfConfig::default()).expect("UHF must run");
             assert!(result.converged, "{}: UHF did not converge", case.name);
 
-            let e_err = (result.total_energy - case.uhf_hcore.e_tot).abs();
+            let e_err = (result.total_energy - case.uhf_default.e_tot).abs();
             if e_err > worst_e.0 {
                 worst_e = (e_err, case.name.clone());
             }
-            let s2_err = (result.s2_expectation - case.uhf_hcore.s2).abs();
+            let s2_err = (result.s2_expectation - case.uhf_default.s2).abs();
             if s2_err > worst_s2.0 {
                 worst_s2 = (s2_err, case.name.clone());
             }
@@ -1283,7 +1284,7 @@ mod f38_uhf_rohf {
                 let s = (case.multiplicity as f64 - 1.0) / 2.0;
                 s * (s + 1.0)
             };
-            if (case.uhf_hcore.s2 - exact).abs() <= 1e-6 {
+            if (case.uhf_default.s2 - exact).abs() <= 1e-6 {
                 assert!(
                     (result.s2_expectation - exact).abs() <= 1e-6,
                     "{}: <S^2> = {:.6} != exact {:.6}",
@@ -1316,7 +1317,7 @@ mod f38_uhf_rohf {
         }
 
         println!(
-            "F38 vs PySCF (hcore guess): n={} max |ΔE| = {:.3e} Ha ({}), max |Δ<S²>| = {:.3e} ({})",
+            "F38 vs PySCF (default guess): n={} max |ΔE| = {:.3e} Ha ({}), max |Δ<S²>| = {:.3e} ({})",
             fixture.cases.len(),
             worst_e.0,
             worst_e.1,

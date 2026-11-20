@@ -4,9 +4,10 @@
 //!
 //! 1. Build one-electron matrices
 //! 2. Compute orthogonalization matrix
-//! 3. Initial guess (core Hamiltonian)
-//! 4. SCF loop with DIIS acceleration
-//! 5. Return converged result
+//! 3. Initial guess (superposition of atomic densities)
+//! 4. SCF loop with DIIS acceleration (the energy always uses F[P], never
+//!    the extrapolated or level-shifted Fock matrix)
+//! 5. Return the energy and Fock matrix of the final density
 
 use nalgebra::DMatrix;
 
@@ -153,7 +154,7 @@ fn run_scf_impl(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     // Löwdin orthogonalization
     let (x, _n_independent) = lowdin_orthogonalization(s, 1e-8);
 
-    // Initial guess — diagonalize H_core in orthogonal basis
+    // Placeholder orbitals from H_core (the density guess is SAD, below)
     let h_ortho = transform_to_orthogonal(h_core, &x);
     let eigen = h_ortho.symmetric_eigen();
 
@@ -174,7 +175,10 @@ fn run_scf_impl(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     }
 
     let mut c = back_transform(&c_ortho, &x);
-    let mut p = build_density_matrix(&c, n_occupied);
+    // The H_core orbitals are placeholders; the first Fock matrix is built
+    // from the superposition of atomic densities.
+    let mut p =
+        super::density_matrix::superposition_of_atomic_densities(&basis, &system.atomic_numbers);
     let mut p_old = p.clone();
 
     // SCF loop
@@ -182,31 +186,30 @@ fn run_scf_impl(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     let mut e_total = 0.0;
     let mut converged = false;
     let mut scf_iter = 0;
-    let mut fock = h_core.clone();
 
     for iteration in 0..config.max_iterations {
         scf_iter = iteration + 1;
 
-        fock = build_fock_matrix(h_core, &p, &eris);
+        // F[P] is kept for the energy; DIIS and the level shift only change
+        // the matrix that is diagonalised.
+        let fock = build_fock_matrix(h_core, &p, &eris);
+        let e_new = energy::total_energy(&p, h_core, &fock, e_nuc);
 
-        // Level shift
-        if config.level_shift > 0.0 {
-            let n = fock.nrows();
-            for i in 0..n {
-                fock[(i, i)] += config.level_shift;
-            }
-        }
-
-        // DIIS extrapolation
+        let mut f_diag = fock.clone();
         if config.diis_size > 0 {
             diis.add_iteration(&fock, &p, s);
             if let Some(f_diis) = diis.extrapolate() {
-                fock = f_diis;
+                f_diag = f_diis;
+            }
+        }
+        if config.level_shift > 0.0 {
+            for i in 0..f_diag.nrows() {
+                f_diag[(i, i)] += config.level_shift;
             }
         }
 
         // Diagonalize in orthogonal basis
-        let f_ortho = transform_to_orthogonal(&fock, &x);
+        let f_ortho = transform_to_orthogonal(&f_diag, &x);
         let eigen = f_ortho.symmetric_eigen();
 
         let mut indices: Vec<usize> = (0..n_basis).collect();
@@ -232,14 +235,12 @@ fn run_scf_impl(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
             p = p_new;
         }
 
-        let e_new = energy::total_energy(&p, h_core, &fock, e_nuc);
         let delta_e = (e_new - e_total).abs();
         let delta_p = density_rms_change(&p, &p_old);
 
         if delta_e < config.energy_threshold && delta_p < config.density_threshold && iteration > 0
         {
             converged = true;
-            e_total = e_new;
             break;
         }
 
@@ -247,7 +248,10 @@ fn run_scf_impl(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
         p_old = p.clone();
     }
 
+    // Report the energy and Fock matrix of the returned density.
+    let fock = build_fock_matrix(h_core, &p, &eris);
     let e_elec = energy::electronic_energy(&p, h_core, &fock);
+    e_total = e_elec + e_nuc;
 
     let homo_energy = if n_occupied > 0 {
         orbital_energies[n_occupied - 1]
@@ -336,7 +340,7 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
 
     let (x, _n_independent) = lowdin_orthogonalization(s, 1e-8);
 
-    // Initial guess
+    // Placeholder orbitals from H_core (the density guess is SAD, below)
     let h_ortho = transform_to_orthogonal(h_core, &x);
     let eigen = h_ortho.symmetric_eigen();
 
@@ -357,19 +361,14 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     }
 
     let mut c = back_transform(&c_ortho, &x);
-    let mut p = super::density_matrix::build_density_matrix_fon(
-        &c,
-        &orbital_energies,
-        n_electrons,
-        temperature_au,
-    );
+    let mut p =
+        super::density_matrix::superposition_of_atomic_densities(&basis, &system.atomic_numbers);
     let mut p_old = p.clone();
 
     let mut diis = DiisAccelerator::new(config.diis_size);
     let mut e_total = 0.0;
     let mut converged = false;
     let mut scf_iter = 0;
-    let mut fock = h_core.clone();
 
     let level_shift = 0.5; // strong level shift for FON path
     let damping = 0.4;
@@ -377,22 +376,23 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
     for iteration in 0..config.max_iterations {
         scf_iter = iteration + 1;
 
-        fock = build_fock_matrix(h_core, &p, &eris);
+        // F[P] is kept for the energy; DIIS and the level shift only change
+        // the matrix that is diagonalised.
+        let fock = build_fock_matrix(h_core, &p, &eris);
+        let e_new = energy::total_energy(&p, h_core, &fock, e_nuc);
 
-        // Apply level shift
-        for i in 0..fock.nrows() {
-            fock[(i, i)] += level_shift;
-        }
-
-        // DIIS
+        let mut f_diag = fock.clone();
         if config.diis_size > 0 {
             diis.add_iteration(&fock, &p, s);
             if let Some(f_diis) = diis.extrapolate() {
-                fock = f_diis;
+                f_diag = f_diis;
             }
         }
+        for i in 0..f_diag.nrows() {
+            f_diag[(i, i)] += level_shift;
+        }
 
-        let f_ortho = transform_to_orthogonal(&fock, &x);
+        let f_ortho = transform_to_orthogonal(&f_diag, &x);
         let eigen = f_ortho.symmetric_eigen();
 
         let mut indices: Vec<usize> = (0..n_basis).collect();
@@ -421,14 +421,12 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
 
         p = &p_new * (1.0 - damping) + &p_old * damping;
 
-        let e_new = energy::total_energy(&p, h_core, &fock, e_nuc);
         let delta_e = (e_new - e_total).abs();
         let delta_p = super::density_matrix::density_rms_change(&p, &p_old);
 
         if delta_e < config.energy_threshold && delta_p < config.density_threshold && iteration > 0
         {
             converged = true;
-            e_total = e_new;
             break;
         }
 
@@ -436,7 +434,10 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
         p_old = p.clone();
     }
 
+    // Report the energy and Fock matrix of the returned density.
+    let fock = build_fock_matrix(h_core, &p, &eris);
     let e_elec = energy::electronic_energy(&p, h_core, &fock);
+    e_total = e_elec + e_nuc;
     let homo_energy = if n_occupied > 0 {
         orbital_energies[n_occupied - 1]
     } else {
@@ -478,6 +479,33 @@ fn run_scf_with_fon(system: &MolecularSystem, config: &ScfConfig) -> ScfResult {
 mod tests {
     use super::super::constants::ANGSTROM_TO_BOHR;
     use super::*;
+
+    #[test]
+    fn reported_energy_is_the_energy_of_the_reported_density() {
+        // E = ½ Tr P (H + F[P]) + E_nuc must hold for the returned density;
+        // the DIIS-extrapolated Fock matrix must not enter the energy.
+        let system = MolecularSystem {
+            atomic_numbers: vec![1, 1],
+            positions_bohr: vec![[0.0, 0.0, 0.0], [0.74 * ANGSTROM_TO_BOHR, 0.0, 0.0]],
+            charge: 0,
+            multiplicity: 1,
+        };
+        let result = run_scf(&system, &ScfConfig::default());
+        assert!(result.converged);
+        let basis = BasisSet::sto3g(&system.atomic_numbers, &system.positions_bohr);
+        let core = CoreMatrices::build(&basis, &system.atomic_numbers, &system.positions_bohr);
+        let eris = TwoElectronIntegrals::compute(&basis);
+        let fock = build_fock_matrix(&core.core_hamiltonian, &result.density_matrix, &eris);
+        let e_nuc = nuclear_repulsion_energy(&system.atomic_numbers, &system.positions_bohr);
+        let expected =
+            energy::total_energy(&result.density_matrix, &core.core_hamiltonian, &fock, e_nuc);
+        assert!(
+            (result.total_energy - expected).abs() < 1e-8,
+            "reported {} vs E[P] {}",
+            result.total_energy,
+            expected
+        );
+    }
 
     #[test]
     fn test_scf_h2() {

@@ -6,6 +6,8 @@
 
 use nalgebra::DMatrix;
 
+use super::basis::BasisSet;
+
 /// Build the density matrix from MO coefficients.
 ///
 /// P_μν = 2 Σ_{k=0}^{n_occ-1} C_μk · C_νk
@@ -167,9 +169,56 @@ pub fn electron_count(p: &DMatrix<f64>, s: &DMatrix<f64>) -> f64 {
     trace
 }
 
+/// Superposition-of-atomic-densities (SAD) initial guess.
+///
+/// Each neutral atom's `Z` electrons fill its shells in basis order (the
+/// aufbau order of the minimal basis), two per orbital, spread evenly over
+/// the functions of a shell (spherical averaging). The result is diagonal in
+/// the AO basis with `Tr(P S) = Σ Z` for the minimal basis. Unlike the H_core
+/// guess, the first Fock matrix built from it already contains the
+/// electron-electron screening, which keeps open-shell UHF out of excited
+/// states (NH2 converges to 2B1, not 2A1).
+pub fn superposition_of_atomic_densities(basis: &BasisSet, atomic_numbers: &[u8]) -> DMatrix<f64> {
+    let mut p = DMatrix::zeros(basis.n_basis, basis.n_basis);
+    let mut remaining: Vec<f64> = atomic_numbers.iter().map(|&z| z as f64).collect();
+    let mut offset = 0;
+    for shell in &basis.shells {
+        let n_functions = match shell.l {
+            0 => 1,
+            1 => 3,
+            2 => 6,
+            _ => 0,
+        };
+        let capacity = 2.0 * (2 * shell.l + 1) as f64;
+        let electrons = remaining[shell.atom_index].min(capacity);
+        remaining[shell.atom_index] -= electrons;
+        for k in 0..n_functions {
+            p[(offset + k, offset + k)] = electrons / n_functions as f64;
+        }
+        offset += n_functions;
+    }
+    p
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sad_guess_holds_the_neutral_atom_electrons() {
+        let elements = [8u8, 1, 1];
+        let positions = [[0.0, 0.0, 0.0], [1.43, 0.0, 1.11], [-1.43, 0.0, 1.11]];
+        let basis = BasisSet::sto3g(&elements, &positions);
+        let p = superposition_of_atomic_densities(&basis, &elements);
+        assert_eq!(p.nrows(), basis.n_basis);
+        assert!((p.trace() - 10.0).abs() < 1e-12);
+        // O: 1s 2, 2s 2, 2p 4/3 each; H: 1 each.
+        let diagonal: Vec<f64> = p.diagonal().iter().copied().collect();
+        let expected = [2.0, 2.0, 4.0 / 3.0, 4.0 / 3.0, 4.0 / 3.0, 1.0, 1.0];
+        for (got, want) in diagonal.iter().zip(expected) {
+            assert!((got - want).abs() < 1e-12, "{diagonal:?}");
+        }
+    }
 
     #[test]
     fn test_density_matrix_symmetric() {
