@@ -154,9 +154,11 @@ pub fn estimate_free_energy(
     for sample in samples {
         counts[sample.origin_state] += 1;
     }
-    if counts.contains(&0) {
+    // FEP is one-directional (state-0 samples only, checked in `fep`);
+    // BAR and MBAR need samples from every state.
+    if estimator != FreeEnergyEstimator::Fep && counts.contains(&0) {
         return Err(SciFormError::validation(
-            "every alchemical state must contribute at least one sample",
+            "BAR and MBAR need at least one sample from every alchemical state",
         ));
     }
 
@@ -365,6 +367,21 @@ mod tests {
         let samples = constant_offset_samples(1.5, 10);
         let result = estimate_free_energy(
             &samples,
+            FreeEnergyEstimator::Fep,
+            &FreeEnergyConfig::default(),
+        )
+        .unwrap();
+        assert!((result.delta_f_kbt[1] - 1.5).abs() < 1e-12);
+    }
+
+    #[test]
+    fn fep_needs_only_forward_samples() {
+        let forward: Vec<AlchemicalSample> = constant_offset_samples(1.5, 10)
+            .into_iter()
+            .filter(|sample| sample.origin_state == 0)
+            .collect();
+        let result = estimate_free_energy(
+            &forward,
             FreeEnergyEstimator::Fep,
             &FreeEnergyConfig::default(),
         )
