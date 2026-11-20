@@ -168,11 +168,11 @@ limitations behind the gaps.
 | F109 | <code>mbar_<wbr>vs_<wbr>exact</code> | analytic: Delta f = ln(K_k/K_0)/2 (500 samples per state) | <code>max_<wbr>abs_<wbr>error_<wbr>kbt</code> | 0.0100586 | 0.05 | L0 | PASS |
 | F109 | <code>mbar_<wbr>vs_<wbr>pymbar</code> | pymbar 4 on identical samples | <code>max_<wbr>abs_<wbr>error_<wbr>kbt</code> | 2.487e-14 | 1.000e-06 | L2 | PASS |
 | F110 | <code>double_<wbr>well_<wbr>barrier</code> | analytic: F(x) = U(x) for the coordinate CV | <code>abs_<wbr>error_<wbr>kcal_<wbr>mol</code> | 0.0189412 | 1 | L0 | PASS |
-| F111 | <code>ideal_<wbr>gas_<wbr>loading</code> | analytic: <N> = PV/kT | <code>rel_<wbr>error</code> | 0.0059562 | 0.05 | L0 | PASS |
+| F111 | <code>ideal_<wbr>gas_<wbr>loading</code> | analytic: &lt;N&gt; = PV/kT | <code>rel_<wbr>error</code> | 0.0059562 | 0.05 | L0 | PASS |
 | F112 | <code>first_<wbr>order_<wbr>survival_<wbr>at_<wbr>one_<wbr>lifetime</code> | analytic: N_A(t)/N0 = exp(-k t) | <code>rel_<wbr>error</code> | 0.0133755 | 0.05 | L0 | PASS |
 | F113 | <code>ev_<wbr>energy_<wbr>converted_<wbr>to_<wbr>kcal_<wbr>mol</code> | analytic harmonic bond declared in eV | <code>abs_<wbr>error_<wbr>kcal_<wbr>mol</code> | 0 | 1.000e-09 | L0 | PASS |
 | F113 | <code>forces_<wbr>are_<wbr>minus_<wbr>energy_<wbr>gradient</code> | analytic harmonic bond declared in eV | <code>max_<wbr>abs_<wbr>error_<wbr>kcal_<wbr>mol_<wbr>per_<wbr>angstrom</code> | 6.870e-10 | 1.000e-05 | L0 | PASS |
-| F114 | <code>split_<wbr>conformal_<wbr>coverage</code> | exchangeability guarantee: coverage >= 0.90 | <code>abs_<wbr>deviation_<wbr>from_<wbr>0.90</code> | 0.0074 | 0.02 | L0 | PASS |
+| F114 | <code>split_<wbr>conformal_<wbr>coverage</code> | exchangeability guarantee: coverage &gt;= 0.90 | <code>abs_<wbr>deviation_<wbr>from_<wbr>0.90</code> | 0.0074 | 0.02 | L0 | PASS |
 | F115 | <code>all_<wbr>nuclide_<wbr>driver_<wbr>vs_<wbr>direct_<wbr>giao</code> | sci-form compute_giao_nmr_configured | <code>max_<wbr>abs_<wbr>error_<wbr>ppm</code> | 0 | 1.000e-10 | L1 | PASS |
 
 ## Reproduce

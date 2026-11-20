@@ -7,6 +7,7 @@ committed so the documentation build does not depend on a Python step.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 from pathlib import Path
@@ -28,9 +29,15 @@ def fmt(value) -> str:
     return str(value)
 
 
+def cell(text) -> str:
+    """Escape a free-text table cell: HTML (VitePress compiles Markdown through
+    Vue, so a stray `<N>` is an unclosed tag) and the Markdown pipe."""
+    return html.escape(str(text), quote=False).replace("|", "\\|")
+
+
 def soft_breaks(text) -> str:
-    """Escape pipes and add break opportunities inside long identifiers."""
-    return str(text).replace("|", "\\|").replace("_", "_<wbr>")
+    """Escape a cell and add break opportunities inside long identifiers."""
+    return cell(text).replace("_", "_<wbr>")
 
 
 def sort_key(row: dict) -> tuple:
@@ -84,7 +91,7 @@ def main() -> None:
             "| {ficha} | {observable} | {tool} | {metric} | {value} | {tol} | {level} | {status} |".format(
                 ficha=row.get("ficha", ""),
                 observable=f"<code>{soft_breaks(row.get('observable', ''))}</code>",
-                tool=reference.get("tool", "—"),
+                tool=cell(reference.get("tool", "—")),
                 metric=f"<code>{soft_breaks(row.get('metric', ''))}</code>",
                 value=fmt(row.get("value")),
                 tol=fmt(row.get("tolerance")),
