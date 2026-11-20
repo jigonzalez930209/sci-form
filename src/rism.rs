@@ -16,11 +16,15 @@
 //! The KH closure is
 //!
 //! ```text
-//! d(r) = -βu(r) + h(r) - c(r)
+//! t(r) = h(r) - c(r)          (indirect correlation)
+//! d(r) = -βu(r) + t(r)
 //! g(r) = exp(d(r))   when d <= 0
 //! g(r) = 1 + d(r)    otherwise
-//! c(r) = g(r) - 1 - h(r).
+//! c(r) = g(r) - 1 - t(r).
 //! ```
+//!
+//! The solver iterates `t` (closure → OZ → new `t`, with linear mixing) and
+//! reports `g = 1 + h` from the last OZ step.
 //!
 //! # Units
 //!
@@ -80,7 +84,7 @@ pub struct RismConfig {
     pub max_iterations: usize,
     /// Picard mixing fraction in `(0, 1]`.
     pub mixing: f64,
-    /// Convergence tolerance on the maximum `|h_new - h|`.
+    /// Convergence tolerance on the maximum `|t_new - t|`, with `t = h - c`.
     pub tolerance: f64,
     /// Closure.
     pub closure: RismClosure,
@@ -153,7 +157,7 @@ pub struct RismResult {
     pub h: Vec<f64>,
     /// Direct correlation function `c(r)`.
     pub c: Vec<f64>,
-    /// Maximum `|h_new - h|` at the last iteration.
+    /// Maximum `|t_new - t|` at the last iteration.
     pub residual: f64,
     /// Number of Picard iterations.
     pub iterations: usize,
@@ -199,9 +203,10 @@ pub fn solve_3d_rism(
         ));
     }
 
+    // Picard iteration on the indirect correlation t = h - c.
+    let mut t = vec![0.0f64; n];
     let mut h = vec![0.0f64; n];
     let mut c = vec![0.0f64; n];
-    let mut h_new = vec![0.0f64; n];
     let mut c_complex = vec![Complex::new(0.0, 0.0); n];
     let mut h_complex = vec![Complex::new(0.0, 0.0); n];
     let mut residual = f64::INFINITY;
@@ -211,11 +216,10 @@ pub fn solve_3d_rism(
     for iteration in 1..=config.max_iterations {
         iterations = iteration;
         for index in 0..n {
-            let hc = h[index] - c[index];
             let g = match config.closure {
                 // Kovalenko–Hirata: linearise where the exponent d is positive.
                 RismClosure::Kh => {
-                    let d = -solute_beta_potential[index] + hc;
+                    let d = -solute_beta_potential[index] + t[index];
                     if d <= 0.0 {
                         d.exp()
                     } else {
@@ -223,7 +227,7 @@ pub fn solve_3d_rism(
                     }
                 }
             };
-            c[index] = g - 1.0 - h[index];
+            c[index] = g - 1.0 - t[index];
             c_complex[index] = Complex::new(c[index], 0.0);
         }
         fft3d(&mut c_complex, config, false);
@@ -242,12 +246,10 @@ pub fn solve_3d_rism(
         fft3d(&mut h_complex, config, true);
         residual = 0.0;
         for index in 0..n {
-            let new_value = h_complex[index].re;
-            residual = residual.max((new_value - h[index]).abs());
-            h_new[index] = new_value;
-        }
-        for index in 0..n {
-            h[index] = (1.0 - config.mixing) * h[index] + config.mixing * h_new[index];
+            h[index] = h_complex[index].re;
+            let t_new = h[index] - c[index];
+            residual = residual.max((t_new - t[index]).abs());
+            t[index] = (1.0 - config.mixing) * t[index] + config.mixing * t_new;
         }
         if residual < config.tolerance {
             converged = true;
@@ -454,6 +456,26 @@ mod tests {
             "mean g = {}",
             result.mean_g
         );
+    }
+
+    #[test]
+    fn zero_susceptibility_gives_the_closure_of_the_bare_potential() {
+        // χ = 0 ⇒ h = c ⇒ t = 0 ⇒ g = KH(-βu) exactly, on both KH branches.
+        let config = RismConfig {
+            nx: 4,
+            ny: 4,
+            nz: 4,
+            tolerance: 1e-12,
+            ..RismConfig::default()
+        };
+        let n = config.n_grid();
+        let potential: Vec<f64> = (0..n).map(|i| 2.0 * (i as f64 / n as f64) - 1.0).collect();
+        let result = solve_3d_rism(&potential, &vec![0.0; n], &config).unwrap();
+        assert!(result.converged);
+        for (u, g) in potential.iter().zip(&result.g) {
+            let exact = if -u <= 0.0 { (-u).exp() } else { 1.0 - u };
+            assert!((g - exact).abs() < 1e-12, "g = {g}, exact = {exact}");
+        }
     }
 
     #[test]

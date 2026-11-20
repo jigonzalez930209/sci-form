@@ -36,18 +36,18 @@ g(\mathbf{r}) =
 d(\mathbf{r}) = -\beta u(\mathbf{r})+h(\mathbf{r})-c(\mathbf{r}),
 $$
 
+and, with the indirect correlation $t = h - c$,
+
+$$
+c(\mathbf{r}) = g(\mathbf{r}) - 1 - t(\mathbf{r}).
+$$
+
 The branch is chosen on the full exponent $d$, so attractive regions
 ($-\beta u > 0$) are linearised; F107 checks the exact ideal-solvent limit
-$\chi = 0 \Rightarrow h = c$, $g = \mathrm{KH}(-\beta u)$.
+$\chi = 0 \Rightarrow h = c$, $t = 0$, $g = \mathrm{KH}(-\beta u)$.
 
-and
-
-$$
-c(\mathbf{r}) = g(\mathbf{r}) - 1 - h(\mathbf{r}).
-$$
-
-The solver iterates the closure and the Fourier-space OZ equation with Picard
-mixing. The inverse FFT is normalized by `1/(nx·ny·nz)`.
+The solver iterates $t$ (closure, then the Fourier-space OZ equation, then
+$t = h - c$) with Picard mixing. The inverse FFT is normalized by `1/(nx·ny·nz)`.
 
 ## API
 
@@ -102,7 +102,7 @@ let chi = solvent_susceptibility_k(&config, RismSolventModel::Gaussian {
 | Field | Meaning |
 |---|---|
 | `g`, `h`, `c` | Pair distribution, total and direct correlation arrays |
-| `residual` | Maximum `|h_new − h|` at the last iteration |
+| `residual` | Maximum `|t_new − t|` (t = h − c) at the last iteration |
 | `iterations` | Picard iterations |
 | `converged` | Tolerance reached |
 | `mean_g`, `max_g` | Mean and contact-peak density |
