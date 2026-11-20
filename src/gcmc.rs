@@ -403,70 +403,71 @@ pub fn compute_gcmc_isotherm(
         let beta = 1.0 / (R_GAS_KCAL_MOLK * config.temperature_k);
         let pv_over_kbt = pressure * BAR_TO_PA * volume_m3 / (1.380_649e-23 * config.temperature_k);
 
-        let attempt = |rng: &mut StdRng,
-                       guests: &mut Vec<GuestMolecule>|
-         -> Result<(), SciFormError> {
-            if pressure <= 0.0 {
-                guests.clear();
-                return Ok(());
-            }
-            let old_energy = total_energy(framework, &sites, guests, config);
-            let translate = rng.gen::<f64>() < config.translation_probability;
-            if translate && !guests.is_empty() {
-                let index = rng.gen_range(0..guests.len());
-                let old = guests[index].clone();
-                let displacement = [
-                    (rng.gen::<f64>() - 0.5) * 0.5,
-                    (rng.gen::<f64>() - 0.5) * 0.5,
-                    (rng.gen::<f64>() - 0.5) * 0.5,
-                ];
-                guests[index].center = framework.cell.wrap_cart([
-                    old.center[0] + displacement[0],
-                    old.center[1] + displacement[1],
-                    old.center[2] + displacement[2],
-                ]);
-                if rng.gen::<f64>() < config.rotation_probability {
-                    guests[index].rotation = random_rotation(rng);
-                }
-                let new_energy = total_energy(framework, &sites, guests, config);
-                let delta = new_energy - old_energy;
-                if delta <= 0.0 || rng.gen::<f64>() < (-beta * delta).exp() {
+        let attempt =
+            |rng: &mut StdRng, guests: &mut Vec<GuestMolecule>| -> Result<(), SciFormError> {
+                if pressure <= 0.0 {
+                    guests.clear();
                     return Ok(());
                 }
-                guests[index] = old;
-                return Ok(());
-            }
+                let old_energy = total_energy(framework, &sites, guests, config);
+                let translate = rng.gen::<f64>() < config.translation_probability;
+                if translate && !guests.is_empty() {
+                    let index = rng.gen_range(0..guests.len());
+                    let old = guests[index].clone();
+                    let displacement = [
+                        (rng.gen::<f64>() - 0.5) * 0.5,
+                        (rng.gen::<f64>() - 0.5) * 0.5,
+                        (rng.gen::<f64>() - 0.5) * 0.5,
+                    ];
+                    guests[index].center = framework.cell.wrap_cart([
+                        old.center[0] + displacement[0],
+                        old.center[1] + displacement[1],
+                        old.center[2] + displacement[2],
+                    ]);
+                    if rng.gen::<f64>() < config.rotation_probability {
+                        guests[index].rotation = random_rotation(rng);
+                    }
+                    let new_energy = total_energy(framework, &sites, guests, config);
+                    let delta = new_energy - old_energy;
+                    if delta <= 0.0 || rng.gen::<f64>() < (-beta * delta).exp() {
+                        return Ok(());
+                    }
+                    guests[index] = old;
+                    return Ok(());
+                }
 
-            let delete =
-                !guests.is_empty() && (guests.len() >= config.max_guests || rng.gen::<f64>() < 0.5);
-            if delete {
-                let index = rng.gen_range(0..guests.len());
-                let old = guests.remove(index);
-                let new_energy = total_energy(framework, &sites, guests, config);
-                let delta = new_energy - old_energy;
-                let factor = (guests.len() + 1) as f64 / pv_over_kbt.max(1e-30);
-                if delta <= 0.0 || rng.gen::<f64>() < (factor * (-beta * delta).exp()).min(1.0) {
-                    return Ok(());
+                let delete = !guests.is_empty()
+                    && (guests.len() >= config.max_guests || rng.gen::<f64>() < 0.5);
+                if delete {
+                    let index = rng.gen_range(0..guests.len());
+                    let old = guests.remove(index);
+                    let new_energy = total_energy(framework, &sites, guests, config);
+                    let delta = new_energy - old_energy;
+                    // No `delta <= 0` shortcut: the N/(βfV) prefactor applies even
+                    // when the energy does not change (ideal gas).
+                    let factor = (guests.len() + 1) as f64 / pv_over_kbt.max(1e-30);
+                    if rng.gen::<f64>() < (factor * (-beta * delta).exp()).min(1.0) {
+                        return Ok(());
+                    }
+                    guests.insert(index, old);
+                } else if guests.len() < config.max_guests {
+                    let center = [rng.gen::<f64>(), rng.gen::<f64>(), rng.gen::<f64>()];
+                    let center = framework.cell.frac_to_cart(center);
+                    let molecule = GuestMolecule {
+                        center,
+                        rotation: random_rotation(rng),
+                    };
+                    guests.push(molecule);
+                    let new_energy = total_energy(framework, &sites, guests, config);
+                    let delta = new_energy - old_energy;
+                    let factor = pv_over_kbt / guests.len() as f64;
+                    if rng.gen::<f64>() < (factor * (-beta * delta).exp()).min(1.0) {
+                        return Ok(());
+                    }
+                    guests.pop();
                 }
-                guests.insert(index, old);
-            } else if guests.len() < config.max_guests {
-                let center = [rng.gen::<f64>(), rng.gen::<f64>(), rng.gen::<f64>()];
-                let center = framework.cell.frac_to_cart(center);
-                let molecule = GuestMolecule {
-                    center,
-                    rotation: random_rotation(rng),
-                };
-                guests.push(molecule);
-                let new_energy = total_energy(framework, &sites, guests, config);
-                let delta = new_energy - old_energy;
-                let factor = pv_over_kbt / guests.len() as f64;
-                if rng.gen::<f64>() < (factor * (-beta * delta).exp()).min(1.0) {
-                    return Ok(());
-                }
-                guests.pop();
-            }
-            Ok(())
-        };
+                Ok(())
+            };
 
         for _ in 0..config.equilibration_steps {
             attempt(&mut rng, &mut guests)?;
@@ -757,7 +758,7 @@ mod tests {
             10.0 * BAR_TO_PA * framework.cell.volume() * ANGSTROM3_TO_M3 / (1.380_649e-23 * 300.0);
         let loading = result.points[0].mean_loading;
         assert!(
-            (loading - ideal).abs() < 0.35 * ideal.max(1.0),
+            (loading - ideal).abs() < 0.15 * ideal.max(1.0),
             "loading = {loading}, ideal = {ideal}"
         );
     }
