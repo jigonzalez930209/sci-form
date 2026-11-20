@@ -39,6 +39,16 @@ pub enum MlipEnergyUnit {
     Ev,
 }
 
+impl MlipEnergyUnit {
+    /// Factor that converts an energy in this unit to kcal/mol.
+    pub fn to_kcal_mol(self) -> f64 {
+        match self {
+            Self::KcalMol => 1.0,
+            Self::Ev => 23.060_548_867,
+        }
+    }
+}
+
 /// Manifest that accompanies a model checkpoint.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MlipManifest {
@@ -130,6 +140,9 @@ pub trait MlipModel {
 }
 
 /// A model backed by a user closure.
+///
+/// The closure answers in `manifest.energy_unit` (energy, forces and stress);
+/// `evaluate` converts the result to the kcal/mol contract.
 pub struct CallbackMlip<F>
 where
     F: Fn(
@@ -197,6 +210,14 @@ where
             )));
         }
         let (energy, forces, stress) = (self.evaluator)(elements, positions_angstrom, cell)?;
+        // The closure answers in the manifest's unit; the contract is kcal/mol.
+        let factor = self.manifest.energy_unit.to_kcal_mol();
+        let energy = energy * factor;
+        let forces: Vec<[f64; 3]> = forces
+            .iter()
+            .map(|f| [f[0] * factor, f[1] * factor, f[2] * factor])
+            .collect();
+        let stress = stress.map(|s| s.map(|row| row.map(|value| value * factor)));
         if !energy.is_finite() {
             return Err(SciFormError::numerical("MLIP energy is not finite"));
         }

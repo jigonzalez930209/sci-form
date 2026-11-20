@@ -18,10 +18,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::error::SciFormError;
-use crate::mlip::{MlipEnergyUnit, MlipManifest, MlipModel, MlipResult};
+use crate::mlip::{MlipManifest, MlipModel, MlipResult};
 use tract_onnx::prelude::{Framework, InferenceModelExt, IntoRunnable, TypedFact, TypedOp};
-
-const EV_TO_KCAL_MOL: f64 = 23.060_548_867;
 
 /// ONNX-backed MLIP.
 pub struct MlipOnnx {
@@ -138,10 +136,7 @@ impl MlipModel for MlipOnnx {
             )));
         }
 
-        let factor = match self.manifest.energy_unit {
-            MlipEnergyUnit::KcalMol => 1.0,
-            MlipEnergyUnit::Ev => EV_TO_KCAL_MOL,
-        };
+        let factor = self.manifest.energy_unit.to_kcal_mol();
         let (force_chunks, _) = force_values.as_chunks::<3>();
         let forces = force_chunks
             .iter()
@@ -159,6 +154,7 @@ impl MlipModel for MlipOnnx {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mlip::MlipEnergyUnit;
 
     #[test]
     fn toy_checkpoint_runs_energy_and_forces() {

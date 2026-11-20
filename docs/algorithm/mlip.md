@@ -57,7 +57,7 @@ cutoff, an empty licence and an out-of-range atomic number.
 ## API
 
 ```rust
-use sci_form::mlip::{CallbackMlip, MlipManifest, MlipRegistry};
+use sci_form::mlip::{CallbackMlip, MlipEnergyUnit, MlipManifest, MlipRegistry};
 
 let manifest = MlipManifest {
     schema_version: 1,
@@ -65,6 +65,8 @@ let manifest = MlipManifest {
     elements: vec![1, 6, 8],
     cutoff_angstrom: 5.0,
     license: "user-supplied".into(),
+    // The closure answers in this unit; `evaluate` converts to kcal/mol.
+    energy_unit: MlipEnergyUnit::Ev,
     supports_stress: false,
     source: None,
 };
@@ -130,6 +132,7 @@ to a different model.
 | Gate | Observable | Result |
 |---|---|---|
 | Callback contract | Energy and force shape | finite, one force per atom |
+| Units (F113) | eV callback → kcal/mol; F = −∇E by finite differences | exact; 6.9e-10 kcal/mol/Å |
 | Element coverage | Missing element | `Unsupported` |
 | Registry | Duplicate name | rejected |
 | Manifest | Empty elements / licence | rejected |
