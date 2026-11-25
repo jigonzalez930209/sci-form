@@ -697,6 +697,22 @@
   "notes": "UFF/GFN2 rigid scans: ethane, methanol, ammonia; worst 1.685 kcal/mol (ammonia_inversion:gfn2)"
  },
  {
+  "ficha": "F134",
+  "observable": "opes_flow_residual",
+  "metric": "fixed_point_residual",
+  "value": 4.7374205272618494e-11,
+  "tolerance": 1e-08,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "1",
+  "reference": {
+   "tool": "self-consistent OPES fixed point, harmonic surface"
+  },
+  "notes": "200 flow iterations; 50k steps; 1D PMF RMSE within 0.5 kcal/mol"
+ },
+ {
   "ficha": "F14",
   "observable": "butina_partition_mismatches",
   "reference": {

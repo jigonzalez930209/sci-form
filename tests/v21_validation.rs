@@ -1016,3 +1016,74 @@ fn f132_gcmc_n2_cu_btc_vs_raspa() {
         gap(row);
     }
 }
+
+/// L3 OPES flow gate: the self-consistent importance-weight iteration must
+/// reach a fixed point on a 1D harmonic surface.
+#[test]
+fn f134_opes_flow_reaches_fixed_point() {
+    use sci_form::enhanced_sampling::{run_opes, CollectiveVariable, OpesConfig, Potential};
+
+    struct Harmonic;
+    impl Potential for Harmonic {
+        fn energy(&self, coords: &[f64]) -> f64 {
+            0.5 * coords[0] * coords[0]
+        }
+        fn gradient(&self, coords: &[f64], gradient: &mut [f64]) {
+            gradient[0] = coords[0];
+        }
+    }
+
+    let config = OpesConfig {
+        cv: CollectiveVariable::Coordinate { index: 0 },
+        sigma: 0.2,
+        bias_factor: 10.0,
+        pace_steps: 200,
+        temperature_k: 300.0,
+        dt_fs: 0.5,
+        friction_ps_inv: 5.0,
+        max_steps: 50_000,
+        seed: 11,
+        grid_min: -1.5,
+        grid_max: 1.5,
+        grid_bins: 61,
+        trace_stride: 1_000,
+        regularization: 1e-8,
+        flow_iterations: 200,
+    };
+    let result = run_opes(&Harmonic, &[0.0], &[10.0], &config).unwrap();
+    let mut sum_sq = 0.0;
+    let mut count = 0usize;
+    for (index, value) in result.free_energy.values.iter().enumerate() {
+        let x = result.free_energy.coordinate(index);
+        if x.abs() <= 1.0 {
+            let error = value - 0.5 * x * x;
+            sum_sq += error * error;
+            count += 1;
+        }
+    }
+    let rmse = (sum_sq / count as f64).sqrt();
+    eprintln!(
+        "OPES 1D flow residual={:.3e} converged={} PMF RMSE={rmse:.3}",
+        result.flow_residual, result.flow_converged
+    );
+    assert!(result.flow_converged, "OPES flow did not converge");
+    assert!(
+        result.flow_residual <= 1e-8,
+        "OPES flow residual {:.3e}",
+        result.flow_residual
+    );
+    assert!(rmse <= 0.5, "OPES 1D PMF RMSE {rmse}");
+    gate(Row {
+        ficha: "F134",
+        observable: "opes_flow_residual",
+        metric: "fixed_point_residual",
+        value: result.flow_residual,
+        tolerance: 1e-8,
+        pass: None,
+        n_cases: 1,
+        level: "L3",
+        units: "1",
+        reference: "self-consistent OPES fixed point, harmonic surface",
+        notes: "200 flow iterations; 50k steps; 1D PMF RMSE within 0.5 kcal/mol",
+    });
+}

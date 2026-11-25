@@ -229,6 +229,12 @@ pub struct MultiOpesResult {
     pub final_cv: [f64; 2],
     /// Notes.
     pub notes: Vec<String>,
+    /// Fixed-point residual of the 2D OPES importance-weight flow.
+    #[serde(default)]
+    pub flow_residual: f64,
+    /// Whether the 2D OPES flow reached the fixed point within the iteration cap.
+    #[serde(default)]
+    pub flow_converged: bool,
 }
 
 /// Configuration for 2D reweighting.
@@ -280,6 +286,8 @@ pub fn run_multi_opes<P: Potential>(
     let friction_fs_inv = config.friction_ps_inv * 1e-3;
     let mut cv = [config.cv_x.value(&x)?, config.cv_y.value(&x)?];
     let mut max_density = config.regularization;
+    let mut flow_residual = 0.0;
+    let mut flow_converged = true;
     let mut potential_energy = potential.energy(&x);
     trace.push(MultiTracePoint {
         step: 0,
@@ -328,7 +336,9 @@ pub fn run_multi_opes<P: Potential>(
                 center: cv,
                 weight: 1.0,
             });
-            update_multi_weights(&mut kernels, config, kbt);
+            let (residual, converged) = update_multi_weights(&mut kernels, config, kbt);
+            flow_residual = residual;
+            flow_converged = converged;
             max_density = kernel_max_density(&kernels, config);
         }
         if step % config.trace_stride == 0 {
@@ -376,6 +386,8 @@ pub fn run_multi_opes<P: Potential>(
             "2D OPES with self-consistent importance weights.".to_string(),
             "Bias-derived and histogram-reweighted surfaces are both reported.".to_string(),
         ],
+        flow_residual,
+        flow_converged,
     })
 }
 
@@ -504,8 +516,13 @@ fn multi_bias(
     )
 }
 
-fn update_multi_weights(kernels: &mut [MultiKernel], config: &MultiOpesConfig, kbt: f64) {
+fn update_multi_weights(
+    kernels: &mut [MultiKernel],
+    config: &MultiOpesConfig,
+    kbt: f64,
+) -> (f64, bool) {
     let mut previous: Vec<f64> = kernels.iter().map(|kernel| kernel.weight).collect();
+    let mut change = f64::INFINITY;
     for _ in 0..config.flow_iterations {
         let max_density = kernel_max_density(kernels, config);
         let mut next = Vec::with_capacity(kernels.len());
@@ -520,7 +537,7 @@ fn update_multi_weights(kernels: &mut [MultiKernel], config: &MultiOpesConfig, k
         for (kernel, weight) in kernels.iter_mut().zip(&next) {
             kernel.weight = *weight;
         }
-        let change = next
+        change = next
             .iter()
             .zip(&previous)
             .map(|(new, old)| (new - old).abs())
@@ -530,6 +547,7 @@ fn update_multi_weights(kernels: &mut [MultiKernel], config: &MultiOpesConfig, k
             break;
         }
     }
+    (change, change <= 1e-8)
 }
 
 fn multi_free_energy(kernels: &[MultiKernel], config: &MultiOpesConfig, kbt: f64) -> Surface2D {

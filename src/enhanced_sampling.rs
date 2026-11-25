@@ -855,6 +855,12 @@ pub struct OpesResult {
     pub final_cv: f64,
     /// Notes and caveats.
     pub notes: Vec<String>,
+    /// Fixed-point residual of the OPES importance-weight flow.
+    #[serde(default)]
+    pub flow_residual: f64,
+    /// Whether the OPES flow reached the fixed point within the iteration cap.
+    #[serde(default)]
+    pub flow_converged: bool,
 }
 
 /// Run an OPES-style kernel-density bias.
@@ -899,11 +905,15 @@ pub fn run_opes<P: Potential>(
     let kbt = R_GAS_KCAL_MOLK * config.temperature_k;
     let friction_fs_inv = config.friction_ps_inv * 1e-3;
     let mut bias;
+    let mut flow_residual = 0.0;
+    let mut flow_converged = true;
+    let mut max_density = config.regularization;
 
     for step in 1..=config.max_steps {
         potential.gradient(&x, &mut gradient);
         let cv_gradient = config.cv.gradient(&x)?;
-        let (_, bias_derivative) = opes_bias_and_derivative(&kernels, cv_value, config, kbt);
+        let (_, bias_derivative) =
+            opes_bias_and_derivative(&kernels, cv_value, config, kbt, max_density);
         let mut force = vec![0.0; n_coords];
         for index in 0..n_coords {
             force[index] = -gradient[index] - bias_derivative * cv_gradient[index];
@@ -916,7 +926,7 @@ pub fn run_opes<P: Potential>(
         potential.gradient(&x, &mut gradient);
         cv_value = config.cv.value(&x)?;
         let (bias_energy, bias_derivative) =
-            opes_bias_and_derivative(&kernels, cv_value, config, kbt);
+            opes_bias_and_derivative(&kernels, cv_value, config, kbt, max_density);
         bias = bias_energy;
         let cv_gradient = config.cv.gradient(&x)?;
         for index in 0..n_coords {
@@ -942,7 +952,10 @@ pub fn run_opes<P: Potential>(
                 sigma: config.sigma,
                 weight: 1.0,
             });
-            update_opes_weights(&mut kernels, config, kbt);
+            let (residual, converged) = update_opes_weights(&mut kernels, config, kbt);
+            flow_residual = residual;
+            flow_converged = converged;
+            max_density = opes_max_density(&kernels, config);
         }
         if step % config.trace_stride == 0 {
             potential_energy = potential.energy(&x);
@@ -993,18 +1006,27 @@ pub fn run_opes<P: Potential>(
         final_coords: x,
         final_cv: cv_value,
         notes,
+        flow_residual,
+        flow_converged,
     })
 }
 
-fn update_opes_weights(kernels: &mut [GaussianDeposit], config: &OpesConfig, kbt: f64) {
+fn update_opes_weights(
+    kernels: &mut [GaussianDeposit],
+    config: &OpesConfig,
+    kbt: f64,
+) -> (f64, bool) {
     let mut previous = kernels
         .iter()
         .map(|kernel| kernel.weight)
         .collect::<Vec<_>>();
+    let mut change = f64::INFINITY;
     for _ in 0..config.flow_iterations {
+        let max_density = opes_max_density(kernels, config);
         let mut next = Vec::with_capacity(kernels.len());
         for kernel in kernels.iter() {
-            let (bias, _) = opes_bias_and_derivative(kernels, kernel.center, config, kbt);
+            let (bias, _) =
+                opes_bias_and_derivative(kernels, kernel.center, config, kbt, max_density);
             next.push((bias / kbt).exp().max(1e-12));
         }
         let maximum = next.iter().copied().fold(0.0f64, f64::max).max(1e-300);
@@ -1014,7 +1036,7 @@ fn update_opes_weights(kernels: &mut [GaussianDeposit], config: &OpesConfig, kbt
         for (kernel, weight) in kernels.iter_mut().zip(&next) {
             kernel.weight = *weight;
         }
-        let change = next
+        change = next
             .iter()
             .zip(&previous)
             .map(|(new, old)| (new - old).abs())
@@ -1024,6 +1046,7 @@ fn update_opes_weights(kernels: &mut [GaussianDeposit], config: &OpesConfig, kbt
             break;
         }
     }
+    (change, change <= 1e-8)
 }
 
 fn opes_kernel_density(kernels: &[GaussianDeposit], cv: f64, sigma: f64) -> (f64, f64) {
@@ -1045,21 +1068,25 @@ fn opes_kernel_density(kernels: &[GaussianDeposit], cv: f64, sigma: f64) -> (f64
     (density / norm, derivative / norm)
 }
 
+fn opes_max_density(kernels: &[GaussianDeposit], config: &OpesConfig) -> f64 {
+    kernels
+        .iter()
+        .map(|kernel| opes_kernel_density(kernels, kernel.center, config.sigma).0)
+        .fold(0.0f64, f64::max)
+        .max(config.regularization)
+}
+
 fn opes_bias_and_derivative(
     kernels: &[GaussianDeposit],
     cv: f64,
     config: &OpesConfig,
     kbt: f64,
+    max_density: f64,
 ) -> (f64, f64) {
     if kernels.is_empty() {
         return (0.0, 0.0);
     }
     let (density, derivative) = opes_kernel_density(kernels, cv, config.sigma);
-    let max_density = kernels
-        .iter()
-        .map(|kernel| opes_kernel_density(kernels, kernel.center, config.sigma).0)
-        .fold(0.0f64, f64::max)
-        .max(config.regularization);
     let ratio = density / max_density + config.regularization;
     let factor = 1.0 - 1.0 / config.bias_factor;
     let bias = factor * kbt * ratio.ln();
@@ -1074,11 +1101,12 @@ fn opes_free_energy(
 ) -> FreeEnergySurface {
     // V = (1 - 1/γ) kT ln p, so F = -kT ln p = -V / (1 - 1/γ).
     let factor = 1.0 - 1.0 / config.bias_factor;
+    let max_density = opes_max_density(kernels, config);
     let mut values = Vec::with_capacity(config.grid_bins);
     for index in 0..config.grid_bins {
         let cv = config.grid_min
             + (config.grid_max - config.grid_min) * index as f64 / (config.grid_bins - 1) as f64;
-        let (bias, _) = opes_bias_and_derivative(kernels, cv, config, kbt);
+        let (bias, _) = opes_bias_and_derivative(kernels, cv, config, kbt, max_density);
         values.push(-bias / factor);
     }
     let minimum = values.iter().copied().fold(f64::INFINITY, f64::min);
