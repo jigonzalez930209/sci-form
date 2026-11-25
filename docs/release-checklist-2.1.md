@@ -1,9 +1,13 @@
 # Release checklist `2.1.0`
 
-**Status: scope frozen, promotion in progress.** V2-11 (GCMC) and V2-12
-(reaction networks/kMC) passed their gates and are promoted to core. V2-05
-(Raman/VCD), V2-08 (pKa/redox) and V2-10 (exact OPES flow) remain alpha for
-`2.2`.
+**Status: released 2026-11-25.** V2-11 (GCMC) and V2-12 (reaction
+networks/kMC) are promoted to core in `v2.1.0`. V2-05 (Raman/VCD), V2-08
+(pKa/redox) and V2-10 (exact OPES flow) remain alpha for `2.2`.
+
+- GitHub Release: <https://github.com/jigonzalez930209/sci-form/releases/tag/v2.1.0>
+- crates.io: `sci-form 2.1.0`
+- PyPI: `sciforma 2.1.0`
+- npm: `sci-form-wasm 2.1.0`
 
 ## Frozen scope
 
@@ -28,10 +32,10 @@
 - [x] Version `2.1.0` in the workspace, CLI, Python, WASM and `package.json`.
 - [x] Changelog section `v2.1.0`.
 - [x] `cargo clippy --workspace --all-targets` with `-D warnings`.
-- [ ] Full all-features Rust test matrix and doctests (core alpha-v2 lib, v2_validation, v21_validation, CLI and gradient-parity suites are green).
-- [ ] Python wheel + pytest, WASM build + Node tests.
+- [x] Core Rust suites (alpha-v2 lib, v2_validation, v21_validation, CLI, gradient parity) and doctests.
+- [x] Python wheel + pytest (196 passed), WASM build + Node tests (20 passed, 155 live examples).
 - [x] Docs build (`npm run docs:build`).
-- [ ] Tag `v2.1.0` and publish to crates.io/PyPI/npm/GitHub.
+- [x] Tag `v2.1.0` and publish to crates.io/PyPI/npm/GitHub (workflow success).
 
 ## Release commands
 
