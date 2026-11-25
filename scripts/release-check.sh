@@ -75,7 +75,14 @@ step "CLI packages (tar.gz/deb/rpm) install and run" cli_package
 # ── 4. Python ──────────────────────────────────────────────────────────────
 python_tests() {
   (cd crates/python && maturin build --release --features "$PY_FEATS" --out "$WORK/wheels") >"$WORK/wheel.log" 2>&1 || { tail -20 "$WORK/wheel.log"; return 1; }
-  python3 -m venv "$WORK/venv" && "$WORK/venv/bin/pip" install -q "$WORK"/wheels/*.whl pytest numpy || return 1
+  if python3 -m venv "$WORK/venv" 2>/dev/null; then
+    "$WORK/venv/bin/pip" install -q "$WORK"/wheels/*.whl pytest numpy || return 1
+  elif command -v uv >/dev/null 2>&1; then
+    uv venv "$WORK/venv" >/dev/null || return 1
+    uv pip install --python "$WORK/venv/bin/python" -q "$WORK"/wheels/*.whl pytest numpy || return 1
+  else
+    echo "no venv backend (ensurepip or uv) available"; return 1
+  fi
   (cd /tmp && "$WORK/venv/bin/python" -I -m pytest -q --no-header -p no:cacheprovider \
       "$ROOT/tests/integration/test_python_integration.py" "$ROOT/crates/python/tests/test_bindings.py") || return 1
   (cd /tmp && "$WORK/venv/bin/python" -I "$ROOT/tests/integration/test_smirks_reactions.py") || return 1
