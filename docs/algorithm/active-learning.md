@@ -10,7 +10,8 @@ can use it. The existing Random Forest already exposes both through
 > (`conformal`) expose the calibration; model-bound bindings are pending. See the
 > [v2.x roadmap](/v2-roadmap).
 >
-> **Feature.** `alpha-active-learning` (included in `alpha-v2`).
+> **Feature.** Core since 2.2.0; `alpha-active-learning` remains as an empty
+> compatibility alias.
 
 ## Why conformal calibration
 

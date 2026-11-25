@@ -1126,7 +1126,6 @@ pub fn cmd_gcmc(framework_json: &str, guest_json: &str, config_json: &str) {
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 fn sampling_coords(smiles: &str, coords: Option<&str>, seed: u64) -> Vec<f64> {
     match coords {
         Some(value) => serde_json::from_str(value)
@@ -1141,7 +1140,6 @@ fn sampling_coords(smiles: &str, coords: Option<&str>, seed: u64) -> Vec<f64> {
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 pub fn cmd_metadynamics(
     smiles: &str,
     coords: Option<&str>,
@@ -1165,7 +1163,6 @@ pub fn cmd_metadynamics(
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 pub fn cmd_opes(
     smiles: &str,
     coords: Option<&str>,
@@ -1272,7 +1269,6 @@ pub fn cmd_free_energy(samples_json: &str, estimator: &str, config_json: Option<
     }
 }
 
-#[cfg(feature = "alpha-active-learning")]
 pub fn cmd_active_learning(request_json: &str) {
     let request: sci_form::active_learning::ActiveLearningRequest =
         serde_json::from_str(request_json)
@@ -1289,7 +1285,6 @@ pub fn cmd_active_learning(request_json: &str) {
     }
 }
 
-#[cfg(feature = "alpha-active-learning")]
 pub fn cmd_conformal(predictions_json: &str, targets_json: &str, coverage: f64) {
     let predictions: Vec<f64> = serde_json::from_str(predictions_json)
         .unwrap_or_else(|error| fail(format!("Invalid predictions JSON: {error}")));

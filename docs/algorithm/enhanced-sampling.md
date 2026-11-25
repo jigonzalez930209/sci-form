@@ -14,7 +14,8 @@ replica exchange**, all with a Langevin thermostat.
 > self-consistent importance-weight flow to a fixed-point residual < 1e-8. See the
 > [v2.x roadmap](/v2-roadmap).
 >
-> **Feature.** `alpha-enhanced-sampling` (included in `alpha-v2`).
+> **Feature.** Core since 2.2.0; `alpha-enhanced-sampling` remains as an empty
+> compatibility alias.
 
 ## Why metadynamics
 

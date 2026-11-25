@@ -248,7 +248,6 @@ pub fn refine_barrier_with_gsm(
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Well-tempered metadynamics on a UFF molecule from a JSON config.
 #[wasm_bindgen]
 pub fn run_uff_metadynamics(smiles: &str, coords_flat: &str, config_json: &str) -> String {
@@ -267,7 +266,6 @@ pub fn run_uff_metadynamics(smiles: &str, coords_flat: &str, config_json: &str) 
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// OPES-style enhanced sampling on a UFF molecule from a JSON config.
 #[wasm_bindgen]
 pub fn run_uff_opes(smiles: &str, coords_flat: &str, config_json: &str) -> String {
@@ -285,7 +283,6 @@ pub fn run_uff_opes(smiles: &str, coords_flat: &str, config_json: &str) -> Strin
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a biased 1D CV trace from JSON.
 #[wasm_bindgen]
 pub fn reweight_free_energy(trace_json: &str, config_json: &str) -> String {
@@ -305,7 +302,6 @@ pub fn reweight_free_energy(trace_json: &str, config_json: &str) -> String {
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Block-averaged reweighting of a correlated 1D CV trace from JSON.
 #[wasm_bindgen]
 pub fn reweight_free_energy_correlated(trace_json: &str, config_json: &str) -> String {
@@ -325,7 +321,6 @@ pub fn reweight_free_energy_correlated(trace_json: &str, config_json: &str) -> S
     }
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a 2D OPES trace from JSON.
 #[wasm_bindgen]
 pub fn reweight_free_energy_2d(trace_json: &str, config_json: &str) -> String {
@@ -396,7 +391,6 @@ pub fn estimate_free_energy(samples_json: &str, estimator: &str, config_json: &s
     }
 }
 
-#[cfg(feature = "alpha-active-learning")]
 /// Fit a split-conformal calibration radius.
 #[wasm_bindgen]
 pub fn conformal_calibrate(predictions_json: &str, targets_json: &str, coverage: f64) -> String {

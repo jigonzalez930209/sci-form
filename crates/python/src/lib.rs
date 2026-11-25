@@ -372,6 +372,7 @@ pub(crate) const __ALL_EXPERIMENTAL__: &[&str] = &[
     "solve_3d_rism",
     "estimate_free_energy",
     "conformal_calibrate",
+    "active_learning_propose",
     "active_nmr_isotopes",
     "compute_all_nmr",
 ];

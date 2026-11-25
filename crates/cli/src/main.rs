@@ -162,9 +162,7 @@ fn main() {
             estimator,
             config,
         } => calc_cmds::cmd_free_energy(&samples, &estimator, config.as_deref()),
-        #[cfg(feature = "alpha-active-learning")]
         Commands::ActiveLearning { request } => calc_cmds::cmd_active_learning(&request),
-        #[cfg(feature = "alpha-active-learning")]
         Commands::Conformal {
             predictions,
             targets,
@@ -181,7 +179,6 @@ fn main() {
             guest,
             config,
         } => calc_cmds::cmd_gcmc(&framework, &guest, &config),
-        #[cfg(feature = "alpha-enhanced-sampling")]
         Commands::Metadynamics {
             smiles,
             coords,
@@ -191,7 +188,6 @@ fn main() {
         } => {
             calc_cmds::cmd_metadynamics(&smiles, coords.as_deref(), config.as_deref(), steps, seed)
         }
-        #[cfg(feature = "alpha-enhanced-sampling")]
         Commands::Opes {
             smiles,
             coords,

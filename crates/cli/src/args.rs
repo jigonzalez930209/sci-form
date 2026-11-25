@@ -1297,7 +1297,6 @@ pub enum Commands {
         /// JSON GcmcConfig
         config: String,
     },
-    #[cfg(feature = "alpha-enhanced-sampling")]
     /// Well-tempered metadynamics on a UFF molecule
     Metadynamics {
         /// SMILES used for the UFF potential and collective variable
@@ -1315,7 +1314,6 @@ pub enum Commands {
         #[arg(long, default_value_t = 42)]
         seed: u64,
     },
-    #[cfg(feature = "alpha-enhanced-sampling")]
     /// OPES-style kernel-density bias on a UFF molecule
     Opes {
         /// SMILES used for the UFF potential and collective variable
@@ -1392,13 +1390,11 @@ pub enum Commands {
         #[arg(long)]
         config: Option<String>,
     },
-    #[cfg(feature = "alpha-active-learning")]
     /// Propose active-learning labels from a JSON request
     ActiveLearning {
         /// JSON ActiveLearningRequest
         request: String,
     },
-    #[cfg(feature = "alpha-active-learning")]
     /// Split-conformal calibration radius
     Conformal {
         /// JSON array of predictions

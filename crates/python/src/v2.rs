@@ -254,7 +254,6 @@ fn refine_barrier_with_gsm(
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Well-tempered metadynamics on a UFF molecule.
 ///
 /// `config_json` is the serialized `MetaDynamicsConfig`. Returns
@@ -269,7 +268,6 @@ fn run_uff_metadynamics(smiles: &str, coords: Vec<f64>, config_json: &str) -> Py
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// OPES-style enhanced sampling on a UFF molecule.
 ///
 /// `config_json` is the serialized `OpesConfig`. Returns `OpesResult` as JSON.
@@ -281,7 +279,6 @@ fn run_uff_opes(smiles: &str, coords: Vec<f64>, config_json: &str) -> PyResult<S
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a biased 1D CV trace into an unbiased free-energy histogram.
 ///
 /// Returns `FreeEnergySurface` as JSON. Energies are kcal/mol.
@@ -296,7 +293,6 @@ fn reweight_free_energy(trace_json: &str, config_json: &str) -> PyResult<String>
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Block-averaged reweighting of a correlated 1D CV trace.
 ///
 /// Returns `ReweightResult` as JSON with the surface and per-bin errors.
@@ -311,7 +307,6 @@ fn reweight_free_energy_correlated(trace_json: &str, config_json: &str) -> PyRes
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Reweight a 2D OPES trace into an unbiased surface.
 ///
 /// Returns `Surface2D` as JSON. The trace is a serialized list of
@@ -380,7 +375,6 @@ fn estimate_free_energy(
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-active-learning")]
 /// Fit a split-conformal calibration radius.
 ///
 /// Returns `ConformalCalibrator` as JSON. The radius is in the target unit and
@@ -397,7 +391,6 @@ fn conformal_calibrate(
     to_json(&calibrator)
 }
 
-#[cfg(feature = "alpha-active-learning")]
 /// Propose active-learning labels from a JSON request.
 #[pyfunction]
 fn active_learning_propose(request_json: &str) -> PyResult<String> {
@@ -485,23 +478,16 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(discover_reaction_network, m)?)?;
     m.add_function(wrap_pyfunction!(run_kinetic_monte_carlo, m)?)?;
     m.add_function(wrap_pyfunction!(refine_barrier_with_gsm, m)?)?;
-    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(run_uff_metadynamics, m)?)?;
-    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(run_uff_opes, m)?)?;
-    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(reweight_free_energy, m)?)?;
-    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(reweight_free_energy_correlated, m)?)?;
-    #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(reweight_free_energy_2d, m)?)?;
     #[cfg(feature = "alpha-rism")]
     m.add_function(wrap_pyfunction!(solve_3d_rism, m)?)?;
     #[cfg(feature = "alpha-free-energy")]
     m.add_function(wrap_pyfunction!(estimate_free_energy, m)?)?;
-    #[cfg(feature = "alpha-active-learning")]
     m.add_function(wrap_pyfunction!(conformal_calibrate, m)?)?;
-    #[cfg(feature = "alpha-active-learning")]
     m.add_function(wrap_pyfunction!(active_learning_propose, m)?)?;
     #[cfg(feature = "alpha-nmr-all")]
     m.add_function(wrap_pyfunction!(active_nmr_isotopes, m)?)?;

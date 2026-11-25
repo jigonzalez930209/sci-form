@@ -124,15 +124,13 @@
 //! | `alpha-mlff` | the `mlff` re-export module |
 //! | `alpha-v2` | every v2.x candidate below (`docs/v2-roadmap.md`) |
 //! | `alpha-dft-hybrid` | the PBE0 variant of `dft::ks_fock::DftMethod` |
-//! | `alpha-mp2`, `alpha-qmmm`, `alpha-epr`, `alpha-rism`, `alpha-gcmc` | `mp2`, `qmmm`, `epr`, `rism`, `gcmc` |
+//! | `alpha-mp2`, `alpha-qmmm`, `alpha-epr`, `alpha-rism` | `mp2`, `qmmm`, `epr`, `rism` |
 //! | `alpha-raman` | `raman`, `vcd_roa` |
 //! | `alpha-core-spectroscopy` | `xps` |
 //! | `alpha-redox-pka` | `electrochemistry` |
 //! | `alpha-free-energy` | `free_energy` |
-//! | `alpha-enhanced-sampling` | `enhanced_sampling`, `enhanced_sampling_multi` |
-//! | `alpha-reaction-network` | `networks`, `kmc` |
+//! | `alpha-gcmc`, `alpha-reaction-network`, `alpha-enhanced-sampling`, `alpha-active-learning` | empty compatibility aliases; `gcmc`, `networks`, `kmc`, `enhanced_sampling` and `active_learning` are core |
 //! | `alpha-mlip`, `mlip-onnx` | `mlip`; `mlip-onnx` adds the `mlip_onnx` adapter |
-//! | `alpha-active-learning` | `active_learning` |
 //! | `alpha-nmr-all` | `nmr_all` |
 //!
 //! The legacy `experimental-*` flags (e.g. `experimental-riemannian`) are kept as no-op
@@ -167,7 +165,6 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 
-#[cfg(feature = "alpha-active-learning")]
 pub mod active_learning;
 pub mod alignment;
 pub mod ani;
@@ -213,9 +210,7 @@ pub mod edl;
 pub mod eht;
 #[cfg(feature = "alpha-redox-pka")]
 pub mod electrochemistry;
-#[cfg(feature = "alpha-enhanced-sampling")]
 pub mod enhanced_sampling;
-#[cfg(feature = "alpha-enhanced-sampling")]
 pub mod enhanced_sampling_multi;
 #[cfg(feature = "alpha-epr")]
 pub mod epr;
@@ -2963,7 +2958,6 @@ pub fn compute_md_trajectory_nvt(
     .map_err(SciFormError::from)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Run well-tempered metadynamics on a UFF molecule.
 ///
 /// The collective variable, Gaussian height and width, bias factor,
@@ -2983,7 +2977,6 @@ pub fn run_uff_metadynamics(
     enhanced_sampling::run_uff_metadynamics(smiles, coords, config)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Run OPES-style enhanced sampling on a UFF molecule.
 ///
 /// The bias is a Gaussian kernel-density estimate of the visited CV values and
@@ -3557,7 +3550,6 @@ pub fn evaluate_mlip(
     model.evaluate(elements, positions_angstrom, cell)
 }
 
-#[cfg(feature = "alpha-enhanced-sampling")]
 /// Run two-dimensional OPES with self-consistent kernel weights.
 ///
 /// The two collective variables, grids and kernel widths are configured in

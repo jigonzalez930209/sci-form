@@ -6,6 +6,35 @@ the summary below records the substantive work that landed in each release line.
 Future releases should append new sections here so this file remains the maintained,
 human-written changelog for the repository.
 
+## v2.2.0 - 2026-11-25
+
+### Promoted to core
+
+- **Enhanced sampling (V2-10).** Well-tempered metadynamics, 1D/2D OPES with a
+  validated fixed-point importance-weight flow, histogram reweighting and
+  temperature replica exchange. The OPES flow now reports `flow_residual` and
+  `flow_converged`; `alpha-enhanced-sampling` is an empty compatibility alias.
+- **Active learning (V2-14).** Split-conformal intervals plus the
+  uncertainty/distance acquisition loop, exposed on CLI, Python and WASM.
+  `alpha-active-learning` is an empty compatibility alias.
+
+### Validation
+
+- F134: OPES flow fixed-point residual 4.7e-11 on a harmonic surface, 1D PMF
+  RMSE 0.245 kcal/mol.
+- F135: distance acquisition covers a 1D domain with a 0.398 max-gap ratio
+  against 100 random selections.
+- Existing gates remain green: F114 conformal coverage, F124/F125 PMF,
+  F129 replica-exchange acceptance 28.7 %.
+
+### Still alpha (2.3)
+
+- V2-05 Raman/VCD and coupled response.
+- V2-08 pKa/redox.
+- V2-09 alchemical free-energy MD/soft-core driver.
+- OPES with more than two collective variables.
+- V2-03 QM/MM, V2-04 EPR, V2-13 universal MLIP.
+
 ## v2.1.0 - 2026-11-25
 
 ### Promoted to core

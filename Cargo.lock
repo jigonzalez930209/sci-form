@@ -1708,7 +1708,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form"
-version = "2.1.0"
+version = "2.2.0"
 dependencies = [
  "approx",
  "bytemuck",
@@ -1729,7 +1729,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-cli"
-version = "2.1.0"
+version = "2.2.0"
 dependencies = [
  "clap",
  "clap_complete",
@@ -1742,7 +1742,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-python"
-version = "2.1.0"
+version = "2.2.0"
 dependencies = [
  "nalgebra",
  "pyo3",
@@ -1754,7 +1754,7 @@ dependencies = [
 
 [[package]]
 name = "sci-form-wasm"
-version = "2.1.0"
+version = "2.2.0"
 dependencies = [
  "futures-channel",
  "getrandom 0.2.17",
