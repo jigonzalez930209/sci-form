@@ -106,9 +106,11 @@ with a coverage interpretation.
 | Interval | Calibrated session | bounds contain the mean, coverage recorded |
 | Acquisition | Candidate with larger uncertainty | ranked first |
 | Invalid coverage | 0, 1, NaN | rejected |
+| Domain coverage | Distance acquisition vs 100 random selections | gap ratio 0.398 (F135) |
 
 A real coverage test needs a held-out chemical dataset and exchangeable
-calibration/test splits. That benchmark is still pending.
+calibration/test splits. F135 validates the acquisition loop on a synthetic
+1D oracle; a chemical benchmark is still pending.
 
 ## Bindings
 

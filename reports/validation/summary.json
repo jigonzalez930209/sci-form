@@ -713,6 +713,22 @@
   "notes": "200 flow iterations; 50k steps; 1D PMF RMSE within 0.5 kcal/mol"
  },
  {
+  "ficha": "F135",
+  "observable": "active_learning_domain_coverage",
+  "metric": "max_gap_ratio_vs_random",
+  "value": 0.3979533826037522,
+  "tolerance": 0.8,
+  "pass": true,
+  "n_cases": 100,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "1",
+  "reference": {
+   "tool": "distance acquisition vs 100 random selections"
+  },
+  "notes": "20 labels on a 101-point 1D grid; active acquisition minimises the largest unsampled gap"
+ },
+ {
   "ficha": "F14",
   "observable": "butina_partition_mismatches",
   "reference": {

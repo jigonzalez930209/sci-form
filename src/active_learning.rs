@@ -337,3 +337,33 @@ mod tests {
         assert!(ConformalCalibrator::fit(&[0.0], &[0.0], f64::NAN).is_err());
     }
 }
+
+/// Propose the next labels for a Random Forest model from serialisable inputs.
+///
+/// This is the JSON-friendly entry point used by the CLI, Python and WASM
+/// bindings. `labeled` is the current training set; the model is not retrained
+/// here, so callers should refit it between rounds when they want uncertainty
+/// from the updated forest.
+pub fn propose_active_learning(
+    model: &RandomForest,
+    labeled: &[LabeledPoint],
+    candidates: &[Vec<f64>],
+    acquisition: &Acquisition,
+    n: usize,
+) -> Result<Vec<usize>, SciFormError> {
+    if candidates.is_empty() {
+        return Err(SciFormError::validation(
+            "at least one candidate is required",
+        ));
+    }
+    if candidates.iter().any(|features| features.is_empty()) {
+        return Err(SciFormError::validation(
+            "candidate feature vectors must not be empty",
+        ));
+    }
+    let mut session = ActiveLearningSession::new(model.clone(), acquisition.clone());
+    for point in labeled {
+        session.add_label(point.features.clone(), point.target);
+    }
+    Ok(session.propose(candidates, n.min(candidates.len())))
+}

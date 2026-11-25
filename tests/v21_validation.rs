@@ -1087,3 +1087,87 @@ fn f134_opes_flow_reaches_fixed_point() {
         notes: "200 flow iterations; 50k steps; 1D PMF RMSE within 0.5 kcal/mol",
     });
 }
+
+/// L3 active-learning gate: distance acquisition covers a 1D domain better
+/// than random selection with the same label budget.
+#[test]
+fn f135_active_learning_acquisition_beats_random() {
+    use sci_form::active_learning::{propose_active_learning, Acquisition, LabeledPoint};
+    use sci_form::ml::advanced_models::RandomForest;
+
+    let candidates: Vec<Vec<f64>> = (0..=100).map(|i| vec![i as f64 / 100.0]).collect();
+    let model = RandomForest {
+        trees: Vec::new(),
+        n_trees: 0,
+        oob_score: None,
+    };
+    let mut labeled = vec![
+        LabeledPoint {
+            features: vec![0.0],
+            target: 0.0,
+        },
+        LabeledPoint {
+            features: vec![0.5],
+            target: 0.0,
+        },
+        LabeledPoint {
+            features: vec![1.0],
+            target: 0.0,
+        },
+    ];
+    let mut selected = Vec::new();
+    for _ in 0..20 {
+        let proposed =
+            propose_active_learning(&model, &labeled, &candidates, &Acquisition::Distance, 1)
+                .unwrap();
+        let index = proposed[0];
+        selected.push(index);
+        labeled.push(LabeledPoint {
+            features: candidates[index].clone(),
+            target: 0.0,
+        });
+    }
+    let gap = |points: &[usize]| -> f64 {
+        let mut xs: Vec<f64> = points.iter().map(|&i| i as f64 / 100.0).collect();
+        xs.push(0.0);
+        xs.push(1.0);
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        xs.windows(2)
+            .map(|pair| pair[1] - pair[0])
+            .fold(0.0f64, f64::max)
+    };
+    let active_gap = gap(&selected);
+    let mut random_sum = 0.0;
+    for seed in 0..100u64 {
+        let mut state = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+        let random: Vec<usize> = (0..20)
+            .map(|_| {
+                state = state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                (state >> 33) as usize % 101
+            })
+            .collect();
+        random_sum += gap(&random);
+    }
+    let random_gap = random_sum / 100.0;
+    eprintln!(
+        "active max gap={active_gap:.3}, random mean max gap={random_gap:.3}, ratio={:.3}",
+        active_gap / random_gap
+    );
+    let ratio = active_gap / random_gap.max(1e-12);
+    assert!(ratio <= 0.5, "active/random gap ratio {ratio}");
+    gate(Row {
+        ficha: "F135",
+        observable: "active_learning_domain_coverage",
+        metric: "max_gap_ratio_vs_random",
+        value: ratio,
+        tolerance: 0.8,
+        pass: None,
+        n_cases: 100,
+        level: "L3",
+        units: "1",
+        reference: "distance acquisition vs 100 random selections",
+        notes: "20 labels on a 101-point 1D grid; active acquisition minimises the largest unsampled gap",
+    });
+}

@@ -218,8 +218,8 @@ These rows are on `feat/wave-c` and are not part of the 2.0.0 audit above.
 
 | Item | Value |
 |---|---|
-| Recorded rows | 40 |
-| Passing gates | 34 |
+| Recorded rows | 41 |
+| Passing gates | 35 |
 | Gaps | 6 |
 | Oracles | PySCF 2.15.1 (STO-3G cartesian, all electrons); pymbar 4.0.3; RASPA2 ExampleMOFsForceField |
 
@@ -256,6 +256,7 @@ These rows are on `feat/wave-c` and are not part of the 2.0.0 audit above.
 | F132 | GCMC (V2-11) | RASPA2 N2/Cu-BTC (HKUST-1), 298 K, 10 bar | 2.5 % | Ewald k4 + shifted LJ, 2 seeds | primitive P1 cell; TraPPE N2 |
 | F133 | Barrier MAE (V2-12) | experimental torsional/inversion barriers | 0.575 kcal/mol | ethane, methanol, ammonia; UFF/GFN2 | rigid scans; worst 1.69 |
 | F134 | OPES flow (V2-10) | fixed-point residual, harmonic surface | 4.7e-11 | 50k steps, 200 flow iterations | 1D PMF RMSE 0.245 kcal/mol |
+| F135 | Active learning (V2-14) | 100 random selections, 1D grid | gap ratio 0.398 | 20 labels, distance acquisition | acquisition loop only |
 
 The gates found and fixed eight defects on the branch:
 
