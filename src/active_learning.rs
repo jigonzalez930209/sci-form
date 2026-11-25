@@ -338,6 +338,21 @@ mod tests {
     }
 }
 
+/// JSON request for the active-learning proposer.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveLearningRequest {
+    /// Current Random Forest model.
+    pub model: RandomForest,
+    /// Labelled points already known to the session.
+    pub labeled: Vec<LabeledPoint>,
+    /// Candidate feature vectors.
+    pub candidates: Vec<Vec<f64>>,
+    /// Acquisition function.
+    pub acquisition: Acquisition,
+    /// Number of labels to propose.
+    pub n: usize,
+}
+
 /// Propose the next labels for a Random Forest model from serialisable inputs.
 ///
 /// This is the JSON-friendly entry point used by the CLI, Python and WASM

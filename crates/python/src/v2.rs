@@ -397,6 +397,23 @@ fn conformal_calibrate(
     to_json(&calibrator)
 }
 
+#[cfg(feature = "alpha-active-learning")]
+/// Propose active-learning labels from a JSON request.
+#[pyfunction]
+fn active_learning_propose(request_json: &str) -> PyResult<String> {
+    let request: sci_form_core::active_learning::ActiveLearningRequest =
+        serde_json::from_str(request_json).map_err(|error| engine_error(error.to_string()))?;
+    let indices = sci_form_core::active_learning::propose_active_learning(
+        &request.model,
+        &request.labeled,
+        &request.candidates,
+        &request.acquisition,
+        request.n,
+    )
+    .map_err(engine_error)?;
+    to_json(&indices)
+}
+
 #[cfg(feature = "alpha-nmr-all")]
 /// List every registered NMR-active isotope for an element.
 ///
@@ -484,6 +501,8 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(estimate_free_energy, m)?)?;
     #[cfg(feature = "alpha-active-learning")]
     m.add_function(wrap_pyfunction!(conformal_calibrate, m)?)?;
+    #[cfg(feature = "alpha-active-learning")]
+    m.add_function(wrap_pyfunction!(active_learning_propose, m)?)?;
     #[cfg(feature = "alpha-nmr-all")]
     m.add_function(wrap_pyfunction!(active_nmr_isotopes, m)?)?;
     #[cfg(feature = "alpha-nmr-all")]

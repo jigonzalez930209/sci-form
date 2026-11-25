@@ -117,3 +117,4 @@ Reaction networks	kmc	sci-form kmc '{"species":[{"id":"A","initial_count":10},{"
 Quantum chemistry	pbe0	sci-form pbe0 '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.927297,0]' --max-iterations 50
 Spectroscopy	nmr-all	sci-form nmr-all '[8,1,1]' '[0,0,0,0.9572,0,0,-0.239987,0.927297,0]'
 Spectroscopy	nmr-isotopes	sci-form nmr-isotopes 6
+Machine learning	active-learning	sci-form active-learning '{"model":{"trees":[],"n_trees":0,"oob_score":null},"labeled":[{"features":[0.0],"target":0.0},{"features":[1.0],"target":0.0}],"candidates":[[0.0],[0.25],[0.5],[0.75],[1.0]],"acquisition":{"kind":"distance"},"n":1}'

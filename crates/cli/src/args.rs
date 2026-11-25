@@ -1393,6 +1393,12 @@ pub enum Commands {
         config: Option<String>,
     },
     #[cfg(feature = "alpha-active-learning")]
+    /// Propose active-learning labels from a JSON request
+    ActiveLearning {
+        /// JSON ActiveLearningRequest
+        request: String,
+    },
+    #[cfg(feature = "alpha-active-learning")]
     /// Split-conformal calibration radius
     Conformal {
         /// JSON array of predictions

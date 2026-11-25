@@ -117,11 +117,16 @@ calibration/test splits. F135 validates the acquisition loop on a synthetic
 | Surface | Entry point |
 |---|---|
 | CLI | `sci-form conformal '<predictions-json>' '<targets-json>' --coverage 0.9` |
+| CLI | `sci-form active-learning '<ActiveLearningRequest-json>'` |
 | WASM | `conformal_calibrate(predictions_json, targets_json, coverage)` |
+| WASM | `active_learning_propose(request_json)` |
 | Python | `conformal_calibrate(predictions, targets, coverage)` |
+| Python | `active_learning_propose(request_json)` |
 
-The model-bound `ActiveLearningSession` remains a Rust API because its
-acquisition loop owns a generic `UncertaintyModel`.
+`ActiveLearningRequest` carries a serialized Random Forest, the labelled
+points, the candidate features, the acquisition and the number of labels. The
+generic `ActiveLearningSession<M: UncertaintyModel>` remains the Rust API for
+custom models.
 ## Limitations
 
 - Conformal coverage assumes exchangeability. A new chemical series can break
@@ -133,7 +138,7 @@ acquisition loop owns a generic `UncertaintyModel`.
 - The interval is marginal, not conditional on a specific feature region.
 - The Random Forest tree variance can be zero when all trees agree; use the
   conformal interval, not the raw standard deviation, for coverage.
-- No Python, WASM or CLI wrapper yet.
+- The JSON surface uses a serialized Random Forest; custom models stay in Rust.
 
 ## Next steps
 
@@ -141,5 +146,5 @@ acquisition loop owns a generic `UncertaintyModel`.
 2. Add fingerprint or learned-embedding distances.
 3. Add a retraining loop with a trainer callback.
 4. Add Mondrian/conditional conformal intervals.
-5. Add Python, WASM and CLI wrappers.
+5. Add a retraining loop benchmark on a chemical dataset.
 6. Connect the acquisition score to the universal MLIP label budget.

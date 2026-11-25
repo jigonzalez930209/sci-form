@@ -163,6 +163,8 @@ fn main() {
             config,
         } => calc_cmds::cmd_free_energy(&samples, &estimator, config.as_deref()),
         #[cfg(feature = "alpha-active-learning")]
+        Commands::ActiveLearning { request } => calc_cmds::cmd_active_learning(&request),
+        #[cfg(feature = "alpha-active-learning")]
         Commands::Conformal {
             predictions,
             targets,

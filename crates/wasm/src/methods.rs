@@ -414,6 +414,26 @@ pub fn conformal_calibrate(predictions_json: &str, targets_json: &str, coverage:
     }
 }
 
+/// Propose active-learning labels from a JSON request.
+#[wasm_bindgen]
+pub fn active_learning_propose(request_json: &str) -> String {
+    let request: sci_form::active_learning::ActiveLearningRequest =
+        match serde_json::from_str(request_json) {
+            Ok(value) => value,
+            Err(error) => return json_error(&bad_json("'request_json'", request_json, &error)),
+        };
+    match sci_form::active_learning::propose_active_learning(
+        &request.model,
+        &request.labeled,
+        &request.candidates,
+        &request.acquisition,
+        request.n,
+    ) {
+        Ok(indices) => serialize_or_error(&indices),
+        Err(error) => json_error(&error),
+    }
+}
+
 #[cfg(feature = "alpha-nmr-all")]
 /// List every NMR-active isotope registered for an element.
 #[wasm_bindgen]

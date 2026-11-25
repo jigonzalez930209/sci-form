@@ -81,6 +81,12 @@ name = "kmc"
 path = "examples/kmc.rs"
 required-features = ["alpha-v2"]
 
+[[bench]]
+name = "active_learning"
+path = "benches/active_learning.rs"
+harness = false
+required-features = ["alpha-v2"]
+
 [[test]]
 name = "debug"
 path = "tests/debug.rs"

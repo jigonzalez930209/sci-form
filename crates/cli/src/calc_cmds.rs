@@ -1273,6 +1273,23 @@ pub fn cmd_free_energy(samples_json: &str, estimator: &str, config_json: Option<
 }
 
 #[cfg(feature = "alpha-active-learning")]
+pub fn cmd_active_learning(request_json: &str) {
+    let request: sci_form::active_learning::ActiveLearningRequest =
+        serde_json::from_str(request_json)
+            .unwrap_or_else(|error| fail(format!("Invalid active-learning request JSON: {error}")));
+    match sci_form::active_learning::propose_active_learning(
+        &request.model,
+        &request.labeled,
+        &request.candidates,
+        &request.acquisition,
+        request.n,
+    ) {
+        Ok(indices) => println!("{}", serde_json::to_string_pretty(&indices).unwrap()),
+        Err(error) => fail(format!("Active-learning error: {error}")),
+    }
+}
+
+#[cfg(feature = "alpha-active-learning")]
 pub fn cmd_conformal(predictions_json: &str, targets_json: &str, coverage: f64) {
     let predictions: Vec<f64> = serde_json::from_str(predictions_json)
         .unwrap_or_else(|error| fail(format!("Invalid predictions JSON: {error}")));
