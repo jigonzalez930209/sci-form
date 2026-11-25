@@ -1,0 +1,8 @@
+{
+  "observable": "co2_irmof1_loading_1bar_298k",
+  "sci_form_loading_molecules_per_uc": 5.7845,
+  "raspa_loading_molecules_per_uc": 6.0193,
+  "raspa_reference": "RASPA2 Dubbeldam2007FlexibleIRMOF-1 force field (rigid framework), CO2, 298 K, 1 bar, 50k cycles",
+  "sci_form_settings": "Ewald alpha=0.3 1/A, k_max=8, shift_lj, 30k equilibration + 70k production, seeds 601-602",
+  "note": "Framework geometry and per-type charges verified identical to RASPA (424 atoms). sci-form 5.58/5.99, RASPA 6.02 mol/uc (45k-cycle block); energy -2.88 vs -2.92 kcal/mol"
+}

@@ -64,6 +64,13 @@ pub enum ElectrochemistryMethod {
     Uhf,
     /// GFN2-xTB. Faster, but only neutral closed-shell states are supported.
     Xtb,
+    /// PBE0/3-21G KS-DFT with a medium Becke grid and density damping.
+    ///
+    /// Split-valence is the accuracy-oriented choice for the pKa cycle. This
+    /// path is slower than UHF and is intended for the validation benchmark,
+    /// not as a default.
+    #[cfg(feature = "alpha-dft-hybrid")]
+    Pbe0,
 }
 
 /// How the conformer energies are condensed into one state energy.
@@ -408,6 +415,32 @@ pub fn evaluate_state(
             ElectrochemistryMethod::Xtb => {
                 let xtb = crate::compute_xtb(&conformer.elements, &positions)?;
                 (xtb.total_energy * EV_TO_KCAL_MOL, xtb.mulliken_charges)
+            }
+            #[cfg(feature = "alpha-dft-hybrid")]
+            ElectrochemistryMethod::Pbe0 => {
+                use crate::dft::grid::GridQuality;
+                use crate::dft::ks_fock::{solve_ks_dft_with_mixing, DftConfig, DftMethod};
+                use crate::dft::DftBasisKind;
+                let dft = solve_ks_dft_with_mixing(
+                    &conformer.elements,
+                    &positions,
+                    &DftConfig {
+                        method: DftMethod::Pbe0,
+                        grid_quality: GridQuality::Medium,
+                        max_iterations: 500,
+                        charge,
+                        multiplicity: 1,
+                        basis: DftBasisKind::SplitValence,
+                        ..DftConfig::default()
+                    },
+                    0.2,
+                )?;
+                if !dft.converged {
+                    return Err(SciFormError::numerical(format!(
+                        "PBE0 did not converge for {smiles}"
+                    )));
+                }
+                (dft.total_energy * HARTREE_TO_KCAL_MOL, dft.mulliken_charges)
             }
         };
         let alpb = crate::solvation_alpb::compute_alpb_solvation(

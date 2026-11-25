@@ -3,9 +3,9 @@
 This appendix is generated from `reports/validation/summary.json`. It is the
 raw record behind the curated [scientific validation report](./scientific-validation.md).
 
-- Rows: **156**
-- Passing gates: **146**
-- Recorded method/provenance gaps: **10**
+- Rows: **171**
+- Passing gates: **158**
+- Recorded method/provenance gaps: **13**
 - Failing gates: **0**
 - Reference tools: RDKit 2026.09.1, PySCF 2.14.0, tblite 0.7.0,
   dftd4 4.3.0, xtb 6.7.1, LAMMPS, ASE 3.29.0, pymatgen 2026.9.24,
@@ -139,7 +139,7 @@ limitations behind the gaps.
 | F85 | <code>variable_<wbr>cell_<wbr>stress_<wbr>vs_<wbr>ase</code> | ASE 3.29.0 LennardJones stress + UnitCellFilter | <code>max_<wbr>abs</code> | — | 0 | L2 | GAP |
 | F86-EHT | <code>eht_<wbr>derived_<wbr>vsip_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 4.441e-16 | 1.000e-12 | L2 | PASS |
 | F86-EHT | <code>eht_<wbr>derived_<wbr>zeta_<wbr>max_<wbr>abs</code> | — | <code>max_<wbr>abs</code> | 5.551e-17 | 1.000e-12 | L2 | PASS |
-| F86-EHT | <code>eht_<wbr>gap_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 3.213e-12 | 1.000e-06 | L2 | PASS |
+| F86-EHT | <code>eht_<wbr>gap_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 3.210e-12 | 1.000e-06 | L2 | PASS |
 | F86-EHT | <code>eht_<wbr>hamiltonian_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 1.420e-11 | 1.000e-10 | L2 | PASS |
 | F86-EHT | <code>eht_<wbr>homo_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 8.562e-13 | 1.000e-06 | L2 | PASS |
 | F86-EHT | <code>eht_<wbr>lumo_<wbr>max_<wbr>abs_<wbr>ev</code> | — | <code>max_<wbr>abs</code> | 3.299e-12 | 1.000e-06 | L2 | PASS |
@@ -174,6 +174,21 @@ limitations behind the gaps.
 | F113 | <code>forces_<wbr>are_<wbr>minus_<wbr>energy_<wbr>gradient</code> | analytic harmonic bond declared in eV | <code>max_<wbr>abs_<wbr>error_<wbr>kcal_<wbr>mol_<wbr>per_<wbr>angstrom</code> | 6.870e-10 | 1.000e-05 | L0 | PASS |
 | F114 | <code>split_<wbr>conformal_<wbr>coverage</code> | exchangeability guarantee: coverage &gt;= 0.90 | <code>abs_<wbr>deviation_<wbr>from_<wbr>0.90</code> | 0.0074 | 0.02 | L0 | PASS |
 | F115 | <code>all_<wbr>nuclide_<wbr>driver_<wbr>vs_<wbr>direct_<wbr>giao</code> | sci-form compute_giao_nmr_configured | <code>max_<wbr>abs_<wbr>error_<wbr>ppm</code> | 0 | 1.000e-10 | L1 | PASS |
+| F116 | <code>co2_<wbr>cu_<wbr>btc_<wbr>loading</code> | RASPA2 ExampleMOFsForceField, 323 K, 10 bar | <code>relative_<wbr>error</code> | 0.0200578 | 0.1 | L2 | PASS |
+| F117 | <code>relative_<wbr>pka_<wbr>pbe0_<wbr>3_<wbr>21g</code> | CRC Handbook, relative to acetic acid 4.76 | <code>mae_<wbr>pka_<wbr>units</code> | 2.325 | 1 | L4 | GAP |
+| F118 | <code>enhanced_<wbr>sampling_<wbr>finite_<wbr>traces</code> | sci-form metadynamics and OPES | <code>non_<wbr>finite_<wbr>values</code> | 0 | 0 | L0 | PASS |
+| F119 | <code>two_<wbr>dimensional_<wbr>opes_<wbr>finite</code> | sci-form 2D OPES | <code>non_<wbr>finite_<wbr>values</code> | 0 | 0 | L0 | PASS |
+| F120 | <code>co2_<wbr>cu_<wbr>btc_<wbr>primitive_<wbr>ewald_<wbr>loading</code> | RASPA2 primitive P1 Cu-BTC, 323 K, 10 bar | <code>relative_<wbr>error</code> | 0.00725392 | 0.1 | L2 | PASS |
+| F121 | <code>co2_<wbr>multisite_<wbr>empty_<wbr>box_<wbr>loading_<wbr>lj</code> | ideal gas fV/kT | <code>relative_<wbr>error</code> | 0.207531 | 0.1 | L0 | GAP |
+| F124 | <code>double_<wbr>well_<wbr>pmf_<wbr>rmse</code> | analytic double-well PMF, 300 K | <code>rmse_<wbr>kcal_<wbr>mol</code> | 0.298772 | 0.5 | L3 | PASS |
+| F125 | <code>harmonic_<wbr>2d_<wbr>opes_<wbr>pmf_<wbr>rmse</code> | analytic 2D harmonic PMF, 300 K | <code>rmse_<wbr>kcal_<wbr>mol</code> | 0.399831 | 0.5 | L3 | PASS |
+| F126 | <code>curated_<wbr>network_<wbr>recovery</code> | GRI-Mech 3.0, NIST, JPL curated mechanisms | <code>missing_<wbr>networks</code> | 0 | 0 | L3 | PASS |
+| F127 | <code>curated_<wbr>network_<wbr>kmc_<wbr>vs_<wbr>ode</code> | mean-field ODE with identical HTST rates, 8 seeds | <code>max_<wbr>normalized_<wbr>population_<wbr>error</code> | 0.00110917 | 0.05 | L3 | PASS |
+| F128 | <code>network_<wbr>seed_<wbr>determinism</code> | same-seed replay and max_depth/max_species caps | <code>violations</code> | 0 | 0 | L3 | PASS |
+| F129 | <code>replica_<wbr>exchange_<wbr>acceptance</code> | roadmap acceptance window 20-40 % | <code>distance_<wbr>outside_<wbr>20_<wbr>40_<wbr>window</code> | 0 | 0 | L3 | PASS |
+| F130 | <code>raman_<wbr>positions_<wbr>vs_<wbr>experiment</code> | NIST CCCBDB gas-phase fundamentals | <code>mae_<wbr>cm1</code> | 82.3485 | 10 | L3 | GAP |
+| F131 | <code>co2_<wbr>irmof1_<wbr>loading</code> | RASPA2 IRMOF-1 (MOF-5), 298 K, 1 bar | <code>relative_<wbr>error</code> | 0.0390079 | 0.1 | L2 | PASS |
+| F132 | <code>n2_<wbr>cu_<wbr>btc_<wbr>primitive_<wbr>loading</code> | RASPA2 N2/Cu-BTC (HKUST-1), 298 K, 10 bar | <code>relative_<wbr>error</code> | 0.0254801 | 0.1 | L2 | PASS |
 
 ## Reproduce
 

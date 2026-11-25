@@ -13,7 +13,9 @@ use super::valence_basis::DftBasisKind;
 use super::vxc_matrix::{build_vxc_matrix, build_vxc_uks};
 use crate::scf::constants::{HARTREE_TO_EV, SCF_MAX_ITER};
 use crate::scf::core_matrices::{nuclear_repulsion_energy_charges, CoreMatrices};
-use crate::scf::density_matrix::{build_density_matrix, build_spin_density};
+use crate::scf::density_matrix::{
+    build_density_matrix, build_spin_density, electron_count, superposition_of_atomic_densities,
+};
 use crate::scf::diis::DiisAccelerator;
 use crate::scf::mulliken::mulliken_analysis;
 use crate::scf::orthogonalization::{
@@ -233,10 +235,33 @@ pub struct DftResult {
 ///     Ok(())
 /// }
 /// ```
+/// Run KS-DFT with the standard SCF update (`density_mixing = 1.0`).
 pub fn solve_ks_dft(
     elements: &[u8],
     positions: &[[f64; 3]],
     config: &DftConfig,
+) -> Result<DftResult, String> {
+    solve_ks_dft_inner(elements, positions, config, 1.0)
+}
+
+/// Run KS-DFT with a fixed linear density mixing factor in `(0, 1]`.
+///
+/// Values below one damp the first SCF iterations of difficult anions without
+/// changing the converged density.
+pub fn solve_ks_dft_with_mixing(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    config: &DftConfig,
+    density_mixing: f64,
+) -> Result<DftResult, String> {
+    solve_ks_dft_inner(elements, positions, config, density_mixing)
+}
+
+fn solve_ks_dft_inner(
+    elements: &[u8],
+    positions: &[[f64; 3]],
+    config: &DftConfig,
+    density_mixing: f64,
 ) -> Result<DftResult, String> {
     crate::validation::validate_geometry(elements, positions)?;
     let system = MolecularSystem::from_angstrom(
@@ -317,7 +342,25 @@ pub fn solve_ks_dft(
     }
 
     let mut c = back_transform(&c_ortho, &x);
-    let mut density = build_density_matrix(&c, n_occupied);
+    // Start from the superposition of atomic densities when the all-electron
+    // basis is in use. The neutral-atom density is rescaled to the requested
+    // electron count so anions and cations start from the right particle
+    // number instead of the H_core guess.
+    let all_electron = z_eff
+        .iter()
+        .zip(&system.atomic_numbers)
+        .all(|(effective, atomic)| *effective == *atomic as f64);
+    let mut density = if all_electron {
+        let sad = superposition_of_atomic_densities(&basis, &system.atomic_numbers);
+        let sad_electrons = electron_count(&sad, s);
+        if sad_electrons > 1e-12 {
+            sad * (n_electrons as f64 / sad_electrons)
+        } else {
+            build_density_matrix(&c, n_occupied)
+        }
+    } else {
+        build_density_matrix(&c, n_occupied)
+    };
 
     let mut total_energy = 0.0;
     // Coulomb (Hartree) energy of the converged density, in Hartree.
@@ -402,7 +445,12 @@ pub fn solve_ks_dft(
         final_orbital_energies = orbital_energies.clone();
 
         let new_density = build_density_matrix(&c, n_occupied);
-        density = new_density;
+        let mixing = density_mixing.clamp(1e-6, 1.0);
+        density = if mixing >= 1.0 {
+            new_density
+        } else {
+            &density * (1.0 - mixing) + &new_density * mixing
+        };
     }
 
     // Extract HOMO/LUMO

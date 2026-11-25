@@ -1,0 +1,7 @@
+{
+  "observable": "co2_cu_btc_loading_10bar_323k",
+  "sci_form_loading_molecules_per_uc": 114.9817,
+  "raspa_loading_molecules_per_uc": 116.0,
+  "raspa_reference": "RASPA2 ExampleMOFsForceField CO2/Cu-BTC, 323 K, 10 bar, 5k cycles",
+  "note": "4 independent 160k-move replicas (40k eq + 120k prod), Ewald k_max=4 + switching; mean 114.98 +/- 1.87 vs RASPA 116 (0.9 %); energy -5.03 kcal/mol"
+}

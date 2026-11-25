@@ -279,6 +279,7 @@ pub fn run_multi_opes<P: Potential>(
     let kbt = R_GAS_KCAL_MOLK * config.temperature_k;
     let friction_fs_inv = config.friction_ps_inv * 1e-3;
     let mut cv = [config.cv_x.value(&x)?, config.cv_y.value(&x)?];
+    let mut max_density = config.regularization;
     let mut potential_energy = potential.energy(&x);
     trace.push(MultiTracePoint {
         step: 0,
@@ -291,7 +292,7 @@ pub fn run_multi_opes<P: Potential>(
         potential.gradient(&x, &mut gradient);
         let gx = config.cv_x.gradient(&x)?;
         let gy = config.cv_y.gradient(&x)?;
-        let (_, dx, dy) = multi_bias(&kernels, cv, config, kbt);
+        let (_, dx, dy) = multi_bias(&kernels, cv, config, kbt, max_density);
         let mut force = vec![0.0; n_coords];
         for index in 0..n_coords {
             force[index] = -gradient[index] - dx * gx[index] - dy * gy[index];
@@ -303,7 +304,7 @@ pub fn run_multi_opes<P: Potential>(
         }
         potential.gradient(&x, &mut gradient);
         cv = [config.cv_x.value(&x)?, config.cv_y.value(&x)?];
-        let (bias, dx, dy) = multi_bias(&kernels, cv, config, kbt);
+        let (bias, dx, dy) = multi_bias(&kernels, cv, config, kbt, max_density);
         let gx = config.cv_x.gradient(&x)?;
         let gy = config.cv_y.gradient(&x)?;
         for index in 0..n_coords {
@@ -328,6 +329,7 @@ pub fn run_multi_opes<P: Potential>(
                 weight: 1.0,
             });
             update_multi_weights(&mut kernels, config, kbt);
+            max_density = kernel_max_density(&kernels, config);
         }
         if step % config.trace_stride == 0 {
             potential_energy = potential.energy(&x);
@@ -408,13 +410,23 @@ pub fn reweight_free_energy_2d(
             .clamp(0.0, (config.ny - 1) as f64) as usize;
         weights[iy * config.nx + ix] += (point.bias_kcal_mol / kbt).exp();
     }
+    let maximum = weights
+        .iter()
+        .filter(|weight| **weight > 0.0)
+        .map(|weight| -kbt * weight.ln())
+        .fold(f64::NEG_INFINITY, f64::max);
+    let empty_value = if maximum.is_finite() {
+        maximum + 3.0 * kbt
+    } else {
+        0.0
+    };
     let mut values: Vec<f64> = weights
         .iter()
         .map(|weight| {
             if *weight > 0.0 {
                 -kbt * weight.ln()
             } else {
-                f64::INFINITY
+                empty_value
             }
         })
         .collect();
@@ -463,21 +475,25 @@ fn multi_density(
     (density / norm, dx / norm, dy / norm)
 }
 
+fn kernel_max_density(kernels: &[MultiKernel], config: &MultiOpesConfig) -> f64 {
+    kernels
+        .iter()
+        .map(|kernel| multi_density(kernels, kernel.center, config).0)
+        .fold(0.0f64, f64::max)
+        .max(config.regularization)
+}
+
 fn multi_bias(
     kernels: &[MultiKernel],
     cv: [f64; 2],
     config: &MultiOpesConfig,
     kbt: f64,
+    max_density: f64,
 ) -> (f64, f64, f64) {
     if kernels.is_empty() {
         return (0.0, 0.0, 0.0);
     }
     let (density, dx, dy) = multi_density(kernels, cv, config);
-    let max_density = kernels
-        .iter()
-        .map(|kernel| multi_density(kernels, kernel.center, config).0)
-        .fold(0.0f64, f64::max)
-        .max(config.regularization);
     let ratio = density / max_density + config.regularization;
     let factor = 1.0 - 1.0 / config.bias_factor;
     let denominator = density + config.regularization * max_density;
@@ -491,9 +507,10 @@ fn multi_bias(
 fn update_multi_weights(kernels: &mut [MultiKernel], config: &MultiOpesConfig, kbt: f64) {
     let mut previous: Vec<f64> = kernels.iter().map(|kernel| kernel.weight).collect();
     for _ in 0..config.flow_iterations {
+        let max_density = kernel_max_density(kernels, config);
         let mut next = Vec::with_capacity(kernels.len());
         for kernel in kernels.iter() {
-            let (bias, _, _) = multi_bias(kernels, kernel.center, config, kbt);
+            let (bias, _, _) = multi_bias(kernels, kernel.center, config, kbt, max_density);
             next.push((bias / kbt).exp().max(1e-12));
         }
         let maximum = next.iter().copied().fold(0.0f64, f64::max).max(1e-300);
@@ -518,6 +535,7 @@ fn update_multi_weights(kernels: &mut [MultiKernel], config: &MultiOpesConfig, k
 fn multi_free_energy(kernels: &[MultiKernel], config: &MultiOpesConfig, kbt: f64) -> Surface2D {
     // V = (1 - 1/γ) kT ln p, so F = -kT ln p = -V / (1 - 1/γ).
     let factor = 1.0 - 1.0 / config.bias_factor;
+    let max_density = kernel_max_density(kernels, config);
     let mut values = Vec::with_capacity(config.x_bins * config.y_bins);
     for iy in 0..config.y_bins {
         let y =
@@ -525,7 +543,7 @@ fn multi_free_energy(kernels: &[MultiKernel], config: &MultiOpesConfig, kbt: f64
         for ix in 0..config.x_bins {
             let x = config.x_min
                 + (config.x_max - config.x_min) * ix as f64 / (config.x_bins - 1) as f64;
-            let (bias, _, _) = multi_bias(kernels, [x, y], config, kbt);
+            let (bias, _, _) = multi_bias(kernels, [x, y], config, kbt, max_density);
             values.push(-bias / factor);
         }
     }
@@ -623,11 +641,10 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(surface
-            .values
-            .iter()
-            .filter(|value| value.is_finite())
-            .all(|value| value.abs() < 1e-12));
+        assert!(surface.values.iter().all(|value| value.is_finite()));
+        assert!(surface.values[0].abs() < 1e-12);
+        assert!(surface.values[8].abs() < 1e-12);
+        assert!(surface.values[1] > 0.0);
     }
 
     #[test]

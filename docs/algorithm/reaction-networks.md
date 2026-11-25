@@ -10,7 +10,22 @@ edges and converts the result into a kMC configuration.
 > refinement. General atom creation/removal and MBH refinement remain
 > follow-ups. See the [v2.x roadmap](/v2-roadmap).
 >
-> **Feature.** `alpha-reaction-network` (included in `alpha-v2`).
+> **Feature.** Core since 2.1.0; `alpha-reaction-network` remains as an empty
+> compatibility alias.
+
+```mermaid
+flowchart LR
+    A[Initial species] --> B[Template/SMIRKS rules]
+    B --> C[BFS closure]
+    C --> D[Canonical species]
+    D --> E[Directed edges + barriers]
+    E --> F[kMC configuration]
+    E --> G[Mean-field ODE]
+    F --> H[kMC trace]
+    G --> I[ODE trace]
+    H --> J[Compare populations]
+    I --> J
+```
 
 ## Why explicit rules
 
@@ -161,9 +176,10 @@ and prefactor come from the rule.
 | Invalid product | `"Q"` | rejected |
 | SMIRKS deprotonation | Acetic acid → acetate | `[O-]` product |
 | GSM geometry guard | Mismatched atom counts | rejected |
-
-These are engine gates. A published mechanism and a barrier benchmark are still
-required.
+| Curated networks | Five gas-phase mechanisms | 5/5 recovered (F126) |
+| kMC vs ODE | Five networks, 8 seeds | 0.11 % max error (F127) |
+| Seed determinism | Replay + depth/species caps | 0 violations (F128) |
+| Barrier accuracy | Experimental torsional/inversion barriers | MAE 0.575 kcal/mol (F133) |
 
 ## Limitations
 

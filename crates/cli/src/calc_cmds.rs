@@ -975,8 +975,10 @@ fn electrochemistry_config(
     let method = match method.to_ascii_lowercase().as_str() {
         "uhf" | "hf" => ElectrochemistryMethod::Uhf,
         "xtb" | "gfn2" => ElectrochemistryMethod::Xtb,
+        #[cfg(feature = "alpha-dft-hybrid")]
+        "pbe0" | "hybrid" => ElectrochemistryMethod::Pbe0,
         other => fail(format!(
-            "Invalid electrochemistry method '{other}'. Expected 'uhf' or 'xtb'."
+            "Invalid electrochemistry method '{other}'. Expected 'uhf', 'xtb' or 'pbe0'."
         )),
     };
     ElectrochemistryConfig {
@@ -1111,7 +1113,6 @@ pub fn cmd_xps(
     }
 }
 
-#[cfg(feature = "alpha-gcmc")]
 pub fn cmd_gcmc(framework_json: &str, guest_json: &str, config_json: &str) {
     let framework: sci_form::gcmc::GcmcFramework = serde_json::from_str(framework_json)
         .unwrap_or_else(|error| fail(format!("Invalid framework JSON: {error}")));
@@ -1125,7 +1126,69 @@ pub fn cmd_gcmc(framework_json: &str, guest_json: &str, config_json: &str) {
     }
 }
 
-#[cfg(feature = "alpha-reaction-network")]
+#[cfg(feature = "alpha-enhanced-sampling")]
+fn sampling_coords(smiles: &str, coords: Option<&str>, seed: u64) -> Vec<f64> {
+    match coords {
+        Some(value) => serde_json::from_str(value)
+            .unwrap_or_else(|error| fail(format!("Invalid coords JSON: {error}"))),
+        None => {
+            let conformer = sci_form::embed(smiles, seed);
+            if let Some(error) = conformer.error {
+                fail(format!("Embed error: {error}"));
+            }
+            conformer.coords
+        }
+    }
+}
+
+#[cfg(feature = "alpha-enhanced-sampling")]
+pub fn cmd_metadynamics(
+    smiles: &str,
+    coords: Option<&str>,
+    config_json: Option<&str>,
+    steps: Option<usize>,
+    seed: u64,
+) {
+    let mut config: sci_form::enhanced_sampling::MetaDynamicsConfig = match config_json {
+        Some(value) => serde_json::from_str(value)
+            .unwrap_or_else(|error| fail(format!("Invalid metadynamics config JSON: {error}"))),
+        None => sci_form::enhanced_sampling::MetaDynamicsConfig::default(),
+    };
+    if let Some(steps) = steps {
+        config.max_steps = steps;
+    }
+    config.seed = seed;
+    let coords = sampling_coords(smiles, coords, seed);
+    match sci_form::run_uff_metadynamics(smiles, &coords, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("Metadynamics error: {error}")),
+    }
+}
+
+#[cfg(feature = "alpha-enhanced-sampling")]
+pub fn cmd_opes(
+    smiles: &str,
+    coords: Option<&str>,
+    config_json: Option<&str>,
+    steps: Option<usize>,
+    seed: u64,
+) {
+    let mut config: sci_form::enhanced_sampling::OpesConfig = match config_json {
+        Some(value) => serde_json::from_str(value)
+            .unwrap_or_else(|error| fail(format!("Invalid OPES config JSON: {error}"))),
+        None => sci_form::enhanced_sampling::OpesConfig::default(),
+    };
+    if let Some(steps) = steps {
+        config.max_steps = steps;
+    }
+    config.seed = seed;
+    let coords = sampling_coords(smiles, coords, seed);
+    match sci_form::run_uff_opes(smiles, &coords, &config) {
+        Ok(result) => println!("{}", serde_json::to_string_pretty(&result).unwrap()),
+        Err(error) => fail(format!("OPES error: {error}")),
+    }
+}
+
 pub fn cmd_network(config_json: &str) {
     let config: sci_form::networks::TemplateNetworkConfig = serde_json::from_str(config_json)
         .unwrap_or_else(|error| fail(format!("Invalid network config JSON: {error}")));
@@ -1235,7 +1298,6 @@ pub fn cmd_rism(beta_u_json: &str, susceptibility_json: &str, config_json: &str)
     }
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 pub fn cmd_kmc(config_json: &str) {
     let config: sci_form::kmc::KmcConfig = serde_json::from_str(config_json)
         .unwrap_or_else(|error| fail(format!("Invalid kMC config JSON: {error}")));

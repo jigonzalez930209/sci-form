@@ -131,9 +131,7 @@ fn main() {
             charges,
             probe_radius,
         } => calc_cmds::cmd_solvation(&elements, &coords, charges.as_deref(), probe_radius),
-        #[cfg(feature = "alpha-reaction-network")]
         Commands::Network { config } => calc_cmds::cmd_network(&config),
-        #[cfg(feature = "alpha-reaction-network")]
         Commands::Kmc { config } => calc_cmds::cmd_kmc(&config),
         #[cfg(feature = "alpha-raman")]
         Commands::Raman {
@@ -176,12 +174,29 @@ fn main() {
             susceptibility,
             config,
         } => calc_cmds::cmd_rism(&beta_u, &susceptibility, &config),
-        #[cfg(feature = "alpha-gcmc")]
         Commands::Gcmc {
             framework,
             guest,
             config,
         } => calc_cmds::cmd_gcmc(&framework, &guest, &config),
+        #[cfg(feature = "alpha-enhanced-sampling")]
+        Commands::Metadynamics {
+            smiles,
+            coords,
+            config,
+            steps,
+            seed,
+        } => {
+            calc_cmds::cmd_metadynamics(&smiles, coords.as_deref(), config.as_deref(), steps, seed)
+        }
+        #[cfg(feature = "alpha-enhanced-sampling")]
+        Commands::Opes {
+            smiles,
+            coords,
+            config,
+            steps,
+            seed,
+        } => calc_cmds::cmd_opes(&smiles, coords.as_deref(), config.as_deref(), steps, seed),
         #[cfg(feature = "alpha-dft-hybrid")]
         Commands::Pbe0 {
             elements,

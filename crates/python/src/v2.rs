@@ -185,7 +185,6 @@ fn compute_qmmm_energy(system_json: &str, config_json: &str) -> PyResult<String>
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-gcmc")]
 /// GCMC adsorption isotherm on a periodic framework.
 ///
 /// The three JSON payloads are the serialized `GcmcFramework`, `GuestModel` and
@@ -205,7 +204,6 @@ fn compute_gcmc_isotherm(
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Rule-based reaction-network discovery.
 ///
 /// `config_json` is the serialized `TemplateNetworkConfig`. Returns
@@ -218,7 +216,6 @@ fn discover_reaction_network(config_json: &str) -> PyResult<String> {
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Gillespie kinetic Monte Carlo on an elementary-step network.
 ///
 /// `config_json` is the serialized `KmcConfig`. Returns `KmcResult` as JSON.
@@ -229,7 +226,6 @@ fn run_kinetic_monte_carlo(config_json: &str) -> PyResult<String> {
     to_json(&result)
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Refine a barrier with the existing GSM backend.
 ///
 /// Returns `BarrierRefinementResult` as JSON; the barrier is in eV and
@@ -468,13 +464,9 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compute_roa_spectrum, m)?)?;
     #[cfg(feature = "alpha-qmmm")]
     m.add_function(wrap_pyfunction!(compute_qmmm_energy, m)?)?;
-    #[cfg(feature = "alpha-gcmc")]
     m.add_function(wrap_pyfunction!(compute_gcmc_isotherm, m)?)?;
-    #[cfg(feature = "alpha-reaction-network")]
     m.add_function(wrap_pyfunction!(discover_reaction_network, m)?)?;
-    #[cfg(feature = "alpha-reaction-network")]
     m.add_function(wrap_pyfunction!(run_kinetic_monte_carlo, m)?)?;
-    #[cfg(feature = "alpha-reaction-network")]
     m.add_function(wrap_pyfunction!(refine_barrier_with_gsm, m)?)?;
     #[cfg(feature = "alpha-enhanced-sampling")]
     m.add_function(wrap_pyfunction!(run_uff_metadynamics, m)?)?;

@@ -49,6 +49,7 @@ fn build_reaxff_atom_params(
         .collect()
 }
 
+#[allow(dead_code)]
 fn dihedral_angle(p1: [f64; 3], p2: [f64; 3], p3: [f64; 3], p4: [f64; 3]) -> f64 {
     let b1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
     let b2 = [p3[0] - p2[0], p3[1] - p2[1], p3[2] - p2[2]];
@@ -81,6 +82,7 @@ fn dihedral_angle(p1: [f64; 3], p2: [f64; 3], p3: [f64; 3], p4: [f64; 3]) -> f64
     (-y).atan2(-x) + std::f64::consts::PI
 }
 
+#[allow(dead_code)]
 fn rotation_subtree(
     bond_a: usize,
     bond_b: usize,

@@ -1,0 +1,8 @@
+{
+  "observable": "n2_cu_btc_primitive_loading_10bar_298k",
+  "sci_form_loading_molecules_per_primitive_cell": 5.5878,
+  "raspa_loading_molecules_per_primitive_cell": 5.44896,
+  "raspa_reference": "RASPA2 ExampleMOFsForceField, N2/Cu-BTC primitive P1, 298 K, 10 bar, 20k cycles",
+  "sci_form_settings": "Ewald k_max=4, shift_lj, 15k equilibration + 45k production, seeds 44-45",
+  "note": "N2 TraPPE model; shift_lj matches RASPA's shifted force field; energy -2.34 vs RASPA -2.36 kcal/mol"
+}

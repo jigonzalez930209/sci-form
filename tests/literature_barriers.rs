@@ -148,6 +148,8 @@ fn barriers_match_literature() {
     // Seed-42 embedding atom order (verified): CC -> [C0, C1, H2..4, H5..7],
     // CO -> [C0, O1, H2..4 (methyl), H5 (hydroxyl)], N -> [N0, H1..3].
     let mut worst = (0.0f64, String::new());
+    let mut deviation_sum = 0.0f64;
+    let mut measurements = 0usize;
     for case in &fix.cases {
         let conf = sci_form::embed(&case.smiles, 42);
         assert!(conf.error.is_none(), "{}: embed failed", case.name);
@@ -170,8 +172,40 @@ fn barriers_match_literature() {
             if d > worst.0 {
                 worst = (d, format!("{}:{}", case.name, backend));
             }
+            deviation_sum += d;
+            measurements += 1;
         }
     }
+    let mae = deviation_sum / measurements as f64;
+    let gate = 2.0;
+    let row = serde_json::json!({
+        "ficha": "F133",
+        "observable": "literature_barrier_mae",
+        "metric": "mae_kcal_mol",
+        "value": mae,
+        "tolerance": gate,
+        "pass": mae <= gate,
+        "n_cases": measurements,
+        "level": "L3",
+        "units": "kcal/mol",
+        "reference": "experimental gas-phase torsional and inversion barriers",
+        "notes": format!(
+            "UFF/GFN2 rigid scans: ethane, methanol, ammonia; worst {:.3} kcal/mol ({})",
+            worst.0, worst.1
+        ),
+        "source": "tests/literature_barriers.rs"
+    });
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/validation");
+    let _ = std::fs::create_dir_all(&dir);
+    std::fs::write(
+        dir.join("F133.json"),
+        serde_json::to_string_pretty(&row).unwrap(),
+    )
+    .expect("write F133");
+    assert!(
+        mae <= gate,
+        "barrier MAE {mae:.3} kcal/mol exceeds {gate:.1}"
+    );
     assert!(
         worst.0 <= fix.tolerance_kcal_mol,
         "worst literature deviation {:.3} kcal/mol ({}) exceeds {:.1}",

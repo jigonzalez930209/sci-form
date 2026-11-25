@@ -1,0 +1,12 @@
+{
+  "observable": "relative_pka_carboxylic_acids_pbe0_3_21g",
+  "mae_pka_units": 2.325,
+  "experimental": [
+    {"name": "formic", "pka": 2.23, "reference": 3.75},
+    {"name": "propanoic", "pka": 1.76, "reference": 4.87},
+    {"name": "chloroacetic", "pka": 3.74, "reference": 2.87},
+    {"name": "benzoic", "pka": 8.00, "reference": 4.20}
+  ],
+  "reference": "CRC Handbook, relative to acetic acid 4.76",
+  "note": "PBE0/3-21G Medium grid, density mixing 0.2, 500 SCF iterations"
+}

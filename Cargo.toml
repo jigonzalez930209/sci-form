@@ -3,7 +3,7 @@ members = [".", "crates/cli", "crates/python", "crates/wasm"]
 
 [package]
 name = "sci-form"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 # MSRV. Two floors meet here:
 #   * the dependency graph: indexmap 2.13 requires 1.82;
@@ -58,6 +58,28 @@ crate-type = ["rlib"]
 name = "core"
 path = "benches/core.rs"
 harness = false
+
+[[bench]]
+name = "gcmc"
+path = "benches/gcmc.rs"
+harness = false
+required-features = ["alpha-v2"]
+
+[[example]]
+name = "gcmc"
+path = "examples/gcmc.rs"
+required-features = ["alpha-v2"]
+
+[[bench]]
+name = "kmc"
+path = "benches/kmc.rs"
+harness = false
+required-features = ["alpha-v2"]
+
+[[example]]
+name = "kmc"
+path = "examples/kmc.rs"
+required-features = ["alpha-v2"]
 
 [[test]]
 name = "debug"

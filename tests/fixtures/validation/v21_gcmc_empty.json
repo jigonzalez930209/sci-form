@@ -1,0 +1,6 @@
+{
+  "observable": "co2_multisite_empty_box_loading_lj",
+  "expected": 13.747058422023267,
+  "measured": 16.6,
+  "note": "Empty 40 A box, three-site CO2 with LJ, Ewald; 16.6 vs ideal 13.75 after intramolecular correction"
+}

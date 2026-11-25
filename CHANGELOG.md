@@ -6,6 +6,40 @@ the summary below records the substantive work that landed in each release line.
 Future releases should append new sections here so this file remains the maintained,
 human-written changelog for the repository.
 
+## v2.1.0 - 2026-11-25
+
+### Promoted to core
+
+- **GCMC adsorption (V2-11).** Rigid periodic frameworks, multi-site guests,
+  Peng-Robinson fugacity, Ewald electrostatics with a precomputed host
+  structure factor, RASPA-style shifted or switched Lennard-Jones cutoffs,
+  LJ tail correction and block statistics. CLI, Python and WASM entry points
+  are always available; `alpha-gcmc` is kept as an empty compatibility alias.
+- **Reaction networks and kMC (V2-12).** Template/SMIRKS discovery, canonical
+  species that preserve radicals and bond orders, Gillespie kMC and an
+  adaptive RK4 mean-field solver. CLI, Python and WASM entry points are
+  always available; `alpha-reaction-network` is kept as an empty alias.
+
+### Validation
+
+- CO2/Cu-BTC 323 K, 10 bar: 114.98 +/- 1.87 vs 116 molecules/uc over four
+  independent 160k runs (0.9 %, F116) and 26.31 vs 26.12 in the primitive
+  cell (0.7 %, F120).
+- CO2/IRMOF-1 (MOF-5) 298 K, 1 bar: 5.78 vs 6.02 molecules/uc (3.9 %, F131).
+- N2/HKUST-1 298 K, 10 bar: 5.59 vs 5.45 molecules/cell (2.5 %, F132).
+- Five curated gas-phase networks recovered 5/5 (F126), kMC vs ODE 0.11 %
+  (F127), deterministic seeds and caps (F128), barrier MAE 0.575 kcal/mol
+  against experimental torsional/inversion barriers (F133).
+- WTMetaD/OPES PMF gates (F124/F125) and replica-exchange acceptance 28.7 %
+  (F129) pass.
+
+### Still alpha
+
+- V2-05 Raman/VCD: coupled response and magnetic-dipole derivatives pending;
+  Raman positions are 82 cm-1 MAE against experiment (F130).
+- V2-08 pKa/redox: MAE 2.33, above the gate.
+- V2-10 exact OPES flow and more than two collective variables.
+
 ## v2.0.0 - 2026-11-09
 
 ### Breaking changes

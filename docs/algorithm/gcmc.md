@@ -10,7 +10,23 @@ given pressure and temperature?
 > flexibility and bonded MM terms remain follow-ups. See the
 > [v2.x roadmap](/v2-roadmap).
 >
-> **Feature.** `alpha-gcmc` (included in `alpha-v2`).
+> **Feature.** Core since 2.1.0; `alpha-gcmc` remains as an empty
+> compatibility alias.
+
+```mermaid
+flowchart LR
+    A[Framework CIF/JSON] --> B[GcmcFramework]
+    C[Guest model + critical constants] --> B
+    B --> D[GCMC move loop]
+    D --> E[Insertion/deletion with PR fugacity]
+    D --> F[Translation/rotation]
+    E --> G[LJ + Ewald energy]
+    F --> G
+    G --> H[Metropolis acceptance]
+    H --> D
+    D --> I[Block samples]
+    I --> J[Isotherm + standard error]
+```
 
 ## Grand-canonical ensemble
 
@@ -23,13 +39,10 @@ e^{-\beta U(N)},
 $$
 
 where `z` is the activity, `U` the potential energy and `β = 1/(kBT)`. The
-first implementation uses the ideal-gas relation
-
-$$
-zV = \frac{PV}{k_BT}
-$$
-
-for the insertion/deletion factors, with pressure in Pa and volume in m³.
+insertion/deletion factors use the fugacity `f = φ p`. When the guest carries
+critical constants the code evaluates the Peng–Robinson fugacity coefficient
+`φ`; otherwise `φ = 1` and the ideal-gas relation `zV = fV/(k_BT)` is
+recovered.
 
 ## Insertion and deletion
 
@@ -84,6 +97,14 @@ Periodic boundaries use the existing `UnitCell::minimum_image_distance`, which
 searches the neighbouring lattice images for skewed cells. A spherical cutoff
 is applied to both host–guest and guest–guest pairs.
 
+Three Lennard-Jones cutoff conventions are available:
+
+| `switching` | `shift_lj` | Potential inside the cutoff |
+|---|---|---|
+| `false` | `false` | plain truncated `U(r)` |
+| `false` | `true` | shifted `U(r) − U(r_cut)`, the RASPA "shifted" convention |
+| `true` | `false` | switched `U(r) · S(r)` with `S` tapering from `0.9 r_cut` |
+
 ## API
 
 ```rust
@@ -124,14 +145,14 @@ for point in isotherm.points {
 |---|---|
 | `GcmcFramework` | Unit cell plus host atoms with `epsilon`, `sigma` and optional `charge` |
 | `GuestModel` | Single-site or multi-site guest, with optional charges |
-| `GcmcConfig` | Temperature, pressure points, move counts, seed, cutoff |
+| `GcmcConfig` | Temperature, pressure points, move counts, seed, cutoff, tail correction |
 
 ### Output
 
 | Type | Meaning |
 |---|---|
 | `GuestMolecule` | Centre plus rotation matrix for a multi-site guest |
-| `AdsorptionPoint` | Pressure, mean loading, standard error, sample count |
+| `AdsorptionPoint` | Pressure, fugacity, mean loading, standard error, sample count |
 | `AdsorptionIsotherm` | Temperature, guest model, points and notes |
 
 Loading is **molecules per unit cell**. Divide by the cell volume to obtain a
@@ -158,6 +179,46 @@ The last term is the neutralizing background for a non-neutral cell. The
 reciprocal sum uses the reciprocal lattice of the existing `UnitCell`. The
 Ewald parameters are `alpha_angstrom_inv`, `k_max` and
 `real_cutoff_angstrom`.
+
+In the Ewald path the real-space `erfc(αr)/r` term is optionally tapered by
+`switching`. RASPA-style shifted Lennard-Jones potentials are selected with
+`GcmcConfig::shift_lj`.
+
+For screening runs on large frameworks, `GcmcElectrostatics::Cutoff` replaces
+the reciprocal sum by a minimum-image real-space Coulomb sum with the GCMC
+cutoff. It is much faster but ignores the periodic reciprocal contribution; use
+it for exploration, and Ewald for a production isotherm.
+
+## Fugacity and tail corrections
+
+When `GuestModel` carries `critical_temperature_k`, `critical_pressure_bar` and
+`acentric_factor`, the insertion/deletion activity uses the Peng-Robinson
+fugacity
+
+$$
+f = \phi p,
+$$
+
+instead of the ideal-gas pressure. This matters for CO2 above a few bar. If the
+critical constants are absent the coefficient is exactly one, preserving the
+ideal-gas test.
+
+The analytic Lennard-Jones tail correction is enabled by
+`GcmcConfig::tail_correction` (default `true`). For a pair with mixed
+`epsilon` and `sigma`, the energy beyond the cutoff is
+
+$$
+U_{\mathrm{tail}} =
+16\pi\epsilon\left[
+\frac{\sigma^{12}}{9r_c^9}
+-
+\frac{\sigma^6}{3r_c^3}
+\right].
+$$
+
+Host atoms contribute with density `1/V`; each guest sees `N-1` other guests.
+The correction is a continuum approximation and does not replace a converged
+cutoff.
 
 ## Multi-site guests
 
@@ -201,14 +262,23 @@ interactions are summed over every site pair with Lorentz-Berthelot mixing.
 |---|---|---|
 | Lennard-Jones minimum | `U(2^(1/6)σ) = -ε` | < 1e-9 kcal/mol |
 | Ideal gas | Mean loading vs `PV/(kBT)` | within 35 % on a 30 Å box |
+| Peng-Robinson | `phi(1 bar)` and `phi(50 bar)` for CO2 | ideal limit and monotone falloff |
+| Tail integral | Analytic correction vs numerical integral | < 0.2 % |
 | Attractive host | Loading vs empty framework | host ≥ empty |
 | Ewald pair | Two opposite charges, 20 Å cell | matches direct Coulomb within 1 % |
 | Multi-site | CO2-style three-site model | total charge and site count |
 | Invalid input | Negative epsilon, zero cell volume | rejected |
+| RASPA CO2/Cu-BTC | 323 K, 10 bar, 160k moves, Ewald k_max=4 | 113.67 vs 116 mol/uc (2.0 %, F116) |
+| RASPA CO2/Cu-BTC primitive | 323 K, 10 bar, 40k moves, EwaldHost | 26.31 vs 26.12 mol/uc (0.7 %, F120) |
+| RASPA CO2/IRMOF-1 (MOF-5) | 298 K, 1 bar, Ewald k_max=8 + shifted LJ | 5.78 vs 6.02 mol/uc (3.9 %, F131) |
+| RASPA N2/Cu-BTC (HKUST-1) | 298 K, 10 bar, Ewald k_max=4 + shifted LJ | 5.59 vs 5.45 mol/cell (2.5 %, F132) |
 
 The ideal-gas test is a statistical check of the insertion/deletion factors. It
 is intentionally loose because the run is short; the point is to catch a wrong
-activity factor, not to replace a production equilibration.
+activity factor, not to replace a production equilibration. The RASPA rows use
+the same rigid framework geometry, point charges and Lorentz-Berthelot mixing;
+the IRMOF-1 row also matches RASPA's shifted Lennard-Jones convention
+(`shift_lj = true`).
 
 ## Bindings
 
@@ -229,8 +299,10 @@ The CLI prints the full JSON isotherm. The JSON types are the serialized
   the physical interpretation of the background must be documented by the user.
 - Multi-site guests are rigid; internal degrees of freedom and bonded terms are
   not sampled.
-- The isotherm uses a spherical cutoff and no tail correction. The cutoff must be
-  large enough for the tested density; the default is 12 Å.
+- The isotherm uses a spherical cutoff. The analytic Lennard-Jones tail
+  correction is enabled by default (`tail_correction = true`) but remains a
+  continuum approximation; the cutoff must still be large enough for the
+  tested density (default 12 Å).
 - Ewald parameters are not auto-tuned; the user must check convergence.
 - The standard error is a simple block-independent estimate. Production work
   should use block averaging or a correlated-time estimator.
@@ -243,6 +315,6 @@ The CLI prints the full JSON isotherm. The JSON types are the serialized
 1. Add Ewald parameter auto-tuning and convergence diagnostics.
 2. Add internal degrees of freedom for multi-site guests.
 3. Add automatic UFF/MMFF94 typing for framework atoms.
-4. Add block averaging and tail corrections.
-5. Add Python, WASM and CLI wrappers.
-6. Benchmark CO2/N2 isotherms against RASPA and experiment.
+4. Add correlation-aware block averaging.
+5. Benchmark CO2/N2 isotherms against RASPA and experiment.
+6. Add a Curie-Weiss/fugacity table path for gases without critical constants.

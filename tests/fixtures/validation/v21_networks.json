@@ -1,0 +1,278 @@
+{
+  "source": "GRI-Mech 3.0 (Smith et al. 1999), NIST Chemical Kinetics Database (2024), JPL Evaluation 19",
+  "units": {
+    "barrier": "kcal/mol",
+    "prefactor": "engine convention s^-1"
+  },
+  "networks": [
+    {
+      "name": "h2_o2",
+      "source": "GRI-Mech 3.0 reactions 1-4, 1000 K",
+      "temperature_k": 1000.0,
+      "initial_counts": {
+        "[H]": 200,
+        "O=O": 100,
+        "[H][H]": 200
+      },
+      "species": [
+        "[H]",
+        "O=O",
+        "[H][H]",
+        "[O]",
+        "[OH]",
+        "O"
+      ],
+      "steps": [
+        {
+          "rule": "R1",
+          "reactants": [
+            "[H]",
+            "O=O"
+          ],
+          "products": [
+            "[O]",
+            "[OH]"
+          ],
+          "barrier_kcal_mol": 17.041,
+          "prefactor_s_inv": 2.65e+16
+        },
+        {
+          "rule": "R2",
+          "reactants": [
+            "[O]",
+            "[H][H]"
+          ],
+          "products": [
+            "[H]",
+            "[OH]"
+          ],
+          "barrier_kcal_mol": 6.26,
+          "prefactor_s_inv": 38700.0
+        },
+        {
+          "rule": "R3",
+          "reactants": [
+            "[OH]",
+            "[H][H]"
+          ],
+          "products": [
+            "[H]",
+            "O"
+          ],
+          "barrier_kcal_mol": 3.43,
+          "prefactor_s_inv": 216000000.0
+        },
+        {
+          "rule": "R4",
+          "reactants": [
+            "[OH]",
+            "[OH]"
+          ],
+          "products": [
+            "[O]",
+            "O"
+          ],
+          "barrier_kcal_mol": 0.0,
+          "prefactor_s_inv": 35700.0
+        }
+      ]
+    },
+    {
+      "name": "zeldovich_nox",
+      "source": "Zeldovich mechanism, GRI-Mech 3.0 reactions, 2500 K",
+      "temperature_k": 2500.0,
+      "initial_counts": {
+        "[O]": 100,
+        "N#N": 200,
+        "O=O": 100,
+        "[OH]": 50
+      },
+      "species": [
+        "[O]",
+        "N#N",
+        "O=O",
+        "[O][N]",
+        "[N]",
+        "[OH]",
+        "[H]"
+      ],
+      "steps": [
+        {
+          "rule": "Z1",
+          "reactants": [
+            "[O]",
+            "N#N"
+          ],
+          "products": [
+            "[O][N]",
+            "[N]"
+          ],
+          "barrier_kcal_mol": 75.0,
+          "prefactor_s_inv": 130000000000000.0
+        },
+        {
+          "rule": "Z2",
+          "reactants": [
+            "[N]",
+            "O=O"
+          ],
+          "products": [
+            "[O][N]",
+            "[O]"
+          ],
+          "barrier_kcal_mol": 6.3,
+          "prefactor_s_inv": 9000000000.0
+        },
+        {
+          "rule": "Z3",
+          "reactants": [
+            "[N]",
+            "[OH]"
+          ],
+          "products": [
+            "[O][N]",
+            "[H]"
+          ],
+          "barrier_kcal_mol": 0.0,
+          "prefactor_s_inv": 33600000000000.0
+        }
+      ]
+    },
+    {
+      "name": "h2_cl2_chain",
+      "source": "NIST Chemical Kinetics Database: H2+Cl, H+Cl2, 1000 K",
+      "temperature_k": 1000.0,
+      "initial_counts": {
+        "[H][H]": 200,
+        "ClCl": 100,
+        "[Cl]": 50
+      },
+      "species": [
+        "[H]",
+        "[Cl]",
+        "[H][H]",
+        "ClCl",
+        "Cl"
+      ],
+      "steps": [
+        {
+          "rule": "C1",
+          "reactants": [
+            "[H][H]",
+            "[Cl]"
+          ],
+          "products": [
+            "Cl",
+            "[H]"
+          ],
+          "barrier_kcal_mol": 5.5,
+          "prefactor_s_inv": 54000000000000.0
+        },
+        {
+          "rule": "C2",
+          "reactants": [
+            "[H]",
+            "ClCl"
+          ],
+          "products": [
+            "Cl",
+            "[Cl]"
+          ],
+          "barrier_kcal_mol": 1.9,
+          "prefactor_s_inv": 150000000000000.0
+        }
+      ]
+    },
+    {
+      "name": "ozone_chlorine",
+      "source": "JPL Evaluation 19: Cl+O3 and ClO+O, 1000 K",
+      "temperature_k": 1000.0,
+      "initial_counts": {
+        "O=O[O]": 200,
+        "[Cl]": 100,
+        "[O]": 0
+      },
+      "species": [
+        "O=O[O]",
+        "[Cl]",
+        "[Cl][O]",
+        "O=O",
+        "[O]"
+      ],
+      "steps": [
+        {
+          "rule": "O1",
+          "reactants": [
+            "O=O[O]",
+            "[Cl]"
+          ],
+          "products": [
+            "[Cl][O]",
+            "O=O"
+          ],
+          "barrier_kcal_mol": 2.1,
+          "prefactor_s_inv": 12000000000000.0
+        },
+        {
+          "rule": "O2",
+          "reactants": [
+            "[Cl][O]",
+            "[O]"
+          ],
+          "products": [
+            "[Cl]",
+            "O=O"
+          ],
+          "barrier_kcal_mol": 0.0,
+          "prefactor_s_inv": 10000000000000.0
+        }
+      ]
+    },
+    {
+      "name": "co_oxidation",
+      "source": "GRI-Mech 3.0 CO+OH and H+O2, 1000 K",
+      "temperature_k": 1000.0,
+      "initial_counts": {
+        "[O]#[C]": 200,
+        "[OH]": 100,
+        "O=O": 100
+      },
+      "species": [
+        "[O]#[C]",
+        "[OH]",
+        "C(=O)=O",
+        "[H]",
+        "O=O",
+        "[O]"
+      ],
+      "steps": [
+        {
+          "rule": "CO1",
+          "reactants": [
+            "[O]#[C]",
+            "[OH]"
+          ],
+          "products": [
+            "C(=O)=O",
+            "[H]"
+          ],
+          "barrier_kcal_mol": 0.1,
+          "prefactor_s_inv": 47600000.0
+        },
+        {
+          "rule": "CO2",
+          "reactants": [
+            "[H]",
+            "O=O"
+          ],
+          "products": [
+            "[OH]",
+            "[O]"
+          ],
+          "barrier_kcal_mol": 17.041,
+          "prefactor_s_inv": 2.65e+16
+        }
+      ]
+    }
+  ]
+}

@@ -115,9 +115,13 @@ Time is in seconds, rates in s⁻¹ and counts are dimensionless integers.
 | High barrier | Events in a 1 ps window | none; stops on time |
 | Binomial coefficient | `C(5,0)`, `C(5,1)`, `C(5,2)`, `C(2,3)` | 1, 5, 10, 0 |
 | Invalid species index | Network validation | rejected |
+| Curated networks | GRI-Mech/NIST/JPL five-network set | 5/5 recovered (F126) |
+| kMC vs mean-field ODE | Five networks, 8 seeds | 0.11 % max error (F127) |
+| Seed determinism | Same-seed replay + depth/species caps | 0 violations (F128) |
+| Barrier accuracy | Experimental torsional/inversion barriers | MAE 0.575 kcal/mol (F133) |
 
-These are algorithmic gates. A quantitative comparison against a reference kMC
-code or a catalytic experiment is part of the promotion work.
+F133 validates the barrier engine on torsional and inversion barriers; the
+bimolecular curated networks still use literature barriers as rule inputs.
 
 ## Bindings
 

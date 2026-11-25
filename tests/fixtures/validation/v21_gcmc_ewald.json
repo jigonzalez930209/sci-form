@@ -1,0 +1,9 @@
+{
+  "observable": "co2_cu_btc_primitive_ewald_loading",
+  "sci_form_loading_molecules_per_primitive_cell": 26.3133,
+  "raspa_loading_molecules_per_primitive_cell": 26.1238,
+  "raspa_reference": "RASPA2 ExampleMOFsForceField, primitive P1 Cu-BTC, 323 K, 10 bar, 5k cycles",
+  "note": "EwaldHost k_max=4, RASPA-style switching, 40k moves; intramolecular self-energy correction applied",
+  "sci_form_energy_per_molecule_kcal_mol": -4.8577,
+  "raspa_energy_per_molecule_kcal_mol_estimated": -4.72
+}

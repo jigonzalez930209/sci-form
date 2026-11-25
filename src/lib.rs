@@ -231,7 +231,6 @@ pub mod fixture_io;
 pub mod forcefield;
 #[cfg(feature = "alpha-free-energy")]
 pub mod free_energy;
-#[cfg(feature = "alpha-gcmc")]
 pub mod gcmc;
 pub mod gpu;
 pub mod graph;
@@ -240,7 +239,6 @@ pub mod hf;
 pub mod imd;
 pub mod ir;
 pub mod kinetics;
-#[cfg(feature = "alpha-reaction-network")]
 pub mod kmc;
 pub mod kmesh;
 pub mod kpm;
@@ -254,7 +252,6 @@ pub mod mlip;
 pub mod mlip_onnx;
 #[cfg(feature = "alpha-mp2")]
 pub mod mp2;
-#[cfg(feature = "alpha-reaction-network")]
 pub mod networks;
 pub mod nmr;
 #[cfg(feature = "alpha-nmr-all")]
@@ -3003,7 +3000,6 @@ pub fn run_uff_opes(
     enhanced_sampling::run_uff_opes(smiles, coords, config)
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Discover a reaction network from explicit rules.
 ///
 /// The engine canonicalises species, applies unimolecular and bimolecular
@@ -3020,7 +3016,6 @@ pub fn discover_reaction_network(
     networks::discover_reaction_network(config)
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Discover a reaction network from serialisable template rules.
 ///
 /// This is the JSON-friendly entry point used by the CLI and WASM bindings.
@@ -3034,7 +3029,6 @@ pub fn discover_template_network(
     config.discover()
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Refine a reaction barrier with the existing GSM backend.
 ///
 /// The reactant and product geometries must have the same atom count. The
@@ -3054,7 +3048,6 @@ pub fn refine_barrier_with_gsm(
     networks::refine_barrier_with_gsm(smiles, reactant_coords, product_coords, method, config)
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Run a Gillespie kinetic Monte Carlo simulation on an elementary-step network.
 ///
 /// Rates come from the existing HTST evaluator. Counts are integers, time is in
@@ -3424,7 +3417,6 @@ pub fn assemble_framework(
     materials::assemble_framework(node, linker, topology, cell)
 }
 
-#[cfg(feature = "alpha-gcmc")]
 /// Compute a GCMC adsorption isotherm on a rigid periodic framework.
 ///
 /// Pressures are in bar, temperature in K and loading in molecules per unit

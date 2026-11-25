@@ -1278,19 +1278,16 @@ pub enum Commands {
         #[arg(long, default_value_t = 1)]
         multiplicity: u32,
     },
-    #[cfg(feature = "alpha-reaction-network")]
     /// Rule-based reaction-network discovery from a JSON template config
     Network {
         /// JSON TemplateNetworkConfig
         config: String,
     },
-    #[cfg(feature = "alpha-reaction-network")]
     /// Gillespie kinetic Monte Carlo from a JSON KmcConfig
     Kmc {
         /// JSON KmcConfig
         config: String,
     },
-    #[cfg(feature = "alpha-gcmc")]
     /// GCMC adsorption isotherm from JSON framework, guest and config payloads
     Gcmc {
         /// JSON GcmcFramework (cell + host atoms)
@@ -1299,6 +1296,42 @@ pub enum Commands {
         guest: String,
         /// JSON GcmcConfig
         config: String,
+    },
+    #[cfg(feature = "alpha-enhanced-sampling")]
+    /// Well-tempered metadynamics on a UFF molecule
+    Metadynamics {
+        /// SMILES used for the UFF potential and collective variable
+        smiles: String,
+        /// JSON array of flat xyz coords (omit to embed with --seed)
+        #[arg(long)]
+        coords: Option<String>,
+        /// JSON MetaDynamicsConfig (omit for defaults)
+        #[arg(long)]
+        config: Option<String>,
+        /// Override the number of integration steps
+        #[arg(long)]
+        steps: Option<usize>,
+        /// RNG seed used for embedding and dynamics
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
+    },
+    #[cfg(feature = "alpha-enhanced-sampling")]
+    /// OPES-style kernel-density bias on a UFF molecule
+    Opes {
+        /// SMILES used for the UFF potential and collective variable
+        smiles: String,
+        /// JSON array of flat xyz coords (omit to embed with --seed)
+        #[arg(long)]
+        coords: Option<String>,
+        /// JSON OpesConfig (omit for defaults)
+        #[arg(long)]
+        config: Option<String>,
+        /// Override the number of integration steps
+        #[arg(long)]
+        steps: Option<usize>,
+        /// RNG seed used for embedding and dynamics
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
     },
     #[cfg(feature = "alpha-raman")]
     /// Raman stick spectrum from the response polarizability
@@ -1396,7 +1429,7 @@ pub enum Commands {
         /// Reference pKa
         #[arg(long)]
         reference_pka: Option<f64>,
-        /// Electronic method: uhf or xtb
+        /// Electronic method: uhf, xtb or pbe0
         #[arg(long, default_value = "uhf")]
         method: String,
         /// Number of conformers per state
@@ -1422,7 +1455,7 @@ pub enum Commands {
         /// Reference potential in volt
         #[arg(long)]
         reference_potential: Option<f64>,
-        /// Electronic method: uhf or xtb
+        /// Electronic method: uhf, xtb or pbe0
         #[arg(long, default_value = "uhf")]
         method: String,
         /// Number of conformers per state

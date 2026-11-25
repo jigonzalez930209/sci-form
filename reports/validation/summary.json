@@ -73,7 +73,7 @@
   "ficha": "F101",
   "observable": "pbe0_total_energy",
   "metric": "max_abs_error_hartree",
-  "value": 4.0967268027714e-05,
+  "value": 4.0967268141400837e-05,
   "tolerance": 0.001,
   "pass": true,
   "n_cases": 7,
@@ -88,7 +88,7 @@
   "ficha": "F101",
   "observable": "pbe_total_energy",
   "metric": "max_abs_error_hartree",
-  "value": 5.1652903309218345e-05,
+  "value": 5.16529031671098e-05,
   "tolerance": 0.001,
   "pass": true,
   "n_cases": 7,
@@ -423,6 +423,200 @@
   "notes": "PySCF GIAO oracle pending (pyscf-properties)"
  },
  {
+  "ficha": "F116",
+  "observable": "co2_cu_btc_loading",
+  "metric": "relative_error",
+  "value": 0.008778448275862038,
+  "tolerance": 0.1,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L2",
+  "units": "1",
+  "reference": {
+   "tool": "RASPA2 ExampleMOFsForceField, 323 K, 10 bar"
+  },
+  "notes": "160k moves (40k eq + 120k prod), Ewald k_max=4 + switching; 113.67 vs 116 (2.0 %)"
+ },
+ {
+  "ficha": "F117",
+  "observable": "relative_pka_pbe0_3_21g",
+  "metric": "mae_pka_units",
+  "value": 2.325,
+  "tolerance": 1.0,
+  "pass": null,
+  "n_cases": 4,
+  "source": "tests/v21_validation.rs",
+  "status": "gap",
+  "level": "L4",
+  "units": "pKa",
+  "reference": {
+   "tool": "CRC Handbook, relative to acetic acid 4.76"
+  },
+  "notes": "PBE0/3-21G Medium grid with density mixing; better than UHF but still above the gate"
+ },
+ {
+  "ficha": "F118",
+  "observable": "enhanced_sampling_finite_traces",
+  "metric": "non_finite_values",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "n_cases": 2,
+  "source": "tests/v21_validation.rs",
+  "level": "L0",
+  "units": "count",
+  "reference": {
+   "tool": "sci-form metadynamics and OPES"
+  },
+  "notes": "WTMetaD and OPES on ethanol; checks finite traces and FES"
+ },
+ {
+  "ficha": "F119",
+  "observable": "two_dimensional_opes_finite",
+  "metric": "non_finite_values",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L0",
+  "units": "count",
+  "reference": {
+   "tool": "sci-form 2D OPES"
+  },
+  "notes": "Harmonic 2D surface; finite FES and reweighted surface"
+ },
+ {
+  "ficha": "F120",
+  "observable": "co2_cu_btc_primitive_ewald_loading",
+  "metric": "relative_error",
+  "value": 0.0072539217112365904,
+  "tolerance": 0.1,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L2",
+  "units": "1",
+  "reference": {
+   "tool": "RASPA2 primitive P1 Cu-BTC, 323 K, 10 bar"
+  },
+  "notes": "EwaldHost k_max=4 with switching and intramolecular correction; 40k moves"
+ },
+ {
+  "ficha": "F121",
+  "observable": "co2_multisite_empty_box_loading_lj",
+  "metric": "relative_error",
+  "value": 0.20753105794663826,
+  "tolerance": 0.1,
+  "pass": null,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "status": "gap",
+  "level": "L0",
+  "units": "1",
+  "reference": {
+   "tool": "ideal gas fV/kT"
+  },
+  "notes": "Empty 40 A box, three-site CO2 with LJ; 16.6 vs ideal 13.75 after intramolecular correction"
+ },
+ {
+  "ficha": "F124",
+  "observable": "double_well_pmf_rmse",
+  "metric": "rmse_kcal_mol",
+  "value": 0.2987718752123172,
+  "tolerance": 0.5,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "kcal/mol",
+  "reference": {
+   "tool": "analytic double-well PMF, 300 K"
+  },
+  "notes": "Well-tempered metadynamics, beta=10, 400k steps; exact F(x)=V(x)+const"
+ },
+ {
+  "ficha": "F125",
+  "observable": "harmonic_2d_opes_pmf_rmse",
+  "metric": "rmse_kcal_mol",
+  "value": 0.3998305143232166,
+  "tolerance": 0.5,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "kcal/mol",
+  "reference": {
+   "tool": "analytic 2D harmonic PMF, 300 K"
+  },
+  "notes": "Two-dimensional OPES with self-consistent kernel weights, 200k steps, sigma=0.35; bias and reweighted surfaces"
+ },
+ {
+  "ficha": "F126",
+  "observable": "curated_network_recovery",
+  "metric": "missing_networks",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "n_cases": 5,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "count",
+  "reference": {
+   "tool": "GRI-Mech 3.0, NIST, JPL curated mechanisms"
+  },
+  "notes": "Five curated gas-phase networks recovered from template rules; all literature species present"
+ },
+ {
+  "ficha": "F127",
+  "observable": "curated_network_kmc_vs_ode",
+  "metric": "max_normalized_population_error",
+  "value": 0.0011091666750369061,
+  "tolerance": 0.05,
+  "pass": true,
+  "n_cases": 5,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "1",
+  "reference": {
+   "tool": "mean-field ODE with identical HTST rates, 8 seeds"
+  },
+  "notes": "Five curated networks, 3k events per seed at a common comparison time"
+ },
+ {
+  "ficha": "F128",
+  "observable": "network_seed_determinism",
+  "metric": "violations",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "count",
+  "reference": {
+   "tool": "same-seed replay and max_depth/max_species caps"
+  },
+  "notes": "Same seed reproduces the trace, a different seed changes it, and discovery respects both caps"
+ },
+ {
+  "ficha": "F129",
+  "observable": "replica_exchange_acceptance",
+  "metric": "distance_outside_20_40_window",
+  "value": 0.0,
+  "tolerance": 0.0,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L3",
+  "units": "1",
+  "reference": {
+   "tool": "roadmap acceptance window 20-40 %"
+  },
+  "notes": "Four-temperature replica exchange on UFF ethanol (300/600/1300/2600 K); 20k steps, 28.7 % acceptance"
+ },
+ {
   "ficha": "F13",
   "observable": "kabsch_rmsd_max_abs",
   "reference": {
@@ -438,6 +632,69 @@
   "notes": "random point clouds, no molecular symmetry/permutation",
   "timestamp": "2026-11-07T17:28:40",
   "source": "tests/cross_validation.rs"
+ },
+ {
+  "ficha": "F130",
+  "observable": "raman_positions_vs_experiment",
+  "metric": "mae_cm1",
+  "value": 82.34846277833032,
+  "tolerance": 10.0,
+  "pass": null,
+  "n_cases": 16,
+  "source": "tests/v21_validation.rs",
+  "status": "gap",
+  "level": "L3",
+  "units": "cm^-1",
+  "reference": {
+   "tool": "NIST CCCBDB gas-phase fundamentals"
+  },
+  "notes": "UFF harmonic modes and uncoupled polarizability; no coupled response"
+ },
+ {
+  "ficha": "F131",
+  "observable": "co2_irmof1_loading",
+  "metric": "relative_error",
+  "value": 0.03900785805658463,
+  "tolerance": 0.1,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L2",
+  "units": "1",
+  "reference": {
+   "tool": "RASPA2 IRMOF-1 (MOF-5), 298 K, 1 bar"
+  },
+  "notes": "Ewald k_max=8 with shift_lj, 100k moves x 2 seeds; framework geometry and charges match RASPA"
+ },
+ {
+  "ficha": "F132",
+  "observable": "n2_cu_btc_primitive_loading",
+  "metric": "relative_error",
+  "value": 0.02548009161381256,
+  "tolerance": 0.1,
+  "pass": true,
+  "n_cases": 1,
+  "source": "tests/v21_validation.rs",
+  "level": "L2",
+  "units": "1",
+  "reference": {
+   "tool": "RASPA2 N2/Cu-BTC (HKUST-1), 298 K, 10 bar"
+  },
+  "notes": "Ewald k_max=4 with shift_lj, 60k moves x 2 seeds; TraPPE N2 model"
+ },
+ {
+  "ficha": "F133",
+  "observable": "literature_barrier_mae",
+  "metric": "mae_kcal_mol",
+  "value": 0.5750390321414673,
+  "tolerance": 2.0,
+  "pass": true,
+  "n_cases": 5,
+  "source": "tests/literature_barriers.rs",
+  "level": "L3",
+  "units": "kcal/mol",
+  "reference": "experimental gas-phase torsional and inversion barriers",
+  "notes": "UFF/GFN2 rigid scans: ethane, methanol, ammonia; worst 1.685 kcal/mol (ammonia_inversion:gfn2)"
  },
  {
   "ficha": "F14",
@@ -848,7 +1105,7 @@
   "ficha": "F46",
   "observable": "d4_pbe_standalone_max_abs_hartree",
   "metric": "max_abs",
-  "value": 6.197625954107444e-10,
+  "value": 6.197625954107443e-10,
   "tolerance": 1.5936014376405156e-06,
   "pass": true,
   "n_cases": 25,
@@ -1230,7 +1487,7 @@
   "ficha": "F72",
   "observable": "embedding_heavy_rmsd_mean",
   "metric": "mean",
-  "value": 0.028552599678893335,
+  "value": 0.02855259967889333,
   "tolerance": 3.0,
   "pass": true,
   "n_cases": 29,
@@ -1724,8 +1981,8 @@
   "ficha": "F80",
   "observable": "ks_dft_gradient_max_abs",
   "metric": "max_abs",
-  "value": 3.082234394241601e-07,
-  "tolerance": 2.2734446530289226e-06,
+  "value": 4.1704783960289094e-07,
+  "tolerance": 2.27344433020293e-06,
   "pass": true,
   "n_cases": 1,
   "source": "tests/gradient_parity.rs",
@@ -2049,7 +2306,7 @@
   "ficha": "F86-EHT",
   "observable": "eht_gap_max_abs_ev",
   "metric": "max_abs",
-  "value": 3.213429522475053e-12,
+  "value": 3.209876808796253e-12,
   "tolerance": 1e-06,
   "pass": true,
   "n_cases": 9,

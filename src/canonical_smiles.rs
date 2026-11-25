@@ -38,7 +38,11 @@ pub fn to_canonical_smiles(mol: &Molecule) -> String {
         .filter(|&i| mol.graph[NodeIndex::new(i)].element != 1)
         .collect();
     if heavy.is_empty() {
-        return String::new();
+        return match n {
+            1 => "[H]".to_string(),
+            2 => "[H][H]".to_string(),
+            _ => String::new(),
+        };
     }
     let min_key = heavy
         .iter()
@@ -162,9 +166,24 @@ fn initial_ranks(mol: &Molecule) -> Vec<u64> {
                 .edges(idx)
                 .any(|e| matches!(e.weight().order, BondOrder::Aromatic))
                 as u64;
+            // The bond-order sum separates atoms that differ only by the
+            // order of their bonds (for example the two terminal oxygens of
+            // ozone), which degree alone cannot distinguish.
+            let bond_signature: u64 = mol
+                .graph
+                .edges(idx)
+                .map(|edge| match edge.weight().order {
+                    BondOrder::Single => 1,
+                    BondOrder::Double => 2,
+                    BondOrder::Triple => 3,
+                    BondOrder::Aromatic => 4,
+                    BondOrder::Unknown => 0,
+                })
+                .sum();
             // Combine into initial rank
-            (atom.element as u64) * 1000000
-                + degree * 10000
+            (atom.element as u64) * 100000000
+                + degree * 1000000
+                + bond_signature * 10000
                 + h_count * 100
                 + (atom.formal_charge as i64 + 10) as u64 * 10
                 + is_aromatic
@@ -179,17 +198,35 @@ fn refine_ranks(mol: &Molecule, ranks: &[u64]) -> Vec<u64> {
     let mut new_ranks = vec![0u64; n];
     for i in 0..n {
         let idx = NodeIndex::new(i);
-        let mut neighbor_ranks: Vec<u64> = mol
+        // Bond order is part of the invariant: two atoms with the same
+        // neighbours but different bond orders are not equivalent.
+        let mut neighbor_ranks: Vec<(u64, u64)> = mol
             .graph
-            .neighbors(idx)
-            .map(|nb| ranks[nb.index()])
+            .edges(idx)
+            .map(|edge| {
+                let other = edge.target().index();
+                (
+                    match edge.weight().order {
+                        BondOrder::Single => 1,
+                        BondOrder::Double => 2,
+                        BondOrder::Triple => 3,
+                        BondOrder::Aromatic => 4,
+                        BondOrder::Unknown => 0,
+                    },
+                    ranks[other],
+                )
+            })
             .collect();
         neighbor_ranks.sort();
 
         let mut hash: u64 = 0xcbf29ce484222325;
-        for &val in std::iter::once(&ranks[i]).chain(neighbor_ranks.iter()) {
-            for byte in val.to_le_bytes() {
-                hash ^= byte as u64;
+        for byte in ranks[i].to_le_bytes() {
+            hash ^= byte as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        for &(order, val) in &neighbor_ranks {
+            for byte in order.to_le_bytes().iter().chain(val.to_le_bytes().iter()) {
+                hash ^= *byte as u64;
                 hash = hash.wrapping_mul(0x100000001b3);
             }
         }
@@ -325,7 +362,11 @@ impl SmilesWriter<'_> {
             .filter(|nb| self.mol.graph[*nb].element == 1)
             .count();
         let charge = atom.formal_charge;
-        let needs_bracket = charge != 0 || (aromatic && z != 6 && n_h > 0);
+        // Bracket atoms carry an explicit hydrogen count and no implicit
+        // hydrogens.  Dropping the brackets would let the SMILES reader
+        // re-introduce implicit hydrogens, changing the species (for example
+        // HO2 -> H2O2 or CH3 -> CH4), so they are always preserved.
+        let needs_bracket = charge != 0 || (aromatic && z != 6 && n_h > 0) || atom.no_implicit_h;
 
         let symbol = element_symbol(z);
         if !needs_bracket {
@@ -576,5 +617,84 @@ mod tests {
             "Acetic acid should have a double bond: {}",
             smiles
         );
+    }
+}
+
+#[cfg(test)]
+mod radical_tests {
+    use super::to_canonical_smiles;
+    use crate::graph::Molecule;
+
+    #[test]
+    fn preserves_single_atom_radicals() {
+        for (smiles, expected) in [
+            ("[H]", "[H]"),
+            ("[O]", "[O]"),
+            ("[OH]", "[OH]"),
+            ("[H][H]", "[H][H]"),
+        ] {
+            let molecule = Molecule::from_smiles(smiles).unwrap();
+            assert_eq!(to_canonical_smiles(&molecule), expected, "{smiles}");
+        }
+    }
+}
+
+#[test]
+fn radical_species_survive_template_roundtrip() {
+    use crate::graph::Molecule;
+    use std::collections::BTreeMap;
+
+    fn composition(molecule: &Molecule) -> BTreeMap<u8, usize> {
+        let mut counts = BTreeMap::new();
+        for atom in molecule.graph.node_weights() {
+            *counts.entry(atom.element).or_insert(0) += 1;
+        }
+        counts
+    }
+
+    for smiles in [
+        "O=O",
+        "O",
+        "[O]O",
+        "[C-]#[O+]",
+        "[C]#[O]",
+        "[C]=[O]",
+        "[C-]#[O]",
+        "CO",
+        "C=O",
+        "[CH3]",
+        "[CH2]",
+        "C",
+    ] {
+        let molecule = Molecule::from_smiles(smiles).unwrap();
+        let canonical = to_canonical_smiles(&molecule);
+        let reparsed = Molecule::from_smiles(&canonical)
+            .unwrap_or_else(|error| panic!("{smiles} -> {canonical}: {error}"));
+        assert_eq!(
+            composition(&molecule),
+            composition(&reparsed),
+            "{smiles} -> {canonical}"
+        );
+        assert_eq!(
+            molecule.graph.edge_count(),
+            reparsed.graph.edge_count(),
+            "{smiles} -> {canonical}"
+        );
+    }
+}
+
+#[test]
+fn canonical_smiles_is_independent_of_input_order_for_radicals() {
+    use crate::graph::Molecule;
+    for (a, b) in [
+        ("O=O[O]", "[O]O=O"),
+        ("[N][O]", "[O][N]"),
+        ("[Cl][O]", "[O][Cl]"),
+        ("[C]#[O]", "[O]#[C]"),
+        ("[H]OO", "OO[H]"),
+    ] {
+        let first = to_canonical_smiles(&Molecule::from_smiles(a).unwrap());
+        let second = to_canonical_smiles(&Molecule::from_smiles(b).unwrap());
+        assert_eq!(first, second, "{a} vs {b}");
     }
 }

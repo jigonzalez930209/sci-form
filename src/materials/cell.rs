@@ -183,11 +183,34 @@ impl UnitCell {
     /// only exact for orthogonal cells — there the three components are
     /// independent — so skewed cells need the explicit image search.
     pub fn minimum_image_distance(&self, a: [f64; 3], b: [f64; 3]) -> f64 {
+        // Fast path for the axis-aligned cells used by GCMC/MD: avoid two
+        // matrix inversions and the 27-image search per pair.
+        if self.is_axis_aligned() {
+            let mut d = [0.0; 3];
+            for axis in 0..3 {
+                let length = self.lattice[axis][axis];
+                let delta = a[axis] - b[axis];
+                d[axis] = delta - (delta / length).round() * length;
+            }
+            return norm3(d);
+        }
         let fa = self.cart_to_frac(a);
         let fb = self.cart_to_frac(b);
         let df = [fa[0] - fb[0], fa[1] - fb[1], fa[2] - fb[2]];
         let dc = self.frac_to_cart(self.minimum_image_fractional(df));
         norm3(dc)
+    }
+
+    fn is_axis_aligned(&self) -> bool {
+        let l = self.lattice;
+        for i in 0..3 {
+            for j in 0..3 {
+                if i != j && l[i][j].abs() > 1e-12 {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     /// Fractional displacement to the closest periodic image of `df`.

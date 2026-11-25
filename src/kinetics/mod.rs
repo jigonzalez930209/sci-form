@@ -404,18 +404,6 @@ pub fn solve_microkinetic_network(
         .collect::<Result<Vec<_>, _>>()?;
 
     let dt = config.total_time_s / (config.n_frames - 1) as f64;
-    // Sub-stepping for numerical stability: explicit Euler needs
-    // `k_max · sub_dt ≲ 0.1`. A fixed sub-step count is not enough for stiff
-    // networks (e.g. a 0.3 eV barrier at 350 K has k ≈ 3.6e8 s⁻¹), which
-    // produced non-finite populations at longer integration times.
-    let k_max = rates
-        .iter()
-        .map(|r| r.forward_rate_s_inv.max(r.reverse_rate_s_inv))
-        .fold(0.0f64, f64::max);
-    let target_sub_dt = if k_max > 0.0 { 0.1 / k_max } else { dt };
-    let n_substeps = ((dt / target_sub_dt).ceil() as usize).clamp(100, 1_000_000);
-    let sub_dt = dt / n_substeps as f64;
-
     let mut concentrations = config.initial_populations.clone();
     let mut frames = Vec::with_capacity(config.n_frames);
 
@@ -433,45 +421,120 @@ pub fn solve_microkinetic_network(
             .collect(),
     });
 
-    for frame_idx in 1..config.n_frames {
-        for _ in 0..n_substeps {
-            let mut dc = vec![0.0; n_species];
-            for (step_idx, stoich) in config.stoichiometry.iter().enumerate().take(n_steps) {
-                let k_fwd = rates[step_idx].forward_rate_s_inv;
-                let k_rev = rates[step_idx].reverse_rate_s_inv;
-
-                // Forward rate: k_fwd · Π(c_reactant)
-                let mut fwd_product = k_fwd;
-                let mut rev_product = k_rev;
-                for &(sp_idx, coeff) in stoich {
-                    if coeff < 0.0 {
-                        // Reactant
-                        fwd_product *= concentrations[sp_idx].max(0.0).powf(-coeff);
-                    } else if coeff > 0.0 {
-                        // Product
-                        rev_product *= concentrations[sp_idx].max(0.0).powf(coeff);
-                    }
-                }
-
-                let net_rate = fwd_product - rev_product;
-                for &(sp_idx, coeff) in stoich {
-                    dc[sp_idx] += coeff * net_rate;
+    // Right-hand side of dc_i/dt = Σ_j ν_ij (k_fwd Πc_react − k_rev Πc_prod).
+    let derivative = |c: &[f64], dc: &mut [f64]| {
+        dc.fill(0.0);
+        for (step_idx, stoich) in config.stoichiometry.iter().enumerate().take(n_steps) {
+            let k_fwd = rates[step_idx].forward_rate_s_inv;
+            let k_rev = rates[step_idx].reverse_rate_s_inv;
+            let mut fwd_product = k_fwd;
+            let mut rev_product = k_rev;
+            for &(sp_idx, coeff) in stoich {
+                if coeff < 0.0 {
+                    fwd_product *= c[sp_idx].max(0.0).powf(-coeff);
+                } else if coeff > 0.0 {
+                    rev_product *= c[sp_idx].max(0.0).powf(coeff);
                 }
             }
+            let net_rate = fwd_product - rev_product;
+            for &(sp_idx, coeff) in stoich {
+                dc[sp_idx] += coeff * net_rate;
+            }
+        }
+    };
+    // Largest diagonal Jacobian entry, used to choose a stable RK4 step.
+    let jacobian_scale = |c: &[f64]| -> f64 {
+        let mut scale = 0.0f64;
+        for (step_idx, stoich) in config.stoichiometry.iter().enumerate().take(n_steps) {
+            let k_fwd = rates[step_idx].forward_rate_s_inv;
+            let k_rev = rates[step_idx].reverse_rate_s_inv;
+            for &(species, coeff) in stoich {
+                if coeff < 0.0 {
+                    let mut term = k_fwd * (-coeff);
+                    for &(other, other_coeff) in stoich {
+                        if other != species && other_coeff < 0.0 {
+                            term *= c[other].max(0.0).powf(-other_coeff);
+                        }
+                    }
+                    scale = scale.max(term);
+                } else if coeff > 0.0 {
+                    let mut term = k_rev * coeff;
+                    for &(other, other_coeff) in stoich {
+                        if other != species && other_coeff > 0.0 {
+                            term *= c[other].max(0.0).powf(other_coeff);
+                        }
+                    }
+                    scale = scale.max(term);
+                }
+            }
+        }
+        scale
+    };
 
-            for (c, d) in concentrations.iter_mut().zip(&dc) {
-                let updated = *c + sub_dt * d;
-                // Defensive: never let a non-finite step poison the trace.
-                *c = if updated.is_finite() {
-                    updated.max(0.0)
-                } else {
-                    *c
-                };
+    let mut k1 = vec![0.0; n_species];
+    let mut k2 = vec![0.0; n_species];
+    let mut k3 = vec![0.0; n_species];
+    let mut k4 = vec![0.0; n_species];
+    let mut y2 = vec![0.0; n_species];
+    let mut y3 = vec![0.0; n_species];
+    let mut y4 = vec![0.0; n_species];
+    let mut candidate = vec![0.0; n_species];
+    let mut current_time = 0.0;
+    let mut total_steps = 0usize;
+    for frame_idx in 1..config.n_frames {
+        let frame_end = frame_idx as f64 * dt;
+        while current_time < frame_end {
+            let remaining = (frame_end - current_time).max(0.0);
+            let scale = jacobian_scale(&concentrations);
+            let mut h = if scale > 0.0 {
+                (0.5 / scale).min(remaining)
+            } else {
+                remaining
+            };
+            let mut accepted = false;
+            for _ in 0..60 {
+                derivative(&concentrations, &mut k1);
+                for index in 0..n_species {
+                    y2[index] = concentrations[index] + 0.5 * h * k1[index];
+                }
+                derivative(&y2, &mut k2);
+                for index in 0..n_species {
+                    y3[index] = concentrations[index] + 0.5 * h * k2[index];
+                }
+                derivative(&y3, &mut k3);
+                for index in 0..n_species {
+                    y4[index] = concentrations[index] + h * k3[index];
+                }
+                derivative(&y4, &mut k4);
+                let mut valid = true;
+                for index in 0..n_species {
+                    let value = concentrations[index]
+                        + h / 6.0 * (k1[index] + 2.0 * k2[index] + 2.0 * k3[index] + k4[index]);
+                    if !value.is_finite() || value < -1e-9 {
+                        valid = false;
+                        break;
+                    }
+                    candidate[index] = value.max(0.0);
+                }
+                if valid {
+                    concentrations.copy_from_slice(&candidate);
+                    current_time += h;
+                    total_steps += 1;
+                    accepted = true;
+                    break;
+                }
+                h *= 0.5;
+            }
+            if !accepted {
+                return Err("microkinetic network is too stiff for the RK4 integrator".into());
+            }
+            if total_steps > 50_000_000 {
+                return Err("microkinetic integration exceeded the step limit".into());
             }
         }
 
         frames.push(MicrokineticFrame {
-            time_s: frame_idx as f64 * dt,
+            time_s: frame_end,
             species: config
                 .species
                 .iter()

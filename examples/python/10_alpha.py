@@ -1,5 +1,7 @@
 """Alpha-tier experimental modules. """
-from sci_form import embed
+import json
+
+from sci_form import compute_gcmc_isotherm, embed
 from sci_form.alpha import (
     dft_calculate,
     reaxff_energy,
@@ -67,6 +69,25 @@ def run():
     ts = gsm_find_ts("CCO", conf.coords, conf.coords, n_nodes=5, method="uff")
     print("gsm find ts", ts)
     # gsm_find_ts_with_method not exposed; skip
+
+    gcmc_framework = {
+        "cell": {"lattice": [[20.0, 0.0, 0.0], [0.0, 20.0, 0.0], [0.0, 0.0, 20.0]]},
+        "atoms": [],
+    }
+    gcmc_guest = {"epsilon_kcal_mol": 0.0, "sigma_angstrom": 3.0, "charge": 0.0}
+    gcmc_config = {
+        "temperature_k": 300.0,
+        "pressures_bar": [1.0],
+        "equilibration_steps": 100,
+        "production_steps": 300,
+        "sample_interval": 50,
+    }
+    isotherm = json.loads(
+        compute_gcmc_isotherm(
+            json.dumps(gcmc_framework), json.dumps(gcmc_guest), json.dumps(gcmc_config)
+        )
+    )
+    print("GCMC loading", isotherm["points"][0]["mean_loading"])
 
     sdr = sdr_embed_py([(0,1,1.5)], 9)
     print("SDR", sdr.coords[:3], sdr.max_distance_error)

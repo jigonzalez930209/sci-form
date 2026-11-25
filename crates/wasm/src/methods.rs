@@ -85,7 +85,6 @@ pub fn compute_xps_binding_energies(
     }
 }
 
-#[cfg(feature = "alpha-gcmc")]
 /// GCMC adsorption isotherm from JSON framework, guest and config payloads.
 #[wasm_bindgen]
 pub fn compute_gcmc_isotherm(framework_json: &str, guest_json: &str, config_json: &str) -> String {
@@ -107,7 +106,6 @@ pub fn compute_gcmc_isotherm(framework_json: &str, guest_json: &str, config_json
     }
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Rule-based reaction-network discovery from a JSON TemplateNetworkConfig.
 #[wasm_bindgen]
 pub fn discover_reaction_network(config_json: &str) -> String {
@@ -206,7 +204,6 @@ pub fn compute_qmmm_energy(system_json: &str, config_json: &str) -> String {
     }
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Gillespie kinetic Monte Carlo from a JSON KmcConfig.
 #[wasm_bindgen]
 pub fn run_kinetic_monte_carlo(config_json: &str) -> String {
@@ -220,7 +217,6 @@ pub fn run_kinetic_monte_carlo(config_json: &str) -> String {
     }
 }
 
-#[cfg(feature = "alpha-reaction-network")]
 /// Refine a barrier with GSM from flat coordinate arrays.
 #[wasm_bindgen]
 pub fn refine_barrier_with_gsm(

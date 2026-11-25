@@ -218,10 +218,10 @@ These rows are on `feat/wave-c` and are not part of the 2.0.0 audit above.
 
 | Item | Value |
 |---|---|
-| Recorded rows | 23 |
-| Passing gates | 20 |
-| Gaps | 3 |
-| Oracles | PySCF 2.15.1 (STO-3G cartesian, all electrons); pymbar 4.0.3 |
+| Recorded rows | 39 |
+| Passing gates | 33 |
+| Gaps | 6 |
+| Oracles | PySCF 2.15.1 (STO-3G cartesian, all electrons); pymbar 4.0.3; RASPA2 ExampleMOFsForceField |
 
 | Ficha | Candidate | Reference | Measured | Confidence region | Main limitation |
 |---|---|---|---|---|---|
@@ -239,6 +239,22 @@ These rows are on `feat/wave-c` and are not part of the 2.0.0 audit above.
 | F113 | MLIP contract (V2-13) | analytic harmonic bond in eV | units exact; forces 6.9e-10 | callback adapter | no trained model benchmark |
 | F114 | conformal (V2-14) | nominal coverage 0.90 | 7.4e-3 | 2 000 calibration + 20 000 test points | exchangeable synthetic data |
 | F115 | all-nuclide NMR (V2-15) | direct GIAO per nucleus (L1) | 0 ppm | water | PySCF GIAO oracle pending |
+| F116 | GCMC (V2-11) | RASPA2 CO2/Cu-BTC, 323 K, 10 bar | 0.9 % | 4 x 160k runs, Ewald k4 + switching | between-run scatter 3.7 molecules/uc |
+| F117 | pKa (V2-08) | CRC Handbook, relative to acetic acid | MAE 2.33 | four carboxylic acids | PBE0/3-21G Medium with density damping; above the 1.0 gate |
+| F118 | Enhanced sampling (V2-10) | finite trace and FES invariants | 0 non-finite | ethanol, WTMetaD + OPES | L0 smoke gate only |
+| F119 | 2D OPES (V2-10) | finite FES and reweighted surface | 0 non-finite | harmonic 2D surface | L0 smoke gate only |
+| F120 | GCMC Ewald (V2-11) | RASPA primitive P1 Cu-BTC, 323 K, 10 bar | 0.7 % | 40k moves, EwaldHost + switching | intramolecular correction; PASS |
+| F121 | GCMC empty box (V2-11) | ideal gas fV/kT | 20.7 % | three-site CO2 with LJ | finite-size/sampling |
+| F124 | WTMetaD PMF (V2-10) | analytic double-well PMF, 300 K | RMSE 0.18; barrier 9.70/10 | 400k steps, gamma = 10 | 1D CV, exact potential of mean force |
+| F125 | 2D OPES PMF (V2-10) | analytic harmonic PMF, 300 K | bias RMSE 0.17; reweighted 0.40 | 200k steps, sigma = 0.35 | quadratic surface, 13×13 grid |
+| F126 | Network recovery (V2-12) | GRI-Mech 3.0 / NIST / JPL | 5/5 | five curated networks | barrier accuracy not evaluated |
+| F127 | kMC vs ODE (V2-12) | mean-field ODE with identical rates | 0.11 % | five networks, 8 seeds | 3k events per seed; RK4 reference |
+| F128 | kMC determinism (V2-12) | same-seed replay + caps | 0 violations | depth/species limits | single network for replay |
+| F129 | Replica exchange (V2-10) | roadmap 20–40 % acceptance | 28.7 % | UFF ethanol, 300/600/1300/2600 K | four replicas; PASS |
+| F130 | Raman positions (V2-05) | NIST CCCBDB fundamentals | MAE 82 cm⁻¹ (worst 260) | H2O, NH3, CH4, CH3OH | UFF modes + uncoupled response; gate is <10 cm⁻¹ |
+| F131 | GCMC (V2-11) | RASPA2 CO2/IRMOF-1 (MOF-5), 298 K, 1 bar | 3.9 % | Ewald k8 + shifted LJ, 2 seeds | rigid framework |
+| F132 | GCMC (V2-11) | RASPA2 N2/Cu-BTC (HKUST-1), 298 K, 10 bar | 2.5 % | Ewald k4 + shifted LJ, 2 seeds | primitive P1 cell; TraPPE N2 |
+| F133 | Barrier MAE (V2-12) | experimental torsional/inversion barriers | 0.575 kcal/mol | ethane, methanol, ammonia; UFF/GFN2 | rigid scans; worst 1.69 |
 
 The gates found and fixed eight defects on the branch:
 
