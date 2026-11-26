@@ -78,6 +78,7 @@ python_tests() {
   if python3 -m venv "$WORK/venv" 2>/dev/null; then
     "$WORK/venv/bin/pip" install -q "$WORK"/wheels/*.whl pytest numpy || return 1
   elif command -v uv >/dev/null 2>&1; then
+    rm -rf "$WORK/venv"
     uv venv "$WORK/venv" >/dev/null || return 1
     uv pip install --python "$WORK/venv/bin/python" -q "$WORK"/wheels/*.whl pytest numpy || return 1
   else
