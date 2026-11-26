@@ -1,8 +1,13 @@
 # Release checklist `2.2.0`
 
-**Status: promotion in progress.** The frozen scope is V2-10 (enhanced
+**Status: released 2026-11-25.** The frozen scope is V2-10 (enhanced
 sampling) and V2-14 (active learning). V2-05, V2-08, V2-09, OPES with more
 than two CV and the remaining band-B candidates stay alpha for `2.3`.
+
+- GitHub Release: <https://github.com/jigonzalez930209/sci-form/releases/tag/v2.2.0>
+- crates.io: `sci-form 2.2.0`
+- PyPI: `sciforma 2.2.0`
+- npm: `sci-form-wasm 2.2.0`
 
 ## Frozen scope
 
@@ -26,7 +31,7 @@ than two CV and the remaining band-B candidates stay alpha for `2.3`.
 - [x] Core block: lib 1028 pass; v2_validation 15 pass; v21_validation 17 pass + 1 ignored; CLI 4 pass.
 - [x] Python wheel 2.2.0 + 196 pytest pass; WASM build 2.2.0 + 20 Node tests + 155 live examples.
 - [x] Docs build (`npm run docs:build`) and WASM docs package.
-- [ ] Tag `v2.2.0` and publish.
+- [x] Tag `v2.2.0` and publish (crates.io, PyPI, npm, GitHub Release, docs).
 
 ## Release commands
 
